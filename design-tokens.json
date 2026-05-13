@@ -1,0 +1,220 @@
+{
+  "$schema": "https://tr.designtokens.org/format/v1/schema.json",
+  "name": "Uhura Group 2026 - Liquid Glass Design System",
+  "version": "2.0.0",
+
+  "color": {
+    "primary": {
+      "100": { "value": "#c1a1ff", "type": "color", "description": "Lightest purple - backgrounds, hover states" },
+      "200": { "value": "#a07eeb", "type": "color", "description": "Light purple" },
+      "300": { "value": "#8945f0", "type": "color", "description": "Primary brand color - main CTAs, links" },
+      "400": { "value": "#6933c7", "type": "color", "description": "Hover state for primary" },
+      "500": { "value": "#501f92", "type": "color", "description": "Primary dark - text on light backgrounds" },
+      "600": { "value": "#30108b", "type": "color", "description": "Darkest purple - footer, dark sections" }
+    },
+
+    "accent": {
+      "base": { "value": "#e1ff64", "type": "color", "description": "Neon yellow - CTAs, highlights, badges" },
+      "hover": { "value": "#d4f050", "type": "color", "description": "Hover state for accent" },
+      "active": { "value": "#c4e040", "type": "color", "description": "Active state for accent" }
+    },
+
+    "neutral": {
+      "0": { "value": "#ffffff", "type": "color", "description": "Pure white" },
+      "50": { "value": "#fafafa", "type": "color", "description": "Background light" },
+      "100": { "value": "#eeeeee", "type": "color", "description": "Base light background" },
+      "200": { "value": "#e0e0e0", "type": "color", "description": "Subtle borders" },
+      "300": { "value": "#bdbdbd", "type": "color", "description": "Disabled text" },
+      "400": { "value": "#9e9e9e", "type": "color", "description": "Placeholder text" },
+      "500": { "value": "#757575", "type": "color", "description": "Secondary text" },
+      "600": { "value": "#616161", "type": "color", "description": "Body text" },
+      "700": { "value": "#424242", "type": "color", "description": "Headings" },
+      "800": { "value": "#212121", "type": "color", "description": "Primary text" },
+      "900": { "value": "#1a1a1a", "type": "color", "description": "Black" }
+    },
+
+    "semantic": {
+      "success": { "value": "#4caf50", "type": "color" },
+      "warning": { "value": "#ff9800", "type": "color" },
+      "error": { "value": "#f44336", "type": "color" },
+      "info": { "value": "#2196f3", "type": "color" }
+    },
+
+    "gradient": {
+      "primary": {
+        "value": "linear-gradient(135deg, #8945f0 0%, #501f92 100%)",
+        "type": "gradient",
+        "description": "Primary brand gradient"
+      },
+      "primary-extended": {
+        "value": "linear-gradient(135deg, #c1a1ff 0%, #8945f0 50%, #30108b 100%)",
+        "type": "gradient",
+        "description": "Extended gradient with light start"
+      },
+      "accent": {
+        "value": "linear-gradient(135deg, #e1ff64 0%, #d4f050 100%)",
+        "type": "gradient",
+        "description": "Accent gradient"
+      },
+      "holographic": {
+        "value": "linear-gradient(135deg, #8945f0 0%, #6dd5ed 50%, #e1ff64 100%)",
+        "type": "gradient",
+        "description": "Holographic gradient for premium elements"
+      }
+    }
+  },
+
+  "typography": {
+    "font-family": {
+      "primary": { "value": "Montserrat, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", "type": "fontFamily" },
+      "accent": { "value": "Georgia, 'Times New Roman', serif", "type": "fontFamily", "description": "Italic accent for emphasis" }
+    },
+
+    "font-weight": {
+      "regular": { "value": "400", "type": "fontWeight" },
+      "medium": { "value": "500", "type": "fontWeight" },
+      "semibold": { "value": "600", "type": "fontWeight" },
+      "bold": { "value": "700", "type": "fontWeight" },
+      "extrabold": { "value": "800", "type": "fontWeight" },
+      "black": { "value": "900", "type": "fontWeight" }
+    },
+
+    "font-size": {
+      "h1": { "value": "56px", "type": "fontSize", "lineHeight": "72px" },
+      "h2": { "value": "40px", "type": "fontSize", "lineHeight": "56px" },
+      "h3": { "value": "28px", "type": "fontSize", "lineHeight": "40px" },
+      "h4": { "value": "26px", "type": "fontSize", "lineHeight": "32px" },
+      "h5": { "value": "22px", "type": "fontSize", "lineHeight": "32px" },
+      "h6": { "value": "20px", "type": "fontSize", "lineHeight": "28px" },
+      "body-large": { "value": "16px", "type": "fontSize", "lineHeight": "27px" },
+      "body-medium": { "value": "14px", "type": "fontSize", "lineHeight": "20px" },
+      "body-small": { "value": "12px", "type": "fontSize", "lineHeight": "16px" },
+      "button": { "value": "14px", "type": "fontSize", "lineHeight": "21px" },
+      "caption": { "value": "11px", "type": "fontSize", "lineHeight": "14px" }
+    }
+  },
+
+  "spacing": {
+    "0": { "value": "0px", "type": "spacing" },
+    "1": { "value": "4px", "type": "spacing" },
+    "2": { "value": "8px", "type": "spacing" },
+    "3": { "value": "12px", "type": "spacing" },
+    "4": { "value": "16px", "type": "spacing" },
+    "5": { "value": "20px", "type": "spacing" },
+    "6": { "value": "24px", "type": "spacing" },
+    "8": { "value": "32px", "type": "spacing" },
+    "10": { "value": "40px", "type": "spacing" },
+    "12": { "value": "48px", "type": "spacing" },
+    "16": { "value": "64px", "type": "spacing" },
+    "20": { "value": "80px", "type": "spacing" },
+    "24": { "value": "96px", "type": "spacing" },
+    "32": { "value": "128px", "type": "spacing" }
+  },
+
+  "border-radius": {
+    "sm": { "value": "6px", "type": "borderRadius" },
+    "md": { "value": "8px", "type": "borderRadius" },
+    "lg": { "value": "12px", "type": "borderRadius" },
+    "xl": { "value": "16px", "type": "borderRadius" },
+    "2xl": { "value": "24px", "type": "borderRadius" },
+    "3xl": { "value": "32px", "type": "borderRadius" },
+    "full": { "value": "9999px", "type": "borderRadius" }
+  },
+
+  "shadow": {
+    "soft": {
+      "value": "0 2px 4px 0 rgba(0, 0, 0, 0.04)",
+      "type": "shadow",
+      "description": "Subtle elevation for cards"
+    },
+    "medium": {
+      "value": "0 4px 12px -2px rgba(0, 0, 0, 0.08)",
+      "type": "shadow",
+      "description": "Standard elevation"
+    },
+    "strong": {
+      "value": "0 12px 24px -4px rgba(0, 0, 0, 0.12)",
+      "type": "shadow",
+      "description": "High elevation for modals"
+    },
+    "floating": {
+      "value": "0 24px 48px -8px rgba(0, 0, 0, 0.16)",
+      "type": "shadow",
+      "description": "Floating elements, glass cards"
+    },
+    "glow-purple": {
+      "value": "0 0 20px rgba(137, 69, 240, 0.3)",
+      "type": "shadow",
+      "description": "Purple glow for interactive elements"
+    },
+    "glow-neon": {
+      "value": "0 0 20px rgba(225, 255, 100, 0.4)",
+      "type": "shadow",
+      "description": "Neon glow for accent CTAs"
+    }
+  },
+
+  "liquid-glass": {
+    "transparency": {
+      "light": { "value": "0.7", "type": "opacity", "description": "70% - cards on light backgrounds" },
+      "medium": { "value": "0.5", "type": "opacity", "description": "50% - overlays" },
+      "dark": { "value": "0.15", "type": "opacity", "description": "15% - dark glass on dark backgrounds" }
+    },
+
+    "blur": {
+      "sm": { "value": "8px", "type": "blur" },
+      "md": { "value": "16px", "type": "blur" },
+      "lg": { "value": "24px", "type": "blur" },
+      "xl": { "value": "32px", "type": "blur" }
+    },
+
+    "border": {
+      "light": { "value": "rgba(255, 255, 255, 0.4)", "type": "color", "description": "Glass border on light backgrounds" },
+      "dark": { "value": "rgba(137, 69, 240, 0.2)", "type": "color", "description": "Glass border on dark backgrounds" }
+    }
+  },
+
+  "motion": {
+    "duration": {
+      "instant": { "value": "100ms", "type": "duration" },
+      "fast": { "value": "150ms", "type": "duration", "description": "Hover effects" },
+      "base": { "value": "250ms", "type": "duration", "description": "Standard transitions" },
+      "slow": { "value": "400ms", "type": "duration", "description": "Inputs, modals" },
+      "slower": { "value": "600ms", "type": "duration", "description": "Complex animations" }
+    },
+
+    "easing": {
+      "linear": { "value": "linear", "type": "easing" },
+      "ease-in": { "value": "cubic-bezier(0.4, 0, 1, 1)", "type": "easing" },
+      "ease-out": { "value": "cubic-bezier(0, 0, 0.2, 1)", "type": "easing", "description": "Default for hover" },
+      "ease-in-out": { "value": "cubic-bezier(0.4, 0, 0.2, 1)", "type": "easing", "description": "Bidirectional" },
+      "ease-spring": { "value": "cubic-bezier(0.34, 1.56, 0.64, 1)", "type": "easing", "description": "Bounce effect" }
+    },
+
+    "scale": {
+      "hover-button": { "value": "1.05", "type": "scale" },
+      "hover-card": { "value": "1.02", "type": "scale" },
+      "active": { "value": "0.98", "type": "scale" },
+      "press": { "value": "0.95", "type": "scale" }
+    }
+  },
+
+  "grid": {
+    "desktop": {
+      "columns": { "value": "12", "type": "number" },
+      "gutter": { "value": "24px", "type": "spacing" },
+      "margin": { "value": "48px", "type": "spacing" },
+      "max-width": { "value": "1200px", "type": "dimension" }
+    },
+    "tablet": {
+      "columns": { "value": "8", "type": "number" },
+      "gutter": { "value": "16px", "type": "spacing" },
+      "margin": { "value": "32px", "type": "spacing" }
+    },
+    "mobile": {
+      "columns": { "value": "4", "type": "number" },
+      "gutter": { "value": "16px", "type": "spacing" },
+      "margin": { "value": "16px", "type": "spacing" }
+    }
+  }
+}

@@ -1,0 +1,113 @@
+@custom-variant dark (&:is(.dark *));
+
+/* ================================================
+   UHURA GROUP 2026 - LIQUID GLASS DESIGN SYSTEM
+   ================================================ */
+
+:root {
+  /* BRAND COLORS - From Manual */
+  --color-purple-200: #c1a1ff;
+  --color-purple-400: #8945f0;
+  --color-purple-500: #7335d6;
+  --color-purple-600: #6426c4;
+  --color-purple-700: #501f92;
+  --color-purple-900: #30108b;
+
+  --color-yellow-400: #e1ff64;
+  --color-yellow-500: #d4f050;
+  --color-yellow-600: #c4e040;
+
+  --color-cyan-400: #25c8d9;
+  --color-cyan-600: #1a9aaa;
+
+  --color-pink-400: #cd79e8;
+  --color-pink-600: #a855d6;
+
+  --color-neutral-0: #ffffff;
+  --color-neutral-50: #fafafa;
+  --color-neutral-100: #f5f5f5;
+  --color-neutral-200: #eeeeee;
+  --color-neutral-600: #757575;
+  --color-neutral-700: #616161;
+  --color-neutral-900: #212121;
+  --color-neutral-950: #1a1a1a;
+
+  /* GRADIENTS */
+  --gradient-primary: linear-gradient(135deg, #8945f0 0%, #501f92 100%);
+  --gradient-holographic: linear-gradient(135deg, #8945f0 0%, #25c8d9 50%, #e1ff64 100%);
+  --gradient-hero: linear-gradient(135deg, #501f92 0%, #8945f0 50%, #25c8d9 100%);
+
+  /* LEGACY COMPATIBILITY */
+  --uhura-purple-dark: var(--color-purple-900);
+  --uhura-purple-primary: var(--color-purple-700);
+  --uhura-purple-medium: var(--color-purple-400);
+  --uhura-purple-light: var(--color-purple-200);
+  --uhura-neon-yellow: var(--color-yellow-400);
+  --uhura-cyan: var(--color-cyan-400);
+  --uhura-pink: var(--color-pink-400);
+  --uhura-white: var(--color-neutral-0);
+  --uhura-black: var(--color-neutral-950);
+
+  /* TYPOGRAPHY */
+  --font-family-primary: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
+
+  /* SPACING */
+  --space-2: 0.5rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+
+  /* MOTION */
+  --duration-fast: 150ms;
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --scale-hover-button: 1.05;
+  --scale-active: 0.98;
+  --lift-subtle: -2px;
+
+  /* OTHER */
+  --radius-xl: 1.5rem;
+  --radius-2xl: 2rem;
+  --radius-full: 9999px;
+  --opacity-disabled: 0.4;
+  --focus-ring-width: 3px;
+
+  /* Old tokens */
+  --background: var(--uhura-white);
+  --foreground: var(--uhura-black);
+  --primary: var(--uhura-purple-medium);
+}
+
+@theme inline {
+  --color-uhura-purple-dark: var(--uhura-purple-dark);
+  --color-uhura-purple-primary: var(--uhura-purple-primary);
+  --color-uhura-purple-medium: var(--uhura-purple-medium);
+  --color-uhura-purple-light: var(--uhura-purple-light);
+  --color-uhura-neon-yellow: var(--uhura-neon-yellow);
+  --color-uhura-cyan: var(--uhura-cyan);
+  --color-uhura-pink: var(--uhura-pink);
+  --color-neutral-50: var(--color-neutral-50);
+  --color-neutral-100: var(--color-neutral-100);
+  --color-neutral-200: var(--color-neutral-200);
+  --color-neutral-600: var(--color-neutral-600);
+  --color-neutral-700: var(--color-neutral-700);
+  --color-neutral-900: var(--color-neutral-900);
+  --color-primary-300: var(--primary);
+}
+
+@layer base {
+  body {
+    @apply bg-neutral-50 text-neutral-900;
+    font-family: var(--font-family-primary);
+  }
+  h1 { @apply text-6xl font-extrabold; }
+  h2 { @apply text-4xl font-extrabold; }
+  h3 { @apply text-2xl font-bold; }
+}
+
+.gradient-primary { background: var(--gradient-primary); }
+.gradient-holographic { background: var(--gradient-holographic); }
+.gradient-hero { background: var(--gradient-hero); }
