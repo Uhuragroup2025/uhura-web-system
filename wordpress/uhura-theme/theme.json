@@ -1,1 +1,52 @@
-
+{
+  "version": 3,
+  "settings": {
+    "color": {
+      "palette": [
+        {
+          "slug": "brand-primary",
+          "name": "Brand Primary",
+          "color": "#8945f0"
+        },
+        {
+          "slug": "brand-dark",
+          "name": "Brand Dark",
+          "color": "#30108b"
+        },
+        {
+          "slug": "brand-accent",
+          "name": "Brand Accent",
+          "color": "#e1ff64"
+        }
+      ]
+    },
+    "spacing": {
+      "spacingSizes": [
+        {
+          "slug": "sm",
+          "size": "16px",
+          "name": "Small"
+        },
+        {
+          "slug": "md",
+          "size": "24px",
+          "name": "Medium"
+        },
+        {
+          "slug": "lg",
+          "size": "48px",
+          "name": "Large"
+        }
+      ]
+    },
+    "typography": {
+      "fontFamilies": [
+        {
+          "slug": "primary",
+          "name": "Primary",
+          "fontFamily": "Inter, sans-serif"
+        }
+      ]
+    }
+  }
+}
