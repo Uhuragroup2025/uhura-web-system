@@ -1,0 +1,8 @@
+{
+  "name": "Uhura Web System",
+  "description": "Unified Design System & Component Library for Uhura Group 2026 Canonical Standards",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

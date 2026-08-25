@@ -1,96 +1,26 @@
 {
   "$schema": "https://tr.designtokens.org/format/v1/schema.json",
-  "name": "Uhura Group 2026 - Primitive Tokens",
-  "version": "3.0.0",
-  "description": "Raw values - DO NOT use directly in components. Use semantic tokens instead.",
+  "name": "Uhura Group 2026 - Unified Primitive Tokens",
+  "version": "3.1.0",
+  "description": "Valores crudos canónicos de Uhura 2026 unificados con el sitio en producción.",
 
   "primitive": {
     "color": {
-      "purple": {
-        "50": { "value": "#f5f0ff", "type": "color" },
-        "100": { "value": "#ebe0ff", "type": "color" },
-        "200": { "value": "#c1a1ff", "type": "color" },
-        "300": { "value": "#a07eeb", "type": "color" },
-        "400": { "value": "#8945f0", "type": "color" },
-        "500": { "value": "#7335d6", "type": "color" },
-        "600": { "value": "#6426c4", "type": "color" },
-        "700": { "value": "#501f92", "type": "color" },
-        "800": { "value": "#401775", "type": "color" },
-        "900": { "value": "#30108b", "type": "color" },
-        "950": { "value": "#1f0a5a", "type": "color" }
-      },
-
-      "yellow": {
-        "50": { "value": "#fefce8", "type": "color" },
-        "100": { "value": "#fef9c3", "type": "color" },
-        "200": { "value": "#fef08a", "type": "color" },
-        "300": { "value": "#fde047", "type": "color" },
-        "400": { "value": "#e1ff64", "type": "color" },
-        "500": { "value": "#d4f050", "type": "color" },
-        "600": { "value": "#c4e040", "type": "color" },
-        "700": { "value": "#a3c133", "type": "color" },
-        "800": { "value": "#7d9628", "type": "color" },
-        "900": { "value": "#5c7119", "type": "color" }
-      },
-
-      "cyan": {
-        "50": { "value": "#ecfeff", "type": "color" },
-        "100": { "value": "#cffafe", "type": "color" },
-        "200": { "value": "#7ee0ec", "type": "color", "description": "Light cyan tint" },
-        "300": { "value": "#4dd4e3", "type": "color" },
-        "400": { "value": "#25c8d9", "type": "color", "description": "Brand cyan accent (FROM BRAND MANUAL)" },
-        "500": { "value": "#1fb0c0", "type": "color" },
-        "600": { "value": "#1a9aaa", "type": "color", "description": "Dark cyan shade" },
-        "700": { "value": "#0e7490", "type": "color" }
-      },
-
-      "pink": {
-        "50": { "value": "#fdf4ff", "type": "color" },
-        "100": { "value": "#fae8ff", "type": "color" },
-        "200": { "value": "#e8b4f5", "type": "color", "description": "Light pink tint" },
-        "300": { "value": "#dd96ed", "type": "color" },
-        "400": { "value": "#cd79e8", "type": "color", "description": "Brand pink accent (FROM BRAND MANUAL)" },
-        "500": { "value": "#b85fd8", "type": "color" },
-        "600": { "value": "#a855d6", "type": "color", "description": "Dark pink shade" },
-        "700": { "value": "#8e3bb5", "type": "color" }
-      },
-
-      "neutral": {
-        "0": { "value": "#ffffff", "type": "color" },
-        "50": { "value": "#fafafa", "type": "color" },
-        "100": { "value": "#f5f5f5", "type": "color" },
-        "200": { "value": "#eeeeee", "type": "color" },
-        "300": { "value": "#e0e0e0", "type": "color" },
-        "400": { "value": "#bdbdbd", "type": "color" },
-        "500": { "value": "#9e9e9e", "type": "color" },
-        "600": { "value": "#757575", "type": "color" },
-        "700": { "value": "#616161", "type": "color" },
-        "800": { "value": "#424242", "type": "color" },
-        "900": { "value": "#212121", "type": "color" },
-        "950": { "value": "#1a1a1a", "type": "color" }
-      },
-
-      "semantic": {
-        "success": {
-          "50": { "value": "#f0fdf4", "type": "color" },
-          "500": { "value": "#10b981", "type": "color" },
-          "700": { "value": "#047857", "type": "color" }
-        },
-        "warning": {
-          "50": { "value": "#fff7ed", "type": "color" },
-          "500": { "value": "#f59e0b", "type": "color" },
-          "700": { "value": "#c2410c", "type": "color" }
-        },
-        "error": {
-          "50": { "value": "#fef2f2", "type": "color" },
-          "500": { "value": "#ef4444", "type": "color" },
-          "700": { "value": "#b91c1c", "type": "color" }
-        },
-        "info": {
-          "50": { "value": "#eff6ff", "type": "color" },
-          "500": { "value": "#3b82f6", "type": "color" },
-          "700": { "value": "#1d4ed8", "type": "color" }
-        }
+      "uhura": {
+        "dark": { "value": "#090513", "type": "color", "description": "Fondo oscuro principal del sitio" },
+        "panel": { "value": "#140b24", "type": "color", "description": "Superficie de tarjetas y paneles oscuros" },
+        "ink": { "value": "#17131f", "type": "color", "description": "Texto oscuro en fondos claros" },
+        "purple": { "value": "#501f92", "type": "color", "description": "Púrpura insignia de marca" },
+        "violet": { "value": "#8a4dff", "type": "color", "description": "CTA claro e hiperenlaces" },
+        "lavender": { "value": "#c9b7ff", "type": "color", "description": "Texto secundario en dark mode" },
+        "lime": { "value": "#d4ff4a", "type": "color", "description": "Botón CTA en dark mode y KPIs" },
+        "lime-light": { "value": "#edff9b", "type": "color", "description": "Extremo claro del degradado lime" },
+        "cyan": { "value": "#4be5ff", "type": "color", "description": "Acento tecnológico y badges" },
+        "blue": { "value": "#4f7dff", "type": "color", "description": "Acento corporativo" },
+        "pink": { "value": "#cd79e8", "type": "color", "description": "Acento secundario especial" },
+        "light": { "value": "#f2ecfb", "type": "color", "description": "Fondo de superficie clara" },
+        "light-2": { "value": "#eaf5ff", "type": "color", "description": "Fondo claro con tinte frío" },
+        "white": { "value": "#ffffff", "type": "color" }
       }
     },
 
@@ -102,101 +32,27 @@
       "4": { "value": "1rem", "type": "dimension" },
       "5": { "value": "1.25rem", "type": "dimension" },
       "6": { "value": "1.5rem", "type": "dimension" },
-      "7": { "value": "1.75rem", "type": "dimension" },
       "8": { "value": "2rem", "type": "dimension" },
       "10": { "value": "2.5rem", "type": "dimension" },
       "12": { "value": "3rem", "type": "dimension" },
-      "14": { "value": "3.5rem", "type": "dimension" },
       "16": { "value": "4rem", "type": "dimension" },
       "20": { "value": "5rem", "type": "dimension" },
-      "24": { "value": "6rem", "type": "dimension" },
-      "28": { "value": "7rem", "type": "dimension" },
-      "32": { "value": "8rem", "type": "dimension" }
+      "24": { "value": "6rem", "type": "dimension" }
     },
 
-    "font-size": {
-      "xs": { "value": "0.75rem", "type": "dimension" },
-      "sm": { "value": "0.875rem", "type": "dimension" },
-      "base": { "value": "1rem", "type": "dimension" },
-      "lg": { "value": "1.125rem", "type": "dimension" },
-      "xl": { "value": "1.25rem", "type": "dimension" },
-      "2xl": { "value": "1.5rem", "type": "dimension" },
-      "3xl": { "value": "1.875rem", "type": "dimension" },
-      "4xl": { "value": "2.25rem", "type": "dimension" },
-      "5xl": { "value": "3rem", "type": "dimension" },
-      "6xl": { "value": "3.75rem", "type": "dimension" },
-      "7xl": { "value": "4.5rem", "type": "dimension" },
-      "8xl": { "value": "6rem", "type": "dimension" }
-    },
-
-    "font-weight": {
-      "light": { "value": "300", "type": "number" },
-      "regular": { "value": "400", "type": "number" },
-      "medium": { "value": "500", "type": "number" },
-      "semibold": { "value": "600", "type": "number" },
-      "bold": { "value": "700", "type": "number" },
-      "extrabold": { "value": "800", "type": "number" },
-      "black": { "value": "900", "type": "number" }
-    },
-
-    "line-height": {
-      "none": { "value": "1", "type": "number" },
-      "tight": { "value": "1.25", "type": "number" },
-      "snug": { "value": "1.375", "type": "number" },
-      "normal": { "value": "1.5", "type": "number" },
-      "relaxed": { "value": "1.625", "type": "number" },
-      "loose": { "value": "2", "type": "number" }
-    },
-
-    "border-radius": {
-      "none": { "value": "0", "type": "dimension" },
-      "sm": { "value": "0.375rem", "type": "dimension" },
-      "md": { "value": "0.5rem", "type": "dimension" },
-      "lg": { "value": "0.75rem", "type": "dimension" },
-      "xl": { "value": "1rem", "type": "dimension" },
-      "2xl": { "value": "1.5rem", "type": "dimension" },
-      "3xl": { "value": "2rem", "type": "dimension" },
-      "full": { "value": "9999px", "type": "dimension" }
-    },
-
-    "opacity": {
-      "0": { "value": "0", "type": "number" },
-      "5": { "value": "0.05", "type": "number" },
-      "10": { "value": "0.1", "type": "number" },
-      "15": { "value": "0.15", "type": "number" },
-      "20": { "value": "0.2", "type": "number" },
-      "30": { "value": "0.3", "type": "number" },
-      "40": { "value": "0.4", "type": "number" },
-      "50": { "value": "0.5", "type": "number" },
-      "60": { "value": "0.6", "type": "number" },
-      "70": { "value": "0.7", "type": "number" },
-      "80": { "value": "0.8", "type": "number" },
-      "90": { "value": "0.9", "type": "number" },
-      "95": { "value": "0.95", "type": "number" },
-      "100": { "value": "1", "type": "number" }
-    },
-
-    "blur": {
-      "none": { "value": "0", "type": "dimension" },
-      "sm": { "value": "4px", "type": "dimension" },
-      "md": { "value": "8px", "type": "dimension" },
-      "lg": { "value": "16px", "type": "dimension" },
-      "xl": { "value": "24px", "type": "dimension" },
-      "2xl": { "value": "32px", "type": "dimension" },
-      "3xl": { "value": "48px", "type": "dimension" }
+    "font-family": {
+      "primary": { "value": "Montserrat, sans-serif", "type": "fontFamily" },
+      "editorial": { "value": "Playfair Display, Georgia, serif", "type": "fontFamily" }
     },
 
     "duration": {
       "instant": { "value": "100ms", "type": "duration" },
       "fast": { "value": "150ms", "type": "duration" },
       "normal": { "value": "250ms", "type": "duration" },
-      "slow": { "value": "400ms", "type": "duration" },
-      "slower": { "value": "600ms", "type": "duration" }
+      "slow": { "value": "400ms", "type": "duration" }
     },
 
     "easing": {
-      "linear": { "value": "linear", "type": "cubicBezier", "description": "[0, 0, 1, 1]" },
-      "ease-in": { "value": "cubic-bezier(0.4, 0, 1, 1)", "type": "cubicBezier" },
       "ease-out": { "value": "cubic-bezier(0, 0, 0.2, 1)", "type": "cubicBezier" },
       "ease-in-out": { "value": "cubic-bezier(0.4, 0, 0.2, 1)", "type": "cubicBezier" },
       "spring": { "value": "cubic-bezier(0.34, 1.56, 0.64, 1)", "type": "cubicBezier" }

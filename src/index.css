@@ -1,0 +1,223 @@
+@import "tailwindcss";
+
+:root {
+  /* UHURA BRAND FOUNDATION 2026 - UNIFIED CANONICAL TOKENS */
+  --uhura-ink: #17131f;
+  --uhura-dark: #090513;
+  --uhura-panel: #140b24;
+  --uhura-purple: #501f92;
+  --uhura-violet: #8a4dff;
+  --uhura-lavender: #c9b7ff;
+  --uhura-blue: #4f7dff;
+  --uhura-cyan: #4be5ff;
+  --uhura-lime: #d4ff4a;
+  --uhura-light: #f2ecfb;
+  --uhura-light-2: #eaf5ff;
+  --uhura-muted-dark: rgba(255, 255, 255, 0.72);
+  --uhura-muted-light: rgba(23, 19, 31, 0.66);
+
+  /* COMPATIBILITY ALIASES */
+  --color-purple-200: var(--uhura-lavender);
+  --color-purple-400: var(--uhura-violet);
+  --color-purple-700: var(--uhura-purple);
+  --color-purple-900: var(--uhura-panel);
+  --color-yellow-400: var(--uhura-lime);
+  --color-cyan-400: var(--uhura-cyan);
+  --color-blue-400: var(--uhura-blue);
+  --color-neutral-0: #ffffff;
+  --color-neutral-50: #fafafa;
+  --color-neutral-900: var(--uhura-ink);
+  --color-neutral-950: var(--uhura-dark);
+
+  /* CONTEXTUAL MAPPINGS */
+  --context-accent-primary: var(--uhura-lime);
+  --context-accent-secondary: var(--uhura-cyan);
+  --button-primary-background: linear-gradient(135deg, var(--uhura-lime), #edff9b);
+  --button-primary-color: var(--uhura-ink);
+  --button-primary-shadow: 0 18px 42px rgba(212, 255, 74, 0.22);
+  --button-primary-shadow-hover: 0 22px 48px rgba(212, 255, 74, 0.28);
+
+  /* 6 OFFICIAL GRADIENTS */
+  --gradient-primary: linear-gradient(135deg, #8a4dff 0%, #501f92 100%);
+  --gradient-hero: linear-gradient(135deg, #501f92 0%, #8a4dff 50%, #4be5ff 100%);
+  --gradient-holographic: linear-gradient(135deg, #8a4dff 0%, #4be5ff 50%, #d4ff4a 100%);
+  --gradient-mesh: radial-gradient(at 0% 0%, #8a4dff 0%, transparent 50%), radial-gradient(at 100% 100%, #4be5ff 0%, transparent 50%), radial-gradient(at 100% 0%, #cd79e8 0%, transparent 50%), #140b24;
+  --gradient-accent: linear-gradient(135deg, #d4ff4a 0%, #edff9b 100%);
+  --gradient-surface: linear-gradient(180deg, #f2ecfb 0%, #ffffff 100%);
+
+  /* TYPOGRAPHY */
+  --font-family-primary: 'Montserrat', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-family-accent: 'Playfair Display', Georgia, serif;
+  --font-family-saas: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-family-inter: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-family-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* FLUID TYPOGRAPHY SCALE (FROM UHURA WEB SYSTEM 2026) */
+  --type-display: clamp(34px, 4.1vw, 56px);
+  --type-page: clamp(36px, 4vw, 54px);
+  --type-section: clamp(30px, 3.2vw, 44px);
+  --type-subsection: clamp(25px, 2.4vw, 34px);
+  --type-card: clamp(18px, 1.55vw, 24px);
+  --type-metric: clamp(34px, 4vw, 58px);
+  --type-body-lg: clamp(17px, 1.3vw, 19px);
+  --type-body: clamp(16px, 1.2vw, 18px);
+  --type-small: 13px;
+  --type-caption: 12px;
+  --type-label: 11px;
+
+  /* MOTION */
+  --duration-instant: 100ms;
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
+  --duration-slower: 600ms;
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* SHADOWS & GLOWS */
+  --glow-purple-sm: 0 0 10px rgba(138, 77, 255, 0.3);
+  --glow-purple-md: 0 0 20px rgba(138, 77, 255, 0.4);
+  --glow-purple-lg: 0 0 40px rgba(138, 77, 255, 0.5);
+  --glow-lime: 0 0 20px rgba(212, 255, 74, 0.35);
+  --glow-cyan: 0 0 20px rgba(75, 229, 255, 0.4);
+}
+
+body {
+  font-family: var(--font-family-primary);
+  background-color: var(--color-neutral-50);
+  color: var(--uhura-ink);
+}
+
+/* Orbit SaaS Specific Typography */
+.font-saas {
+  font-family: var(--font-family-saas);
+  letter-spacing: -0.012em;
+}
+
+.font-inter {
+  font-family: var(--font-family-inter);
+  letter-spacing: -0.011em;
+}
+
+.font-montserrat {
+  font-family: var(--font-family-primary);
+}
+
+.font-mono-code {
+  font-family: var(--font-family-mono);
+}
+
+.tabular-nums,
+.font-tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+.orbit-saas-root {
+  font-family: var(--font-family-saas);
+  letter-spacing: -0.011em;
+}
+
+.orbit-saas-root *::selection,
+.orbit-saas-root::selection {
+  background-color: #ddd6fe !important;
+  color: #0f172a !important;
+}
+
+.font-editorial {
+  font-family: var(--font-family-accent);
+  font-style: italic;
+}
+
+.font-accent-emphasis {
+  font-family: var(--font-family-accent);
+  font-style: italic;
+}
+
+/* Gradients utility classes */
+.bg-gradient-primary { background: var(--gradient-primary); }
+.bg-gradient-hero { background: var(--gradient-hero); }
+.bg-gradient-holographic { background: var(--gradient-holographic); }
+.bg-gradient-mesh { background: var(--gradient-mesh); }
+.bg-gradient-accent { background: var(--gradient-accent); }
+.bg-gradient-surface { background: var(--gradient-surface); }
+
+/* Liquid Glass Utilities */
+.glass-light {
+  background: rgba(255, 255, 255, 0.70);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.40);
+}
+
+.glass-medium {
+  background: rgba(255, 255, 255, 0.50);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.30);
+}
+
+.glass-dark {
+  background: rgba(20, 11, 36, 0.45);
+  backdrop-filter: blur(32px);
+  -webkit-backdrop-filter: blur(32px);
+  border: 1px solid rgba(138, 77, 255, 0.25);
+}
+
+.glass-purple {
+  background: rgba(138, 77, 255, 0.25);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(201, 183, 255, 0.40);
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #c9b7ff;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #8a4dff;
+}
+
+/* ACCESSIBILITY: Reduced Motion Media Query (WCAG 2.3.3) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+    transform: none !important;
+  }
+}
+
+/* User-forced reduced motion class for interactive simulator */
+.force-reduced-motion *,
+.force-reduced-motion *::before,
+.force-reduced-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+  transform: none !important;
+}
+
+/* Accessible focus ring utilities */
+.focus-ring {
+  outline: none;
+}
+.focus-ring:focus-visible {
+  outline: 2px solid var(--uhura-violet);
+  outline-offset: 2px;
+}
+
