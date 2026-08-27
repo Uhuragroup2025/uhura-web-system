@@ -1,101 +1,281 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   TaskItem,
   TaskPriority,
   ProjectType,
-  ProjectPhase,
+  STANDARD_UHURA_ROLES,
   FeeActivityCategory
 } from './types';
 import {
   X,
   CheckSquare,
-  Building2,
-  ListChecks,
+  Sparkles,
   Plus,
   Trash2,
-  Layers,
-  Repeat,
-  Sparkles,
-  Link,
   Calendar,
-  AlertCircle
+  Clock,
+  User,
+  Users,
+  ShieldCheck,
+  Building2,
+  ListChecks,
+  AlertCircle,
+  FileText,
+  Check,
+  ChevronDown,
+  Layers,
+  Link2,
+  FolderKanban
 } from 'lucide-react';
 import {
   clientProjectHierarchy,
-  FEE_ACTIVITY_TEMPLATES,
-  PROJECT_PHASES_TEMPLATES
+  FEE_ACTIVITY_TEMPLATES
 } from './mockData';
+import { ProjectSummaryItem } from './ProjectsView';
+import { ClientProfile } from './types';
 
-interface NewTaskModalProps {
+export interface NewTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAddTask: (task: TaskItem) => void;
   existingTasks?: TaskItem[];
+  preselectedProjectId?: string;
+  preselectedProjectName?: string;
+  preselectedClientName?: string;
+  projectsList?: ProjectSummaryItem[];
+  clientsList?: ClientProfile[];
+  currentUserName?: string;
 }
+
+const TEAM_MEMBERS = [
+  { name: 'Catalina Tejada', initials: 'CT', avatarBg: 'bg-[#7c3aed]', defaultRole: 'Web Designer' },
+  { name: 'Laura Gómez', initials: 'LG', avatarBg: 'bg-[#0284c7]', defaultRole: 'Front End' },
+  { name: 'Andrés Ríos', initials: 'AR', avatarBg: 'bg-[#ef4444]', defaultRole: 'Product Lead' },
+  { name: 'Sebas (Trafficker)', initials: 'ST', avatarBg: 'bg-[#0284c7]', defaultRole: 'Trafficker' },
+  { name: 'Camilo Vélez', initials: 'CV', avatarBg: 'bg-[#10b981]', defaultRole: 'Content Strategist' },
+  { name: 'Diego Cadavid', initials: 'DC', avatarBg: 'bg-[#f59e0b]', defaultRole: 'Diseñador Gráfico' },
+  { name: 'Mariana Toro', initials: 'MT', avatarBg: 'bg-[#ec4899]', defaultRole: 'Copywriter' },
+  { name: 'Mateo Ruiz', initials: 'MR', avatarBg: 'bg-[#8b5cf6]', defaultRole: 'Community Manager' },
+  { name: 'Esteban Mora', initials: 'EM', avatarBg: 'bg-[#0d9488]', defaultRole: 'Front End' },
+  { name: 'Paola (Lead PM)', initials: 'PL', avatarBg: 'bg-[#501f92]', defaultRole: 'Lead PM' }
+];
 
 export const NewTaskModal: React.FC<NewTaskModalProps> = ({
   isOpen,
   onClose,
   onAddTask,
-  existingTasks = []
+  existingTasks = [],
+  preselectedProjectId,
+  preselectedProjectName,
+  preselectedClientName,
+  projectsList = [],
+  clientsList = [],
+  currentUserName = 'Paola (Lead PM)'
 }) => {
-  const [title, setTitle] = useState('');
-  const [selectedClientId, setSelectedClientId] = useState(clientProjectHierarchy[0].id);
-  const [selectedProjectId, setSelectedProjectId] = useState(clientProjectHierarchy[0].projects[0].id);
-  const [priority, setPriority] = useState<TaskPriority>('High');
-  const [assigneeName, setAssigneeName] = useState('Catalina Tejada');
-  const [budgetedHours, setBudgetedHours] = useState('4.0');
-  const [dueDateText, setDueDateText] = useState('Vence en 3 días');
-  const [startDate, setStartDate] = useState('22 Ago 2026');
-  const [dueDate, setDueDate] = useState('2026-08-26');
+  // Flatten all available projects
+  const allProjects = useMemo(() => {
+    const list: {
+      id: string;
+      name: string;
+      clientName: string;
+      projectType: ProjectType;
+      serviceBase: string;
+      leadName: string;
+    }[] = [];
 
-  // Specific project nature state
-  const [projectType, setProjectType] = useState<ProjectType>('fee_monthly');
-  const [selectedPhase, setSelectedPhase] = useState<ProjectPhase>('UI/UX & Prototipado');
-  const [selectedFeeCategory, setSelectedFeeCategory] = useState<FeeActivityCategory>('Mantenimiento Web');
+    // From hierarchy
+    clientProjectHierarchy.forEach((cli) => {
+      cli.projects.forEach((prj) => {
+        list.push({
+          id: prj.id,
+          name: prj.name,
+          clientName: cli.name,
+          projectType: prj.projectType || 'fee_monthly',
+          serviceBase: prj.feeCategory || 'Mantenimiento Web',
+          leadName: 'Paola (Lead PM)'
+        });
+      });
+    });
+
+    // From dynamic projectsList
+    projectsList.forEach((p) => {
+      if (!list.some((existing) => existing.id === p.id || existing.name === p.name)) {
+        list.push({
+          id: p.id,
+          name: p.name,
+          clientName: p.clientName,
+          projectType: p.projectType,
+          serviceBase: p.serviceBase,
+          leadName: p.leadName
+        });
+      }
+    });
+
+    return list;
+  }, [projectsList]);
+
+  // Selected project state
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('');
+
+  // Active project metadata
+  const activeProject = useMemo(() => {
+    return allProjects.find((p) => p.id === selectedProjectId) || allProjects[0] || {
+      id: 'default',
+      name: preselectedProjectName || 'Campaña Navidad Yamaha',
+      clientName: preselectedClientName || 'INCOLMOTOS YAMAHA S.A.',
+      projectType: 'fixed_milestones' as ProjectType,
+      serviceBase: 'Desarrollo Web & E-commerce',
+      leadName: 'Paola (Lead PM)'
+    };
+  }, [selectedProjectId, allProjects, preselectedProjectName, preselectedClientName]);
+
+  // Frentes disponibles para el proyecto activo
+  const availableFrentes = useMemo(() => {
+    const fromTasks = existingTasks
+      .filter((t) => (t.projectName || t.board)?.toLowerCase() === activeProject.name.toLowerCase() && t.frente)
+      .map((t) => t.frente!);
+    
+    const unique = Array.from(new Set(fromTasks));
+    if (unique.length > 0) return unique;
+
+    // Fallbacks naturales según nombre o tipo
+    if (activeProject.name.toLowerCase().includes('yamaha') || activeProject.name.toLowerCase().includes('navidad')) {
+      return ['Redes Sociales', 'Landing Page', 'Pauta'];
+    }
+    if (activeProject.projectType === 'fee_monthly') {
+      return ['Mantenimiento General', 'Banners & Assets', 'Soporte Continuo'];
+    }
+    return ['Estrategia & Concepto', 'Diseño & UI', 'Desarrollo Frontend', 'Pauta & Medios'];
+  }, [existingTasks, activeProject]);
+
+  // Form Fields
+  const [frente, setFrente] = useState<string>('');
+  const [isCustomFrente, setIsCustomFrente] = useState(false);
+  const [customFrenteText, setCustomFrenteText] = useState('');
+
+  const [title, setTitle] = useState('');
+  const [budgetedRole, setBudgetedRole] = useState<string>('Web Designer');
+  const [assigneeName, setAssigneeName] = useState('Catalina Tejada');
+  const [description, setDescription] = useState('');
+  const [reviewerName, setReviewerName] = useState('Paola (Lead PM)');
+  const [hasReviewer, setHasReviewer] = useState(true);
+  const [collaborators, setCollaborators] = useState<string[]>([]);
+  const [isAddingCollaborator, setIsAddingCollaborator] = useState(false);
+
+  // Planning Fields
+  const [budgetedHours, setBudgetedHours] = useState('8.0');
+  const [priority, setPriority] = useState<TaskPriority>('Medium');
+  const [startDate, setStartDate] = useState(() => {
+    const today = new Date();
+    return today.toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' });
+  });
+  const [dueDate, setDueDate] = useState(() => {
+    const target = new Date();
+    target.setDate(target.getDate() + 5);
+    return target.toISOString().split('T')[0];
+  });
+
+  // Dependencies (Depende de / Bloqueada por)
   const [dependencyTaskId, setDependencyTaskId] = useState<string>('');
 
-  // Optional Acceptance Criteria
+  // Acceptance Criteria
   const [criteriaList, setCriteriaList] = useState<string[]>([]);
   const [criterionInput, setCriterionInput] = useState('');
 
-  const currentClient = clientProjectHierarchy.find((c) => c.id === selectedClientId) || clientProjectHierarchy[0];
-  const currentProject = currentClient.projects.find((p) => p.id === selectedProjectId) || currentClient.projects[0];
+  // Template selector
+  const [selectedTemplateKey, setSelectedTemplateKey] = useState('');
 
-  // Sync project type and defaults when project changes
+  // Available project sibling tasks for dependencies
+  const siblingTasks = useMemo(() => {
+    return existingTasks.filter(
+      (t) => (t.projectName || t.board)?.toLowerCase() === activeProject.name.toLowerCase()
+    );
+  }, [existingTasks, activeProject]);
+
+  // Initialize selected project and frente when modal opens
   useEffect(() => {
-    if (currentProject) {
-      const type = currentProject.projectType || 'fee_monthly';
-      setProjectType(type);
-      if (currentProject.feeCategory) {
-        setSelectedFeeCategory(currentProject.feeCategory);
-      }
-      if (currentProject.phases && currentProject.phases.length > 0) {
-        setSelectedPhase(currentProject.phases[0]);
+    if (isOpen) {
+      if (preselectedProjectId) {
+        const found = allProjects.find((p) => p.id === preselectedProjectId);
+        if (found) setSelectedProjectId(found.id);
+      } else if (preselectedProjectName) {
+        const found = allProjects.find((p) => p.name === preselectedProjectName);
+        if (found) setSelectedProjectId(found.id);
+      } else if (allProjects.length > 0 && !selectedProjectId) {
+        setSelectedProjectId(allProjects[0].id);
       }
     }
-  }, [selectedProjectId, selectedClientId]);
+  }, [isOpen, preselectedProjectId, preselectedProjectName, allProjects]);
 
-  if (!isOpen) return null;
+  // Set default frente on project change
+  useEffect(() => {
+    if (availableFrentes.length > 0 && !frente) {
+      setFrente(availableFrentes[0]);
+    }
+  }, [availableFrentes]);
 
-  const handleClientChange = (clientId: string) => {
-    setSelectedClientId(clientId);
-    const cli = clientProjectHierarchy.find((c) => c.id === clientId);
-    if (cli && cli.projects.length > 0) {
-      setSelectedProjectId(cli.projects[0].id);
-      const prj = cli.projects[0];
-      setProjectType(prj.projectType || 'fee_monthly');
-      if (prj.feeCategory) setSelectedFeeCategory(prj.feeCategory);
+  // Auto-suggest budgetedRole when assignee changes (if user hasn't heavily modified it)
+  const handleAssigneeChange = (newAssigneeName: string) => {
+    setAssigneeName(newAssigneeName);
+    const member = TEAM_MEMBERS.find((m) => m.name === newAssigneeName);
+    if (member?.defaultRole) {
+      setBudgetedRole(member.defaultRole);
     }
   };
 
-  const handleApplyTemplate = (tpl: { name: string; defaultHours: number; role: string }) => {
-    setTitle(tpl.name);
-    setBudgetedHours(tpl.defaultHours.toString());
-    if (tpl.role.includes('Designer')) setAssigneeName('Catalina Tejada');
-    else if (tpl.role.includes('Growth') || tpl.role.includes('Trafficker')) setAssigneeName('Sebas (Trafficker)');
-    else if (tpl.role.includes('Tech') || tpl.role.includes('Dev')) setAssigneeName('Andrés Ríos');
-    else if (tpl.role.includes('PM')) setAssigneeName('Paola (Lead PM)');
+  // Sync default reviewer with project lead
+  useEffect(() => {
+    if (activeProject?.leadName) {
+      setReviewerName(activeProject.leadName);
+    }
+  }, [activeProject]);
+
+  // If closed, return null
+  if (!isOpen) return null;
+
+  // Context is locked if opened with preselected context
+  const isContextLocked = Boolean(preselectedProjectId || preselectedProjectName);
+
+  // Available templates based on serviceBase
+  const availableTemplates = FEE_ACTIVITY_TEMPLATES[activeProject.serviceBase] || [
+    { name: 'Conceptualización & Estructura', defaultHours: 2.0, role: 'Product Lead' },
+    { name: 'Redacción de Copys & Contenidos', defaultHours: 1.0, role: 'Copywriter' },
+    { name: 'Prototipo & Diseño UI', defaultHours: 8.0, role: 'Web Designer' },
+    { name: 'Implementación Frontend & Testing', defaultHours: 8.0, role: 'Front End' },
+    { name: 'Carga & Optimización de Pauta', defaultHours: 3.0, role: 'Trafficker' }
+  ];
+
+  const handleApplyTemplate = (templateName: string) => {
+    setSelectedTemplateKey(templateName);
+    const tpl = availableTemplates.find((t) => t.name === templateName);
+    if (tpl) {
+      setTitle(tpl.name);
+      setBudgetedHours(tpl.defaultHours.toString());
+      if (tpl.role.includes('Designer')) {
+        setAssigneeName('Catalina Tejada');
+        setBudgetedRole('Web Designer');
+      } else if (tpl.role.includes('Tech') || tpl.role.includes('Front') || tpl.role.includes('Dev')) {
+        setAssigneeName('Laura Gómez');
+        setBudgetedRole('Front End');
+      } else if (tpl.role.includes('Trafficker') || tpl.role.includes('Growth')) {
+        setAssigneeName('Sebas (Trafficker)');
+        setBudgetedRole('Trafficker');
+      } else if (tpl.role.includes('Copy')) {
+        setAssigneeName('Mariana Toro');
+        setBudgetedRole('Copywriter');
+      } else if (tpl.role.includes('Product') || tpl.role.includes('Lead') || tpl.role.includes('PM')) {
+        setAssigneeName('Andrés Ríos');
+        setBudgetedRole('Product Lead');
+      }
+
+      // Preload standard criteria if empty
+      if (criteriaList.length === 0) {
+        setCriteriaList([
+          'Validación de requerimiento contra brief',
+          'Revisión en staging / entregable final'
+        ]);
+      }
+    }
   };
 
   const handleAddCriterion = () => {
@@ -109,70 +289,100 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
     setCriteriaList(criteriaList.filter((_, i) => i !== idx));
   };
 
+  const handleToggleCollaborator = (memberName: string) => {
+    if (collaborators.includes(memberName)) {
+      setCollaborators(collaborators.filter((c) => c !== memberName));
+    } else {
+      setCollaborators([...collaborators, memberName]);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
 
-    const initials = assigneeName
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase()
-      .substring(0, 2) || 'CT';
+    const assignedUser = TEAM_MEMBERS.find((m) => m.name === assigneeName) || TEAM_MEMBERS[0];
+    const reviewerUser = hasReviewer && reviewerName
+      ? TEAM_MEMBERS.find((m) => m.name === reviewerName) || {
+          name: reviewerName,
+          initials: reviewerName.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase(),
+          avatarBg: 'bg-[#501f92]',
+          role: 'Revisor Accountable'
+        }
+      : undefined;
 
-    const isInternal = currentClient.isInternal || false;
+    const collaboratorObjects = collaborators.map((name) => {
+      const found = TEAM_MEMBERS.find((m) => m.name === name);
+      return (
+        found || {
+          name,
+          initials: name.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase(),
+          avatarBg: 'bg-[#64748b]',
+          defaultRole: 'Colaborador'
+        }
+      );
+    });
+
+    const isInternal = activeProject.projectType === 'internal';
     const hoursNum = parseFloat(budgetedHours) || 4.0;
 
-    const depTask = existingTasks.find((t) => t.id === dependencyTaskId);
+    // Selected Frente
+    const finalFrente = isCustomFrente ? customFrenteText.trim() || 'General' : frente || availableFrentes[0] || 'General';
+
+    // Format dueDate text
+    const formattedDueDate = new Date(dueDate + 'T00:00:00').toLocaleDateString('es-CO', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    });
+
+    // Sibling dependency
+    const depTask = siblingTasks.find((t) => t.id === dependencyTaskId);
 
     const newTask: TaskItem = {
       id: `t-${Date.now()}`,
       title: title.trim(),
-      department: projectType === 'fee_monthly' ? 'Servicios Recurrentes' : 'Desarrollo & Proyectos',
-      board: currentProject.name,
-      clientName: currentClient.name,
-      projectName: currentProject.name,
-      projectType,
-      phase: projectType === 'fixed_milestones' ? selectedPhase : undefined,
-      feeCategory: projectType === 'fee_monthly' ? selectedFeeCategory : undefined,
+      description: description.trim() || undefined,
+      department: activeProject.projectType === 'fee_monthly' ? 'Servicios Recurrentes' : 'Desarrollo & Proyectos',
+      board: activeProject.name,
+      clientName: activeProject.clientName,
+      projectName: activeProject.name,
+      frente: finalFrente,
+      budgetedRole: budgetedRole || assignedUser.defaultRole,
+      executedRoleSnapshot: assignedUser.defaultRole,
+      projectType: activeProject.projectType,
+      feeCategory: activeProject.projectType === 'fee_monthly' ? (activeProject.serviceBase as FeeActivityCategory) : undefined,
       categoryType: isInternal ? 'internal' : 'client',
+      requestedBy: currentUserName,
+      reviewer: reviewerUser,
       assignee: {
-        name: assigneeName,
-        initials,
-        avatarBg: assigneeName.includes('Andrés')
-          ? 'bg-[#ef4444]'
-          : assigneeName.includes('Paola')
-          ? 'bg-[#501f92]'
-          : assigneeName.includes('Sebas')
-          ? 'bg-[#0284c7]'
-          : 'bg-[#7c3aed]',
-        role: 'Responsable'
+        name: assignedUser.name,
+        initials: assignedUser.initials,
+        avatarBg: assignedUser.avatarBg,
+        role: assignedUser.defaultRole
       },
-      date: 'Hoy, 22 Ago 2026',
+      collaborators: collaboratorObjects.length > 0 ? collaboratorObjects.map((c) => ({
+        name: c.name,
+        initials: c.initials,
+        avatarBg: c.avatarBg,
+        role: c.defaultRole
+      })) : undefined,
+      date: 'Hoy, ' + new Date().toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' }),
       startDate,
-      dueDate,
+      dueDate: formattedDueDate,
       dueStatus: 'soon',
-      dueText: dueDateText,
-      status: dependencyTaskId ? 'To Do' : 'In Progress',
+      dueText: `Entrega: ${formattedDueDate}`,
+      // Toda tarea nace como "To Do" (Por hacer)
+      status: 'To Do',
       priority,
       completed: false,
       budgetedHours: hoursNum,
       consumedSeconds: 0,
-      dependencyTaskId: dependencyTaskId || undefined,
-      dependencyTaskTitle: depTask?.title || undefined,
-      blockerInfo: dependencyTaskId
-        ? {
-            isBlocked: true,
-            reason: 'dependency',
-            reasonText: `Bloqueado en espera de la tarea: ${depTask?.title || 'Tarea previa'}`,
-            responsibleParty: 'Uhura / Interno',
-            blockedDays: 0,
-            blockedAt: 'Hoy, 22 Ago 2026'
-          }
-        : undefined,
+      dependencyTaskId: depTask ? depTask.id : undefined,
+      dependencyTaskTitle: depTask ? depTask.title : undefined,
       deliverables: [],
       acceptanceCriteria: criteriaList.map((crit, idx) => ({
-        id: `crit-new-${Date.now()}-${idx}`,
+        id: `crit-${Date.now()}-${idx}`,
         text: crit,
         completed: false
       }))
@@ -183,8 +393,8 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#090513]/70 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl shadow-2xl border border-[#e2e8f0] w-full max-w-xl max-h-[92vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-[#090513]/70 backdrop-blur-xs animate-in fade-in duration-200">
+      <div className="bg-white rounded-3xl shadow-2xl border border-[#e2e8f0] w-full max-w-2xl max-h-[94vh] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="p-5 bg-gradient-to-r from-[#0f172a] via-[#1e293b] to-[#0f172a] text-white flex items-center justify-between shrink-0 border-b border-[#334155]">
           <div className="flex items-center gap-2.5">
@@ -192,13 +402,14 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
               <CheckSquare className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-bold text-sm text-white">Nueva Tarea / Entregable</h3>
+              <h3 className="font-bold text-sm text-white">Nueva Tarea</h3>
               <p className="text-[11px] text-[#94a3b8]">
-                Estructura por Fee Recurrente o Proyecto con Fases & Dependencias
+                Unidad mínima de ejecución, estado y tiempo. Hereda contexto y frentes del proyecto.
               </p>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
             className="text-[#94a3b8] hover:text-white p-1.5 rounded-xl hover:bg-white/10 cursor-pointer transition-colors"
           >
@@ -207,292 +418,345 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs overflow-y-auto custom-scrollbar">
-          {/* Nivel 1 & 2: Cliente y Proyecto */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block font-bold text-[#0f172a] mb-1">
-                1. Cliente / Cuenta *
-              </label>
-              <select
-                value={selectedClientId}
-                onChange={(e) => handleClientChange(e.target.value)}
-                className="w-full bg-[#f8fafc] border border-[#e2e8f0] px-3 py-2.5 rounded-xl text-xs font-semibold text-[#0f172a] focus:outline-none focus:ring-2 focus:ring-[#8a4dff]/20 focus:border-[#8a4dff]"
-              >
-                {clientProjectHierarchy.map((cli) => (
-                  <option key={cli.id} value={cli.id}>
-                    {cli.name} {cli.isInternal ? '(Interno)' : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
+        <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4 text-xs overflow-y-auto custom-scrollbar">
+          {/* 1. CONTEXTO HEREDADO */}
+          <div className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] space-y-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#64748b] block">
+                  Contexto del Proyecto
+                </span>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <strong className="text-sm text-[#0f172a]">{activeProject.clientName}</strong>
+                  <span className="text-[#94a3b8] font-bold">→</span>
+                  <span className="text-sm font-semibold text-[#501f92]">{activeProject.name}</span>
+                </div>
+              </div>
 
-            <div>
-              <label className="block font-bold text-[#0f172a] mb-1">
-                2. Proyecto Asociado *
-              </label>
-              <select
-                value={selectedProjectId}
-                onChange={(e) => setSelectedProjectId(e.target.value)}
-                className="w-full bg-[#f8fafc] border border-[#e2e8f0] px-3 py-2.5 rounded-xl text-xs font-semibold text-[#0f172a] focus:outline-none focus:ring-2 focus:ring-[#8a4dff]/20 focus:border-[#8a4dff]"
-              >
-                {currentClient.projects.map((prj) => (
-                  <option key={prj.id} value={prj.id}>
-                    {prj.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Tipo de Proyecto Toggle / Badge */}
-          <div className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider">
-                Naturaleza del Proyecto
-              </span>
-              <div className="inline-flex rounded-xl p-0.5 bg-[#e2e8f0]">
-                <button
-                  type="button"
-                  onClick={() => setProjectType('fee_monthly')}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                    projectType === 'fee_monthly'
-                      ? 'bg-white text-[#501f92] shadow-xs'
-                      : 'text-[#64748b] hover:text-[#0f172a]'
+              {/* Naturaleza & Servicio Pills */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span
+                  className={`text-[11px] font-bold px-2.5 py-0.5 rounded-lg ${
+                    activeProject.projectType === 'fee_monthly'
+                      ? 'bg-[#d4ff4a]/20 text-[#2e5e04] border border-[#d4ff4a]/40'
+                      : activeProject.projectType === 'fixed_milestones'
+                      ? 'bg-[#eff6ff] text-[#2563eb] border border-[#dbeafe]'
+                      : 'bg-[#ecfdf5] text-[#047857] border border-[#a7f3d0]'
                   }`}
                 >
-                  <Repeat className="w-3 h-3" />
-                  <span>Fee Mensual</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setProjectType('fixed_milestones')}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                    projectType === 'fixed_milestones'
-                      ? 'bg-white text-[#2563eb] shadow-xs'
-                      : 'text-[#64748b] hover:text-[#0f172a]'
-                  }`}
-                >
-                  <Layers className="w-3 h-3" />
-                  <span>Puntual con Fases</span>
-                </button>
+                  {activeProject.projectType === 'fee_monthly'
+                    ? 'Fee mensual'
+                    : activeProject.projectType === 'fixed_milestones'
+                    ? 'Proyecto único'
+                    : 'Interno / No facturable'}
+                </span>
+                <span className="text-[11px] font-semibold text-[#475569] bg-white px-2 py-0.5 rounded-lg border border-[#e2e8f0]">
+                  {activeProject.serviceBase}
+                </span>
               </div>
             </div>
 
-            {/* IF FEE MENSUAL: Show Fee Category and Quick Activity Templates */}
-            {projectType === 'fee_monthly' && (
-              <div className="space-y-2 pt-1 border-t border-[#e2e8f0]">
-                <div className="flex items-center justify-between">
-                  <label className="font-bold text-[#0f172a] text-[11px]">
-                    Actividad Recurrente Sugerida (Plantilla 1-clic):
-                  </label>
-                  <select
-                    value={selectedFeeCategory}
-                    onChange={(e) => setSelectedFeeCategory(e.target.value as FeeActivityCategory)}
-                    className="bg-white border border-[#e2e8f0] px-2 py-1 rounded-lg text-[11px] font-bold text-[#501f92]"
-                  >
-                    <option value="Mantenimiento Web">Mantenimiento Web</option>
-                    <option value="Parrilla & Redes">Parrilla & Redes</option>
-                    <option value="Growth & Pauta">Growth & Pauta</option>
-                    <option value="Soporte Continuo">Soporte Continuo</option>
-                  </select>
-                </div>
-
-                {/* Quick Templates Chips */}
-                <div className="flex flex-wrap gap-1.5">
-                  {(FEE_ACTIVITY_TEMPLATES[selectedFeeCategory] || []).map((tpl, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => handleApplyTemplate(tpl)}
-                      className="px-2.5 py-1 rounded-lg bg-white hover:bg-[#f2ecfb] border border-[#e2e8f0] hover:border-[#8a4dff]/40 text-[#334155] hover:text-[#501f92] text-[11px] font-medium transition-colors cursor-pointer text-left flex items-center gap-1"
-                    >
-                      <Sparkles className="w-2.5 h-2.5 text-[#8a4dff]" />
-                      <span>{tpl.name}</span>
-                      <span className="text-[10px] text-[#64748b] font-mono">({tpl.defaultHours}h)</span>
-                    </button>
+            {/* If not locked, allow switching project easily */}
+            {!isContextLocked && allProjects.length > 1 && (
+              <div className="pt-2 border-t border-[#e2e8f0] flex items-center gap-2">
+                <label className="text-[10px] font-bold text-[#64748b] shrink-0">Cambiar Proyecto:</label>
+                <select
+                  value={selectedProjectId}
+                  onChange={(e) => setSelectedProjectId(e.target.value)}
+                  className="flex-1 bg-white border border-[#e2e8f0] px-2.5 py-1 rounded-lg text-xs font-semibold text-[#0f172a]"
+                >
+                  {allProjects.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.clientName} → {p.name}
+                    </option>
                   ))}
-                </div>
-              </div>
-            )}
-
-            {/* IF FIXED MILESTONES: Show Phases and Dependencies */}
-            {projectType === 'fixed_milestones' && (
-              <div className="space-y-3 pt-1 border-t border-[#e2e8f0]">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block font-bold text-[#0f172a] text-[11px] mb-1">
-                      Fase / Hito del Backlog *
-                    </label>
-                    <select
-                      value={selectedPhase}
-                      onChange={(e) => setSelectedPhase(e.target.value as ProjectPhase)}
-                      className="w-full bg-white border border-[#e2e8f0] px-2.5 py-2 rounded-xl text-xs font-semibold text-[#2563eb]"
-                    >
-                      {PROJECT_PHASES_TEMPLATES.map((phase) => (
-                        <option key={phase} value={phase}>
-                          {phase}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block font-bold text-[#0f172a] text-[11px] mb-1">
-                      Dependencia previa (Opcional)
-                    </label>
-                    <select
-                      value={dependencyTaskId}
-                      onChange={(e) => setDependencyTaskId(e.target.value)}
-                      className="w-full bg-white border border-[#e2e8f0] px-2.5 py-2 rounded-xl text-xs text-[#0f172a]"
-                    >
-                      <option value="">(Sin dependencia previa)</option>
-                      {existingTasks.map((t) => (
-                        <option key={t.id} value={t.id}>
-                          Bloqueada hasta que termine: {t.title.substring(0, 35)}...
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {dependencyTaskId && (
-                  <div className="p-2 rounded-xl bg-[#fffbeb] border border-[#fef3c7] text-[11px] text-[#92400e] flex items-center gap-1.5">
-                    <AlertCircle className="w-3.5 h-3.5 shrink-0 text-[#f59e0b]" />
-                    <span>
-                      Esta tarea iniciará en estado <strong>Bloqueada / En Espera</strong> hasta que se apruebe el entregable previo.
-                    </span>
-                  </div>
-                )}
+                </select>
               </div>
             )}
           </div>
 
-          {/* Tarea Title */}
+          {/* 2. FRENTE / ENTREGABLE DEL PROYECTO */}
+          <div className="p-3.5 rounded-2xl bg-[#f5f3ff]/50 border border-[#e9d5ff] space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <FolderKanban className="w-3.5 h-3.5 text-[#501f92]" />
+                <label className="font-bold text-[#0f172a] text-xs">
+                  Frente / Entregable *
+                </label>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCustomFrente(!isCustomFrente)}
+                className="text-[10px] font-bold text-[#501f92] hover:underline cursor-pointer"
+              >
+                {isCustomFrente ? '← Seleccionar existente' : '+ Nuevo frente'}
+              </button>
+            </div>
+
+            {isCustomFrente ? (
+              <input
+                type="text"
+                required
+                placeholder="Ej. Landing Page, Redes Sociales, Pauta, E-commerce..."
+                value={customFrenteText}
+                onChange={(e) => setCustomFrenteText(e.target.value)}
+                className="w-full bg-white border border-[#8a4dff] px-3 py-2 rounded-xl text-xs text-[#0f172a] font-bold focus:outline-none focus:ring-1 focus:ring-[#8a4dff]"
+              />
+            ) : (
+              <div className="flex flex-wrap items-center gap-2">
+                {availableFrentes.map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => setFrente(f)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                      frente === f
+                        ? 'bg-[#501f92] text-white border-[#501f92] shadow-xs'
+                        : 'bg-white text-[#475569] border-[#e2e8f0] hover:border-[#8a4dff]/40 hover:bg-[#f8fafc]'
+                    }`}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 3. TÍTULO DE LA TAREA */}
           <div>
             <label className="block font-bold text-[#0f172a] mb-1">
-              3. Título de la Tarea / Entregable *
+              Título de la tarea *
             </label>
             <input
               type="text"
               required
-              placeholder="Ej. Carga de banners en Shopify, Prototipo de checkout en Figma, etc."
+              placeholder="Ej. Prototipo landing, Estrategia de contenido, Carga/publicación de anuncios..."
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full bg-[#f8fafc] border border-[#e2e8f0] p-3 rounded-xl text-xs text-[#0f172a] placeholder-[#94a3b8] focus:outline-none focus:ring-2 focus:ring-[#8a4dff]/20 focus:border-[#8a4dff]"
+              className="w-full bg-[#f8fafc] border border-[#e2e8f0] px-3.5 py-2.5 rounded-xl text-xs text-[#0f172a] placeholder-[#94a3b8] font-semibold focus:outline-none focus:ring-2 focus:ring-[#8a4dff]/20 focus:border-[#8a4dff]"
             />
           </div>
 
-          {/* Horas Presupuestadas, Responsable & Fechas */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {/* 4. ROL PRESUPUESTADO & RESPONSABLE REAL */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            {/* Responsable Real */}
             <div>
               <label className="block font-bold text-[#0f172a] mb-1">
-                Horas Asignadas *
-              </label>
-              <input
-                type="number"
-                step="0.5"
-                min="0.5"
-                required
-                value={budgetedHours}
-                onChange={(e) => setBudgetedHours(e.target.value)}
-                className="w-full bg-[#f8fafc] border border-[#e2e8f0] px-3 py-2 rounded-xl text-xs font-mono font-bold text-[#501f92]"
-              />
-            </div>
-
-            <div>
-              <label className="block font-bold text-[#0f172a] mb-1">
-                Responsable *
+                Responsable asignado *
               </label>
               <select
                 value={assigneeName}
-                onChange={(e) => setAssigneeName(e.target.value)}
-                className="w-full bg-[#f8fafc] border border-[#e2e8f0] px-3 py-2 rounded-xl text-xs font-semibold text-[#0f172a]"
+                onChange={(e) => handleAssigneeChange(e.target.value)}
+                className="w-full bg-[#f8fafc] border border-[#e2e8f0] px-3 py-2 rounded-xl text-xs font-semibold text-[#0f172a] focus:outline-none focus:border-[#8a4dff] cursor-pointer"
               >
-                <option value="Catalina Tejada">Catalina Tejada (Diseño)</option>
-                <option value="Sebas (Trafficker)">Sebas (Trafficker & Pauta)</option>
-                <option value="Andrés Ríos">Andrés Ríos (Growth & Tech)</option>
-                <option value="Laura Gómez">Laura Gómez (Frontend)</option>
-                <option value="Esteban Mora">Esteban Mora (Backend Dev)</option>
-                <option value="Paola (Lead PM)">Paola (Lead PM)</option>
+                {TEAM_MEMBERS.map((m) => (
+                  <option key={m.name} value={m.name}>
+                    {m.name} ({m.defaultRole})
+                  </option>
+                ))}
               </select>
             </div>
 
-            <div className="col-span-2 sm:col-span-1">
+            {/* Rol Cotizado (Comercial) */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block font-bold text-[#0f172a]">
+                  Rol cotizado *
+                </label>
+                <span className="text-[10px] text-[#64748b]">Perfil vendido comercialmente</span>
+              </div>
+              <select
+                value={budgetedRole}
+                onChange={(e) => setBudgetedRole(e.target.value)}
+                className="w-full bg-[#f8fafc] border border-[#e2e8f0] px-3 py-2 rounded-xl text-xs font-semibold text-[#501f92] focus:outline-none focus:border-[#8a4dff] cursor-pointer"
+              >
+                {STANDARD_UHURA_ROLES.map((role) => (
+                  <option key={role} value={role}>
+                    {role}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* 5. DESCRIPCIÓN / REQUERIMIENTO */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block font-bold text-[#0f172a]">
+                Descripción / requerimiento
+              </label>
+              <span className="text-[10px] text-[#64748b]">Contexto, links a Figma, Drive o especificaciones</span>
+            </div>
+            <textarea
+              rows={3}
+              placeholder="¿Qué se necesita? Agrega requerimientos, links de referencia, especificaciones de diseño o pauta..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full bg-[#f8fafc] border border-[#e2e8f0] p-3 rounded-xl text-xs text-[#0f172a] placeholder-[#94a3b8] focus:outline-none focus:ring-2 focus:ring-[#8a4dff]/20 focus:border-[#8a4dff] resize-none leading-relaxed"
+            />
+          </div>
+
+          {/* 6. PLANEACIÓN: HORAS ESTIMADAS, PRIORIDAD, FECHA INICIO, FECHA ENTREGA */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {/* Horas cotizadas */}
+            <div>
+              <label className="block font-bold text-[#0f172a] mb-1">
+                Horas cotizadas *
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  step="0.5"
+                  min="0.5"
+                  required
+                  value={budgetedHours}
+                  onChange={(e) => setBudgetedHours(e.target.value)}
+                  className="w-full bg-[#f8fafc] border border-[#e2e8f0] px-3 py-2 rounded-xl text-xs font-mono font-bold text-[#501f92] focus:outline-none focus:border-[#8a4dff]"
+                />
+                <span className="absolute right-3 top-2 text-xs font-bold text-[#94a3b8] pointer-events-none">h</span>
+              </div>
+            </div>
+
+            {/* Prioridad */}
+            <div>
               <label className="block font-bold text-[#0f172a] mb-1">
                 Prioridad
               </label>
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as TaskPriority)}
-                className="w-full bg-[#f8fafc] border border-[#e2e8f0] px-3 py-2 rounded-xl text-xs font-semibold text-[#0f172a]"
+                className={`w-full border px-2.5 py-2 rounded-xl text-xs font-bold focus:outline-none cursor-pointer ${
+                  priority === 'High'
+                    ? 'bg-[#fef2f2] border-[#fecaca] text-[#dc2626]'
+                    : priority === 'Low'
+                    ? 'bg-[#f8fafc] border-[#e2e8f0] text-[#64748b]'
+                    : 'bg-[#f8fafc] border-[#e2e8f0] text-[#0f172a]'
+                }`}
               >
-                <option value="High">Alta (Prioritaria)</option>
-                <option value="Medium">Media</option>
+                <option value="Medium">Normal (Default)</option>
+                <option value="High">Alta</option>
                 <option value="Low">Baja</option>
               </select>
             </div>
-          </div>
 
-          {/* Fechas de Entrega */}
-          <div className="grid grid-cols-2 gap-3">
+            {/* Fecha inicio */}
             <div>
               <label className="block font-bold text-[#0f172a] mb-1">
-                Fecha Inicio
+                Fecha inicio
               </label>
               <input
                 type="text"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                placeholder="Ej. 22 Ago 2026"
-                className="w-full bg-[#f8fafc] border border-[#e2e8f0] px-3 py-2 rounded-xl text-xs text-[#0f172a]"
+                placeholder="Hoy"
+                className="w-full bg-[#f8fafc] border border-[#e2e8f0] px-3 py-2 rounded-xl text-xs text-[#0f172a] font-medium"
               />
             </div>
+
+            {/* Fecha de entrega * */}
             <div>
               <label className="block font-bold text-[#0f172a] mb-1">
-                Fecha Vencimiento (Due Date)
+                Fecha de entrega *
               </label>
               <input
                 type="date"
+                required
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="w-full bg-[#f8fafc] border border-[#e2e8f0] px-3 py-2 rounded-xl text-xs text-[#0f172a]"
+                className="w-full bg-[#f8fafc] border border-[#e2e8f0] px-2.5 py-2 rounded-xl text-xs text-[#0f172a] font-bold"
               />
             </div>
           </div>
 
-          {/* Criterios de Aceptación (Opcionales) */}
-          <div className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] space-y-2">
+          {/* 7. REVISOR & DEPENDENCIA DE TAREA (Opcionales) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            {/* Revisor */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block font-bold text-[#0f172a]">
+                  Revisor / Aprobación
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setHasReviewer(!hasReviewer)}
+                  className={`text-[10px] font-bold cursor-pointer ${
+                    hasReviewer ? 'text-[#501f92] hover:underline' : 'text-[#64748b]'
+                  }`}
+                >
+                  {hasReviewer ? 'Con revisor' : 'Sin revisor (directo)'}
+                </button>
+              </div>
+
+              {hasReviewer ? (
+                <select
+                  value={reviewerName}
+                  onChange={(e) => setReviewerName(e.target.value)}
+                  className="w-full bg-[#f8fafc] border border-[#e2e8f0] px-3 py-2 rounded-xl text-xs font-semibold text-[#501f92] focus:outline-none focus:border-[#8a4dff] cursor-pointer"
+                >
+                  {TEAM_MEMBERS.map((m) => (
+                    <option key={m.name} value={m.name}>
+                      {m.name} {m.name === activeProject.leadName ? '(Project Lead default)' : `(${m.defaultRole})`}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div className="w-full bg-[#f1f5f9] border border-[#e2e8f0] px-3 py-2 rounded-xl text-xs text-[#64748b] italic">
+                  Flujo directo: Por hacer → En proceso → Listo
+                </div>
+              )}
+            </div>
+
+            {/* Dependencia (Depende de / Bloqueada por) */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block font-bold text-[#0f172a]">
+                  Depende de (Opcional)
+                </label>
+                <span className="text-[10px] text-[#64748b]">Cascada / Bloqueo</span>
+              </div>
+              <select
+                value={dependencyTaskId}
+                onChange={(e) => setDependencyTaskId(e.target.value)}
+                className="w-full bg-[#f8fafc] border border-[#e2e8f0] px-3 py-2 rounded-xl text-xs font-medium text-[#334155] focus:outline-none focus:border-[#8a4dff] cursor-pointer"
+              >
+                <option value="">Sin dependencia (ejecución libre / paralela)</option>
+                {siblingTasks.map((st) => (
+                  <option key={st.id} value={st.id}>
+                    🔒 Depende de: {st.title} ({st.frente || 'General'})
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* 8. CRITERIOS DE ACEPTACIÓN */}
+          <div className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] space-y-2.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
                 <ListChecks className="w-3.5 h-3.5 text-[#501f92]" />
                 <label className="block font-bold text-[#0f172a] text-[11px] uppercase tracking-wider">
-                  Criterios de Aceptación (Opcional)
+                  Criterios de Aceptación
                 </label>
               </div>
               <span className="text-[10px] text-[#64748b]">
-                {criteriaList.length} añadidos
+                {criteriaList.length} definidos
               </span>
             </div>
 
-            <p className="text-[10px] text-[#64748b]">
-              Puntos clave que el PM o revisor validará antes de dar por completado el entregable:
-            </p>
-
             {criteriaList.length > 0 && (
-              <div className="space-y-1.5 max-h-28 overflow-y-auto pr-1">
+              <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
                 {criteriaList.map((crit, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center justify-between bg-white px-2.5 py-1.5 rounded-lg border border-[#e2e8f0] text-xs"
+                    className="flex items-center justify-between bg-white px-3 py-1.5 rounded-xl border border-[#e2e8f0] text-xs shadow-2xs"
                   >
-                    <span className="text-[#334155] truncate flex-1">
+                    <span className="text-[#334155] truncate flex-1 font-medium">
                       {idx + 1}. {crit}
                     </span>
                     <button
                       type="button"
                       onClick={() => handleRemoveCriterion(idx)}
-                      className="text-[#94a3b8] hover:text-[#ef4444] p-0.5 rounded cursor-pointer"
+                      className="text-[#94a3b8] hover:text-[#ef4444] p-1 rounded cursor-pointer transition-colors"
                     >
                       <Trash2 className="w-3 h-3" />
                     </button>
@@ -512,13 +776,13 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
                     handleAddCriterion();
                   }
                 }}
-                placeholder="Ej. Formato 1080x1920 exportado y probado en dispositivo..."
-                className="flex-1 bg-white border border-[#e2e8f0] px-3 py-1.5 rounded-xl text-xs text-[#0f172a] placeholder-[#94a3b8] focus:outline-none focus:ring-1 focus:ring-[#8a4dff]"
+                placeholder="Ej. Prototipo responsive con interacciones aprobado..."
+                className="flex-1 bg-white border border-[#e2e8f0] px-3 py-2 rounded-xl text-xs text-[#0f172a] placeholder-[#94a3b8] focus:outline-none focus:ring-1 focus:ring-[#8a4dff]"
               />
               <button
                 type="button"
                 onClick={handleAddCriterion}
-                className="px-3 py-1.5 bg-white border border-[#e2e8f0] hover:bg-[#f8fafc] text-[#0f172a] rounded-xl text-xs font-semibold shrink-0 cursor-pointer flex items-center gap-1 shadow-2xs"
+                className="px-3.5 py-2 bg-white border border-[#e2e8f0] hover:bg-[#f8fafc] text-[#0f172a] rounded-xl text-xs font-semibold shrink-0 cursor-pointer flex items-center gap-1 shadow-2xs"
               >
                 <Plus className="w-3 h-3 text-[#501f92]" />
                 <span>Agregar</span>
@@ -526,7 +790,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
             </div>
           </div>
 
-          {/* Actions */}
+          {/* Footer Actions */}
           <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#f1f5f9]">
             <button
               type="button"

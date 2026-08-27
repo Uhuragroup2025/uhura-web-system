@@ -7,7 +7,9 @@ import {
   ActiveTimerState,
   TaskDeliverable,
   TaskStatus,
-  TaskPriority
+  TaskPriority,
+  ClientProfile,
+  ProjectType
 } from '../components/taskflow/types';
 import {
   initialTasks,
@@ -28,6 +30,8 @@ import { MyTasksView } from '../components/taskflow/MyTasksView';
 import { UsersView } from '../components/taskflow/UsersView';
 import { BoardView } from '../components/taskflow/BoardView';
 import { ClientsView } from '../components/taskflow/ClientsView';
+import { ProjectsView, ProjectSummaryItem } from '../components/taskflow/ProjectsView';
+import { NewProjectModal, NewProjectPayload } from '../components/taskflow/NewProjectModal';
 import { InviteUserModal } from '../components/taskflow/InviteUserModal';
 import { NewTaskModal } from '../components/taskflow/NewTaskModal';
 import { ManualTimeLogModal } from '../components/taskflow/ManualTimeLogModal';
@@ -45,15 +49,155 @@ import {
   BrainCircuit
 } from 'lucide-react';
 
+const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
+  {
+    id: 'prj-yam-navidad',
+    name: 'Campaña Navidad Yamaha',
+    clientName: 'INCOLMOTOS YAMAHA S.A.',
+    brand: 'Yamaha',
+    leadName: 'Paola (Lead PM)',
+    leadAvatarBg: 'bg-[#501f92]',
+    projectType: 'fee_monthly',
+    serviceBase: 'Fee Mensual · Campaña & Social',
+    budgetedHours: 59,
+    soldHours: 59,
+    startDate: '2026-08-15',
+    endDate: '2026-12-31',
+    status: 'Activo',
+    healthStatus: 'verde',
+    healthNote: 'Frentes activos: Redes Sociales (32h), Landing Page (19h) y Pauta (8h)'
+  },
+  {
+    id: 'prj-battsaver-1',
+    name: 'Tienda Online BattSaver',
+    clientName: 'Rock and Ride S.A.S.',
+    brand: 'BattSaver',
+    leadName: 'Paola (Lead PM)',
+    leadAvatarBg: 'bg-[#501f92]',
+    projectType: 'fixed_milestones',
+    serviceBase: 'Ecommerce / Shopify',
+    budgetedHours: 110,
+    soldHours: 110,
+    startDate: '2026-08-15',
+    endDate: '2026-11-15',
+    status: 'Activo',
+    healthStatus: 'verde',
+    healthNote: 'Backlog habilitado: Discovery (14h), UX/UI (36h), Implementación (48h), QA (14h) y Cierre (8h)'
+  },
+  {
+    id: 'prj-1',
+    name: 'Fee Mantenimiento Q3 · Tuya',
+    clientName: 'TUYA S.A.',
+    brand: 'Tuya',
+    leadName: 'Paola (Lead PM)',
+    leadAvatarBg: 'bg-[#501f92]',
+    projectType: 'fee_monthly',
+    serviceBase: 'Mantenimiento Web',
+    budgetedHours: 45,
+    startDate: '2026-07-01',
+    endDate: '2026-09-30',
+    status: 'Activo',
+    healthStatus: 'verde',
+    healthNote: 'Horas y entregas en presupuesto'
+  },
+  {
+    id: 'prj-2',
+    name: 'Pauta & Growth Q3 · Flamingo',
+    clientName: 'FLAMINGO S.A.S.',
+    brand: 'Flamingo',
+    leadName: 'Andrés Ríos',
+    leadAvatarBg: 'bg-[#ef4444]',
+    projectType: 'fee_monthly',
+    serviceBase: 'Paid Media & Ads Performance',
+    budgetedHours: 60,
+    startDate: '2026-07-01',
+    endDate: '2026-09-30',
+    status: 'Activo',
+    healthStatus: 'verde',
+    healthNote: 'Campaña activa con ROAS positivo'
+  },
+  {
+    id: 'prj-3',
+    name: 'Mantenimiento Web E-commerce · Distrihogar',
+    clientName: 'DISTRIHOGAR S.A.S.',
+    brand: 'Distrihogar',
+    leadName: 'Catalina Tejada',
+    leadAvatarBg: 'bg-[#7c3aed]',
+    projectType: 'fee_monthly',
+    serviceBase: 'Mantenimiento Web',
+    budgetedHours: 35,
+    startDate: '2026-08-01',
+    endDate: '2026-08-31',
+    status: 'Activo',
+    healthStatus: 'verde',
+    healthNote: 'Dentro del consumo acordado'
+  },
+  {
+    id: 'prj-4',
+    name: 'Parrilla Redes & Social · Tupperware',
+    clientName: 'DART DE COLOMBIA S.A.S.',
+    brand: 'Tupperware',
+    leadName: 'Catalina Tejada',
+    leadAvatarBg: 'bg-[#7c3aed]',
+    projectType: 'fee_monthly',
+    serviceBase: 'Parrilla de Contenidos & Social',
+    budgetedHours: 30,
+    startDate: '2026-08-01',
+    endDate: '2026-08-31',
+    status: 'Activo',
+    healthStatus: 'verde',
+    healthNote: 'Entregables aprobados'
+  },
+  {
+    id: 'prj-5',
+    name: 'Landing Page STEM · Parque Explora',
+    clientName: 'CORPORACION PARQUE EXPLORA',
+    brand: 'Parque Explora',
+    leadName: 'Paola (Lead PM)',
+    leadAvatarBg: 'bg-[#501f92]',
+    projectType: 'fixed_milestones',
+    serviceBase: 'Desarrollo Web & E-commerce',
+    budgetedHours: 55,
+    startDate: '2026-08-10',
+    endDate: '2026-09-20',
+    status: 'Activo',
+    healthStatus: 'amarillo',
+    healthNote: 'Alerta: esperando insumos de diseño'
+  },
+  {
+    id: 'prj-6',
+    name: 'Rediseño Portal B2B · Almacenes Éxito',
+    clientName: 'ALMACENES EXITO S.A.',
+    brand: 'Éxito',
+    leadName: 'Paola (Lead PM)',
+    leadAvatarBg: 'bg-[#501f92]',
+    projectType: 'fixed_milestones',
+    serviceBase: 'Desarrollo Web & E-commerce',
+    budgetedHours: 80,
+    startDate: '2026-06-01',
+    endDate: '2026-08-15',
+    status: 'Activo',
+    healthStatus: 'rojo',
+    healthNote: 'Desvío en horas y mora en pago'
+  }
+];
+
 export const TaskFlowPrototype: React.FC = () => {
   const [currentView, setCurrentView] = useState<OrbitView>('dashboard');
   const [saasFont, setSaasFont] = useState<'jakarta' | 'inter' | 'montserrat'>('jakarta');
   const [tasks, setTasks] = useState<TaskItem[]>(initialTasks);
   const [users, setUsers] = useState<UserItem[]>(initialUsers);
+  const [clients, setClients] = useState<ClientProfile[]>(orbitClientsData);
+  const [projectsList, setProjectsList] = useState<ProjectSummaryItem[]>(INITIAL_PROJECTS_LIST);
   const [activities, setActivities] = useState(initialActivities);
   const [timeLogs, setTimeLogs] = useState<TimeLog[]>(initialTimeLogs);
+
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
+  const [newTaskPreselectedContext, setNewTaskPreselectedContext] = useState<{ projectName?: string; clientName?: string } | null>(null);
+  const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
+  const [newProjectPreselectedClientId, setNewProjectPreselectedClientId] = useState<string | null>(null);
+  const [selectedProjectIdForView, setSelectedProjectIdForView] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Time-Tracking Live State (Active timer starts at null by default)
@@ -65,6 +209,18 @@ export const TaskFlowPrototype: React.FC = () => {
   const [isTaskDetailModalOpen, setIsTaskDetailModalOpen] = useState(false);
   const [selectedTaskForDetail, setSelectedTaskForDetail] = useState<TaskItem | null>(null);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+
+  // Global view selection with automatic reset to section root
+  const handleSelectView = (view: OrbitView) => {
+    setCurrentView(view);
+    // Reset specific sub-navigation states to return to the root screen of the chosen section
+    if (view === 'proyectos') {
+      setSelectedProjectIdForView(null);
+    }
+    if (view === 'clientes') {
+      setSelectedClientId(null);
+    }
+  };
 
   // Timer Summary Modal State
   const [isTimerSummaryOpen, setIsTimerSummaryOpen] = useState(false);
@@ -318,11 +474,13 @@ export const TaskFlowPrototype: React.FC = () => {
     }
   };
 
-  // Update Task Team (Project Manager & Collaborators)
+  // Update Task Team (Assignee, Collaborators, Reviewer, RequestedBy)
   const handleUpdateTaskTeam = (
     taskId: string,
     assignee: TaskItem['assignee'],
-    collaborators: TaskItem['collaborators']
+    collaborators: TaskItem['collaborators'],
+    reviewer?: TaskItem['reviewer'],
+    requestedBy?: string
   ) => {
     setTasks((prev) =>
       prev.map((t) =>
@@ -330,7 +488,9 @@ export const TaskFlowPrototype: React.FC = () => {
           ? {
               ...t,
               assignee,
-              collaborators
+              collaborators,
+              reviewer,
+              requestedBy: requestedBy || t.requestedBy
             }
           : t
       )
@@ -341,7 +501,9 @@ export const TaskFlowPrototype: React.FC = () => {
           ? {
               ...prev,
               assignee,
-              collaborators
+              collaborators,
+              reviewer,
+              requestedBy: requestedBy || prev.requestedBy
             }
           : null
       );
@@ -577,6 +739,79 @@ export const TaskFlowPrototype: React.FC = () => {
     );
   };
 
+  // Add project handler
+  const handleAddProject = (projectData: NewProjectPayload) => {
+    const newProjectId = `prj-${Date.now()}`;
+    const newPrj: ProjectSummaryItem = {
+      id: newProjectId,
+      name: projectData.name,
+      clientName: projectData.clientName,
+      brand: projectData.brand,
+      leadName: projectData.leadName,
+      leadAvatarBg: projectData.leadAvatarBg,
+      projectType: projectData.projectType,
+      serviceBase: projectData.serviceBase,
+      budgetedHours: projectData.budgetedHours,
+      soldHours: projectData.soldHours,
+      soldValueCOP: projectData.soldValueCOP,
+      soldCurrency: projectData.soldCurrency,
+      startDate: projectData.startDate,
+      endDate: projectData.endDate,
+      brief: projectData.brief,
+      teamMembers: projectData.teamMembers,
+      status: 'Activo',
+      healthStatus: 'verde',
+      healthNote: 'Recién creado · En planificación y arranque'
+    };
+
+    setProjectsList((prev) => [newPrj, ...prev]);
+
+    // If template tasks were included, add them to global tasks list
+    if (projectData.tasksToCreate && projectData.tasksToCreate.length > 0) {
+      const generatedTasks: TaskItem[] = projectData.tasksToCreate.map((t, idx) => ({
+        ...t,
+        id: `task-${Date.now()}-${idx}`
+      }));
+      setTasks((prev) => [...generatedTasks, ...prev]);
+    }
+
+    // Update client projects history & count
+    setClients((prev) =>
+      prev.map((cli) => {
+        if (cli.name.toLowerCase() === projectData.clientName.toLowerCase()) {
+          const formattedValue = projectData.soldValueCOP && projectData.soldValueCOP > 0
+            ? `$${(projectData.soldValueCOP / 1000000).toFixed(1)}M`
+            : `$${((projectData.budgetedHours * 120000) / 1000000).toFixed(1)}M`;
+
+          const newHistoryItem = {
+            id: newProjectId,
+            name: projectData.name,
+            brand: projectData.brand,
+            status: 'Activo' as const,
+            quotedValueCOP: formattedValue,
+            realMarginPercent: 42.0,
+            trafficLight: 'verde' as const,
+            tag: projectData.projectType === 'fee_monthly' ? 'Fee mensual' : projectData.projectType === 'fixed_milestones' ? 'Proyecto único' : 'Interno'
+          };
+          return {
+            ...cli,
+            projectsCount: cli.projectsCount + 1,
+            activeProjectsCount: cli.activeProjectsCount + 1,
+            projectsHistory: [newHistoryItem, ...cli.projectsHistory]
+          };
+        }
+        return cli;
+      })
+    );
+  };
+
+  // Update client handler
+  const handleUpdateClient = (updatedClient: ClientProfile) => {
+    setClients((prev) =>
+      prev.map((c) => (c.id === updatedClient.id ? updatedClient : c))
+    );
+  };
+
   // Add task
   const handleAddTask = (newTask: TaskItem) => {
     setTasks((prev) => [newTask, ...prev]);
@@ -720,7 +955,7 @@ export const TaskFlowPrototype: React.FC = () => {
             <div className="hidden md:block shrink-0">
               <TaskflowSidebar
                 currentView={currentView}
-                onSelectView={(v) => setCurrentView(v)}
+                onSelectView={handleSelectView}
               />
             </div>
 
@@ -731,7 +966,7 @@ export const TaskFlowPrototype: React.FC = () => {
                   <TaskflowSidebar
                     currentView={currentView}
                     onSelectView={(v) => {
-                      setCurrentView(v);
+                      handleSelectView(v);
                       setMobileMenuOpen(false);
                     }}
                   />
@@ -749,8 +984,8 @@ export const TaskFlowPrototype: React.FC = () => {
               <TaskflowHeader
                 currentViewTitle={getHeaderTitle()}
                 onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)}
-                onSelectAlert={() => setCurrentView('dashboard')}
-                onNavigateToDashboard={() => setCurrentView('dashboard')}
+                onSelectAlert={() => handleSelectView('dashboard')}
+                onNavigateToDashboard={() => handleSelectView('dashboard')}
                 activeTimer={activeTimer}
                 onPauseResumeTimer={handlePauseResumeTimer}
                 onStopTimer={handleStopTimer}
@@ -774,14 +1009,11 @@ export const TaskFlowPrototype: React.FC = () => {
                     onStopTimer={handleStopTimer}
                     onOpenTaskDetail={handleOpenTaskDetail}
                     onOpenManualLog={handleOpenManualLogWithTask}
-                    onNavigateToTasks={() => setCurrentView('tareas')}
-                    onNavigateToProjects={() => setCurrentView('proyectos')}
-                    onNavigateToClients={() => {
-                      setSelectedClientId(null);
-                      setCurrentView('clientes');
-                    }}
-                    onNavigateToCapacity={() => setCurrentView('capacidad')}
-                    onNavigateToFinance={() => setCurrentView('finanzas')}
+                    onNavigateToTasks={() => handleSelectView('tareas')}
+                    onNavigateToProjects={() => handleSelectView('proyectos')}
+                    onNavigateToClients={() => handleSelectView('clientes')}
+                    onNavigateToCapacity={() => handleSelectView('capacidad')}
+                    onNavigateToFinance={() => handleSelectView('finanzas')}
                     onSelectClientDetail={(clientName) => {
                       const match = orbitClientsData.find(
                         (c) =>
@@ -798,59 +1030,37 @@ export const TaskFlowPrototype: React.FC = () => {
 
                 {/* 2. PROYECTOS & JERARQUÍA */}
                 {currentView === 'proyectos' && (
-                  <div className="space-y-6 animate-in fade-in duration-200">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                      <div className="flex items-center gap-2 text-xs text-[#64748b]">
-                        <span className="w-2 h-2 rounded-full bg-[#501f92]" />
-                        <span>Estructura de Cuentas → Proyectos → Tareas con control de horas</span>
-                      </div>
-                      <button
-                        onClick={() => setIsNewTaskModalOpen(true)}
-                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold shadow-xs cursor-pointer self-start sm:self-auto"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Nueva Tarea / Proyecto</span>
-                      </button>
-                    </div>
-
-                    {/* Hierarchy Overview Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                      {clientProjectHierarchy.map((cli) => (
-                        <div key={cli.id} className="p-4 rounded-2xl bg-white border border-[#e2e8f0] shadow-xs space-y-2.5">
-                          <div className="flex items-center justify-between">
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                              cli.isInternal ? 'bg-[#f2ecfb] text-[#501f92]' : 'bg-[#eff6ff] text-[#2563eb]'
-                            }`}>
-                              {cli.isInternal ? 'Interno' : 'Cliente Fee'}
-                            </span>
-                            <span className="text-xs text-[#64748b] font-medium">{cli.projects.length} proyectos</span>
-                          </div>
-                          <h3 className="font-bold text-sm text-[#0f172a]">{cli.name}</h3>
-                          <div className="space-y-1 pt-1 border-t border-[#f1f5f9]">
-                            {cli.projects.map((p) => (
-                              <div key={p.id} className="flex items-center justify-between text-xs text-[#64748b]">
-                                <span className="truncate max-w-[140px]">• {p.name}</span>
-                                <span className="font-mono text-[#0f172a] font-bold">{p.budgetedHours}h</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Kanban Board */}
-                    <div className="pt-2">
-                      <BoardView
-                        tasks={tasks}
-                        onToggleTask={handleToggleTask}
-                        onOpenNewTaskModal={() => setIsNewTaskModalOpen(true)}
-                        activeTimer={activeTimer}
-                        onStartTimer={handleStartTimer}
-                        onPauseResumeTimer={handlePauseResumeTimer}
-                        onOpenTaskDetail={handleOpenTaskDetail}
-                      />
-                    </div>
-                  </div>
+                  <ProjectsView
+                    tasks={tasks}
+                    clients={clients}
+                    projectsList={projectsList}
+                    selectedProjectId={selectedProjectIdForView}
+                    onSelectProject={(id) => setSelectedProjectIdForView(id)}
+                    onOpenNewProjectModal={() => {
+                      setNewProjectPreselectedClientId(null);
+                      setIsNewProjectModalOpen(true);
+                    }}
+                    onOpenNewTaskModalWithProject={(projectName, clientName) => {
+                      setNewTaskPreselectedContext({ projectName, clientName });
+                      setIsNewTaskModalOpen(true);
+                    }}
+                    activeTimer={activeTimer}
+                    onStartTimer={handleStartTimer}
+                    onPauseResumeTimer={handlePauseResumeTimer}
+                    onOpenTaskDetail={handleOpenTaskDetail}
+                    onToggleTask={handleToggleTask}
+                    onNavigateToClient={(clientName) => {
+                      const match = clients.find(
+                        (c) =>
+                          c.name.toLowerCase().includes(clientName.toLowerCase()) ||
+                          clientName.toLowerCase().includes(c.name.toLowerCase())
+                      );
+                      if (match) {
+                        setSelectedClientId(match.id);
+                      }
+                      setCurrentView('clientes');
+                    }}
+                  />
                 )}
 
                 {/* 3. TAREAS */}
@@ -868,6 +1078,7 @@ export const TaskFlowPrototype: React.FC = () => {
                       setIsManualLogModalOpen(true);
                     }}
                     onUpdateTaskBudgetHours={handleUpdateTaskBudgetHours}
+                    onUpdateTaskStatus={handleUpdateTaskStatus}
                   />
                 )}
 
@@ -935,7 +1146,7 @@ export const TaskFlowPrototype: React.FC = () => {
                 {/* 6. CLIENTES & CARTERA */}
                 {currentView === 'clientes' && (
                   <ClientsView
-                    clients={orbitClientsData}
+                    clients={clients}
                     selectedClientId={selectedClientId}
                     onSelectClient={(id) => setSelectedClientId(id)}
                     onNavigateToDashboard={() => {
@@ -943,8 +1154,17 @@ export const TaskFlowPrototype: React.FC = () => {
                       setCurrentView('dashboard');
                     }}
                     onNavigateToProject={(projectName) => {
+                      const match = projectsList.find((p) => p.name === projectName);
+                      if (match) {
+                        setSelectedProjectIdForView(match.id);
+                      }
                       setCurrentView('proyectos');
                     }}
+                    onOpenNewProjectForClient={(clientId) => {
+                      setNewProjectPreselectedClientId(clientId);
+                      setIsNewProjectModalOpen(true);
+                    }}
+                    onUpdateClient={handleUpdateClient}
                   />
                 )}
 
@@ -1039,6 +1259,16 @@ export const TaskFlowPrototype: React.FC = () => {
         }}
         onNavigateToProject={(projectName) => {
           setIsTaskDetailModalOpen(false);
+          const match = projectsList.find(
+            (p) =>
+              p.name.toLowerCase().includes(projectName.toLowerCase()) ||
+              projectName.toLowerCase().includes(p.name.toLowerCase())
+          );
+          if (match) {
+            setSelectedProjectIdForView(match.id);
+          } else {
+            setSelectedProjectIdForView(null);
+          }
           setCurrentView('proyectos');
         }}
         onOpenManualLog={handleOpenManualLogWithTask}
@@ -1054,9 +1284,27 @@ export const TaskFlowPrototype: React.FC = () => {
 
       <NewTaskModal
         isOpen={isNewTaskModalOpen}
-        onClose={() => setIsNewTaskModalOpen(false)}
+        onClose={() => {
+          setIsNewTaskModalOpen(false);
+          setNewTaskPreselectedContext(null);
+        }}
         onAddTask={handleAddTask}
         existingTasks={tasks}
+        preselectedProjectName={newTaskPreselectedContext?.projectName}
+        preselectedClientName={newTaskPreselectedContext?.clientName}
+        projectsList={projectsList}
+        clientsList={clients}
+      />
+
+      <NewProjectModal
+        isOpen={isNewProjectModalOpen}
+        onClose={() => {
+          setIsNewProjectModalOpen(false);
+          setNewProjectPreselectedClientId(null);
+        }}
+        onAddProject={handleAddProject}
+        clients={clients}
+        preselectedClientId={newProjectPreselectedClientId || undefined}
       />
 
       {/* Timer Summary Modal on Stop */}

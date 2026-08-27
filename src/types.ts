@@ -3,6 +3,17 @@ import { ReactNode } from 'react';
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'outline' | 'glass';
 export type ButtonSize = 'sm' | 'md' | 'lg' | 'xl';
 
+export type TabsVariant = 'underline' | 'subtle-pill' | 'segmented' | 'capsule';
+export type TabsSize = 'sm' | 'md' | 'lg';
+
+export type LinkVariant = 'brand' | 'accent' | 'neutral' | 'subtle' | 'nav' | 'inline';
+
+export type ChipVariant = 'default' | 'filter' | 'removable' | 'status-toggle';
+export type ChipSize = 'xs' | 'sm' | 'md';
+
+export type EyebrowVariant = 'default' | 'brand' | 'accent' | 'muted';
+export type EyebrowSize = 'xs' | 'sm';
+
 export type BadgeVariant = 
   | 'neutral'
   | 'brand'

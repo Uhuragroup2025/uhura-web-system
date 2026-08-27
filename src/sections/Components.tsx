@@ -4,14 +4,28 @@ import {
   ButtonSize,
   BadgeVariant,
   BadgeSize,
+  TabsVariant,
+  TabsSize,
+  LinkVariant,
+  ChipVariant,
+  ChipSize,
+  EyebrowVariant,
+  EyebrowSize,
   CardVariant,
   InputVariant
 } from '../types';
-import { Button } from '../components/ui/Button';
-import { Badge } from '../components/ui/Badge';
-import { Card } from '../components/ui/Card';
-import { GlassCard } from '../components/ui/GlassCard';
-import { Input } from '../components/ui/Input';
+import {
+  Button,
+  Badge,
+  Tabs,
+  Link,
+  Tooltip,
+  Chip,
+  Eyebrow,
+  Card,
+  GlassCard,
+  Input
+} from '../components/ui';
 import { CleanDesignShowcase } from '../components/clean-patterns/CleanDesignShowcase';
 import {
   ArrowRight,
@@ -31,7 +45,19 @@ import {
   Sliders,
   Sun,
   Moon,
-  CheckCheck
+  CheckCheck,
+  LayoutGrid,
+  Layers,
+  FolderKanban,
+  Clock,
+  ExternalLink,
+  Info,
+  HelpCircle,
+  Timer,
+  FileSpreadsheet,
+  Settings,
+  Share2,
+  Bookmark
 } from 'lucide-react';
 
 export const Components: React.FC = () => {
@@ -42,6 +68,31 @@ export const Components: React.FC = () => {
   const [buttonWithIcon, setButtonWithIcon] = useState(true);
   const [buttonDisabled, setButtonDisabled] = useState(false);
   const [buttonLoading, setButtonLoading] = useState(false);
+
+  // Tabs state
+  const [activeTabDemo, setActiveTabDemo] = useState<string>('tareas');
+  const [tabsVariant, setTabsVariant] = useState<TabsVariant>('underline');
+  const [tabsSize, setTabsSize] = useState<TabsSize>('md');
+  const [tabsContext, setTabsContext] = useState<'dark' | 'light'>('light');
+
+  // Chip state
+  const [selectedChips, setSelectedChips] = useState<string[]>(['diseno', 'fe_front']);
+  const [chipContext, setChipContext] = useState<'dark' | 'light'>('light');
+  const [chipSize, setChipSize] = useState<ChipSize>('sm');
+
+  // Link state
+  const [linkVariant, setLinkVariant] = useState<LinkVariant>('brand');
+  const [linkContext, setLinkContext] = useState<'dark' | 'light'>('light');
+  const [linkUnderline, setLinkUnderline] = useState<'always' | 'hover' | 'none'>('hover');
+
+  // Tooltip state
+  const [tooltipPosition, setTooltipPosition] = useState<'top' | 'bottom' | 'left' | 'right'>('top');
+  const [tooltipContext, setTooltipContext] = useState<'dark' | 'light'>('light');
+
+  // Eyebrow state
+  const [eyebrowVariant, setEyebrowVariant] = useState<EyebrowVariant>('default');
+  const [eyebrowSize, setEyebrowSize] = useState<EyebrowSize>('sm');
+  const [eyebrowContext, setEyebrowContext] = useState<'dark' | 'light'>('light');
 
   // Badge state
   const [badgeVariant, setBadgeVariant] = useState<BadgeVariant>('neutral');
@@ -61,6 +112,14 @@ export const Components: React.FC = () => {
     setCopiedSection(id);
     setTimeout(() => setCopiedSection(null), 2000);
   };
+
+  const sampleTabs = [
+    { id: 'tareas', label: 'Tareas', icon: <FolderKanban className="w-4 h-4" />, badge: 14 },
+    { id: 'backlog', label: 'Backlog', icon: <Layers className="w-4 h-4" />, badge: '5 fases' },
+    { id: 'horas', label: 'Horas', icon: <Clock className="w-4 h-4" />, badge: '128h' },
+    { id: 'equipo', label: 'Equipo', icon: <LayoutGrid className="w-4 h-4" /> },
+    { id: 'config', label: 'Ajustes', icon: <Settings className="w-4 h-4" />, disabled: true }
+  ];
 
   const badgeContrastMetrics = [
     { variant: 'neutral' as BadgeVariant, name: 'Neutral Tint (80% del UI)', bgDark: 'rgba(255,255,255,0.12)', bgLight: 'rgba(23,19,31,0.06)', textDark: '#ffffff', textLight: '#17131f', ratioDark: '17.2:1', ratioLight: '16.5:1', standard: 'WCAG AAA ✅', notes: 'Reduce la fatiga visual. Es la opción por defecto para metadatos.' },
@@ -89,7 +148,461 @@ export const Components: React.FC = () => {
         </p>
       </div>
 
-      {/* 1. COHERENCY HIGHLIGHT BANNER */}
+      {/* 0. CANONICAL ARTIFACTS & USABILITY MATRIX */}
+      <section className="bg-white rounded-3xl p-6 sm:p-8 border border-[#e0e0e0] shadow-xs space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#e0e0e0]">
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-extrabold text-[#17131f]">Matriz Canónica de Arquetipos UI (Orbit Rules)</h2>
+              <Badge variant="brand" size="xs">Guía de Uso Estricto</Badge>
+            </div>
+            <p className="text-xs text-[#616161]">
+              Regla de oro: cada elemento tiene un único propósito de interacción y no debe confundirse visualmente.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="p-4.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="font-extrabold text-sm text-[#0f172a] flex items-center gap-1.5">
+                <FolderKanban className="w-4 h-4 text-[#501f92]" /> Tabs
+              </span>
+              <Badge variant="purple" size="xs">Navegación</Badge>
+            </div>
+            <p className="text-xs text-[#64748b]">
+              <strong>Propósito:</strong> Navegar entre vistas o sub-paneles del mismo contexto.
+            </p>
+            <p className="text-[11px] text-[#501f92] font-semibold">
+              ✓ En light se resuelve con texto + underline o tinte muy sutil, nunca con peso de botón CTA.
+            </p>
+          </div>
+
+          <div className="p-4.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="font-extrabold text-sm text-[#0f172a] flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-[#501f92]" /> Buttons
+              </span>
+              <Badge variant="brand" size="xs">Acciones</Badge>
+            </div>
+            <p className="text-xs text-[#64748b]">
+              <strong>Propósito:</strong> Ejecutar acciones principales, secundarias, guardar o abrir diálogos.
+            </p>
+            <p className="text-[11px] text-[#501f92] font-semibold">
+              ✓ Sólido, outline o ghost con radio píldora y área táctil &ge; 44px.
+            </p>
+          </div>
+
+          <div className="p-4.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="font-extrabold text-sm text-[#0f172a] flex items-center gap-1.5">
+                <ExternalLink className="w-4 h-4 text-[#501f92]" /> Links
+              </span>
+              <Badge variant="info" size="xs">Acceso / Enlaces</Badge>
+            </div>
+            <p className="text-xs text-[#64748b]">
+              <strong>Propósito:</strong> Navegación a URLs externas (Figma, Drive) o anclas contextuales.
+            </p>
+            <p className="text-[11px] text-[#501f92] font-semibold">
+              ✓ Subrayado en hover, ícono externo automático y foco accesible.
+            </p>
+          </div>
+
+          <div className="p-4.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="font-extrabold text-sm text-[#0f172a] flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Badges / Status
+              </span>
+              <Badge variant="success" size="xs" isDot>Informativo</Badge>
+            </div>
+            <p className="text-xs text-[#64748b]">
+              <strong>Propósito:</strong> Indicar estado (Aprobado, En pausa, Urgente) o categoría.
+            </p>
+            <p className="text-[11px] text-emerald-700 font-semibold">
+              ✓ Estrictamente no interactivo. 12 variantes WCAG AAA.
+            </p>
+          </div>
+
+          <div className="p-4.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="font-extrabold text-sm text-[#0f172a] flex items-center gap-1.5">
+                <Sliders className="w-4 h-4 text-[#501f92]" /> Chips
+              </span>
+              <Badge variant="accent" size="xs">Interactivo</Badge>
+            </div>
+            <p className="text-xs text-[#64748b]">
+              <strong>Propósito:</strong> Filtros activos, selección múltiple y tags removibles.
+            </p>
+            <p className="text-[11px] text-[#501f92] font-semibold">
+              ✓ Soporta estados selected, hover, focus y botón (X) de remover.
+            </p>
+          </div>
+
+          <div className="p-4.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="font-extrabold text-sm text-[#0f172a] flex items-center gap-1.5">
+                <Info className="w-4 h-4 text-[#501f92]" /> Eyebrows & Tooltips
+              </span>
+              <Badge variant="neutral" size="xs">Editorial</Badge>
+            </div>
+            <p className="text-xs text-[#64748b]">
+              <strong>Eyebrows:</strong> Jerarquía tipográfica (11px uppercase) no interactiva.
+            </p>
+            <p className="text-[11px] text-[#64748b]">
+              <strong>Tooltips:</strong> Microcopias flotantes con atajos de teclado para íconos.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* 2. CANONICAL TABS COMPONENT */}
+      <section className="bg-white rounded-3xl p-6 sm:p-8 border border-[#e0e0e0] shadow-xs space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#e0e0e0]">
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-extrabold text-[#17131f]">Tabs (Navegación Canónica de Vistas)</h2>
+              <Badge variant="brand" size="xs">Sin Confusión con Botones</Badge>
+            </div>
+            <p className="text-xs text-[#616161]">
+              Variante <code>underline</code> por defecto: resuelta con texto + borde inferior activo para preservar la jerarquía visual de los CTAs.
+            </p>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            contextTheme="light"
+            onClick={() =>
+              copySnippet(
+                `<Tabs\n  tabs={tabsList}\n  activeTab={activeTab}\n  onChange={setActiveTab}\n  variant="${tabsVariant}"\n  contextTheme="${tabsContext}"\n/>`,
+                'tabs'
+              )
+            }
+          >
+            {copiedSection === 'tabs' ? 'Copiado' : 'Copiar JSX'}
+          </Button>
+        </div>
+
+        {/* Controls */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-[#fafafa] p-4 rounded-2xl border border-[#e0e0e0]">
+          <div>
+            <label className="text-xs font-bold text-[#616161] block mb-1.5 uppercase">Variante de Tab</label>
+            <div className="flex flex-wrap gap-1.5">
+              {(['underline', 'subtle-pill', 'segmented', 'capsule'] as const).map((v) => (
+                <button
+                  key={v}
+                  onClick={() => setTabsVariant(v)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold capitalize transition-all cursor-pointer ${
+                    tabsVariant === v ? 'bg-[#501f92] text-white shadow-xs' : 'bg-white text-[#616161] border border-[#e0e0e0]'
+                  }`}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-[#616161] block mb-1.5 uppercase">Contexto</label>
+            <div className="flex gap-1.5">
+              <button
+                onClick={() => setTabsContext('light')}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                  tabsContext === 'light' ? 'bg-[#501f92] text-white shadow-xs' : 'bg-white text-[#616161] border border-[#e0e0e0]'
+                }`}
+              >
+                <Sun className="w-3.5 h-3.5" /> Light
+              </button>
+              <button
+                onClick={() => setTabsContext('dark')}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                  tabsContext === 'dark' ? 'bg-[#090513] text-[#d4ff4a] border border-[#d4ff4a]/40 shadow-xs' : 'bg-white text-[#616161] border border-[#e0e0e0]'
+                }`}
+              >
+                <Moon className="w-3.5 h-3.5" /> Dark
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-[#616161] block mb-1.5 uppercase">Tamaño</label>
+            <div className="flex gap-1.5">
+              {(['sm', 'md', 'lg'] as const).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setTabsSize(s)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold uppercase transition-all cursor-pointer ${
+                    tabsSize === s ? 'bg-[#501f92] text-white shadow-xs' : 'bg-white text-[#616161] border border-[#e0e0e0]'
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Live Preview */}
+        <div
+          className={`p-6 rounded-2xl transition-all duration-300 ${
+            tabsContext === 'dark'
+              ? 'bg-[#090513] border border-[#2a1b4d]'
+              : 'bg-white border border-[#e2e8f0]'
+          }`}
+        >
+          <Tabs
+            tabs={sampleTabs}
+            activeTab={activeTabDemo}
+            onChange={setActiveTabDemo}
+            variant={tabsVariant}
+            size={tabsSize}
+            contextTheme={tabsContext}
+          />
+          <div className="mt-4 p-4 rounded-xl bg-slate-50/50 border border-dashed border-slate-200 text-xs text-slate-500">
+            Vista activa seleccionada: <strong className="text-slate-800">{activeTabDemo}</strong> · Soporta navegación accesible con flechas del teclado <code>&larr; &rarr; Home End</code>
+          </div>
+        </div>
+      </section>
+
+      {/* 3. CANONICAL CHIP COMPONENT (FILTERS VS BADGES) */}
+      <section className="bg-white rounded-3xl p-6 sm:p-8 border border-[#e0e0e0] shadow-xs space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#e0e0e0]">
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-extrabold text-[#17131f]">Chips (Filtros & Selección Interactiva)</h2>
+              <Badge variant="accent" size="xs">Interactivo</Badge>
+            </div>
+            <p className="text-xs text-[#616161]">
+              A diferencia de <code>Badge</code> (informativo y estático), <code>Chip</code> está diseñado para interactuar, filtrar, alternar y remover tags.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setChipContext(chipContext === 'light' ? 'dark' : 'light')}
+              className="px-3 py-1 text-xs font-bold rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+            >
+              Cambiar a {chipContext === 'light' ? 'Dark' : 'Light'}
+            </button>
+          </div>
+        </div>
+
+        {/* Live Filter Chips Demo */}
+        <div
+          className={`p-6 rounded-2xl space-y-4 transition-all duration-300 ${
+            chipContext === 'dark'
+              ? 'bg-[#090513] border border-[#2a1b4d]'
+              : 'bg-[#fafafa] border border-[#e2e8f0]'
+          }`}
+        >
+          <div>
+            <span className={`text-[11px] font-bold block mb-2 uppercase ${chipContext === 'dark' ? 'text-white/60' : 'text-[#64748b]'}`}>
+              1. Filtros Múltiples (Togglable Chips)
+            </span>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { id: 'todos', label: 'Todos los frentes', count: 18 },
+                { id: 'diseno', label: 'Diseño UX/UI', count: 6 },
+                { id: 'fe_front', label: 'Front End', count: 5 },
+                { id: 'be_back', label: 'Back End', count: 4 },
+                { id: 'pauta', label: 'Pauta Digital', count: 3 }
+              ].map((f) => {
+                const isSelected = selectedChips.includes(f.id);
+                return (
+                  <Chip
+                    key={f.id}
+                    label={f.label}
+                    count={f.count}
+                    selected={isSelected}
+                    contextTheme={chipContext}
+                    showCheckOnSelect
+                    onSelect={() => {
+                      if (selectedChips.includes(f.id)) {
+                        setSelectedChips(selectedChips.filter((x) => x !== f.id));
+                      } else {
+                        setSelectedChips([...selectedChips, f.id]);
+                      }
+                    }}
+                  />
+                );
+              })}
+            </div>
+          </div>
+
+          <div>
+            <span className={`text-[11px] font-bold block mb-2 uppercase ${chipContext === 'dark' ? 'text-white/60' : 'text-[#64748b]'}`}>
+              2. Removable Tags (Tags de Filtro Activo con botón X)
+            </span>
+            <div className="flex flex-wrap gap-2">
+              <Chip
+                label="Cliente: Yamaha S.A."
+                variant="removable"
+                contextTheme={chipContext}
+                onRemove={() => alert('Filtro removido')}
+              />
+              <Chip
+                label="Estado: En Revisión"
+                variant="removable"
+                contextTheme={chipContext}
+                onRemove={() => alert('Filtro removido')}
+              />
+              <Chip
+                label="Sprint: Semana 34"
+                variant="removable"
+                contextTheme={chipContext}
+                onRemove={() => alert('Filtro removido')}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Clear Comparison Table */}
+        <div className="overflow-x-auto border border-[#e0e0e0] rounded-2xl">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-[#f8fafc] text-[#0f172a] font-bold border-b border-[#e2e8f0]">
+              <tr>
+                <th className="p-3">Característica</th>
+                <th className="p-3">Componente &lt;Badge /&gt;</th>
+                <th className="p-3">Componente &lt;Chip /&gt;</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#e2e8f0]">
+              <tr>
+                <td className="p-3 font-bold text-[#0f172a]">Interacción</td>
+                <td className="p-3 text-slate-600">No interactivo (solo lectura)</td>
+                <td className="p-3 text-[#501f92] font-bold">Interactivo (click, hover, focus, tecla Enter)</td>
+              </tr>
+              <tr>
+                <td className="p-3 font-bold text-[#0f172a]">Uso principal</td>
+                <td className="p-3 text-slate-600">Status, estados de tarea, badges de rol</td>
+                <td className="p-3 text-slate-600">Filtros de tabla, selecciones múltiples, tags con (X)</td>
+              </tr>
+              <tr>
+                <td className="p-3 font-bold text-[#0f172a]">Elemento HTML</td>
+                <td className="p-3 font-mono text-slate-600">&lt;span&gt;</td>
+                <td className="p-3 font-mono text-slate-600">&lt;div role="button" aria-pressed&gt;</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* 4. CANONICAL LINK & TOOLTIP & EYEBROW COMPONENT */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Link Showcase */}
+        <section className="bg-white rounded-3xl p-6 border border-[#e0e0e0] shadow-xs space-y-4">
+          <div className="pb-3 border-b border-[#e0e0e0]">
+            <div className="flex items-center gap-2">
+              <h3 className="font-extrabold text-base text-[#17131f]">Link (Enlaces Canónicos)</h3>
+              <Badge variant="info" size="xs">WCAG 2.4.7</Badge>
+            </div>
+            <p className="text-xs text-[#616161]">
+              Variantes con ícono externo automático y foco accesible.
+            </p>
+          </div>
+
+          <div className="space-y-3 p-4 rounded-2xl bg-[#fafafa] border border-[#e2e8f0] text-xs">
+            <div>
+              <span className="text-[10px] font-bold text-[#94a3b8] uppercase block mb-1">Brand Link</span>
+              <Link href="https://figma.com" isExternal variant="brand">
+                Ver propuestas en Figma
+              </Link>
+            </div>
+
+            <div>
+              <span className="text-[10px] font-bold text-[#94a3b8] uppercase block mb-1">Subtle / Neutral</span>
+              <Link href="#" variant="subtle">
+                Descargar reporte consolidado (.csv)
+              </Link>
+            </div>
+
+            <div>
+              <span className="text-[10px] font-bold text-[#94a3b8] uppercase block mb-1">Inline Text Link</span>
+              <p className="text-slate-600">
+                Consulta los <Link href="#" variant="inline">lineamientos de accesibilidad</Link> antes de publicar.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Tooltip Showcase */}
+        <section className="bg-white rounded-3xl p-6 border border-[#e0e0e0] shadow-xs space-y-4">
+          <div className="pb-3 border-b border-[#e0e0e0]">
+            <div className="flex items-center gap-2">
+              <h3 className="font-extrabold text-base text-[#17131f]">Tooltip (Explicación Accesible)</h3>
+              <Badge variant="accent" size="xs">ARIA role="tooltip"</Badge>
+            </div>
+            <p className="text-xs text-[#616161]">
+              Sustituto canónico de <code>title=""</code> para botones de ícono.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-[#fafafa] border border-[#e2e8f0] space-y-4 text-xs">
+            <span className="text-[10px] font-bold text-[#94a3b8] uppercase block">
+              Pasa el cursor o haz foco en los botones:
+            </span>
+            <div className="flex items-center justify-around py-3">
+              <Tooltip content="Iniciar temporizador" shortcut="T" position="top">
+                <button className="w-9 h-9 rounded-xl bg-white border border-[#cbd5e1] text-[#501f92] hover:bg-[#f5f3ff] flex items-center justify-center cursor-pointer shadow-2xs transition-colors">
+                  <Timer className="w-4 h-4" />
+                </button>
+              </Tooltip>
+
+              <Tooltip content="Cargar horas manuales" shortcut="H" position="top">
+                <button className="w-9 h-9 rounded-xl bg-white border border-[#cbd5e1] text-[#0f172a] hover:bg-[#f8fafc] flex items-center justify-center cursor-pointer shadow-2xs transition-colors">
+                  <Clock className="w-4 h-4" />
+                </button>
+              </Tooltip>
+
+              <Tooltip content="Copiar enlace de la tarea" shortcut="⌘C" position="top">
+                <button className="w-9 h-9 rounded-xl bg-white border border-[#cbd5e1] text-[#64748b] hover:text-[#501f92] flex items-center justify-center cursor-pointer shadow-2xs transition-colors">
+                  <Share2 className="w-4 h-4" />
+                </button>
+              </Tooltip>
+
+              <Tooltip content="Marcar como prioritario" position="top">
+                <button className="w-9 h-9 rounded-xl bg-white border border-[#cbd5e1] text-[#64748b] hover:text-amber-500 flex items-center justify-center cursor-pointer shadow-2xs transition-colors">
+                  <Bookmark className="w-4 h-4" />
+                </button>
+              </Tooltip>
+            </div>
+          </div>
+        </section>
+
+        {/* Eyebrow Showcase */}
+        <section className="bg-white rounded-3xl p-6 border border-[#e0e0e0] shadow-xs space-y-4">
+          <div className="pb-3 border-b border-[#e0e0e0]">
+            <div className="flex items-center gap-2">
+              <h3 className="font-extrabold text-base text-[#17131f]">Eyebrow (Jerarquía Editorial)</h3>
+              <Badge variant="neutral" size="xs">11px Uppercase</Badge>
+            </div>
+            <p className="text-xs text-[#616161]">
+              Labels de contexto y sección. Estrictamente no interactivos.
+            </p>
+          </div>
+
+          <div className="space-y-3 p-4 rounded-2xl bg-[#fafafa] border border-[#e2e8f0] text-xs">
+            <div>
+              <span className="text-[10px] font-bold text-[#94a3b8] uppercase block mb-1">Brand Eyebrow</span>
+              <Eyebrow variant="brand" icon={<Sparkles className="w-3.5 h-3.5" />}>
+                Requerimiento inicial
+              </Eyebrow>
+            </div>
+
+            <div>
+              <span className="text-[10px] font-bold text-[#94a3b8] uppercase block mb-1">Default Section</span>
+              <Eyebrow variant="default">
+                Fase 2 · Diseño UX & Prototipado
+              </Eyebrow>
+            </div>
+
+            <div>
+              <span className="text-[10px] font-bold text-[#94a3b8] uppercase block mb-1">Muted Metadata</span>
+              <Eyebrow variant="muted" icon={<Clock className="w-3.5 h-3.5" />}>
+                Actualizado hace 15m
+              </Eyebrow>
+            </div>
+          </div>
+        </section>
+      </div>
       <section className="bg-gradient-to-r from-[#140b24] via-[#1c0e35] to-[#28134d] text-white rounded-3xl p-6 sm:p-8 border border-[#8a4dff]/40 shadow-lg space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
           <div className="flex items-center gap-3">

@@ -22,14 +22,50 @@ export type TaskStatus = 'In Progress' | 'Done' | 'To Do' | 'Review';
 
 export type TaskCategoryType = 'client' | 'internal';
 
-export type ProjectType = 'fee_monthly' | 'fixed_milestones';
+export type ProjectType = 'fee_monthly' | 'fixed_milestones' | 'internal';
 
 export type ProjectPhase =
   | 'Discovery & Arquitectura'
   | 'UI/UX & Prototipado'
   | 'Implementación / Dev'
   | 'QA & Testing'
-  | 'Despliegue & Cierre';
+  | 'Despliegue & Cierre'
+  | string;
+
+export interface ProjectPhaseItem {
+  id: string;
+  name: string;
+  order: number;
+  startDate?: string;
+  endDate?: string;
+  status: 'pending' | 'in_progress' | 'completed';
+  description?: string;
+  color?: string;
+}
+
+export interface ProjectSummaryItem {
+  id: string;
+  name: string;
+  clientName: string;
+  brand?: string;
+  leadName: string;
+  leadAvatarBg: string;
+  projectType: ProjectType;
+  serviceBase: string;
+  budgetedHours: number;
+  soldHours?: number;
+  soldValueCOP?: number;
+  soldCurrency?: 'COP' | 'USD';
+  startDate?: string;
+  endDate?: string;
+  brief?: string;
+  teamMembers?: { name: string; role?: string; avatarBg: string; initials?: string }[];
+  status: 'Activo' | 'En Pausa' | 'Cerrado' | 'Planificación';
+  healthStatus: 'verde' | 'amarillo' | 'rojo';
+  healthNote?: string;
+  hasPhasesAndBacklog?: boolean;
+  phasesList?: ProjectPhaseItem[];
+}
 
 export type FeeActivityCategory =
   | 'Mantenimiento Web'
@@ -105,14 +141,40 @@ export interface TaskComment {
   linkPreviewDesc?: string;
 }
 
+export const STANDARD_UHURA_ROLES = [
+  'Content Strategist',
+  'Diseñador Gráfico',
+  'Community Manager',
+  'Product Lead',
+  'Copywriter',
+  'Web Designer',
+  'Front End',
+  'Trafficker',
+  'Tech Lead',
+  'Lead PM'
+] as const;
+
+export type StandardUhuraRole = typeof STANDARD_UHURA_ROLES[number];
+
 export interface TaskItem {
   id: string;
   title: string;
+  description?: string;
   department: string;
   board: string;
   clientName?: string;
   projectName?: string;
+  frente?: string; // e.g. 'Redes Sociales', 'Landing Page', 'Pauta'
+  budgetedRole?: string; // e.g. 'Web Designer', 'Front End', etc.
+  executedRoleSnapshot?: string; // snapshot of the role under which hours were executed
   categoryType?: TaskCategoryType;
+  requestedBy?: string;
+  reviewer?: {
+    name: string;
+    initials: string;
+    avatarBg: string;
+    role?: string;
+  };
   assignee: {
     name: string;
     initials: string;
@@ -159,13 +221,16 @@ export interface TaskItem {
   // Naturaleza de proyecto & Fases / Fees
   projectType?: ProjectType;
   phase?: ProjectPhase;
+  fase?: string; // alias/nombre de fase configurada
   feeCategory?: FeeActivityCategory;
-  // Control de Bloqueos, Deuda y Trazabilidad de Causa Raíz
+  // Control de Bloqueos, Deuda y Trazabilidad de Causa Raíz / Baseline
   blockerInfo?: TaskBlockerInfo;
   isRecalibrated?: boolean;
   recalibrationDays?: number;
   recalibrationReason?: string;
   originalDueDate?: string;
+  baselineStartDate?: string;
+  baselineDueDate?: string;
   dependencyTaskId?: string;
   dependencyTaskTitle?: string;
 }
@@ -302,11 +367,14 @@ export interface ClientProjectHistoryItem {
 
 export interface ClientBehaviorScores {
   rentabilidad: number; // 0-100
-  volumen: number;
-  recurrencia: number;
-  salud: number;
-  cumplimiento: number;
-  facturacion: number;
+  cartera: number;      // 0-100 (salud de cartera y cobranza)
+  cumplimiento: number; // 0-100 (% entregas a tiempo y horas)
+  relacion: number;     // 0-100 (recurrencia y relación comercial)
+  // Campos opcionales para compatibilidad
+  volumen?: number;
+  recurrencia?: number;
+  salud?: number;
+  facturacion?: number;
 }
 
 export interface ClientCommercialInfo {
@@ -318,11 +386,13 @@ export interface ClientCommercialInfo {
   brands: string[];
 }
 
+export type ClientType = 'Fee mensual' | 'Proyecto único' | 'Interno / No facturable' | 'Mixto' | 'Fee Recurrente' | 'Proyecto';
+
 export interface ClientProfile {
   id: string;
   name: string;
   nit: string;
-  type: 'Proyecto' | 'Fee Recurrente' | 'Mixto';
+  type: ClientType;
   healthStatus: 'Saludable' | 'En Riesgo' | 'Crítico';
   portalActive: boolean;
   projectsCount: number;

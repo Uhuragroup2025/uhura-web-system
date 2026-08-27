@@ -7,12 +7,10 @@ interface ClientRadarChartProps {
 }
 
 const AXIS_CONFIG: { key: keyof ClientBehaviorScores; label: string; angleDeg: number }[] = [
-  { key: 'rentabilidad', label: 'Rentabilidad', angleDeg: 270 }, // Top
-  { key: 'volumen', label: 'Volumen', angleDeg: 330 },          // Top Right
-  { key: 'recurrencia', label: 'Recurrencia', angleDeg: 30 },   // Bottom Right
-  { key: 'salud', label: 'Salud', angleDeg: 90 },              // Bottom
-  { key: 'cumplimiento', label: 'Cumplimiento', angleDeg: 150 },// Bottom Left
-  { key: 'facturacion', label: 'Facturación', angleDeg: 210 },  // Top Left
+  { key: 'rentabilidad', label: 'Rentabilidad', angleDeg: 270 },            // Arriba
+  { key: 'cartera', label: 'Cartera', angleDeg: 0 },                       // Derecha
+  { key: 'cumplimiento', label: 'Cumplimiento', angleDeg: 90 },             // Abajo
+  { key: 'relacion', label: 'Recurrencia / Relación', angleDeg: 180 },      // Izquierda
 ];
 
 const TICKS = [25, 50, 75, 100];
@@ -144,17 +142,17 @@ export const ClientRadarChart: React.FC<ClientRadarChartProps> = ({ scores, size
 
         {/* Axis Labels Placed Around the Perimeter */}
         {AXIS_CONFIG.map((axis) => {
-          const labelDistRatio = 1.22;
+          const labelDistRatio = 1.25;
           const { x, y } = getCoordinates(axis.angleDeg, labelDistRatio);
           let textAnchor: 'middle' | 'start' | 'end' = 'middle';
-          if (axis.angleDeg === 330 || axis.angleDeg === 30) textAnchor = 'start';
-          if (axis.angleDeg === 150 || axis.angleDeg === 210) textAnchor = 'end';
+          if (axis.angleDeg === 0) textAnchor = 'start';
+          if (axis.angleDeg === 180) textAnchor = 'end';
 
           return (
             <text
               key={`label-${axis.key}`}
               x={x}
-              y={y + 4}
+              y={axis.angleDeg === 90 ? y + 8 : axis.angleDeg === 270 ? y - 2 : y + 4}
               textAnchor={textAnchor}
               className="text-[11px] font-semibold fill-[#334155]"
             >

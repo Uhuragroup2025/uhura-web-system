@@ -20,7 +20,11 @@ import {
   Sparkles,
   ExternalLink,
   ShieldCheck,
-  Plus
+  Plus,
+  AlertTriangle,
+  FileCheck,
+  Percent,
+  Check
 } from 'lucide-react';
 
 interface ClientDetailViewProps {
@@ -28,7 +32,9 @@ interface ClientDetailViewProps {
   onBack: () => void;
   onNavigateToDashboard?: () => void;
   onNavigateToProject?: (projectName: string) => void;
+  onOpenNewProject?: () => void;
   onEditClient?: (client: ClientProfile) => void;
+  onUpdateClient?: (client: ClientProfile) => void;
 }
 
 export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
@@ -36,7 +42,9 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
   onBack,
   onNavigateToDashboard,
   onNavigateToProject,
-  onEditClient
+  onOpenNewProject,
+  onEditClient,
+  onUpdateClient
 }) => {
   const [portalActive, setPortalActive] = useState(client.portalActive);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -49,36 +57,61 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
   const handleTogglePortal = () => {
     const nextState = !portalActive;
     setPortalActive(nextState);
-    showToast(nextState ? `Portal de cliente activado para ${client.name}` : `Portal de cliente desactivado`);
+    if (onUpdateClient) {
+      onUpdateClient({
+        ...client,
+        portalActive: nextState
+      });
+    }
+    showToast(nextState ? `Acceso a portal habilitado para ${client.name}` : `Acceso a portal deshabilitado`);
   };
 
-  const getHealthBadge = () => {
-    switch (client.healthStatus) {
-      case 'Saludable':
-        return (
-          <span className="inline-flex items-center gap-1.5 text-xs text-[#16a34a] font-semibold">
-            <span className="w-2 h-2 rounded-full bg-[#16a34a]" />
-            Saludable
-          </span>
-        );
-      case 'En Riesgo':
-        return (
-          <span className="inline-flex items-center gap-1.5 text-xs text-[#f59e0b] font-semibold">
-            <span className="w-2 h-2 rounded-full bg-[#f59e0b]" />
-            En Riesgo
-          </span>
-        );
-      case 'Crítico':
-        return (
-          <span className="inline-flex items-center gap-1.5 text-xs text-[#ef4444] font-semibold">
-            <span className="w-2 h-2 rounded-full bg-[#ef4444]" />
-            Crítico
-          </span>
-        );
-      default:
-        return null;
-    }
+  // Detailed Health Breakdown Dimensions
+  const getHealthDimensions = () => {
+    // 1. Rentabilidad
+    const margin = client.averageMarginPercent ?? 0;
+    const rentStatus = margin >= 35 ? 'verde' : margin >= 25 ? 'amarillo' : 'rojo';
+    const rentNote =
+      margin >= 35
+        ? `Margen operativo promedio ${margin}% (supera meta >30%)`
+        : margin >= 25
+        ? `Margen operativo ${margin}% (cercano al piso operativo 25%)`
+        : `Margen bajo: ${margin}% (riesgo financiero)`;
+
+    // 2. Cartera / Cobranza
+    const carteraScore = client.behavior.cartera ?? 90;
+    const isOverdue = client.receivableStatus.toLowerCase().includes('mora') || client.receivableStatus.toLowerCase().includes('cobro');
+    const cartStatus = carteraScore >= 80 && !isOverdue ? 'verde' : carteraScore >= 60 ? 'amarillo' : 'rojo';
+    const cartNote =
+      cartStatus === 'verde'
+        ? `Facturación al día · Sin facturas vencidas (${client.billedInvoicesCount} facturas emitidas)`
+        : `Cartera en mora: ${client.receivableCOP} pendiente de pago`;
+
+    // 3. Cumplimiento
+    const cumplScore = client.behavior.cumplimiento;
+    const cumplStatus = cumplScore >= 85 ? 'verde' : cumplScore >= 70 ? 'amarillo' : 'rojo';
+    const cumplNote =
+      cumplScore >= 85
+        ? `${cumplScore}% de entregas a tiempo en proyectos y fees`
+        : `${cumplScore}% de cumplimiento · Alerta de desvíos en horas`;
+
+    // 4. Relación / Recurrencia
+    const recScore = client.behavior.relacion ?? client.behavior.recurrencia ?? 80;
+    const recStatus = recScore >= 80 ? 'verde' : recScore >= 60 ? 'amarillo' : 'rojo';
+    const recNote =
+      recScore >= 80
+        ? `Relación sólida (${client.commercialInfo.brands.length} marcas) · Fee mensual o proyectos continuos`
+        : `Relación en desarrollo · Proyectos por demanda puntual`;
+
+    return {
+      rentabilidad: { status: rentStatus, title: 'Rentabilidad', note: rentNote, score: `${margin}%` },
+      cartera: { status: cartStatus, title: 'Cartera & Cobranza', note: cartNote, score: `${carteraScore}/100` },
+      cumplimiento: { status: cumplStatus, title: 'Cumplimiento & Plazos', note: cumplNote, score: `${cumplScore}%` },
+      relacion: { status: recStatus, title: 'Recurrencia / Relación', note: recNote, score: `${recScore}%` }
+    };
   };
+
+  const healthDims = getHealthDimensions();
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
@@ -116,52 +149,57 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
             {client.name}
           </h1>
           <div className="flex flex-wrap items-center gap-2.5 mt-1 text-xs text-[#64748b]">
-            <span className="font-mono">NIT {client.nit}</span>
+            <span className="font-mono font-semibold">NIT {client.nit}</span>
             <span>•</span>
-            <span className="font-medium">{client.type}</span>
+            <span className="font-medium px-2 py-0.5 rounded-md bg-[#f1f5f9] text-[#334155]">
+              {client.type}
+            </span>
             <span>•</span>
-            {getHealthBadge()}
+            <span
+              className={`inline-flex items-center gap-1.5 font-bold ${
+                client.healthStatus === 'Saludable' ? 'text-[#16a34a]' : 'text-[#d97706]'
+              }`}
+            >
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  client.healthStatus === 'Saludable' ? 'bg-[#10b981]' : 'bg-[#f59e0b]'
+                }`}
+              />
+              {client.healthStatus}
+            </span>
           </div>
         </div>
 
         {/* Action Buttons Toolbar */}
         <div className="flex flex-wrap items-center gap-2.5 self-start md:self-auto">
-          {/* Portal Status Pill */}
-          <span
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border ${
-              portalActive
-                ? 'bg-[#ecfdf5] text-[#065f46] border-[#a7f3d0]'
-                : 'bg-[#f1f5f9] text-[#64748b] border-[#e2e8f0]'
-            }`}
+          {/* NUEVO PROYECTO (Primary CTA) */}
+          <button
+            onClick={onOpenNewProject}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold shadow-xs transition-all cursor-pointer"
           >
-            <span
-              className={`w-2 h-2 rounded-full ${
-                portalActive ? 'bg-[#10b981]' : 'bg-[#94a3b8]'
-              }`}
-            />
-            <span>{portalActive ? 'Portal activo' : 'Portal inactivo'}</span>
-          </span>
+            <Plus className="w-4 h-4" />
+            <span>Nuevo proyecto</span>
+          </button>
 
-          {/* Activate/Deactivate Portal Button */}
+          {/* Portal Toggle Button */}
           <button
             onClick={handleTogglePortal}
-            className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold text-white shadow-xs transition-all cursor-pointer ${
+            className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
               portalActive
-                ? 'bg-[#334155] hover:bg-[#1e293b]'
-                : 'bg-[#501f92] hover:bg-[#381566]'
+                ? 'bg-[#ecfdf5] hover:bg-[#d1fae5] text-[#065f46] border-[#a7f3d0]'
+                : 'bg-[#f8fafc] hover:bg-[#f1f5f9] text-[#64748b] border-[#e2e8f0]'
             }`}
           >
             <Globe className="w-3.5 h-3.5" />
-            <span>{portalActive ? 'Gestionar portal' : 'Activar portal'}</span>
+            <span>{portalActive ? 'Portal Habilitado' : 'Habilitar Portal'}</span>
           </button>
 
           {/* Edit Client */}
           <button
             onClick={() => {
               if (onEditClient) onEditClient(client);
-              showToast(`Editar información de ${client.name}`);
             }}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white hover:bg-[#f8fafc] text-[#334155] border border-[#e2e8f0] text-xs font-bold shadow-2xs transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-[#f8fafc] text-[#334155] border border-[#e2e8f0] text-xs font-bold shadow-2xs transition-colors cursor-pointer"
           >
             <Edit3 className="w-3.5 h-3.5 text-[#64748b]" />
             <span>Editar</span>
@@ -170,7 +208,7 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
           {/* Volver */}
           <button
             onClick={onBack}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white hover:bg-[#f8fafc] text-[#334155] border border-[#e2e8f0] text-xs font-bold shadow-2xs transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-[#f8fafc] text-[#334155] border border-[#e2e8f0] text-xs font-bold shadow-2xs transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-3.5 h-3.5 text-[#64748b]" />
             <span>Volver</span>
@@ -219,7 +257,7 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
             {client.billedCOP}
           </div>
           <p className="text-xs text-[#64748b]">
-            {client.billedInvoicesCount} facturas (COP)
+            {client.billedInvoicesCount} facturas emitidas
           </p>
         </div>
 
@@ -232,8 +270,93 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
             {client.receivableCOP}
           </div>
           <p className="text-xs text-[#64748b]">
-            {client.receivableStatus}
+            Estado: <strong className="text-[#0f172a]">{client.receivableStatus}</strong>
           </p>
+        </div>
+      </div>
+
+      {/* HEALTH DIAGNOSTIC EXPLANATION SECTION (SALUD DEL CLIENTE EXPLICADA) */}
+      <div className="p-5 rounded-2xl bg-white border border-[#e2e8f0] shadow-xs space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-[#501f92]" />
+            <h3 className="font-bold text-sm text-[#0f172a]">Diagnóstico de Salud de Cuenta</h3>
+          </div>
+          <span className="text-xs text-[#64748b]">Desglose de 4 dimensiones operativas</span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+          {/* Dimension 1: Rentabilidad */}
+          <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-[#334155]">{healthDims.rentabilidad.title}</span>
+              <span
+                className={`w-2.5 h-2.5 rounded-full ${
+                  healthDims.rentabilidad.status === 'verde'
+                    ? 'bg-[#10b981]'
+                    : healthDims.rentabilidad.status === 'amarillo'
+                    ? 'bg-[#f59e0b]'
+                    : 'bg-[#ef4444]'
+                }`}
+              />
+            </div>
+            <p className="text-[11px] text-[#64748b] leading-relaxed">
+              {healthDims.rentabilidad.note}
+            </p>
+          </div>
+
+          {/* Dimension 2: Cartera */}
+          <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-[#334155]">{healthDims.cartera.title}</span>
+              <span
+                className={`w-2.5 h-2.5 rounded-full ${
+                  healthDims.cartera.status === 'verde'
+                    ? 'bg-[#10b981]'
+                    : 'bg-[#ef4444]'
+                }`}
+              />
+            </div>
+            <p className="text-[11px] text-[#64748b] leading-relaxed">
+              {healthDims.cartera.note}
+            </p>
+          </div>
+
+          {/* Dimension 3: Cumplimiento */}
+          <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-[#334155]">{healthDims.cumplimiento.title}</span>
+              <span
+                className={`w-2.5 h-2.5 rounded-full ${
+                  healthDims.cumplimiento.status === 'verde'
+                    ? 'bg-[#10b981]'
+                    : healthDims.cumplimiento.status === 'amarillo'
+                    ? 'bg-[#f59e0b]'
+                    : 'bg-[#ef4444]'
+                }`}
+              />
+            </div>
+            <p className="text-[11px] text-[#64748b] leading-relaxed">
+              {healthDims.cumplimiento.note}
+            </p>
+          </div>
+
+          {/* Dimension 4: Relación */}
+          <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-[#334155]">{healthDims.relacion.title}</span>
+              <span
+                className={`w-2.5 h-2.5 rounded-full ${
+                  healthDims.relacion.status === 'verde'
+                    ? 'bg-[#10b981]'
+                    : 'bg-[#f59e0b]'
+                }`}
+              />
+            </div>
+            <p className="text-[11px] text-[#64748b] leading-relaxed">
+              {healthDims.relacion.note}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -242,9 +365,12 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
         {/* Column 1: Comportamiento Radar Chart (5 cols) */}
         <div className="lg:col-span-5 p-6 rounded-2xl bg-white border border-[#e2e8f0] shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="font-bold text-base text-[#0f172a]">Comportamiento</h3>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#f2ecfb] text-[#501f92]">
-              Spider Matrix
+            <div>
+              <h3 className="font-bold text-base text-[#0f172a]">Modelo de Salud de Cuenta</h3>
+              <p className="text-[11px] text-[#64748b]">4 Dimensiones clave</p>
+            </div>
+            <span className="text-xs font-extrabold px-2.5 py-1 rounded-full bg-[#f2ecfb] text-[#501f92] border border-[#8a4dff]/20">
+              Salud: {Math.round((client.behavior.rentabilidad + (client.behavior.cartera ?? 90) + client.behavior.cumplimiento + (client.behavior.relacion ?? client.behavior.recurrencia ?? 80)) / 4)}/100
             </span>
           </div>
 
@@ -254,7 +380,7 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
 
           <div className="text-center pt-2 border-t border-[#f1f5f9]">
             <span className="text-[11px] text-[#64748b]">
-              Evaluación de rentabilidad, cumplimiento y recurrencia operacional
+              Rentabilidad · Cartera · Cumplimiento · Recurrencia / Relación
             </span>
           </div>
         </div>
@@ -267,7 +393,7 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
 
           <div className="space-y-3.5 text-xs">
             <div className="flex justify-between items-center py-1">
-              <span className="text-[#64748b] font-medium">Contacto</span>
+              <span className="text-[#64748b] font-medium">Contacto Principal</span>
               <span className="text-[#0f172a] font-bold">{client.commercialInfo.contactName}</span>
             </div>
 
@@ -282,7 +408,7 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
             </div>
 
             <div className="flex justify-between items-center py-1 border-t border-[#f8fafc]">
-              <span className="text-[#64748b] font-medium">Marcas</span>
+              <span className="text-[#64748b] font-medium">Marcas Activas</span>
               <span className="text-[#0f172a] font-mono font-bold">
                 {client.commercialInfo.brands.length}
               </span>
@@ -335,12 +461,22 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
       {/* Bottom Section: Histórico de proyectos */}
       <div className="p-6 rounded-2xl bg-white border border-[#e2e8f0] shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-[#f1f5f9]">
-          <h3 className="font-bold text-base text-[#0f172a]">
-            Histórico de proyectos ({client.projectsHistory.length})
-          </h3>
-          <span className="text-xs text-[#64748b]">
-            Presupuestos, rentabilidad y semáforo de ejecución en tiempo real
-          </span>
+          <div>
+            <h3 className="font-bold text-base text-[#0f172a]">
+              Proyectos de la Cuenta ({client.projectsHistory.length})
+            </h3>
+            <span className="text-xs text-[#64748b]">
+              Presupuestos, rentabilidad y semáforo de ejecución en tiempo real
+            </span>
+          </div>
+
+          <button
+            onClick={onOpenNewProject}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#f8fafc] hover:bg-[#501f92] text-[#501f92] hover:text-white border border-[#e2e8f0] text-xs font-bold transition-all cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>+ Crear Proyecto</span>
+          </button>
         </div>
 
         {/* Projects Table */}

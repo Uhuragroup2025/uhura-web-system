@@ -26,6 +26,7 @@ interface BoardViewProps {
   onStartTimer?: (task: TaskItem) => void;
   onPauseResumeTimer?: () => void;
   onOpenTaskDetail?: (task: TaskItem) => void;
+  isProjectDetail?: boolean;
 }
 
 export const BoardView: React.FC<BoardViewProps> = ({
@@ -35,10 +36,12 @@ export const BoardView: React.FC<BoardViewProps> = ({
   activeTimer,
   onStartTimer,
   onPauseResumeTimer,
-  onOpenTaskDetail
+  onOpenTaskDetail,
+  isProjectDetail = false
 }) => {
-  // Filter by project nature, blocked state or archive
-  const [filterType, setFilterType] = useState<'all' | 'fee_monthly' | 'fixed_milestones' | 'blocked' | 'archived'>('all');
+  // Status filter inside project detail vs global type filter
+  const [detailStatusFilter, setDetailStatusFilter] = useState<'all' | TaskStatus>('all');
+  const [filterType, setFilterType] = useState<'all' | 'fee_monthly' | 'fixed_milestones' | 'internal' | 'blocked' | 'archived'>('all');
   const [selectedProject, setSelectedProject] = useState<string>('all');
 
   // Extract unique project list
@@ -49,6 +52,12 @@ export const BoardView: React.FC<BoardViewProps> = ({
   const archivedCount = tasks.filter((t) => t.isArchived).length;
 
   const filteredTasks = tasks.filter((t) => {
+    if (isProjectDetail) {
+      if (t.isArchived) return false;
+      if (detailStatusFilter !== 'all' && t.status !== detailStatusFilter) return false;
+      return true;
+    }
+
     // Handle archive filter
     if (filterType === 'archived') {
       if (!t.isArchived) return false;
@@ -58,17 +67,22 @@ export const BoardView: React.FC<BoardViewProps> = ({
 
     if (filterType === 'fee_monthly' && t.projectType !== 'fee_monthly') return false;
     if (filterType === 'fixed_milestones' && t.projectType !== 'fixed_milestones') return false;
+    if (filterType === 'internal' && t.categoryType !== 'internal' && t.projectType !== 'internal') return false;
     if (filterType === 'blocked' && !t.blockerInfo?.isBlocked) return false;
     if (selectedProject !== 'all' && (t.projectName !== selectedProject && t.board !== selectedProject)) return false;
     return true;
   });
 
-  const columns: { id: TaskStatus; title: string; badgeBg: string; count: number }[] = [
-    { id: 'To Do', title: 'Por Hacer', badgeBg: 'bg-[#f3f4f6] text-[#4b5563]', count: filteredTasks.filter(t => t.status === 'To Do').length },
-    { id: 'In Progress', title: 'En Progreso', badgeBg: 'bg-[#f2ecfb] text-[#501f92]', count: filteredTasks.filter(t => t.status === 'In Progress').length },
-    { id: 'Review', title: 'En Revisión (Lead)', badgeBg: 'bg-[#fef3c7] text-[#92400e]', count: filteredTasks.filter(t => t.status === 'Review').length },
-    { id: 'Done', title: 'Completadas', badgeBg: 'bg-[#ecfdf5] text-[#166534]', count: filteredTasks.filter(t => t.status === 'Done').length },
+  const allColumns: { id: TaskStatus; title: string; badgeBg: string; count: number }[] = [
+    { id: 'To Do', title: 'Por Hacer', badgeBg: 'bg-[#f3f4f6] text-[#4b5563]', count: tasks.filter(t => !t.isArchived && t.status === 'To Do').length },
+    { id: 'In Progress', title: 'En Proceso', badgeBg: 'bg-[#f2ecfb] text-[#501f92]', count: tasks.filter(t => !t.isArchived && t.status === 'In Progress').length },
+    { id: 'Review', title: 'En Revisión', badgeBg: 'bg-[#fef3c7] text-[#92400e]', count: tasks.filter(t => !t.isArchived && t.status === 'Review').length },
+    { id: 'Done', title: 'Completadas', badgeBg: 'bg-[#ecfdf5] text-[#166534]', count: tasks.filter(t => !t.isArchived && t.status === 'Done').length },
   ];
+
+  const columns = isProjectDetail && detailStatusFilter !== 'all'
+    ? allColumns.filter(c => c.id === detailStatusFilter)
+    : allColumns;
 
   const blockedCount = tasks.filter((t) => t.blockerInfo?.isBlocked).length;
   const feesCount = tasks.filter((t) => t.projectType === 'fee_monthly').length;
@@ -76,125 +90,193 @@ export const BoardView: React.FC<BoardViewProps> = ({
 
   return (
     <div className="space-y-4 animate-in fade-in duration-150">
-      {/* Top Filter Bar: All vs Fees vs Fixed Projects vs Blocked Standby */}
-      <div className="flex flex-wrap items-center justify-between gap-2 p-2 bg-white rounded-2xl border border-[#e2e8f0] shadow-2xs">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <button
-            onClick={() => setFilterType('all')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-              filterType === 'all'
-                ? 'bg-[#f1f5f9] text-[#0f172a] border border-[#cbd5e1] shadow-2xs'
-                : 'text-[#64748b] hover:bg-[#f8fafc] hover:text-[#0f172a]'
-            }`}
-          >
-            <span>Todas las Tareas</span>
-            <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
-              filterType === 'all' ? 'bg-[#e2e8f0] text-[#0f172a]' : 'bg-[#f1f5f9] text-[#64748b]'
-            }`}>
-              {tasks.length}
-            </span>
-          </button>
-
-          <button
-            onClick={() => setFilterType('fee_monthly')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-              filterType === 'fee_monthly'
-                ? 'bg-[#f1f5f9] text-[#0f172a] border border-[#cbd5e1] shadow-2xs'
-                : 'text-[#64748b] hover:bg-[#f8fafc] hover:text-[#0f172a]'
-            }`}
-          >
-            <Repeat className="w-3 h-3 text-[#501f92]" />
-            <span>Fees Mensuales</span>
-            <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
-              filterType === 'fee_monthly' ? 'bg-[#e2e8f0] text-[#0f172a]' : 'bg-[#f1f5f9] text-[#64748b]'
-            }`}>
-              {feesCount}
-            </span>
-          </button>
-
-          <button
-            onClick={() => setFilterType('fixed_milestones')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-              filterType === 'fixed_milestones'
-                ? 'bg-[#f1f5f9] text-[#0f172a] border border-[#cbd5e1] shadow-2xs'
-                : 'text-[#64748b] hover:bg-[#f8fafc] hover:text-[#0f172a]'
-            }`}
-          >
-            <Layers className="w-3 h-3 text-[#2563eb]" />
-            <span>Proyectos Web & Backlog</span>
-            <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
-              filterType === 'fixed_milestones' ? 'bg-[#e2e8f0] text-[#0f172a]' : 'bg-[#f1f5f9] text-[#64748b]'
-            }`}>
-              {devCount}
-            </span>
-          </button>
-
-          {blockedCount > 0 && (
+      {/* Top Filter Bar: Distinct and clean for Project Detail vs Global Board */}
+      {isProjectDetail ? (
+        <div className="flex flex-wrap items-center justify-between gap-2 p-2 bg-white rounded-2xl border border-[#e2e8f0] shadow-2xs">
+          {/* Status Quick-Filter for Project Detail: Todas | Por hacer | En proceso | En revisión | Completadas */}
+          <div className="flex flex-wrap items-center gap-1">
             <button
-              onClick={() => setFilterType('blocked')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-                filterType === 'blocked'
-                  ? 'bg-[#fee2e2] text-[#991b1b] border border-[#fca5a5] shadow-2xs'
-                  : 'text-[#64748b] hover:bg-[#fef2f2] hover:text-[#991b1b]'
-              }`}
-            >
-              <AlertTriangle className="w-3 h-3 text-[#ef4444]" />
-              <span>En Standby / Bloqueadas</span>
-              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
-                filterType === 'blocked' ? 'bg-[#fca5a5] text-[#7f1d1d]' : 'bg-[#fee2e2] text-[#991b1b]'
-              }`}>
-                {blockedCount}
-              </span>
-            </button>
-          )}
-
-          {archivedCount > 0 && (
-            <button
-              onClick={() => setFilterType('archived')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-                filterType === 'archived'
-                  ? 'bg-[#f2ecfb] text-[#501f92] border border-[#8a4dff]/40 shadow-2xs'
+              onClick={() => setDetailStatusFilter('all')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                detailStatusFilter === 'all'
+                  ? 'bg-[#501f92] text-white shadow-2xs'
                   : 'text-[#64748b] hover:bg-[#f8fafc] hover:text-[#0f172a]'
               }`}
             >
-              <Archive className="w-3 h-3 text-[#8a4dff]" />
-              <span>Archivadas</span>
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-[#f2ecfb] text-[#501f92]">
-                {archivedCount}
-              </span>
+              Todas ({tasks.filter(t => !t.isArchived).length})
             </button>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          {/* Project Filter Dropdown */}
-          <div className="flex items-center gap-1 bg-[#f8fafc] px-2.5 py-1 rounded-xl border border-[#e2e8f0]">
-            <Filter className="w-3.5 h-3.5 text-[#501f92]" />
-            <select
-              value={selectedProject}
-              onChange={(e) => setSelectedProject(e.target.value)}
-              className="bg-transparent text-xs font-semibold text-[#0f172a] focus:outline-none cursor-pointer pr-1"
+            <button
+              onClick={() => setDetailStatusFilter('To Do')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                detailStatusFilter === 'To Do'
+                  ? 'bg-[#501f92] text-white shadow-2xs'
+                  : 'text-[#64748b] hover:bg-[#f8fafc] hover:text-[#0f172a]'
+              }`}
             >
-              <option value="all">Todos los Proyectos ({tasks.length})</option>
-              {availableProjects.map((proj) => (
-                <option key={proj} value={proj}>
-                  {proj}
-                </option>
-              ))}
-            </select>
+              Por hacer ({tasks.filter(t => !t.isArchived && t.status === 'To Do').length})
+            </button>
+            <button
+              onClick={() => setDetailStatusFilter('In Progress')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                detailStatusFilter === 'In Progress'
+                  ? 'bg-[#501f92] text-white shadow-2xs'
+                  : 'text-[#64748b] hover:bg-[#f8fafc] hover:text-[#0f172a]'
+              }`}
+            >
+              En proceso ({tasks.filter(t => !t.isArchived && t.status === 'In Progress').length})
+            </button>
+            <button
+              onClick={() => setDetailStatusFilter('Review')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                detailStatusFilter === 'Review'
+                  ? 'bg-[#501f92] text-white shadow-2xs'
+                  : 'text-[#64748b] hover:bg-[#f8fafc] hover:text-[#0f172a]'
+              }`}
+            >
+              En revisión ({tasks.filter(t => !t.isArchived && t.status === 'Review').length})
+            </button>
+            <button
+              onClick={() => setDetailStatusFilter('Done')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                detailStatusFilter === 'Done'
+                  ? 'bg-[#501f92] text-white shadow-2xs'
+                  : 'text-[#64748b] hover:bg-[#f8fafc] hover:text-[#0f172a]'
+              }`}
+            >
+              Completadas ({tasks.filter(t => !t.isArchived && t.status === 'Done').length})
+            </button>
           </div>
 
           {onOpenNewTaskModal && (
             <button
               onClick={onOpenNewTaskModal}
-              className="px-3.5 py-1.5 rounded-xl border border-[#e2e8f0] bg-white hover:bg-[#f8fafc] hover:border-[#cbd5e1] text-[#0f172a] text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+              className="px-3.5 py-1.5 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
             >
-              <Plus className="w-3.5 h-3.5 text-[#501f92]" />
-              <span>Nueva Tarea</span>
+              <Plus className="w-3.5 h-3.5" />
+              <span>Crear tarea</span>
             </button>
           )}
         </div>
-      </div>
+      ) : (
+        <div className="flex flex-wrap items-center justify-between gap-2 p-2 bg-white rounded-2xl border border-[#e2e8f0] shadow-2xs">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button
+              onClick={() => setFilterType('all')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                filterType === 'all'
+                  ? 'bg-[#f1f5f9] text-[#0f172a] border border-[#cbd5e1] shadow-2xs'
+                  : 'text-[#64748b] hover:bg-[#f8fafc] hover:text-[#0f172a]'
+              }`}
+            >
+              <span>Todas las tareas</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                filterType === 'all' ? 'bg-[#e2e8f0] text-[#0f172a]' : 'bg-[#f1f5f9] text-[#64748b]'
+              }`}>
+                {tasks.length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setFilterType('fee_monthly')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                filterType === 'fee_monthly'
+                  ? 'bg-[#f1f5f9] text-[#0f172a] border border-[#cbd5e1] shadow-2xs'
+                  : 'text-[#64748b] hover:bg-[#f8fafc] hover:text-[#0f172a]'
+              }`}
+            >
+              <Repeat className="w-3 h-3 text-[#501f92]" />
+              <span>Fee mensual</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                filterType === 'fee_monthly' ? 'bg-[#e2e8f0] text-[#0f172a]' : 'bg-[#f1f5f9] text-[#64748b]'
+              }`}>
+                {feesCount}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setFilterType('fixed_milestones')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                filterType === 'fixed_milestones'
+                  ? 'bg-[#f1f5f9] text-[#0f172a] border border-[#cbd5e1] shadow-2xs'
+                  : 'text-[#64748b] hover:bg-[#f8fafc] hover:text-[#0f172a]'
+              }`}
+            >
+              <Layers className="w-3 h-3 text-[#2563eb]" />
+              <span>Proyecto único</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                filterType === 'fixed_milestones' ? 'bg-[#e2e8f0] text-[#0f172a]' : 'bg-[#f1f5f9] text-[#64748b]'
+              }`}>
+                {devCount}
+              </span>
+            </button>
+
+            {blockedCount > 0 && (
+              <button
+                onClick={() => setFilterType('blocked')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  filterType === 'blocked'
+                    ? 'bg-[#fee2e2] text-[#991b1b] border border-[#fca5a5] shadow-2xs'
+                    : 'text-[#64748b] hover:bg-[#fef2f2] hover:text-[#991b1b]'
+                }`}
+              >
+                <AlertTriangle className="w-3 h-3 text-[#ef4444]" />
+                <span>En Standby / Bloqueadas</span>
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                  filterType === 'blocked' ? 'bg-[#fca5a5] text-[#7f1d1d]' : 'bg-[#fee2e2] text-[#991b1b]'
+                }`}>
+                  {blockedCount}
+                </span>
+              </button>
+            )}
+
+            {archivedCount > 0 && (
+              <button
+                onClick={() => setFilterType('archived')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  filterType === 'archived'
+                    ? 'bg-[#f2ecfb] text-[#501f92] border border-[#8a4dff]/40 shadow-2xs'
+                    : 'text-[#64748b] hover:bg-[#f8fafc] hover:text-[#0f172a]'
+                }`}
+              >
+                <Archive className="w-3 h-3 text-[#8a4dff]" />
+                <span>Archivadas</span>
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-[#f2ecfb] text-[#501f92]">
+                  {archivedCount}
+                </span>
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* Project Filter Dropdown */}
+            <div className="flex items-center gap-1 bg-[#f8fafc] px-2.5 py-1 rounded-xl border border-[#e2e8f0]">
+              <Filter className="w-3.5 h-3.5 text-[#501f92]" />
+              <select
+                value={selectedProject}
+                onChange={(e) => setSelectedProject(e.target.value)}
+                className="bg-transparent text-xs font-semibold text-[#0f172a] focus:outline-none cursor-pointer pr-1"
+              >
+                <option value="all">Todos los proyectos ({tasks.length})</option>
+                {availableProjects.map((proj) => (
+                  <option key={proj} value={proj}>
+                    {proj}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {onOpenNewTaskModal && (
+              <button
+                onClick={onOpenNewTaskModal}
+                className="px-3.5 py-1.5 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Crear tarea</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Kanban Columns Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-start">
@@ -270,7 +352,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
                           </span>
                         </div>
 
-                        {/* 2. Nature Badges: Fee Category OR Project Phase */}
+                        {/* 2. Nature Badges: Fee Category OR Project Phase / Frente */}
                         <div className="flex items-center gap-1.5 flex-wrap">
                           {task.projectType === 'fee_monthly' && (
                             <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#f2ecfb] text-[#501f92] border border-[#8a4dff]/20">
@@ -279,10 +361,11 @@ export const BoardView: React.FC<BoardViewProps> = ({
                             </span>
                           )}
 
-                          {task.projectType === 'fixed_milestones' && task.phase && (
-                            <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#eff6ff] text-[#1d4ed8] border border-[#bfdbfe]">
-                              <Layers className="w-2.5 h-2.5" />
-                              <span>{task.phase}</span>
+                          {(task.phase || task.fase || task.frente) && (
+                            <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-[#f8fafc] text-[#475569] border border-[#e2e8f0]">
+                              {(task.phase || task.fase) && <span>{task.phase || task.fase}</span>}
+                              {(task.phase || task.fase) && task.frente && <span className="text-[#cbd5e1]">·</span>}
+                              {task.frente && <span className="text-[#501f92]">{task.frente}</span>}
                             </span>
                           )}
 
