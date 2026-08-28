@@ -52,6 +52,7 @@ export interface ProjectSummaryItem {
   leadAvatarBg: string;
   projectType: ProjectType;
   serviceBase: string;
+  areas?: string[];
   budgetedHours: number;
   soldHours?: number;
   soldValueCOP?: number;
@@ -60,7 +61,7 @@ export interface ProjectSummaryItem {
   endDate?: string;
   brief?: string;
   teamMembers?: { name: string; role?: string; avatarBg: string; initials?: string }[];
-  status: 'Activo' | 'En Pausa' | 'Cerrado' | 'Planificación';
+  status: 'Activo' | 'En Pausa' | 'Cerrado' | 'Planificación' | 'Archivado';
   healthStatus: 'verde' | 'amarillo' | 'rojo';
   healthNote?: string;
   hasPhasesAndBacklog?: boolean;
@@ -215,6 +216,7 @@ export interface TaskItem {
   status: TaskStatus;
   priority: TaskPriority;
   completed: boolean;
+  completedAt?: string;
   isArchived?: boolean;
   // Rentabilidad y tiempos
   budgetedHours: number;
@@ -399,6 +401,7 @@ export interface ClientCommercialInfo {
   contactPhone?: string;
   clientSince: string;
   brands: string[];
+  tier?: string;
 }
 
 export type ClientType = 'Fee mensual' | 'Proyecto único' | 'Interno / No facturable' | 'Mixto' | 'Fee Recurrente' | 'Proyecto';

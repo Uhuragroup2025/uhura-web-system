@@ -42,7 +42,10 @@ import {
   Table as TableIcon,
   ArrowUpDown,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  MoreVertical,
+  Archive,
+  Trash2
 } from 'lucide-react';
 
 interface ProjectsViewProps {
@@ -63,6 +66,8 @@ interface ProjectsViewProps {
   onUpdateProject?: (updatedProject: ProjectSummaryItem) => void;
   onAddTaskToProject?: (newTask: Partial<TaskItem>) => void;
   onImportTasksToProject?: (importedTasks: Partial<TaskItem>[]) => void;
+  onArchiveProject?: (projectId: string) => void;
+  onDeleteProject?: (projectId: string) => void;
 }
 
 type ProjectDetailTab = 'tasks' | 'backlog' | 'budget' | 'team' | 'activity';
@@ -85,9 +90,13 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   onNavigateToClient,
   onUpdateProject,
   onAddTaskToProject,
-  onImportTasksToProject
+  onImportTasksToProject,
+  onArchiveProject,
+  onDeleteProject
 }) => {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(initialSelectedProjectId);
+  const [activeProjectMenu, setActiveProjectMenu] = useState<string | null>(null);
+  const [projectPendingDelete, setProjectPendingDelete] = useState<ProjectSummaryItem | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'fee_monthly' | 'fixed_milestones' | 'risk'>('all');
   const [filterClient, setFilterClient] = useState<string>('all');
@@ -395,11 +404,14 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
     });
   }, [currentProject]);
 
-  const toggleCollapseFrente = (frenteName: string) => {
-    setCollapsedFrentes((prev) => ({
-      ...prev,
-      [frenteName]: !prev[frenteName]
-    }));
+  const toggleCollapseFrente = (frenteName: string, defaultCollapsed: boolean = false) => {
+    setCollapsedFrentes((prev) => {
+      const isCurrentlyCollapsed = prev[frenteName] !== undefined ? prev[frenteName] : defaultCollapsed;
+      return {
+        ...prev,
+        [frenteName]: !isCurrentlyCollapsed
+      };
+    });
   };
 
   const toggleCollapsePhase = (phaseName: string) => {
@@ -480,8 +492,8 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
     return (
       <div className="space-y-5 animate-in fade-in duration-200">
-        {/* Navigation Breadcrumb */}
-        <div className="flex items-center justify-between">
+        {/* Navigation Breadcrumb & Project Actions */}
+        <div className="flex items-center justify-between gap-2">
           <button
             onClick={handleBackToPortfolio}
             className="inline-flex items-center gap-2 text-xs font-bold text-[#501f92] hover:text-[#381566] cursor-pointer bg-white px-3 py-1.5 rounded-xl border border-[#e2e8f0] shadow-2xs hover:bg-[#f8fafc] transition-colors"
@@ -490,15 +502,56 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             <span>Volver al Portafolio</span>
           </button>
 
-          {onOpenNewTaskModalWithProject && (
-            <button
-              onClick={() => onOpenNewTaskModalWithProject(currentProject.name, currentProject.clientName)}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Nueva Tarea</span>
-            </button>
-          )}
+          <div className="flex items-center gap-2 relative">
+            {onOpenNewTaskModalWithProject && (
+              <button
+                onClick={() => onOpenNewTaskModalWithProject(currentProject.name, currentProject.clientName)}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Nueva Tarea</span>
+              </button>
+            )}
+
+            {/* Project Actions Menu (Archive & Delete) */}
+            <div className="relative">
+              <button
+                onClick={() => setActiveProjectMenu(activeProjectMenu === currentProject.id ? null : currentProject.id)}
+                className="p-2 rounded-xl bg-white hover:bg-[#f8fafc] text-[#64748b] hover:text-[#0f172a] border border-[#e2e8f0] transition-colors cursor-pointer"
+                title="Opciones del proyecto"
+              >
+                <MoreVertical className="w-4 h-4" />
+              </button>
+
+              {activeProjectMenu === currentProject.id && (
+                <div className="absolute right-0 top-full mt-1.5 w-48 bg-white rounded-2xl shadow-xl border border-[#e2e8f0] py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+                  <button
+                    onClick={() => {
+                      if (onArchiveProject) {
+                        onArchiveProject(currentProject.id);
+                      }
+                      setActiveProjectMenu(null);
+                    }}
+                    className="w-full px-3.5 py-2 text-left text-xs font-semibold text-[#334155] hover:bg-[#f8fafc] flex items-center gap-2 cursor-pointer transition-colors"
+                  >
+                    <Archive className="w-3.5 h-3.5 text-[#501f92]" />
+                    <span>{currentProject.status === 'Archivado' ? 'Desarchivar proyecto' : 'Archivar proyecto'}</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setProjectPendingDelete(currentProject);
+                      setActiveProjectMenu(null);
+                    }}
+                    className="w-full px-3.5 py-2 text-left text-xs font-semibold text-[#dc2626] hover:bg-[#fee2e2]/40 flex items-center gap-2 cursor-pointer transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-[#dc2626]" />
+                    <span>Eliminar proyecto</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Project Header Banner */}
@@ -539,7 +592,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
               </p>
             </div>
 
-            {/* Health Box (Clean, without verbose frentes list) */}
+            {/* Health Box */}
             <div className="flex items-center gap-3 bg-[#f8fafc] p-3 rounded-2xl border border-[#e2e8f0] shrink-0">
               <div className="text-right">
                 <span className="text-[10px] font-bold uppercase text-[#64748b] block">Salud</span>
@@ -578,32 +631,32 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             </div>
           </div>
 
-          {/* Quick 4 KPIs Bar */}
+          {/* Quick 4 KPIs Bar (Compact, horizontal strip) */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-[#f1f5f9] text-xs">
-            {/* 1. Horas cotizadas */}
-            <div className="p-3 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
-              <span className="text-[10px] uppercase font-bold text-[#64748b] block">Horas cotizadas</span>
-              <span className="text-base font-extrabold text-[#501f92] font-mono">
+            {/* 1. Presupuesto */}
+            <div className="p-3 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] flex flex-col justify-between">
+              <span className="text-[10px] uppercase font-bold text-[#64748b] block">Presupuesto</span>
+              <span className="text-base font-extrabold text-[#0f172a] font-mono mt-0.5">
                 {currentProject.budgetedHours % 1 === 0 ? currentProject.budgetedHours : currentProject.budgetedHours.toFixed(1)}h
               </span>
-              <span className="text-[10px] text-[#64748b] block mt-0.5">
+              <span className="text-[10px] text-[#64748b] block mt-0.5 truncate">
                 {currentProject.tasksAssignedHours && currentProject.budgetedHours > currentProject.tasksAssignedHours
-                  ? `${currentProject.tasksAssignedHours}h tareas · ${(currentProject.budgetedHours - currentProject.tasksAssignedHours).toFixed(0)}h disp.`
-                  : 'Total cotizado'}
+                  ? `${currentProject.tasksAssignedHours}h asignadas · ${(currentProject.budgetedHours - currentProject.tasksAssignedHours).toFixed(0)}h disp.`
+                  : 'Bolsa cotizada'}
               </span>
             </div>
 
             {/* 2. Horas ejecutadas */}
-            <div className="p-3 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
-              <span className="text-[10px] uppercase font-bold text-[#64748b] block">Horas ejecutadas</span>
-              <span className="text-base font-extrabold text-[#0f172a] font-mono">
-                {currentProject.consumedHours.toFixed(0)}h{' '}
-                <span className="text-xs font-normal text-[#64748b]">· {percentHours}%</span>
+            <div className="p-3 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] flex flex-col justify-between">
+              <span className="text-[10px] uppercase font-bold text-[#64748b] block">Ejecución</span>
+              <span className="text-base font-extrabold text-[#0f172a] font-mono mt-0.5">
+                {currentProject.consumedHours.toFixed(1)}h{' '}
+                <span className="text-xs font-normal text-[#64748b]">({percentHours}%)</span>
               </span>
               <div className="w-full h-1.5 bg-[#e2e8f0] rounded-full overflow-hidden mt-1.5">
                 <div
                   style={{ width: `${Math.min(percentHours, 100)}%` }}
-                  className={`h-full rounded-full ${
+                  className={`h-full rounded-full transition-all ${
                     percentHours > 100
                       ? 'bg-[#ef4444]'
                       : percentHours > 85
@@ -614,27 +667,37 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
               </div>
             </div>
 
-            {/* 3. Tareas */}
-            <div className="p-3 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
-              <span className="text-[10px] uppercase font-bold text-[#64748b] block">Tareas</span>
-              <span className="text-base font-extrabold text-[#0f172a]">
+            {/* 3. Tareas / Entregables */}
+            <div className="p-3 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] flex flex-col justify-between">
+              <span className="text-[10px] uppercase font-bold text-[#64748b] block">Entregables</span>
+              <span className="text-base font-extrabold text-[#0f172a] mt-0.5">
                 {currentProject.completedTasksCount}/{currentProject.totalTasksCount}{' '}
                 <span className="text-xs font-normal text-[#64748b]">
-                  · {currentProject.totalTasksCount > 0 ? Math.round((currentProject.completedTasksCount / currentProject.totalTasksCount) * 100) : 0}%
+                  ({currentProject.totalTasksCount > 0 ? Math.round((currentProject.completedTasksCount / currentProject.totalTasksCount) * 100) : 0}%)
                 </span>
               </span>
-              <span className="text-[10px] text-[#16a34a] font-bold block mt-0.5">
-                {currentProject.completedTasksCount} listas de {currentProject.totalTasksCount}
+              <span className="text-[10px] text-[#64748b] block mt-0.5">
+                {currentProject.totalTasksCount - currentProject.completedTasksCount} pendientes
               </span>
             </div>
 
             {/* 4. Cronograma */}
-            <div className="p-3 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
+            <div className="p-3 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] flex flex-col justify-between">
               <span className="text-[10px] uppercase font-bold text-[#64748b] block">Cronograma</span>
-              <span className="text-xs font-bold text-[#0f172a] block truncate">
+              <span className="text-xs font-bold text-[#0f172a] block truncate mt-0.5">
                 {currentProject.startDate || '15 Ago'} → {currentProject.endDate || '31 Dic'}
               </span>
-              <span className="text-[10px] text-[#64748b] block mt-0.5">{currentProject.status}</span>
+              <div className="mt-1">
+                <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                  currentProject.status === 'Archivado'
+                    ? 'bg-[#f1f5f9] text-[#64748b]'
+                    : currentProject.status === 'En Pausa'
+                    ? 'bg-[#fffbeb] text-[#b45309]'
+                    : 'bg-[#ecfdf5] text-[#166534]'
+                }`}>
+                  {currentProject.status || 'Activo'}
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -776,8 +839,11 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                     No hay tareas con frentes creadas aún.
                   </div>
                 ) : (
-                  frentesBreakdown.map((frenteGroup) => {
-                    const isCollapsed = collapsedFrentes[frenteGroup.name];
+                  frentesBreakdown.map((frenteGroup, index) => {
+                    const isDefaultCollapsed = index !== 0;
+                    const isCollapsed = collapsedFrentes[frenteGroup.name] !== undefined
+                      ? collapsedFrentes[frenteGroup.name]
+                      : isDefaultCollapsed;
                     const frentePercent = frenteGroup.budgetedHours > 0
                       ? Math.round((frenteGroup.consumedHours / frenteGroup.budgetedHours) * 100)
                       : 0;
@@ -790,7 +856,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                       >
                         {/* Frente Header Banner */}
                         <div
-                          onClick={() => toggleCollapseFrente(frenteGroup.name)}
+                          onClick={() => toggleCollapseFrente(frenteGroup.name, isDefaultCollapsed)}
                           className="p-4 bg-[#f8fafc] border-b border-[#e2e8f0] flex flex-wrap items-center justify-between gap-3 cursor-pointer hover:bg-[#f1f5f9] transition-colors"
                         >
                           <div className="flex items-center gap-2.5">
@@ -2102,29 +2168,77 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
               <div>
                 {/* Header Pills */}
                 <div className="flex items-center justify-between gap-2 mb-2">
-                  <span
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                      prj.projectType === 'fee_monthly'
-                        ? 'bg-[#d4ff4a]/20 text-[#2e5e04]'
-                        : 'bg-[#eff6ff] text-[#2563eb]'
-                    }`}
-                  >
-                    {prj.projectType === 'fee_monthly' ? 'Fee mensual' : 'Proyecto único'}
-                  </span>
-
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-2">
                     <span
-                      className={`w-2 h-2 rounded-full ${
-                        prj.healthStatus === 'verde'
-                          ? 'bg-[#10b981]'
-                          : prj.healthStatus === 'amarillo'
-                          ? 'bg-[#f59e0b]'
-                          : 'bg-[#ef4444]'
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                        prj.projectType === 'fee_monthly'
+                          ? 'bg-[#d4ff4a]/20 text-[#2e5e04]'
+                          : 'bg-[#eff6ff] text-[#2563eb]'
                       }`}
-                    />
-                    <span className="text-[10px] font-bold text-[#64748b]">
-                      {prj.healthStatus === 'verde' ? 'Saludable' : prj.healthStatus === 'amarillo' ? 'Atención' : 'Riesgo'}
+                    >
+                      {prj.projectType === 'fee_monthly' ? 'Fee mensual' : 'Proyecto único'}
                     </span>
+                    {prj.status === 'Archivado' && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-[#f1f5f9] text-[#64748b]">
+                        Archivado
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className={`w-2 h-2 rounded-full ${
+                          prj.healthStatus === 'verde'
+                            ? 'bg-[#10b981]'
+                            : prj.healthStatus === 'amarillo'
+                            ? 'bg-[#f59e0b]'
+                            : 'bg-[#ef4444]'
+                        }`}
+                      />
+                      <span className="text-[10px] font-bold text-[#64748b]">
+                        {prj.healthStatus === 'verde' ? 'Saludable' : prj.healthStatus === 'amarillo' ? 'Atención' : 'Riesgo'}
+                      </span>
+                    </div>
+
+                    {/* Quick Menu Button */}
+                    <div className="relative" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => setActiveProjectMenu(activeProjectMenu === prj.id ? null : prj.id)}
+                        className="p-1 rounded-lg text-[#94a3b8] hover:text-[#0f172a] hover:bg-[#f1f5f9] transition-colors"
+                        title="Opciones"
+                      >
+                        <MoreVertical className="w-3.5 h-3.5" />
+                      </button>
+
+                      {activeProjectMenu === prj.id && (
+                        <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-2xl shadow-xl border border-[#e2e8f0] py-1 z-50 animate-in fade-in zoom-in-95 duration-150 text-left">
+                          <button
+                            onClick={() => {
+                              if (onArchiveProject) {
+                                onArchiveProject(prj.id);
+                              }
+                              setActiveProjectMenu(null);
+                            }}
+                            className="w-full px-3 py-1.5 text-left text-xs font-semibold text-[#334155] hover:bg-[#f8fafc] flex items-center gap-2 cursor-pointer transition-colors"
+                          >
+                            <Archive className="w-3.5 h-3.5 text-[#501f92]" />
+                            <span>{prj.status === 'Archivado' ? 'Desarchivar' : 'Archivar'}</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setProjectPendingDelete(prj);
+                              setActiveProjectMenu(null);
+                            }}
+                            className="w-full px-3 py-1.5 text-left text-xs font-semibold text-[#dc2626] hover:bg-[#fee2e2]/40 flex items-center gap-2 cursor-pointer transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-[#dc2626]" />
+                            <span>Eliminar</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -2171,6 +2285,57 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
           );
         })}
       </div>
+
+      {/* In-App Project Deletion Confirmation Modal */}
+      {projectPendingDelete && (
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setProjectPendingDelete(null);
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+        >
+          <div className="bg-white rounded-3xl max-w-md w-full border border-[#e2e8f0] shadow-2xl p-6 space-y-4 animate-in zoom-in-95">
+            <div className="w-12 h-12 rounded-2xl bg-[#fee2e2] text-[#dc2626] flex items-center justify-center mx-auto shadow-xs">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <div className="text-center space-y-1">
+              <h3 className="font-extrabold text-base text-[#0f172a]">¿Eliminar este proyecto?</h3>
+              <p className="text-xs text-[#64748b]">
+                Estás a punto de eliminar definitivamente el proyecto{' '}
+                <strong className="text-[#0f172a]">"{projectPendingDelete.name}"</strong> y desvincular sus métricas.
+              </p>
+            </div>
+            <div className="p-3 rounded-xl bg-[#fef2f2] border border-[#fecaca] text-[11px] text-[#991b1b]">
+              ⚠️ Esta acción no se puede deshacer. Las tareas asociadas dejarán de estar vinculadas a este proyecto.
+            </div>
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setProjectPendingDelete(null)}
+                className="flex-1 py-2.5 rounded-xl border border-[#e2e8f0] bg-white hover:bg-[#f8fafc] text-xs font-bold text-[#64748b] transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (onDeleteProject) {
+                    onDeleteProject(projectPendingDelete.id);
+                  }
+                  if (selectedProjectId === projectPendingDelete.id) {
+                    setSelectedProjectId(null);
+                    if (onSelectProject) onSelectProject(null);
+                  }
+                  setProjectPendingDelete(null);
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-[#dc2626] hover:bg-[#b91c1c] text-white text-xs font-bold transition-colors cursor-pointer shadow-xs"
+              >
+                Sí, eliminar proyecto
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -21,7 +21,8 @@ import {
   FileText,
   Trash2,
   AlertCircle,
-  Search
+  Search,
+  CheckSquare
 } from 'lucide-react';
 import { ClientProfile, ProjectType, TaskItem, ProjectPhase } from './types';
 
@@ -31,6 +32,7 @@ export interface NewProjectPayload {
   brand: string;
   projectType: ProjectType;
   serviceBase: string;
+  areas?: string[];
   leadName: string;
   leadAvatarBg: string;
   budgetedHours: number;
@@ -52,118 +54,52 @@ interface NewProjectModalProps {
   onAddProject: (projectData: NewProjectPayload) => void;
 }
 
-const BASE_SERVICES = [
-  { id: 'srv-mant', name: 'Mantenimiento Web', defaultType: 'fee_monthly' as ProjectType, desc: 'Soporte continuo, plugins y assets recurrentes' },
-  { id: 'srv-paid', name: 'Paid Media & Ads Performance', defaultType: 'fee_monthly' as ProjectType, desc: 'Pauta, optimización ROAS y analítica' },
-  { id: 'srv-dev', name: 'Desarrollo Web & E-commerce', defaultType: 'fixed_milestones' as ProjectType, desc: 'Proyectos de producto, plataformas y landings' },
-  { id: 'srv-cont', name: 'Parrilla de Contenidos & Social', defaultType: 'fee_monthly' as ProjectType, desc: 'Estrategia, diseño creativo, reels y copy' },
-  { id: 'srv-growth', name: 'Growth & SEO', defaultType: 'fee_monthly' as ProjectType, desc: 'Posicionamiento orgánico y CRO' },
-  { id: 'srv-ops', name: 'Operaciones & Procesos Internos', defaultType: 'internal' as ProjectType, desc: 'Automatizaciones, optimización de flujos y herramientas' }
+export const UHURA_OPERATIONAL_AREAS = [
+  { id: 'creatividad', name: 'Creatividad & Contenido', icon: '🎨', desc: 'Diseño visual, branding, copy, reels y piezas' },
+  { id: 'producto', name: 'Producto & Dev Web', icon: '💻', desc: 'Desarrollo web, e-commerce, UX/UI, QA y plugins' },
+  { id: 'paid', name: 'Paid Media & Ads', icon: '🎯', desc: 'Pauta digital, Meta/Google Ads, ROAS y analítica' },
+  { id: 'growth', name: 'Growth & SEO', icon: '🚀', desc: 'Posicionamiento orgánico, CRO y automatizaciones' },
+  { id: 'operaciones', name: 'Operaciones & Procesos', icon: '⚙️', desc: 'Procesos internos, optimización y herramientas' }
 ];
 
 interface TemplateTaskDef {
+  id: string;
   title: string;
   hours: number;
   role: string;
+  area: string;
   phase?: ProjectPhase;
 }
 
-interface TemplatePreset {
-  id: string;
-  title: string;
-  serviceBase: string;
-  suggestedHours: number;
-  defaultType: ProjectType;
-  tasks: TemplateTaskDef[];
-}
-
-const TEMPLATE_PRESETS: Record<string, TemplatePreset> = {
-  'none': {
-    id: 'none',
-    title: 'Sin plantilla (en blanco)',
-    serviceBase: 'Desarrollo Web & E-commerce',
-    suggestedHours: 20,
-    defaultType: 'fixed_milestones',
-    tasks: []
-  },
-  'mant-std': {
-    id: 'mant-std',
-    title: 'Mantenimiento Web Estándar (Fee)',
-    serviceBase: 'Mantenimiento Web',
-    suggestedHours: 20,
-    defaultType: 'fee_monthly',
-    tasks: [
-      { title: 'Actualización de Core, Plugins & Seguridad', hours: 2.0, role: 'Tech Lead' },
-      { title: 'Carga & Reemplazo de Banners y Assets de Campaña', hours: 2.5, role: 'Web Designer' },
-      { title: 'Revisión de Data, Eventos & Analytics', hours: 1.5, role: 'Content Strategist' },
-      { title: 'Soporte Preventivo & Healthcheck Mensual', hours: 2.0, role: 'Tech Lead' }
-    ]
-  },
-  'mant-ecom': {
-    id: 'mant-ecom',
-    title: 'Mantenimiento Web E-commerce (Fee)',
-    serviceBase: 'Mantenimiento Web',
-    suggestedHours: 35,
-    defaultType: 'fee_monthly',
-    tasks: [
-      { title: 'Actualización de Precios, Catálogo & Stock', hours: 4.0, role: 'Front End' },
-      { title: 'Auditoría de Pasarela de Pagos & Checkout QA', hours: 3.0, role: 'Front End' },
-      { title: 'Actualización de Plugins & Seguridad WooCommerce/Shopify', hours: 3.0, role: 'Tech Lead' },
-      { title: 'Carga de Banners Promocionales & Mobile Assets', hours: 3.5, role: 'Web Designer' }
-    ]
-  },
-  'paid-campaign': {
-    id: 'paid-campaign',
-    title: 'Campaña Paid Media & Ads',
-    serviceBase: 'Paid Media & Ads Performance',
-    suggestedHours: 30,
-    defaultType: 'fee_monthly',
-    tasks: [
-      { title: 'Configuración & Activación de Campañas Meta / Google Ads', hours: 4.0, role: 'Trafficker' },
-      { title: 'Optimización de Presupuestos & CBO/ABO', hours: 3.0, role: 'Trafficker' },
-      { title: 'Auditoría de Conversiones, API & Píxeles', hours: 2.5, role: 'Trafficker' },
-      { title: 'Reporte Ejecutivo de Rendimiento / ROAS', hours: 2.0, role: 'Product Lead' }
-    ]
-  },
-  'dev-landing': {
-    id: 'dev-landing',
-    title: 'Landing Page & Web Pro (Puntual)',
-    serviceBase: 'Desarrollo Web & E-commerce',
-    suggestedHours: 60,
-    defaultType: 'fixed_milestones',
-    tasks: [
-      { title: 'Fase 1: Discovery, Arquitectura & Wireframing', hours: 8.0, role: 'Product Lead', phase: 'Discovery & Arquitectura' },
-      { title: 'Fase 2: Diseño UI en Figma & Prototipo Interactivo', hours: 16.0, role: 'Web Designer', phase: 'UI/UX & Prototipado' },
-      { title: 'Fase 3: Maquetación Frontend & Integraciones', hours: 24.0, role: 'Front End', phase: 'Implementación / Dev' },
-      { title: 'Fase 4: QA, Pruebas Cross-Browser & Performance', hours: 8.0, role: 'Front End', phase: 'QA & Testing' },
-      { title: 'Fase 5: Despliegue en Producción & Capacitación', hours: 4.0, role: 'Tech Lead', phase: 'Despliegue & Cierre' }
-    ]
-  },
-  'social-grid': {
-    id: 'social-grid',
-    title: 'Parrilla & Redes Creativas (Fee)',
-    serviceBase: 'Parrilla de Contenidos & Social',
-    suggestedHours: 35,
-    defaultType: 'fee_monthly',
-    tasks: [
-      { title: 'Conceptualización & Estrategia de Contenidos Q3', hours: 5.0, role: 'Content Strategist' },
-      { title: 'Redacción de Copys & Guiones para Reels', hours: 4.0, role: 'Copywriter' },
-      { title: 'Diseño de Piezas Gráficas & Carruseles en Figma', hours: 8.0, role: 'Diseñador Gráfico' },
-      { title: 'Publicación & Gestión de Comunidad', hours: 6.0, role: 'Community Manager' }
-    ]
-  },
-  'internal-ops': {
-    id: 'internal-ops',
-    title: 'Procesos & Optimización Interna (Interno)',
-    serviceBase: 'Operaciones & Procesos Internos',
-    suggestedHours: 25,
-    defaultType: 'internal',
-    tasks: [
-      { title: 'Mapeo de Flujo Operativo & Detección de Cuellos de Botella', hours: 6.0, role: 'Product Lead' },
-      { title: 'Implementación de Plantillas & Automatización de Tareas', hours: 12.0, role: 'Tech Lead' },
-      { title: 'Capacitación al Equipo & Documentación de Soporte', hours: 7.0, role: 'Product Lead' }
-    ]
-  }
+export const AREA_TASK_SUGGESTIONS: Record<string, TemplateTaskDef[]> = {
+  'Creatividad & Contenido': [
+    { id: 'cc-1', title: 'Conceptualización & Matriz Creativa de Contenidos', hours: 4.0, role: 'Content Strategist', area: 'Creatividad & Contenido' },
+    { id: 'cc-2', title: 'Redacción de Copies, Hooks & Guiones para Reels', hours: 4.0, role: 'Copywriter', area: 'Creatividad & Contenido' },
+    { id: 'cc-3', title: 'Diseño de Key Visuals & Carruseles de Marca en Figma', hours: 6.0, role: 'Diseñador Gráfico', area: 'Creatividad & Contenido' },
+    { id: 'cc-4', title: 'Publicación, Programación & Monitoreo de Comunidad', hours: 5.0, role: 'Community Manager', area: 'Creatividad & Contenido' }
+  ],
+  'Producto & Dev Web': [
+    { id: 'pw-1', title: 'Arquitectura de Información, Wireframes & UX Flow', hours: 5.0, role: 'Product Lead', area: 'Producto & Dev Web' },
+    { id: 'pw-2', title: 'Maquetación Frontend Responsive & Componentes Web', hours: 10.0, role: 'Front End', area: 'Producto & Dev Web' },
+    { id: 'pw-3', title: 'Integraciones Backend, Formulario & APIs', hours: 8.0, role: 'Backend & Tech Dev', area: 'Producto & Dev Web' },
+    { id: 'pw-4', title: 'QA Funcional, Pruebas Cross-Browser & Performance', hours: 4.0, role: 'Front End', area: 'Producto & Dev Web' }
+  ],
+  'Paid Media & Ads': [
+    { id: 'pm-1', title: 'Configuración de Campañas & Públicos en Meta/Google Ads', hours: 4.0, role: 'Trafficker & Paid Media', area: 'Paid Media & Ads' },
+    { id: 'pm-2', title: 'Optimización de Presupuestos & Estrategia de Puja', hours: 3.0, role: 'Trafficker & Paid Media', area: 'Paid Media & Ads' },
+    { id: 'pm-3', title: 'Auditoría de Píxeles, API de Conversiones & Eventos', hours: 2.5, role: 'Trafficker & Paid Media', area: 'Paid Media & Ads' },
+    { id: 'pm-4', title: 'Dashboard Ejecutivo & Reporte de ROAS Semanal', hours: 2.0, role: 'Trafficker & Paid Media', area: 'Paid Media & Ads' }
+  ],
+  'Growth & SEO': [
+    { id: 'gs-1', title: 'Auditoría On-Page, Core Web Vitals e Indexación', hours: 5.0, role: 'Product Lead', area: 'Growth & SEO' },
+    { id: 'gs-2', title: 'Keyword Research & Estrategia de Contenidos SEO', hours: 4.0, role: 'Content Strategist', area: 'Growth & SEO' },
+    { id: 'gs-3', title: 'Optimización de Tasa de Conversión (CRO) en Embudos', hours: 3.5, role: 'Front End', area: 'Growth & SEO' }
+  ],
+  'Operaciones & Procesos': [
+    { id: 'op-1', title: 'Mapeo de Flujo Operativo & Detección de Fricciones', hours: 5.0, role: 'Product Lead', area: 'Operaciones & Procesos' },
+    { id: 'op-2', title: 'Implementación de Plantillas & Automatización de Tareas', hours: 8.0, role: 'Backend & Tech Dev', area: 'Operaciones & Procesos' },
+    { id: 'op-3', title: 'Documentación de SOPs & Capacitación del Equipo', hours: 4.0, role: 'Lead Project Manager', area: 'Operaciones & Procesos' }
+  ]
 };
 
 const ALL_TEAM_MEMBERS = [
@@ -181,7 +117,7 @@ const ALL_TEAM_MEMBERS = [
 
 const STEPS = [
   { id: 1, label: 'Cuenta & Nombre', shortDesc: 'Cliente y Project Lead' },
-  { id: 2, label: 'Naturaleza & Servicio', shortDesc: 'Tipo y plantilla operativa' },
+  { id: 2, label: 'Naturaleza & Áreas', shortDesc: 'Tipo y frentes operativos' },
   { id: 3, label: 'Comercial & Horas', shortDesc: 'Cotización y presupuesto' },
   { id: 4, label: 'Equipo & Fechas', shortDesc: 'Asignaciones y cronograma' }
 ];
@@ -206,12 +142,14 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
   const [projectName, setProjectName] = useState<string>('');
   const [selectedLead, setSelectedLead] = useState(ALL_TEAM_MEMBERS[0]);
 
-  // 2. Naturaleza & Servicio State
+  // 2. Naturaleza & Áreas Involucradas State
   const [projectType, setProjectType] = useState<ProjectType>('fee_monthly');
-  const [selectedService, setSelectedService] = useState<string>(BASE_SERVICES[0].name);
-  const [selectedTemplateKey, setSelectedTemplateKey] = useState<string>('mant-std');
+  const [selectedAreas, setSelectedAreas] = useState<string[]>(['Creatividad & Contenido', 'Producto & Dev Web']);
   const [includeTemplateTasks, setIncludeTemplateTasks] = useState<boolean>(true);
-  const [selectedTaskIndices, setSelectedTaskIndices] = useState<number[]>([0, 1, 2, 3]);
+  const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([
+    'cc-1', 'cc-2', 'cc-3', 'cc-4',
+    'pw-1', 'pw-2', 'pw-3', 'pw-4'
+  ]);
 
   // 3. Presupuesto & Comercial State (dinámico según tipo de proyecto)
   const [soldHours, setSoldHours] = useState<number>(20);
@@ -228,6 +166,18 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
     ALL_TEAM_MEMBERS[1].name, // Catalina
     ALL_TEAM_MEMBERS[2].name  // Andrés
   ]);
+
+  // Global Escape key listener
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   // Sync client when modal opens or preselectedClientId changes
   useEffect(() => {
@@ -263,53 +213,45 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
     return (
       c.name.toLowerCase().includes(q) ||
       (c.nit && c.nit.toLowerCase().includes(q)) ||
-      (c.commercialInfo.tier && c.commercialInfo.tier.toLowerCase().includes(q)) ||
-      c.commercialInfo.brands.some((b) => b.toLowerCase().includes(q))
+      (c.commercialInfo?.tier && c.commercialInfo.tier.toLowerCase().includes(q)) ||
+      c.commercialInfo?.brands?.some((b) => b.toLowerCase().includes(q))
     );
   });
 
   // When client changes, update available brands
   useEffect(() => {
-    if (currentClient && currentClient.commercialInfo.brands.length > 0) {
+    if (currentClient && currentClient.commercialInfo?.brands?.length > 0) {
       setSelectedBrand(currentClient.commercialInfo.brands[0]);
     }
   }, [selectedClientId]);
 
-  // When template key changes, sync tasks selection and hours
-  const handleTemplateChange = (templateKey: string) => {
-    setSelectedTemplateKey(templateKey);
-    const template = TEMPLATE_PRESETS[templateKey];
-    if (template) {
-      if (templateKey !== 'none') {
-        setSelectedService(template.serviceBase);
-        setProjectType(template.defaultType);
-        setSoldHours(template.suggestedHours);
-        setSelectedTaskIndices(template.tasks.map((_, i) => i));
-        if (!projectName || Object.values(TEMPLATE_PRESETS).some((t) => projectName.includes(t.title))) {
-          setProjectName(`${template.serviceBase} · ${selectedBrand || currentClient?.name || 'Cliente'}`);
-        }
+  // Toggle area selection and automatically add/remove suggested tasks
+  const handleToggleArea = (areaName: string) => {
+    setSelectedAreas((prev) => {
+      const isRemoving = prev.includes(areaName);
+      if (isRemoving) {
+        if (prev.length === 1) return prev; // keep at least one
+        const next = prev.filter((a) => a !== areaName);
+        const areaTaskIds = (AREA_TASK_SUGGESTIONS[areaName] || []).map((t) => t.id);
+        setSelectedTaskIds((curr) => curr.filter((id) => !areaTaskIds.includes(id)));
+        return next;
       } else {
-        setSelectedTaskIndices([]);
+        const next = [...prev, areaName];
+        const areaTaskIds = (AREA_TASK_SUGGESTIONS[areaName] || []).map((t) => t.id);
+        setSelectedTaskIds((curr) => Array.from(new Set([...curr, ...areaTaskIds])));
+        return next;
       }
-    }
-  };
-
-  // Toggle individual task selection in template preview
-  const handleToggleTaskIndex = (index: number) => {
-    setSelectedTaskIndices((prev) => {
-      const exists = prev.includes(index);
-      const next = exists ? prev.filter((i) => i !== index) : [...prev, index];
-      // Recalculate suggested hours from selected tasks
-      const currentTasks = TEMPLATE_PRESETS[selectedTemplateKey]?.tasks || [];
-      const sumHours = next.reduce((acc, i) => acc + (currentTasks[i]?.hours || 0), 0);
-      if (sumHours > 0 && (!soldHours || soldHours < sumHours)) {
-        setSoldHours(sumHours);
-      }
-      return next;
     });
   };
 
-  // Toggle team member (Lead is managed separately, so we exclude Lead from this toggle)
+  // Toggle individual suggested task selection
+  const handleToggleTaskId = (taskId: string) => {
+    setSelectedTaskIds((prev) =>
+      prev.includes(taskId) ? prev.filter((id) => id !== taskId) : [...prev, taskId]
+    );
+  };
+
+  // Toggle team member
   const handleToggleTeamMember = (memberName: string) => {
     if (memberName === selectedLead.name) return;
     setSelectedTeamMemberNames((prev) =>
@@ -319,9 +261,12 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
 
   if (!isOpen) return null;
 
-  const currentTemplate = TEMPLATE_PRESETS[selectedTemplateKey] || TEMPLATE_PRESETS['none'];
-  const activeTemplateTasks = currentTemplate.tasks.filter((_, idx) => selectedTaskIndices.includes(idx));
-  const activeTemplateHours = activeTemplateTasks.reduce((acc, t) => acc + t.hours, 0);
+  // Compute available tasks based on currently selected areas
+  const availableSuggestedTasks: TemplateTaskDef[] = selectedAreas.flatMap(
+    (areaName) => AREA_TASK_SUGGESTIONS[areaName] || []
+  );
+  const activeSuggestedTasks = availableSuggestedTasks.filter((t) => selectedTaskIds.includes(t.id));
+  const activeSuggestedHours = activeSuggestedTasks.reduce((acc, t) => acc + t.hours, 0);
 
   // Compute duration in weeks / days
   const startD = new Date(startDate);
@@ -332,7 +277,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
 
   // Step navigation validations
   const canProceedStep1 = Boolean(selectedClientId && projectName.trim());
-  const canProceedStep2 = Boolean(projectType && selectedService);
+  const canProceedStep2 = Boolean(projectType && selectedAreas.length > 0);
   const canProceedStep3 = projectType === 'internal' ? soldHours > 0 : Boolean(soldHours > 0 && soldValueStr.trim());
 
   const handleNextStep = () => {
@@ -358,14 +303,15 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
     }
 
     const finalBrand = customBrand.trim() ? customBrand.trim() : selectedBrand || currentClient?.name || 'General';
-    const finalName = projectName.trim() || `${selectedService} · ${finalBrand}`;
+    const primaryService = selectedAreas[0] || 'Multidisciplinario';
+    const finalName = projectName.trim() || `${primaryService} · ${finalBrand}`;
 
     // Prepare template tasks to create if selected and marked
     const tasksToCreate: Omit<TaskItem, 'id'>[] | undefined =
-      includeTemplateTasks && selectedTemplateKey !== 'none' && activeTemplateTasks.length > 0
-        ? activeTemplateTasks.map((taskTpl) => ({
+      includeTemplateTasks && activeSuggestedTasks.length > 0
+        ? activeSuggestedTasks.map((taskTpl) => ({
             title: taskTpl.title,
-            department: selectedService,
+            department: taskTpl.area,
             board: finalName,
             clientName: currentClient?.name || 'Cliente',
             projectName: finalName,
@@ -392,7 +338,6 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
           }))
         : undefined;
 
-    // Team members: Project Lead is technically included in backend/team, plus selected team members (without duplicate)
     const otherTeamMembers = ALL_TEAM_MEMBERS.filter(
       (m) => selectedTeamMemberNames.includes(m.name) && m.name !== selectedLead.name
     );
@@ -405,7 +350,8 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
       clientName: currentClient?.name || 'Cliente',
       brand: finalBrand,
       projectType,
-      serviceBase: selectedService,
+      serviceBase: primaryService,
+      areas: selectedAreas,
       leadName: selectedLead.name,
       leadAvatarBg: selectedLead.avatarBg,
       budgetedHours: Number(soldHours) || 20,
@@ -423,11 +369,16 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+    >
       <div className="bg-white rounded-3xl max-w-2xl w-full border border-[#e2e8f0] shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
-        {/* Header with Stepper */}
+        {/* Header with Connected Stepper */}
         <div className="px-6 pt-5 pb-4 border-b border-[#f1f5f9] bg-[#f8fafc] shrink-0">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl bg-[#501f92] text-white flex items-center justify-center font-bold shadow-xs">
                 <Briefcase className="w-4 h-4" />
@@ -435,7 +386,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
               <div>
                 <h2 className="font-extrabold text-base text-[#0f172a] leading-none">Crear Nuevo Proyecto</h2>
                 <p className="text-[11px] text-[#64748b] mt-0.5">
-                  Paso {currentStep} de 4: {STEPS[currentStep - 1].label}
+                  Paso {currentStep} de 4: <strong className="text-[#501f92]">{STEPS[currentStep - 1].label}</strong>
                 </p>
               </div>
             </div>
@@ -447,52 +398,63 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
             </button>
           </div>
 
-          {/* Stepper Progress Bar */}
-          <div className="grid grid-cols-4 gap-2 pt-1">
-            {STEPS.map((s) => {
-              const isCompleted = currentStep > s.id;
-              const isCurrent = currentStep === s.id;
-              return (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => {
-                    if (s.id < currentStep) setCurrentStep(s.id);
-                  }}
-                  className={`text-left group cursor-pointer transition-all ${
-                    s.id <= currentStep ? 'opacity-100' : 'opacity-40'
-                  }`}
-                >
-                  <div className="w-full h-1.5 rounded-full overflow-hidden mb-1.5 bg-[#e2e8f0]">
+          {/* Stepper Progress Bar with Connected Lines */}
+          <div className="pt-2 pb-1 relative">
+            {/* Background Connector Track */}
+            <div className="absolute top-4 left-6 right-6 h-0.5 bg-[#e2e8f0] z-0" />
+            {/* Active Progress Track */}
+            <div
+              style={{ width: `${Math.max(0, ((currentStep - 1) / 3)) * 80}%` }}
+              className="absolute top-4 left-6 h-0.5 bg-[#501f92] z-0 transition-all duration-300"
+            />
+
+            <div className="grid grid-cols-4 gap-2 relative z-10">
+              {STEPS.map((s) => {
+                const isCompleted = currentStep > s.id;
+                const isCurrent = currentStep === s.id;
+                const isFuture = currentStep < s.id;
+
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => {
+                      if (s.id < currentStep) setCurrentStep(s.id);
+                    }}
+                    disabled={isFuture}
+                    className={`flex flex-col items-center text-center transition-all ${
+                      isCompleted || isCurrent ? 'cursor-pointer' : 'cursor-default'
+                    }`}
+                  >
+                    {/* Circle Indicator */}
                     <div
-                      className={`h-full transition-all ${
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all shadow-xs mb-1.5 ${
                         isCompleted
-                          ? 'bg-[#10b981]'
+                          ? 'bg-[#f2ecfb] text-[#501f92] border-2 border-[#501f92] ring-2 ring-[#501f92]/20'
                           : isCurrent
-                          ? 'bg-[#501f92]'
-                          : 'bg-transparent'
-                      }`}
-                    />
-                  </div>
-                  <div className="flex items-center gap-1 text-[10px] font-bold">
-                    <span
-                      className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] shrink-0 ${
-                        isCompleted
-                          ? 'bg-[#10b981] text-white'
-                          : isCurrent
-                          ? 'bg-[#501f92] text-white'
-                          : 'bg-[#e2e8f0] text-[#64748b]'
+                          ? 'bg-[#501f92] text-white ring-4 ring-[#501f92]/25 scale-105'
+                          : 'bg-[#f8fafc] border-2 border-[#cbd5e1] text-[#94a3b8]'
                       }`}
                     >
-                      {isCompleted ? <Check className="w-2.5 h-2.5 stroke-[3]" /> : s.id}
+                      {isCompleted ? <Check className="w-4 h-4 text-[#501f92] stroke-[3]" /> : s.id}
+                    </div>
+
+                    {/* Step Label Pill */}
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full transition-all truncate max-w-full ${
+                        isCompleted
+                          ? 'bg-[#f2ecfb] text-[#501f92] border border-[#8a4dff]/30 font-bold'
+                          : isCurrent
+                          ? 'bg-[#501f92] text-white font-extrabold shadow-2xs'
+                          : 'text-[#64748b] bg-transparent'
+                      }`}
+                    >
+                      {s.label}
                     </span>
-                    <span className={`truncate ${isCurrent ? 'text-[#501f92]' : 'text-[#64748b]'}`}>
-                      {s.label.split('&')[0]}
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
@@ -500,7 +462,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
         <form onSubmit={handleSubmit} className="p-6 overflow-y-auto flex-1 text-xs space-y-4">
           
           {/* =========================================================================
-              PASO 1 · CUENTA & IDENTIFICACIÓN (Cliente limpio, Marca, Nombre, Lead)
+              PASO 1 · CUENTA & IDENTIFICACIÓN
              ========================================================================= */}
           {currentStep === 1 && (
             <div className="space-y-4 animate-in fade-in duration-150">
@@ -579,7 +541,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                                   <div className="truncate">
                                     <span className="block truncate">{cli.name}</span>
                                     <span className="text-[10px] text-[#64748b] block font-normal">
-                                      NIT: {cli.nit || 'N/A'} · {cli.commercialInfo.brands.join(', ') || 'Sin marcas'}
+                                      NIT: {cli.nit || 'N/A'} · {cli.commercialInfo?.brands?.join(', ') || 'Sin marcas'}
                                     </span>
                                   </div>
                                 </div>
@@ -592,7 +554,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                     )}
                   </div>
                   <span className="text-[10px] text-[#64748b] mt-1 block">
-                    NIT: {currentClient?.nit || 'N/A'} · La naturaleza la define el proyecto
+                    NIT: {currentClient?.nit || 'N/A'} · Gobernanza multimarca
                   </span>
                 </div>
 
@@ -600,7 +562,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                   <label className="block font-bold text-[#0f172a] mb-1">
                     Marca del Cliente
                   </label>
-                  {currentClient?.commercialInfo.brands && currentClient.commercialInfo.brands.length > 0 ? (
+                  {currentClient?.commercialInfo?.brands && currentClient.commercialInfo.brands.length > 0 ? (
                     <select
                       value={selectedBrand}
                       onChange={(e) => {
@@ -645,7 +607,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                 <input
                   type="text"
                   required
-                  placeholder="Ej: Campaña Navidad Yamaha, Fee Mantenimiento Q3, Landing STEM..."
+                  placeholder="Ej: Campaña Navidad Yamaha, Fee Integral Q3, Landing STEM..."
                   value={projectName}
                   onChange={(e) => setProjectName(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] text-sm text-[#0f172a] font-bold focus:outline-none focus:border-[#501f92] focus:bg-white"
@@ -691,20 +653,20 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
           )}
 
           {/* =========================================================================
-              PASO 2 · NATURALEZA & SERVICIO (Tipo, Servicio base, Plantilla de tareas)
+              PASO 2 · NATURALEZA & ÁREAS INVOLUCRADAS (Multidisciplinario)
              ========================================================================= */}
           {currentStep === 2 && (
             <div className="space-y-4 animate-in fade-in duration-150">
               <div className="p-3 rounded-2xl bg-[#f5f3ff] border border-[#e9d5ff] flex items-center justify-between text-xs">
                 <div>
-                  <span className="font-bold text-[#501f92]">Paso 2: Naturaleza del Proyecto y Clasificación Operativa</span>
+                  <span className="font-bold text-[#501f92]">Paso 2: Naturaleza del Proyecto & Áreas Involucradas</span>
                   <p className="text-[11px] text-[#64748b] mt-0.5">
-                    El tipo de proyecto determina la estructura comercial y las reglas de trazabilidad.
+                    Un proyecto puede combinar creatividad, producto, dev y growth en una misma venta y gobernanza.
                   </p>
                 </div>
               </div>
 
-              {/* Tipo de Proyecto * (3 Cards) */}
+              {/* Tipo de Proyecto (3 Cards) */}
               <div>
                 <label className="block font-bold text-[#0f172a] mb-2">
                   Tipo de proyecto *
@@ -713,10 +675,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                   {/* Fee mensual */}
                   <button
                     type="button"
-                    onClick={() => {
-                      setProjectType('fee_monthly');
-                      if (selectedTemplateKey === 'dev-landing') setSelectedTemplateKey('mant-std');
-                    }}
+                    onClick={() => setProjectType('fee_monthly')}
                     className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
                       projectType === 'fee_monthly'
                         ? 'border-[#501f92] bg-[#f2ecfb]/60 ring-2 ring-[#501f92]'
@@ -733,17 +692,14 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                       )}
                     </div>
                     <p className="text-[11px] text-[#64748b] leading-relaxed">
-                      Soporte recurrente, bolsa de horas y facturación mensual.
+                      Soporte recurrente, bolsa de horas multidisciplinaria y facturación mensual.
                     </p>
                   </button>
 
                   {/* Proyecto único */}
                   <button
                     type="button"
-                    onClick={() => {
-                      setProjectType('fixed_milestones');
-                      if (selectedTemplateKey === 'mant-std') setSelectedTemplateKey('dev-landing');
-                    }}
+                    onClick={() => setProjectType('fixed_milestones')}
                     className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
                       projectType === 'fixed_milestones'
                         ? 'border-[#2563eb] bg-[#eff6ff] ring-2 ring-[#2563eb]'
@@ -767,10 +723,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                   {/* Interno */}
                   <button
                     type="button"
-                    onClick={() => {
-                      setProjectType('internal');
-                      setSelectedTemplateKey('internal-ops');
-                    }}
+                    onClick={() => setProjectType('internal')}
                     className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
                       projectType === 'internal'
                         ? 'border-[#059669] bg-[#ecfdf5] ring-2 ring-[#059669]'
@@ -787,59 +740,67 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                       )}
                     </div>
                     <p className="text-[11px] text-[#64748b] leading-relaxed">
-                      Iniciativa propia de Uhura o procesos. Sin facturación comercial.
+                      Iniciativa propia de Uhura o procesos. Sin facturación comercial externa.
                     </p>
                   </button>
                 </div>
               </div>
 
-              {/* Servicio Base & Plantilla */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
-                <div>
-                  <label className="block font-bold text-[#0f172a] mb-1">
-                    Servicio Base *
+              {/* Áreas / Frentes Involucrados (Multi-selección flexible) */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block font-bold text-[#0f172a]">
+                    Áreas / Frentes Involucrados * <span className="text-[11px] font-normal text-[#64748b]">(Selecciona todas las que apliquen)</span>
                   </label>
-                  <select
-                    value={selectedService}
-                    onChange={(e) => setSelectedService(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] text-[#0f172a] font-bold focus:outline-none focus:border-[#501f92] focus:bg-white cursor-pointer"
-                  >
-                    {BASE_SERVICES.map((srv) => (
-                      <option key={srv.id} value={srv.name}>
-                        {srv.name}
-                      </option>
-                    ))}
-                  </select>
+                  <span className="text-[11px] font-bold text-[#501f92] bg-[#f2ecfb] px-2.5 py-0.5 rounded-lg border border-[#8a4dff]/30">
+                    {selectedAreas.length} {selectedAreas.length === 1 ? 'área seleccionada' : 'áreas seleccionadas'}
+                  </span>
                 </div>
 
-                <div>
-                  <label className="block font-bold text-[#0f172a] mb-1">
-                    Plantilla de arranque <span className="text-[11px] font-normal text-[#64748b]">(Opcional)</span>
-                  </label>
-                  <select
-                    value={selectedTemplateKey}
-                    onChange={(e) => handleTemplateChange(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] text-[#0f172a] font-bold focus:outline-none focus:border-[#501f92] focus:bg-white cursor-pointer"
-                  >
-                    <option value="none">📄 Sin plantilla (en blanco)</option>
-                    <option value="mant-std">⚡ Mantenimiento Web Estándar (4 tareas / 8h)</option>
-                    <option value="mant-ecom">🛒 Mantenimiento E-commerce (4 tareas / 13.5h)</option>
-                    <option value="paid-campaign">🎯 Campaña Paid Media & Ads (4 tareas / 11.5h)</option>
-                    <option value="dev-landing">🚀 Landing Page & Web Pro (5 fases / 60h)</option>
-                    <option value="social-grid">🎨 Parrilla Contenidos & Social (4 tareas / 17.5h)</option>
-                    <option value="internal-ops">⚙️ Procesos & Optimización Interna (3 tareas / 25h)</option>
-                  </select>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {UHURA_OPERATIONAL_AREAS.map((area) => {
+                    const isSelected = selectedAreas.includes(area.name);
+                    return (
+                      <button
+                        key={area.id}
+                        type="button"
+                        onClick={() => handleToggleArea(area.name)}
+                        className={`p-2.5 rounded-xl border text-left flex items-center justify-between transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-[#f2ecfb] border-[#501f92] text-[#0f172a] shadow-2xs'
+                            : 'bg-[#f8fafc] border-[#e2e8f0] text-[#64748b] hover:bg-white'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-base">{area.icon}</span>
+                          <div className="truncate">
+                            <strong className={`block text-xs truncate ${isSelected ? 'text-[#501f92]' : 'text-[#0f172a]'}`}>
+                              {area.name}
+                            </strong>
+                            <span className="text-[10px] text-[#64748b] block truncate">{area.desc}</span>
+                          </div>
+                        </div>
+                        <div
+                          className={`w-4 h-4 rounded-md flex items-center justify-center shrink-0 ${
+                            isSelected ? 'bg-[#501f92] text-white' : 'border border-[#cbd5e1] bg-white'
+                          }`}
+                        >
+                          {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
-              {/* Template Tasks Interactive Selector */}
-              {selectedTemplateKey !== 'none' && currentTemplate.tasks.length > 0 && (
-                <div className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] space-y-2.5">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
+              {/* Tareas Sugeridas Automáticas por Áreas */}
+              {availableSuggestedTasks.length > 0 && (
+                <div className="p-4 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-[#e2e8f0]">
                     <div className="flex items-center gap-1.5 text-xs font-bold text-[#0f172a]">
                       <Sparkles className="w-4 h-4 text-[#8a4dff]" />
                       <span>
-                        {activeTemplateTasks.length} de {currentTemplate.tasks.length} tareas sugeridas ({activeTemplateHours}h en tareas)
+                        Tareas sugeridas ({activeSuggestedTasks.length} de {availableSuggestedTasks.length} seleccionadas · {activeSuggestedHours}h estimadas)
                       </span>
                     </div>
                     <label className="flex items-center gap-1.5 text-[11px] font-semibold text-[#501f92] cursor-pointer bg-white px-2.5 py-1 rounded-lg border border-[#e2e8f0]">
@@ -853,56 +814,64 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                     </label>
                   </div>
 
-                  {/* Template Hours Distribution Rule Notice */}
-                  <div className="p-2.5 rounded-xl bg-white border border-[#e2e8f0] text-[11px] text-[#475569] space-y-1">
-                    <p className="leading-relaxed">
-                      💡 <strong>Distribución Operativa Sugerida:</strong> Las horas de la plantilla no tienen que consumir el 100% de las horas vendidas. Puedes dejar horas disponibles para contingencias, solicitudes adicionales o riesgo operativo.
-                    </p>
-                    {soldHours > activeTemplateHours && (
-                      <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[#f5f3ff] text-[#501f92] font-semibold text-[10px]">
-                        <span>{activeTemplateHours} h asignadas a tareas</span>
-                        <span>·</span>
-                        <span className="font-bold text-[#16a34a]">{(soldHours - activeTemplateHours).toFixed(1)} h disponibles (reserva)</span>
-                      </div>
-                    )}
-                  </div>
-
                   {includeTemplateTasks && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                      {currentTemplate.tasks.map((taskTpl, idx) => {
-                        const isChecked = selectedTaskIndices.includes(idx);
+                    <div className="space-y-3.5">
+                      {selectedAreas.map((areaName) => {
+                        const areaTasks = AREA_TASK_SUGGESTIONS[areaName] || [];
+                        if (areaTasks.length === 0) return null;
+                        const areaObj = UHURA_OPERATIONAL_AREAS.find((a) => a.name === areaName);
+
                         return (
-                          <label
-                            key={idx}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              handleToggleTaskIndex(idx);
-                            }}
-                            className={`p-2 rounded-xl border flex items-center justify-between text-[11px] cursor-pointer transition-all ${
-                              isChecked
-                                ? 'bg-white border-[#501f92]/30 text-[#0f172a] shadow-2xs'
-                                : 'bg-[#f1f5f9] border-[#e2e8f0] text-[#94a3b8] opacity-75'
-                            }`}
-                          >
-                            <div className="flex items-center gap-2 truncate pr-2">
-                              <div
-                                className={`w-4 h-4 rounded flex items-center justify-center text-white shrink-0 ${
-                                  isChecked ? 'bg-[#501f92]' : 'bg-[#cbd5e1]'
-                                }`}
-                              >
-                                {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
-                              </div>
-                              <span className={`truncate ${isChecked ? 'font-medium' : 'line-through'}`}>
-                                {taskTpl.title}
+                          <div key={areaName} className="space-y-1.5">
+                            <div className="flex items-center justify-between text-[11px] text-[#475569] font-bold">
+                              <span className="flex items-center gap-1.5">
+                                <span>{areaObj?.icon || '📁'}</span>
+                                <span className="text-[#0f172a]">{areaName}</span>
+                              </span>
+                              <span className="text-[10px] text-[#64748b] font-mono">
+                                {areaTasks.filter((t) => selectedTaskIds.includes(t.id)).length} de {areaTasks.length} tareas
                               </span>
                             </div>
-                            <div className="flex items-center gap-1 shrink-0">
-                              <span className="text-[9px] text-[#64748b] bg-[#f8fafc] px-1.5 py-0.5 rounded border border-[#e2e8f0]">
-                                {taskTpl.role}
-                              </span>
-                              <span className="font-mono font-bold text-[#501f92]">{taskTpl.hours}h</span>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {areaTasks.map((taskTpl) => {
+                                const isChecked = selectedTaskIds.includes(taskTpl.id);
+                                return (
+                                  <label
+                                    key={taskTpl.id}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      handleToggleTaskId(taskTpl.id);
+                                    }}
+                                    className={`p-2 rounded-xl border flex items-center justify-between text-[11px] cursor-pointer transition-all ${
+                                      isChecked
+                                        ? 'bg-white border-[#501f92]/30 text-[#0f172a] shadow-2xs'
+                                        : 'bg-[#f1f5f9] border-[#e2e8f0] text-[#94a3b8] opacity-75'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2 truncate pr-2">
+                                      <div
+                                        className={`w-4 h-4 rounded flex items-center justify-center text-white shrink-0 ${
+                                          isChecked ? 'bg-[#501f92]' : 'bg-[#cbd5e1]'
+                                        }`}
+                                      >
+                                        {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                                      </div>
+                                      <span className={`truncate ${isChecked ? 'font-medium' : 'line-through'}`}>
+                                        {taskTpl.title}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      <span className="text-[9px] text-[#64748b] bg-[#f8fafc] px-1.5 py-0.5 rounded border border-[#e2e8f0]">
+                                        {taskTpl.role}
+                                      </span>
+                                      <span className="font-mono font-bold text-[#501f92]">{taskTpl.hours}h</span>
+                                    </div>
+                                  </label>
+                                );
+                              })}
                             </div>
-                          </label>
+                          </div>
                         );
                       })}
                     </div>
@@ -913,7 +882,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
           )}
 
           {/* =========================================================================
-              PASO 3 · COMERCIAL & HORAS (100% dinámico según tipo de proyecto)
+              PASO 3 · COMERCIAL & HORAS
              ========================================================================= */}
           {currentStep === 3 && (
             <div className="space-y-4 animate-in fade-in duration-150">
@@ -940,7 +909,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                     <div>
                       <h4 className="font-bold text-xs text-[#065f46]">Iniciativa Interna / No Facturable</h4>
                       <p className="text-[11px] text-[#047857] mt-0.5 leading-relaxed">
-                        Este proyecto no genera facturación comercial a ningún cliente externo. No se registran valores comerciales ni moneda. Orbit auditará el presupuesto interno de horas contra las horas ejecutadas.
+                        Este proyecto no genera facturación comercial externa. Orbit auditará el presupuesto interno de horas contra las horas ejecutadas.
                       </p>
                     </div>
                   </div>
@@ -961,9 +930,6 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                         className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-[#a7f3d0] bg-white text-[#065f46] font-mono font-bold text-sm focus:outline-none focus:ring-2 focus:ring-[#059669]/20"
                       />
                     </div>
-                    <span className="text-[10px] text-[#64748b] mt-1 block">
-                      Bolsa total de horas hombre estimadas para la iniciativa
-                    </span>
                   </div>
                 </div>
               )}
@@ -1027,11 +993,11 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
 
                   <div className="p-3 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#64748b]">
                     <span>
-                      💡 <strong>Ciclo mensual recurrente:</strong> La bolsa de {soldHours} horas cotizadas se renueva cada mes calendario para este cliente.
+                      💡 <strong>Ciclo mensual recurrente:</strong> La bolsa de {soldHours} horas cotizadas se renueva cada mes calendario.
                     </span>
-                    {includeTemplateTasks && selectedTemplateKey !== 'none' && activeTemplateHours > 0 && (
+                    {includeTemplateTasks && activeSuggestedHours > 0 && (
                       <span className="font-semibold text-[#501f92]">
-                        {activeTemplateHours}h en tareas iniciales · {Math.max(0, soldHours - activeTemplateHours).toFixed(1)}h reserva disponible
+                        {activeSuggestedHours}h en tareas sugeridas · {Math.max(0, soldHours - activeSuggestedHours).toFixed(1)}h reserva disponible
                       </span>
                     )}
                   </div>
@@ -1099,9 +1065,9 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                     <span>
                       🎯 <strong>Entregable puntual:</strong> Las {soldHours} horas cotizadas cubren la totalidad de los frentes e hitos comprometidos.
                     </span>
-                    {includeTemplateTasks && selectedTemplateKey !== 'none' && activeTemplateHours > 0 && (
+                    {includeTemplateTasks && activeSuggestedHours > 0 && (
                       <span className="font-semibold text-[#501f92]">
-                        {activeTemplateHours}h en tareas iniciales · {Math.max(0, soldHours - activeTemplateHours).toFixed(1)}h reserva disponible
+                        {activeSuggestedHours}h en tareas sugeridas · {Math.max(0, soldHours - activeSuggestedHours).toFixed(1)}h reserva disponible
                       </span>
                     )}
                   </div>
@@ -1111,7 +1077,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
           )}
 
           {/* =========================================================================
-              PASO 4 · EQUIPO & FECHAS (Cronograma, Lead claro, Equipo de trabajo y Brief)
+              PASO 4 · EQUIPO & FECHAS
              ========================================================================= */}
           {currentStep === 4 && (
             <div className="space-y-4 animate-in fade-in duration-150">
@@ -1197,7 +1163,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                   </div>
 
                   <div className="p-3.5 rounded-2xl border border-[#e2e8f0] bg-white space-y-2.5">
-                    {/* Selected members chips (sin duplicar al Lead) */}
+                    {/* Selected members chips */}
                     <div className="flex flex-wrap items-center gap-2">
                       {ALL_TEAM_MEMBERS.filter(
                         (m) => selectedTeamMemberNames.includes(m.name) && m.name !== selectedLead.name

@@ -454,18 +454,23 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-[#090513]/70 backdrop-blur-xs animate-in fade-in duration-200">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-[#090513]/70 backdrop-blur-xs animate-in fade-in duration-200"
+    >
       <div className="bg-white rounded-3xl shadow-2xl border border-[#e2e8f0] w-full max-w-2xl max-h-[94vh] flex flex-col overflow-hidden">
         {/* Modal Header */}
-        <div className="p-5 bg-gradient-to-r from-[#0f172a] via-[#1e293b] to-[#0f172a] text-white flex items-center justify-between shrink-0 border-b border-[#334155]">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-[#d4ff4a]/20 border border-[#d4ff4a]/40 flex items-center justify-center text-[#d4ff4a]">
+        <div className="p-5 bg-[#0f172a] text-white flex items-center justify-between shrink-0 border-b border-[#334155]">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center text-purple-300 shrink-0">
               <CheckSquare className="w-4 h-4" />
             </div>
             <div>
               <h3 className="font-bold text-sm text-white">Nueva Tarea</h3>
               <p className="text-[11px] text-[#94a3b8]">
-                Asociada a un Proyecto existente (Cliente → Proyecto → Tarea)
+                Asociada a un Proyecto (Cliente → Proyecto → Frente / Fase → Tarea)
               </p>
             </div>
           </div>

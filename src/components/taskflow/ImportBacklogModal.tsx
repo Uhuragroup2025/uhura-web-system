@@ -143,7 +143,12 @@ export const ImportBacklogModal: React.FC<ImportBacklogModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+    >
       <div className="bg-white rounded-3xl w-full max-w-4xl overflow-hidden shadow-2xl border border-[#e2e8f0] flex flex-col max-h-[92vh]">
         {/* Header */}
         <div className="p-5 sm:p-6 border-b border-[#e2e8f0] flex items-center justify-between bg-[#f8fafc]">
