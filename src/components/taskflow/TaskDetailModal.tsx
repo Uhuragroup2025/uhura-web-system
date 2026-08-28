@@ -533,6 +533,9 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   return (
     <div
       id="task-detail-modal-overlay"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
       className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
     >
       {/* Toast Notification */}
@@ -713,10 +716,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                   aria-label="Registrar tiempo manualmente"
                   className="p-2 rounded-xl bg-white hover:bg-[#f8fafc] text-[#501f92] border border-[#e2e8f0] shadow-2xs hover:border-[#8a4dff]/40 transition-all cursor-pointer flex items-center justify-center relative"
                 >
-                  <div className="flex items-center">
-                    <Clock className="w-4 h-4 text-[#501f92]" />
-                    <Plus className="w-2.5 h-2.5 text-[#501f92] -ml-0.5 -mt-1 stroke-[3]" />
-                  </div>
+                  <Clock className="w-4 h-4 text-[#501f92]" />
                 </button>
 
                 {/* Hover Tooltip */}
@@ -795,11 +795,11 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
         {/* ========================================================= */}
         {/* MAIN BODY: 2 Columns (Left: Tabs Feed vs Right: Meta Panel) */}
         {/* ========================================================= */}
-        <div className="flex-1 overflow-y-auto grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-[#f1f5f9]">
+        <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-[#f1f5f9] overflow-hidden">
           {/* --------------------------------------------------------- */}
           {/* LEFT: ONLY 2 TABS (Mensajes | Entregables) - 8 COLS */}
           {/* --------------------------------------------------------- */}
-          <div className="lg:col-span-8 p-6 flex flex-col justify-between space-y-6">
+          <div className="lg:col-span-8 p-6 flex flex-col justify-between space-y-6 overflow-y-auto max-h-full">
             <div className="space-y-5">
               {/* Tabs Navigation Header */}
               <div className="flex items-center gap-6 border-b border-[#e2e8f0]">
@@ -1235,7 +1235,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
           {/* --------------------------------------------------------- */}
           {/* RIGHT RAIL: METADATA & RESPONSIBLES - 4 COLS */}
           {/* --------------------------------------------------------- */}
-          <div id="task-right-rail" className="lg:col-span-4 p-6 bg-white space-y-5 text-xs">
+          <div id="task-right-rail" className="lg:col-span-4 p-6 bg-white space-y-5 text-xs overflow-y-auto max-h-full">
             {/* 1. Estado & Prioridad (2 Columns side-by-side) */}
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -1919,20 +1919,44 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                           showToast('Por favor describe el motivo del retrabajo');
                           return;
                         }
+                        const nextRound = (task.reworks?.length || 0) + 1;
+                        const reasonText = reworkReason.trim();
+                        const requesterName =
+                          reworkRequestedBy.trim() || (reworkOrigin === 'client' ? task.clientName || 'Cliente' : 'QA Interno');
+                        const reworkHoursNum = parseFloat(reworkHours) || 1;
+
                         if (onAddRework) {
-                          const nextRound = (task.reworks?.length || 0) + 1;
                           onAddRework(task.id, {
                             origin: reworkOrigin,
                             roundNumber: nextRound,
-                            reason: reworkReason.trim(),
-                            requestedBy: reworkRequestedBy.trim() || (reworkOrigin === 'client' ? 'Cliente' : 'QA Interno'),
-                            hoursSpent: parseFloat(reworkHours) || 1,
+                            reason: reasonText,
+                            requestedBy: requesterName,
+                            hoursSpent: reworkHoursNum,
                             resolved: false
                           });
-                          showToast(`Retrabajo registrado (Ronda ${nextRound})`);
-                          setIsAddingRework(false);
-                          setReworkReason('');
                         }
+
+                        // Inject rework comment into general task message feed
+                        const reworkMessage: ChatMessage = {
+                          id: `msg-rwk-${Date.now()}`,
+                          authorName: requesterName,
+                          authorRoleLabel: reworkOrigin === 'client' ? 'Retrabajo por Cliente' : 'Retrabajo QA Interno',
+                          authorInitials:
+                            requesterName
+                              .split(' ')
+                              .map((n) => n[0])
+                              .join('')
+                              .slice(0, 2)
+                              .toUpperCase() || 'RT',
+                          authorAvatarBg: reworkOrigin === 'client' ? 'bg-[#2563eb]' : 'bg-[#7e22ce]',
+                          timestamp: 'Ahora mismo',
+                          content: `🔄 [Retrabajo Ronda ${nextRound} · ${reworkHoursNum}h]: ${reasonText}`
+                        };
+
+                        setChatMessages((prev) => [...prev, reworkMessage]);
+                        showToast(`Retrabajo registrado y cargado en mensajes`);
+                        setIsAddingRework(false);
+                        setReworkReason('');
                       }}
                       className="w-full py-1.5 rounded-lg bg-[#501f92] hover:bg-[#381566] text-white font-bold text-xs cursor-pointer shadow-xs transition-colors"
                     >
@@ -1943,7 +1967,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
                 {/* List of existing reworks */}
                 {task.reworks && task.reworks.length > 0 ? (
-                  <div className="space-y-2">
+                  <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                     {task.reworks.map((rwk, idx) => (
                       <div
                         key={rwk.id || idx}

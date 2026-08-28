@@ -369,7 +369,7 @@ export const TaskFlowPrototype: React.FC = () => {
   };
 
   // Save Manual Log Fallback
-  const handleSaveManualLog = (data: Omit<TimeLog, 'id' | 'date'>) => {
+  const handleSaveManualLog = (data: Omit<TimeLog, 'id'>) => {
     setTasks((prev) =>
       prev.map((t) => {
         if (t.id === data.taskId) {
@@ -385,10 +385,17 @@ export const TaskFlowPrototype: React.FC = () => {
     const newLog: TimeLog = {
       ...data,
       id: `log-${Date.now()}`,
-      date: 'Hoy, 22 Ago 2026'
+      date: data.date || 'Hoy, 22 Ago 2026'
     };
 
     setTimeLogs((prev) => [newLog, ...prev]);
+
+    // If task detail modal is open for this task, synchronize its consumedSeconds in real time
+    if (selectedTaskForDetail && selectedTaskForDetail.id === data.taskId) {
+      setSelectedTaskForDetail((prev) =>
+        prev ? { ...prev, consumedSeconds: prev.consumedSeconds + data.durationSeconds } : null
+      );
+    }
   };
 
   // Open Manual Time Log Modal with predefined task
@@ -865,6 +872,25 @@ export const TaskFlowPrototype: React.FC = () => {
     );
   };
 
+  // Archive / Unarchive project
+  const handleArchiveProject = (projectId: string) => {
+    setProjectsList((prev) =>
+      prev.map((p) =>
+        p.id === projectId
+          ? { ...p, status: p.status === 'Archivado' ? 'Activo' : 'Archivado' }
+          : p
+      )
+    );
+  };
+
+  // Delete project
+  const handleDeleteProject = (projectId: string) => {
+    setProjectsList((prev) => prev.filter((p) => p.id !== projectId));
+    if (selectedProjectIdForView === projectId) {
+      setSelectedProjectIdForView(null);
+    }
+  };
+
   // Update client handler
   const handleUpdateClient = (updatedClient: ClientProfile) => {
     setClients((prev) =>
@@ -1121,6 +1147,8 @@ export const TaskFlowPrototype: React.FC = () => {
                       }
                       setCurrentView('clientes');
                     }}
+                    onArchiveProject={handleArchiveProject}
+                    onDeleteProject={handleDeleteProject}
                   />
                 )}
 
@@ -1274,15 +1302,6 @@ export const TaskFlowPrototype: React.FC = () => {
         </div>
       </main>
 
-      {/* Manual Time Log Modal */}
-      <ManualTimeLogModal
-        isOpen={isManualLogModalOpen}
-        onClose={() => setIsManualLogModalOpen(false)}
-        tasks={tasks}
-        defaultTaskId={manualLogDefaultTaskId}
-        onSaveManualLog={handleSaveManualLog}
-      />
-
       {/* Task Detail & Deliverables Modal (COR Visual Split View) */}
       <TaskDetailModal
         isOpen={isTaskDetailModalOpen}
@@ -1337,6 +1356,15 @@ export const TaskFlowPrototype: React.FC = () => {
         }}
         onOpenManualLog={handleOpenManualLogWithTask}
         onMoveTask={handleMoveTask}
+      />
+
+      {/* Manual Time Log Modal (Rendered with z-60 above TaskDetailModal) */}
+      <ManualTimeLogModal
+        isOpen={isManualLogModalOpen}
+        onClose={() => setIsManualLogModalOpen(false)}
+        tasks={tasks}
+        defaultTaskId={manualLogDefaultTaskId}
+        onSaveManualLog={handleSaveManualLog}
       />
 
       {/* Modals */}

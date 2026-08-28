@@ -76,6 +76,22 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
       // Hide archived tasks
       if (t.isArchived) return false;
 
+      const isCompleted = t.completed || t.status === 'Done';
+
+      // Auto-hide rule: If completed and older than 7 days, hide from general/active list (viewable in 'completed' filter)
+      if (isCompleted && filterTab !== 'completed') {
+        const referenceDateStr = t.completedAt || t.dueDate || t.date;
+        if (referenceDateStr) {
+          const parsed = new Date(referenceDateStr).getTime();
+          if (!isNaN(parsed)) {
+            const daysDiff = (Date.now() - parsed) / (1000 * 60 * 60 * 24);
+            if (daysDiff > 7) {
+              return false; // Auto-archived from regular view after 7 days
+            }
+          }
+        }
+      }
+
       // Mis Tareas vs Equipo
       if (viewMode === 'my') {
         // In My Tasks, match current user (or if assignee matches or user is collaborator)
@@ -90,9 +106,9 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
       }
 
       // Status Tab filter
-      if (filterTab === 'active' && (t.completed || t.status === 'Done')) return false;
+      if (filterTab === 'active' && isCompleted) return false;
       if (filterTab === 'review' && t.status !== 'Review') return false;
-      if (filterTab === 'completed' && (!t.completed && t.status !== 'Done')) return false;
+      if (filterTab === 'completed' && !isCompleted) return false;
 
       // Category Filter (Client vs Internal)
       if (categoryFilter === 'client' && t.categoryType === 'internal') return false;
@@ -484,35 +500,25 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
 
                       {/* 2. VENCE (DEADLINE) */}
                       <td className="py-4 px-4">
-                        <div className="flex items-center gap-1.5">
-                          <Calendar className={`w-3.5 h-3.5 shrink-0 ${
-                            task.dueStatus === 'overdue'
-                              ? 'text-[#ef4444]'
-                              : task.dueStatus === 'soon' || task.dueStatus === 'tomorrow'
-                              ? 'text-[#f59e0b]'
-                              : 'text-[#64748b]'
-                          }`} />
-                          <div className="flex flex-col">
-                            <span className={`text-xs font-semibold ${
-                              task.dueStatus === 'overdue'
-                                ? 'text-[#ef4444] font-bold'
-                                : task.dueStatus === 'soon' || task.dueStatus === 'tomorrow'
-                                ? 'text-[#d97706] font-bold'
-                                : 'text-[#334155]'
-                            }`}>
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-3.5 h-3.5 shrink-0 text-[#64748b]" />
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-[#334155]">
                               {task.dueDate || 'Sin fecha'}
                             </span>
-                            {task.dueText && (
-                              <span className={`text-[10px] ${
-                                task.dueStatus === 'overdue'
-                                  ? 'text-[#dc2626] font-bold'
-                                  : task.dueStatus === 'soon' || task.dueStatus === 'tomorrow'
-                                  ? 'text-[#b45309]'
-                                  : 'text-[#94a3b8]'
-                              }`}>
-                                {task.dueText}
+                            {task.dueStatus === 'overdue' ? (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#fee2e2] text-[#dc2626] border border-[#fca5a5]">
+                                Retrasado
                               </span>
-                            )}
+                            ) : task.dueStatus === 'soon' || task.dueStatus === 'tomorrow' ? (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#fef3c7] text-[#b45309] border border-[#fde68a]">
+                                {task.dueText || 'Esta semana'}
+                              </span>
+                            ) : task.dueDate ? (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#f1f5f9] text-[#64748b]">
+                                A tiempo
+                              </span>
+                            ) : null}
                           </div>
                         </div>
                       </td>
