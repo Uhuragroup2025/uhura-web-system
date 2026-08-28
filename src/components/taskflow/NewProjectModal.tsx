@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   X,
   Briefcase,
@@ -20,7 +20,8 @@ import {
   Users,
   FileText,
   Trash2,
-  AlertCircle
+  AlertCircle,
+  Search
 } from 'lucide-react';
 import { ClientProfile, ProjectType, TaskItem, ProjectPhase } from './types';
 
@@ -197,6 +198,9 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
 
   // 1. Cuenta State
   const [selectedClientId, setSelectedClientId] = useState<string>('');
+  const [clientSearchQuery, setClientSearchQuery] = useState<string>('');
+  const [isClientDropdownOpen, setIsClientDropdownOpen] = useState<boolean>(false);
+  const clientSearchRef = useRef<HTMLDivElement>(null);
   const [selectedBrand, setSelectedBrand] = useState<string>('');
   const [customBrand, setCustomBrand] = useState<string>('');
   const [projectName, setProjectName] = useState<string>('');
@@ -240,6 +244,29 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
   }, [isOpen, preselectedClientId, clients]);
 
   const currentClient = clients.find((c) => c.id === selectedClientId) || clients[0];
+
+  // Close client search dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (clientSearchRef.current && !clientSearchRef.current.contains(e.target as Node)) {
+        setIsClientDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Filtered clients for predictive search
+  const filteredClients = clients.filter((c) => {
+    if (!clientSearchQuery.trim()) return true;
+    const q = clientSearchQuery.toLowerCase();
+    return (
+      c.name.toLowerCase().includes(q) ||
+      (c.nit && c.nit.toLowerCase().includes(q)) ||
+      (c.commercialInfo.tier && c.commercialInfo.tier.toLowerCase().includes(q)) ||
+      c.commercialInfo.brands.some((b) => b.toLowerCase().includes(q))
+    );
+  });
 
   // When client changes, update available brands
   useEffect(() => {
@@ -488,21 +515,82 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
 
               {/* Cliente & Marca */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                <div>
+                <div className="relative" ref={clientSearchRef}>
                   <label className="block font-bold text-[#0f172a] mb-1">
                     Cliente *
                   </label>
-                  <select
-                    value={selectedClientId}
-                    onChange={(e) => setSelectedClientId(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] text-[#0f172a] font-bold focus:outline-none focus:border-[#501f92] focus:bg-white cursor-pointer"
-                  >
-                    {clients.map((cli) => (
-                      <option key={cli.id} value={cli.id}>
-                        {cli.name}
-                      </option>
-                    ))}
-                  </select>
+                  
+                  {/* Predictive Search Input */}
+                  <div className="relative">
+                    <div className="flex items-center w-full bg-[#f8fafc] hover:bg-white focus-within:bg-white border border-[#e2e8f0] focus-within:border-[#501f92] rounded-xl transition-all shadow-2xs">
+                      <Search className="w-3.5 h-3.5 text-[#94a3b8] ml-3 shrink-0 pointer-events-none" />
+                      <input
+                        type="text"
+                        placeholder="Buscar cliente por nombre o NIT..."
+                        value={isClientDropdownOpen ? clientSearchQuery : currentClient?.name || ''}
+                        onChange={(e) => {
+                          setClientSearchQuery(e.target.value);
+                          setIsClientDropdownOpen(true);
+                        }}
+                        onFocus={() => {
+                          setClientSearchQuery('');
+                          setIsClientDropdownOpen(true);
+                        }}
+                        className="w-full px-2.5 py-2 text-[#0f172a] font-bold text-xs bg-transparent focus:outline-none placeholder-[#94a3b8]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setIsClientDropdownOpen(!isClientDropdownOpen)}
+                        className="p-2 text-[#64748b] hover:text-[#0f172a] cursor-pointer"
+                      >
+                        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isClientDropdownOpen ? 'rotate-180 text-[#501f92]' : ''}`} />
+                      </button>
+                    </div>
+
+                    {/* Predictive Search Results Dropdown */}
+                    {isClientDropdownOpen && (
+                      <div className="absolute top-full left-0 right-0 mt-1.5 bg-white rounded-xl border border-[#e2e8f0] shadow-xl z-50 max-h-56 overflow-y-auto py-1 animate-in fade-in zoom-in-95">
+                        <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#94a3b8] border-b border-[#f1f5f9] flex justify-between items-center">
+                          <span>Resultados ({filteredClients.length})</span>
+                          <span>Escribe para filtrar</span>
+                        </div>
+                        {filteredClients.length === 0 ? (
+                          <div className="p-3 text-center text-xs text-[#64748b]">
+                            No se encontraron clientes con "{clientSearchQuery}"
+                          </div>
+                        ) : (
+                          filteredClients.map((cli) => {
+                            const isSelected = cli.id === selectedClientId;
+                            return (
+                              <button
+                                key={cli.id}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedClientId(cli.id);
+                                  setClientSearchQuery('');
+                                  setIsClientDropdownOpen(false);
+                                }}
+                                className={`w-full px-3 py-2 text-left text-xs flex items-center justify-between hover:bg-[#f8fafc] transition-colors cursor-pointer ${
+                                  isSelected ? 'bg-[#f5f3ff] text-[#501f92] font-bold' : 'text-[#0f172a]'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <Building2 className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-[#501f92]' : 'text-[#94a3b8]'}`} />
+                                  <div className="truncate">
+                                    <span className="block truncate">{cli.name}</span>
+                                    <span className="text-[10px] text-[#64748b] block font-normal">
+                                      NIT: {cli.nit || 'N/A'} · {cli.commercialInfo.brands.join(', ') || 'Sin marcas'}
+                                    </span>
+                                  </div>
+                                </div>
+                                {isSelected && <Check className="w-3.5 h-3.5 text-[#501f92] shrink-0" />}
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
+                    )}
+                  </div>
                   <span className="text-[10px] text-[#64748b] mt-1 block">
                     NIT: {currentClient?.nit || 'N/A'} · La naturaleza la define el proyecto
                   </span>

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { TaskItem, ActiveTimerState, TaskStatus } from './types';
+import React, { useState, useMemo } from 'react';
+import { TaskItem, ActiveTimerState, TaskStatus, TaskPriority } from './types';
 import {
   Circle,
   CheckCircle2,
@@ -10,6 +10,7 @@ import {
   Plus,
   Play,
   Pause,
+  Square,
   Link2,
   ChevronRight,
   ShieldAlert,
@@ -17,7 +18,10 @@ import {
   AlertTriangle,
   Users,
   User,
-  Check
+  Check,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 
 interface MyTasksViewProps {
@@ -28,6 +32,7 @@ interface MyTasksViewProps {
   activeTimer?: ActiveTimerState | null;
   onStartTimer?: (task: TaskItem) => void;
   onPauseResumeTimer?: () => void;
+  onStopTimer?: () => void;
   onOpenTaskDetail?: (task: TaskItem) => void;
   onOpenManualLogModal?: (taskId?: string) => void;
   onUpdateTaskBudgetHours?: (taskId: string, newHours: number) => void;
@@ -42,6 +47,7 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
   activeTimer,
   onStartTimer,
   onPauseResumeTimer,
+  onStopTimer,
   onOpenTaskDetail,
   onOpenManualLogModal,
   onUpdateTaskBudgetHours,
@@ -55,6 +61,7 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
   const [selectedClient, setSelectedClient] = useState<string>('all');
   const [selectedProject, setSelectedProject] = useState<string>('all');
   const [selectedAssignee, setSelectedAssignee] = useState<string>('all');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   // Extract unique project and team lists
   const availableProjects = Array.from(
@@ -64,52 +71,80 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
     new Set(tasks.map((t) => t.assignee?.name).filter(Boolean))
   );
 
-  const filteredTasks = tasks.filter((t) => {
-    // Hide archived tasks
-    if (t.isArchived) return false;
+  const filteredTasks = useMemo(() => {
+    const list = tasks.filter((t) => {
+      // Hide archived tasks
+      if (t.isArchived) return false;
 
-    // Mis Tareas vs Equipo
-    if (viewMode === 'my') {
-      // In My Tasks, match current user (or if assignee matches or user is collaborator)
-      const isMine =
-        t.assignee?.name?.toLowerCase().includes('catalina') ||
-        t.assignee?.name?.toLowerCase().includes('yo') ||
-        (t.collaborators && t.collaborators.some((c) => c.name.toLowerCase().includes('catalina')));
-      if (!isMine) return false;
-    } else {
-      // In Team view, filter by selected assignee if chosen
-      if (selectedAssignee !== 'all' && t.assignee?.name !== selectedAssignee) return false;
-    }
+      // Mis Tareas vs Equipo
+      if (viewMode === 'my') {
+        // In My Tasks, match current user (or if assignee matches or user is collaborator)
+        const isMine =
+          t.assignee?.name?.toLowerCase().includes('catalina') ||
+          t.assignee?.name?.toLowerCase().includes('yo') ||
+          (t.collaborators && t.collaborators.some((c) => c.name.toLowerCase().includes('catalina')));
+        if (!isMine) return false;
+      } else {
+        // In Team view, filter by selected assignee if chosen
+        if (selectedAssignee !== 'all' && t.assignee?.name !== selectedAssignee) return false;
+      }
 
-    // Status Tab filter
-    if (filterTab === 'active' && (t.completed || t.status === 'Done')) return false;
-    if (filterTab === 'review' && t.status !== 'Review') return false;
-    if (filterTab === 'completed' && (!t.completed && t.status !== 'Done')) return false;
+      // Status Tab filter
+      if (filterTab === 'active' && (t.completed || t.status === 'Done')) return false;
+      if (filterTab === 'review' && t.status !== 'Review') return false;
+      if (filterTab === 'completed' && (!t.completed && t.status !== 'Done')) return false;
 
-    // Category Filter (Client vs Internal)
-    if (categoryFilter === 'client' && t.categoryType === 'internal') return false;
-    if (categoryFilter === 'internal' && t.categoryType !== 'internal') return false;
+      // Category Filter (Client vs Internal)
+      if (categoryFilter === 'client' && t.categoryType === 'internal') return false;
+      if (categoryFilter === 'internal' && t.categoryType !== 'internal') return false;
 
-    // Client filter
-    if (selectedClient !== 'all' && t.clientName !== selectedClient) return false;
+      // Client filter
+      if (selectedClient !== 'all' && t.clientName !== selectedClient) return false;
 
-    // Project filter
-    if (selectedProject !== 'all' && t.projectName !== selectedProject && t.board !== selectedProject) return false;
+      // Project filter
+      if (selectedProject !== 'all' && t.projectName !== selectedProject && t.board !== selectedProject) return false;
 
-    // Search query
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      return (
-        t.title.toLowerCase().includes(q) ||
-        (t.clientName && t.clientName.toLowerCase().includes(q)) ||
-        (t.projectName && t.projectName.toLowerCase().includes(q)) ||
-        t.board.toLowerCase().includes(q) ||
-        (viewMode === 'team' && t.assignee.name.toLowerCase().includes(q))
-      );
-    }
+      // Search query
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        return (
+          t.title.toLowerCase().includes(q) ||
+          (t.clientName && t.clientName.toLowerCase().includes(q)) ||
+          (t.projectName && t.projectName.toLowerCase().includes(q)) ||
+          t.board.toLowerCase().includes(q) ||
+          (viewMode === 'team' && t.assignee.name.toLowerCase().includes(q))
+        );
+      }
 
-    return true;
-  });
+      return true;
+    });
+
+    // Automatic default sorting by due date (nearest first), leaving overdue and today on top
+    return list.sort((a, b) => {
+      const aDone = a.completed || a.status === 'Done';
+      const bDone = b.completed || b.status === 'Done';
+      if (aDone && !bDone) return 1;
+      if (!aDone && bDone) return -1;
+
+      const getTimestamp = (t: TaskItem) => {
+        if (!t.dueDate) return 9999999999999;
+        const d = new Date(t.dueDate).getTime();
+        return isNaN(d) ? 9999999999999 : d;
+      };
+
+      const timeA = getTimestamp(a);
+      const timeB = getTimestamp(b);
+
+      if (timeA !== timeB) {
+        return sortDirection === 'asc' ? timeA - timeB : timeB - timeA;
+      }
+
+      const prioWeight: Record<string, number> = { High: 3, Medium: 2, Low: 1 };
+      const weightA = prioWeight[a.priority] || 2;
+      const weightB = prioWeight[b.priority] || 2;
+      return weightB - weightA;
+    });
+  }, [tasks, viewMode, filterTab, categoryFilter, selectedClient, selectedProject, selectedAssignee, searchQuery, sortDirection]);
 
   const getStatusBadge = (status: TaskStatus, completed: boolean) => {
     if (completed || status === 'Done') {
@@ -322,6 +357,20 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
             <thead>
               <tr className="border-b border-[#f1f5f9] text-[11px] font-bold text-[#64748b] uppercase tracking-wider bg-[#f8fafc]">
                 <th className="py-3.5 px-5 font-semibold">CLIENTE / PROYECTO / TAREA</th>
+                <th
+                  onClick={() => setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
+                  className="py-3.5 px-4 font-semibold cursor-pointer hover:text-[#501f92] transition-colors select-none group"
+                  title="Clic para ordenar por fecha de vencimiento"
+                >
+                  <div className="flex items-center gap-1">
+                    <span>VENCE</span>
+                    {sortDirection === 'asc' ? (
+                      <ArrowUp className="w-3 h-3 text-[#501f92]" />
+                    ) : (
+                      <ArrowDown className="w-3 h-3 text-[#501f92]" />
+                    )}
+                  </div>
+                </th>
                 <th className="py-3.5 px-4 font-semibold text-center w-24">TIMER</th>
                 <th className="py-3.5 px-4 font-semibold">HORAS (CONSUMIDAS / ASIGNADAS)</th>
                 {viewMode === 'team' && (
@@ -334,7 +383,7 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
               {filteredTasks.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={viewMode === 'team' ? 5 : 4}
+                    colSpan={viewMode === 'team' ? 6 : 5}
                     className="py-12 text-center text-[#94a3b8]"
                   >
                     No se encontraron tareas con los filtros seleccionados.
@@ -433,24 +482,51 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
                         </div>
                       </td>
 
-                      {/* 2. UNIVERSAL PLAY / PAUSE BUTTON */}
+                      {/* 2. VENCE (DEADLINE) */}
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-1.5">
+                          <Calendar className={`w-3.5 h-3.5 shrink-0 ${
+                            task.dueStatus === 'overdue'
+                              ? 'text-[#ef4444]'
+                              : task.dueStatus === 'soon' || task.dueStatus === 'tomorrow'
+                              ? 'text-[#f59e0b]'
+                              : 'text-[#64748b]'
+                          }`} />
+                          <div className="flex flex-col">
+                            <span className={`text-xs font-semibold ${
+                              task.dueStatus === 'overdue'
+                                ? 'text-[#ef4444] font-bold'
+                                : task.dueStatus === 'soon' || task.dueStatus === 'tomorrow'
+                                ? 'text-[#d97706] font-bold'
+                                : 'text-[#334155]'
+                            }`}>
+                              {task.dueDate || 'Sin fecha'}
+                            </span>
+                            {task.dueText && (
+                              <span className={`text-[10px] ${
+                                task.dueStatus === 'overdue'
+                                  ? 'text-[#dc2626] font-bold'
+                                  : task.dueStatus === 'soon' || task.dueStatus === 'tomorrow'
+                                  ? 'text-[#b45309]'
+                                  : 'text-[#94a3b8]'
+                              }`}>
+                                {task.dueText}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* 3. UNIVERSAL PLAY / STOP BUTTON */}
                       <td className="py-4 px-4 text-center" onClick={(e) => e.stopPropagation()}>
                         {isRunning ? (
                           <div className="inline-flex items-center gap-1.5">
                             <button
-                              onClick={onPauseResumeTimer}
-                              className={`p-2 rounded-xl text-white font-bold transition-all shadow-xs cursor-pointer ${
-                                activeTimer?.isPaused
-                                  ? 'bg-[#f59e0b] hover:bg-[#d97706]'
-                                  : 'bg-[#10b981] hover:bg-[#059669]'
-                              }`}
-                              title={activeTimer?.isPaused ? 'Reanudar timer' : 'Pausar timer'}
+                              onClick={onStopTimer}
+                              className="p-2 rounded-xl bg-[#dc2626] hover:bg-[#b91c1c] text-white font-bold transition-all shadow-xs cursor-pointer animate-pulse"
+                              title="Detener timer"
                             >
-                              {activeTimer?.isPaused ? (
-                                <Play className="w-3.5 h-3.5" />
-                              ) : (
-                                <Pause className="w-3.5 h-3.5" />
-                              )}
+                              <Square className="w-3.5 h-3.5 fill-current" />
                             </button>
                           </div>
                         ) : (

@@ -3,6 +3,7 @@ import {
   X,
   Play,
   Pause,
+  Square,
   Clock,
   CheckCircle2,
   Calendar,
@@ -31,7 +32,9 @@ import {
   User,
   Star,
   ChevronDown,
-  MessageSquare
+  MessageSquare,
+  RefreshCw,
+  AlertTriangle
 } from 'lucide-react';
 import {
   TaskItem,
@@ -40,7 +43,9 @@ import {
   TaskStatus,
   TaskPriority,
   ProjectPhase,
-  TaskBlockerInfo
+  TaskBlockerInfo,
+  TaskRework,
+  ReworkOrigin
 } from './types';
 
 export interface TeamMemberProfile {
@@ -97,6 +102,11 @@ interface TaskDetailModalProps {
   onStartTimer: (task: TaskItem) => void;
   onPauseResumeTimer?: () => void;
   onStopTimer?: () => void;
+  onUpdateTitle?: (taskId: string, newTitle: string) => void;
+  onAddRework?: (
+    taskId: string,
+    rework: Omit<TaskRework, 'id' | 'taskId' | 'date'>
+  ) => void;
   onUpdateBudgetHours?: (taskId: string, newHours: number) => void;
   onUpdateTaskStatus?: (taskId: string, newStatus: TaskStatus) => void;
   onUpdateTaskPriority?: (taskId: string, newPriority: TaskPriority) => void;
@@ -146,6 +156,9 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   activeTimer,
   onStartTimer,
   onPauseResumeTimer,
+  onStopTimer,
+  onUpdateTitle,
+  onAddRework,
   onUpdateBudgetHours,
   onUpdateTaskStatus,
   onUpdateTaskPriority,
@@ -166,6 +179,17 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   // Menu and Toast
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Title inline edit state
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [titleInput, setTitleInput] = useState('');
+
+  // Rework logging state
+  const [isAddingRework, setIsAddingRework] = useState(false);
+  const [reworkOrigin, setReworkOrigin] = useState<ReworkOrigin>('client');
+  const [reworkReason, setReworkReason] = useState('');
+  const [reworkRequestedBy, setReworkRequestedBy] = useState('');
+  const [reworkHours, setReworkHours] = useState('1.0');
 
   // Team Edit Popovers: 'collaborators' | 'reviewer' | 'requestedBy' | null
   const [openTeamDropdown, setOpenTeamDropdown] = useState<'collaborators' | 'reviewer' | 'requestedBy' | null>(null);
@@ -218,6 +242,12 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
       setOpenTeamDropdown(null);
 
       setBudgetValue((task.budgetedHours || 1).toString());
+      setTitleInput(task.title);
+      setIsEditingTitle(false);
+      setIsAddingRework(false);
+      setReworkReason('');
+      setReworkRequestedBy(task.clientName || 'Cliente');
+      setReworkHours('1.0');
       setStartDateInput(task.startDate || '2026-08-20');
       setDueDateInput(task.dueDate || '2026-08-24');
 
@@ -568,32 +598,106 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                   </span>
                 </>
               )}
+
+              {(task.phase || task.fase) && (
+                <>
+                  <span className="text-[#cbd5e1]">›</span>
+                  <span
+                    className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#eff6ff] text-[#1d4ed8] border border-[#dbeafe]"
+                    title={`Fase del proyecto: ${task.phase || task.fase}`}
+                  >
+                    {task.phase || task.fase}
+                  </span>
+                </>
+              )}
             </div>
 
-            <h1 className="text-xl sm:text-2xl font-extrabold text-[#0f172a] tracking-tight truncate">
-              {task.title}
-            </h1>
+            {isEditingTitle ? (
+              <div className="flex items-center gap-2 mt-1">
+                <input
+                  type="text"
+                  value={titleInput}
+                  onChange={(e) => setTitleInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      if (onUpdateTitle && titleInput.trim()) {
+                        onUpdateTitle(task.id, titleInput.trim());
+                        showToast('Nombre de la tarea actualizado');
+                      }
+                      setIsEditingTitle(false);
+                    } else if (e.key === 'Escape') {
+                      setTitleInput(task.title);
+                      setIsEditingTitle(false);
+                    }
+                  }}
+                  autoFocus
+                  className="w-full text-lg sm:text-xl font-extrabold text-[#0f172a] px-2.5 py-1 rounded-xl border border-[#501f92] bg-white focus:outline-none shadow-xs"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onUpdateTitle && titleInput.trim()) {
+                      onUpdateTitle(task.id, titleInput.trim());
+                      showToast('Nombre de la tarea actualizado');
+                    }
+                    setIsEditingTitle(false);
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-[#501f92] text-white text-xs font-bold hover:bg-[#381566] transition-colors cursor-pointer shrink-0"
+                >
+                  Guardar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTitleInput(task.title);
+                    setIsEditingTitle(false);
+                  }}
+                  className="px-2.5 py-1.5 rounded-xl text-[#64748b] hover:bg-[#f1f5f9] text-xs font-semibold transition-colors cursor-pointer shrink-0"
+                >
+                  Cancelar
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 group/title">
+                <h1 className="text-xl sm:text-2xl font-extrabold text-[#0f172a] tracking-tight truncate">
+                  {task.title}
+                </h1>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTitleInput(task.title);
+                    setIsEditingTitle(true);
+                  }}
+                  className="p-1 rounded-lg text-[#94a3b8] hover:text-[#501f92] hover:bg-[#f5f3ff] transition-colors cursor-pointer shrink-0"
+                  title="Editar nombre de la tarea"
+                >
+                  <Edit2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Right: Actions Toolbar */}
           <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
-            {/* Timer CTA */}
+            {/* Timer CTA: Defaults to Play. When running, shows clear Stop action */}
             {isRunning ? (
-              <button
-                id="task-timer-toggle-btn"
-                onClick={onPauseResumeTimer}
-                className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-xs font-bold shadow-xs cursor-pointer transition-all ${
-                  activeTimer?.isPaused ? 'bg-[#f59e0b] hover:bg-[#d97706]' : 'bg-[#10b981] hover:bg-[#059669]'
-                }`}
-              >
-                {activeTimer?.isPaused ? <Play className="w-3.5 h-3.5 fill-current" /> : <Pause className="w-3.5 h-3.5 fill-current" />}
-                <span>{activeTimer?.isPaused ? 'Reanudar' : 'Timer Activo'}</span>
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  id="task-timer-stop-btn"
+                  onClick={onStopTimer}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#dc2626] hover:bg-[#b91c1c] text-white text-xs font-bold shadow-xs cursor-pointer transition-all animate-pulse"
+                  title="Detener timer y registrar tiempo"
+                >
+                  <Square className="w-3.5 h-3.5 fill-current" />
+                  <span>Detener Timer</span>
+                </button>
+              </div>
             ) : (
               <button
                 id="task-timer-start-btn"
                 onClick={() => onStartTimer(task)}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold shadow-xs cursor-pointer transition-all"
+                title="Iniciar timer"
               >
                 <Play className="w-3.5 h-3.5 fill-current" />
                 <span>Iniciar Timer</span>
@@ -1704,6 +1808,180 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                     </div>
                   )}
                 </div>
+              </div>
+            </div>
+
+            {/* 5. Retrabajos (Medición de Calidad: Cliente vs Interno) */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-[#0f172a] text-xs flex items-center gap-1.5">
+                  <RefreshCw className="w-3.5 h-3.5 text-[#501f92]" />
+                  <span>Retrabajos</span>
+                  {task.reworks && task.reworks.length > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-[#fef2f2] text-[#dc2626] border border-[#fecaca]">
+                      {task.reworks.length}
+                    </span>
+                  )}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsAddingRework(!isAddingRework)}
+                  className="text-[11px] font-bold text-[#501f92] hover:underline cursor-pointer flex items-center gap-1"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>{isAddingRework ? 'Cancelar' : 'Registrar'}</span>
+                </button>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-white border border-[#e2e8f0] shadow-2xs space-y-3">
+                {/* Form to log rework */}
+                {isAddingRework && (
+                  <div className="p-3 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-2.5">
+                    <span className="text-xs font-bold text-[#0f172a] block">
+                      Registrar nuevo retrabajo
+                    </span>
+
+                    <div>
+                      <label className="text-[10px] font-bold text-[#64748b] block mb-1">
+                        Origen del retrabajo:
+                      </label>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setReworkOrigin('client')}
+                          className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                            reworkOrigin === 'client'
+                              ? 'bg-[#501f92] text-white shadow-xs'
+                              : 'bg-white text-[#64748b] border border-[#e2e8f0] hover:bg-[#f1f5f9]'
+                          }`}
+                        >
+                          👤 Por Cliente
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setReworkOrigin('internal')}
+                          className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                            reworkOrigin === 'internal'
+                              ? 'bg-[#501f92] text-white shadow-xs'
+                              : 'bg-white text-[#64748b] border border-[#e2e8f0] hover:bg-[#f1f5f9]'
+                          }`}
+                        >
+                          🛡️ QA / Interno
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold text-[#64748b] block mb-1">
+                        Motivo / Observación del ajuste:
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={reworkReason}
+                        onChange={(e) => setReworkReason(e.target.value)}
+                        placeholder="Ej. Cambio de copies por nueva directriz del cliente..."
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-[#e2e8f0] bg-white text-xs text-[#0f172a] focus:outline-none focus:border-[#501f92] resize-none"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10px] font-bold text-[#64748b] block mb-1">
+                          Solicitado por:
+                        </label>
+                        <input
+                          type="text"
+                          value={reworkRequestedBy}
+                          onChange={(e) => setReworkRequestedBy(e.target.value)}
+                          placeholder="Nombre persona"
+                          className="w-full px-2 py-1 rounded-lg border border-[#e2e8f0] bg-white text-xs text-[#0f172a] focus:outline-none focus:border-[#501f92]"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-[#64748b] block mb-1">
+                          Horas estimadas:
+                        </label>
+                        <input
+                          type="number"
+                          step="0.5"
+                          min="0.5"
+                          value={reworkHours}
+                          onChange={(e) => setReworkHours(e.target.value)}
+                          className="w-full px-2 py-1 rounded-lg border border-[#e2e8f0] bg-white text-xs text-[#0f172a] focus:outline-none focus:border-[#501f92]"
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!reworkReason.trim()) {
+                          showToast('Por favor describe el motivo del retrabajo');
+                          return;
+                        }
+                        if (onAddRework) {
+                          const nextRound = (task.reworks?.length || 0) + 1;
+                          onAddRework(task.id, {
+                            origin: reworkOrigin,
+                            roundNumber: nextRound,
+                            reason: reworkReason.trim(),
+                            requestedBy: reworkRequestedBy.trim() || (reworkOrigin === 'client' ? 'Cliente' : 'QA Interno'),
+                            hoursSpent: parseFloat(reworkHours) || 1,
+                            resolved: false
+                          });
+                          showToast(`Retrabajo registrado (Ronda ${nextRound})`);
+                          setIsAddingRework(false);
+                          setReworkReason('');
+                        }
+                      }}
+                      className="w-full py-1.5 rounded-lg bg-[#501f92] hover:bg-[#381566] text-white font-bold text-xs cursor-pointer shadow-xs transition-colors"
+                    >
+                      Guardar Retrabajo
+                    </button>
+                  </div>
+                )}
+
+                {/* List of existing reworks */}
+                {task.reworks && task.reworks.length > 0 ? (
+                  <div className="space-y-2">
+                    {task.reworks.map((rwk, idx) => (
+                      <div
+                        key={rwk.id || idx}
+                        className="p-2.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] text-xs space-y-1.5"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                              rwk.origin === 'client'
+                                ? 'bg-[#eff6ff] text-[#1d4ed8] border border-[#bfdbfe]'
+                                : 'bg-[#faf5ff] text-[#7e22ce] border border-[#e9d5ff]'
+                            }`}
+                          >
+                            {rwk.origin === 'client' ? '👤 Cliente' : '🛡️ Interno (QA)'} · Ronda {rwk.roundNumber || idx + 1}
+                          </span>
+                          <span className="text-[10px] text-[#94a3b8]">{rwk.date}</span>
+                        </div>
+                        <p className="text-[#334155] font-medium text-[11px] leading-relaxed">
+                          {rwk.reason}
+                        </p>
+                        <div className="flex items-center justify-between text-[10px] text-[#64748b] pt-1 border-t border-[#f1f5f9]">
+                          <span>Por: <strong className="text-[#0f172a]">{rwk.requestedBy}</strong></span>
+                          {rwk.hoursSpent && (
+                            <span className="font-mono font-semibold">{rwk.hoursSpent}h dedicadas</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  !isAddingRework && (
+                    <div className="text-center py-2">
+                      <span className="text-[11px] text-[#94a3b8] block">
+                        Sin retrabajos registrados. Tarea en estándar de calidad.
+                      </span>
+                    </div>
+                  )
+                )}
               </div>
             </div>
           </div>

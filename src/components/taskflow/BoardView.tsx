@@ -6,6 +6,7 @@ import {
   Circle,
   Play,
   Pause,
+  Square,
   Link2,
   Building2,
   ChevronRight,
@@ -25,6 +26,7 @@ interface BoardViewProps {
   activeTimer?: ActiveTimerState | null;
   onStartTimer?: (task: TaskItem) => void;
   onPauseResumeTimer?: () => void;
+  onStopTimer?: () => void;
   onOpenTaskDetail?: (task: TaskItem) => void;
   isProjectDetail?: boolean;
 }
@@ -36,6 +38,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
   activeTimer,
   onStartTimer,
   onPauseResumeTimer,
+  onStopTimer,
   onOpenTaskDetail,
   isProjectDetail = false
 }) => {
@@ -153,7 +156,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
               className="px-3.5 py-1.5 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Crear tarea</span>
+              <span>Nueva Tarea</span>
             </button>
           )}
         </div>
@@ -271,7 +274,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
                 className="px-3.5 py-1.5 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Crear tarea</span>
+                <span>Nueva Tarea</span>
               </button>
             )}
           </div>
@@ -456,25 +459,15 @@ export const BoardView: React.FC<BoardViewProps> = ({
                             </span>
                           </div>
 
-                          {/* Universal Play / Pause */}
+                          {/* Universal Play / Stop */}
                           {isRunning ? (
                             <button
-                              onClick={onPauseResumeTimer}
-                              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold text-white flex items-center gap-1 cursor-pointer ${
-                                activeTimer?.isPaused ? 'bg-[#f59e0b]' : 'bg-[#501f92] animate-pulse'
-                              }`}
+                              onClick={onStopTimer}
+                              className="px-2.5 py-1 rounded-lg text-[11px] font-bold text-white bg-[#dc2626] hover:bg-[#b91c1c] flex items-center gap-1 cursor-pointer animate-pulse shadow-xs"
+                              title="Detener timer"
                             >
-                              {activeTimer?.isPaused ? (
-                                <>
-                                  <Play className="w-3 h-3 fill-current" />
-                                  <span>Pausa</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Pause className="w-3 h-3 fill-current" />
-                                  <span>En vivo</span>
-                                </>
-                              )}
+                              <Square className="w-3 h-3 fill-current" />
+                              <span>Detener</span>
                             </button>
                           ) : (
                             <button

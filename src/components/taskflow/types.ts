@@ -93,6 +93,20 @@ export interface TaskBlockerInfo {
   notes?: string;
 }
 
+export type ReworkOrigin = 'client' | 'internal';
+
+export interface TaskRework {
+  id: string;
+  taskId: string;
+  origin: ReworkOrigin; // 'client' (ajustes solicitados por el cliente) | 'internal' (calidad / QA interno de Uhura)
+  roundNumber: number; // Ronda 1, Ronda 2, etc.
+  reason: string;
+  requestedBy: string;
+  date: string;
+  hoursSpent?: number;
+  resolved?: boolean;
+}
+
 export interface TaskDeliverable {
   id: string;
   taskId: string;
@@ -211,6 +225,7 @@ export interface TaskItem {
   hourlyRateExecution?: number;
   hourlyRateManagement?: number;
   deliverables?: TaskDeliverable[];
+  reworks?: TaskRework[];
   timeLogs?: TimeLog[];
   messages?: TaskComment[];
   acceptanceCriteria?: { id: string; text: string; completed: boolean }[];

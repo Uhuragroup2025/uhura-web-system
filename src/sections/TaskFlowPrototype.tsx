@@ -9,7 +9,8 @@ import {
   TaskStatus,
   TaskPriority,
   ClientProfile,
-  ProjectType
+  ProjectType,
+  TaskRework
 } from '../components/taskflow/types';
 import {
   initialTasks,
@@ -624,6 +625,65 @@ export const TaskFlowPrototype: React.FC = () => {
     }
   };
 
+  // Update Task Title
+  const handleUpdateTaskTitle = (taskId: string, newTitle: string) => {
+    if (!newTitle.trim()) return;
+    setTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, title: newTitle.trim() } : t))
+    );
+    if (selectedTaskForDetail && selectedTaskForDetail.id === taskId) {
+      setSelectedTaskForDetail((prev) => (prev ? { ...prev, title: newTitle.trim() } : null));
+    }
+  };
+
+  // Add Task Rework
+  const handleAddRework = (
+    taskId: string,
+    reworkData: Omit<TaskRework, 'id' | 'taskId' | 'date'>
+  ) => {
+    const newRework: TaskRework = {
+      ...reworkData,
+      id: `rwk-${Date.now()}`,
+      taskId,
+      date: 'Hoy, ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' hs'
+    };
+
+    const reworkAuditMessage = {
+      id: `msg-${Date.now()}`,
+      authorName: 'Paola (Lead PM)',
+      authorInitials: 'PL',
+      authorAvatarBg: 'bg-[#501f92]',
+      timestamp: 'Hoy, ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' hs',
+      content: `🔄 Retrabajo Registrado (${reworkData.origin === 'client' ? 'Cliente' : 'Interno'} - Ronda ${reworkData.roundNumber}): ${reworkData.reason} (Solicitado por: ${reworkData.requestedBy})`
+    };
+
+    setTasks((prev) =>
+      prev.map((t) => {
+        if (t.id === taskId) {
+          const currentReworks = t.reworks || [];
+          return {
+            ...t,
+            reworks: [...currentReworks, newRework],
+            messages: [...(t.messages || []), reworkAuditMessage]
+          };
+        }
+        return t;
+      })
+    );
+
+    if (selectedTaskForDetail && selectedTaskForDetail.id === taskId) {
+      setSelectedTaskForDetail((prev) => {
+        if (!prev) return null;
+        const currentReworks = prev.reworks || [];
+        return {
+          ...prev,
+          reworks: [...currentReworks, newRework],
+          messages: [...(prev.messages || []), reworkAuditMessage]
+        };
+      });
+    }
+  };
+
   // Delete Task
   const handleDeleteTask = (taskId: string) => {
     setTasks((prev) => prev.filter((t) => t.id !== taskId));
@@ -1047,6 +1107,7 @@ export const TaskFlowPrototype: React.FC = () => {
                     activeTimer={activeTimer}
                     onStartTimer={handleStartTimer}
                     onPauseResumeTimer={handlePauseResumeTimer}
+                    onStopTimer={handleStopTimer}
                     onOpenTaskDetail={handleOpenTaskDetail}
                     onToggleTask={handleToggleTask}
                     onNavigateToClient={(clientName) => {
@@ -1072,6 +1133,7 @@ export const TaskFlowPrototype: React.FC = () => {
                     activeTimer={activeTimer}
                     onStartTimer={handleStartTimer}
                     onPauseResumeTimer={handlePauseResumeTimer}
+                    onStopTimer={handleStopTimer}
                     onOpenTaskDetail={handleOpenTaskDetail}
                     onOpenManualLogModal={(id) => {
                       setManualLogDefaultTaskId(id);
@@ -1232,6 +1294,8 @@ export const TaskFlowPrototype: React.FC = () => {
         onStartTimer={handleStartTimer}
         onPauseResumeTimer={handlePauseResumeTimer}
         onStopTimer={handleStopTimer}
+        onUpdateTitle={handleUpdateTaskTitle}
+        onAddRework={handleAddRework}
         onUpdateBudgetHours={handleUpdateTaskBudgetHours}
         onUpdateTaskStatus={handleUpdateTaskStatus}
         onUpdateTaskPriority={handleUpdateTaskPriority}

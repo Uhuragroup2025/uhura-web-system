@@ -4,7 +4,8 @@ import {
   TaskPriority,
   ProjectType,
   STANDARD_UHURA_ROLES,
-  FeeActivityCategory
+  FeeActivityCategory,
+  ClientProfile
 } from './types';
 import {
   X,
@@ -25,14 +26,14 @@ import {
   ChevronDown,
   Layers,
   Link2,
-  FolderKanban
+  FolderKanban,
+  Briefcase
 } from 'lucide-react';
 import {
   clientProjectHierarchy,
   FEE_ACTIVITY_TEMPLATES
 } from './mockData';
 import { ProjectSummaryItem } from './ProjectsView';
-import { ClientProfile } from './types';
 
 export interface NewTaskModalProps {
   isOpen: boolean;
@@ -72,7 +73,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
   clientsList = [],
   currentUserName = 'Paola (Lead PM)'
 }) => {
-  // Flatten all available projects
+  // 1. Build list of all existing projects with client associations
   const allProjects = useMemo(() => {
     const list: {
       id: string;
@@ -83,7 +84,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
       leadName: string;
     }[] = [];
 
-    // From hierarchy
+    // From mock hierarchy
     clientProjectHierarchy.forEach((cli) => {
       cli.projects.forEach((prj) => {
         list.push({
@@ -99,7 +100,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
 
     // From dynamic projectsList
     projectsList.forEach((p) => {
-      if (!list.some((existing) => existing.id === p.id || existing.name === p.name)) {
+      if (!list.some((existing) => existing.id === p.id || existing.name.toLowerCase() === p.name.toLowerCase())) {
         list.push({
           id: p.id,
           name: p.name,
@@ -114,33 +115,62 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
     return list;
   }, [projectsList]);
 
-  // Selected project state
+  // Extract list of all unique clients
+  const availableClients = useMemo(() => {
+    const set = new Set<string>();
+    clientsList.forEach((c) => set.add(c.name));
+    allProjects.forEach((p) => set.add(p.clientName));
+    return Array.from(set).filter(Boolean);
+  }, [clientsList, allProjects]);
+
+  // Cascading Selection State: Cliente -> Proyecto
+  const [selectedClientName, setSelectedClientName] = useState<string>('');
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
+
+  // Available projects for the chosen client
+  const projectsForSelectedClient = useMemo(() => {
+    if (!selectedClientName) return allProjects;
+    return allProjects.filter(
+      (p) => p.clientName.toLowerCase() === selectedClientName.toLowerCase()
+    );
+  }, [allProjects, selectedClientName]);
 
   // Active project metadata
   const activeProject = useMemo(() => {
-    return allProjects.find((p) => p.id === selectedProjectId) || allProjects[0] || {
-      id: 'default',
-      name: preselectedProjectName || 'Campaña Navidad Yamaha',
-      clientName: preselectedClientName || 'INCOLMOTOS YAMAHA S.A.',
-      projectType: 'fixed_milestones' as ProjectType,
-      serviceBase: 'Desarrollo Web & E-commerce',
-      leadName: 'Paola (Lead PM)'
-    };
-  }, [selectedProjectId, allProjects, preselectedProjectName, preselectedClientName]);
+    const byId = allProjects.find((p) => p.id === selectedProjectId);
+    if (byId) return byId;
+
+    if (projectsForSelectedClient.length > 0) {
+      return projectsForSelectedClient[0];
+    }
+
+    return (
+      allProjects[0] || {
+        id: 'default',
+        name: 'Campaña Navidad Yamaha',
+        clientName: 'INCOLMOTOS YAMAHA S.A.',
+        projectType: 'fee_monthly' as ProjectType,
+        serviceBase: 'Parrilla de Contenidos & Social',
+        leadName: 'Paola (Lead PM)'
+      }
+    );
+  }, [selectedProjectId, projectsForSelectedClient, allProjects]);
 
   // Frentes disponibles para el proyecto activo
   const availableFrentes = useMemo(() => {
     const fromTasks = existingTasks
       .filter((t) => (t.projectName || t.board)?.toLowerCase() === activeProject.name.toLowerCase() && t.frente)
       .map((t) => t.frente!);
-    
+
     const unique = Array.from(new Set(fromTasks));
     if (unique.length > 0) return unique;
 
-    // Fallbacks naturales según nombre o tipo
+    // Natural fallbacks based on project nature
     if (activeProject.name.toLowerCase().includes('yamaha') || activeProject.name.toLowerCase().includes('navidad')) {
       return ['Redes Sociales', 'Landing Page', 'Pauta'];
+    }
+    if (activeProject.name.toLowerCase().includes('battsaver')) {
+      return ['Discovery & Estrategia', 'UX/UI & Prototipo', 'Implementación Shopify', 'QA & Cierre'];
     }
     if (activeProject.projectType === 'fee_monthly') {
       return ['Mantenimiento General', 'Banners & Assets', 'Soporte Continuo'];
@@ -160,10 +190,9 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
   const [reviewerName, setReviewerName] = useState('Paola (Lead PM)');
   const [hasReviewer, setHasReviewer] = useState(true);
   const [collaborators, setCollaborators] = useState<string[]>([]);
-  const [isAddingCollaborator, setIsAddingCollaborator] = useState(false);
 
   // Planning Fields
-  const [budgetedHours, setBudgetedHours] = useState('8.0');
+  const [budgetedHours, setBudgetedHours] = useState('4.0');
   const [priority, setPriority] = useState<TaskPriority>('Medium');
   const [startDate, setStartDate] = useState(() => {
     const today = new Date();
@@ -192,29 +221,70 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
     );
   }, [existingTasks, activeProject]);
 
-  // Initialize selected project and frente when modal opens
+  // Context lock check
+  const isContextLocked = Boolean(preselectedProjectId || preselectedProjectName);
+
+  // Initialize selected client & project when modal opens
   useEffect(() => {
     if (isOpen) {
       if (preselectedProjectId) {
         const found = allProjects.find((p) => p.id === preselectedProjectId);
-        if (found) setSelectedProjectId(found.id);
+        if (found) {
+          setSelectedClientName(found.clientName);
+          setSelectedProjectId(found.id);
+        }
       } else if (preselectedProjectName) {
-        const found = allProjects.find((p) => p.name === preselectedProjectName);
-        if (found) setSelectedProjectId(found.id);
-      } else if (allProjects.length > 0 && !selectedProjectId) {
-        setSelectedProjectId(allProjects[0].id);
+        const found = allProjects.find(
+          (p) => p.name.toLowerCase() === preselectedProjectName.toLowerCase()
+        );
+        if (found) {
+          setSelectedClientName(found.clientName);
+          setSelectedProjectId(found.id);
+        } else if (preselectedClientName) {
+          setSelectedClientName(preselectedClientName);
+        }
+      } else if (preselectedClientName) {
+        setSelectedClientName(preselectedClientName);
+        const clientPrjs = allProjects.filter(
+          (p) => p.clientName.toLowerCase() === preselectedClientName.toLowerCase()
+        );
+        if (clientPrjs.length > 0) {
+          setSelectedProjectId(clientPrjs[0].id);
+        }
+      } else if (availableClients.length > 0) {
+        const defaultClient = availableClients[0];
+        setSelectedClientName(defaultClient);
+        const clientPrjs = allProjects.filter(
+          (p) => p.clientName.toLowerCase() === defaultClient.toLowerCase()
+        );
+        if (clientPrjs.length > 0) {
+          setSelectedProjectId(clientPrjs[0].id);
+        }
       }
     }
-  }, [isOpen, preselectedProjectId, preselectedProjectName, allProjects]);
+  }, [isOpen, preselectedProjectId, preselectedProjectName, preselectedClientName, allProjects, availableClients]);
+
+  // Handle client select change
+  const handleClientSelectChange = (newClientName: string) => {
+    setSelectedClientName(newClientName);
+    const clientPrjs = allProjects.filter(
+      (p) => p.clientName.toLowerCase() === newClientName.toLowerCase()
+    );
+    if (clientPrjs.length > 0) {
+      setSelectedProjectId(clientPrjs[0].id);
+    } else {
+      setSelectedProjectId('');
+    }
+  };
 
   // Set default frente on project change
   useEffect(() => {
-    if (availableFrentes.length > 0 && !frente) {
+    if (availableFrentes.length > 0) {
       setFrente(availableFrentes[0]);
     }
   }, [availableFrentes]);
 
-  // Auto-suggest budgetedRole when assignee changes (if user hasn't heavily modified it)
+  // Auto-suggest budgetedRole when assignee changes
   const handleAssigneeChange = (newAssigneeName: string) => {
     setAssigneeName(newAssigneeName);
     const member = TEAM_MEMBERS.find((m) => m.name === newAssigneeName);
@@ -230,17 +300,13 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
     }
   }, [activeProject]);
 
-  // If closed, return null
   if (!isOpen) return null;
-
-  // Context is locked if opened with preselected context
-  const isContextLocked = Boolean(preselectedProjectId || preselectedProjectName);
 
   // Available templates based on serviceBase
   const availableTemplates = FEE_ACTIVITY_TEMPLATES[activeProject.serviceBase] || [
     { name: 'Conceptualización & Estructura', defaultHours: 2.0, role: 'Product Lead' },
     { name: 'Redacción de Copys & Contenidos', defaultHours: 1.0, role: 'Copywriter' },
-    { name: 'Prototipo & Diseño UI', defaultHours: 8.0, role: 'Web Designer' },
+    { name: 'Prototipo & Diseño UI', defaultHours: 6.0, role: 'Web Designer' },
     { name: 'Implementación Frontend & Testing', defaultHours: 8.0, role: 'Front End' },
     { name: 'Carga & Optimización de Pauta', defaultHours: 3.0, role: 'Trafficker' }
   ];
@@ -268,7 +334,6 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
         setBudgetedRole('Product Lead');
       }
 
-      // Preload standard criteria if empty
       if (criteriaList.length === 0) {
         setCriteriaList([
           'Validación de requerimiento contra brief',
@@ -299,7 +364,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (!title.trim() || !activeProject) return;
 
     const assignedUser = TEAM_MEMBERS.find((m) => m.name === assigneeName) || TEAM_MEMBERS[0];
     const reviewerUser = hasReviewer && reviewerName
@@ -326,17 +391,14 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
     const isInternal = activeProject.projectType === 'internal';
     const hoursNum = parseFloat(budgetedHours) || 4.0;
 
-    // Selected Frente
     const finalFrente = isCustomFrente ? customFrenteText.trim() || 'General' : frente || availableFrentes[0] || 'General';
 
-    // Format dueDate text
     const formattedDueDate = new Date(dueDate + 'T00:00:00').toLocaleDateString('es-CO', {
       day: 'numeric',
       month: 'short',
       year: 'numeric'
     });
 
-    // Sibling dependency
     const depTask = siblingTasks.find((t) => t.id === dependencyTaskId);
 
     const newTask: TaskItem = {
@@ -372,7 +434,6 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
       dueDate: formattedDueDate,
       dueStatus: 'soon',
       dueText: `Entrega: ${formattedDueDate}`,
-      // Toda tarea nace como "To Do" (Por hacer)
       status: 'To Do',
       priority,
       completed: false,
@@ -395,7 +456,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-[#090513]/70 backdrop-blur-xs animate-in fade-in duration-200">
       <div className="bg-white rounded-3xl shadow-2xl border border-[#e2e8f0] w-full max-w-2xl max-h-[94vh] flex flex-col overflow-hidden">
-        {/* Header */}
+        {/* Modal Header */}
         <div className="p-5 bg-gradient-to-r from-[#0f172a] via-[#1e293b] to-[#0f172a] text-white flex items-center justify-between shrink-0 border-b border-[#334155]">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-[#d4ff4a]/20 border border-[#d4ff4a]/40 flex items-center justify-center text-[#d4ff4a]">
@@ -404,7 +465,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
             <div>
               <h3 className="font-bold text-sm text-white">Nueva Tarea</h3>
               <p className="text-[11px] text-[#94a3b8]">
-                Unidad mínima de ejecución, estado y tiempo. Hereda contexto y frentes del proyecto.
+                Asociada a un Proyecto existente (Cliente → Proyecto → Tarea)
               </p>
             </div>
           </div>
@@ -417,71 +478,101 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
           </button>
         </div>
 
-        {/* Form */}
+        {/* Modal Form */}
         <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4 text-xs overflow-y-auto custom-scrollbar">
-          {/* 1. CONTEXTO HEREDADO */}
-          <div className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] space-y-2">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#64748b] block">
-                  Contexto del Proyecto
+          {/* PASO 1: JERARQUÍA OBLIGATORIA (Cliente → Proyecto) */}
+          <div className="p-4 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#501f92] flex items-center gap-1.5">
+                <Building2 className="w-3.5 h-3.5 text-[#501f92]" />
+                <span>1. Cliente y Proyecto Asociado</span>
+              </span>
+              {isContextLocked && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#e0e7ff] text-[#3730a3]">
+                  Contexto Bloqueado
                 </span>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <strong className="text-sm text-[#0f172a]">{activeProject.clientName}</strong>
-                  <span className="text-[#94a3b8] font-bold">→</span>
-                  <span className="text-sm font-semibold text-[#501f92]">{activeProject.name}</span>
-                </div>
-              </div>
-
-              {/* Naturaleza & Servicio Pills */}
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span
-                  className={`text-[11px] font-bold px-2.5 py-0.5 rounded-lg ${
-                    activeProject.projectType === 'fee_monthly'
-                      ? 'bg-[#d4ff4a]/20 text-[#2e5e04] border border-[#d4ff4a]/40'
-                      : activeProject.projectType === 'fixed_milestones'
-                      ? 'bg-[#eff6ff] text-[#2563eb] border border-[#dbeafe]'
-                      : 'bg-[#ecfdf5] text-[#047857] border border-[#a7f3d0]'
-                  }`}
-                >
-                  {activeProject.projectType === 'fee_monthly'
-                    ? 'Fee mensual'
-                    : activeProject.projectType === 'fixed_milestones'
-                    ? 'Proyecto único'
-                    : 'Interno / No facturable'}
-                </span>
-                <span className="text-[11px] font-semibold text-[#475569] bg-white px-2 py-0.5 rounded-lg border border-[#e2e8f0]">
-                  {activeProject.serviceBase}
-                </span>
-              </div>
+              )}
             </div>
 
-            {/* If not locked, allow switching project easily */}
-            {!isContextLocked && allProjects.length > 1 && (
-              <div className="pt-2 border-t border-[#e2e8f0] flex items-center gap-2">
-                <label className="text-[10px] font-bold text-[#64748b] shrink-0">Cambiar Proyecto:</label>
-                <select
-                  value={selectedProjectId}
-                  onChange={(e) => setSelectedProjectId(e.target.value)}
-                  className="flex-1 bg-white border border-[#e2e8f0] px-2.5 py-1 rounded-lg text-xs font-semibold text-[#0f172a]"
-                >
-                  {allProjects.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.clientName} → {p.name}
-                    </option>
-                  ))}
-                </select>
+            {isContextLocked ? (
+              // Locked context view (from inside a project)
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-white rounded-xl border border-[#cbd5e1]">
+                <div>
+                  <span className="text-[10px] text-[#64748b] block font-bold uppercase">Cliente</span>
+                  <span className="text-xs font-extrabold text-[#0f172a]">{activeProject.clientName}</span>
+                </div>
+                <div className="hidden sm:block text-[#94a3b8] font-bold">→</div>
+                <div>
+                  <span className="text-[10px] text-[#64748b] block font-bold uppercase">Proyecto</span>
+                  <span className="text-xs font-extrabold text-[#501f92]">{activeProject.name}</span>
+                </div>
+                <div>
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                      activeProject.projectType === 'fee_monthly'
+                        ? 'bg-[#d4ff4a]/20 text-[#2e5e04]'
+                        : activeProject.projectType === 'fixed_milestones'
+                        ? 'bg-[#eff6ff] text-[#2563eb]'
+                        : 'bg-[#ecfdf5] text-[#047857]'
+                    }`}
+                  >
+                    {activeProject.projectType === 'fee_monthly'
+                      ? 'Fee mensual'
+                      : activeProject.projectType === 'fixed_milestones'
+                      ? 'Proyecto único'
+                      : 'Interno'}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              // Cascading Selectors (Cliente -> Proyecto)
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* 1. Seleccionar Cliente */}
+                <div>
+                  <label className="text-[11px] font-bold text-[#334155] block mb-1">
+                    Cliente *
+                  </label>
+                  <select
+                    value={selectedClientName}
+                    onChange={(e) => handleClientSelectChange(e.target.value)}
+                    className="w-full bg-white border border-[#cbd5e1] px-3 py-2 rounded-xl text-xs font-semibold text-[#0f172a] focus:outline-none focus:border-[#501f92] focus:ring-1 focus:ring-[#501f92] cursor-pointer"
+                  >
+                    {availableClients.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 2. Seleccionar Proyecto de ese Cliente */}
+                <div>
+                  <label className="text-[11px] font-bold text-[#334155] block mb-1">
+                    Proyecto ({projectsForSelectedClient.length}) *
+                  </label>
+                  <select
+                    value={selectedProjectId}
+                    onChange={(e) => setSelectedProjectId(e.target.value)}
+                    className="w-full bg-white border border-[#cbd5e1] px-3 py-2 rounded-xl text-xs font-semibold text-[#501f92] focus:outline-none focus:border-[#501f92] focus:ring-1 focus:ring-[#501f92] cursor-pointer"
+                  >
+                    {projectsForSelectedClient.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} ({p.projectType === 'fee_monthly' ? 'Fee' : p.projectType === 'fixed_milestones' ? 'Único' : 'Interno'})
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             )}
           </div>
 
-          {/* 2. FRENTE / ENTREGABLE DEL PROYECTO */}
-          <div className="p-3.5 rounded-2xl bg-[#f5f3ff]/50 border border-[#e9d5ff] space-y-2">
+          {/* PASO 2: FRENTE / ENTREGABLE */}
+          <div className="p-3.5 rounded-2xl bg-[#f5f3ff]/60 border border-[#e9d5ff] space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
                 <FolderKanban className="w-3.5 h-3.5 text-[#501f92]" />
                 <label className="font-bold text-[#0f172a] text-xs">
-                  Frente / Entregable *
+                  Frente / Entregable del Proyecto *
                 </label>
               </div>
               <button
@@ -489,7 +580,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
                 onClick={() => setIsCustomFrente(!isCustomFrente)}
                 className="text-[10px] font-bold text-[#501f92] hover:underline cursor-pointer"
               >
-                {isCustomFrente ? '← Seleccionar existente' : '+ Nuevo frente'}
+                {isCustomFrente ? '← Seleccionar existente' : '+ Nuevo frente personalizado'}
               </button>
             </div>
 
@@ -497,22 +588,22 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
               <input
                 type="text"
                 required
-                placeholder="Ej. Landing Page, Redes Sociales, Pauta, E-commerce..."
+                placeholder="Ej. Redes Sociales, Landing Page, Pauta, E-commerce..."
                 value={customFrenteText}
                 onChange={(e) => setCustomFrenteText(e.target.value)}
                 className="w-full bg-white border border-[#8a4dff] px-3 py-2 rounded-xl text-xs text-[#0f172a] font-bold focus:outline-none focus:ring-1 focus:ring-[#8a4dff]"
               />
             ) : (
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-1.5">
                 {availableFrentes.map((f) => (
                   <button
                     key={f}
                     type="button"
                     onClick={() => setFrente(f)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                    className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
                       frente === f
                         ? 'bg-[#501f92] text-white border-[#501f92] shadow-xs'
-                        : 'bg-white text-[#475569] border-[#e2e8f0] hover:border-[#8a4dff]/40 hover:bg-[#f8fafc]'
+                        : 'bg-white text-[#475569] border-[#cbd5e1] hover:border-[#8a4dff]/40 hover:bg-[#f8fafc]'
                     }`}
                   >
                     {f}
@@ -522,32 +613,77 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
             )}
           </div>
 
-          {/* 3. TÍTULO DE LA TAREA */}
-          <div>
-            <label className="block font-bold text-[#0f172a] mb-1">
-              Título de la tarea *
-            </label>
-            <input
-              type="text"
-              required
-              placeholder="Ej. Prototipo landing, Estrategia de contenido, Carga/publicación de anuncios..."
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full bg-[#f8fafc] border border-[#e2e8f0] px-3.5 py-2.5 rounded-xl text-xs text-[#0f172a] placeholder-[#94a3b8] font-semibold focus:outline-none focus:ring-2 focus:ring-[#8a4dff]/20 focus:border-[#8a4dff]"
-            />
-          </div>
+          {/* PLANTILLAS RÁPIDAS (OPCIONAL) */}
+          {availableTemplates.length > 0 && (
+            <div className="p-3 rounded-2xl bg-white border border-[#e2e8f0] space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-[#501f92]" />
+                  <span>Sugerencias rápidas para {activeProject.serviceBase}</span>
+                </span>
+                <span className="text-[10px] text-[#94a3b8]">Opcional</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {availableTemplates.map((t) => (
+                  <button
+                    key={t.name}
+                    type="button"
+                    onClick={() => handleApplyTemplate(t.name)}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer border text-left ${
+                      selectedTemplateKey === t.name
+                        ? 'bg-[#f2ecfb] text-[#501f92] border-[#501f92] font-bold'
+                        : 'bg-[#f8fafc] text-[#475569] border-[#e2e8f0] hover:bg-[#f1f5f9]'
+                    }`}
+                  >
+                    <span>{t.name}</span>
+                    <span className="ml-1 text-[10px] opacity-70">({t.defaultHours}h)</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
-          {/* 4. ROL PRESUPUESTADO & RESPONSABLE REAL */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            {/* Responsable Real */}
+          {/* PASO 3: TÍTULO Y DESCRIPCIÓN */}
+          <div className="space-y-3">
             <div>
               <label className="block font-bold text-[#0f172a] mb-1">
-                Responsable asignado *
+                Título de la tarea *
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="Ej. Prototipo landing, Estrategia de contenidos, Publicación de pauta..."
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="w-full bg-[#f8fafc] border border-[#cbd5e1] px-3.5 py-2.5 rounded-xl text-xs text-[#0f172a] placeholder-[#94a3b8] font-semibold focus:outline-none focus:ring-2 focus:ring-[#8a4dff]/20 focus:border-[#8a4dff]"
+              />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-[#64748b] mb-1">
+                Descripción / Requerimiento detallado (opcional)
+              </label>
+              <textarea
+                rows={2}
+                placeholder="Detalla el alcance, insumos requeridos, enlaces a Figma o brief..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="w-full bg-[#f8fafc] border border-[#cbd5e1] px-3.5 py-2 rounded-xl text-xs text-[#0f172a] placeholder-[#94a3b8] focus:outline-none focus:border-[#8a4dff]"
+              />
+            </div>
+          </div>
+
+          {/* PASO 4: ASIGNACIÓN Y ROL COTIZADO */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            {/* Colaborador Real */}
+            <div>
+              <label className="block font-bold text-[#0f172a] mb-1">
+                Responsable asignado (Colaborador) *
               </label>
               <select
                 value={assigneeName}
                 onChange={(e) => handleAssigneeChange(e.target.value)}
-                className="w-full bg-[#f8fafc] border border-[#e2e8f0] px-3 py-2 rounded-xl text-xs font-semibold text-[#0f172a] focus:outline-none focus:border-[#8a4dff] cursor-pointer"
+                className="w-full bg-[#f8fafc] border border-[#cbd5e1] px-3 py-2 rounded-xl text-xs font-semibold text-[#0f172a] focus:outline-none focus:border-[#8a4dff] cursor-pointer"
               >
                 {TEAM_MEMBERS.map((m) => (
                   <option key={m.name} value={m.name}>
@@ -557,18 +693,18 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
               </select>
             </div>
 
-            {/* Rol Cotizado (Comercial) */}
+            {/* Rol Cotizado */}
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block font-bold text-[#0f172a]">
                   Rol cotizado *
                 </label>
-                <span className="text-[10px] text-[#64748b]">Perfil vendido comercialmente</span>
+                <span className="text-[10px] text-[#64748b]">Vendido comercialmente</span>
               </div>
               <select
                 value={budgetedRole}
                 onChange={(e) => setBudgetedRole(e.target.value)}
-                className="w-full bg-[#f8fafc] border border-[#e2e8f0] px-3 py-2 rounded-xl text-xs font-semibold text-[#501f92] focus:outline-none focus:border-[#8a4dff] cursor-pointer"
+                className="w-full bg-[#f8fafc] border border-[#cbd5e1] px-3 py-2 rounded-xl text-xs font-semibold text-[#501f92] focus:outline-none focus:border-[#8a4dff] cursor-pointer"
               >
                 {STANDARD_UHURA_ROLES.map((role) => (
                   <option key={role} value={role}>
@@ -579,31 +715,15 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
             </div>
           </div>
 
-          {/* 5. DESCRIPCIÓN / REQUERIMIENTO */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="block font-bold text-[#0f172a]">
-                Descripción / requerimiento
-              </label>
-              <span className="text-[10px] text-[#64748b]">Contexto, links a Figma, Drive o especificaciones</span>
-            </div>
-            <textarea
-              rows={3}
-              placeholder="¿Qué se necesita? Agrega requerimientos, links de referencia, especificaciones de diseño o pauta..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="w-full bg-[#f8fafc] border border-[#e2e8f0] p-3 rounded-xl text-xs text-[#0f172a] placeholder-[#94a3b8] focus:outline-none focus:ring-2 focus:ring-[#8a4dff]/20 focus:border-[#8a4dff] resize-none leading-relaxed"
-            />
-          </div>
-
-          {/* 6. PLANEACIÓN: HORAS ESTIMADAS, PRIORIDAD, FECHA INICIO, FECHA ENTREGA */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {/* Horas cotizadas */}
+          {/* PASO 5: HORAS, PRIORIDAD Y FECHAS */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+            {/* Horas */}
             <div>
               <label className="block font-bold text-[#0f172a] mb-1">
                 Horas cotizadas *
               </label>
               <div className="relative">
+                <Clock className="w-3.5 h-3.5 text-[#64748b] absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="number"
                   step="0.5"
@@ -611,163 +731,142 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
                   required
                   value={budgetedHours}
                   onChange={(e) => setBudgetedHours(e.target.value)}
-                  className="w-full bg-[#f8fafc] border border-[#e2e8f0] px-3 py-2 rounded-xl text-xs font-mono font-bold text-[#501f92] focus:outline-none focus:border-[#8a4dff]"
+                  className="w-full bg-[#f8fafc] border border-[#cbd5e1] pl-8 pr-3 py-2 rounded-xl text-xs font-mono font-bold text-[#0f172a] focus:outline-none focus:border-[#8a4dff]"
                 />
-                <span className="absolute right-3 top-2 text-xs font-bold text-[#94a3b8] pointer-events-none">h</span>
               </div>
             </div>
 
             {/* Prioridad */}
             <div>
               <label className="block font-bold text-[#0f172a] mb-1">
-                Prioridad
+                Prioridad *
               </label>
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as TaskPriority)}
-                className={`w-full border px-2.5 py-2 rounded-xl text-xs font-bold focus:outline-none cursor-pointer ${
-                  priority === 'High'
-                    ? 'bg-[#fef2f2] border-[#fecaca] text-[#dc2626]'
-                    : priority === 'Low'
-                    ? 'bg-[#f8fafc] border-[#e2e8f0] text-[#64748b]'
-                    : 'bg-[#f8fafc] border-[#e2e8f0] text-[#0f172a]'
-                }`}
+                className="w-full bg-[#f8fafc] border border-[#cbd5e1] px-3 py-2 rounded-xl text-xs font-semibold text-[#0f172a] focus:outline-none focus:border-[#8a4dff] cursor-pointer"
               >
-                <option value="Medium">Normal (Default)</option>
-                <option value="High">Alta</option>
                 <option value="Low">Baja</option>
+                <option value="Medium">Media</option>
+                <option value="High">Alta</option>
+                <option value="Critical">Crítica / Urgente</option>
               </select>
             </div>
 
-            {/* Fecha inicio */}
+            {/* Fecha Límite */}
             <div>
               <label className="block font-bold text-[#0f172a] mb-1">
-                Fecha inicio
+                Fecha límite *
               </label>
-              <input
-                type="text"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                placeholder="Hoy"
-                className="w-full bg-[#f8fafc] border border-[#e2e8f0] px-3 py-2 rounded-xl text-xs text-[#0f172a] font-medium"
-              />
-            </div>
-
-            {/* Fecha de entrega * */}
-            <div>
-              <label className="block font-bold text-[#0f172a] mb-1">
-                Fecha de entrega *
-              </label>
-              <input
-                type="date"
-                required
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                className="w-full bg-[#f8fafc] border border-[#e2e8f0] px-2.5 py-2 rounded-xl text-xs text-[#0f172a] font-bold"
-              />
+              <div className="relative">
+                <Calendar className="w-3.5 h-3.5 text-[#64748b] absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="date"
+                  required
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                  className="w-full bg-[#f8fafc] border border-[#cbd5e1] pl-8 pr-3 py-2 rounded-xl text-xs font-bold text-[#0f172a] focus:outline-none focus:border-[#8a4dff]"
+                />
+              </div>
             </div>
           </div>
 
-          {/* 7. REVISOR & DEPENDENCIA DE TAREA (Opcionales) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            {/* Revisor */}
+          {/* PASO 6: DEPENDENCIAS (Tareas Hermanas del mismo Proyecto) */}
+          {siblingTasks.length > 0 && (
             <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block font-bold text-[#0f172a]">
-                  Revisor / Aprobación
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setHasReviewer(!hasReviewer)}
-                  className={`text-[10px] font-bold cursor-pointer ${
-                    hasReviewer ? 'text-[#501f92] hover:underline' : 'text-[#64748b]'
-                  }`}
-                >
-                  {hasReviewer ? 'Con revisor' : 'Sin revisor (directo)'}
-                </button>
-              </div>
-
-              {hasReviewer ? (
+              <label className="block font-semibold text-[#64748b] mb-1">
+                Dependencia / Bloqueada por (opcional)
+              </label>
+              <div className="flex items-center gap-2">
+                <Link2 className="w-3.5 h-3.5 text-[#64748b] shrink-0" />
                 <select
-                  value={reviewerName}
-                  onChange={(e) => setReviewerName(e.target.value)}
-                  className="w-full bg-[#f8fafc] border border-[#e2e8f0] px-3 py-2 rounded-xl text-xs font-semibold text-[#501f92] focus:outline-none focus:border-[#8a4dff] cursor-pointer"
+                  value={dependencyTaskId}
+                  onChange={(e) => setDependencyTaskId(e.target.value)}
+                  className="flex-1 bg-[#f8fafc] border border-[#cbd5e1] px-3 py-2 rounded-xl text-xs text-[#0f172a] focus:outline-none focus:border-[#8a4dff] cursor-pointer"
                 >
-                  {TEAM_MEMBERS.map((m) => (
-                    <option key={m.name} value={m.name}>
-                      {m.name} {m.name === activeProject.leadName ? '(Project Lead default)' : `(${m.defaultRole})`}
+                  <option value="">Sin dependencias (inicia de inmediato)</option>
+                  {siblingTasks.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.title} ({t.status})
                     </option>
                   ))}
                 </select>
-              ) : (
-                <div className="w-full bg-[#f1f5f9] border border-[#e2e8f0] px-3 py-2 rounded-xl text-xs text-[#64748b] italic">
-                  Flujo directo: Por hacer → En proceso → Listo
-                </div>
+              </div>
+            </div>
+          )}
+
+          {/* PASO 7: REVISOR & COLABORADORES */}
+          <div className="space-y-3 pt-2 border-t border-[#f1f5f9]">
+            {/* Revisor */}
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 font-bold text-[#0f172a] cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={hasReviewer}
+                  onChange={(e) => setHasReviewer(e.target.checked)}
+                  className="rounded text-[#501f92] focus:ring-[#8a4dff]"
+                />
+                <span>Requiere aprobación formal (Revisor Accountable)</span>
+              </label>
+
+              {hasReviewer && (
+                <select
+                  value={reviewerName}
+                  onChange={(e) => setReviewerName(e.target.value)}
+                  className="bg-[#f8fafc] border border-[#e2e8f0] px-2.5 py-1 rounded-xl text-xs font-semibold text-[#0f172a] focus:outline-none focus:border-[#8a4dff] cursor-pointer"
+                >
+                  {TEAM_MEMBERS.map((m) => (
+                    <option key={m.name} value={m.name}>
+                      {m.name} ({m.defaultRole})
+                    </option>
+                  ))}
+                </select>
               )}
             </div>
 
-            {/* Dependencia (Depende de / Bloqueada por) */}
+            {/* Colaboradores Adicionales */}
             <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block font-bold text-[#0f172a]">
-                  Depende de (Opcional)
-                </label>
-                <span className="text-[10px] text-[#64748b]">Cascada / Bloqueo</span>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[11px] font-bold text-[#64748b]">
+                  Colaboradores de apoyo ({collaborators.length})
+                </span>
+                <span className="text-[10px] text-[#94a3b8]">Pueden cargar horas a esta tarea</span>
               </div>
-              <select
-                value={dependencyTaskId}
-                onChange={(e) => setDependencyTaskId(e.target.value)}
-                className="w-full bg-[#f8fafc] border border-[#e2e8f0] px-3 py-2 rounded-xl text-xs font-medium text-[#334155] focus:outline-none focus:border-[#8a4dff] cursor-pointer"
-              >
-                <option value="">Sin dependencia (ejecución libre / paralela)</option>
-                {siblingTasks.map((st) => (
-                  <option key={st.id} value={st.id}>
-                    🔒 Depende de: {st.title} ({st.frente || 'General'})
-                  </option>
-                ))}
-              </select>
+              <div className="flex flex-wrap gap-1.5">
+                {TEAM_MEMBERS.filter((m) => m.name !== assigneeName).map((m) => {
+                  const isSelected = collaborators.includes(m.name);
+                  return (
+                    <button
+                      key={m.name}
+                      type="button"
+                      onClick={() => handleToggleCollaborator(m.name)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer border ${
+                        isSelected
+                          ? 'bg-[#501f92] text-white border-[#501f92]'
+                          : 'bg-[#f8fafc] text-[#64748b] border-[#e2e8f0] hover:bg-[#f1f5f9]'
+                      }`}
+                    >
+                      {m.name.split(' ')[0]}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
-          {/* 8. CRITERIOS DE ACEPTACIÓN */}
-          <div className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] space-y-2.5">
+          {/* PASO 8: CRITERIOS DE ACEPTACIÓN (CHECKLIST) */}
+          <div className="space-y-2 pt-2 border-t border-[#f1f5f9]">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <ListChecks className="w-3.5 h-3.5 text-[#501f92]" />
-                <label className="block font-bold text-[#0f172a] text-[11px] uppercase tracking-wider">
-                  Criterios de Aceptación
-                </label>
-              </div>
-              <span className="text-[10px] text-[#64748b]">
-                {criteriaList.length} definidos
-              </span>
+              <label className="font-bold text-[#0f172a] text-xs">
+                Criterios de Aceptación & Entregables
+              </label>
+              <span className="text-[10px] text-[#64748b]">Checklist para revisión</span>
             </div>
 
-            {criteriaList.length > 0 && (
-              <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
-                {criteriaList.map((crit, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center justify-between bg-white px-3 py-1.5 rounded-xl border border-[#e2e8f0] text-xs shadow-2xs"
-                  >
-                    <span className="text-[#334155] truncate flex-1 font-medium">
-                      {idx + 1}. {crit}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveCriterion(idx)}
-                      className="text-[#94a3b8] hover:text-[#ef4444] p-1 rounded cursor-pointer transition-colors"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="flex items-center gap-1.5 pt-1">
+            <div className="flex items-center gap-2">
               <input
                 type="text"
+                placeholder="Ej. Aprobación de copy por parte del cliente, link de staging activo..."
                 value={criterionInput}
                 onChange={(e) => setCriterionInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -776,35 +875,53 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
                     handleAddCriterion();
                   }
                 }}
-                placeholder="Ej. Prototipo responsive con interacciones aprobado..."
-                className="flex-1 bg-white border border-[#e2e8f0] px-3 py-2 rounded-xl text-xs text-[#0f172a] placeholder-[#94a3b8] focus:outline-none focus:ring-1 focus:ring-[#8a4dff]"
+                className="flex-1 bg-[#f8fafc] border border-[#cbd5e1] px-3 py-1.5 rounded-xl text-xs text-[#0f172a] focus:outline-none focus:border-[#8a4dff]"
               />
               <button
                 type="button"
                 onClick={handleAddCriterion}
-                className="px-3.5 py-2 bg-white border border-[#e2e8f0] hover:bg-[#f8fafc] text-[#0f172a] rounded-xl text-xs font-semibold shrink-0 cursor-pointer flex items-center gap-1 shadow-2xs"
+                className="px-3 py-1.5 bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[#0f172a] font-bold rounded-xl text-xs cursor-pointer transition-colors"
               >
-                <Plus className="w-3 h-3 text-[#501f92]" />
-                <span>Agregar</span>
+                + Agregar
               </button>
             </div>
+
+            {criteriaList.length > 0 && (
+              <div className="space-y-1 pt-1">
+                {criteriaList.map((crit, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between p-2 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] text-xs"
+                  >
+                    <span className="text-[#334155]">✓ {crit}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveCriterion(idx)}
+                      className="text-[#94a3b8] hover:text-[#ef4444] p-1 cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Footer Actions */}
-          <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#f1f5f9]">
+          {/* Action Buttons */}
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#e2e8f0]">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-[#64748b] hover:bg-[#f1f5f9] hover:text-[#0f172a] border border-[#e2e8f0] bg-white transition-colors cursor-pointer shadow-2xs"
+              className="px-4 py-2 rounded-xl text-xs font-bold text-[#64748b] hover:bg-[#f1f5f9] transition-colors cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="px-5 py-2.5 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold shadow-xs cursor-pointer flex items-center gap-1.5 transition-all"
+              className="px-5 py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
             >
-              <CheckSquare className="w-3.5 h-3.5" />
-              <span>Crear Tarea en Orbit</span>
+              <Plus className="w-3.5 h-3.5" />
+              <span>Crear Tarea</span>
             </button>
           </div>
         </form>

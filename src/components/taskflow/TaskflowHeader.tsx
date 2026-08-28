@@ -343,23 +343,12 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
 
             <div className="flex items-center gap-1">
               <button
-                onClick={onPauseResumeTimer}
-                className={`p-1.5 rounded-lg text-xs font-bold cursor-pointer ${
-                  activeTimer.isPaused
-                    ? 'bg-[#f59e0b] text-white hover:bg-[#d97706]'
-                    : 'bg-[#f1f5f9] text-[#0f172a] hover:bg-[#e2e8f0]'
-                }`}
-                title={activeTimer.isPaused ? 'Reanudar' : 'Pausar'}
-              >
-                {activeTimer.isPaused ? <Play className="w-3.5 h-3.5 fill-current" /> : <Pause className="w-3.5 h-3.5 fill-current" />}
-              </button>
-
-              <button
                 onClick={onStopTimer}
-                className="p-1.5 rounded-lg bg-[#501f92] hover:bg-[#381566] text-white cursor-pointer"
+                className="p-1.5 rounded-lg bg-[#dc2626] hover:bg-[#b91c1c] text-white cursor-pointer shadow-xs transition-colors flex items-center gap-1 text-xs font-bold"
                 title="Detener Timer y Registrar"
               >
                 <Square className="w-3.5 h-3.5 fill-current" />
+                <span className="hidden sm:inline text-[10px]">Detener</span>
               </button>
             </div>
           </div>

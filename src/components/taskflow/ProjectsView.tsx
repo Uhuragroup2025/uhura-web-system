@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { TaskItem, ActiveTimerState, ClientProfile, ProjectType, ProjectPhaseItem, ProjectSummaryItem } from './types';
+import { TaskItem, ActiveTimerState, ClientProfile, ProjectType, ProjectPhaseItem, ProjectSummaryItem, TaskPriority } from './types';
 export type { ProjectSummaryItem };
 import { BoardView } from './BoardView';
 import { ManagePhasesModal } from './ManagePhasesModal';
@@ -20,6 +20,7 @@ import {
   AlertTriangle,
   Play,
   Pause,
+  Square,
   Layers,
   ArrowLeft,
   Sparkles,
@@ -38,7 +39,10 @@ import {
   ArrowRight,
   RotateCcw,
   SlidersHorizontal,
-  Table as TableIcon
+  Table as TableIcon,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 
 interface ProjectsViewProps {
@@ -52,6 +56,7 @@ interface ProjectsViewProps {
   activeTimer: ActiveTimerState | null;
   onStartTimer: (task: TaskItem) => void;
   onPauseResumeTimer?: () => void;
+  onStopTimer?: () => void;
   onOpenTaskDetail: (task: TaskItem) => void;
   onToggleTask: (taskId: string) => void;
   onNavigateToClient?: (clientName: string) => void;
@@ -74,6 +79,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   activeTimer,
   onStartTimer,
   onPauseResumeTimer,
+  onStopTimer,
   onOpenTaskDetail,
   onToggleTask,
   onNavigateToClient,
@@ -94,8 +100,41 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   // Project Detail Tab & Grouping
   const [activeTab, setActiveTab] = useState<ProjectDetailTab>('tasks');
   const [tasksGroupBy, setTasksGroupBy] = useState<TasksGroupBy>('frente');
+  const [taskSortDirection, setTaskSortDirection] = useState<'asc' | 'desc'>('asc');
   const [collapsedFrentes, setCollapsedFrentes] = useState<Record<string, boolean>>({});
   const [collapsedPhases, setCollapsedPhases] = useState<Record<string, boolean>>({});
+
+  // Helper for sorting tasks by due date (Nearest / Overdue / Today first by default)
+  const sortTasksByDeadline = (taskList: TaskItem[], direction: 'asc' | 'desc') => {
+    return [...taskList].sort((a, b) => {
+      // Completed / Done tasks go below active tasks
+      const aDone = a.completed || a.status === 'Done';
+      const bDone = b.completed || b.status === 'Done';
+      if (aDone && !bDone) return 1;
+      if (!aDone && bDone) return -1;
+
+      // Extract ISO date timestamp or fallback
+      const getTimestamp = (t: TaskItem) => {
+        if (!t.dueDate) return 9999999999999;
+        // Check if today / mañana keyword or date string
+        const d = new Date(t.dueDate).getTime();
+        return isNaN(d) ? 9999999999999 : d;
+      };
+
+      const timeA = getTimestamp(a);
+      const timeB = getTimestamp(b);
+
+      if (timeA !== timeB) {
+        return direction === 'asc' ? timeA - timeB : timeB - timeA;
+      }
+
+      // Priority secondary tie breaker (High > Medium > Low)
+      const prioWeight: Record<string, number> = { High: 3, Medium: 2, Low: 1 };
+      const weightA = prioWeight[a.priority] || 2;
+      const weightB = prioWeight[b.priority] || 2;
+      return weightB - weightA;
+    });
+  };
 
   // Backlog Tab Modals & Filters
   const [isManagePhasesOpen, setIsManagePhasesOpen] = useState(false);
@@ -242,8 +281,11 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
       }
     });
 
-    return Object.values(frentesMap);
-  }, [currentProject]);
+    return Object.values(frentesMap).map((frente) => ({
+      ...frente,
+      tasks: sortTasksByDeadline(frente.tasks, taskSortDirection)
+    }));
+  }, [currentProject, taskSortDirection]);
 
   // Phases breakdown for current project (Dynamic and customizable)
   const phasesBreakdown = useMemo(() => {
@@ -269,20 +311,21 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
         return tPhase === pName || pName.includes(tPhase) || tPhase.includes(pName.split(' ')[0]);
       });
 
+      const sortedPhaseTasks = sortTasksByDeadline(phaseTasks, taskSortDirection);
       const budgetedHours = phaseTasks.reduce((acc, t) => acc + (t.budgetedHours || 0), 0);
       const consumedHours = phaseTasks.reduce((acc, t) => acc + ((t.consumedSeconds || 0) / 3600), 0);
       const completedCount = phaseTasks.filter((t) => t.completed || t.status === 'Done').length;
 
       return {
         ...phase,
-        tasks: phaseTasks,
+        tasks: sortedPhaseTasks,
         budgetedHours,
         consumedHours,
         completedCount,
         totalCount: phaseTasks.length
       };
     });
-  }, [currentProject]);
+  }, [currentProject, taskSortDirection]);
 
   // Filtered Backlog Tasks
   const filteredBacklogTasks = useMemo(() => {
@@ -453,7 +496,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
               className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Crear tarea</span>
+              <span>Nueva Tarea</span>
             </button>
           )}
         </div>
@@ -791,7 +834,20 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                               <thead>
                                 <tr className="border-b border-[#f1f5f9] text-[10px] font-bold text-[#64748b] uppercase tracking-wider bg-white">
                                   <th className="py-2.5 px-4">TAREA & DEPENDENCIAS</th>
-                                  <th className="py-2.5 px-3">FASE</th>
+                                  <th
+                                    onClick={() => setTaskSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
+                                    className="py-2.5 px-3 cursor-pointer hover:text-[#501f92] transition-colors select-none group"
+                                    title="Clic para ordenar por fecha de vencimiento"
+                                  >
+                                    <div className="flex items-center gap-1">
+                                      <span>VENCE</span>
+                                      {taskSortDirection === 'asc' ? (
+                                        <ArrowUp className="w-3 h-3 text-[#501f92]" />
+                                      ) : (
+                                        <ArrowDown className="w-3 h-3 text-[#501f92]" />
+                                      )}
+                                    </div>
+                                  </th>
                                   <th className="py-2.5 px-3">ROL COTIZADO</th>
                                   <th className="py-2.5 px-3">RESPONSABLE</th>
                                   <th className="py-2.5 px-3">HORAS</th>
@@ -842,11 +898,39 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                                         </div>
                                       </td>
 
-                                      {/* Fase */}
+                                      {/* Vence / Due Date */}
                                       <td className="py-3 px-3">
-                                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#eff6ff] text-[#1d4ed8] border border-[#dbeafe]">
-                                          {task.phase || task.fase || 'Discovery'}
-                                        </span>
+                                        <div className="flex items-center gap-1.5">
+                                          <Calendar className={`w-3.5 h-3.5 shrink-0 ${
+                                            task.dueStatus === 'overdue'
+                                              ? 'text-[#ef4444]'
+                                              : task.dueStatus === 'soon' || task.dueStatus === 'tomorrow'
+                                              ? 'text-[#f59e0b]'
+                                              : 'text-[#64748b]'
+                                          }`} />
+                                          <div className="flex flex-col">
+                                            <span className={`text-xs font-semibold ${
+                                              task.dueStatus === 'overdue'
+                                                ? 'text-[#ef4444] font-bold'
+                                                : task.dueStatus === 'soon' || task.dueStatus === 'tomorrow'
+                                                ? 'text-[#d97706] font-bold'
+                                                : 'text-[#334155]'
+                                            }`}>
+                                              {task.dueDate || 'Sin fecha'}
+                                            </span>
+                                            {task.dueText && (
+                                              <span className={`text-[10px] ${
+                                                task.dueStatus === 'overdue'
+                                                  ? 'text-[#dc2626] font-bold'
+                                                  : task.dueStatus === 'soon' || task.dueStatus === 'tomorrow'
+                                                  ? 'text-[#b45309]'
+                                                  : 'text-[#94a3b8]'
+                                              }`}>
+                                                {task.dueText}
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
                                       </td>
 
                                       {/* Rol Cotizado */}
@@ -874,23 +958,23 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                                         <span className="text-[10px] text-[#64748b] font-normal"> / {task.budgetedHours} h</span>
                                       </td>
 
-                                      {/* Timer Play / Pause */}
+                                      {/* Timer Play / Stop */}
                                       <td className="py-3 px-3 text-center" onClick={(e) => e.stopPropagation()}>
                                         {isRunning ? (
                                           <button
-                                            onClick={onPauseResumeTimer}
-                                            className={`p-1.5 rounded-lg text-white font-bold transition-all shadow-xs ${
-                                              activeTimer?.isPaused ? 'bg-[#f59e0b]' : 'bg-[#10b981]'
-                                            }`}
+                                            onClick={onStopTimer}
+                                            className="p-1.5 rounded-lg bg-[#dc2626] hover:bg-[#b91c1c] text-white font-bold transition-all shadow-xs cursor-pointer animate-pulse"
+                                            title="Detener timer"
                                           >
-                                            {activeTimer?.isPaused ? <Play className="w-3 h-3" /> : <Pause className="w-3 h-3" />}
+                                            <Square className="w-3 h-3 fill-current" />
                                           </button>
                                         ) : (
                                           <button
                                             onClick={() => onStartTimer(task)}
                                             className="p-1.5 rounded-lg bg-[#f8fafc] hover:bg-[#501f92] text-[#64748b] hover:text-white border border-[#e2e8f0] transition-colors cursor-pointer"
+                                            title="Iniciar timer"
                                           >
-                                            <Play className="w-3 h-3" />
+                                            <Play className="w-3 h-3 fill-current" />
                                           </button>
                                         )}
                                       </td>
@@ -1012,7 +1096,20 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                               <thead>
                                 <tr className="border-b border-[#f1f5f9] text-[10px] font-bold text-[#64748b] uppercase tracking-wider bg-white">
                                   <th className="py-2.5 px-4">ACTIVIDAD</th>
-                                  <th className="py-2.5 px-3">FRENTE</th>
+                                  <th
+                                    onClick={() => setTaskSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
+                                    className="py-2.5 px-3 cursor-pointer hover:text-[#501f92] transition-colors select-none group"
+                                    title="Clic para ordenar por fecha de vencimiento"
+                                  >
+                                    <div className="flex items-center gap-1">
+                                      <span>VENCE</span>
+                                      {taskSortDirection === 'asc' ? (
+                                        <ArrowUp className="w-3 h-3 text-[#501f92]" />
+                                      ) : (
+                                        <ArrowDown className="w-3 h-3 text-[#501f92]" />
+                                      )}
+                                    </div>
+                                  </th>
                                   <th className="py-2.5 px-3">ROL COTIZADO</th>
                                   <th className="py-2.5 px-3">RESPONSABLE</th>
                                   <th className="py-2.5 px-3">HORAS</th>
@@ -1046,14 +1143,52 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                                               <div className="w-4 h-4 rounded-full border border-[#cbd5e1] hover:border-[#501f92]" />
                                             )}
                                           </button>
-                                          <span className={`font-bold text-xs group-hover:text-[#501f92] ${task.completed ? 'line-through text-[#94a3b8]' : ''}`}>
-                                            {task.title}
-                                          </span>
+                                          <div>
+                                            <span className={`font-bold text-xs group-hover:text-[#501f92] ${task.completed ? 'line-through text-[#94a3b8]' : ''}`}>
+                                              {task.title}
+                                            </span>
+                                            {task.frente && (
+                                              <span className="text-[10px] text-[#64748b] block mt-0.5">
+                                                Frente: {task.frente}
+                                              </span>
+                                            )}
+                                          </div>
                                         </div>
                                       </td>
 
+                                      {/* Vence / Due Date */}
                                       <td className="py-3 px-3">
-                                        <span className="text-xs text-[#64748b] font-medium">{task.frente || 'General'}</span>
+                                        <div className="flex items-center gap-1.5">
+                                          <Calendar className={`w-3.5 h-3.5 shrink-0 ${
+                                            task.dueStatus === 'overdue'
+                                              ? 'text-[#ef4444]'
+                                              : task.dueStatus === 'soon' || task.dueStatus === 'tomorrow'
+                                              ? 'text-[#f59e0b]'
+                                              : 'text-[#64748b]'
+                                          }`} />
+                                          <div className="flex flex-col">
+                                            <span className={`text-xs font-semibold ${
+                                              task.dueStatus === 'overdue'
+                                                ? 'text-[#ef4444] font-bold'
+                                                : task.dueStatus === 'soon' || task.dueStatus === 'tomorrow'
+                                                ? 'text-[#d97706] font-bold'
+                                                : 'text-[#334155]'
+                                            }`}>
+                                              {task.dueDate || 'Sin fecha'}
+                                            </span>
+                                            {task.dueText && (
+                                              <span className={`text-[10px] ${
+                                                task.dueStatus === 'overdue'
+                                                  ? 'text-[#dc2626] font-bold'
+                                                  : task.dueStatus === 'soon' || task.dueStatus === 'tomorrow'
+                                                  ? 'text-[#b45309]'
+                                                  : 'text-[#94a3b8]'
+                                              }`}>
+                                                {task.dueText}
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
                                       </td>
 
                                       <td className="py-3 px-3">
@@ -1081,19 +1216,19 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                                       <td className="py-3 px-3 text-center" onClick={(e) => e.stopPropagation()}>
                                         {isRunning ? (
                                           <button
-                                            onClick={onPauseResumeTimer}
-                                            className={`p-1.5 rounded-lg text-white font-bold transition-all shadow-xs ${
-                                              activeTimer?.isPaused ? 'bg-[#f59e0b]' : 'bg-[#10b981]'
-                                            }`}
+                                            onClick={onStopTimer}
+                                            className="p-1.5 rounded-lg bg-[#dc2626] hover:bg-[#b91c1c] text-white font-bold transition-all shadow-xs cursor-pointer animate-pulse"
+                                            title="Detener timer"
                                           >
-                                            {activeTimer?.isPaused ? <Play className="w-3 h-3" /> : <Pause className="w-3 h-3" />}
+                                            <Square className="w-3 h-3 fill-current" />
                                           </button>
                                         ) : (
                                           <button
                                             onClick={() => onStartTimer(task)}
                                             className="p-1.5 rounded-lg bg-[#f8fafc] hover:bg-[#501f92] text-[#64748b] hover:text-white border border-[#e2e8f0] transition-colors cursor-pointer"
+                                            title="Iniciar timer"
                                           >
-                                            <Play className="w-3 h-3" />
+                                            <Play className="w-3 h-3 fill-current" />
                                           </button>
                                         )}
                                       </td>
@@ -1870,7 +2005,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
           className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold shadow-xs cursor-pointer self-start sm:self-auto transition-all"
         >
           <Plus className="w-3.5 h-3.5" />
-          <span>Nuevo proyecto</span>
+          <span>Nuevo Proyecto</span>
         </button>
       </div>
 
