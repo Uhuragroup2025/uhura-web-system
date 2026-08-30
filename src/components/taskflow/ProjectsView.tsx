@@ -5,6 +5,14 @@ import { BoardView } from './BoardView';
 import { ManagePhasesModal } from './ManagePhasesModal';
 import { ImportBacklogModal } from './ImportBacklogModal';
 import {
+  Button,
+  Badge,
+  TaskStatusBadge,
+  RoleChip,
+  Input,
+  Tooltip
+} from '../ui';
+import {
   Briefcase,
   Search,
   Plus,
@@ -496,10 +504,11 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
         <div className="flex items-center justify-between gap-2">
           <button
             onClick={handleBackToPortfolio}
-            className="inline-flex items-center gap-2 text-xs font-bold text-[#501f92] hover:text-[#381566] cursor-pointer bg-white px-3 py-1.5 rounded-xl border border-[#e2e8f0] shadow-2xs hover:bg-[#f8fafc] transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#64748b] hover:text-[#0f172a] cursor-pointer py-1 px-1.5 -ml-1 rounded-lg hover:bg-black/5 transition-colors"
+            title="Volver a la lista de proyectos"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Volver al Portafolio</span>
+            <span>Volver</span>
           </button>
 
           <div className="flex items-center gap-2 relative">
@@ -593,40 +602,12 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             </div>
 
             {/* Health Box */}
-            <div className="flex items-center gap-3 bg-[#f8fafc] p-3 rounded-2xl border border-[#e2e8f0] shrink-0">
+            <div className="flex items-center gap-3 bg-[#f8fafc] px-3.5 py-2.5 rounded-2xl border border-[#e2e8f0] shrink-0">
               <div className="text-right">
                 <span className="text-[10px] font-bold uppercase text-[#64748b] block">Salud</span>
-                <div className="flex items-center justify-end gap-1.5 mt-0.5">
-                  <span
-                    className={`w-2.5 h-2.5 rounded-full ${
-                      currentProject.healthStatus === 'verde'
-                        ? 'bg-[#10b981]'
-                        : currentProject.healthStatus === 'amarillo'
-                        ? 'bg-[#f59e0b]'
-                        : 'bg-[#ef4444]'
-                    }`}
-                  />
-                  <span
-                    className={`text-xs font-bold ${
-                      currentProject.healthStatus === 'verde'
-                        ? 'text-[#16a34a]'
-                        : currentProject.healthStatus === 'amarillo'
-                        ? 'text-[#d97706]'
-                        : 'text-[#dc2626]'
-                    }`}
-                  >
-                    {currentProject.healthStatus === 'verde'
-                      ? 'Saludable'
-                      : currentProject.healthStatus === 'amarillo'
-                      ? 'Atención'
-                      : 'En Riesgo'}
-                  </span>
-                </div>
-                {currentProject.healthNote && (
-                  <span className="text-[10px] text-[#64748b] block mt-0.5 max-w-[150px] truncate" title={currentProject.healthNote}>
-                    {currentProject.healthNote}
-                  </span>
-                )}
+                <span className="text-xs font-semibold text-[#94a3b8] block mt-0.5">
+                  Pendiente de datos
+                </span>
               </div>
             </div>
           </div>
@@ -893,177 +874,274 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                           </div>
                         </div>
 
-                        {/* Frente Tasks Table */}
+                        {/* Frente Tasks (Mobile Cards + Desktop Table) */}
                         {!isCollapsed && (
-                          <div className="overflow-x-auto">
-                            <table className="w-full text-left text-xs">
-                              <thead>
-                                <tr className="border-b border-[#f1f5f9] text-[10px] font-bold text-[#64748b] uppercase tracking-wider bg-white">
-                                  <th className="py-2.5 px-4">TAREA & DEPENDENCIAS</th>
-                                  <th
-                                    onClick={() => setTaskSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
-                                    className="py-2.5 px-3 cursor-pointer hover:text-[#501f92] transition-colors select-none group"
-                                    title="Clic para ordenar por fecha de vencimiento"
-                                  >
-                                    <div className="flex items-center gap-1">
-                                      <span>VENCE</span>
-                                      {taskSortDirection === 'asc' ? (
-                                        <ArrowUp className="w-3 h-3 text-[#501f92]" />
-                                      ) : (
-                                        <ArrowDown className="w-3 h-3 text-[#501f92]" />
-                                      )}
-                                    </div>
-                                  </th>
-                                  <th className="py-2.5 px-3">ROL COTIZADO</th>
-                                  <th className="py-2.5 px-3">RESPONSABLE</th>
-                                  <th className="py-2.5 px-3">HORAS</th>
-                                  <th className="py-2.5 px-3 text-center w-16">TIMER</th>
-                                  <th className="py-2.5 px-4 text-right pr-5">ESTADO</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-[#f1f5f9]">
-                                {frenteGroup.tasks.map((task) => {
-                                  const isRunning = activeTimer?.taskId === task.id;
-                                  const taskConsumedH = (task.consumedSeconds || 0) / 3600;
+                          <div>
+                            {/* 1. Mobile Cards View (md:hidden) */}
+                            <div className="md:hidden divide-y divide-[#f1f5f9]">
+                              {frenteGroup.tasks.map((task) => {
+                                const isRunning = activeTimer?.taskId === task.id;
+                                const taskConsumedH = (task.consumedSeconds || 0) / 3600;
 
-                                  return (
-                                    <tr
-                                      key={task.id}
-                                      onClick={() => onOpenTaskDetail(task)}
-                                      className={`hover:bg-[#f8fafc] cursor-pointer transition-colors group ${
-                                        task.completed ? 'bg-[#f8fafc]/40 text-[#94a3b8]' : 'text-[#0f172a]'
-                                      }`}
-                                    >
-                                      {/* Tarea & Predecesora */}
-                                      <td className="py-3 px-4">
-                                        <div className="flex items-center gap-2.5">
-                                          <button
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              onToggleTask(task.id);
-                                            }}
-                                            className="text-[#94a3b8] hover:text-[#501f92] transition-colors cursor-pointer"
+                                return (
+                                  <div
+                                    key={`mob-${task.id}`}
+                                    onClick={() => onOpenTaskDetail(task)}
+                                    className={`p-3 space-y-2 transition-colors cursor-pointer ${
+                                      task.completed ? 'bg-[#f8fafc]/50' : 'bg-white hover:bg-[#f8fafc]'
+                                    }`}
+                                  >
+                                    <div className="flex items-start gap-2.5 justify-between">
+                                      <div className="flex items-start gap-2 min-w-0 flex-1">
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            onToggleTask(task.id);
+                                          }}
+                                          className="text-[#94a3b8] hover:text-[#501f92] transition-colors cursor-pointer mt-0.5 shrink-0"
+                                        >
+                                          {task.completed ? (
+                                            <CheckCircle2 className="w-4 h-4 text-[#10b981]" />
+                                          ) : (
+                                            <div className="w-4 h-4 rounded-full border border-[#cbd5e1] hover:border-[#501f92]" />
+                                          )}
+                                        </button>
+                                        <div className="min-w-0 flex-1">
+                                          <h5
+                                            className={`font-semibold text-xs text-[#0f172a] leading-tight ${
+                                              task.completed ? 'line-through text-[#94a3b8]' : ''
+                                            }`}
                                           >
-                                            {task.completed ? (
-                                              <CheckCircle2 className="w-4 h-4 text-[#10b981]" />
-                                            ) : (
-                                              <div className="w-4 h-4 rounded-full border border-[#cbd5e1] hover:border-[#501f92]" />
+                                            {task.title}
+                                          </h5>
+                                          <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                                            {task.budgetedRole && (
+                                              <RoleChip role={task.budgetedRole} size="xs" />
                                             )}
-                                          </button>
-                                          <div>
-                                            <span className={`font-bold text-xs group-hover:text-[#501f92] ${task.completed ? 'line-through' : ''}`}>
-                                              {task.title}
-                                            </span>
                                             {task.dependencyTaskTitle && (
-                                              <div className="flex items-center gap-1 text-[10px] text-[#64748b] mt-0.5">
-                                                <Lock className="w-2.5 h-2.5 text-[#f59e0b]" />
-                                                <span>Depende de: <strong className="text-[#475569]">{task.dependencyTaskTitle}</strong></span>
-                                              </div>
+                                              <Tooltip content={`Predecesora: ${task.dependencyTaskTitle}`}>
+                                                <span className="inline-flex items-center gap-0.5 text-[10px] text-[#b45309] bg-[#fef3c7] px-1.5 py-0.2 rounded font-medium">
+                                                  <Lock className="w-2.5 h-2.5" />
+                                                  Dep
+                                                </span>
+                                              </Tooltip>
                                             )}
                                           </div>
                                         </div>
-                                      </td>
+                                      </div>
 
-                                      {/* Vence / Due Date */}
-                                      <td className="py-3 px-3">
-                                        <div className="flex items-center gap-1.5">
-                                          <Calendar className={`w-3.5 h-3.5 shrink-0 ${
-                                            task.dueStatus === 'overdue'
-                                              ? 'text-[#ef4444]'
-                                              : task.dueStatus === 'soon' || task.dueStatus === 'tomorrow'
-                                              ? 'text-[#f59e0b]'
-                                              : 'text-[#64748b]'
-                                          }`} />
-                                          <div className="flex flex-col">
-                                            <span className={`text-xs font-semibold ${
+                                      {/* Canonical Status Badge */}
+                                      <TaskStatusBadge
+                                        status={task.status}
+                                        completed={task.completed}
+                                        size="xs"
+                                      />
+                                    </div>
+
+                                    {/* Bottom Meta & Quick Controls */}
+                                    <div className="flex items-center justify-between gap-2 pt-1 border-t border-[#f1f5f9] text-[11px] text-[#64748b]">
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        <div className="flex items-center gap-1">
+                                          <div
+                                            className={`w-4 h-4 rounded-full ${task.assignee.avatarBg} text-white flex items-center justify-center text-[7px] font-bold shrink-0`}
+                                          >
+                                            {task.assignee.initials}
+                                          </div>
+                                          <span className="truncate max-w-[85px] text-[#334155] font-medium">
+                                            {task.assignee.name}
+                                          </span>
+                                        </div>
+
+                                        <span className="text-[#cbd5e1]">·</span>
+
+                                        <span className={`font-mono font-bold text-xs shrink-0 ${taskConsumedH > (task.budgetedHours || 0) ? 'text-[#ef4444]' : 'text-[#0f172a]'}`}>
+                                          {taskConsumedH.toFixed(1)}h / {task.budgetedHours}h
+                                        </span>
+                                      </div>
+
+                                      {/* Timer Quick Action */}
+                                      <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+                                        {isRunning ? (
+                                          <Button
+                                            variant="danger"
+                                            size="xs"
+                                            onClick={onStopTimer}
+                                            icon={<Square className="w-2.5 h-2.5 fill-current" />}
+                                            className="animate-pulse py-1 px-2 text-[10px]"
+                                          >
+                                            Parar
+                                          </Button>
+                                        ) : (
+                                          <Button
+                                            variant="ghost"
+                                            size="xs"
+                                            onClick={() => onStartTimer(task)}
+                                            icon={<Play className="w-3 h-3 fill-current text-[#64748b]" />}
+                                            className="p-1.5 h-7 w-7 border border-[#e2e8f0]"
+                                          />
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+
+                            {/* 2. Desktop Table View (hidden md:block) - Compact density */}
+                            <div className="hidden md:block overflow-x-auto">
+                              <table className="w-full text-left text-xs border-collapse">
+                                <thead>
+                                  <tr className="border-b border-[#f1f5f9] text-[10px] font-bold text-[#64748b] uppercase tracking-wider bg-white">
+                                    <th className="py-2 px-3">TAREA</th>
+                                    <th
+                                      onClick={() => setTaskSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
+                                      className="py-2 px-2.5 cursor-pointer hover:text-[#501f92] transition-colors select-none group w-28"
+                                      title="Clic para ordenar por fecha de vencimiento"
+                                    >
+                                      <div className="flex items-center gap-1">
+                                        <span>VENCE</span>
+                                        {taskSortDirection === 'asc' ? (
+                                          <ArrowUp className="w-3 h-3 text-[#501f92]" />
+                                        ) : (
+                                          <ArrowDown className="w-3 h-3 text-[#501f92]" />
+                                        )}
+                                      </div>
+                                    </th>
+                                    <th className="py-2 px-2.5 w-32">ROL COTIZADO</th>
+                                    <th className="py-2 px-2.5 w-36">RESPONSABLE</th>
+                                    <th className="py-2 px-2.5 w-28">HORAS</th>
+                                    <th className="py-2 px-2 text-center w-14">TIMER</th>
+                                    <th className="py-2 px-3 text-right pr-4 w-28">ESTADO</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-[#f1f5f9]">
+                                  {frenteGroup.tasks.map((task) => {
+                                    const isRunning = activeTimer?.taskId === task.id;
+                                    const taskConsumedH = (task.consumedSeconds || 0) / 3600;
+
+                                    return (
+                                      <tr
+                                        key={task.id}
+                                        onClick={() => onOpenTaskDetail(task)}
+                                        className={`hover:bg-[#f8fafc] cursor-pointer transition-colors group ${
+                                          task.completed ? 'bg-[#f8fafc]/40 text-[#94a3b8]' : 'text-[#0f172a]'
+                                        }`}
+                                      >
+                                        {/* Tarea & Predecesora */}
+                                        <td className="py-2 px-3">
+                                          <div className="flex items-center gap-2">
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                onToggleTask(task.id);
+                                              }}
+                                              className="text-[#94a3b8] hover:text-[#501f92] transition-colors cursor-pointer shrink-0"
+                                            >
+                                              {task.completed ? (
+                                                <CheckCircle2 className="w-3.5 h-3.5 text-[#10b981]" />
+                                              ) : (
+                                                <div className="w-3.5 h-3.5 rounded-full border border-[#cbd5e1] hover:border-[#501f92]" />
+                                              )}
+                                            </button>
+                                            <div className="min-w-0 flex-1">
+                                              <div className="flex items-center gap-1.5">
+                                                <span className={`font-semibold text-xs group-hover:text-[#501f92] truncate ${task.completed ? 'line-through' : ''}`}>
+                                                  {task.title}
+                                                </span>
+                                                {task.dependencyTaskTitle && (
+                                                  <Tooltip content={`Depende de: ${task.dependencyTaskTitle}`}>
+                                                    <span className="inline-flex items-center gap-0.5 text-[9px] text-[#b45309] bg-[#fef3c7] px-1 py-0.2 rounded font-medium shrink-0">
+                                                      <Lock className="w-2 h-2 text-[#f59e0b]" />
+                                                      Dep
+                                                    </span>
+                                                  </Tooltip>
+                                                )}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </td>
+
+                                        {/* Vence / Due Date */}
+                                        <td className="py-2 px-2.5">
+                                          <div className="flex items-center gap-1">
+                                            <Calendar className={`w-3 h-3 shrink-0 ${
+                                              task.dueStatus === 'overdue'
+                                                ? 'text-[#ef4444]'
+                                                : task.dueStatus === 'soon' || task.dueStatus === 'tomorrow'
+                                                ? 'text-[#f59e0b]'
+                                                : 'text-[#94a3b8]'
+                                            }`} />
+                                            <span className={`text-[11px] truncate ${
                                               task.dueStatus === 'overdue'
                                                 ? 'text-[#ef4444] font-bold'
                                                 : task.dueStatus === 'soon' || task.dueStatus === 'tomorrow'
-                                                ? 'text-[#d97706] font-bold'
-                                                : 'text-[#334155]'
+                                                ? 'text-[#d97706] font-semibold'
+                                                : 'text-[#334155] font-medium'
                                             }`}>
                                               {task.dueDate || 'Sin fecha'}
                                             </span>
-                                            {task.dueText && (
-                                              <span className={`text-[10px] ${
-                                                task.dueStatus === 'overdue'
-                                                  ? 'text-[#dc2626] font-bold'
-                                                  : task.dueStatus === 'soon' || task.dueStatus === 'tomorrow'
-                                                  ? 'text-[#b45309]'
-                                                  : 'text-[#94a3b8]'
-                                              }`}>
-                                                {task.dueText}
-                                              </span>
-                                            )}
                                           </div>
-                                        </div>
-                                      </td>
+                                        </td>
 
-                                      {/* Rol Cotizado */}
-                                      <td className="py-3 px-3">
-                                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#f5f3ff] text-[#501f92] border border-[#e9d5ff]">
-                                          {task.budgetedRole || 'Especialista'}
-                                        </span>
-                                      </td>
+                                        {/* Rol Cotizado */}
+                                        <td className="py-2 px-2.5">
+                                          <RoleChip role={task.budgetedRole || 'Especialista'} size="xs" />
+                                        </td>
 
-                                      {/* Responsable Real */}
-                                      <td className="py-3 px-3">
-                                        <div className="flex items-center gap-1.5">
-                                          <div className={`w-5 h-5 rounded-full ${task.assignee.avatarBg} text-white flex items-center justify-center text-[8px] font-bold`}>
-                                            {task.assignee.initials}
+                                        {/* Responsable Real */}
+                                        <td className="py-2 px-2.5">
+                                          <div className="flex items-center gap-1.5 min-w-0">
+                                            <div className={`w-4 h-4 rounded-full ${task.assignee.avatarBg} text-white flex items-center justify-center text-[7px] font-bold shrink-0`}>
+                                              {task.assignee.initials}
+                                            </div>
+                                            <span className="text-xs text-[#334155] font-medium truncate">{task.assignee.name}</span>
                                           </div>
-                                          <span className="text-xs text-[#334155] font-medium">{task.assignee.name}</span>
-                                        </div>
-                                      </td>
+                                        </td>
 
-                                      {/* Horas Cotizadas vs Ejecutadas */}
-                                      <td className="py-3 px-3 font-mono font-bold text-xs">
-                                        <span className={taskConsumedH > task.budgetedHours ? 'text-[#ef4444]' : 'text-[#0f172a]'}>
-                                          {taskConsumedH.toFixed(1)} h
-                                        </span>
-                                        <span className="text-[10px] text-[#64748b] font-normal"> / {task.budgetedHours} h</span>
-                                      </td>
+                                        {/* Horas Cotizadas vs Ejecutadas */}
+                                        <td className="py-2 px-2.5 font-mono font-bold text-xs">
+                                          <span className={taskConsumedH > task.budgetedHours ? 'text-[#ef4444]' : 'text-[#0f172a]'}>
+                                            {taskConsumedH.toFixed(1)}h
+                                          </span>
+                                          <span className="text-[10px] text-[#64748b] font-normal"> / {task.budgetedHours}h</span>
+                                        </td>
 
-                                      {/* Timer Play / Stop */}
-                                      <td className="py-3 px-3 text-center" onClick={(e) => e.stopPropagation()}>
-                                        {isRunning ? (
-                                          <button
-                                            onClick={onStopTimer}
-                                            className="p-1.5 rounded-lg bg-[#dc2626] hover:bg-[#b91c1c] text-white font-bold transition-all shadow-xs cursor-pointer animate-pulse"
-                                            title="Detener timer"
-                                          >
-                                            <Square className="w-3 h-3 fill-current" />
-                                          </button>
-                                        ) : (
-                                          <button
-                                            onClick={() => onStartTimer(task)}
-                                            className="p-1.5 rounded-lg bg-[#f8fafc] hover:bg-[#501f92] text-[#64748b] hover:text-white border border-[#e2e8f0] transition-colors cursor-pointer"
-                                            title="Iniciar timer"
-                                          >
-                                            <Play className="w-3 h-3 fill-current" />
-                                          </button>
-                                        )}
-                                      </td>
+                                        {/* Timer Play / Stop */}
+                                        <td className="py-2 px-2 text-center" onClick={(e) => e.stopPropagation()}>
+                                          {isRunning ? (
+                                            <Button
+                                              variant="danger"
+                                              size="xs"
+                                              onClick={onStopTimer}
+                                              icon={<Square className="w-2.5 h-2.5 fill-current" />}
+                                              className="p-1 h-6 w-6 animate-pulse"
+                                            />
+                                          ) : (
+                                            <Button
+                                              variant="ghost"
+                                              size="xs"
+                                              onClick={() => onStartTimer(task)}
+                                              icon={<Play className="w-2.5 h-2.5 fill-current text-[#64748b]" />}
+                                              className="p-1 h-6 w-6 border border-[#e2e8f0]"
+                                            />
+                                          )}
+                                        </td>
 
-                                      {/* Status */}
-                                      <td className="py-3 px-4 text-right pr-5">
-                                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                          task.status === 'Done' || task.completed
-                                            ? 'bg-[#ecfdf5] text-[#065f46]'
-                                            : task.status === 'Review'
-                                            ? 'bg-[#f2ecfb] text-[#501f92]'
-                                            : task.status === 'In Progress'
-                                            ? 'bg-[#fffbeb] text-[#92400e]'
-                                            : 'bg-[#f1f5f9] text-[#475569]'
-                                        }`}>
-                                          {task.status === 'Done' ? 'Listo' : task.status === 'Review' ? 'En revisión' : task.status === 'In Progress' ? 'En proceso' : 'Por hacer'}
-                                        </span>
-                                      </td>
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
+                                        {/* Status */}
+                                        <td className="py-2 px-3 text-right pr-4">
+                                          <TaskStatusBadge
+                                            status={task.status}
+                                            completed={task.completed}
+                                            size="xs"
+                                          />
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -1158,50 +1236,30 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                               </button>
                             </div>
                           ) : (
-                            <table className="w-full text-left text-xs">
-                              <thead>
-                                <tr className="border-b border-[#f1f5f9] text-[10px] font-bold text-[#64748b] uppercase tracking-wider bg-white">
-                                  <th className="py-2.5 px-4">ACTIVIDAD</th>
-                                  <th
-                                    onClick={() => setTaskSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
-                                    className="py-2.5 px-3 cursor-pointer hover:text-[#501f92] transition-colors select-none group"
-                                    title="Clic para ordenar por fecha de vencimiento"
-                                  >
-                                    <div className="flex items-center gap-1">
-                                      <span>VENCE</span>
-                                      {taskSortDirection === 'asc' ? (
-                                        <ArrowUp className="w-3 h-3 text-[#501f92]" />
-                                      ) : (
-                                        <ArrowDown className="w-3 h-3 text-[#501f92]" />
-                                      )}
-                                    </div>
-                                  </th>
-                                  <th className="py-2.5 px-3">ROL COTIZADO</th>
-                                  <th className="py-2.5 px-3">RESPONSABLE</th>
-                                  <th className="py-2.5 px-3">HORAS</th>
-                                  <th className="py-2.5 px-3 text-center w-16">TIMER</th>
-                                  <th className="py-2.5 px-4 text-right pr-5">ESTADO</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-[#f1f5f9]">
+                            <div>
+                              {/* 1. Mobile Cards View (md:hidden) */}
+                              <div className="md:hidden divide-y divide-[#f1f5f9]">
                                 {phaseGroup.tasks.map((task) => {
                                   const isRunning = activeTimer?.taskId === task.id;
                                   const taskConsumedH = (task.consumedSeconds || 0) / 3600;
 
                                   return (
-                                    <tr
-                                      key={task.id}
+                                    <div
+                                      key={`phase-mob-${task.id}`}
                                       onClick={() => onOpenTaskDetail(task)}
-                                      className="hover:bg-[#f8fafc] cursor-pointer transition-colors group text-[#0f172a]"
+                                      className={`p-3 space-y-2 transition-colors cursor-pointer ${
+                                        task.completed ? 'bg-[#f8fafc]/50' : 'bg-white hover:bg-[#f8fafc]'
+                                      }`}
                                     >
-                                      <td className="py-3 px-4">
-                                        <div className="flex items-center gap-2.5">
+                                      <div className="flex items-start gap-2.5 justify-between">
+                                        <div className="flex items-start gap-2 min-w-0 flex-1">
                                           <button
+                                            type="button"
                                             onClick={(e) => {
                                               e.stopPropagation();
                                               onToggleTask(task.id);
                                             }}
-                                            className="text-[#94a3b8] hover:text-[#501f92] transition-colors cursor-pointer"
+                                            className="text-[#94a3b8] hover:text-[#501f92] transition-colors cursor-pointer mt-0.5 shrink-0"
                                           >
                                             {task.completed ? (
                                               <CheckCircle2 className="w-4 h-4 text-[#10b981]" />
@@ -1209,114 +1267,228 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                                               <div className="w-4 h-4 rounded-full border border-[#cbd5e1] hover:border-[#501f92]" />
                                             )}
                                           </button>
-                                          <div>
-                                            <span className={`font-bold text-xs group-hover:text-[#501f92] ${task.completed ? 'line-through text-[#94a3b8]' : ''}`}>
+                                          <div className="min-w-0 flex-1">
+                                            <h5
+                                              className={`font-semibold text-xs text-[#0f172a] leading-tight ${
+                                                task.completed ? 'line-through text-[#94a3b8]' : ''
+                                              }`}
+                                            >
                                               {task.title}
+                                            </h5>
+                                            <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                                              {task.budgetedRole && (
+                                                <RoleChip role={task.budgetedRole} size="xs" />
+                                              )}
+                                              {task.frente && (
+                                                <span className="text-[10px] text-[#64748b]">
+                                                  {task.frente}
+                                                </span>
+                                              )}
+                                            </div>
+                                          </div>
+                                        </div>
+
+                                        {/* Status Badge */}
+                                        <TaskStatusBadge
+                                          status={task.status}
+                                          completed={task.completed}
+                                          size="xs"
+                                        />
+                                      </div>
+
+                                      {/* Bottom Meta & Quick Controls */}
+                                      <div className="flex items-center justify-between gap-2 pt-1 border-t border-[#f1f5f9] text-[11px] text-[#64748b]">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                          <div className="flex items-center gap-1">
+                                            <div
+                                              className={`w-4 h-4 rounded-full ${task.assignee.avatarBg} text-white flex items-center justify-center text-[7px] font-bold shrink-0`}
+                                            >
+                                              {task.assignee.initials}
+                                            </div>
+                                            <span className="truncate max-w-[85px] text-[#334155] font-medium">
+                                              {task.assignee.name}
                                             </span>
-                                            {task.frente && (
-                                              <span className="text-[10px] text-[#64748b] block mt-0.5">
-                                                Frente: {task.frente}
-                                              </span>
-                                            )}
                                           </div>
+
+                                          <span className="text-[#cbd5e1]">·</span>
+
+                                          <span className={`font-mono font-bold text-xs shrink-0 ${taskConsumedH > (task.budgetedHours || 0) ? 'text-[#ef4444]' : 'text-[#0f172a]'}`}>
+                                            {taskConsumedH.toFixed(1)}h / {task.budgetedHours}h
+                                          </span>
                                         </div>
-                                      </td>
 
-                                      {/* Vence / Due Date */}
-                                      <td className="py-3 px-3">
-                                        <div className="flex items-center gap-1.5">
-                                          <Calendar className={`w-3.5 h-3.5 shrink-0 ${
-                                            task.dueStatus === 'overdue'
-                                              ? 'text-[#ef4444]'
-                                              : task.dueStatus === 'soon' || task.dueStatus === 'tomorrow'
-                                              ? 'text-[#f59e0b]'
-                                              : 'text-[#64748b]'
-                                          }`} />
-                                          <div className="flex flex-col">
-                                            <span className={`text-xs font-semibold ${
-                                              task.dueStatus === 'overdue'
-                                                ? 'text-[#ef4444] font-bold'
-                                                : task.dueStatus === 'soon' || task.dueStatus === 'tomorrow'
-                                                ? 'text-[#d97706] font-bold'
-                                                : 'text-[#334155]'
-                                            }`}>
-                                              {task.dueDate || 'Sin fecha'}
-                                            </span>
-                                            {task.dueText && (
-                                              <span className={`text-[10px] ${
-                                                task.dueStatus === 'overdue'
-                                                  ? 'text-[#dc2626] font-bold'
-                                                  : task.dueStatus === 'soon' || task.dueStatus === 'tomorrow'
-                                                  ? 'text-[#b45309]'
-                                                  : 'text-[#94a3b8]'
-                                              }`}>
-                                                {task.dueText}
-                                              </span>
-                                            )}
-                                          </div>
+                                        {/* Timer Quick Action */}
+                                        <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+                                          {isRunning ? (
+                                            <Button
+                                              variant="danger"
+                                              size="xs"
+                                              onClick={onStopTimer}
+                                              icon={<Square className="w-2.5 h-2.5 fill-current" />}
+                                              className="animate-pulse py-1 px-2 text-[10px]"
+                                            >
+                                              Parar
+                                            </Button>
+                                          ) : (
+                                            <Button
+                                              variant="ghost"
+                                              size="xs"
+                                              onClick={() => onStartTimer(task)}
+                                              icon={<Play className="w-3 h-3 fill-current text-[#64748b]" />}
+                                              className="p-1.5 h-7 w-7 border border-[#e2e8f0]"
+                                            />
+                                          )}
                                         </div>
-                                      </td>
-
-                                      <td className="py-3 px-3">
-                                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#f5f3ff] text-[#501f92] border border-[#e9d5ff]">
-                                          {task.budgetedRole || 'Especialista'}
-                                        </span>
-                                      </td>
-
-                                      <td className="py-3 px-3">
-                                        <div className="flex items-center gap-1.5">
-                                          <div className={`w-5 h-5 rounded-full ${task.assignee.avatarBg} text-white flex items-center justify-center text-[8px] font-bold`}>
-                                            {task.assignee.initials}
-                                          </div>
-                                          <span className="text-xs text-[#334155] font-medium">{task.assignee.name}</span>
-                                        </div>
-                                      </td>
-
-                                      <td className="py-3 px-3 font-mono font-bold text-xs">
-                                        <span className={taskConsumedH > task.budgetedHours ? 'text-[#ef4444]' : 'text-[#0f172a]'}>
-                                          {taskConsumedH.toFixed(1)} h
-                                        </span>
-                                        <span className="text-[10px] text-[#64748b] font-normal"> / {task.budgetedHours} h</span>
-                                      </td>
-
-                                      <td className="py-3 px-3 text-center" onClick={(e) => e.stopPropagation()}>
-                                        {isRunning ? (
-                                          <button
-                                            onClick={onStopTimer}
-                                            className="p-1.5 rounded-lg bg-[#dc2626] hover:bg-[#b91c1c] text-white font-bold transition-all shadow-xs cursor-pointer animate-pulse"
-                                            title="Detener timer"
-                                          >
-                                            <Square className="w-3 h-3 fill-current" />
-                                          </button>
-                                        ) : (
-                                          <button
-                                            onClick={() => onStartTimer(task)}
-                                            className="p-1.5 rounded-lg bg-[#f8fafc] hover:bg-[#501f92] text-[#64748b] hover:text-white border border-[#e2e8f0] transition-colors cursor-pointer"
-                                            title="Iniciar timer"
-                                          >
-                                            <Play className="w-3 h-3 fill-current" />
-                                          </button>
-                                        )}
-                                      </td>
-
-                                      <td className="py-3 px-4 text-right pr-5">
-                                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                          task.status === 'Done' || task.completed
-                                            ? 'bg-[#ecfdf5] text-[#065f46]'
-                                            : task.status === 'Review'
-                                            ? 'bg-[#f2ecfb] text-[#501f92]'
-                                            : task.status === 'In Progress'
-                                            ? 'bg-[#fffbeb] text-[#92400e]'
-                                            : 'bg-[#f1f5f9] text-[#475569]'
-                                        }`}>
-                                          {task.status === 'Done' ? 'Listo' : task.status === 'Review' ? 'En revisión' : task.status === 'In Progress' ? 'En proceso' : 'Por hacer'}
-                                        </span>
-                                      </td>
-                                    </tr>
+                                      </div>
+                                    </div>
                                   );
                                 })}
-                              </tbody>
-                            </table>
+                              </div>
+
+                              {/* 2. Desktop Table View (hidden md:block) */}
+                              <div className="hidden md:block overflow-x-auto">
+                                <table className="w-full text-left text-xs border-collapse">
+                                  <thead>
+                                    <tr className="border-b border-[#f1f5f9] text-[10px] font-bold text-[#64748b] uppercase tracking-wider bg-white">
+                                      <th className="py-2 px-3">ACTIVIDAD</th>
+                                      <th
+                                        onClick={() => setTaskSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
+                                        className="py-2 px-2.5 cursor-pointer hover:text-[#501f92] transition-colors select-none group w-28"
+                                        title="Clic para ordenar por fecha de vencimiento"
+                                      >
+                                        <div className="flex items-center gap-1">
+                                          <span>VENCE</span>
+                                          {taskSortDirection === 'asc' ? (
+                                            <ArrowUp className="w-3 h-3 text-[#501f92]" />
+                                          ) : (
+                                            <ArrowDown className="w-3 h-3 text-[#501f92]" />
+                                          )}
+                                        </div>
+                                      </th>
+                                      <th className="py-2 px-2.5 w-32">ROL COTIZADO</th>
+                                      <th className="py-2 px-2.5 w-36">RESPONSABLE</th>
+                                      <th className="py-2 px-2.5 w-28">HORAS</th>
+                                      <th className="py-2 px-2 text-center w-14">TIMER</th>
+                                      <th className="py-2 px-3 text-right pr-4 w-28">ESTADO</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-[#f1f5f9]">
+                                    {phaseGroup.tasks.map((task) => {
+                                      const isRunning = activeTimer?.taskId === task.id;
+                                      const taskConsumedH = (task.consumedSeconds || 0) / 3600;
+
+                                      return (
+                                        <tr
+                                          key={task.id}
+                                          onClick={() => onOpenTaskDetail(task)}
+                                          className="hover:bg-[#f8fafc] cursor-pointer transition-colors group text-[#0f172a]"
+                                        >
+                                          <td className="py-2 px-3">
+                                            <div className="flex items-center gap-2">
+                                              <button
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  onToggleTask(task.id);
+                                                }}
+                                                className="text-[#94a3b8] hover:text-[#501f92] transition-colors cursor-pointer shrink-0"
+                                              >
+                                                {task.completed ? (
+                                                  <CheckCircle2 className="w-3.5 h-3.5 text-[#10b981]" />
+                                                ) : (
+                                                  <div className="w-3.5 h-3.5 rounded-full border border-[#cbd5e1] hover:border-[#501f92]" />
+                                                )}
+                                              </button>
+                                              <div className="min-w-0 flex-1">
+                                                <div className="flex items-center gap-1.5">
+                                                  <span className={`font-semibold text-xs group-hover:text-[#501f92] truncate ${task.completed ? 'line-through text-[#94a3b8]' : ''}`}>
+                                                    {task.title}
+                                                  </span>
+                                                  {task.frente && (
+                                                    <span className="text-[10px] text-[#64748b] bg-[#f1f5f9] px-1.5 py-0.2 rounded shrink-0">
+                                                      {task.frente}
+                                                    </span>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </td>
+
+                                          {/* Vence / Due Date */}
+                                          <td className="py-2 px-2.5">
+                                            <div className="flex items-center gap-1">
+                                              <Calendar className={`w-3 h-3 shrink-0 ${
+                                                task.dueStatus === 'overdue'
+                                                  ? 'text-[#ef4444]'
+                                                  : task.dueStatus === 'soon' || task.dueStatus === 'tomorrow'
+                                                  ? 'text-[#f59e0b]'
+                                                  : 'text-[#94a3b8]'
+                                              }`} />
+                                              <span className={`text-[11px] truncate ${
+                                                task.dueStatus === 'overdue'
+                                                  ? 'text-[#ef4444] font-bold'
+                                                  : task.dueStatus === 'soon' || task.dueStatus === 'tomorrow'
+                                                  ? 'text-[#d97706] font-semibold'
+                                                  : 'text-[#334155] font-medium'
+                                              }`}>
+                                                {task.dueDate || 'Sin fecha'}
+                                              </span>
+                                            </div>
+                                          </td>
+
+                                          <td className="py-2 px-2.5">
+                                            <RoleChip role={task.budgetedRole || 'Especialista'} size="xs" />
+                                          </td>
+
+                                          <td className="py-2 px-2.5">
+                                            <div className="flex items-center gap-1.5 min-w-0">
+                                              <div className={`w-4 h-4 rounded-full ${task.assignee.avatarBg} text-white flex items-center justify-center text-[7px] font-bold shrink-0`}>
+                                                {task.assignee.initials}
+                                              </div>
+                                              <span className="text-xs text-[#334155] font-medium truncate">{task.assignee.name}</span>
+                                            </div>
+                                          </td>
+
+                                          <td className="py-2 px-2.5 font-mono font-bold text-xs">
+                                            <span className={taskConsumedH > task.budgetedHours ? 'text-[#ef4444]' : 'text-[#0f172a]'}>
+                                              {taskConsumedH.toFixed(1)}h
+                                            </span>
+                                            <span className="text-[10px] text-[#64748b] font-normal"> / {task.budgetedHours}h</span>
+                                          </td>
+
+                                          <td className="py-2 px-2 text-center" onClick={(e) => e.stopPropagation()}>
+                                            {isRunning ? (
+                                              <Button
+                                                variant="danger"
+                                                size="xs"
+                                                onClick={onStopTimer}
+                                                icon={<Square className="w-2.5 h-2.5 fill-current" />}
+                                                className="p-1 h-6 w-6 animate-pulse"
+                                              />
+                                            ) : (
+                                              <Button
+                                                variant="ghost"
+                                                size="xs"
+                                                onClick={() => onStartTimer(task)}
+                                                icon={<Play className="w-2.5 h-2.5 fill-current text-[#64748b]" />}
+                                                className="p-1 h-6 w-6 border border-[#e2e8f0]"
+                                              />
+                                            )}
+                                          </td>
+
+                                          <td className="py-2 px-3 text-right pr-4">
+                                            <TaskStatusBadge
+                                              status={task.status}
+                                              completed={task.completed}
+                                              size="xs"
+                                            />
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
                           )}
                         </div>
                       )}
@@ -1618,7 +1790,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
                 <div className="flex items-center gap-3 text-xs font-semibold text-[#64748b]">
                   <span className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-[#10b981]" /> Listo
+                    <span className="w-2 h-2 rounded-full bg-[#10b981]" /> Completada
                   </span>
                   <span className="flex items-center gap-1">
                     <span className="w-2 h-2 rounded-full bg-[#501f92]" /> En revisión
@@ -1775,7 +1947,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                                   ? 'bg-[#fffbeb] text-[#92400e]'
                                   : 'bg-[#f1f5f9] text-[#475569]'
                               }`}>
-                                {task.status === 'Done' ? 'Listo' : task.status === 'Review' ? 'En revisión' : task.status === 'In Progress' ? 'En proceso' : 'Por hacer'}
+                                {task.status === 'Done' ? 'Completada' : task.status === 'Review' ? 'En revisión' : task.status === 'In Progress' ? 'En proceso' : 'Por hacer'}
                               </span>
                             </td>
                           </tr>
@@ -2009,17 +2181,50 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
               Registro cronológico de tareas movidas de estado, aprobaciones y carga de tiempo en este proyecto.
             </p>
             <div className="space-y-2 pt-2">
-              {currentProject.tasks.slice(0, 5).map((t) => (
-                <div key={t.id} className="p-3 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] flex items-center justify-between text-xs">
-                  <div>
-                    <strong className="text-[#0f172a]">{t.title}</strong>
-                    <span className="text-[10px] text-[#64748b] block mt-0.5">Asignada a {t.assignee.name} · Frente: {t.frente}</span>
+              {currentProject.tasks.slice(0, 10).map((t) => {
+                const getStatusStyle = (status: string, completed?: boolean) => {
+                  if (completed || status === 'Done') {
+                    return 'bg-[#ecfdf5] text-[#065f46] border-[#a7f3d0]';
+                  }
+                  if (status === 'Review') {
+                    return 'bg-[#f5f3ff] text-[#501f92] border-[#ddd6fe]';
+                  }
+                  if (status === 'In Progress') {
+                    return 'bg-[#fffbeb] text-[#92400e] border-[#fde68a]';
+                  }
+                  return 'bg-[#f1f5f9] text-[#334155] border-[#cbd5e1]';
+                };
+
+                const getStatusText = (status: string, completed?: boolean) => {
+                  if (completed || status === 'Done') return 'Listo';
+                  if (status === 'Review') return 'En revisión';
+                  if (status === 'In Progress') return 'En proceso';
+                  return 'Por hacer';
+                };
+
+                return (
+                  <div
+                    key={t.id}
+                    onClick={() => onOpenTaskDetail(t)}
+                    className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] hover:border-[#cbd5e1] transition-colors flex items-center justify-between gap-3 text-xs cursor-pointer"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <strong className="text-[#0f172a] block truncate">{t.title}</strong>
+                      <span className="text-[10px] text-[#64748b] block mt-0.5 truncate">
+                        Asignada a {t.assignee.name} · Frente: {t.frente || 'General'}
+                      </span>
+                    </div>
+                    <span
+                      className={`text-[10px] font-bold px-2.5 py-1 rounded-md border shrink-0 ${getStatusStyle(
+                        t.status,
+                        t.completed
+                      )}`}
+                    >
+                      {getStatusText(t.status, t.completed)}
+                    </span>
                   </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white border border-[#e2e8f0]">
-                    {t.status}
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -2075,8 +2280,8 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
         </button>
       </div>
 
-      {/* KPI Stats Bar */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* KPI Stats Bar (Desktop/Tablet summary; hidden on mobile to maximize viewport) */}
+      <div className="hidden sm:grid grid-cols-3 gap-4">
         <div className="p-4 rounded-2xl bg-white border border-[#e2e8f0] shadow-xs flex items-center gap-3.5">
           <div className="w-10 h-10 rounded-xl bg-[#f2ecfb] text-[#501f92] flex items-center justify-center font-bold">
             <Briefcase className="w-5 h-5" />
@@ -2186,20 +2391,9 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className={`w-2 h-2 rounded-full ${
-                          prj.healthStatus === 'verde'
-                            ? 'bg-[#10b981]'
-                            : prj.healthStatus === 'amarillo'
-                            ? 'bg-[#f59e0b]'
-                            : 'bg-[#ef4444]'
-                        }`}
-                      />
-                      <span className="text-[10px] font-bold text-[#64748b]">
-                        {prj.healthStatus === 'verde' ? 'Saludable' : prj.healthStatus === 'amarillo' ? 'Atención' : 'Riesgo'}
-                      </span>
-                    </div>
+                    <span className="text-[10px] font-semibold text-[#94a3b8]">
+                      Salud: Pendiente
+                    </span>
 
                     {/* Quick Menu Button */}
                     <div className="relative" onClick={(e) => e.stopPropagation()}>

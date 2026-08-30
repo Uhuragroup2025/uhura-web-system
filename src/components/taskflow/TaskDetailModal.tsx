@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   X,
   Play,
@@ -34,7 +34,25 @@ import {
   ChevronDown,
   MessageSquare,
   RefreshCw,
-  AlertTriangle
+  AlertTriangle,
+  Briefcase,
+  Crown,
+  Eye,
+  Bold,
+  Italic,
+  List,
+  Code,
+  Quote,
+  Hash,
+  Download,
+  Image as ImageIcon,
+  ThumbsUp,
+  Heart,
+  Rocket,
+  Flame,
+  CornerDownRight,
+  MessageCircle,
+  MoreVertical
 } from 'lucide-react';
 import {
   TaskItem,
@@ -45,8 +63,12 @@ import {
   ProjectPhase,
   TaskBlockerInfo,
   TaskRework,
-  ReworkOrigin
+  ReworkOrigin,
+  TaskCommentAttachment,
+  TaskCommentReaction,
+  STANDARD_UHURA_ROLES
 } from './types';
+import { DropdownMenu, DropdownOption } from '../ui/DropdownMenu';
 
 export interface TeamMemberProfile {
   name: string;
@@ -56,12 +78,16 @@ export interface TeamMemberProfile {
 }
 
 const TEAM_MEMBERS_POOL: TeamMemberProfile[] = [
-  { name: 'Paola (Lead PM)', initials: 'PL', avatarBg: 'bg-[#501f92]', role: 'Lead Project Manager' },
+  { name: 'Paola (Lead PM)', initials: 'PL', avatarBg: 'bg-[#501f92]', role: 'Lead PM' },
   { name: 'Catalina Tejada', initials: 'CT', avatarBg: 'bg-[#501f92]', role: 'Diseñador Gráfico' },
-  { name: 'Andrés Ríos', initials: 'AR', avatarBg: 'bg-[#501f92]', role: 'Growth & Tech Lead' },
-  { name: 'Camilo Torres', initials: 'CT', avatarBg: 'bg-[#0284c7]', role: 'Desarrollador Web' },
-  { name: 'Laura Gómez', initials: 'LG', avatarBg: 'bg-[#059669]', role: 'Frontend Designer' },
-  { name: 'Sebas (Trafficker)', initials: 'ST', avatarBg: 'bg-[#d97706]', role: 'Trafficker Digital' },
+  { name: 'Andrés Ríos', initials: 'AR', avatarBg: 'bg-[#501f92]', role: 'Product Lead' },
+  { name: 'Camilo Torres', initials: 'CT', avatarBg: 'bg-[#0284c7]', role: 'Web Designer' },
+  { name: 'Laura Gómez', initials: 'LG', avatarBg: 'bg-[#059669]', role: 'Front End' },
+  { name: 'Sebas (Trafficker)', initials: 'ST', avatarBg: 'bg-[#d97706]', role: 'Trafficker' },
+  { name: 'Mariana Toro', initials: 'MT', avatarBg: 'bg-[#ec4899]', role: 'Copywriter' },
+  { name: 'Camilo Vélez', initials: 'CV', avatarBg: 'bg-[#10b981]', role: 'Content Strategist' },
+  { name: 'Mateo Ruiz', initials: 'MR', avatarBg: 'bg-[#8b5cf6]', role: 'Community Manager' },
+  { name: 'Esteban Mora', initials: 'EM', avatarBg: 'bg-[#0d9488]', role: 'Tech Lead' },
   { name: 'Luisa Urazán', initials: 'LU', avatarBg: 'bg-[#e11d48]', role: 'Project Manager' },
   { name: 'Alejandro Florez', initials: 'AF', avatarBg: 'bg-[#0891b2]', role: 'QA & UI Reviewer' }
 ];
@@ -72,13 +98,15 @@ const DEFAULT_CRITERIA = [
   { id: 'c-3', text: 'Validación de links y exportación final en alta resolución', completed: false }
 ];
 
-interface FormattedLink {
-  type: 'drive' | 'figma' | 'github' | 'generic';
+export const QUICK_EMOJIS = ['👍', '❤️', '🚀', '👀', '🎉', '🔥'];
+
+export interface FormattedLink {
+  type: 'drive' | 'figma' | 'github' | 'loom' | 'generic';
   title: string;
   url: string;
 }
 
-interface ChatMessage {
+export interface ChatMessage {
   id: string;
   authorName: string;
   authorRoleLabel?: string;
@@ -90,6 +118,10 @@ interface ChatMessage {
   isSystem?: boolean;
   links?: FormattedLink[];
   attachedFile?: { name: string; size: string };
+  attachments?: TaskCommentAttachment[];
+  reactions?: TaskCommentReaction[];
+  isEdited?: boolean;
+  editedAt?: string;
 }
 
 interface TaskDetailModalProps {
@@ -116,7 +148,11 @@ interface TaskDetailModalProps {
     assignee: TaskItem['assignee'],
     collaborators: TaskItem['collaborators'],
     reviewer?: TaskItem['reviewer'],
-    requestedBy?: string
+    requestedBy?: string,
+    budgetedRole?: string,
+    requiresValidation?: boolean,
+    projectLead?: TaskItem['projectLead'],
+    followers?: TaskItem['followers']
   ) => void;
   onUpdateCriteria?: (
     taskId: string,
@@ -127,6 +163,7 @@ interface TaskDetailModalProps {
     del: Omit<TaskDeliverable, 'id' | 'taskId' | 'submittedAt'>
   ) => void;
   onAddComment?: (taskId: string, commentText: string) => void;
+  onUpdateComments?: (taskId: string, comments: any[]) => void;
   onRecalibrateDates?: (
     taskId: string,
     daysToAdd: number,
@@ -167,14 +204,16 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   onUpdateCriteria,
   onAddDeliverable,
   onAddComment,
+  onUpdateComments,
+  onSelectTask,
   onDeleteTask,
   onArchiveTask,
   onNavigateToClient,
   onNavigateToProject,
   onOpenManualLog
 }) => {
-  // Tabs: ONLY 'mensajes' | 'entregables'
-  const [activeTab, setActiveTab] = useState<'mensajes' | 'entregables'>('mensajes');
+  // Tabs: 'mensajes' | 'entregables' | 'info' (info used on mobile)
+  const [activeTab, setActiveTab] = useState<'mensajes' | 'entregables' | 'info'>('mensajes');
 
   // Menu and Toast
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -191,18 +230,26 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   const [reworkRequestedBy, setReworkRequestedBy] = useState('');
   const [reworkHours, setReworkHours] = useState('1.0');
 
-  // Team Edit Popovers: 'collaborators' | 'reviewer' | 'requestedBy' | null
-  const [openTeamDropdown, setOpenTeamDropdown] = useState<'collaborators' | 'reviewer' | 'requestedBy' | null>(null);
+  // Team Edit Popovers: 'assignee' | 'collaborators' | 'reviewer' | 'requestedBy' | 'budgetedRole' | null
+  const [openTeamDropdown, setOpenTeamDropdown] = useState<'assignee' | 'collaborators' | 'reviewer' | 'requestedBy' | 'budgetedRole' | null>(null);
 
-  // Local team tracking
+  // Local team & responsibility tracking
+  const [projectLead, setProjectLead] = useState<TaskItem['projectLead']>(
+    task?.projectLead || { name: 'Paola (Lead PM)', initials: 'PL', avatarBg: 'bg-[#501f92]', role: 'Lead PM' }
+  );
   const [assignee, setAssignee] = useState<TaskItem['assignee']>(
     task?.assignee || { name: 'Catalina Tejada', initials: 'CT', avatarBg: 'bg-[#501f92]', role: 'Diseñador Gráfico' }
   );
   const [collaborators, setCollaborators] = useState<NonNullable<TaskItem['collaborators']>>(
     task?.collaborators || []
   );
+  const [followers, setFollowers] = useState<NonNullable<TaskItem['followers']>>(
+    task?.followers || []
+  );
   const [reviewer, setReviewer] = useState<TaskItem['reviewer']>(task?.reviewer);
   const [requestedBy, setRequestedBy] = useState<string>(task?.requestedBy || 'Andrés Ríos');
+  const [budgetedRole, setBudgetedRole] = useState<string>(task?.budgetedRole || 'Diseñador Gráfico');
+  const [requiresValidation, setRequiresValidation] = useState<boolean>(task?.requiresValidation ?? false);
 
   // Budget inline edit
   const [isEditingBudget, setIsEditingBudget] = useState(false);
@@ -213,10 +260,36 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   const [startDateInput, setStartDateInput] = useState('');
   const [dueDateInput, setDueDateInput] = useState('');
 
-  // Message input state
+  // Message input & rich formatting state
   const [messageInput, setMessageInput] = useState('');
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [pendingAttachments, setPendingAttachments] = useState<TaskCommentAttachment[]>([]);
   const [showMentionMenu, setShowMentionMenu] = useState(false);
-  const [attachedFileName, setAttachedFileName] = useState<string | null>(null);
+  const [showTaskMenu, setShowTaskMenu] = useState(false);
+  const [quickEmojiMenuOpen, setQuickEmojiMenuOpen] = useState(false);
+
+  // Autocomplete state (@ and #)
+  const [autocompleteState, setAutocompleteState] = useState<{
+    type: 'mention' | 'task';
+    query: string;
+    index: number;
+  } | null>(null);
+
+  // Link attachment popover
+  const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
+  const [linkInputUrl, setLinkInputUrl] = useState('');
+  const [linkInputTitle, setLinkInputTitle] = useState('');
+  const [linkInputType, setLinkInputType] = useState<'figma' | 'drive' | 'loom' | 'github' | 'generic'>('generic');
+
+  // Message edit / delete / reaction state
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editingMessageContent, setEditingMessageContent] = useState('');
+  const [deleteConfirmMessageId, setDeleteConfirmMessageId] = useState<string | null>(null);
+  const [openMsgMenuId, setOpenMsgMenuId] = useState<string | null>(null);
+  const [activeReactionPickerMsgId, setActiveReactionPickerMsgId] = useState<string | null>(null);
+
+  // Lightbox Image Preview
+  const [lightboxImage, setLightboxImage] = useState<{ url: string; title: string } | null>(null);
 
   // Deliverable tab state
   const [deliverableUrl, setDeliverableUrl] = useState('');
@@ -233,12 +306,18 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
   useEffect(() => {
     if (task) {
+      setProjectLead(
+        task.projectLead || { name: 'Paola (Lead PM)', initials: 'PL', avatarBg: 'bg-[#501f92]', role: 'Lead PM' }
+      );
       setAssignee(
         task.assignee || { name: 'Catalina Tejada', initials: 'CT', avatarBg: 'bg-[#501f92]', role: 'Diseñador Gráfico' }
       );
       setCollaborators(task.collaborators || []);
+      setFollowers(task.followers || []);
       setReviewer(task.reviewer);
       setRequestedBy(task.requestedBy || 'Andrés Ríos');
+      setBudgetedRole(task.budgetedRole || 'Diseñador Gráfico');
+      setRequiresValidation(task.requiresValidation ?? false);
       setOpenTeamDropdown(null);
 
       setBudgetValue((task.budgetedHours || 1).toString());
@@ -268,7 +347,11 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
             authorInitials: m.authorInitials || m.authorName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase(),
             authorAvatarBg: m.authorAvatarBg || 'bg-[#501f92]',
             timestamp: m.timestamp,
-            content: m.content
+            content: m.content,
+            attachments: m.attachments,
+            reactions: m.reactions,
+            isEdited: m.isEdited,
+            editedAt: m.editedAt
           });
         });
       }
@@ -326,10 +409,246 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     showToast('Criterio de aceptación agregado');
   };
 
-  // Send Chat Message
+  // Autocomplete detection and input change
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    const cursorPos = e.target.selectionStart;
+    setMessageInput(val);
+
+    // Analyze token before cursor for autocomplete (@ or #)
+    const textBeforeCursor = val.substring(0, cursorPos);
+    const lastAt = textBeforeCursor.lastIndexOf('@');
+    const lastHash = textBeforeCursor.lastIndexOf('#');
+
+    // Check mention (@)
+    if (lastAt >= 0 && (lastAt === 0 || /\s/.test(textBeforeCursor[lastAt - 1]))) {
+      const query = textBeforeCursor.substring(lastAt + 1);
+      if (!query.includes(' ') && !query.includes('\n')) {
+        setAutocompleteState({ type: 'mention', query, index: lastAt });
+        return;
+      }
+    }
+
+    // Check task reference (#)
+    if (lastHash >= 0 && (lastHash === 0 || /\s/.test(textBeforeCursor[lastHash - 1]))) {
+      const query = textBeforeCursor.substring(lastHash + 1);
+      if (!query.includes(' ') && !query.includes('\n')) {
+        setAutocompleteState({ type: 'task', query, index: lastHash });
+        return;
+      }
+    }
+
+    setAutocompleteState(null);
+  };
+
+  // Insert mention into textarea
+  const insertMention = (memberName: string) => {
+    if (!autocompleteState || autocompleteState.type !== 'mention') {
+      setMessageInput((prev) => `${prev} @${memberName} `);
+      setShowMentionMenu(false);
+      return;
+    }
+    const before = messageInput.substring(0, autocompleteState.index);
+    const after = messageInput.substring(autocompleteState.index + autocompleteState.query.length + 1);
+    const newText = `${before}@${memberName} ${after}`;
+    setMessageInput(newText);
+    setAutocompleteState(null);
+    setShowMentionMenu(false);
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 10);
+  };
+
+  // Insert task reference into textarea
+  const insertTaskReference = (targetTask: TaskItem) => {
+    const refCode = `#${targetTask.id.toUpperCase()}`;
+    if (!autocompleteState || autocompleteState.type !== 'task') {
+      setMessageInput((prev) => `${prev} ${refCode} `);
+      setShowTaskMenu(false);
+      return;
+    }
+    const before = messageInput.substring(0, autocompleteState.index);
+    const after = messageInput.substring(autocompleteState.index + autocompleteState.query.length + 1);
+    const newText = `${before}${refCode} ${after}`;
+    setMessageInput(newText);
+    setAutocompleteState(null);
+    setShowTaskMenu(false);
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 10);
+  };
+
+  // Markdown formatting tool
+  const applyFormatting = (format: 'bold' | 'italic' | 'list' | 'code' | 'quote') => {
+    const textarea = inputRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = messageInput.substring(start, end);
+    let formatted = '';
+    let cursorOffset = 0;
+
+    switch (format) {
+      case 'bold':
+        formatted = `**${selectedText || 'texto'}**`;
+        cursorOffset = selectedText ? formatted.length : 2;
+        break;
+      case 'italic':
+        formatted = `*${selectedText || 'texto'}*`;
+        cursorOffset = selectedText ? formatted.length : 1;
+        break;
+      case 'list':
+        formatted = `\n- ${selectedText || 'item'}`;
+        cursorOffset = formatted.length;
+        break;
+      case 'code':
+        formatted = `\`${selectedText || 'código'}\``;
+        cursorOffset = selectedText ? formatted.length : 1;
+        break;
+      case 'quote':
+        formatted = `\n> ${selectedText || 'cita'}`;
+        cursorOffset = formatted.length;
+        break;
+    }
+
+    const newValue = messageInput.substring(0, start) + formatted + messageInput.substring(end);
+    setMessageInput(newValue);
+
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + cursorOffset, start + cursorOffset);
+    }, 0);
+  };
+
+  // Attach files handler
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const filesArray = Array.from(e.target.files);
+    
+    const newAttachments: TaskCommentAttachment[] = filesArray.map((file) => {
+      const isImg = file.type.startsWith('image/');
+      const sizeFormatted = file.size > 1024 * 1024
+        ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
+        : `${Math.round(file.size / 1024)} KB`;
+
+      return {
+        id: `att-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+        name: file.name,
+        size: sizeFormatted,
+        type: isImg ? 'image' : 'file',
+        previewUrl: isImg ? URL.createObjectURL(file) : undefined
+      };
+    });
+
+    setPendingAttachments((prev) => [...prev, ...newAttachments]);
+    e.target.value = '';
+  };
+
+  // Attach link handler
+  const handleSaveLinkAttachment = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!linkInputUrl.trim()) return;
+
+    let url = linkInputUrl.trim();
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = `https://${url}`;
+    }
+
+    let detectedType: 'figma' | 'drive' | 'loom' | 'github' | 'generic' = linkInputType;
+    if (url.includes('figma.com')) detectedType = 'figma';
+    else if (url.includes('drive.google.com') || url.includes('docs.google.com')) detectedType = 'drive';
+    else if (url.includes('loom.com')) detectedType = 'loom';
+    else if (url.includes('github.com')) detectedType = 'github';
+
+    const newLinkAttachment: TaskCommentAttachment = {
+      id: `link-${Date.now()}`,
+      name: linkInputTitle.trim() || url.replace(/^https?:\/\/(www\.)?/, '').split('/')[0],
+      url,
+      type: 'link'
+    };
+
+    setPendingAttachments((prev) => [...prev, newLinkAttachment]);
+    setLinkInputUrl('');
+    setLinkInputTitle('');
+    setIsLinkModalOpen(false);
+    showToast('Enlace adjuntado al comentario');
+  };
+
+  // Remove pending attachment
+  const handleRemovePendingAttachment = (id: string) => {
+    setPendingAttachments((prev) => prev.filter((a) => a.id !== id));
+  };
+
+  // Send Chat Message with mentions auto-followers logic
   const handleSendMessage = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!messageInput.trim() && !attachedFileName) return;
+    if (!messageInput.trim() && pendingAttachments.length === 0) return;
+
+    const content = messageInput.trim();
+
+    // 1. Detect mentions (@Nombre) and auto-add to followers if not already in followers
+    const mentionMatches = content.match(/@([A-Za-zÁ-ÿ0-9_() ]+?)(?=[.,!?\s]|$)/g) || [];
+    const mentionedNames: string[] = [];
+
+    mentionMatches.forEach((match) => {
+      const rawName = match.substring(1).trim();
+      const foundMember = TEAM_MEMBERS_POOL.find(
+        (m) =>
+          m.name.toLowerCase() === rawName.toLowerCase() ||
+          m.name.toLowerCase().startsWith(rawName.toLowerCase()) ||
+          rawName.toLowerCase().startsWith(m.name.toLowerCase())
+      );
+      if (foundMember && !mentionedNames.includes(foundMember.name)) {
+        mentionedNames.push(foundMember.name);
+      }
+    });
+
+    // Auto-add mentioned users as followers
+    if (mentionedNames.length > 0) {
+      const newFollowers = [...followers];
+      let followersAdded = 0;
+      let addedName = '';
+
+      mentionedNames.forEach((name) => {
+        const isAlreadyFollower = newFollowers.some((f) => f.name === name);
+        const isPrimaryAssignee = assignee.name === name;
+        const isProjectLead = projectLead ? projectLead.name === name : false;
+
+        if (!isAlreadyFollower && !isPrimaryAssignee && !isProjectLead) {
+          const member = TEAM_MEMBERS_POOL.find((m) => m.name === name);
+          if (member) {
+            newFollowers.push({
+              name: member.name,
+              initials: member.initials,
+              avatarBg: member.avatarBg,
+              role: member.role
+            });
+            followersAdded++;
+            addedName = member.name.split(' ')[0];
+          }
+        }
+      });
+
+      if (followersAdded > 0) {
+        setFollowers(newFollowers);
+        applyTeamUpdate(
+          assignee,
+          collaborators,
+          reviewer,
+          requestedBy,
+          budgetedRole,
+          requiresValidation,
+          projectLead,
+          newFollowers
+        );
+        showToast(
+          followersAdded === 1
+            ? `${addedName} añadido a Seguidores por mención`
+            : `${followersAdded} miembros añadidos a Seguidores`
+        );
+      }
+    }
 
     const newMessage: ChatMessage = {
       id: `msg-${Date.now()}`,
@@ -338,18 +657,276 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
       authorInitials: 'CT',
       authorAvatarBg: 'bg-[#501f92]',
       timestamp: 'Ahora mismo',
-      content: messageInput.trim(),
-      attachedFile: attachedFileName ? { name: attachedFileName, size: '2.4 MB' } : undefined
+      content: content,
+      attachments: pendingAttachments.length > 0 ? [...pendingAttachments] : undefined,
+      reactions: []
     };
 
-    setChatMessages((prev) => [...prev, newMessage]);
-    if (onAddComment && messageInput.trim()) {
-      onAddComment(task.id, messageInput.trim());
+    const updated = [...chatMessages, newMessage];
+    setChatMessages(updated);
+
+    if (onUpdateComments) {
+      onUpdateComments(task.id, updated);
+    } else if (onAddComment && content) {
+      onAddComment(task.id, content);
     }
 
     setMessageInput('');
-    setAttachedFileName(null);
+    setPendingAttachments([]);
+    setAutocompleteState(null);
     setShowMentionMenu(false);
+    setShowTaskMenu(false);
+  };
+
+  // Toggle Reaction on a comment
+  const handleToggleReaction = (messageId: string, emoji: string) => {
+    const currentUserName = 'Catalina Tejada';
+    const updated = chatMessages.map((msg) => {
+      if (msg.id !== messageId) return msg;
+      const currentReactions: TaskCommentReaction[] = msg.reactions ? [...msg.reactions] : [];
+      const existingIdx = currentReactions.findIndex((r) => r.emoji === emoji);
+
+      if (existingIdx >= 0) {
+        const item = { ...currentReactions[existingIdx] };
+        if (item.users.includes(currentUserName)) {
+          item.users = item.users.filter((u) => u !== currentUserName);
+          item.count = item.users.length;
+        } else {
+          item.users = [...item.users, currentUserName];
+          item.count = item.users.length;
+        }
+
+        if (item.count === 0) {
+          currentReactions.splice(existingIdx, 1);
+        } else {
+          currentReactions[existingIdx] = item;
+        }
+      } else {
+        currentReactions.push({
+          emoji,
+          count: 1,
+          users: [currentUserName]
+        });
+      }
+
+      return { ...msg, reactions: currentReactions };
+    });
+
+    setChatMessages(updated);
+    if (onUpdateComments) {
+      onUpdateComments(task.id, updated);
+    }
+    setActiveReactionPickerMsgId(null);
+  };
+
+  // Start editing a comment
+  const handleStartEditMessage = (msg: ChatMessage) => {
+    setEditingMessageId(msg.id);
+    setEditingMessageContent(msg.content);
+    setOpenMsgMenuId(null);
+  };
+
+  // Save edited comment
+  const handleSaveEditMessage = (msgId: string) => {
+    if (!editingMessageContent.trim()) return;
+
+    const updated = chatMessages.map((msg) => {
+      if (msg.id === msgId) {
+        return {
+          ...msg,
+          content: editingMessageContent.trim(),
+          isEdited: true,
+          editedAt: 'Editado'
+        };
+      }
+      return msg;
+    });
+
+    setChatMessages(updated);
+    if (onUpdateComments) {
+      onUpdateComments(task.id, updated);
+    }
+    setEditingMessageId(null);
+    setEditingMessageContent('');
+    showToast('Comentario actualizado');
+  };
+
+  // Delete a comment
+  const handleDeleteMessage = (msgId: string) => {
+    const updated = chatMessages.filter((msg) => msg.id !== msgId);
+    setChatMessages(updated);
+    if (onUpdateComments) {
+      onUpdateComments(task.id, updated);
+    }
+    setDeleteConfirmMessageId(null);
+    setOpenMsgMenuId(null);
+    showToast('Comentario eliminado');
+  };
+
+  // Enriched token renderer: Mentions (@), Task References (#), Bold, Italic, Code, Links
+  const renderMessageContent = (content: string) => {
+    if (!content) return null;
+
+    // Split lines to preserve paragraphs & list items
+    const lines = content.split('\n');
+
+    return (
+      <div className="space-y-1.5 leading-relaxed">
+        {lines.map((line, lineIdx) => {
+          if (!line.trim()) {
+            return <div key={lineIdx} className="h-2" />;
+          }
+
+          const isQuote = line.startsWith('> ');
+          const isListItem = line.startsWith('- ') || line.startsWith('* ');
+          const lineText = isQuote ? line.substring(2) : isListItem ? line.substring(2) : line;
+
+          // Tokenize line by @mentions, #tasks, **bold**, *italic*, `code`, URLs, markdown links
+          const tokenRegex = /(@[A-Za-zÁ-ÿ0-9_() ]+)|(#[a-zA-Z0-9_-]+(?:\s*\[[^\]]+\])?)|(\*\*[^*]+\*\*)|(\*[^*]+\*)|(`[^`]+`)|(\[[^\]]+\]\(https?:\/\/[^\)]+\))|(https?:\/\/[^\s]+)/g;
+
+          const tokens: React.ReactNode[] = [];
+          let lastIndex = 0;
+          let match;
+
+          while ((match = tokenRegex.exec(lineText)) !== null) {
+            if (match.index > lastIndex) {
+              tokens.push(lineText.substring(lastIndex, match.index));
+            }
+
+            const token = match[0];
+
+            if (token.startsWith('@')) {
+              const mentionName = token.substring(1).trim();
+              const memberProfile = TEAM_MEMBERS_POOL.find(
+                (m) => m.name.toLowerCase() === mentionName.toLowerCase() ||
+                       mentionName.toLowerCase().startsWith(m.name.toLowerCase())
+              );
+
+              tokens.push(
+                <span
+                  key={`mention-${match.index}`}
+                  className="inline-flex items-center gap-1 font-bold text-[#501f92] bg-[#f5f3ff] hover:bg-[#ede9fe] border border-[#ddd6fe] px-1.5 py-0.2 rounded-md text-[11px] transition-colors align-baseline"
+                  title={`Miembro: ${memberProfile ? memberProfile.role : 'Equipo'}`}
+                >
+                  <AtSign className="w-2.5 h-2.5 text-[#501f92]" />
+                  <span>{token.substring(1)}</span>
+                </span>
+              );
+            } else if (token.startsWith('#')) {
+              // Extract task ID e.g. #TK-101 or #TASK-1
+              const rawId = token.split(/[\s\[]/)[0].substring(1);
+              const matchedTask = tasksList?.find(
+                (t) => t.id.toLowerCase() === rawId.toLowerCase()
+              );
+
+              tokens.push(
+                <button
+                  key={`task-ref-${match.index}`}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (matchedTask && onSelectTask) {
+                      onSelectTask(matchedTask);
+                      showToast(`Navegando a ${matchedTask.title}`);
+                    }
+                  }}
+                  className={`inline-flex items-center gap-1 font-mono font-bold px-1.5 py-0.2 rounded-md text-[11px] border transition-all align-baseline ${
+                    matchedTask
+                      ? 'bg-[#f0f9ff] text-[#0284c7] border-[#bae6fd] hover:bg-[#e0f2fe] hover:border-[#0284c7] cursor-pointer shadow-2xs'
+                      : 'bg-[#f8fafc] text-[#475569] border-[#e2e8f0]'
+                  }`}
+                  title={matchedTask ? `Abrir tarea: ${matchedTask.title}` : `Referencia: ${token}`}
+                >
+                  <Hash className="w-2.5 h-2.5 text-[#0284c7]" />
+                  <span>{token}</span>
+                  {matchedTask && <ExternalLink className="w-2.5 h-2.5 ml-0.5 opacity-70" />}
+                </button>
+              );
+            } else if (token.startsWith('**') && token.endsWith('**')) {
+              tokens.push(
+                <strong key={`bold-${match.index}`} className="font-bold text-[#0f172a]">
+                  {token.slice(2, -2)}
+                </strong>
+              );
+            } else if (token.startsWith('*') && token.endsWith('*')) {
+              tokens.push(
+                <em key={`italic-${match.index}`} className="italic text-[#334155]">
+                  {token.slice(1, -1)}
+                </em>
+              );
+            } else if (token.startsWith('`') && token.endsWith('`')) {
+              tokens.push(
+                <code
+                  key={`code-${match.index}`}
+                  className="bg-[#f1f5f9] text-[#0f172a] px-1 py-0.5 rounded font-mono text-[11px] border border-[#e2e8f0]"
+                >
+                  {token.slice(1, -1)}
+                </code>
+              );
+            } else if (token.startsWith('[') && token.includes('](')) {
+              const titleMatch = token.match(/\[(.*?)\]/);
+              const urlMatch = token.match(/\((.*?)\)/);
+              const linkTitle = titleMatch ? titleMatch[1] : 'Enlace';
+              const linkUrl = urlMatch ? urlMatch[1] : '#';
+
+              tokens.push(
+                <a
+                  key={`md-link-${match.index}`}
+                  href={linkUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 font-semibold text-[#501f92] hover:text-[#381566] underline underline-offset-2 hover:underline-offset-4 transition-all"
+                >
+                  <span>{linkTitle}</span>
+                  <ExternalLink className="w-3 h-3 inline" />
+                </a>
+              );
+            } else if (token.startsWith('http://') || token.startsWith('https://')) {
+              tokens.push(
+                <a
+                  key={`raw-link-${match.index}`}
+                  href={token}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 font-semibold text-[#501f92] hover:text-[#381566] underline underline-offset-2 break-all"
+                >
+                  <span>{token}</span>
+                  <ExternalLink className="w-3 h-3 inline" />
+                </a>
+              );
+            }
+
+            lastIndex = match.index + token.length;
+          }
+
+          if (lastIndex < lineText.length) {
+            tokens.push(lineText.substring(lastIndex));
+          }
+
+          if (isQuote) {
+            return (
+              <div
+                key={lineIdx}
+                className="pl-3 border-l-2 border-[#8a4dff] text-[#475569] italic py-0.5 bg-[#fbfaff] rounded-r-md"
+              >
+                {tokens}
+              </div>
+            );
+          }
+
+          if (isListItem) {
+            return (
+              <div key={lineIdx} className="flex items-start gap-2 pl-2">
+                <span className="text-[#501f92] font-bold text-xs mt-0.5">•</span>
+                <div className="flex-1">{tokens}</div>
+              </div>
+            );
+          }
+
+          return <div key={lineIdx}>{tokens}</div>;
+        })}
+      </div>
+    );
   };
 
   // Submit Deliverable
@@ -360,20 +937,22 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
       return;
     }
 
+    const nextStatus: TaskStatus = requiresValidation ? 'Review' : 'Done';
+
     if (onAddDeliverable) {
       onAddDeliverable(task.id, {
         url: deliverableUrl.trim() || uploadedFileName || 'Entrega de producción',
         title: deliverableNotes.trim() || 'Entregable de producción',
-        submittedBy: task.assignee.name || 'Catalina Tejada',
+        submittedBy: task.assignee?.name || assignee?.name || 'Catalina Tejada',
         notes: deliverableNotes.trim(),
         status: 'submitted',
-        taggedReviewer: task.reviewer?.name || 'Paola Monsalve'
+        taggedReviewer: requiresValidation ? (reviewer?.name || task.reviewer?.name || 'Validador') : undefined
       });
     }
 
-    // Set task status to Review
+    // Set task status based on requiresValidation rule
     if (onUpdateTaskStatus) {
-      onUpdateTaskStatus(task.id, 'Review');
+      onUpdateTaskStatus(task.id, nextStatus);
     }
 
     // Add a system update in chat
@@ -384,7 +963,9 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
         authorName: 'Sistema',
         authorInitials: 'SYS',
         timestamp: 'Ahora mismo',
-        content: `${task.assignee.name || 'El colaborador'} envió el entregable formal a revisión.`,
+        content: requiresValidation
+          ? `${assignee?.name || 'El responsable'} envió el entregable a revisión para validación formal.`
+          : `${assignee?.name || 'El responsable'} completó la entrega y pasó la tarea directamente a Completada.`,
         isSystem: true
       }
     ]);
@@ -392,7 +973,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     setDeliverableUrl('');
     setDeliverableNotes('');
     setUploadedFileName(null);
-    showToast('Entregable enviado a revisión con éxito');
+    showToast(requiresValidation ? 'Entregable enviado a revisión' : 'Tarea marcada como Completada');
     setActiveTab('mensajes');
   };
 
@@ -420,114 +1001,53 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     newAssignee: TaskItem['assignee'],
     newCollabs: NonNullable<TaskItem['collaborators']>,
     newReviewer?: TaskItem['reviewer'],
-    newRequester?: string
+    newRequester?: string,
+    newBudgetedRole?: string,
+    newRequiresValidation?: boolean,
+    newProjectLead?: TaskItem['projectLead'],
+    newFollowers?: NonNullable<TaskItem['followers']>
   ) => {
     setAssignee(newAssignee);
     setCollaborators(newCollabs);
     setReviewer(newReviewer);
     if (newRequester) setRequestedBy(newRequester);
+    if (newBudgetedRole !== undefined) setBudgetedRole(newBudgetedRole);
+    if (newRequiresValidation !== undefined) setRequiresValidation(newRequiresValidation);
+    if (newProjectLead !== undefined) setProjectLead(newProjectLead);
+    if (newFollowers !== undefined) setFollowers(newFollowers);
 
     if (onUpdateTeam && task) {
-      onUpdateTeam(task.id, newAssignee, newCollabs, newReviewer, newRequester || requestedBy);
+      onUpdateTeam(
+        task.id,
+        newAssignee,
+        newCollabs,
+        newReviewer,
+        newRequester || requestedBy,
+        newBudgetedRole !== undefined ? newBudgetedRole : budgetedRole,
+        newRequiresValidation !== undefined ? newRequiresValidation : requiresValidation,
+        newProjectLead !== undefined ? newProjectLead : projectLead,
+        newFollowers !== undefined ? newFollowers : followers
+      );
     }
   };
 
-  // Toggle collaborator in pool
-  const handleToggleCollaborator = (member: TeamMemberProfile) => {
-    const isCurrentAssignee = assignee.name === member.name;
-    const isCurrentCollab = collaborators.some((c) => c.name === member.name);
+  // Progress task status: To Do -> In Progress -> Done (or back to In Progress)
+  const handleProgressTaskStatus = () => {
+    if (!onUpdateTaskStatus || !task) return;
 
-    if (isCurrentAssignee) {
-      // If removing current primary assignee, check if there's any other collaborator to promote
-      const nextCollab = collaborators.find((c) => c.name !== member.name);
-      if (nextCollab) {
-        const remaining = collaborators.filter((c) => c.name !== member.name && c.name !== nextCollab.name);
-        applyTeamUpdate(nextCollab, remaining, reviewer, requestedBy);
-        showToast(`${nextCollab.name} es ahora el ejecutor principal`);
-      } else {
-        showToast('La tarea debe tener al menos un colaborador asignado');
-      }
-    } else if (isCurrentCollab) {
-      // Remove from collaborators
-      const updated = collaborators.filter((c) => c.name !== member.name);
-      applyTeamUpdate(assignee, updated, reviewer, requestedBy);
-      showToast(`${member.name} removido de colaboradores`);
-    } else {
-      // Add to collaborators
-      const newEntry = {
-        name: member.name,
-        initials: member.initials,
-        avatarBg: member.avatarBg,
-        role: member.role
-      };
-      const updated = [...collaborators, newEntry];
-      applyTeamUpdate(assignee, updated, reviewer, requestedBy);
-      showToast(`${member.name} añadido como colaborador`);
+    if (task.status === 'To Do') {
+      onUpdateTaskStatus(task.id, 'In Progress');
+      showToast('Tarea iniciada (En proceso)');
+    } else if (task.status === 'In Progress') {
+      onUpdateTaskStatus(task.id, 'Done');
+      showToast('Tarea marcada como Completada');
+    } else if (task.status === 'Review') {
+      onUpdateTaskStatus(task.id, 'Done');
+      showToast('Tarea marcada como Completada');
+    } else if (task.status === 'Done') {
+      onUpdateTaskStatus(task.id, 'In Progress');
+      showToast('Tarea reabierta (En proceso)');
     }
-  };
-
-  // Set member as primary assignee
-  const handleSetPrimaryAssignee = (member: TeamMemberProfile) => {
-    const previousAssignee = assignee;
-    const newAssignee = {
-      name: member.name,
-      initials: member.initials,
-      avatarBg: member.avatarBg,
-      role: member.role
-    };
-
-    // Filter out new assignee from collaborators, and add previous assignee if not already there
-    const cleanCollabs = collaborators.filter((c) => c.name !== member.name);
-    if (previousAssignee && previousAssignee.name !== member.name) {
-      cleanCollabs.push(previousAssignee);
-    }
-
-    applyTeamUpdate(newAssignee, cleanCollabs, reviewer, requestedBy);
-    showToast(`${member.name} asignado como ejecutor principal`);
-  };
-
-  // Select reviewer
-  const handleSelectReviewer = (member: TeamMemberProfile | null) => {
-    if (!member) {
-      applyTeamUpdate(assignee, collaborators, undefined, requestedBy);
-      showToast('Revisor eliminado (opcional)');
-    } else {
-      const newRev = {
-        name: member.name,
-        initials: member.initials,
-        avatarBg: member.avatarBg,
-        role: member.role
-      };
-      applyTeamUpdate(assignee, collaborators, newRev, requestedBy);
-      showToast(`${member.name} asignado como revisor`);
-    }
-    setOpenTeamDropdown(null);
-  };
-
-  // Select requester (Solicitada por)
-  const handleSelectRequester = (member: TeamMemberProfile) => {
-    applyTeamUpdate(assignee, collaborators, reviewer, member.name);
-    showToast(`Solicitada por: ${member.name}`);
-    setOpenTeamDropdown(null);
-  };
-
-  // Format mentions in text
-  const renderMessageContent = (content: string) => {
-    const parts = content.split(/(@[A-Za-zÁ-ÿ0-9_() ]+)/g);
-    return (
-      <span>
-        {parts.map((part, i) => {
-          if (part.startsWith('@')) {
-            return (
-              <span key={i} className="font-semibold text-[#501f92] bg-[#f5f3ff] px-1 py-0.5 rounded-md">
-                {part}
-              </span>
-            );
-          }
-          return part;
-        })}
-      </span>
-    );
   };
 
   return (
@@ -536,7 +1056,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
     >
       {/* Toast Notification */}
       {toastMessage && (
@@ -551,14 +1071,14 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
       <div
         id="task-detail-modal-container"
-        className="bg-white rounded-3xl max-w-5xl w-full border border-[#e2e8f0] shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
+        className="bg-white sm:rounded-3xl max-w-5xl w-full h-full sm:h-auto sm:max-h-[92vh] border-0 sm:border sm:border-[#e2e8f0] shadow-2xl overflow-hidden flex flex-col"
       >
         {/* ========================================================= */}
         {/* HEADER: Cliente > Proyecto > Frente | Title | Timer | + | 3-dots | X */}
         {/* ========================================================= */}
         <div
           id="task-detail-header"
-          className="px-6 py-4 border-b border-[#f1f5f9] bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0"
+          className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-[#f1f5f9] bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0"
         >
           {/* Left: Interactive Breadcrumbs & Title */}
           <div className="space-y-1.5 flex-1 min-w-0">
@@ -793,20 +1313,20 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
         </div>
 
         {/* ========================================================= */}
-        {/* MAIN BODY: 2 Columns (Left: Tabs Feed vs Right: Meta Panel) */}
+        {/* MAIN BODY: 2 Columns on Desktop, Single Responsive View on Mobile */}
         {/* ========================================================= */}
         <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-[#f1f5f9] overflow-hidden">
           {/* --------------------------------------------------------- */}
-          {/* LEFT: ONLY 2 TABS (Mensajes | Entregables) - 8 COLS */}
+          {/* LEFT: FEED & DELIVERABLES (Desktop: 8 cols, Mobile: when tab !== 'info') */}
           {/* --------------------------------------------------------- */}
-          <div className="lg:col-span-8 p-6 flex flex-col justify-between space-y-6 overflow-y-auto max-h-full">
+          <div className={`${activeTab === 'info' ? 'hidden lg:flex' : 'flex'} lg:col-span-8 p-4 sm:p-6 flex-col justify-between space-y-6 overflow-y-auto max-h-full`}>
             <div className="space-y-5">
               {/* Tabs Navigation Header */}
-              <div className="flex items-center gap-6 border-b border-[#e2e8f0]">
+              <div className="flex items-center gap-4 sm:gap-6 border-b border-[#e2e8f0]">
                 <button
                   id="tab-mensajes-btn"
                   onClick={() => setActiveTab('mensajes')}
-                  className={`pb-2.5 text-sm font-bold transition-all cursor-pointer relative ${
+                  className={`pb-2.5 text-xs sm:text-sm font-bold transition-all cursor-pointer relative ${
                     activeTab === 'mensajes'
                       ? 'text-[#501f92] font-extrabold'
                       : 'text-[#64748b] hover:text-[#0f172a]'
@@ -821,7 +1341,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                 <button
                   id="tab-entregables-btn"
                   onClick={() => setActiveTab('entregables')}
-                  className={`pb-2.5 text-sm font-bold transition-all cursor-pointer relative ${
+                  className={`pb-2.5 text-xs sm:text-sm font-bold transition-all cursor-pointer relative ${
                     activeTab === 'entregables'
                       ? 'text-[#501f92] font-extrabold'
                       : 'text-[#64748b] hover:text-[#0f172a]'
@@ -829,6 +1349,22 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                 >
                   <span>Entregables</span>
                   {activeTab === 'entregables' && (
+                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#501f92] rounded-full" />
+                  )}
+                </button>
+
+                {/* Mobile-only Tab for Info & Tiempos */}
+                <button
+                  id="tab-info-btn"
+                  onClick={() => setActiveTab('info')}
+                  className={`lg:hidden pb-2.5 text-xs sm:text-sm font-bold transition-all cursor-pointer relative ${
+                    activeTab === 'info'
+                      ? 'text-[#501f92] font-extrabold'
+                      : 'text-[#64748b] hover:text-[#0f172a]'
+                  }`}
+                >
+                  <span>Info & Tiempos</span>
+                  {activeTab === 'info' && (
                     <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#501f92] rounded-full" />
                   )}
                 </button>
@@ -842,13 +1378,22 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                   {/* Dedicated Initial Requirement Box if present on task */}
                   {task.description && (
                     <div className="p-4 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] space-y-2">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
                         <span className="text-[11px] font-extrabold text-[#501f92] uppercase tracking-wider flex items-center gap-1.5">
                           <FileText className="w-3.5 h-3.5 text-[#501f92]" /> Requerimiento inicial
                         </span>
-                        <span className="text-[10px] text-[#94a3b8]">
-                          {task.date || 'Inicio de tarea'}
-                        </span>
+                        <div className="flex items-center gap-2 text-[10px] text-[#64748b]">
+                          {requestedBy && (
+                            <span className="flex items-center gap-1">
+                              <span className="text-[#94a3b8]">Solicitada por:</span>
+                              <span className="font-semibold text-[#0f172a]">{requestedBy}</span>
+                            </span>
+                          )}
+                          <span className="text-[#cbd5e1]">·</span>
+                          <span className="text-[#94a3b8]">
+                            {task.date || 'Inicio de tarea'}
+                          </span>
+                        </div>
                       </div>
                       <p className="text-xs text-[#334155] leading-relaxed whitespace-pre-wrap">
                         {task.description}
@@ -861,10 +1406,10 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                     <div className="py-8 text-center text-xs text-[#94a3b8] bg-[#f8fafc]/50 rounded-2xl border border-dashed border-[#e2e8f0]">
                       <MessageSquare className="w-6 h-6 mx-auto mb-2 text-[#cbd5e1]" />
                       <p className="font-bold text-[#64748b]">Aún no hay mensajes</p>
-                      <p className="text-[11px] text-[#94a3b8] mt-0.5">Escribe un comentario o consulta para el equipo.</p>
+                      <p className="text-[11px] text-[#94a3b8] mt-0.5">Escribe un comentario, usa @ para mencionar a alguien o # para referenciar tareas.</p>
                     </div>
                   ) : (
-                    <div className="space-y-3.5 max-h-[50vh] overflow-y-auto pr-1">
+                    <div className="space-y-3 max-h-[52vh] overflow-y-auto pr-1">
                       {chatMessages.map((msg) => {
                         // System Event
                         if (msg.isSystem) {
@@ -885,11 +1430,14 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                           );
                         }
 
+                        const isEditingThisMsg = editingMessageId === msg.id;
+                        const isDeletingThisMsg = deleteConfirmMessageId === msg.id;
+
                         // User / Collaborator / Revisor Message
                         return (
                           <div
                             key={msg.id}
-                            className="flex items-start gap-3 p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] text-xs hover:border-[#cbd5e1] transition-colors"
+                            className="group relative flex items-start gap-3 p-3.5 rounded-2xl bg-[#f8fafc] hover:bg-[#fbfcfe] border border-[#e2e8f0] text-xs hover:border-[#cbd5e1] transition-all shadow-2xs"
                           >
                             {/* Avatar */}
                             <div
@@ -901,7 +1449,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                             </div>
 
                             {/* Message Body */}
-                            <div className="flex-1 space-y-2">
+                            <div className="flex-1 min-w-0 space-y-2">
                               {/* Author header */}
                               <div className="flex flex-wrap items-center justify-between gap-1">
                                 <div className="flex items-center gap-1.5 flex-wrap">
@@ -917,57 +1465,362 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                                       Requerimiento inicial
                                     </span>
                                   )}
+                                  {msg.isEdited && (
+                                    <span
+                                      className="text-[10px] text-[#94a3b8] italic ml-1"
+                                      title={msg.editedAt || 'Mensaje editado'}
+                                    >
+                                      (editado)
+                                    </span>
+                                  )}
                                 </div>
                                 <span className="text-[10px] text-[#94a3b8]">{msg.timestamp}</span>
                               </div>
 
-                              {/* Text content */}
-                              <p className="text-xs text-[#334155] leading-relaxed">
-                                {renderMessageContent(msg.content)}
-                              </p>
-
-                              {/* Links & Attachments Preview Cards */}
-                              {msg.links && msg.links.length > 0 && (
-                                <div className="space-y-1.5 pt-1">
-                                  {msg.links.map((link, lIdx) => (
-                                    <a
-                                      key={lIdx}
-                                      href={`https://${link.url}`}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="flex items-center gap-3 p-2.5 rounded-xl bg-white border border-[#e2e8f0] hover:border-[#501f92] transition-colors group cursor-pointer max-w-md shadow-2xs"
+                              {/* Inline Edit Form */}
+                              {isEditingThisMsg ? (
+                                <div className="space-y-2 pt-1">
+                                  <textarea
+                                    value={editingMessageContent}
+                                    onChange={(e) => setEditingMessageContent(e.target.value)}
+                                    rows={3}
+                                    className="w-full p-2.5 rounded-xl border border-[#501f92] bg-white text-xs text-[#0f172a] focus:outline-none focus:ring-1 focus:ring-[#501f92]"
+                                  />
+                                  <div className="flex items-center justify-end gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => setEditingMessageId(null)}
+                                      className="px-3 py-1 rounded-lg text-xs font-semibold text-[#64748b] hover:bg-[#e2e8f0] cursor-pointer"
                                     >
-                                      {link.type === 'drive' ? (
-                                        <div className="w-7 h-7 rounded-lg bg-[#f0fdf4] text-[#16a34a] flex items-center justify-center shrink-0 font-bold">
-                                          <FolderKanban className="w-4 h-4" />
-                                        </div>
-                                      ) : (
-                                        <div className="w-7 h-7 rounded-lg bg-[#f5f3ff] text-[#501f92] flex items-center justify-center shrink-0 font-bold">
-                                          <Sparkles className="w-4 h-4" />
+                                      Cancelar
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSaveEditMessage(msg.id)}
+                                      className="px-3 py-1 rounded-lg text-xs font-bold text-white bg-[#501f92] hover:bg-[#381566] cursor-pointer"
+                                    >
+                                      Guardar cambios
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                /* Regular Content */
+                                <div className="text-xs text-[#334155] leading-relaxed">
+                                  {renderMessageContent(msg.content)}
+                                </div>
+                              )}
+
+                              {/* Delete confirmation banner */}
+                              {isDeletingThisMsg && (
+                                <div className="p-2.5 rounded-xl bg-[#fef2f2] border border-[#fecaca] flex items-center justify-between gap-2">
+                                  <span className="text-xs font-medium text-[#b91c1c]">
+                                    ¿Eliminar este comentario? Esta acción no se puede deshacer.
+                                  </span>
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    <button
+                                      type="button"
+                                      onClick={() => setDeleteConfirmMessageId(null)}
+                                      className="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-[#64748b] hover:bg-white cursor-pointer"
+                                    >
+                                      Cancelar
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteMessage(msg.id)}
+                                      className="px-2.5 py-1 rounded-lg text-[11px] font-bold text-white bg-[#ef4444] hover:bg-[#dc2626] cursor-pointer"
+                                    >
+                                      Eliminar
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Rich Attachments Section */}
+                              {((msg.attachments && msg.attachments.length > 0) || (msg.links && msg.links.length > 0) || msg.attachedFile) && (
+                                <div className="space-y-2 pt-1.5">
+                                  {/* Legacy Links & Attached File support */}
+                                  {msg.links && msg.links.length > 0 && (
+                                    <div className="space-y-1.5">
+                                      {msg.links.map((link, lIdx) => (
+                                        <a
+                                          key={lIdx}
+                                          href={`https://${link.url}`}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="flex items-center gap-3 p-2.5 rounded-xl bg-white border border-[#e2e8f0] hover:border-[#501f92] transition-colors group/link cursor-pointer max-w-md shadow-2xs"
+                                        >
+                                          <div className="w-7 h-7 rounded-lg bg-[#f5f3ff] text-[#501f92] flex items-center justify-center shrink-0 font-bold">
+                                            <Sparkles className="w-4 h-4" />
+                                          </div>
+                                          <div className="min-w-0 flex-1">
+                                            <span className="block font-bold text-[#0f172a] text-xs truncate group-hover/link:text-[#501f92]">
+                                              {link.title}
+                                            </span>
+                                            <span className="block text-[10px] text-[#64748b] truncate font-mono">
+                                              {link.url}
+                                            </span>
+                                          </div>
+                                          <ExternalLink className="w-3.5 h-3.5 text-[#94a3b8] group-hover/link:text-[#501f92] shrink-0" />
+                                        </a>
+                                      ))}
+                                    </div>
+                                  )}
+
+                                  {msg.attachedFile && (
+                                    <div className="flex items-center gap-2 p-2 rounded-xl bg-white border border-[#e2e8f0] text-xs max-w-xs">
+                                      <FileText className="w-4 h-4 text-[#501f92]" />
+                                      <span className="font-semibold text-[#0f172a] truncate">{msg.attachedFile.name}</span>
+                                      <span className="text-[10px] text-[#94a3b8]">({msg.attachedFile.size})</span>
+                                    </div>
+                                  )}
+
+                                  {/* Upgraded Attachments Array */}
+                                  {msg.attachments && msg.attachments.length > 0 && (
+                                    <div className="space-y-2">
+                                      {/* Image attachments gallery */}
+                                      {msg.attachments.some((a) => a.type === 'image') && (
+                                        <div className="flex flex-wrap gap-2 pt-1">
+                                          {msg.attachments
+                                            .filter((a) => a.type === 'image')
+                                            .map((att) => (
+                                              <div
+                                                key={att.id}
+                                                onClick={() =>
+                                                  setLightboxImage({
+                                                    url: att.previewUrl || att.url || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1000&auto=format&fit=crop&q=80',
+                                                    title: att.name
+                                                  })
+                                                }
+                                                className="group/img relative w-24 h-24 sm:w-28 sm:h-28 rounded-xl overflow-hidden border border-[#e2e8f0] bg-black/5 cursor-pointer hover:shadow-md transition-all shrink-0"
+                                              >
+                                                <img
+                                                  src={att.previewUrl || att.url || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=500&auto=format&fit=crop&q=80'}
+                                                  alt={att.name}
+                                                  className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-200"
+                                                  referrerPolicy="no-referrer"
+                                                />
+                                                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center text-white">
+                                                  <Eye className="w-5 h-5" />
+                                                </div>
+                                                <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 to-transparent p-1.5 text-[9px] text-white truncate">
+                                                  {att.name}
+                                                </div>
+                                              </div>
+                                            ))}
                                         </div>
                                       )}
-                                      <div className="min-w-0 flex-1">
-                                        <span className="block font-bold text-[#0f172a] text-xs truncate group-hover:text-[#501f92]">
-                                          {link.title}
-                                        </span>
-                                        <span className="block text-[10px] text-[#64748b] truncate font-mono">
-                                          {link.url}
-                                        </span>
+
+                                      {/* Link and File attachments */}
+                                      <div className="space-y-1.5 max-w-md">
+                                        {msg.attachments
+                                          .filter((a) => a.type !== 'image')
+                                          .map((att) => {
+                                            if (att.type === 'link') {
+                                              const isFigma = att.url?.includes('figma.com');
+                                              const isDrive = att.url?.includes('drive.google.com') || att.url?.includes('docs.google.com');
+                                              const isLoom = att.url?.includes('loom.com');
+                                              const isGithub = att.url?.includes('github.com');
+
+                                              return (
+                                                <a
+                                                  key={att.id}
+                                                  href={att.url}
+                                                  target="_blank"
+                                                  rel="noreferrer"
+                                                  className="flex items-center gap-3 p-2.5 rounded-xl bg-white border border-[#e2e8f0] hover:border-[#501f92] hover:shadow-xs transition-all group/link cursor-pointer"
+                                                >
+                                                  <div
+                                                    className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 font-bold ${
+                                                      isFigma
+                                                        ? 'bg-[#fdf2f8] text-[#db2777]'
+                                                        : isDrive
+                                                        ? 'bg-[#f0fdf4] text-[#16a34a]'
+                                                        : isLoom
+                                                        ? 'bg-[#f0f9ff] text-[#0284c7]'
+                                                        : isGithub
+                                                        ? 'bg-[#f8fafc] text-[#0f172a]'
+                                                        : 'bg-[#f5f3ff] text-[#501f92]'
+                                                    }`}
+                                                  >
+                                                    {isFigma ? (
+                                                      <Sparkles className="w-4 h-4" />
+                                                    ) : isDrive ? (
+                                                      <FolderKanban className="w-4 h-4" />
+                                                    ) : (
+                                                      <Link2 className="w-4 h-4" />
+                                                    )}
+                                                  </div>
+                                                  <div className="min-w-0 flex-1">
+                                                    <span className="block font-bold text-[#0f172a] text-xs truncate group-hover/link:text-[#501f92]">
+                                                      {att.name}
+                                                    </span>
+                                                    <span className="block text-[10px] text-[#64748b] truncate font-mono">
+                                                      {att.url}
+                                                    </span>
+                                                  </div>
+                                                  <ExternalLink className="w-3.5 h-3.5 text-[#94a3b8] group-hover/link:text-[#501f92] shrink-0" />
+                                                </a>
+                                              );
+                                            }
+
+                                            // Document / File item
+                                            return (
+                                              <div
+                                                key={att.id}
+                                                className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-white border border-[#e2e8f0] text-xs"
+                                              >
+                                                <div className="flex items-center gap-2 min-w-0">
+                                                  <div className="w-7 h-7 rounded-lg bg-[#f1f5f9] text-[#475569] flex items-center justify-center shrink-0">
+                                                    <FileText className="w-4 h-4 text-[#501f92]" />
+                                                  </div>
+                                                  <div className="min-w-0">
+                                                    <span className="font-semibold text-[#0f172a] truncate block">
+                                                      {att.name}
+                                                    </span>
+                                                    {att.size && (
+                                                      <span className="text-[10px] text-[#94a3b8] block">
+                                                        {att.size}
+                                                      </span>
+                                                    )}
+                                                  </div>
+                                                </div>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => showToast(`Descargando ${att.name}`)}
+                                                  className="p-1.5 rounded-lg text-[#64748b] hover:text-[#501f92] hover:bg-[#f1f5f9] transition-colors cursor-pointer shrink-0"
+                                                  title="Descargar archivo"
+                                                >
+                                                  <Download className="w-3.5 h-3.5" />
+                                                </button>
+                                              </div>
+                                            );
+                                          })}
                                       </div>
-                                      <ExternalLink className="w-3.5 h-3.5 text-[#94a3b8] group-hover:text-[#501f92] shrink-0" />
-                                    </a>
-                                  ))}
+                                    </div>
+                                  )}
                                 </div>
                               )}
 
-                              {/* Attached File Preview */}
-                              {msg.attachedFile && (
-                                <div className="flex items-center gap-2 p-2 rounded-xl bg-white border border-[#e2e8f0] text-xs max-w-xs">
-                                  <FileText className="w-4 h-4 text-[#501f92]" />
-                                  <span className="font-semibold text-[#0f172a] truncate">{msg.attachedFile.name}</span>
-                                  <span className="text-[10px] text-[#94a3b8]">({msg.attachedFile.size})</span>
+                              {/* Reactions Row */}
+                              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                                {msg.reactions &&
+                                  msg.reactions.map((react) => {
+                                    const hasReacted = react.users.includes('Catalina Tejada');
+                                    return (
+                                      <button
+                                        key={react.emoji}
+                                        type="button"
+                                        onClick={() => handleToggleReaction(msg.id, react.emoji)}
+                                        title={`Reaccionaron: ${react.users.join(', ')}`}
+                                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
+                                          hasReacted
+                                            ? 'bg-[#f5f3ff] border-[#8a4dff] text-[#501f92] shadow-2xs'
+                                            : 'bg-white border-[#e2e8f0] text-[#64748b] hover:border-[#cbd5e1]'
+                                        }`}
+                                      >
+                                        <span>{react.emoji}</span>
+                                        <span className="text-[11px] font-mono">{react.count}</span>
+                                      </button>
+                                    );
+                                  })}
+
+                                {/* Add reaction button (always visible or on hover) */}
+                                <div className="relative">
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setActiveReactionPickerMsgId(
+                                        activeReactionPickerMsgId === msg.id ? null : msg.id
+                                      )
+                                    }
+                                    className="p-1 rounded-full text-[#94a3b8] hover:text-[#501f92] hover:bg-white border border-transparent hover:border-[#e2e8f0] transition-colors cursor-pointer text-xs"
+                                    title="Añadir reacción"
+                                  >
+                                    <Smile className="w-3.5 h-3.5" />
+                                  </button>
+
+                                  {activeReactionPickerMsgId === msg.id && (
+                                    <div className="absolute left-0 bottom-full mb-1.5 flex items-center gap-1 bg-white p-1.5 rounded-full border border-[#e2e8f0] shadow-lg z-30 animate-in fade-in zoom-in-95 duration-100">
+                                      {QUICK_EMOJIS.map((emoji) => (
+                                        <button
+                                          key={emoji}
+                                          type="button"
+                                          onClick={() => handleToggleReaction(msg.id, emoji)}
+                                          className="p-1 hover:scale-125 transition-transform text-sm cursor-pointer rounded-full hover:bg-[#f1f5f9]"
+                                        >
+                                          {emoji}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
                                 </div>
-                              )}
+                              </div>
+                            </div>
+
+                            {/* Hover Actions Toolbar (Top Right) */}
+                            <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute right-2.5 top-2.5 flex items-center gap-0.5 bg-white/90 backdrop-blur-xs p-1 rounded-xl border border-[#e2e8f0] shadow-2xs z-10">
+                              {/* Quick reaction shortcut */}
+                              <button
+                                type="button"
+                                onClick={() => handleToggleReaction(msg.id, '👍')}
+                                className="p-1 hover:bg-[#f1f5f9] rounded-lg text-xs cursor-pointer"
+                                title="Me gusta"
+                              >
+                                👍
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleToggleReaction(msg.id, '❤️')}
+                                className="p-1 hover:bg-[#f1f5f9] rounded-lg text-xs cursor-pointer"
+                                title="Amor"
+                              >
+                                ❤️
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleToggleReaction(msg.id, '🚀')}
+                                className="p-1 hover:bg-[#f1f5f9] rounded-lg text-xs cursor-pointer"
+                                title="Cohete"
+                              >
+                                🚀
+                              </button>
+
+                              {/* 3-dots Menu for Edit / Delete */}
+                              <div className="relative">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setOpenMsgMenuId(openMsgMenuId === msg.id ? null : msg.id)
+                                  }
+                                  className="p-1 text-[#64748b] hover:text-[#0f172a] hover:bg-[#f1f5f9] rounded-lg cursor-pointer transition-colors"
+                                >
+                                  <MoreVertical className="w-3.5 h-3.5" />
+                                </button>
+
+                                {openMsgMenuId === msg.id && (
+                                  <div className="absolute right-0 top-full mt-1 w-36 rounded-xl bg-white border border-[#e2e8f0] shadow-xl py-1 z-30 text-xs animate-in fade-in duration-100">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleStartEditMessage(msg)}
+                                      className="w-full px-3 py-1.5 text-left text-[#334155] hover:bg-[#f8fafc] flex items-center gap-2 cursor-pointer"
+                                    >
+                                      <Edit2 className="w-3.5 h-3.5 text-[#64748b]" />
+                                      <span>Editar</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setDeleteConfirmMessageId(msg.id);
+                                        setOpenMsgMenuId(null);
+                                      }}
+                                      className="w-full px-3 py-1.5 text-left text-[#ef4444] hover:bg-[#fef2f2] flex items-center gap-2 cursor-pointer"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                      <span>Eliminar</span>
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
                         );
@@ -1118,114 +1971,370 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               )}
             </div>
 
-            {/* Bottom Unified Message Box (Always available on Mensajes tab) */}
+            {/* --------------------------------------------------------- */}
+            {/* BOTTOM ENRICHED COMMENT COMPOSER (Always available on Mensajes tab) */}
+            {/* --------------------------------------------------------- */}
             {activeTab === 'mensajes' && (
-              <div className="pt-2 border-t border-[#f1f5f9]">
-                <form
-                  onSubmit={handleSendMessage}
-                  className="flex items-center gap-2.5 bg-white p-2 rounded-2xl border border-[#e2e8f0] shadow-xs focus-within:border-[#501f92] transition-colors"
-                >
-                  {/* User Avatar */}
-                  <div className="w-8 h-8 rounded-full bg-[#501f92] text-white flex items-center justify-center text-xs font-bold shrink-0">
-                    CT
-                  </div>
-
-                  {/* Input field */}
-                  <input
-                    type="text"
-                    placeholder="Escribe un mensaje o actualización…"
-                    value={messageInput}
-                    onChange={(e) => setMessageInput(e.target.value)}
-                    className="flex-1 text-xs text-[#0f172a] placeholder-[#94a3b8] focus:outline-none bg-transparent"
-                  />
-
-                  {/* Attached File indicator */}
-                  {attachedFileName && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#f1f5f9] text-[10px] text-[#475569] font-medium">
-                      <Paperclip className="w-2.5 h-2.5" />
-                      <span className="truncate max-w-[80px]">{attachedFileName}</span>
-                      <button
-                        type="button"
-                        onClick={() => setAttachedFileName(null)}
-                        className="text-[#94a3b8] hover:text-[#ef4444]"
-                      >
-                        ✕
-                      </button>
-                    </span>
-                  )}
-
-                  {/* Toolbar icons */}
-                  <div className="flex items-center gap-1 text-[#64748b]">
-                    {/* Paperclip */}
-                    <label className="p-1.5 rounded-lg hover:bg-[#f1f5f9] hover:text-[#0f172a] cursor-pointer transition-colors">
-                      <Paperclip className="w-4 h-4" />
-                      <input
-                        type="file"
-                        className="hidden"
-                        onChange={(e) => {
-                          if (e.target.files && e.target.files[0]) {
-                            setAttachedFileName(e.target.files[0].name);
-                          }
-                        }}
-                      />
-                    </label>
-
-                    {/* @ Mention */}
-                    <div className="relative">
-                      <button
-                        type="button"
-                        onClick={() => setShowMentionMenu(!showMentionMenu)}
-                        className="p-1.5 rounded-lg hover:bg-[#f1f5f9] hover:text-[#0f172a] cursor-pointer transition-colors"
-                      >
-                        <AtSign className="w-4 h-4" />
-                      </button>
-
-                      {showMentionMenu && (
-                        <div className="absolute bottom-full right-0 mb-2 w-48 rounded-xl bg-white border border-[#e2e8f0] shadow-xl py-1 z-50 text-xs">
-                          <span className="px-3 py-1 text-[10px] font-bold text-[#94a3b8] uppercase block">
-                            Mencionar a:
-                          </span>
-                          {TEAM_MEMBERS_POOL.map((m) => (
+              <div className="pt-2 border-t border-[#f1f5f9] relative">
+                {/* FLOATING AUTOCOMPLETE POPOVER (@ or #) */}
+                {autocompleteState && (
+                  <div className="absolute bottom-full left-0 mb-2 w-72 max-h-56 overflow-y-auto rounded-2xl bg-white border border-[#e2e8f0] shadow-xl py-1.5 z-40 text-xs animate-in fade-in zoom-in-95 duration-100">
+                    {autocompleteState.type === 'mention' ? (
+                      <div>
+                        <div className="px-3 py-1 text-[10px] font-extrabold text-[#501f92] uppercase tracking-wider flex items-center gap-1.5 border-b border-[#f1f5f9] pb-1.5 mb-1">
+                          <AtSign className="w-3 h-3" /> Mencionar miembro del equipo
+                        </div>
+                        {TEAM_MEMBERS_POOL.filter((m) =>
+                          m.name.toLowerCase().includes(autocompleteState.query.toLowerCase()) ||
+                          m.role.toLowerCase().includes(autocompleteState.query.toLowerCase())
+                        ).length === 0 ? (
+                          <div className="px-3 py-2 text-[#94a3b8] text-[11px]">No se encontraron miembros</div>
+                        ) : (
+                          TEAM_MEMBERS_POOL.filter((m) =>
+                            m.name.toLowerCase().includes(autocompleteState.query.toLowerCase()) ||
+                            m.role.toLowerCase().includes(autocompleteState.query.toLowerCase())
+                          ).map((m) => (
                             <button
                               key={m.name}
                               type="button"
-                              onClick={() => {
-                                setMessageInput((prev) => `${prev} @${m.name} `);
-                                setShowMentionMenu(false);
-                              }}
-                              className="w-full px-3 py-1.5 text-left hover:bg-[#f8fafc] text-[#0f172a] flex items-center gap-2 cursor-pointer"
+                              onClick={() => insertMention(m.name)}
+                              className="w-full px-3 py-1.5 text-left hover:bg-[#f8fafc] flex items-center justify-between gap-2 cursor-pointer transition-colors"
                             >
-                              <span className={`w-4 h-4 rounded-full ${m.avatarBg} text-white flex items-center justify-center text-[8px] font-bold`}>
-                                {m.initials}
-                              </span>
-                              <span className="truncate">{m.name}</span>
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className={`w-5 h-5 rounded-full ${m.avatarBg} text-white flex items-center justify-center text-[9px] font-bold shrink-0`}>
+                                  {m.initials}
+                                </span>
+                                <span className="font-bold text-[#0f172a] truncate">{m.name}</span>
+                              </div>
+                              <span className="text-[10px] text-[#64748b] shrink-0 font-medium">{m.role}</span>
                             </button>
-                          ))}
+                          ))
+                        )}
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="px-3 py-1 text-[10px] font-extrabold text-[#0284c7] uppercase tracking-wider flex items-center gap-1.5 border-b border-[#f1f5f9] pb-1.5 mb-1">
+                          <Hash className="w-3 h-3" /> Referenciar tarea del proyecto
                         </div>
-                      )}
+                        {tasksList
+                          ?.filter((t) =>
+                            t.id.toLowerCase().includes(autocompleteState.query.toLowerCase()) ||
+                            t.title.toLowerCase().includes(autocompleteState.query.toLowerCase())
+                          ).slice(0, 5).length === 0 ? (
+                          <div className="px-3 py-2 text-[#94a3b8] text-[11px]">No se encontraron tareas</div>
+                        ) : (
+                          tasksList
+                            ?.filter((t) =>
+                              t.id.toLowerCase().includes(autocompleteState.query.toLowerCase()) ||
+                              t.title.toLowerCase().includes(autocompleteState.query.toLowerCase())
+                            )
+                            .slice(0, 5)
+                            .map((t) => (
+                              <button
+                                key={t.id}
+                                type="button"
+                                onClick={() => insertTaskReference(t)}
+                                className="w-full px-3 py-1.5 text-left hover:bg-[#f0f9ff] flex items-center justify-between gap-2 cursor-pointer transition-colors"
+                              >
+                                <div className="min-w-0">
+                                  <span className="font-mono font-bold text-[#0284c7] text-[10px] block">
+                                    #{t.id.toUpperCase()}
+                                  </span>
+                                  <span className="font-medium text-[#0f172a] truncate block text-[11px]">
+                                    {t.title}
+                                  </span>
+                                </div>
+                                <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-[#f1f5f9] text-[#64748b] shrink-0 font-semibold">
+                                  {t.status}
+                                </span>
+                              </button>
+                            ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Form container */}
+                <form
+                  onSubmit={handleSendMessage}
+                  className="bg-white rounded-2xl border border-[#e2e8f0] shadow-xs focus-within:border-[#501f92] focus-within:shadow-md transition-all overflow-hidden"
+                >
+                  {/* Pending attachments chips bar */}
+                  {pendingAttachments.length > 0 && (
+                    <div className="p-2.5 bg-[#f8fafc] border-b border-[#f1f5f9] flex flex-wrap items-center gap-2">
+                      {pendingAttachments.map((att) => (
+                        <div
+                          key={att.id}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white border border-[#e2e8f0] text-xs shadow-2xs"
+                        >
+                          {att.type === 'image' && att.previewUrl ? (
+                            <img
+                              src={att.previewUrl}
+                              alt={att.name}
+                              className="w-4 h-4 rounded object-cover"
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : att.type === 'link' ? (
+                            <Link2 className="w-3.5 h-3.5 text-[#501f92]" />
+                          ) : (
+                            <FileText className="w-3.5 h-3.5 text-[#501f92]" />
+                          )}
+                          <span className="font-medium text-[#0f172a] max-w-[120px] truncate text-[11px]">
+                            {att.name}
+                          </span>
+                          {att.size && (
+                            <span className="text-[9px] text-[#94a3b8]">({att.size})</span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleRemovePendingAttachment(att.id)}
+                            className="p-0.5 text-[#94a3b8] hover:text-[#ef4444] rounded-md transition-colors cursor-pointer"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Textarea Input */}
+                  <div className="p-2.5 flex items-start gap-2.5">
+                    {/* User Avatar */}
+                    <div className="w-7 h-7 rounded-full bg-[#501f92] text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5 shadow-2xs">
+                      CT
                     </div>
 
-                    {/* Smile */}
-                    <button
-                      type="button"
-                      onClick={() => setMessageInput((prev) => `${prev} 👍`)}
-                      className="p-1.5 rounded-lg hover:bg-[#f1f5f9] hover:text-[#0f172a] cursor-pointer transition-colors"
-                    >
-                      <Smile className="w-4 h-4" />
-                    </button>
+                    <textarea
+                      ref={inputRef}
+                      rows={2}
+                      placeholder="Escribe un comentario... Usa @ para mencionar o # para referenciar tareas"
+                      value={messageInput}
+                      onChange={handleInputChange}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSendMessage();
+                        }
+                      }}
+                      className="flex-1 text-xs text-[#0f172a] placeholder-[#94a3b8] focus:outline-none bg-transparent resize-none leading-relaxed min-h-[44px]"
+                    />
+                  </div>
 
-                    {/* Send button */}
-                    <button
-                      type="submit"
-                      disabled={!messageInput.trim() && !attachedFileName}
-                      className={`p-2 rounded-xl text-white transition-colors cursor-pointer ${
-                        messageInput.trim() || attachedFileName
-                          ? 'bg-[#501f92] hover:bg-[#381566]'
-                          : 'bg-[#cbd5e1] cursor-not-allowed'
-                      }`}
-                    >
-                      <Send className="w-3.5 h-3.5" />
-                    </button>
+                  {/* Rich Toolbar & Actions Footer */}
+                  <div className="px-2.5 py-1.5 bg-[#f8fafc] border-t border-[#f1f5f9] flex flex-wrap items-center justify-between gap-2">
+                    {/* Left formatting tools */}
+                    <div className="flex items-center gap-0.5 text-[#64748b]">
+                      <button
+                        type="button"
+                        onClick={() => applyFormatting('bold')}
+                        className="p-1.5 rounded-lg hover:bg-white hover:text-[#0f172a] transition-colors cursor-pointer"
+                        title="Negrita (**texto**)"
+                      >
+                        <Bold className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => applyFormatting('italic')}
+                        className="p-1.5 rounded-lg hover:bg-white hover:text-[#0f172a] transition-colors cursor-pointer"
+                        title="Cursiva (*texto*)"
+                      >
+                        <Italic className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => applyFormatting('list')}
+                        className="p-1.5 rounded-lg hover:bg-white hover:text-[#0f172a] transition-colors cursor-pointer"
+                        title="Lista (- item)"
+                      >
+                        <List className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => applyFormatting('code')}
+                        className="p-1.5 rounded-lg hover:bg-white hover:text-[#0f172a] transition-colors cursor-pointer"
+                        title="Código (`código`)"
+                      >
+                        <Code className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => applyFormatting('quote')}
+                        className="p-1.5 rounded-lg hover:bg-white hover:text-[#0f172a] transition-colors cursor-pointer"
+                        title="Cita (> cita)"
+                      >
+                        <Quote className="w-3.5 h-3.5" />
+                      </button>
+
+                      <div className="h-4 w-px bg-[#e2e8f0] mx-1" />
+
+                      {/* @ Mention trigger */}
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowMentionMenu(!showMentionMenu);
+                            setShowTaskMenu(false);
+                            setQuickEmojiMenuOpen(false);
+                          }}
+                          className={`p-1.5 rounded-lg hover:bg-white hover:text-[#501f92] transition-colors cursor-pointer flex items-center gap-0.5 ${
+                            showMentionMenu ? 'bg-white text-[#501f92] font-bold' : ''
+                          }`}
+                          title="Mencionar miembro (@)"
+                        >
+                          <AtSign className="w-3.5 h-3.5" />
+                        </button>
+
+                        {showMentionMenu && (
+                          <div className="absolute bottom-full left-0 mb-2 w-52 max-h-52 overflow-y-auto rounded-2xl bg-white border border-[#e2e8f0] shadow-xl py-1 z-50 text-xs">
+                            <span className="px-3 py-1 text-[10px] font-extrabold text-[#501f92] uppercase block tracking-wider">
+                              Mencionar a:
+                            </span>
+                            {TEAM_MEMBERS_POOL.map((m) => (
+                              <button
+                                key={m.name}
+                                type="button"
+                                onClick={() => {
+                                  setMessageInput((prev) => `${prev} @${m.name} `);
+                                  setShowMentionMenu(false);
+                                  inputRef.current?.focus();
+                                }}
+                                className="w-full px-3 py-1.5 text-left hover:bg-[#f8fafc] text-[#0f172a] flex items-center justify-between gap-2 cursor-pointer"
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className={`w-4 h-4 rounded-full ${m.avatarBg} text-white flex items-center justify-center text-[8px] font-bold shrink-0`}>
+                                    {m.initials}
+                                  </span>
+                                  <span className="truncate">{m.name}</span>
+                                </div>
+                                <span className="text-[9px] text-[#94a3b8]">{m.role}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* # Task reference trigger */}
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowTaskMenu(!showTaskMenu);
+                            setShowMentionMenu(false);
+                            setQuickEmojiMenuOpen(false);
+                          }}
+                          className={`p-1.5 rounded-lg hover:bg-white hover:text-[#0284c7] transition-colors cursor-pointer flex items-center gap-0.5 ${
+                            showTaskMenu ? 'bg-white text-[#0284c7] font-bold' : ''
+                          }`}
+                          title="Referenciar tarea (#)"
+                        >
+                          <Hash className="w-3.5 h-3.5" />
+                        </button>
+
+                        {showTaskMenu && (
+                          <div className="absolute bottom-full left-0 mb-2 w-64 max-h-52 overflow-y-auto rounded-2xl bg-white border border-[#e2e8f0] shadow-xl py-1 z-50 text-xs">
+                            <span className="px-3 py-1 text-[10px] font-extrabold text-[#0284c7] uppercase block tracking-wider">
+                              Vincular Tarea:
+                            </span>
+                            {tasksList && tasksList.length > 0 ? (
+                              tasksList.slice(0, 6).map((t) => (
+                                <button
+                                  key={t.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setMessageInput((prev) => `${prev} #${t.id.toUpperCase()} `);
+                                    setShowTaskMenu(false);
+                                    inputRef.current?.focus();
+                                  }}
+                                  className="w-full px-3 py-1.5 text-left hover:bg-[#f0f9ff] text-[#0f172a] block cursor-pointer"
+                                >
+                                  <span className="font-mono font-bold text-[#0284c7] text-[10px] block">
+                                    #{t.id.toUpperCase()}
+                                  </span>
+                                  <span className="truncate block text-[11px]">{t.title}</span>
+                                </button>
+                              ))
+                            ) : (
+                              <span className="px-3 py-2 text-[11px] text-[#94a3b8] block">Sin tareas cargadas</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* 📎 File upload */}
+                      <label
+                        className="p-1.5 rounded-lg hover:bg-white hover:text-[#0f172a] cursor-pointer transition-colors"
+                        title="Adjuntar archivos o imágenes"
+                      >
+                        <Paperclip className="w-3.5 h-3.5" />
+                        <input
+                          type="file"
+                          multiple
+                          className="hidden"
+                          onChange={handleFileSelect}
+                        />
+                      </label>
+
+                      {/* 🔗 Enlace / Link modal trigger */}
+                      <button
+                        type="button"
+                        onClick={() => setIsLinkModalOpen(true)}
+                        className="p-1.5 rounded-lg hover:bg-white hover:text-[#0f172a] transition-colors cursor-pointer"
+                        title="Adjuntar enlace (Figma, Drive, Loom, etc.)"
+                      >
+                        <Link2 className="w-3.5 h-3.5" />
+                      </button>
+
+                      {/* 😀 Quick Emoji bar */}
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setQuickEmojiMenuOpen(!quickEmojiMenuOpen)}
+                          className="p-1.5 rounded-lg hover:bg-white hover:text-[#0f172a] transition-colors cursor-pointer"
+                          title="Insertar emoji"
+                        >
+                          <Smile className="w-3.5 h-3.5" />
+                        </button>
+
+                        {quickEmojiMenuOpen && (
+                          <div className="absolute bottom-full left-0 mb-2 p-1.5 rounded-2xl bg-white border border-[#e2e8f0] shadow-xl flex items-center gap-1 z-50 animate-in fade-in duration-100">
+                            {['👍', '🙌', '🚀', '👀', '🎉', '🔥', '✅', '❤️'].map((em) => (
+                              <button
+                                key={em}
+                                type="button"
+                                onClick={() => {
+                                  setMessageInput((prev) => `${prev} ${em}`);
+                                  setQuickEmojiMenuOpen(false);
+                                  inputRef.current?.focus();
+                                }}
+                                className="p-1 hover:scale-125 transition-transform text-sm cursor-pointer"
+                              >
+                                {em}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Right side: Send button */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-[#94a3b8] hidden sm:inline">
+                        Enter ↵ para enviar
+                      </span>
+                      <button
+                        type="submit"
+                        disabled={!messageInput.trim() && pendingAttachments.length === 0}
+                        className={`px-3.5 py-1.5 rounded-xl text-white font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-xs ${
+                          messageInput.trim() || pendingAttachments.length > 0
+                            ? 'bg-[#501f92] hover:bg-[#381566] hover:shadow-md'
+                            : 'bg-[#cbd5e1] cursor-not-allowed opacity-70'
+                        }`}
+                      >
+                        <Send className="w-3 h-3" />
+                        <span>Comentar</span>
+                      </button>
+                    </div>
                   </div>
                 </form>
               </div>
@@ -1233,50 +2342,108 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
           </div>
 
           {/* --------------------------------------------------------- */}
-          {/* RIGHT RAIL: METADATA & RESPONSIBLES - 4 COLS */}
+          {/* RIGHT RAIL: METADATA & RESPONSIBLES - 4 COLS (Or Full view on Mobile when activeTab === 'info') */}
           {/* --------------------------------------------------------- */}
-          <div id="task-right-rail" className="lg:col-span-4 p-6 bg-white space-y-5 text-xs overflow-y-auto max-h-full">
+          <div
+            id="task-right-rail"
+            className={`${
+              activeTab === 'info' ? 'block' : 'hidden lg:block'
+            } lg:col-span-4 p-4 sm:p-6 bg-white space-y-5 text-xs overflow-y-auto max-h-full`}
+          >
+            {/* Mobile-only tab switcher at top of right rail for quick switching */}
+            <div className="lg:hidden flex items-center gap-4 border-b border-[#e2e8f0] pb-2 mb-4">
+              <button
+                type="button"
+                onClick={() => setActiveTab('mensajes')}
+                className="text-xs font-bold text-[#64748b] hover:text-[#501f92] transition-colors cursor-pointer"
+              >
+                ← Volver a Mensajes
+              </button>
+              <span className="text-[#cbd5e1]">|</span>
+              <button
+                type="button"
+                onClick={() => setActiveTab('entregables')}
+                className="text-xs font-bold text-[#64748b] hover:text-[#501f92] transition-colors cursor-pointer"
+              >
+                Entregables
+              </button>
+            </div>
+
             {/* 1. Estado & Prioridad (2 Columns side-by-side) */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-[#64748b] mb-1.5">Estado</label>
-                <div className="relative">
-                  <select
-                    id="task-status-select"
-                    value={task.status}
-                    onChange={(e) => {
-                      if (onUpdateTaskStatus) onUpdateTaskStatus(task.id, e.target.value as TaskStatus);
-                      showToast(`Estado cambiado a ${e.target.value}`);
-                    }}
-                    className="w-full px-3 py-2 rounded-xl border border-[#e2e8f0] bg-white font-bold text-[#0f172a] text-xs focus:outline-none focus:border-[#501f92] cursor-pointer shadow-2xs appearance-none pr-8"
-                  >
-                    <option value="To Do">⚪ Por hacer</option>
-                    <option value="In Progress">🟡 En proceso</option>
-                    <option value="Review">🔍 En revisión</option>
-                    <option value="Done">🟢 Listo</option>
-                  </select>
-                  <span className="absolute right-2.5 top-3 pointer-events-none text-[#64748b] text-[10px]">▼</span>
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-[#64748b] mb-1.5">Estado</label>
+                  <div className="relative">
+                    <select
+                      id="task-status-select"
+                      value={task.status}
+                      onChange={(e) => {
+                        if (onUpdateTaskStatus) onUpdateTaskStatus(task.id, e.target.value as TaskStatus);
+                        showToast(`Estado cambiado a ${e.target.value === 'Done' ? 'Completada' : e.target.value === 'Review' ? 'En revisión' : e.target.value === 'In Progress' ? 'En proceso' : 'Por hacer'}`);
+                      }}
+                      className="w-full px-3 py-2 rounded-xl border border-[#e2e8f0] bg-white font-bold text-[#0f172a] text-xs focus:outline-none focus:border-[#501f92] cursor-pointer shadow-2xs appearance-none pr-8"
+                    >
+                      <option value="To Do">⚪ Por hacer</option>
+                      <option value="In Progress">🟡 En proceso</option>
+                      <option value="Review">🔍 En revisión</option>
+                      <option value="Done">🟢 Completada</option>
+                    </select>
+                    <span className="absolute right-2.5 top-3 pointer-events-none text-[#64748b] text-[10px]">▼</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-[#64748b] mb-1.5">Prioridad</label>
+                  <div className="relative">
+                    <select
+                      id="task-priority-select"
+                      value={task.priority}
+                      onChange={(e) => {
+                        if (onUpdateTaskPriority) onUpdateTaskPriority(task.id, e.target.value as TaskPriority);
+                      }}
+                      className="w-full px-3 py-2 rounded-xl border border-[#e2e8f0] bg-white font-bold text-[#0f172a] text-xs focus:outline-none focus:border-[#501f92] cursor-pointer shadow-2xs appearance-none pr-8"
+                    >
+                      <option value="Low">🟢 Baja</option>
+                      <option value="Medium">🚩 Media</option>
+                      <option value="High">🔴 Alta</option>
+                    </select>
+                    <span className="absolute right-2.5 top-3 pointer-events-none text-[#64748b] text-[10px]">▼</span>
+                  </div>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-[#64748b] mb-1.5">Prioridad</label>
-                <div className="relative">
-                  <select
-                    id="task-priority-select"
-                    value={task.priority}
-                    onChange={(e) => {
-                      if (onUpdateTaskPriority) onUpdateTaskPriority(task.id, e.target.value as TaskPriority);
-                    }}
-                    className="w-full px-3 py-2 rounded-xl border border-[#e2e8f0] bg-white font-bold text-[#0f172a] text-xs focus:outline-none focus:border-[#501f92] cursor-pointer shadow-2xs appearance-none pr-8"
-                  >
-                    <option value="Low">🟢 Baja</option>
-                    <option value="Medium">🚩 Media</option>
-                    <option value="High">🔴 Alta</option>
-                  </select>
-                  <span className="absolute right-2.5 top-3 pointer-events-none text-[#64748b] text-[10px]">▼</span>
-                </div>
-              </div>
+              {/* Action button to advance status */}
+              <button
+                type="button"
+                onClick={handleProgressTaskStatus}
+                className="w-full py-2 px-3 rounded-xl bg-[#f5f3ff] hover:bg-[#ede9fe] text-[#501f92] border border-[#ddd6fe] font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+              >
+                {task.status === 'To Do' && (
+                  <>
+                    <Play className="w-3.5 h-3.5 fill-current" />
+                    <span>Iniciar tarea → En proceso</span>
+                  </>
+                )}
+                {task.status === 'In Progress' && (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Marcar como Completada</span>
+                  </>
+                )}
+                {task.status === 'Review' && (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Marcar como Completada</span>
+                  </>
+                )}
+                {task.status === 'Done' && (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Reabrir tarea (En proceso)</span>
+                  </>
+                )}
+              </button>
             </div>
 
             {/* 2. Horas Card (4.5h Ejecutadas | 8h Estimadas | 3.5h Disponibles + Dynamic Progress Bar) */}
@@ -1475,338 +2642,275 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               </div>
             )}
 
-            {/* 5. Equipo & Responsables (Editable with exact reference unassigned styling) */}
-            <div className="space-y-2 pt-1 relative">
+            {/* 4. Estructura de Responsabilidades & Roles */}
+            <div className="space-y-3 pt-1">
               <div className="flex items-center justify-between">
-                <span className="font-bold text-[#0f172a] text-xs block">Equipo & Responsables</span>
-                <span className="text-[10px] text-[#64748b]">Click para editar</span>
+                <span className="font-bold text-[#0f172a] text-xs block">Equipo & Responsabilidades</span>
               </div>
 
-              <div className="space-y-1">
-                {/* 1. Solicitada por */}
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setOpenTeamDropdown(openTeamDropdown === 'requestedBy' ? null : 'requestedBy')}
-                    className="w-full flex items-center justify-between p-2 rounded-xl hover:bg-[#f8fafc] border border-transparent hover:border-[#e2e8f0] transition-colors text-left cursor-pointer group"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      {requestedBy && requestedBy !== '-' ? (
-                        <div className="w-8 h-8 rounded-full bg-[#501f92] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
-                          {requestedBy
-                            .split(' ')
-                            .map((n) => n[0])
-                            .join('')
-                            .slice(0, 2)
-                            .toUpperCase()}
-                        </div>
-                      ) : (
-                        /* Reference Unassigned Circle: Dotted with user icon */
-                        <div className="w-8 h-8 rounded-full border-2 border-dashed border-[#cbd5e1] text-[#94a3b8] flex items-center justify-center shrink-0">
-                          <User className="w-4 h-4" />
-                        </div>
-                      )}
-                      <div className="min-w-0">
-                        <span className="text-[11px] text-[#64748b] block font-medium">Solicitada por</span>
-                        <span className={`text-xs truncate block ${requestedBy && requestedBy !== '-' ? 'font-bold text-[#0f172a]' : 'font-medium text-[#94a3b8]'}`}>
-                          {requestedBy && requestedBy !== '-' ? requestedBy : '-'}
-                        </span>
-                      </div>
-                    </div>
-                    <ChevronDown className="w-3.5 h-3.5 text-[#94a3b8] group-hover:text-[#501f92] transition-colors shrink-0" />
-                  </button>
+              <div className="p-3 rounded-2xl bg-white border border-[#e2e8f0] shadow-2xs space-y-3">
+                {/* 1. Project Lead (Líder de proyecto / gestión general) */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[11px] font-bold text-[#0f172a] flex items-center gap-1.5">
+                      <Crown className="w-3.5 h-3.5 text-[#501f92]" />
+                      <span>Project Lead</span>
+                    </span>
+                    <span className="text-[10px] text-[#64748b]">Lidera la gestión</span>
+                  </div>
 
-                  {/* Dropdown for Solicitada por */}
-                  {openTeamDropdown === 'requestedBy' && (
-                    <div className="absolute top-full left-0 right-0 mt-1 z-30 bg-white rounded-2xl border border-[#e2e8f0] shadow-xl p-2 animate-in fade-in slide-in-from-top-1">
-                      <div className="px-2 py-1 text-[11px] font-bold text-[#64748b] border-b border-[#f1f5f9] mb-1">
-                        Seleccionar Solicitante
+                  <DropdownMenu
+                    value={projectLead?.name || 'Paola (Lead PM)'}
+                    onChange={(val) => {
+                      const member = TEAM_MEMBERS_POOL.find((m) => m.name === val);
+                      if (member) {
+                        const newLead = {
+                          name: member.name,
+                          initials: member.initials,
+                          avatarBg: member.avatarBg,
+                          role: member.role
+                        };
+                        applyTeamUpdate(assignee, collaborators, reviewer, requestedBy, budgetedRole, requiresValidation, newLead, followers);
+                        showToast(`Project Lead asignado: ${member.name}`);
+                      }
+                    }}
+                    options={TEAM_MEMBERS_POOL.map((m) => ({
+                      id: m.name,
+                      label: m.name,
+                      sublabel: m.role,
+                      icon: (
+                        <div className={`w-5 h-5 rounded-full ${m.avatarBg} text-white flex items-center justify-center text-[9px] font-bold shrink-0`}>
+                          {m.initials}
+                        </div>
+                      )
+                    }))}
+                    trigger={
+                      <div className="w-full flex items-center justify-between p-2 rounded-xl bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] transition-colors text-left cursor-pointer group">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className={`w-7 h-7 rounded-full ${projectLead?.avatarBg || 'bg-[#501f92]'} text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs`}>
+                            {projectLead?.initials || 'PL'}
+                          </div>
+                          <div className="min-w-0">
+                            <span className="text-xs font-bold text-[#0f172a] truncate block">
+                              {projectLead?.name || 'Sin Project Lead'}
+                            </span>
+                            <span className="text-[10px] text-[#64748b] truncate block">
+                              {projectLead?.role || 'Líder del proyecto'}
+                            </span>
+                          </div>
+                        </div>
+                        <ChevronDown className="w-3.5 h-3.5 text-[#94a3b8] group-hover:text-[#501f92] transition-colors shrink-0" />
                       </div>
-                      <div className="max-h-48 overflow-y-auto space-y-1">
-                        {TEAM_MEMBERS_POOL.map((member, idx) => (
-                          <button
-                            key={idx}
-                            type="button"
-                            onClick={() => handleSelectRequester(member)}
-                            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs text-left transition-colors cursor-pointer ${
-                              requestedBy === member.name
-                                ? 'bg-[#f5f3ff] text-[#501f92] font-bold'
-                                : 'hover:bg-[#f8fafc] text-[#0f172a]'
-                            }`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <div
-                                className={`w-6 h-6 rounded-full ${member.avatarBg} text-white flex items-center justify-center text-[10px] font-bold`}
-                              >
-                                {member.initials}
-                              </div>
-                              <div>
-                                <span className="block">{member.name}</span>
-                                <span className="text-[10px] text-[#64748b] block">{member.role}</span>
-                              </div>
-                            </div>
-                            {requestedBy === member.name && <Check className="w-3.5 h-3.5 text-[#501f92]" />}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                    }
+                    className="w-full"
+                    menuClassName="w-full z-40 max-h-56"
+                  />
                 </div>
 
-                {/* 2. Colaboradores (Compact UI for multiple collaborators with reference unassigned state) */}
-                <div className="relative">
-                  {(() => {
-                    const extraCollabs = collaborators.filter((c) => c.name !== assignee?.name);
-                    const hasAssignee = Boolean(assignee && assignee.name && assignee.name !== '-');
-                    const totalCollabsCount = (hasAssignee ? 1 : 0) + extraCollabs.length;
+                {/* 2. Colaboradores (Responsables de la ejecución - multiselección) */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[11px] font-bold text-[#0f172a] flex items-center gap-1.5">
+                      <Users className="w-3.5 h-3.5 text-[#10b981]" />
+                      <span>Colaboradores</span>
+                    </span>
+                    <span className="text-[10px] text-[#64748b]">Ejecutan la tarea</span>
+                  </div>
 
-                    return (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setOpenTeamDropdown(openTeamDropdown === 'collaborators' ? null : 'collaborators')
-                          }
-                          className="w-full flex items-center justify-between p-2 rounded-xl hover:bg-[#f8fafc] border border-transparent hover:border-[#e2e8f0] transition-colors text-left cursor-pointer group"
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            {totalCollabsCount === 0 ? (
-                              /* Reference unassigned circle with dashed border */
-                              <div className="w-8 h-8 rounded-full border-2 border-dashed border-[#cbd5e1] text-[#94a3b8] flex items-center justify-center shrink-0">
-                                <User className="w-4 h-4" />
-                              </div>
-                            ) : totalCollabsCount === 1 ? (
-                              <div
-                                className={`w-8 h-8 rounded-full ${
-                                  assignee?.avatarBg || 'bg-[#501f92]'
-                                } text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs`}
-                              >
-                                {assignee?.initials || 'CT'}
-                              </div>
-                            ) : (
-                              /* Reference multi-collaborator circular count badge (e.g. 2 with dashed border) */
-                              <div className="w-8 h-8 rounded-full border-2 border-dashed border-[#94a3b8] bg-white text-[#334155] flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
-                                {totalCollabsCount}
-                              </div>
-                            )}
+                  <DropdownMenu
+                    multiple={true}
+                    value={
+                      // Use collaborators combined with assignee if applicable
+                      Array.from(new Set([assignee.name, ...collaborators.map((c) => c.name)].filter((n) => n && n !== '-')))
+                    }
+                    onChange={() => {}}
+                    onMultiChange={(selectedNames) => {
+                      if (selectedNames.length === 0) {
+                        showToast('La tarea debe tener al menos un colaborador');
+                        return;
+                      }
+                      const selectedMembers = selectedNames
+                        .map((name) => TEAM_MEMBERS_POOL.find((m) => m.name === name))
+                        .filter(Boolean) as TeamMemberProfile[];
 
-                            <div className="min-w-0">
-                              <span className="text-[11px] text-[#64748b] block font-medium">Colaboradores</span>
-                              {totalCollabsCount === 0 ? (
-                                <span className="text-xs font-medium text-[#94a3b8] block">-</span>
-                              ) : (
-                                <>
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="font-bold text-xs text-[#0f172a] truncate block">
-                                      {assignee?.name || 'Asignado'}
-                                    </span>
-                                    {totalCollabsCount > 1 && (
-                                      <span className="text-[#64748b] font-bold text-xs">
-                                        +{totalCollabsCount - 1}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <span className="text-[10px] text-[#64748b] block truncate">
-                                    {task.budgetedRole || assignee?.role || 'Diseñador Gráfico'}
-                                  </span>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                          <ChevronDown className="w-3.5 h-3.5 text-[#94a3b8] group-hover:text-[#501f92] transition-colors shrink-0" />
-                        </button>
+                      const primary = selectedMembers[0] || {
+                        name: 'Catalina Tejada',
+                        initials: 'CT',
+                        avatarBg: 'bg-[#501f92]',
+                        role: 'Diseñador Gráfico'
+                      };
+                      const rest = selectedMembers.slice(1).map((m) => ({
+                        name: m.name,
+                        initials: m.initials,
+                        avatarBg: m.avatarBg,
+                        role: m.role
+                      }));
 
-                        {/* Dropdown / Popover for Colaboradores */}
-                        {openTeamDropdown === 'collaborators' && (
-                          <div className="absolute top-full left-0 right-0 mt-1 z-30 bg-white rounded-2xl border border-[#e2e8f0] shadow-xl p-3 animate-in fade-in slide-in-from-top-1">
-                            <div className="flex items-center justify-between pb-2 border-b border-[#f1f5f9] mb-2">
-                              <span className="text-xs font-bold text-[#0f172a]">Gestionar Colaboradores</span>
-                              <button
-                                type="button"
-                                onClick={() => setOpenTeamDropdown(null)}
-                                className="text-[11px] font-bold text-[#501f92] hover:underline cursor-pointer"
-                              >
-                                Listo
-                              </button>
-                            </div>
+                      const primaryAssignee = {
+                        name: primary.name,
+                        initials: primary.initials,
+                        avatarBg: primary.avatarBg,
+                        role: primary.role
+                      };
 
-                            <p className="text-[10px] text-[#64748b] mb-2">
-                              Marca los miembros que participan. Usa la estrella para fijar el ejecutor principal.
-                            </p>
+                      applyTeamUpdate(primaryAssignee, rest, reviewer, requestedBy, budgetedRole, requiresValidation, projectLead, followers);
+                    }}
+                    options={TEAM_MEMBERS_POOL.map((m) => ({
+                      id: m.name,
+                      label: m.name,
+                      sublabel: m.role,
+                      icon: (
+                        <div className={`w-5 h-5 rounded-full ${m.avatarBg} text-white flex items-center justify-center text-[9px] font-bold shrink-0`}>
+                          {m.initials}
+                        </div>
+                      )
+                    }))}
+                    trigger={
+                      <div className="w-full flex items-center justify-between p-2 rounded-xl bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] transition-colors text-left cursor-pointer group">
+                        <div className="flex items-center gap-2 min-w-0">
+                          {(() => {
+                            const map = new Map<string, typeof assignee>();
+                            if (assignee && assignee.name && assignee.name !== '-') {
+                              map.set(assignee.name, assignee);
+                            }
+                            collaborators.forEach((c) => {
+                              if (c && c.name && c.name !== '-') {
+                                map.set(c.name, c);
+                              }
+                            });
+                            const allCollabs = Array.from(map.values());
 
-                            <div className="max-h-52 overflow-y-auto space-y-1.5 pr-1">
-                              {TEAM_MEMBERS_POOL.map((member, idx) => {
-                                const isPrimary = assignee?.name === member.name;
-                                const isAssigned = isPrimary || collaborators.some((c) => c.name === member.name);
+                            if (allCollabs.length === 0) {
+                              return (
+                                <span className="text-xs text-[#94a3b8] italic">Seleccionar colaboradores...</span>
+                              );
+                            }
 
-                                return (
+                            return (
+                              <div className="flex items-center gap-1.5 overflow-hidden flex-wrap">
+                                {allCollabs.slice(0, 3).map((c, i) => (
                                   <div
-                                    key={idx}
-                                    className={`flex items-center justify-between p-2 rounded-xl border transition-colors ${
-                                      isAssigned
-                                        ? 'bg-[#faf5ff] border-[#e9d5ff]'
-                                        : 'bg-white border-[#f1f5f9] hover:bg-[#f8fafc]'
-                                    }`}
+                                    key={i}
+                                    className={`w-6 h-6 rounded-full ${c.avatarBg || 'bg-[#501f92]'} text-white flex items-center justify-center text-[10px] font-bold shadow-2xs`}
+                                    title={c.name}
                                   >
-                                    <button
-                                      type="button"
-                                      onClick={() => handleToggleCollaborator(member)}
-                                      className="flex items-center gap-2.5 flex-1 min-w-0 text-left cursor-pointer"
-                                    >
-                                      <div
-                                        className={`w-4 h-4 rounded-md border flex items-center justify-center transition-colors shrink-0 ${
-                                          isAssigned
-                                            ? 'bg-[#501f92] border-[#501f92] text-white'
-                                            : 'border-[#cbd5e1] bg-white'
-                                        }`}
-                                      >
-                                        {isAssigned && <Check className="w-3 h-3 stroke-[3]" />}
-                                      </div>
-
-                                      <div
-                                        className={`w-6 h-6 rounded-full ${member.avatarBg} text-white flex items-center justify-center text-[10px] font-bold shrink-0`}
-                                      >
-                                        {member.initials}
-                                      </div>
-
-                                      <div className="min-w-0">
-                                        <span
-                                          className={`text-xs block truncate ${
-                                            isAssigned ? 'font-bold text-[#0f172a]' : 'text-[#334155]'
-                                          }`}
-                                        >
-                                          {member.name}
-                                        </span>
-                                        <span className="text-[10px] text-[#64748b] block truncate">
-                                          {member.role}
-                                        </span>
-                                      </div>
-                                    </button>
-
-                                    {isAssigned && (
-                                      <button
-                                        type="button"
-                                        onClick={() => handleSetPrimaryAssignee(member)}
-                                        title={
-                                          isPrimary
-                                            ? 'Ejecutor principal'
-                                            : 'Establecer como ejecutor principal'
-                                        }
-                                        className={`px-2 py-0.5 rounded-lg text-[10px] font-bold flex items-center gap-1 shrink-0 ml-1 cursor-pointer transition-colors ${
-                                          isPrimary
-                                            ? 'bg-[#501f92] text-white'
-                                            : 'bg-white text-[#64748b] hover:text-[#501f92] border border-[#e2e8f0]'
-                                        }`}
-                                      >
-                                        <Star className={`w-3 h-3 ${isPrimary ? 'fill-current' : ''}`} />
-                                        <span>{isPrimary ? 'Principal' : 'Fijar'}</span>
-                                      </button>
-                                    )}
+                                    {c.initials || 'CT'}
                                   </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-                      </>
-                    );
-                  })()}
+                                ))}
+                                {allCollabs.length > 3 && (
+                                  <span className="text-[10px] font-bold text-[#64748b]">
+                                    +{allCollabs.length - 3}
+                                  </span>
+                                )}
+                                <span className="text-xs font-semibold text-[#0f172a] truncate ml-0.5">
+                                  {allCollabs.map((c) => c.name.split(' ')[0]).join(', ')}
+                                </span>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                        <ChevronDown className="w-3.5 h-3.5 text-[#94a3b8] group-hover:text-[#501f92] transition-colors shrink-0" />
+                      </div>
+                    }
+                    className="w-full"
+                    menuClassName="w-full z-40 max-h-56"
+                  />
                 </div>
 
-                {/* 3. Revisor (with exact unassigned reference styling) */}
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setOpenTeamDropdown(openTeamDropdown === 'reviewer' ? null : 'reviewer')}
-                    className="w-full flex items-center justify-between p-2 rounded-xl hover:bg-[#f8fafc] border border-transparent hover:border-[#e2e8f0] transition-colors text-left cursor-pointer group"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      {reviewer && reviewer.name && reviewer.name !== '-' ? (
-                        <div
-                          className={`w-8 h-8 rounded-full ${
-                            reviewer.avatarBg || 'bg-[#501f92]'
-                          } text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs`}
-                        >
-                          {reviewer.initials || 'PL'}
+                {/* 3. Seguidores (Enterados, acompañamiento y revisión sin responsabilidad de ejecución) */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[11px] font-bold text-[#0f172a] flex items-center gap-1.5">
+                      <Eye className="w-3.5 h-3.5 text-[#6366f1]" />
+                      <span>Seguidores</span>
+                    </span>
+                    <span className="text-[10px] text-[#64748b]">Acompañamiento</span>
+                  </div>
+
+                  <DropdownMenu
+                    multiple={true}
+                    value={followers.map((f) => f.name)}
+                    onChange={() => {}}
+                    onMultiChange={(selectedNames) => {
+                      const updatedFollowers = selectedNames
+                        .map((name) => TEAM_MEMBERS_POOL.find((m) => m.name === name))
+                        .filter(Boolean)
+                        .map((m) => ({
+                          name: m!.name,
+                          initials: m!.initials,
+                          avatarBg: m!.avatarBg,
+                          role: m!.role
+                        }));
+
+                      applyTeamUpdate(assignee, collaborators, reviewer, requestedBy, budgetedRole, requiresValidation, projectLead, updatedFollowers);
+                    }}
+                    options={TEAM_MEMBERS_POOL.map((m) => ({
+                      id: m.name,
+                      label: m.name,
+                      sublabel: m.role,
+                      icon: (
+                        <div className={`w-5 h-5 rounded-full ${m.avatarBg} text-white flex items-center justify-center text-[9px] font-bold shrink-0`}>
+                          {m.initials}
                         </div>
-                      ) : (
-                        /* Reference unassigned circle with dashed border */
-                        <div className="w-8 h-8 rounded-full border-2 border-dashed border-[#cbd5e1] text-[#94a3b8] flex items-center justify-center shrink-0">
-                          <User className="w-4 h-4" />
-                        </div>
-                      )}
-
-                      <div className="min-w-0">
-                        <span className="text-[11px] text-[#64748b] block font-medium">Revisor</span>
-                        <span
-                          className={`text-xs truncate block ${
-                            reviewer && reviewer.name && reviewer.name !== '-'
-                              ? 'font-bold text-[#0f172a]'
-                              : 'font-medium text-[#94a3b8]'
-                          }`}
-                        >
-                          {reviewer && reviewer.name && reviewer.name !== '-' ? reviewer.name : '-'}
-                        </span>
-                        {reviewer && reviewer.role && (
-                          <span className="text-[10px] text-[#64748b] block truncate">
-                            {reviewer.role}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <ChevronDown className="w-3.5 h-3.5 text-[#94a3b8] group-hover:text-[#501f92] transition-colors shrink-0" />
-                  </button>
-
-                  {/* Dropdown for Revisor */}
-                  {openTeamDropdown === 'reviewer' && (
-                    <div className="absolute top-full left-0 right-0 mt-1 z-30 bg-white rounded-2xl border border-[#e2e8f0] shadow-xl p-2 animate-in fade-in slide-in-from-top-1">
-                      <div className="px-2 py-1 text-[11px] font-bold text-[#64748b] border-b border-[#f1f5f9] mb-1">
-                        Seleccionar Revisor
-                      </div>
-                      <div className="max-h-48 overflow-y-auto space-y-1">
-                        <button
-                          type="button"
-                          onClick={() => handleSelectReviewer(null)}
-                          className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs text-left transition-colors cursor-pointer ${
-                            !reviewer
-                              ? 'bg-[#f5f3ff] text-[#501f92] font-bold'
-                              : 'hover:bg-[#f8fafc] text-[#64748b]'
-                          }`}
-                        >
-                          <span>✕ Sin revisor (-)</span>
-                          {!reviewer && <Check className="w-3.5 h-3.5 text-[#501f92]" />}
-                        </button>
-
-                        {TEAM_MEMBERS_POOL.map((member, idx) => (
-                          <button
-                            key={idx}
-                            type="button"
-                            onClick={() => handleSelectReviewer(member)}
-                            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs text-left transition-colors cursor-pointer ${
-                              reviewer?.name === member.name
-                                ? 'bg-[#f5f3ff] text-[#501f92] font-bold'
-                                : 'hover:bg-[#f8fafc] text-[#0f172a]'
-                            }`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <div
-                                className={`w-6 h-6 rounded-full ${member.avatarBg} text-white flex items-center justify-center text-[10px] font-bold`}
-                              >
-                                {member.initials}
-                              </div>
-                              <div>
-                                <span className="block">{member.name}</span>
-                                <span className="text-[10px] text-[#64748b] block">{member.role}</span>
-                              </div>
+                      )
+                    }))}
+                    trigger={
+                      <div className="w-full flex items-center justify-between p-2 rounded-xl bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] transition-colors text-left cursor-pointer group">
+                        <div className="flex items-center gap-2 min-w-0">
+                          {followers.length === 0 ? (
+                            <span className="text-xs text-[#94a3b8] italic">Sin seguidores</span>
+                          ) : (
+                            <div className="flex items-center gap-1.5 overflow-hidden flex-wrap">
+                              {followers.slice(0, 3).map((f, i) => (
+                                <div
+                                  key={i}
+                                  className={`w-6 h-6 rounded-full ${f.avatarBg || 'bg-[#6366f1]'} text-white flex items-center justify-center text-[10px] font-bold shadow-2xs`}
+                                  title={f.name}
+                                >
+                                  {f.initials || 'U'}
+                                </div>
+                              ))}
+                              {followers.length > 3 && (
+                                <span className="text-[10px] font-bold text-[#64748b]">
+                                  +{followers.length - 3}
+                                </span>
+                              )}
+                              <span className="text-xs font-semibold text-[#0f172a] truncate ml-0.5">
+                                {followers.map((f) => f.name.split(' ')[0]).join(', ')}
+                              </span>
                             </div>
-                            {reviewer?.name === member.name && (
-                              <Check className="w-3.5 h-3.5 text-[#501f92]" />
-                            )}
-                          </button>
-                        ))}
+                          )}
+                        </div>
+                        <ChevronDown className="w-3.5 h-3.5 text-[#94a3b8] group-hover:text-[#501f92] transition-colors shrink-0" />
                       </div>
+                    }
+                    className="w-full"
+                    menuClassName="w-full z-40 max-h-56"
+                  />
+                </div>
+
+                {/* 4. Rol Cotizado (Informativo / Tarifa presupuestada) */}
+                <div className="pt-2 border-t border-[#f1f5f9]">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[11px] font-bold text-[#0f172a] flex items-center gap-1.5">
+                      <Briefcase className="w-3.5 h-3.5 text-[#0284c7]" />
+                      <span>Rol cotizado</span>
+                    </span>
+                    <span className="text-[10px] text-[#0284c7] font-semibold bg-[#f0f9ff] px-2 py-0.5 rounded-md border border-[#bae6fd]">
+                      Tarifario
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] flex items-center justify-between">
+                    <div className="min-w-0">
+                      <span className="text-xs font-bold text-[#0369a1] truncate block">
+                        {budgetedRole}
+                      </span>
+                      <span className="text-[10px] text-[#64748b] block mt-0.5">
+                        Definido en el presupuesto del proyecto
+                      </span>
                     </div>
-                  )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -2024,6 +3128,143 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
           </span>
         </div>
       </div>
+
+      {/* ========================================================= */}
+      {/* MODAL: ADJUNTAR ENLACE (Figma, Drive, Loom, GitHub, etc.) */}
+      {/* ========================================================= */}
+      {isLinkModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl border border-[#e2e8f0] space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-extrabold text-[#0f172a] text-sm flex items-center gap-2">
+                <Link2 className="w-4 h-4 text-[#501f92]" />
+                Adjuntar Enlace de Trabajo
+              </h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsLinkModalOpen(false);
+                  setLinkInputUrl('');
+                  setLinkInputTitle('');
+                }}
+                className="p-1 text-[#94a3b8] hover:text-[#0f172a] rounded-lg cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block font-bold text-[#334155] mb-1">
+                  URL del recurso *
+                </label>
+                <input
+                  type="url"
+                  placeholder="https://figma.com/..., https://drive.google.com/..., etc."
+                  value={linkInputUrl}
+                  onChange={(e) => {
+                    setLinkInputUrl(e.target.value);
+                    if (!linkInputTitle) {
+                      if (e.target.value.includes('figma.com')) setLinkInputTitle('Archivo Figma');
+                      else if (e.target.value.includes('drive.google.com')) setLinkInputTitle('Carpeta Google Drive');
+                      else if (e.target.value.includes('loom.com')) setLinkInputTitle('Video Loom');
+                      else if (e.target.value.includes('github.com')) setLinkInputTitle('Repositorio GitHub');
+                    }
+                  }}
+                  className="w-full p-2.5 rounded-xl border border-[#e2e8f0] bg-white text-xs text-[#0f172a] focus:outline-none focus:border-[#501f92]"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-[#334155] mb-1">
+                  Título descriptivo (Opcional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ej. Maquetas UI v2, Grabación de feedback"
+                  value={linkInputTitle}
+                  onChange={(e) => setLinkInputTitle(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-[#e2e8f0] bg-white text-xs text-[#0f172a] focus:outline-none focus:border-[#501f92]"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#f1f5f9]">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsLinkModalOpen(false);
+                  setLinkInputUrl('');
+                  setLinkInputTitle('');
+                }}
+                className="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-[#64748b] hover:bg-[#f1f5f9] cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveLinkAttachment}
+                disabled={!linkInputUrl.trim()}
+                className={`px-4 py-2 rounded-xl text-xs font-bold text-white transition-all cursor-pointer ${
+                  linkInputUrl.trim()
+                    ? 'bg-[#501f92] hover:bg-[#381566] shadow-xs'
+                    : 'bg-[#cbd5e1] cursor-not-allowed opacity-70'
+                }`}
+              >
+                Adjuntar enlace
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* LIGHTBOX: VISOR DE IMÁGENES EN ALTA RESOLUCIÓN */}
+      {/* ========================================================= */}
+      {lightboxImage && (
+        <div
+          onClick={() => setLightboxImage(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative max-w-4xl max-h-[90vh] bg-[#0f172a] rounded-2xl overflow-hidden shadow-2xl border border-white/10 flex flex-col"
+          >
+            {/* Lightbox Header */}
+            <div className="p-3 bg-black/40 text-white flex items-center justify-between text-xs px-4">
+              <span className="font-semibold truncate max-w-md">{lightboxImage.title}</span>
+              <div className="flex items-center gap-2">
+                <a
+                  href={lightboxImage.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="p-1 text-white/70 hover:text-white rounded-lg transition-colors"
+                  title="Abrir en pestaña nueva"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setLightboxImage(null)}
+                  className="p-1 text-white/70 hover:text-white rounded-lg transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Lightbox Image Preview */}
+            <div className="flex-1 overflow-auto flex items-center justify-center p-4">
+              <img
+                src={lightboxImage.url}
+                alt={lightboxImage.title}
+                className="max-w-full max-h-[75vh] object-contain rounded-lg"
+                referrerPolicy="no-referrer"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

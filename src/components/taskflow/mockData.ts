@@ -1315,7 +1315,14 @@ export const initialTasks: TaskItem[] = [
         role: 'PM'
       }
     ],
-    followers: ['Paola (Lead PM)'],
+    followers: [
+      {
+        name: 'Paola (Lead PM)',
+        initials: 'PL',
+        avatarBg: 'bg-[#501f92]',
+        role: 'Lead PM'
+      }
+    ],
     date: '22 Ago 2026',
     startDate: '20 ago. 2026, 08:00',
     dueDate: '2026-08-25',
@@ -1379,7 +1386,14 @@ export const initialTasks: TaskItem[] = [
         role: 'PM'
       }
     ],
-    followers: ['Andrés Ríos'],
+    followers: [
+      {
+        name: 'Andrés Ríos',
+        initials: 'AR',
+        avatarBg: 'bg-[#501f92]',
+        role: 'Product Lead'
+      }
+    ],
     date: '22 Ago 2026',
     startDate: '20 ago. 2026, 09:00',
     dueDate: '2026-08-24',

@@ -17,7 +17,6 @@ import {
   Clock,
   User,
   Users,
-  ShieldCheck,
   Building2,
   ListChecks,
   AlertCircle,
@@ -27,8 +26,11 @@ import {
   Layers,
   Link2,
   FolderKanban,
-  Briefcase
+  Briefcase,
+  Crown,
+  Eye
 } from 'lucide-react';
+import { DropdownMenu } from '../ui/DropdownMenu';
 import {
   clientProjectHierarchy,
   FEE_ACTIVITY_TEMPLATES
@@ -185,11 +187,10 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
 
   const [title, setTitle] = useState('');
   const [budgetedRole, setBudgetedRole] = useState<string>('Web Designer');
-  const [assigneeName, setAssigneeName] = useState('Catalina Tejada');
+  const [projectLeadName, setProjectLeadName] = useState('Paola (Lead PM)');
+  const [collaborators, setCollaborators] = useState<string[]>(['Catalina Tejada']);
+  const [followers, setFollowers] = useState<string[]>([]);
   const [description, setDescription] = useState('');
-  const [reviewerName, setReviewerName] = useState('Paola (Lead PM)');
-  const [hasReviewer, setHasReviewer] = useState(true);
-  const [collaborators, setCollaborators] = useState<string[]>([]);
 
   // Planning Fields
   const [budgetedHours, setBudgetedHours] = useState('4.0');
@@ -284,19 +285,17 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
     }
   }, [availableFrentes]);
 
-  // Auto-suggest budgetedRole when assignee changes
+  // Responsable selection does NOT overwrite budgetedRole
   const handleAssigneeChange = (newAssigneeName: string) => {
-    setAssigneeName(newAssigneeName);
-    const member = TEAM_MEMBERS.find((m) => m.name === newAssigneeName);
-    if (member?.defaultRole) {
-      setBudgetedRole(member.defaultRole);
+    if (!collaborators.includes(newAssigneeName)) {
+      setCollaborators([newAssigneeName, ...collaborators]);
     }
   };
 
-  // Sync default reviewer with project lead
+  // Sync default project lead
   useEffect(() => {
     if (activeProject?.leadName) {
-      setReviewerName(activeProject.leadName);
+      setProjectLeadName(activeProject.leadName);
     }
   }, [activeProject]);
 
@@ -318,19 +317,19 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
       setTitle(tpl.name);
       setBudgetedHours(tpl.defaultHours.toString());
       if (tpl.role.includes('Designer')) {
-        setAssigneeName('Catalina Tejada');
+        setCollaborators(['Catalina Tejada']);
         setBudgetedRole('Web Designer');
       } else if (tpl.role.includes('Tech') || tpl.role.includes('Front') || tpl.role.includes('Dev')) {
-        setAssigneeName('Laura Gómez');
+        setCollaborators(['Laura Gómez']);
         setBudgetedRole('Front End');
       } else if (tpl.role.includes('Trafficker') || tpl.role.includes('Growth')) {
-        setAssigneeName('Sebas (Trafficker)');
+        setCollaborators(['Sebas (Trafficker)']);
         setBudgetedRole('Trafficker');
       } else if (tpl.role.includes('Copy')) {
-        setAssigneeName('Mariana Toro');
+        setCollaborators(['Mariana Toro']);
         setBudgetedRole('Copywriter');
       } else if (tpl.role.includes('Product') || tpl.role.includes('Lead') || tpl.role.includes('PM')) {
-        setAssigneeName('Andrés Ríos');
+        setCollaborators(['Andrés Ríos']);
         setBudgetedRole('Product Lead');
       }
 
@@ -354,29 +353,18 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
     setCriteriaList(criteriaList.filter((_, i) => i !== idx));
   };
 
-  const handleToggleCollaborator = (memberName: string) => {
-    if (collaborators.includes(memberName)) {
-      setCollaborators(collaborators.filter((c) => c !== memberName));
-    } else {
-      setCollaborators([...collaborators, memberName]);
-    }
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !activeProject) return;
 
-    const assignedUser = TEAM_MEMBERS.find((m) => m.name === assigneeName) || TEAM_MEMBERS[0];
-    const reviewerUser = hasReviewer && reviewerName
-      ? TEAM_MEMBERS.find((m) => m.name === reviewerName) || {
-          name: reviewerName,
-          initials: reviewerName.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase(),
-          avatarBg: 'bg-[#501f92]',
-          role: 'Revisor Accountable'
-        }
-      : undefined;
+    const leadUser = TEAM_MEMBERS.find((m) => m.name === projectLeadName) || {
+      name: projectLeadName || 'Paola (Lead PM)',
+      initials: 'PL',
+      avatarBg: 'bg-[#501f92]',
+      defaultRole: 'Lead PM'
+    };
 
-    const collaboratorObjects = collaborators.map((name) => {
+    const collaboratorObjects = (collaborators.length > 0 ? collaborators : ['Catalina Tejada']).map((name) => {
       const found = TEAM_MEMBERS.find((m) => m.name === name);
       return (
         found || {
@@ -387,6 +375,21 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
         }
       );
     });
+
+    const followerObjects = followers.map((name) => {
+      const found = TEAM_MEMBERS.find((m) => m.name === name);
+      return (
+        found || {
+          name,
+          initials: name.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase(),
+          avatarBg: 'bg-[#6366f1]',
+          defaultRole: 'Seguidor'
+        }
+      );
+    });
+
+    const primaryAssignee = collaboratorObjects[0];
+    const secondaryCollaborators = collaboratorObjects.slice(1);
 
     const isInternal = activeProject.projectType === 'internal';
     const hoursNum = parseFloat(budgetedHours) || 4.0;
@@ -410,24 +413,35 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
       clientName: activeProject.clientName,
       projectName: activeProject.name,
       frente: finalFrente,
-      budgetedRole: budgetedRole || assignedUser.defaultRole,
-      executedRoleSnapshot: assignedUser.defaultRole,
+      budgetedRole: budgetedRole || primaryAssignee.defaultRole,
+      executedRoleSnapshot: primaryAssignee.defaultRole,
       projectType: activeProject.projectType,
       feeCategory: activeProject.projectType === 'fee_monthly' ? (activeProject.serviceBase as FeeActivityCategory) : undefined,
       categoryType: isInternal ? 'internal' : 'client',
       requestedBy: currentUserName,
-      reviewer: reviewerUser,
-      assignee: {
-        name: assignedUser.name,
-        initials: assignedUser.initials,
-        avatarBg: assignedUser.avatarBg,
-        role: assignedUser.defaultRole
+      projectLead: {
+        name: leadUser.name,
+        initials: leadUser.initials,
+        avatarBg: leadUser.avatarBg,
+        role: leadUser.defaultRole
       },
-      collaborators: collaboratorObjects.length > 0 ? collaboratorObjects.map((c) => ({
+      assignee: {
+        name: primaryAssignee.name,
+        initials: primaryAssignee.initials,
+        avatarBg: primaryAssignee.avatarBg,
+        role: primaryAssignee.defaultRole
+      },
+      collaborators: secondaryCollaborators.length > 0 ? secondaryCollaborators.map((c) => ({
         name: c.name,
         initials: c.initials,
         avatarBg: c.avatarBg,
         role: c.defaultRole
+      })) : undefined,
+      followers: followerObjects.length > 0 ? followerObjects.map((f) => ({
+        name: f.name,
+        initials: f.initials,
+        avatarBg: f.avatarBg,
+        role: f.defaultRole
       })) : undefined,
       date: 'Hoy, ' + new Date().toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' }),
       startDate,
@@ -678,45 +692,164 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
             </div>
           </div>
 
-          {/* PASO 4: ASIGNACIÓN Y ROL COTIZADO */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            {/* Colaborador Real */}
-            <div>
-              <label className="block font-bold text-[#0f172a] mb-1">
-                Responsable asignado (Colaborador) *
-              </label>
-              <select
-                value={assigneeName}
-                onChange={(e) => handleAssigneeChange(e.target.value)}
-                className="w-full bg-[#f8fafc] border border-[#cbd5e1] px-3 py-2 rounded-xl text-xs font-semibold text-[#0f172a] focus:outline-none focus:border-[#8a4dff] cursor-pointer"
-              >
-                {TEAM_MEMBERS.map((m) => (
-                  <option key={m.name} value={m.name}>
-                    {m.name} ({m.defaultRole})
-                  </option>
-                ))}
-              </select>
+          {/* PASO 4: EQUIPO Y RESPONSABILIDADES */}
+          <div className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] space-y-3.5">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-[#0f172a] text-xs">Equipo & Responsabilidades</span>
             </div>
 
-            {/* Rol Cotizado */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block font-bold text-[#0f172a]">
-                  Rol cotizado *
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              {/* Project Lead */}
+              <div>
+                <label className="block font-bold text-[#0f172a] text-[11px] mb-1 flex items-center gap-1.5">
+                  <Crown className="w-3.5 h-3.5 text-[#501f92]" />
+                  <span>Project Lead *</span>
                 </label>
-                <span className="text-[10px] text-[#64748b]">Vendido comercialmente</span>
+                <DropdownMenu
+                  value={projectLeadName}
+                  onChange={(val) => setProjectLeadName(val)}
+                  options={TEAM_MEMBERS.map((m) => ({
+                    id: m.name,
+                    label: m.name,
+                    sublabel: m.defaultRole,
+                    icon: (
+                      <div className={`w-5 h-5 rounded-full ${m.avatarBg} text-white flex items-center justify-center text-[9px] font-bold shrink-0`}>
+                        {m.initials}
+                      </div>
+                    )
+                  }))}
+                  trigger={
+                    <div className="w-full bg-white border border-[#cbd5e1] px-3 py-2 rounded-xl text-xs font-semibold text-[#0f172a] flex items-center justify-between cursor-pointer">
+                      <div className="flex items-center gap-2 truncate">
+                        <div className={`w-5 h-5 rounded-full ${TEAM_MEMBERS.find((m) => m.name === projectLeadName)?.avatarBg || 'bg-[#501f92]'} text-white flex items-center justify-center text-[9px] font-bold shrink-0`}>
+                          {TEAM_MEMBERS.find((m) => m.name === projectLeadName)?.initials || 'PL'}
+                        </div>
+                        <span className="truncate">{projectLeadName}</span>
+                      </div>
+                      <ChevronDown className="w-3.5 h-3.5 text-[#64748b] shrink-0" />
+                    </div>
+                  }
+                  className="w-full"
+                  menuClassName="w-full z-40 max-h-56"
+                />
               </div>
-              <select
-                value={budgetedRole}
-                onChange={(e) => setBudgetedRole(e.target.value)}
-                className="w-full bg-[#f8fafc] border border-[#cbd5e1] px-3 py-2 rounded-xl text-xs font-semibold text-[#501f92] focus:outline-none focus:border-[#8a4dff] cursor-pointer"
-              >
-                {STANDARD_UHURA_ROLES.map((role) => (
-                  <option key={role} value={role}>
-                    {role}
-                  </option>
-                ))}
-              </select>
+
+              {/* Rol Cotizado */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-bold text-[#0f172a] text-[11px] flex items-center gap-1.5">
+                    <Briefcase className="w-3.5 h-3.5 text-[#0284c7]" />
+                    <span>Rol cotizado *</span>
+                  </label>
+                  <span className="text-[10px] text-[#0284c7] font-medium bg-[#f0f9ff] px-1.5 py-0.5 rounded border border-[#bae6fd]">
+                    Tarifario
+                  </span>
+                </div>
+                <DropdownMenu
+                  value={budgetedRole}
+                  onChange={(val) => setBudgetedRole(val)}
+                  options={STANDARD_UHURA_ROLES.map((role) => ({
+                    id: role,
+                    label: role
+                  }))}
+                  trigger={
+                    <div className="w-full bg-white border border-[#cbd5e1] px-3 py-2 rounded-xl text-xs font-semibold text-[#0369a1] flex items-center justify-between cursor-pointer">
+                      <span className="truncate">{budgetedRole}</span>
+                      <ChevronDown className="w-3.5 h-3.5 text-[#0284c7] shrink-0" />
+                    </div>
+                  }
+                  className="w-full"
+                  menuClassName="w-full z-40 max-h-56"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1 border-t border-[#e2e8f0]/80">
+              {/* Colaboradores (Multiselección) */}
+              <div>
+                <label className="block font-bold text-[#0f172a] text-[11px] mb-1 flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-[#10b981]" />
+                  <span>Colaboradores (Ejecutan) *</span>
+                </label>
+                <DropdownMenu
+                  multiple={true}
+                  value={collaborators}
+                  onChange={() => {}}
+                  onMultiChange={(vals) => {
+                    if (vals.length > 0) {
+                      setCollaborators(vals);
+                    }
+                  }}
+                  options={TEAM_MEMBERS.map((m) => ({
+                    id: m.name,
+                    label: m.name,
+                    sublabel: m.defaultRole,
+                    icon: (
+                      <div className={`w-5 h-5 rounded-full ${m.avatarBg} text-white flex items-center justify-center text-[9px] font-bold shrink-0`}>
+                        {m.initials}
+                      </div>
+                    )
+                  }))}
+                  trigger={
+                    <div className="w-full bg-white border border-[#cbd5e1] px-3 py-2 rounded-xl text-xs font-semibold text-[#0f172a] flex items-center justify-between cursor-pointer">
+                      <div className="flex items-center gap-1.5 truncate">
+                        {collaborators.length === 0 ? (
+                          <span className="text-[#94a3b8]">Seleccionar colaboradores...</span>
+                        ) : (
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <span className="font-bold text-[#501f92]">
+                              {collaborators.map((c) => c.split(' ')[0]).join(', ')}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <ChevronDown className="w-3.5 h-3.5 text-[#64748b] shrink-0" />
+                    </div>
+                  }
+                  className="w-full"
+                  menuClassName="w-full z-40 max-h-56"
+                />
+              </div>
+
+              {/* Seguidores (Multiselección) */}
+              <div>
+                <label className="block font-bold text-[#0f172a] text-[11px] mb-1 flex items-center gap-1.5">
+                  <Eye className="w-3.5 h-3.5 text-[#6366f1]" />
+                  <span>Seguidores (Acompañamiento)</span>
+                </label>
+                <DropdownMenu
+                  multiple={true}
+                  value={followers}
+                  onChange={() => {}}
+                  onMultiChange={(vals) => setFollowers(vals)}
+                  options={TEAM_MEMBERS.map((m) => ({
+                    id: m.name,
+                    label: m.name,
+                    sublabel: m.defaultRole,
+                    icon: (
+                      <div className={`w-5 h-5 rounded-full ${m.avatarBg} text-white flex items-center justify-center text-[9px] font-bold shrink-0`}>
+                        {m.initials}
+                      </div>
+                    )
+                  }))}
+                  trigger={
+                    <div className="w-full bg-white border border-[#cbd5e1] px-3 py-2 rounded-xl text-xs font-semibold text-[#0f172a] flex items-center justify-between cursor-pointer">
+                      <div className="flex items-center gap-1.5 truncate">
+                        {followers.length === 0 ? (
+                          <span className="text-[#94a3b8] italic">Sin seguidores</span>
+                        ) : (
+                          <span className="font-bold text-[#6366f1]">
+                            {followers.map((f) => f.split(' ')[0]).join(', ')}
+                          </span>
+                        )}
+                      </div>
+                      <ChevronDown className="w-3.5 h-3.5 text-[#64748b] shrink-0" />
+                    </div>
+                  }
+                  className="w-full"
+                  menuClassName="w-full z-40 max-h-56"
+                />
+              </div>
             </div>
           </div>
 
@@ -800,66 +933,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
             </div>
           )}
 
-          {/* PASO 7: REVISOR & COLABORADORES */}
-          <div className="space-y-3 pt-2 border-t border-[#f1f5f9]">
-            {/* Revisor */}
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 font-bold text-[#0f172a] cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={hasReviewer}
-                  onChange={(e) => setHasReviewer(e.target.checked)}
-                  className="rounded text-[#501f92] focus:ring-[#8a4dff]"
-                />
-                <span>Requiere aprobación formal (Revisor Accountable)</span>
-              </label>
-
-              {hasReviewer && (
-                <select
-                  value={reviewerName}
-                  onChange={(e) => setReviewerName(e.target.value)}
-                  className="bg-[#f8fafc] border border-[#e2e8f0] px-2.5 py-1 rounded-xl text-xs font-semibold text-[#0f172a] focus:outline-none focus:border-[#8a4dff] cursor-pointer"
-                >
-                  {TEAM_MEMBERS.map((m) => (
-                    <option key={m.name} value={m.name}>
-                      {m.name} ({m.defaultRole})
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-
-            {/* Colaboradores Adicionales */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[11px] font-bold text-[#64748b]">
-                  Colaboradores de apoyo ({collaborators.length})
-                </span>
-                <span className="text-[10px] text-[#94a3b8]">Pueden cargar horas a esta tarea</span>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {TEAM_MEMBERS.filter((m) => m.name !== assigneeName).map((m) => {
-                  const isSelected = collaborators.includes(m.name);
-                  return (
-                    <button
-                      key={m.name}
-                      type="button"
-                      onClick={() => handleToggleCollaborator(m.name)}
-                      className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer border ${
-                        isSelected
-                          ? 'bg-[#501f92] text-white border-[#501f92]'
-                          : 'bg-[#f8fafc] text-[#64748b] border-[#e2e8f0] hover:bg-[#f1f5f9]'
-                      }`}
-                    >
-                      {m.name.split(' ')[0]}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          {/* PASO 8: CRITERIOS DE ACEPTACIÓN (CHECKLIST) */}
+          {/* PASO 7: CRITERIOS DE ACEPTACIÓN (CHECKLIST) */}
           <div className="space-y-2 pt-2 border-t border-[#f1f5f9]">
             <div className="flex items-center justify-between">
               <label className="font-bold text-[#0f172a] text-xs">

@@ -54,7 +54,7 @@ export const BandejaDelDiaWidget: React.FC<BandejaDelDiaWidgetProps> = ({
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] text-xs font-bold text-[#0f172a] shadow-2xs transition-all cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5 text-[#501f92]" />
-            <span>Carga Manual</span>
+            <span>Cargar horas</span>
           </button>
         </div>
       </div>

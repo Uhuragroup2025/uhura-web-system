@@ -142,6 +142,22 @@ export interface TimeLog {
   deliverableUrl?: string;
 }
 
+export interface TaskCommentAttachment {
+  id: string;
+  name: string;
+  url?: string;
+  previewUrl?: string;
+  size?: string;
+  type?: 'image' | 'file' | 'link';
+  mimeType?: string;
+}
+
+export interface TaskCommentReaction {
+  emoji: string;
+  count: number;
+  users: string[];
+}
+
 export interface TaskComment {
   id: string;
   authorName: string;
@@ -154,6 +170,10 @@ export interface TaskComment {
   linkUrl?: string;
   linkPreviewTitle?: string;
   linkPreviewDesc?: string;
+  attachments?: TaskCommentAttachment[];
+  reactions?: TaskCommentReaction[];
+  isEdited?: boolean;
+  editedAt?: string;
 }
 
 export const STANDARD_UHURA_ROLES = [
@@ -184,6 +204,13 @@ export interface TaskItem {
   executedRoleSnapshot?: string; // snapshot of the role under which hours were executed
   categoryType?: TaskCategoryType;
   requestedBy?: string;
+  projectLead?: {
+    name: string;
+    initials: string;
+    avatarBg: string;
+    role?: string;
+  };
+  requiresValidation?: boolean; // Deprecated - replaced by Review status flow
   reviewer?: {
     name: string;
     initials: string;
@@ -207,7 +234,12 @@ export interface TaskItem {
     avatarBg: string;
     role?: string;
   }[];
-  followers?: string[];
+  followers?: {
+    name: string;
+    initials: string;
+    avatarBg: string;
+    role?: string;
+  }[];
   date: string;
   startDate?: string;
   dueDate: string;

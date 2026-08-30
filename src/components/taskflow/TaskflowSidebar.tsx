@@ -164,7 +164,7 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
               >
                 <div className="flex items-center gap-2.5">
                   <Clock className="w-3.5 h-3.5 text-[#8a4dff]" />
-                  {!collapsed && <span>Time-Tracking</span>}
+                  {!collapsed && <span>Horas</span>}
                 </div>
               </button>
 

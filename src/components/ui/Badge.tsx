@@ -18,107 +18,86 @@ export const Badge: React.FC<BadgeProps> = ({
   children,
   className = '',
   isDot = false,
-  contextTheme,
+  contextTheme = 'light',
 }) => {
-  // Base styling adhering to 1-line label rule (white-space: nowrap) and comfortable optical tracking
+  const isDark = contextTheme === 'dark';
+
   const baseClasses =
-    'inline-flex items-center justify-center font-semibold rounded-full select-none whitespace-nowrap transition-colors duration-150 tracking-tight';
+    'inline-flex items-center justify-center font-medium select-none whitespace-nowrap transition-colors duration-150 rounded-md';
 
   const sizeClasses: Record<BadgeSize, string> = {
-    xs: 'h-5 px-2 text-[10px] gap-1',
-    sm: 'h-6 px-2.5 text-xs gap-1.5',
-    md: 'h-7 px-3 text-xs gap-1.5',
+    xs: 'h-5 px-1.5 text-[10px] gap-1 font-semibold',
+    sm: 'h-6 px-2 text-xs gap-1.5 font-semibold',
+    md: 'h-7 px-2.5 text-xs gap-1.5 font-bold',
   };
 
-  // Full Coherency Matrix: Context-aware variants ensuring contrast ratio >= 4.5:1 (WCAG AA & AAA)
   const getVariantClasses = (): string => {
-    const isDark = contextTheme === 'dark';
-
     switch (variant) {
-      // 1. NEUTRAL: Elegant quiet tint for 80% of metadata (WCAG AAA >= 7:1)
+      // 1. NEUTRAL: Default quiet metadata tag
       case 'neutral':
+      case 'subtle':
         return isDark
-          ? 'bg-white/12 text-white border border-white/20'
-          : 'bg-[#17131f]/6 text-[#17131f] border border-[#17131f]/10 dark:bg-white/10 dark:text-[#f2ecfb] dark:border-white/10';
+          ? 'bg-white/10 text-white/90 border border-white/15'
+          : 'bg-[#f1f5f9] text-[#475569] border border-[#e2e8f0]';
 
-      // 2. BRAND: Deep royal purple background with pure white (Contrast ratio 8.2:1 - WCAG AAA)
+      // 2. BRAND: Solid or soft purple brand
       case 'brand':
         return isDark
-          ? 'bg-[#501f92] text-white shadow-xs border border-[#8a4dff]/40'
-          : 'bg-[#501f92] text-white shadow-xs border border-[#501f92]';
+          ? 'bg-[#8a4dff] text-white border border-[#8a4dff]/40 shadow-2xs'
+          : 'bg-[#501f92] text-white border border-[#501f92] shadow-2xs';
 
-      // 3. ACCENT / NEON: High-contrast Lime strictly with dark Ink text (Contrast ratio 14.2:1 - WCAG AAA)
-      case 'accent':
-      case 'neon':
-        return 'bg-[#d4ff4a] text-[#17131f] font-bold border border-[#b8e630] shadow-xs';
-
-      // 4. PURPLE: Subtle brand tint
+      // 3. PURPLE: Soft brand tint
       case 'purple':
         return isDark
-          ? 'bg-[#8a4dff]/25 text-[#c9b7ff] border border-[#8a4dff]/40'
-          : 'bg-[#8a4dff]/12 text-[#501f92] border border-[#8a4dff]/25 dark:bg-[#8a4dff]/20 dark:text-[#c9b7ff] dark:border-[#8a4dff]/35';
+          ? 'bg-[#501f92]/30 text-[#c9b7ff] border border-[#8a4dff]/30'
+          : 'bg-[#f5f3ff] text-[#501f92] border border-[#ddd6fe]';
 
-      // 5. SUCCESS: Semantic green with deep accessible text
+      // 4. SUCCESS: Semantic green
       case 'success':
         return isDark
-          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/35'
-          : 'bg-emerald-500/12 text-emerald-800 border border-emerald-500/25 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/30';
+          ? 'bg-emerald-950/40 text-emerald-300 border border-emerald-800/40'
+          : 'bg-[#ecfdf5] text-[#065f46] border border-[#a7f3d0]';
 
-      // 6. WARNING: Semantic amber with deep accessible text
+      // 5. WARNING: Semantic amber
       case 'warning':
         return isDark
-          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/35'
-          : 'bg-amber-500/12 text-amber-900 border border-amber-500/25 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/30';
+          ? 'bg-amber-950/40 text-amber-300 border border-amber-800/40'
+          : 'bg-[#fef3c7] text-[#92400e] border border-[#fde68a]';
 
-      // 7. ERROR / DANGER: Semantic red with deep accessible text
+      // 6. ERROR: Semantic red
       case 'error':
         return isDark
-          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/35'
-          : 'bg-rose-500/12 text-rose-800 border border-rose-500/25 dark:bg-rose-500/20 dark:text-rose-300 dark:border-rose-500/30';
+          ? 'bg-rose-950/40 text-rose-300 border border-rose-800/40'
+          : 'bg-[#ffe4e6] text-[#9f1239] border border-[#fecdd3]';
 
-      // 8. INFO / CYAN: Controlled tint with high legibility
+      // 7. INFO / CYAN: Controlled blue/sky
       case 'info':
       case 'cyan':
         return isDark
-          ? 'bg-sky-500/20 text-sky-300 border border-sky-500/35'
-          : 'bg-sky-500/12 text-sky-900 border border-sky-500/25 dark:bg-sky-500/20 dark:text-sky-300 dark:border-sky-500/30';
+          ? 'bg-sky-950/40 text-sky-300 border border-sky-800/40'
+          : 'bg-[#e0f2fe] text-[#0369a1] border border-[#bae6fd]';
 
-      // 9. PINK: Controlled berry tint
-      case 'pink':
-        return isDark
-          ? 'bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-500/35'
-          : 'bg-fuchsia-500/12 text-fuchsia-900 border border-fuchsia-500/25 dark:bg-fuchsia-500/20 dark:text-fuchsia-300 dark:border-fuchsia-500/30';
-
-      // 10. OUTLINE: Minimal hairline border
+      // 8. OUTLINE: Minimal hairline border
       case 'outline':
         return isDark
-          ? 'border border-white/60 text-white bg-transparent'
-          : 'border border-[#8a4dff]/40 text-[#501f92] bg-transparent dark:text-[#c9b7ff] dark:border-[#8a4dff]/50';
-
-      // 11. GLASS: Semi-transparent backdrop
-      case 'glass':
-        return isDark
-          ? 'bg-white/12 backdrop-blur-md border border-white/20 text-[#f2ecfb]'
-          : 'bg-white/60 backdrop-blur-md border border-black/10 text-[#17131f] dark:text-[#f2ecfb] dark:bg-white/10 dark:border-white/15';
-
-      // 12. SUBTLE: Minimal low-contrast metadata
-      case 'subtle':
-        return isDark
-          ? 'bg-white/8 text-[#c9b7ff] border border-white/10'
-          : 'bg-black/5 text-[#616161] border border-black/5 dark:bg-white/5 dark:text-[#c9b7ff] dark:border-white/10';
+          ? 'border border-white/30 text-white bg-transparent'
+          : 'border border-[#cbd5e1] text-[#334155] bg-transparent';
 
       default:
-        return '';
+        return isDark
+          ? 'bg-white/10 text-white/90 border border-white/15'
+          : 'bg-[#f1f5f9] text-[#475569] border border-[#e2e8f0]';
     }
   };
 
   const getDotColor = (): string => {
-    if (variant === 'accent' || variant === 'neon') return 'bg-[#17131f]';
-    if (variant === 'brand') return 'bg-[#d4ff4a]';
-    if (variant === 'success') return contextTheme === 'dark' ? 'bg-emerald-400' : 'bg-emerald-600';
-    if (variant === 'warning') return contextTheme === 'dark' ? 'bg-amber-400' : 'bg-amber-600';
-    if (variant === 'error') return contextTheme === 'dark' ? 'bg-rose-400' : 'bg-rose-600';
-    return 'bg-current';
+    if (variant === 'brand') return 'bg-white';
+    if (variant === 'purple') return isDark ? 'bg-[#c9b7ff]' : 'bg-[#9333ea]';
+    if (variant === 'success') return isDark ? 'bg-emerald-400' : 'bg-[#10b981]';
+    if (variant === 'warning') return isDark ? 'bg-amber-400' : 'bg-[#f59e0b]';
+    if (variant === 'error') return isDark ? 'bg-rose-400' : 'bg-[#e11d48]';
+    if (variant === 'info' || variant === 'cyan') return isDark ? 'bg-sky-400' : 'bg-[#0284c7]';
+    return isDark ? 'bg-white/60' : 'bg-[#94a3b8]';
   };
 
   return (
@@ -129,8 +108,8 @@ export const Badge: React.FC<BadgeProps> = ({
           aria-hidden="true"
         />
       )}
-      {icon && <span className="inline-flex shrink-0" aria-hidden="true">{icon}</span>}
-      <span>{children}</span>
+      {icon && <span className="inline-flex shrink-0 text-current" aria-hidden="true">{icon}</span>}
+      <span className="truncate">{children}</span>
     </span>
   );
 };

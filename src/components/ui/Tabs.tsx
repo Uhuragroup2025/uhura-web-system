@@ -43,12 +43,12 @@ export const Tabs: React.FC<TabsProps> = ({
       text: 'text-xs',
     },
     md: {
-      tab: 'py-2.5 px-4 text-xs sm:text-sm gap-2',
+      tab: 'py-2 px-3.5 text-xs sm:text-sm gap-2',
       icon: 'w-4 h-4',
       text: 'text-xs sm:text-sm',
     },
     lg: {
-      tab: 'py-3 px-5 text-sm gap-2.5',
+      tab: 'py-2.5 px-4 text-sm gap-2.5',
       icon: 'w-4.5 h-4.5',
       text: 'text-sm font-medium',
     },
@@ -79,7 +79,6 @@ export const Tabs: React.FC<TabsProps> = ({
 
     if (nextTabId) {
       onChange(nextTabId);
-      // Focus the newly active tab
       const buttons = tabListRef.current?.querySelectorAll<HTMLButtonElement>('button[role="tab"]');
       const targetBtn = Array.from(buttons || []).find((btn) => btn.getAttribute('data-tab-id') === nextTabId);
       targetBtn?.focus();
@@ -92,23 +91,23 @@ export const Tabs: React.FC<TabsProps> = ({
       case 'underline':
         return `flex items-center border-b ${
           isDark ? 'border-white/10' : 'border-[#e2e8f0]'
-        } overflow-x-auto custom-scrollbar ${fullWidth ? 'w-full justify-between' : 'gap-1 sm:gap-2'}`;
+        } overflow-x-auto ${fullWidth ? 'w-full justify-between' : 'gap-1 sm:gap-2'}`;
 
       case 'segmented':
-        return `inline-flex items-center p-1 rounded-xl border ${
+        return `inline-flex items-center p-0.5 rounded-lg border ${
           isDark
             ? 'bg-black/40 border-white/10'
             : 'bg-[#f1f5f9] border-[#e2e8f0]'
         } overflow-x-auto ${fullWidth ? 'w-full justify-between' : 'gap-1'}`;
 
       case 'subtle-pill':
-        return `flex items-center p-1 rounded-2xl ${
+        return `flex items-center p-1 rounded-xl ${
           isDark ? 'bg-white/5 border border-white/10' : 'bg-[#f8fafc] border border-[#e2e8f0]'
         } overflow-x-auto ${fullWidth ? 'w-full justify-between' : 'gap-1.5'}`;
 
       case 'capsule':
         return `flex items-center overflow-x-auto ${
-          fullWidth ? 'w-full justify-between' : 'gap-2'
+          fullWidth ? 'w-full justify-between' : 'gap-1.5'
         }`;
     }
   };
@@ -123,49 +122,49 @@ export const Tabs: React.FC<TabsProps> = ({
 
     switch (variant) {
       // 1. UNDERLINE (Canonical Default for Views):
-      // Clean high-contrast text with an elegant bottom indicator. NEVER looks like a solid CTA button.
+      // Clean high-contrast text with a subtle 2px bottom indicator. NEVER looks like a solid button.
       case 'underline':
         if (isActive) {
           return isDark
-            ? 'text-[#d4ff4a] font-bold border-b-2 border-[#d4ff4a] -mb-px bg-transparent'
-            : 'text-[#501f92] font-extrabold border-b-2 border-[#501f92] -mb-px bg-transparent';
+            ? 'text-[#c9b7ff] font-bold border-b-2 border-[#8a4dff] -mb-px bg-transparent'
+            : 'text-[#0f172a] font-bold border-b-2 border-[#501f92] -mb-px bg-transparent';
         }
         return isDark
-          ? 'text-[#a394c8] hover:text-white hover:border-b-2 hover:border-white/30 font-medium border-b-2 border-transparent -mb-px transition-colors'
+          ? 'text-white/60 hover:text-white hover:border-b-2 hover:border-white/30 font-medium border-b-2 border-transparent -mb-px transition-colors'
           : 'text-[#64748b] hover:text-[#0f172a] hover:border-b-2 hover:border-[#cbd5e1] font-medium border-b-2 border-transparent -mb-px transition-colors';
 
       // 2. SEGMENTED (Compact Controls):
       case 'segmented':
         if (isActive) {
           return isDark
-            ? 'bg-[#d4ff4a] text-[#17131f] font-bold shadow-xs rounded-lg'
-            : 'bg-white text-[#0f172a] font-bold shadow-xs rounded-lg border border-[#cbd5e1]/40';
+            ? 'bg-[#8a4dff] text-white font-bold shadow-2xs rounded-md'
+            : 'bg-white text-[#0f172a] font-bold shadow-2xs rounded-md border border-[#e2e8f0]';
         }
         return isDark
-          ? 'text-[#c9b7ff] hover:text-white hover:bg-white/5 rounded-lg transition-colors font-medium'
-          : 'text-[#64748b] hover:text-[#0f172a] hover:bg-white/50 rounded-lg transition-colors font-medium';
+          ? 'text-[#c9b7ff] hover:text-white hover:bg-white/5 rounded-md transition-colors font-medium'
+          : 'text-[#64748b] hover:text-[#0f172a] hover:bg-white/60 rounded-md transition-colors font-medium';
 
       // 3. SUBTLE PILL (Soft background tint):
       case 'subtle-pill':
         if (isActive) {
           return isDark
-            ? 'bg-white/15 text-white font-bold rounded-xl shadow-xs border border-white/20'
-            : 'bg-white text-[#0f172a] font-bold rounded-xl shadow-xs border border-[#cbd5e1]';
+            ? 'bg-white/15 text-white font-bold rounded-lg shadow-2xs border border-white/20'
+            : 'bg-white text-[#0f172a] font-bold rounded-lg shadow-2xs border border-[#e2e8f0]';
         }
         return isDark
-          ? 'text-[#a394c8] hover:text-white hover:bg-white/5 rounded-xl transition-colors'
-          : 'text-[#64748b] hover:text-[#0f172a] hover:bg-[#f1f5f9] rounded-xl transition-colors';
+          ? 'text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-colors'
+          : 'text-[#64748b] hover:text-[#0f172a] hover:bg-[#f1f5f9] rounded-lg transition-colors';
 
-      // 4. CAPSULE (Gentle pill):
+      // 4. CAPSULE:
       case 'capsule':
         if (isActive) {
           return isDark
-            ? 'bg-white/20 text-white font-bold rounded-full border border-white/30 shadow-xs'
-            : 'bg-[#f1f5f9] text-[#0f172a] font-extrabold rounded-full border border-[#cbd5e1] shadow-xs';
+            ? 'bg-white/20 text-white font-bold rounded-lg border border-white/30 shadow-2xs'
+            : 'bg-[#f1f5f9] text-[#0f172a] font-bold rounded-lg border border-[#cbd5e1] shadow-2xs';
         }
         return isDark
-          ? 'text-[#a394c8] hover:text-white hover:bg-white/10 rounded-full transition-colors'
-          : 'text-[#64748b] hover:text-[#0f172a] hover:bg-[#f8fafc] rounded-full transition-colors';
+          ? 'text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors'
+          : 'text-[#64748b] hover:text-[#0f172a] hover:bg-[#f8fafc] rounded-lg transition-colors';
     }
   };
 
@@ -174,8 +173,8 @@ export const Tabs: React.FC<TabsProps> = ({
     if (variant === 'underline') {
       if (isActive) {
         return isDark
-          ? 'bg-[#d4ff4a]/20 text-[#d4ff4a] border border-[#d4ff4a]/40 font-bold'
-          : 'bg-[#f5f3ff] text-[#501f92] border border-[#ddd6fe] font-extrabold';
+          ? 'bg-[#501f92]/40 text-[#c9b7ff] border border-[#8a4dff]/40 font-bold'
+          : 'bg-[#f5f3ff] text-[#501f92] border border-[#ddd6fe] font-bold';
       }
       return isDark
         ? 'bg-white/10 text-white/70 border border-white/10'
@@ -217,7 +216,7 @@ export const Tabs: React.FC<TabsProps> = ({
             onClick={() => !isDisabled && onChange(tab.id)}
             onKeyDown={(e) => handleKeyDown(e, idx)}
             className={`relative inline-flex items-center justify-center font-medium select-none whitespace-nowrap transition-all duration-150 focus:outline-none focus-visible:ring-2 ${
-              isDark ? 'focus-visible:ring-[#d4ff4a]' : 'focus-visible:ring-[#501f92]'
+              isDark ? 'focus-visible:ring-[#c9b7ff]' : 'focus-visible:ring-[#501f92]'
             } ${sizeClasses[size].tab} ${getTabClasses(isActive, isDisabled)} ${
               fullWidth ? 'flex-1' : ''
             } cursor-pointer`}
@@ -231,7 +230,7 @@ export const Tabs: React.FC<TabsProps> = ({
 
             {tab.badge !== undefined && (
               <span
-                className={`text-[10px] px-1.5 py-0.5 rounded-full leading-none tracking-tight ml-1 ${getBadgeClasses(
+                className={`text-[10px] px-1.5 py-0.5 rounded-md leading-none tracking-tight ml-1 ${getBadgeClasses(
                   isActive
                 )}`}
               >

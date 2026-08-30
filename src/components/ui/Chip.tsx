@@ -37,24 +37,24 @@ export const Chip: React.FC<ChipProps> = ({
 
   const sizeClasses: Record<ChipSize, { chip: string; icon: string; text: string }> = {
     xs: {
-      chip: 'h-6 px-2 text-[11px] gap-1',
+      chip: 'h-6 px-2 text-[11px] gap-1 rounded-md',
       icon: 'w-3 h-3',
       text: 'text-[11px]',
     },
     sm: {
-      chip: 'h-7 px-2.5 text-xs gap-1.5',
+      chip: 'h-7 px-2.5 text-xs gap-1.5 rounded-lg',
       icon: 'w-3.5 h-3.5',
       text: 'text-xs',
     },
     md: {
-      chip: 'h-8 px-3 text-xs sm:text-sm gap-2',
+      chip: 'h-8 px-3 text-xs sm:text-sm gap-2 rounded-lg',
       icon: 'w-4 h-4',
       text: 'text-xs sm:text-sm',
     },
   };
 
   const focusRingClasses = isDark
-    ? 'focus-visible:ring-2 focus-visible:ring-[#d4ff4a] focus-visible:ring-offset-2 focus-visible:ring-offset-[#090513]'
+    ? 'focus-visible:ring-2 focus-visible:ring-[#c9b7ff] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0f172a]'
     : 'focus-visible:ring-2 focus-visible:ring-[#501f92] focus-visible:ring-offset-2 focus-visible:ring-offset-white';
 
   const getVariantClasses = () => {
@@ -66,14 +66,14 @@ export const Chip: React.FC<ChipProps> = ({
 
     if (selected) {
       return isDark
-        ? 'bg-[#d4ff4a] text-[#17131f] font-bold border border-[#d4ff4a] shadow-xs hover:bg-[#edff9b]'
-        : 'bg-[#501f92] text-white font-bold border border-[#501f92] shadow-xs hover:bg-[#381566]';
+        ? 'bg-[#8a4dff] text-white font-semibold border border-[#8a4dff] shadow-2xs'
+        : 'bg-[#501f92] text-white font-semibold border border-[#501f92] shadow-2xs';
     }
 
     // Default / Unselected states:
     return isDark
-      ? 'bg-white/10 text-[#c9b7ff] border border-white/15 hover:bg-white/15 hover:text-white hover:border-white/30'
-      : 'bg-white text-[#334155] border border-[#cbd5e1] hover:bg-[#f8fafc] hover:border-[#94a3b8] hover:text-[#0f172a] shadow-2xs';
+      ? 'bg-white/10 text-[#c9b7ff] border border-white/15 hover:bg-white/15 hover:text-white'
+      : 'bg-white text-[#334155] border border-[#e2e8f0] hover:bg-[#f8fafc] hover:border-[#cbd5e1] hover:text-[#0f172a] shadow-2xs';
   };
 
   const handleChipClick = () => {
@@ -95,7 +95,7 @@ export const Chip: React.FC<ChipProps> = ({
           onSelect();
         }
       }}
-      className={`inline-flex items-center justify-center font-medium rounded-full select-none whitespace-nowrap transition-all duration-150 ease-out focus:outline-none ${focusRingClasses} ${
+      className={`inline-flex items-center justify-center font-medium select-none whitespace-nowrap transition-all duration-150 ease-out focus:outline-none ${focusRingClasses} ${
         sizeClasses[size].chip
       } ${getVariantClasses()} ${onSelect && !disabled ? 'cursor-pointer' : ''} ${className}`}
     >
@@ -112,10 +112,10 @@ export const Chip: React.FC<ChipProps> = ({
       {/* Optional Counter badge */}
       {count !== undefined && (
         <span
-          className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold leading-tight ${
+          className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono font-bold leading-tight ${
             selected
               ? isDark
-                ? 'bg-black/20 text-[#17131f]'
+                ? 'bg-black/20 text-white'
                 : 'bg-white/20 text-white'
               : isDark
               ? 'bg-white/10 text-white/80'
@@ -136,7 +136,7 @@ export const Chip: React.FC<ChipProps> = ({
             e.stopPropagation();
             if (!disabled) onRemove(e);
           }}
-          className={`p-0.5 -mr-1 rounded-full hover:bg-black/10 transition-colors cursor-pointer focus:outline-none`}
+          className="p-0.5 -mr-1 rounded-md hover:bg-black/10 transition-colors cursor-pointer focus:outline-none"
         >
           <X className="w-3 h-3" />
         </button>

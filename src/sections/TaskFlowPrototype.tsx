@@ -39,6 +39,8 @@ import { ManualTimeLogModal } from '../components/taskflow/ManualTimeLogModal';
 import { BandejaDelDiaWidget } from '../components/taskflow/BandejaDelDiaWidget';
 import { TaskDetailModal } from '../components/taskflow/TaskDetailModal';
 import { TimerSummaryModal, TimerSummaryData } from '../components/taskflow/TimerSummaryModal';
+import { MobileBottomNav } from '../components/taskflow/MobileBottomNav';
+import { MobileTimerMiniPlayer } from '../components/taskflow/MobileTimerMiniPlayer';
 import {
   Sparkles,
   Clock,
@@ -454,6 +456,27 @@ export const TaskFlowPrototype: React.FC = () => {
     }
   };
 
+  // Update All Comments for a Task (for edits, deletions, reactions)
+  const handleUpdateTaskComments = (taskId: string, comments: any[]) => {
+    setTasks((prev) =>
+      prev.map((t) => {
+        if (t.id === taskId) {
+          return {
+            ...t,
+            messages: comments
+          };
+        }
+        return t;
+      })
+    );
+
+    if (selectedTaskForDetail && selectedTaskForDetail.id === taskId) {
+      setSelectedTaskForDetail((prev) =>
+        prev ? { ...prev, messages: comments } : null
+      );
+    }
+  };
+
   // Update Task Dates (Inicio y Vencimiento)
   const handleUpdateTaskDates = (taskId: string, startDate: string, dueDate: string, dueText?: string) => {
     setTasks((prev) =>
@@ -482,13 +505,17 @@ export const TaskFlowPrototype: React.FC = () => {
     }
   };
 
-  // Update Task Team (Assignee, Collaborators, Reviewer, RequestedBy)
+  // Update Task Team (Project Lead, Assignee, Collaborators, Followers, BudgetedRole, etc.)
   const handleUpdateTaskTeam = (
     taskId: string,
     assignee: TaskItem['assignee'],
     collaborators: TaskItem['collaborators'],
     reviewer?: TaskItem['reviewer'],
-    requestedBy?: string
+    requestedBy?: string,
+    budgetedRole?: string,
+    requiresValidation?: boolean,
+    projectLead?: TaskItem['projectLead'],
+    followers?: TaskItem['followers']
   ) => {
     setTasks((prev) =>
       prev.map((t) =>
@@ -498,7 +525,11 @@ export const TaskFlowPrototype: React.FC = () => {
               assignee,
               collaborators,
               reviewer,
-              requestedBy: requestedBy || t.requestedBy
+              requestedBy: requestedBy || t.requestedBy,
+              budgetedRole: budgetedRole !== undefined ? budgetedRole : t.budgetedRole,
+              requiresValidation: requiresValidation !== undefined ? requiresValidation : t.requiresValidation,
+              projectLead: projectLead !== undefined ? projectLead : t.projectLead,
+              followers: followers !== undefined ? followers : t.followers
             }
           : t
       )
@@ -511,7 +542,11 @@ export const TaskFlowPrototype: React.FC = () => {
               assignee,
               collaborators,
               reviewer,
-              requestedBy: requestedBy || prev.requestedBy
+              requestedBy: requestedBy || prev.requestedBy,
+              budgetedRole: budgetedRole !== undefined ? budgetedRole : prev.budgetedRole,
+              requiresValidation: requiresValidation !== undefined ? requiresValidation : prev.requiresValidation,
+              projectLead: projectLead !== undefined ? projectLead : prev.projectLead,
+              followers: followers !== undefined ? followers : prev.followers
             }
           : null
       );
@@ -1084,7 +1119,7 @@ export const TaskFlowPrototype: React.FC = () => {
               />
 
               {/* View Content */}
-              <div className="p-4 sm:p-7 flex-1">
+              <div className="p-4 sm:p-7 pb-28 md:pb-7 flex-1">
                 {/* 1. DASHBOARD EJECUTIVO */}
                 {currentView === 'dashboard' && (
                   <DashboardView
@@ -1300,6 +1335,26 @@ export const TaskFlowPrototype: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Mobile Sticky Timer Mini-Player (Floating above Bottom Navigation) */}
+        <MobileTimerMiniPlayer
+          activeTimer={activeTimer}
+          onPauseResumeTimer={handlePauseResumeTimer}
+          onStopTimer={handleStopTimer}
+          onOpenTaskDetail={handleOpenTaskDetail}
+        />
+
+        {/* Mobile Bottom Navigation Bar */}
+        <MobileBottomNav
+          currentView={currentView}
+          onSelectView={handleSelectView}
+          onOpenManualLogModal={() => {
+            setManualLogDefaultTaskId(undefined);
+            setIsManualLogModalOpen(true);
+          }}
+          onOpenNewTaskModal={() => setIsNewTaskModalOpen(true)}
+          hasActiveTimer={Boolean(activeTimer)}
+        />
       </main>
 
       {/* Task Detail & Deliverables Modal (COR Visual Split View) */}
@@ -1323,6 +1378,7 @@ export const TaskFlowPrototype: React.FC = () => {
         onUpdateCriteria={handleUpdateTaskCriteria}
         onAddDeliverable={handleAddDeliverable}
         onAddComment={handleAddComment}
+        onUpdateComments={handleUpdateTaskComments}
         onRecalibrateDates={handleRecalibrateTaskDates}
         onUpdateBlockerInfo={handleUpdateBlockerInfo}
         onUpdatePhase={handleUpdateTaskPhase}
