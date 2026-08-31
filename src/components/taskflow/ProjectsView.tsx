@@ -687,28 +687,34 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
         <div className="flex items-center gap-2 border-b border-[#e2e8f0] pb-1 overflow-x-auto custom-scrollbar">
           <button
             onClick={() => setActiveTab('tasks')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
               activeTab === 'tasks'
-                ? 'bg-[#501f92] text-white shadow-xs'
-                : 'text-[#64748b] hover:text-[#0f172a] hover:bg-[#f1f5f9]'
+                ? 'bg-[#f5f3ff] text-[#501f92] border border-[#ddd6fe] shadow-2xs'
+                : 'text-[#64748b] hover:text-[#501f92] hover:bg-[#f8fafc] border border-transparent'
             }`}
           >
-            <List className="w-3.5 h-3.5" />
+            <List className="w-3.5 h-3.5 text-current" />
             <span>Tareas ({currentProject.tasks.length})</span>
           </button>
 
           {!isFeeProject && (
             <button
               onClick={() => setActiveTab('backlog')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
                 activeTab === 'backlog'
-                  ? 'bg-[#501f92] text-white shadow-xs'
-                  : 'text-[#64748b] hover:text-[#0f172a] hover:bg-[#f1f5f9]'
+                  ? 'bg-[#f5f3ff] text-[#501f92] border border-[#ddd6fe] shadow-2xs'
+                  : 'text-[#64748b] hover:text-[#501f92] hover:bg-[#f8fafc] border border-transparent'
               }`}
             >
-              <SlidersHorizontal className="w-3.5 h-3.5 text-[#d4ff4a]" />
+              <SlidersHorizontal className="w-3.5 h-3.5 text-current" />
               <span>Backlog</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/20 text-white font-bold ml-0.5">
+              <span
+                className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ml-0.5 border ${
+                  activeTab === 'backlog'
+                    ? 'bg-[#ede9fe] text-[#501f92] border-[#ddd6fe]'
+                    : 'bg-[#f1f5f9] text-[#64748b] border-[#e2e8f0]'
+                }`}
+              >
                 {phasesBreakdown.length} fases
               </span>
             </button>
@@ -716,37 +722,37 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
           <button
             onClick={() => setActiveTab('budget')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
               activeTab === 'budget'
-                ? 'bg-[#501f92] text-white shadow-xs'
-                : 'text-[#64748b] hover:text-[#0f172a] hover:bg-[#f1f5f9]'
+                ? 'bg-[#f5f3ff] text-[#501f92] border border-[#ddd6fe] shadow-2xs'
+                : 'text-[#64748b] hover:text-[#501f92] hover:bg-[#f8fafc] border border-transparent'
             }`}
           >
-            <FileSpreadsheet className="w-3.5 h-3.5" />
+            <FileSpreadsheet className="w-3.5 h-3.5 text-current" />
             <span>Horas</span>
           </button>
 
           <button
             onClick={() => setActiveTab('team')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
               activeTab === 'team'
-                ? 'bg-[#501f92] text-white shadow-xs'
-                : 'text-[#64748b] hover:text-[#0f172a] hover:bg-[#f1f5f9]'
+                ? 'bg-[#f5f3ff] text-[#501f92] border border-[#ddd6fe] shadow-2xs'
+                : 'text-[#64748b] hover:text-[#501f92] hover:bg-[#f8fafc] border border-transparent'
             }`}
           >
-            <Users className="w-3.5 h-3.5" />
+            <Users className="w-3.5 h-3.5 text-current" />
             <span>Equipo</span>
           </button>
 
           <button
             onClick={() => setActiveTab('activity')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
               activeTab === 'activity'
-                ? 'bg-[#501f92] text-white shadow-xs'
-                : 'text-[#64748b] hover:text-[#0f172a] hover:bg-[#f1f5f9]'
+                ? 'bg-[#f5f3ff] text-[#501f92] border border-[#ddd6fe] shadow-2xs'
+                : 'text-[#64748b] hover:text-[#501f92] hover:bg-[#f8fafc] border border-transparent'
             }`}
           >
-            <Activity className="w-3.5 h-3.5" />
+            <Activity className="w-3.5 h-3.5 text-current" />
             <span>Actividad</span>
           </button>
         </div>
@@ -1346,11 +1352,11 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                               </div>
 
                               {/* 2. Desktop Table View (hidden md:block) */}
-                              <div className="hidden md:block overflow-x-auto">
-                                <table className="w-full text-left text-xs border-collapse">
+                              <div className="hidden md:block overflow-x-auto custom-scrollbar">
+                                <table className="w-full text-left text-xs border-collapse min-w-[650px]">
                                   <thead>
                                     <tr className="border-b border-[#f1f5f9] text-[10px] font-bold text-[#64748b] uppercase tracking-wider bg-white">
-                                      <th className="py-2 px-3">ACTIVIDAD</th>
+                                      <th className="py-2 px-3 min-w-[180px]">ACTIVIDAD</th>
                                       <th
                                         onClick={() => setTaskSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
                                         className="py-2 px-2.5 cursor-pointer hover:text-[#501f92] transition-colors select-none group w-28"
@@ -1528,19 +1534,16 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                   <div className="flex items-center gap-2">
                     <SlidersHorizontal className="w-4 h-4 text-[#501f92]" />
                     <h3 className="font-extrabold text-sm text-[#0f172a]">Gestión de Backlog & Fases</h3>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#eff6ff] text-[#2563eb] border border-[#dbeafe]">
-                      Metodología Flexible
-                    </span>
                   </div>
                   <p className="text-xs text-[#64748b] mt-0.5">
                     Planifica el cronograma, asigna roles cotizados, controla el avance por hitos y preserva la línea base (Baseline).
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   <button
                     onClick={() => setIsImportBacklogOpen(true)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#f8fafc] hover:bg-[#f1f5f9] text-[#0f172a] text-xs font-bold border border-[#e2e8f0] transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#f8fafc] hover:bg-[#f1f5f9] text-[#0f172a] text-xs font-bold border border-[#e2e8f0] transition-colors cursor-pointer whitespace-nowrap"
                   >
                     <Upload className="w-3.5 h-3.5 text-[#501f92]" />
                     <span>Importar Backlog</span>
@@ -1548,7 +1551,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
                   <button
                     onClick={() => setIsManagePhasesOpen(true)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold transition-all shadow-xs cursor-pointer whitespace-nowrap"
                   >
                     <Settings2 className="w-3.5 h-3.5" />
                     <span>Configurar Fases</span>
@@ -1801,19 +1804,19 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                 </div>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
+              <div className="overflow-x-auto custom-scrollbar">
+                <table className="w-full text-left text-xs min-w-[760px]">
                   <thead>
                     <tr className="border-b border-[#f1f5f9] text-[10px] font-bold text-[#64748b] uppercase tracking-wider bg-white">
-                      <th className="py-3 px-4">TAREA / DEPENDENCIAS</th>
-                      <th className="py-3 px-3">FASE</th>
-                      <th className="py-3 px-3">FRENTE</th>
-                      <th className="py-3 px-3">ROL COTIZADO</th>
-                      <th className="py-3 px-3">RESPONSABLE</th>
-                      <th className="py-3 px-3">HORAS</th>
-                      <th className="py-3 px-3">CRONOGRAMA & BASELINE</th>
+                      <th className="py-3 px-4 min-w-[200px]">TAREA / DEPENDENCIAS</th>
+                      <th className="py-3 px-3 min-w-[90px]">FASE</th>
+                      <th className="py-3 px-3 min-w-[90px]">FRENTE</th>
+                      <th className="py-3 px-3 min-w-[100px]">ROL COTIZADO</th>
+                      <th className="py-3 px-3 min-w-[110px]">RESPONSABLE</th>
+                      <th className="py-3 px-3 min-w-[70px]">HORAS</th>
+                      <th className="py-3 px-3 min-w-[130px]">CRONOGRAMA & BASELINE</th>
                       <th className="py-3 px-3 text-center w-14">TIMER</th>
-                      <th className="py-3 px-4 text-right pr-5">ESTADO</th>
+                      <th className="py-3 px-4 text-right pr-5 min-w-[100px]">ESTADO</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#f1f5f9]">
@@ -1988,16 +1991,16 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                 <span className="text-xs text-[#64748b]">Total roles cotizados: {rolesBreakdown.length}</span>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
+              <div className="overflow-x-auto custom-scrollbar">
+                <table className="w-full text-left text-xs min-w-[680px]">
                   <thead>
                     <tr className="border-b border-[#f1f5f9] text-[10px] font-bold text-[#64748b] uppercase tracking-wider bg-[#f8fafc]">
-                      <th className="py-3 px-5">ROL COTIZADO</th>
-                      <th className="py-3 px-4 text-right">HORAS COTIZADAS</th>
-                      <th className="py-3 px-4 text-right">HORAS EJECUTADAS</th>
-                      <th className="py-3 px-4 text-right">DESVIACIÓN (VAR)</th>
-                      <th className="py-3 px-4">RESPONSABLES REALES</th>
-                      <th className="py-3 px-5 text-right pr-6">SALUD / ALERTA</th>
+                      <th className="py-3 px-5 min-w-[140px]">ROL COTIZADO</th>
+                      <th className="py-3 px-4 text-right min-w-[100px]">HORAS COTIZADAS</th>
+                      <th className="py-3 px-4 text-right min-w-[100px]">HORAS EJECUTADAS</th>
+                      <th className="py-3 px-4 text-right min-w-[110px]">DESVIACIÓN (VAR)</th>
+                      <th className="py-3 px-4 min-w-[140px]">RESPONSABLES REALES</th>
+                      <th className="py-3 px-5 text-right pr-6 min-w-[120px]">SALUD / ALERTA</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#f1f5f9]">
@@ -2066,16 +2069,16 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                 </div>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
+              <div className="overflow-x-auto custom-scrollbar">
+                <table className="w-full text-left text-xs min-w-[650px]">
                   <thead>
                     <tr className="border-b border-[#f1f5f9] text-[10px] font-bold text-[#64748b] uppercase tracking-wider bg-[#f8fafc]">
-                      <th className="py-3 px-5">FRENTE / ENTREGABLE</th>
-                      <th className="py-3 px-4 text-right">HORAS COTIZADAS</th>
-                      <th className="py-3 px-4 text-right">HORAS EJECUTADAS</th>
-                      <th className="py-3 px-4 text-right">DESVIACIÓN</th>
-                      <th className="py-3 px-4 text-center">AVANCE</th>
-                      <th className="py-3 px-5 text-right pr-6">ESTADO</th>
+                      <th className="py-3 px-5 min-w-[150px]">FRENTE / ENTREGABLE</th>
+                      <th className="py-3 px-4 text-right min-w-[100px]">HORAS COTIZADAS</th>
+                      <th className="py-3 px-4 text-right min-w-[100px]">HORAS EJECUTADAS</th>
+                      <th className="py-3 px-4 text-right min-w-[100px]">DESVIACIÓN</th>
+                      <th className="py-3 px-4 text-center min-w-[80px]">AVANCE</th>
+                      <th className="py-3 px-5 text-right pr-6 min-w-[110px]">ESTADO</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#f1f5f9]">
@@ -2280,37 +2283,37 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
         </button>
       </div>
 
-      {/* KPI Stats Bar (Desktop/Tablet summary; hidden on mobile to maximize viewport) */}
-      <div className="hidden sm:grid grid-cols-3 gap-4">
-        <div className="p-4 rounded-2xl bg-white border border-[#e2e8f0] shadow-xs flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-[#f2ecfb] text-[#501f92] flex items-center justify-center font-bold">
+      {/* KPI Stats Bar (Desktop/Tablet summary; responsive grid) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-[#e2e8f0] shadow-xs flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-xl bg-[#f2ecfb] text-[#501f92] flex items-center justify-center font-bold shrink-0">
             <Briefcase className="w-5 h-5" />
           </div>
-          <div>
-            <span className="text-[11px] font-bold text-[#64748b] uppercase">Proyectos Activos</span>
-            <div className="text-xl font-extrabold text-[#0f172a]">{totalActiveProjects} en curso</div>
+          <div className="min-w-0 flex-1">
+            <span className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider block truncate">Proyectos Activos</span>
+            <div className="text-base sm:text-lg lg:text-xl font-extrabold text-[#0f172a] truncate">{totalActiveProjects} en curso</div>
           </div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-white border border-[#e2e8f0] shadow-xs flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-[#eff6ff] text-[#2563eb] flex items-center justify-center font-bold">
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-[#e2e8f0] shadow-xs flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-xl bg-[#eff6ff] text-[#2563eb] flex items-center justify-center font-bold shrink-0">
             <Clock className="w-5 h-5" />
           </div>
-          <div>
-            <span className="text-[11px] font-bold text-[#64748b] uppercase">Horas Presupuestadas</span>
-            <div className="text-xl font-extrabold text-[#0f172a]">
+          <div className="min-w-0 flex-1">
+            <span className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider block truncate">Horas Presupuestadas</span>
+            <div className="text-base sm:text-lg lg:text-xl font-extrabold text-[#0f172a] truncate">
               {totalConsumedHours.toFixed(0)}h / {totalBudgetedHours}h
             </div>
           </div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-white border border-[#e2e8f0] shadow-xs flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-[#ecfdf5] text-[#059669] flex items-center justify-center font-bold">
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-[#e2e8f0] shadow-xs flex items-center gap-3 min-w-0 sm:col-span-2 xl:col-span-1">
+          <div className="w-10 h-10 rounded-xl bg-[#ecfdf5] text-[#059669] flex items-center justify-center font-bold shrink-0">
             <TrendingUp className="w-5 h-5" />
           </div>
-          <div>
-            <span className="text-[11px] font-bold text-[#64748b] uppercase">Salud Operativa</span>
-            <div className="text-xl font-extrabold text-[#0f172a]">
+          <div className="min-w-0 flex-1">
+            <span className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider block truncate">Salud Operativa</span>
+            <div className="text-base sm:text-lg lg:text-xl font-extrabold text-[#0f172a] truncate">
               {Math.round((onTrackCount / (enrichedProjects.length || 1)) * 100)}% en fecha y horas
             </div>
           </div>
@@ -2318,23 +2321,24 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
       </div>
 
       {/* Search & Filters */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-[#e2e8f0] shadow-2xs">
-        <div className="flex items-center gap-2 flex-1 min-w-[240px]">
-          <Search className="w-4 h-4 text-[#94a3b8]" />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-[#e2e8f0] shadow-2xs">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <Search className="w-4 h-4 text-[#94a3b8] shrink-0" />
           <input
             type="text"
             placeholder="Buscar por proyecto, cliente o marca..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full text-xs text-[#0f172a] placeholder-[#94a3b8] focus:outline-none"
+            className="w-full text-xs text-[#0f172a] placeholder-[#94a3b8] focus:outline-none bg-transparent min-w-0"
           />
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        {/* Filters dropdown */}
+        <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto shrink-0">
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value as any)}
-            className="bg-[#f8fafc] border border-[#e2e8f0] text-xs font-semibold px-2.5 py-1.5 rounded-xl text-[#0f172a] cursor-pointer"
+            className="w-full sm:w-auto bg-[#f8fafc] border border-[#e2e8f0] text-xs font-semibold px-2.5 py-1.5 rounded-xl text-[#0f172a] cursor-pointer truncate"
           >
             <option value="all">Todos los tipos</option>
             <option value="fee_monthly">Fees mensuales</option>
@@ -2345,7 +2349,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
           <select
             value={filterClient}
             onChange={(e) => setFilterClient(e.target.value)}
-            className="bg-[#f8fafc] border border-[#e2e8f0] text-xs font-semibold px-2.5 py-1.5 rounded-xl text-[#0f172a] cursor-pointer"
+            className="w-full sm:w-auto bg-[#f8fafc] border border-[#e2e8f0] text-xs font-semibold px-2.5 py-1.5 rounded-xl text-[#0f172a] cursor-pointer truncate"
           >
             <option value="all">Todos los clientes</option>
             {clients.map((c) => (
@@ -2358,7 +2362,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
       </div>
 
       {/* Projects Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {filteredProjects.map((prj) => {
           const percent = prj.budgetedHours > 0
             ? Math.round((prj.consumedHours / prj.budgetedHours) * 100)

@@ -202,61 +202,51 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
 
   return (
     <div className="space-y-5 animate-in fade-in duration-200">
-      {/* Top Header Controls: Mode Toggle & Action Buttons */}
-      <div className="bg-white p-4 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* Top Header Controls: Mode Toggle & Action Buttons in a Clean Single Line */}
+      <div className="bg-white p-3 sm:p-3.5 rounded-2xl border border-[#e2e8f0] shadow-xs flex items-center justify-between gap-3">
         {/* Left: View Mode Toggle (Mis Tareas vs Equipo) */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center bg-[#f1f5f9] p-1 rounded-xl text-xs font-bold">
-            <button
-              onClick={() => setViewMode('my')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                viewMode === 'my'
-                  ? 'bg-white text-[#0f172a] shadow-xs'
-                  : 'text-[#64748b] hover:text-[#0f172a]'
-              }`}
-            >
-              <User className="w-3.5 h-3.5" />
-              <span>Mis Tareas</span>
-            </button>
-            <button
-              onClick={() => setViewMode('team')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                viewMode === 'team'
-                  ? 'bg-white text-[#0f172a] shadow-xs'
-                  : 'text-[#64748b] hover:text-[#0f172a]'
-              }`}
-            >
-              <Users className="w-3.5 h-3.5" />
-              <span>Equipo</span>
-            </button>
-          </div>
-
-          <span className="text-xs text-[#64748b] hidden sm:inline">
-            {viewMode === 'my'
-              ? 'Enfoque personal · Tareas asignadas a ti'
-              : 'Vista de gestión · Monitoreo y asignación para Leads'}
-          </span>
+        <div className="flex items-center bg-[#f1f5f9] p-1 rounded-xl text-xs font-bold shrink-0">
+          <button
+            onClick={() => setViewMode('my')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+              viewMode === 'my'
+                ? 'bg-white text-[#0f172a] shadow-xs'
+                : 'text-[#64748b] hover:text-[#0f172a]'
+            }`}
+          >
+            <User className="w-3.5 h-3.5 shrink-0" />
+            <span>Mis Tareas</span>
+          </button>
+          <button
+            onClick={() => setViewMode('team')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+              viewMode === 'team'
+                ? 'bg-white text-[#0f172a] shadow-xs'
+                : 'text-[#64748b] hover:text-[#0f172a]'
+            }`}
+          >
+            <Users className="w-3.5 h-3.5 shrink-0" />
+            <span>Equipo</span>
+          </button>
         </div>
 
-        {/* Right: Primary CTAs */}
-        <div className="flex items-center gap-2 sm:gap-3 self-start md:self-auto">
-          {onOpenNewTaskModal && (
-            <button
-              onClick={onOpenNewTaskModal}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold shadow-xs transition-all cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Nueva Tarea</span>
-            </button>
-          )}
-        </div>
+        {/* Right: Primary CTA */}
+        {onOpenNewTaskModal && (
+          <button
+            onClick={onOpenNewTaskModal}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 sm:py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold shadow-xs transition-all cursor-pointer shrink-0 whitespace-nowrap"
+          >
+            <Plus className="w-3.5 h-3.5 shrink-0" />
+            <span>Nueva Tarea</span>
+          </button>
+        )}
       </div>
 
-      {/* Filter Toolbar */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-[#e2e8f0] shadow-xs">
-        {/* Search */}
-        <div className="relative flex-1 max-w-md">
-          <Search className="w-4 h-4 text-[#94a3b8] absolute left-3 top-1/2 -translate-y-1/2" />
+      {/* Filter Toolbar - Search full width, chips and dropdowns on the second line */}
+      <div className="bg-white p-3 sm:p-3.5 rounded-2xl border border-[#e2e8f0] shadow-xs space-y-2.5">
+        {/* Search - Full Width */}
+        <div className="relative w-full">
+          <Search className="w-4 h-4 text-[#94a3b8] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             placeholder={
@@ -266,111 +256,86 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
             }
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[#f8fafc] border border-[#e2e8f0] pl-9 pr-4 py-1.5 rounded-xl text-xs text-[#0f172a] placeholder-[#94a3b8] focus:outline-none focus:border-[#501f92] focus:bg-white transition-all"
+            className="w-full bg-[#f8fafc] border border-[#e2e8f0] pl-10 pr-4 py-2 rounded-xl text-xs text-[#0f172a] placeholder-[#94a3b8] focus:outline-none focus:border-[#501f92] focus:bg-white transition-all"
           />
         </div>
 
-        {/* Filter Pills */}
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Second Line: Status Tabs + Selectors */}
+        <div className="flex flex-wrap items-center justify-between gap-2.5 pt-0.5">
           {/* Status Tabs */}
-          <div className="flex items-center bg-[#f1f5f9] p-1 rounded-xl">
+          <div className="flex items-center bg-[#f1f5f9] p-1 rounded-xl shrink-0 overflow-x-auto max-w-full">
             <button
               onClick={() => setFilterTab('all')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                filterTab === 'all' ? 'bg-white text-[#0f172a] shadow-xs' : 'text-[#64748b]'
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                filterTab === 'all' ? 'bg-white text-[#0f172a] shadow-xs' : 'text-[#64748b] hover:text-[#0f172a]'
               }`}
             >
               Todas
             </button>
             <button
               onClick={() => setFilterTab('active')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                filterTab === 'active' ? 'bg-white text-[#0f172a] shadow-xs' : 'text-[#64748b]'
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                filterTab === 'active' ? 'bg-white text-[#0f172a] shadow-xs' : 'text-[#64748b] hover:text-[#0f172a]'
               }`}
             >
               Activas
             </button>
             <button
               onClick={() => setFilterTab('review')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                filterTab === 'review' ? 'bg-white text-[#501f92] shadow-xs' : 'text-[#64748b]'
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                filterTab === 'review' ? 'bg-white text-[#501f92] shadow-xs' : 'text-[#64748b] hover:text-[#0f172a]'
               }`}
             >
               En revisión
             </button>
             <button
               onClick={() => setFilterTab('completed')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                filterTab === 'completed' ? 'bg-white text-[#0f172a] shadow-xs' : 'text-[#64748b]'
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                filterTab === 'completed' ? 'bg-white text-[#0f172a] shadow-xs' : 'text-[#64748b] hover:text-[#0f172a]'
               }`}
             >
               Completadas
             </button>
           </div>
 
-          {/* Category Filter */}
-          <div className="flex items-center bg-[#f1f5f9] p-1 rounded-xl">
-            <button
-              onClick={() => setCategoryFilter('all')}
-              className={`px-2 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                categoryFilter === 'all' ? 'bg-white text-[#0f172a] shadow-xs' : 'text-[#64748b]'
-              }`}
-            >
-              Todo
-            </button>
-            <button
-              onClick={() => setCategoryFilter('client')}
-              className={`px-2 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                categoryFilter === 'client' ? 'bg-white text-[#0f172a] shadow-xs' : 'text-[#64748b]'
-              }`}
-            >
-              Clientes Fee
-            </button>
-            <button
-              onClick={() => setCategoryFilter('internal')}
-              className={`px-2 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                categoryFilter === 'internal' ? 'bg-white text-[#0f172a] shadow-xs' : 'text-[#64748b]'
-              }`}
-            >
-              Interno
-            </button>
-          </div>
-
-          {/* Project Selector */}
-          <div className="flex items-center gap-1 bg-[#f8fafc] px-2.5 py-1 rounded-xl border border-[#e2e8f0]">
-            <Filter className="w-3.5 h-3.5 text-[#501f92]" />
-            <select
-              value={selectedProject}
-              onChange={(e) => setSelectedProject(e.target.value)}
-              className="bg-transparent text-xs font-semibold text-[#0f172a] focus:outline-none cursor-pointer"
-            >
-              <option value="all">Todos los proyectos</option>
-              {availableProjects.map((proj) => (
-                <option key={proj} value={proj}>
-                  {proj}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Assignee Selector in Team Mode */}
-          {viewMode === 'team' && (
-            <div className="flex items-center gap-1 bg-[#f8fafc] px-2.5 py-1 rounded-xl border border-[#e2e8f0]">
-              <User className="w-3.5 h-3.5 text-[#501f92]" />
+          {/* Right Selectors: Project Filter & Assignee */}
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            {/* Project Selector */}
+            <div className="relative flex items-center min-w-0">
+              <Filter className="w-3.5 h-3.5 text-[#501f92] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none shrink-0" />
               <select
-                value={selectedAssignee}
-                onChange={(e) => setSelectedAssignee(e.target.value)}
-                className="bg-transparent text-xs font-semibold text-[#0f172a] focus:outline-none cursor-pointer"
+                value={selectedProject}
+                onChange={(e) => setSelectedProject(e.target.value)}
+                className="bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] pl-8.5 pr-8 py-1.5 rounded-xl text-xs font-semibold text-[#0f172a] focus:outline-none focus:border-[#501f92] cursor-pointer max-w-[200px] sm:max-w-xs transition-colors"
               >
-                <option value="all">Todo el equipo</option>
-                {availableAssignees.map((name) => (
-                  <option key={name} value={name}>
-                    {name}
+                <option value="all">Todos los proyectos</option>
+                {availableProjects.map((proj) => (
+                  <option key={proj} value={proj}>
+                    {proj}
                   </option>
                 ))}
               </select>
             </div>
-          )}
+
+            {/* Assignee Selector in Team Mode */}
+            {viewMode === 'team' && (
+              <div className="relative flex items-center min-w-0">
+                <User className="w-3.5 h-3.5 text-[#501f92] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none shrink-0" />
+                <select
+                  value={selectedAssignee}
+                  onChange={(e) => setSelectedAssignee(e.target.value)}
+                  className="bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] pl-8.5 pr-8 py-1.5 rounded-xl text-xs font-semibold text-[#0f172a] focus:outline-none focus:border-[#501f92] cursor-pointer max-w-[170px] sm:max-w-xs transition-colors"
+                >
+                  <option value="all">Todo el equipo</option>
+                  {availableAssignees.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

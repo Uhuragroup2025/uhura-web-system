@@ -32,18 +32,40 @@ export const BandejaDelDiaWidget: React.FC<BandejaDelDiaWidgetProps> = ({
   const percentFilled = Math.min(100, (totalLoggedSeconds / targetDaySeconds) * 100);
   const remainingHours = Math.max(0, 8.0 - totalHours);
 
+  // Semáforo de avance:
+  // - Verde (>= 90%): Carga óptima o completa
+  // - Naranja (60% - 89%): En proceso
+  // - Rojo (< 60%): Carga muy baja
+  const progressColor = percentFilled >= 90
+    ? 'bg-[#10b981]'
+    : percentFilled >= 60
+    ? 'bg-[#f59e0b]'
+    : 'bg-[#ef4444]';
+
+  const badgeBg = percentFilled >= 90
+    ? 'bg-[#ecfdf5] text-[#059669] border-[#a7f3d0]'
+    : percentFilled >= 60
+    ? 'bg-[#fffbeb] text-[#d97706] border-[#fde68a]'
+    : 'bg-[#fef2f2] text-[#dc2626] border-[#fecaca]';
+
+  const badgeText = percentFilled >= 90
+    ? '✓ Jornada Óptima (≥90%)'
+    : percentFilled >= 60
+    ? '⚡ En Progreso (60% - 89%)'
+    : '⏳ Carga Pendiente (<60%)';
+
   return (
-    <div className="bg-white p-6 rounded-3xl border border-[#e2e8f0] shadow-xs space-y-6">
+    <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-[#e2e8f0] shadow-xs space-y-5 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#f2ecfb] text-[#501f92] border border-[#8a4dff]/20">
               Bandeja del Día · Jornada de 8 Horas
             </span>
             <span className="text-xs text-[#64748b]">• Hoy, 22 Agosto 2026</span>
           </div>
-          <h2 className="text-lg font-bold text-[#0f172a] mt-1 tracking-tight">
+          <h2 className="text-base sm:text-lg font-bold text-[#0f172a] mt-1 tracking-tight">
             Timeline de Horas Cargadas vs. Capacidad Diaria (8.0h)
           </h2>
         </div>
@@ -51,57 +73,42 @@ export const BandejaDelDiaWidget: React.FC<BandejaDelDiaWidgetProps> = ({
         <div className="flex items-center gap-2">
           <button
             onClick={onOpenManualModal}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] text-xs font-bold text-[#0f172a] shadow-2xs transition-all cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] text-xs font-bold text-white shadow-xs transition-all cursor-pointer"
           >
-            <Plus className="w-3.5 h-3.5 text-[#501f92]" />
+            <Plus className="w-3.5 h-3.5" />
             <span>Cargar horas</span>
           </button>
         </div>
       </div>
 
-      {/* Progress Bar with Client vs Internal Breakdown */}
-      <div className="space-y-2 bg-[#f8fafc] p-4 rounded-2xl border border-[#e2e8f0]">
-        <div className="flex items-center justify-between text-xs">
-          <span className="font-semibold text-[#0f172a] flex items-center gap-2">
-            <span>Total Cargado: <strong className="font-mono text-sm">{totalHours.toFixed(1)}h / 8.0h</strong></span>
-            {totalHours >= 5.6 && (
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                totalHours >= 7.2 ? 'bg-[#dcfce7] text-[#166534]' : 'bg-[#fef9c3] text-[#854d0e]'
-              }`}>
-                {totalHours >= 7.2 ? '✓ Jornada Óptima (≥90%)' : '✓ Meta Cumplida (≥70%)'}
-              </span>
-            )}
-          </span>
-          <span className="text-[#64748b]">
-            {remainingHours > 0 ? `Faltan ${remainingHours.toFixed(1)}h para 8h (Meta diaria ≥5.6h)` : '¡Jornada de 8h completada!'}
-          </span>
-        </div>
-
-        <div className="w-full h-3 bg-[#e2e8f0] rounded-full overflow-hidden flex">
-          <div
-            style={{ width: `${(clientSeconds / targetDaySeconds) * 100}%` }}
-            className={`h-full transition-all duration-500 ${totalHours >= 5.6 ? 'bg-[#10b981]' : 'bg-[#501f92]'}`}
-            title={`Clientes Fee: ${clientHours.toFixed(1)}h`}
-          />
-          <div
-            style={{ width: `${(internalSeconds / targetDaySeconds) * 100}%` }}
-            className={`h-full transition-all duration-500 ${totalHours >= 5.6 ? 'bg-[#34d399]' : 'bg-[#8a4dff]'}`}
-            title={`Interno / No Facturable: ${internalHours.toFixed(1)}h`}
-          />
-        </div>
-
-        <div className="flex items-center justify-between text-[11px] text-[#64748b] pt-1">
-          <div className="flex items-center gap-4">
-            <span className="flex items-center gap-1.5">
-              <span className={`w-2 h-2 rounded-full ${totalHours >= 5.6 ? 'bg-[#10b981]' : 'bg-[#501f92]'}`} />
-              Clientes Fee: <strong>{clientHours.toFixed(1)}h</strong>
+      {/* Progress Bar with Semaphoring (>90% Verde, 60-89% Naranja, <60% Rojo) */}
+      <div className="space-y-2 bg-[#f8fafc] p-3.5 sm:p-4 rounded-2xl border border-[#e2e8f0]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-semibold text-[#0f172a]">
+              Total Cargado: <strong className="font-mono text-sm">{totalHours.toFixed(1)}h / 8.0h</strong>
             </span>
-            <span className="flex items-center gap-1.5">
-              <span className={`w-2 h-2 rounded-full ${totalHours >= 5.6 ? 'bg-[#34d399]' : 'bg-[#8a4dff]'}`} />
-              Interno / Labs: <strong>{internalHours.toFixed(1)}h</strong>
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${badgeBg}`}>
+              {badgeText}
             </span>
           </div>
-          <span className="font-bold text-[#0f172a]">{Math.round(percentFilled)}%</span>
+          <span className="text-[#64748b] text-[11px] sm:text-xs font-medium">
+            {remainingHours > 0 ? `Restante para 8h: ${remainingHours.toFixed(1)}h` : '¡Jornada de 8h completada!'}
+          </span>
+        </div>
+
+        {/* Barra de Progreso Unificada con Lógica Semafórica */}
+        <div className="w-full h-3 bg-[#e2e8f0] rounded-full overflow-hidden flex">
+          <div
+            style={{ width: `${percentFilled}%` }}
+            className={`h-full transition-all duration-500 rounded-full ${progressColor}`}
+            title={`Avance: ${Math.round(percentFilled)}% (${totalHours.toFixed(1)}h / 8.0h)`}
+          />
+        </div>
+
+        <div className="flex items-center justify-between text-[11px] text-[#64748b] pt-0.5">
+          <span className="font-medium">Meta diaria requerida: <strong>≥ 5.6h (70%)</strong></span>
+          <span className="font-bold font-mono text-[#0f172a]">{Math.round(percentFilled)}%</span>
         </div>
       </div>
 

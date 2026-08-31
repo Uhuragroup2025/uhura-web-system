@@ -177,19 +177,19 @@ export const UsersView: React.FC<UsersViewProps> = ({
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-[#f3f4f6] text-[11px] font-bold text-[#6b7280] uppercase tracking-wider bg-[#fafafa]">
-                <th className="py-3.5 px-6 font-semibold">USER</th>
-                <th className="py-3.5 px-6 font-semibold">ROLE</th>
-                <th className="py-3.5 px-6 font-semibold">STATUS</th>
-                <th className="py-3.5 px-6 font-semibold">TASKS</th>
-                <th className="py-3.5 px-6 font-semibold">JOINED DATE</th>
-                <th className="py-3.5 px-6 font-semibold text-right">ACTIONS</th>
+                <th className="py-3.5 px-6 font-semibold">USUARIO</th>
+                <th className="py-3.5 px-6 font-semibold">ROL</th>
+                <th className="py-3.5 px-6 font-semibold">ESTADO</th>
+                <th className="py-3.5 px-6 font-semibold">TAREAS</th>
+                <th className="py-3.5 px-6 font-semibold">FECHA DE INGRESO</th>
+                <th className="py-3.5 px-6 font-semibold text-right">ACCIONES</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#f3f4f6] text-sm">
               {filteredUsers.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-[#9ca3af] text-sm">
-                    No users found.
+                    No se encontraron colaboradores con esos criterios.
                   </td>
                 </tr>
               ) : (
@@ -205,7 +205,12 @@ export const UsersView: React.FC<UsersViewProps> = ({
                         </div>
                         <div>
                           <p className="font-semibold text-sm text-[#111827]">{user.name}</p>
-                          <p className="text-xs text-[#6b7280]">{user.email}</p>
+                          <p className="text-xs text-[#6b7280]">
+                            {user.email || <span className="italic text-[#94a3b8]">Sin correo</span>}
+                          </p>
+                          {user.jobTitle && (
+                            <p className="text-[11px] font-medium text-[#501f92] mt-0.5">{user.jobTitle}</p>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -233,13 +238,13 @@ export const UsersView: React.FC<UsersViewProps> = ({
                             : 'bg-[#fffbeb] text-[#d97706]'
                         }`}
                       >
-                        {user.status}
+                        {user.status === 'Active' ? 'Activo' : 'Invitado'}
                       </span>
                     </td>
 
                     {/* TASKS */}
                     <td className="py-4 px-6 text-xs text-[#374151]">
-                      <span className="font-bold text-[#111827]">{user.tasksCount}</span> tasks
+                      <span className="font-bold text-[#111827]">{user.tasksCount}</span> tareas
                     </td>
 
                     {/* JOINED DATE */}
@@ -254,23 +259,23 @@ export const UsersView: React.FC<UsersViewProps> = ({
                     <td className="py-4 px-6 text-right">
                       <div className="flex items-center justify-end gap-2 text-[#9ca3af]">
                         <button
-                          className="p-1.5 hover:text-[#4f46e5] hover:bg-[#f3f4f6] rounded-lg transition-colors"
-                          title="Edit user"
+                          className="p-1.5 hover:text-[#501f92] hover:bg-[#f3f4f6] rounded-lg transition-colors cursor-pointer"
+                          title="Editar usuario"
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
                         {onDeleteUser && (
                           <button
                             onClick={() => onDeleteUser(user.id)}
-                            className="p-1.5 hover:text-[#ef4444] hover:bg-[#fef2f2] rounded-lg transition-colors"
-                            title="Delete user"
+                            className="p-1.5 hover:text-[#ef4444] hover:bg-[#fef2f2] rounded-lg transition-colors cursor-pointer"
+                            title="Eliminar usuario"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
                         )}
                         <button
-                          className="p-1.5 hover:text-[#111827] hover:bg-[#f3f4f6] rounded-lg transition-colors"
-                          title="More options"
+                          className="p-1.5 hover:text-[#111827] hover:bg-[#f3f4f6] rounded-lg transition-colors cursor-pointer"
+                          title="Más opciones"
                         >
                           <MoreVertical className="w-4 h-4" />
                         </button>

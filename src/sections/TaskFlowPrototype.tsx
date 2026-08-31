@@ -38,6 +38,7 @@ import { NewTaskModal } from '../components/taskflow/NewTaskModal';
 import { ManualTimeLogModal } from '../components/taskflow/ManualTimeLogModal';
 import { BandejaDelDiaWidget } from '../components/taskflow/BandejaDelDiaWidget';
 import { TaskDetailModal } from '../components/taskflow/TaskDetailModal';
+import { CapacityView } from '../components/taskflow/CapacityView';
 import { TimerSummaryModal, TimerSummaryData } from '../components/taskflow/TimerSummaryModal';
 import { MobileBottomNav } from '../components/taskflow/MobileBottomNav';
 import { MobileTimerMiniPlayer } from '../components/taskflow/MobileTimerMiniPlayer';
@@ -202,6 +203,7 @@ export const TaskFlowPrototype: React.FC = () => {
   const [newProjectPreselectedClientId, setNewProjectPreselectedClientId] = useState<string | null>(null);
   const [selectedProjectIdForView, setSelectedProjectIdForView] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Time-Tracking Live State (Active timer starts at null by default)
   const [activeTimer, setActiveTimer] = useState<ActiveTimerState | null>(null);
@@ -1073,10 +1075,12 @@ export const TaskFlowPrototype: React.FC = () => {
           {/* Prototype App Body */}
           <div className="flex-1 flex overflow-hidden relative">
             {/* Sidebar Desktop */}
-            <div className="hidden md:block shrink-0">
+            <div className="hidden md:block shrink-0 h-full">
               <TaskflowSidebar
                 currentView={currentView}
                 onSelectView={handleSelectView}
+                collapsed={sidebarCollapsed}
+                onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
               />
             </div>
 
@@ -1105,6 +1109,8 @@ export const TaskFlowPrototype: React.FC = () => {
               <TaskflowHeader
                 currentViewTitle={getHeaderTitle()}
                 onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)}
+                sidebarCollapsed={sidebarCollapsed}
+                onToggleSidebarCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
                 onSelectAlert={() => handleSelectView('dashboard')}
                 onNavigateToDashboard={() => handleSelectView('dashboard')}
                 activeTimer={activeTimer}
@@ -1222,50 +1228,20 @@ export const TaskFlowPrototype: React.FC = () => {
                   </div>
                 )}
 
-                {/* 5. CAPACIDAD DE EQUIPO */}
+                {/* 5. CAPACIDAD DE EQUIPO & PERSONAL */}
                 {currentView === 'capacidad' && (
-                  <div className="space-y-6 animate-in fade-in duration-200">
-                    <div className="bg-white p-6 rounded-2xl border border-[#e2e8f0] shadow-xs space-y-6">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-[#f1f5f9]">
-                        <div className="flex items-center gap-2 text-xs text-[#64748b]">
-                          <span className="w-2 h-2 rounded-full bg-[#10b981]" />
-                          <span>25 colaboradores · 4.400h/mes disponibles · Monitoreo de sobrecarga y balance</span>
-                        </div>
-                        <span className="text-xs font-bold text-[#501f92] bg-[#f2ecfb] px-3 py-1 rounded-full border border-[#8a4dff]/20 self-start sm:self-auto">
-                          4 Semanas de Proyección
-                        </span>
-                      </div>
-
-                      <div className="space-y-4">
-                        {orbitTeamCapacity.map((user) => (
-                          <div key={user.id} className="p-4 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                            <div className="flex items-center gap-3">
-                              <div className={`w-9 h-9 rounded-xl ${user.avatarBg} text-white flex items-center justify-center font-bold text-xs`}>
-                                {user.initials}
-                              </div>
-                              <div>
-                                <h4 className="font-bold text-sm text-[#0f172a]">{user.name}</h4>
-                                <p className="text-xs text-[#64748b]">{user.role}</p>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-4 sm:w-64">
-                              <div className="flex-1">
-                                <div className="flex justify-between text-[11px] font-semibold text-[#64748b] mb-1">
-                                  <span>Asignación</span>
-                                  <span className="text-[#0f172a]">{user.utilizationPercent}%</span>
-                                </div>
-                                <div className="w-full h-2 bg-[#e2e8f0] rounded-full overflow-hidden">
-                                  <div style={{ width: `${Math.max(user.utilizationPercent, 4)}%` }} className="h-full bg-[#501f92] rounded-full" />
-                                </div>
-                              </div>
-                              <span className="text-xs font-mono font-bold text-[#0f172a]">{user.hoursAvailable}h</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
+                  <CapacityView
+                    tasks={tasks}
+                    timeLogs={timeLogs}
+                    activeTimer={activeTimer}
+                    onStartTimer={handleStartTimer}
+                    onPauseResumeTimer={handlePauseResumeTimer}
+                    onStopTimer={handleStopTimer}
+                    onOpenTaskDetail={handleOpenTaskDetail}
+                    onOpenManualLog={handleOpenManualLogWithTask}
+                    onNavigateToTasks={() => handleSelectView('tareas')}
+                    onNavigateToProjects={() => handleSelectView('proyectos')}
+                  />
                 )}
 
                 {/* 6. CLIENTES & CARTERA */}

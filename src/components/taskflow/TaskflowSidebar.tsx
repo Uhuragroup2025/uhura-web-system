@@ -20,19 +20,23 @@ import {
   ChevronDown,
   ChevronRight,
   TrendingUp,
-  AlertCircle
+  AlertCircle,
+  PanelLeftClose,
+  PanelLeftOpen
 } from 'lucide-react';
 
 interface TaskflowSidebarProps {
   currentView: string;
   onSelectView: (view: OrbitView) => void;
   collapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
   currentView,
   onSelectView,
-  collapsed = false
+  collapsed = false,
+  onToggleCollapse
 }) => {
   const [openSections, setOpenSections] = useState<{ [key: string]: boolean }>({
     operacion: true,
@@ -54,28 +58,63 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
     >
       <div className="space-y-4 overflow-y-auto pr-1 custom-scrollbar">
         {/* Brand Header: Orbit UHURA GROUP */}
-        <div className="flex items-center gap-3 px-2 py-2.5 mb-2 border-b border-[#261845]/70">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#8a4dff] via-[#501f92] to-[#140b24] p-0.5 flex items-center justify-center shrink-0 shadow-sm ring-1 ring-[#8a4dff]/40">
-            <div className="w-full h-full bg-[#0d0718] rounded-[10px] flex items-center justify-center relative overflow-hidden">
-              {/* Orbit Logo Spiral */}
-              <div className="w-5 h-5 rounded-full border-2 border-t-[#d4ff4a] border-r-[#8a4dff] border-b-[#4be5ff] border-l-transparent animate-spin-slow" />
-              <div className="w-2 h-2 rounded-full bg-[#d4ff4a] absolute" />
-            </div>
+        {collapsed ? (
+          <div className="flex flex-col items-center gap-2 py-1.5 mb-2 border-b border-[#261845]/70">
+            <button
+              onClick={onToggleCollapse}
+              className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#8a4dff] via-[#501f92] to-[#140b24] p-0.5 flex items-center justify-center shrink-0 shadow-sm ring-1 ring-[#8a4dff]/40 hover:scale-105 transition-transform cursor-pointer"
+              title="Desplegar menú lateral (Sidebar)"
+            >
+              <div className="w-full h-full bg-[#0d0718] rounded-[10px] flex items-center justify-center relative overflow-hidden">
+                {/* Orbit Logo Spiral */}
+                <div className="w-5 h-5 rounded-full border-2 border-t-[#d4ff4a] border-r-[#8a4dff] border-b-[#4be5ff] border-l-transparent animate-spin-slow" />
+                <div className="w-2 h-2 rounded-full bg-[#d4ff4a] absolute" />
+              </div>
+            </button>
+            {onToggleCollapse && (
+              <button
+                onClick={onToggleCollapse}
+                className="w-full flex items-center justify-center p-1.5 rounded-lg text-[#c9b7ff] bg-[#1e113a] hover:bg-[#2e1859] hover:text-white transition-colors cursor-pointer"
+                title="Desplegar menú lateral"
+              >
+                <PanelLeftOpen className="w-4 h-4 text-[#d4ff4a]" />
+              </button>
+            )}
           </div>
-          {!collapsed && (
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5">
-                <span className="font-extrabold text-base tracking-tight text-white">Orbit</span>
-                <span className="text-[10px] uppercase font-bold tracking-widest px-1.5 py-0.5 rounded bg-[#8a4dff]/30 text-[#c9b7ff]">
-                  v2.6
+        ) : (
+          <div className="flex items-center gap-3 px-2 py-2.5 mb-2 border-b border-[#261845]/70 justify-between">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#8a4dff] via-[#501f92] to-[#140b24] p-0.5 flex items-center justify-center shrink-0 shadow-sm ring-1 ring-[#8a4dff]/40">
+                <div className="w-full h-full bg-[#0d0718] rounded-[10px] flex items-center justify-center relative overflow-hidden">
+                  {/* Orbit Logo Spiral */}
+                  <div className="w-5 h-5 rounded-full border-2 border-t-[#d4ff4a] border-r-[#8a4dff] border-b-[#4be5ff] border-l-transparent animate-spin-slow" />
+                  <div className="w-2 h-2 rounded-full bg-[#d4ff4a] absolute" />
+                </div>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-extrabold text-base tracking-tight text-white">Orbit</span>
+                  <span className="text-[10px] uppercase font-bold tracking-widest px-1.5 py-0.5 rounded bg-[#8a4dff]/30 text-[#c9b7ff]">
+                    v2.6
+                  </span>
+                </div>
+                <span className="text-[11px] text-[#c9b7ff]/80 font-medium tracking-wide uppercase block truncate">
+                  UHURA GROUP
                 </span>
               </div>
-              <span className="text-[11px] text-[#c9b7ff]/80 font-medium tracking-wide uppercase block truncate">
-                UHURA GROUP
-              </span>
             </div>
-          )}
-        </div>
+
+            {onToggleCollapse && (
+              <button
+                onClick={onToggleCollapse}
+                className="hidden md:flex p-1.5 rounded-lg text-[#c9b7ff]/70 hover:text-white hover:bg-[#241344] transition-colors cursor-pointer shrink-0"
+                title="Ocultar menú lateral"
+              >
+                <PanelLeftClose className="w-4 h-4 text-[#c9b7ff]/70" />
+              </button>
+            )}
+          </div>
+        )}
 
         {/* 1. Dashboard Principal Item */}
         <div>

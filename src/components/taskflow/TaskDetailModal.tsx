@@ -52,7 +52,10 @@ import {
   Flame,
   CornerDownRight,
   MessageCircle,
-  MoreVertical
+  MoreVertical,
+  RotateCcw,
+  ShieldCheck,
+  ArrowRight
 } from 'lucide-react';
 import {
   TaskItem,
@@ -1031,7 +1034,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     }
   };
 
-  // Progress task status: To Do -> In Progress -> Done (or back to In Progress)
+  // Progress task status: To Do -> In Progress -> Review -> Done (or back to In Progress)
   const handleProgressTaskStatus = () => {
     if (!onUpdateTaskStatus || !task) return;
 
@@ -1039,15 +1042,22 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
       onUpdateTaskStatus(task.id, 'In Progress');
       showToast('Tarea iniciada (En proceso)');
     } else if (task.status === 'In Progress') {
-      onUpdateTaskStatus(task.id, 'Done');
-      showToast('Tarea marcada como Completada');
+      onUpdateTaskStatus(task.id, 'Review');
+      showToast('Tarea enviada a Revisión');
     } else if (task.status === 'Review') {
       onUpdateTaskStatus(task.id, 'Done');
-      showToast('Tarea marcada como Completada');
+      showToast('Tarea aprobada y marcada como Completada');
     } else if (task.status === 'Done') {
       onUpdateTaskStatus(task.id, 'In Progress');
       showToast('Tarea reabierta (En proceso)');
     }
+  };
+
+  // Reject / return from Review to In Progress for adjustments
+  const handleRejectToInProgress = () => {
+    if (!onUpdateTaskStatus || !task) return;
+    onUpdateTaskStatus(task.id, 'In Progress');
+    showToast('Tarea devuelta a En proceso para ajustes');
   };
 
   return (
@@ -1313,13 +1323,140 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
         </div>
 
         {/* ========================================================= */}
-        {/* MAIN BODY: 2 Columns on Desktop, Single Responsive View on Mobile */}
+        {/* ATMOSPHERIC STATUS BANNER & WORKFLOW CONTEXT */}
         {/* ========================================================= */}
-        <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-[#f1f5f9] overflow-hidden">
+        <div
+          id="task-status-atmospheric-banner"
+          className={`px-4 sm:px-6 py-2.5 border-b text-xs flex flex-wrap items-center justify-between gap-2.5 transition-colors ${
+            task.status === 'In Progress'
+              ? 'bg-amber-500/10 border-amber-200 text-amber-950'
+              : task.status === 'Review'
+              ? 'bg-[#f5f3ff] border-[#ddd6fe] text-[#381566]'
+              : task.status === 'Done'
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-950'
+              : 'bg-slate-50 border-slate-200 text-slate-700'
+          }`}
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            {task.status === 'In Progress' && (
+              <>
+                <span className="relative flex h-2.5 w-2.5 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+                </span>
+                <span className="font-bold px-2 py-0.5 rounded-md bg-amber-100/90 text-amber-900 border border-amber-300 text-[11px] shrink-0">
+                  🟡 EN PROCESO
+                </span>
+                <span className="text-[11px] text-amber-900/90 font-medium truncate sm:whitespace-normal">
+                  Ejecución activa por <strong className="font-semibold text-amber-950">{assignee.name}</strong>. Al terminar entregables, solicita revisión para validación.
+                </span>
+              </>
+            )}
+
+            {task.status === 'Review' && (
+              <>
+                <span className="font-bold px-2 py-0.5 rounded-md bg-[#ede9fe] text-[#501f92] border border-[#c4b5fd] text-[11px] flex items-center gap-1 shrink-0">
+                  <Eye className="w-3 h-3 text-[#501f92]" />
+                  <span>🔍 EN REVISIÓN</span>
+                </span>
+                <span className="text-[11px] text-[#381566] font-medium truncate sm:whitespace-normal">
+                  Control de Calidad · Esperando visto bueno de <strong className="font-semibold text-[#501f92]">{reviewer?.name || 'Revisor asignado'}</strong> antes de completar.
+                </span>
+              </>
+            )}
+
+            {task.status === 'Done' && (
+              <>
+                <span className="font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 border border-emerald-300 text-[11px] flex items-center gap-1 shrink-0">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-700" />
+                  <span>🟢 COMPLETADA</span>
+                </span>
+                <span className="text-[11px] text-emerald-900/90 font-medium truncate sm:whitespace-normal">
+                  Tarea finalizada y validada. Todos los entregables y criterios han sido aprobados con éxito.
+                </span>
+              </>
+            )}
+
+            {task.status === 'To Do' && (
+              <>
+                <span className="font-bold px-2 py-0.5 rounded-md bg-slate-200 text-slate-800 border border-slate-300 text-[11px] shrink-0">
+                  ⚪ POR HACER
+                </span>
+                <span className="text-[11px] text-slate-600 font-medium truncate sm:whitespace-normal">
+                  Pendiente de inicio · Asignada a <strong className="font-semibold text-slate-800">{assignee.name}</strong>.
+                </span>
+              </>
+            )}
+          </div>
+
+          {/* Quick status transition button in the banner */}
+          <div className="flex items-center gap-2 shrink-0">
+            {task.status === 'To Do' && (
+              <button
+                type="button"
+                onClick={handleProgressTaskStatus}
+                className="px-2.5 py-1 rounded-lg bg-[#501f92] hover:bg-[#381566] text-white font-bold text-[11px] flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+              >
+                <Play className="w-3 h-3 fill-current" />
+                <span>Iniciar tarea</span>
+              </button>
+            )}
+
+            {task.status === 'In Progress' && (
+              <button
+                type="button"
+                onClick={handleProgressTaskStatus}
+                className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                title="Pasar a revisión para que el revisor o líder valide la tarea"
+              >
+                <Eye className="w-3 h-3" />
+                <span>Solicitar revisión →</span>
+              </button>
+            )}
+
+            {task.status === 'Review' && (
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={handleRejectToInProgress}
+                  className="px-2 py-1 rounded-lg bg-white hover:bg-amber-50 text-amber-900 border border-amber-300 font-semibold text-[11px] flex items-center gap-1 transition-all cursor-pointer"
+                  title="Devolver la tarea al colaborador para corregir o ajustar entregables"
+                >
+                  <RotateCcw className="w-2.5 h-2.5" />
+                  <span>Devolver</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleProgressTaskStatus}
+                  className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                >
+                  <CheckCircle2 className="w-3 h-3" />
+                  <span>Aprobar y Completar</span>
+                </button>
+              </div>
+            )}
+
+            {task.status === 'Done' && (
+              <button
+                type="button"
+                onClick={handleProgressTaskStatus}
+                className="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold text-[11px] flex items-center gap-1 transition-all cursor-pointer"
+              >
+                <RefreshCw className="w-3 h-3" />
+                <span>Reabrir</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* ========================================================= */}
+        {/* MAIN BODY: 2 Columns on Desktop & Tablet Landscape, Single Responsive View on Mobile & Tablet Portrait */}
+        {/* ========================================================= */}
+        <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-12 divide-y md:divide-y-0 md:divide-x divide-[#f1f5f9] overflow-hidden">
           {/* --------------------------------------------------------- */}
-          {/* LEFT: FEED & DELIVERABLES (Desktop: 8 cols, Mobile: when tab !== 'info') */}
+          {/* LEFT: FEED & DELIVERABLES (Desktop/Tablet: 7-8 cols, Mobile/Portrait: when tab !== 'info') */}
           {/* --------------------------------------------------------- */}
-          <div className={`${activeTab === 'info' ? 'hidden lg:flex' : 'flex'} lg:col-span-8 p-4 sm:p-6 flex-col justify-between space-y-6 overflow-y-auto max-h-full`}>
+          <div className={`${activeTab === 'info' ? 'hidden md:flex' : 'flex'} md:col-span-7 lg:col-span-8 p-4 sm:p-6 flex-col justify-between space-y-6 overflow-y-auto max-h-full`}>
             <div className="space-y-5">
               {/* Tabs Navigation Header */}
               <div className="flex items-center gap-4 sm:gap-6 border-b border-[#e2e8f0]">
@@ -1353,11 +1490,11 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                   )}
                 </button>
 
-                {/* Mobile-only Tab for Info & Tiempos */}
+                {/* Mobile & Small Screen Tab for Info & Tiempos */}
                 <button
                   id="tab-info-btn"
                   onClick={() => setActiveTab('info')}
-                  className={`lg:hidden pb-2.5 text-xs sm:text-sm font-bold transition-all cursor-pointer relative ${
+                  className={`md:hidden pb-2.5 text-xs sm:text-sm font-bold transition-all cursor-pointer relative ${
                     activeTab === 'info'
                       ? 'text-[#501f92] font-extrabold'
                       : 'text-[#64748b] hover:text-[#0f172a]'
@@ -2342,16 +2479,16 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
           </div>
 
           {/* --------------------------------------------------------- */}
-          {/* RIGHT RAIL: METADATA & RESPONSIBLES - 4 COLS (Or Full view on Mobile when activeTab === 'info') */}
+          {/* RIGHT RAIL: METADATA & RESPONSIBLES - 4-5 COLS on Desktop/Tablet (Or Full view on Mobile when activeTab === 'info') */}
           {/* --------------------------------------------------------- */}
           <div
             id="task-right-rail"
             className={`${
-              activeTab === 'info' ? 'block' : 'hidden lg:block'
-            } lg:col-span-4 p-4 sm:p-6 bg-white space-y-5 text-xs overflow-y-auto max-h-full`}
+              activeTab === 'info' ? 'block' : 'hidden md:block'
+            } md:col-span-5 lg:col-span-4 p-4 sm:p-6 bg-white space-y-5 text-xs overflow-y-auto max-h-full`}
           >
             {/* Mobile-only tab switcher at top of right rail for quick switching */}
-            <div className="lg:hidden flex items-center gap-4 border-b border-[#e2e8f0] pb-2 mb-4">
+            <div className="md:hidden flex items-center gap-4 border-b border-[#e2e8f0] pb-2 mb-4">
               <button
                 type="button"
                 onClick={() => setActiveTab('mensajes')}
@@ -2369,8 +2506,8 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               </button>
             </div>
 
-            {/* 1. Estado & Prioridad (2 Columns side-by-side) */}
-            <div className="space-y-2">
+            {/* 1. Estado & Prioridad */}
+            <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-[#64748b] mb-1.5">Estado</label>
@@ -2412,38 +2549,6 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                   </div>
                 </div>
               </div>
-
-              {/* Action button to advance status */}
-              <button
-                type="button"
-                onClick={handleProgressTaskStatus}
-                className="w-full py-2 px-3 rounded-xl bg-[#f5f3ff] hover:bg-[#ede9fe] text-[#501f92] border border-[#ddd6fe] font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-              >
-                {task.status === 'To Do' && (
-                  <>
-                    <Play className="w-3.5 h-3.5 fill-current" />
-                    <span>Iniciar tarea → En proceso</span>
-                  </>
-                )}
-                {task.status === 'In Progress' && (
-                  <>
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Marcar como Completada</span>
-                  </>
-                )}
-                {task.status === 'Review' && (
-                  <>
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Marcar como Completada</span>
-                  </>
-                )}
-                {task.status === 'Done' && (
-                  <>
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    <span>Reabrir tarea (En proceso)</span>
-                  </>
-                )}
-              </button>
             </div>
 
             {/* 2. Horas Card (4.5h Ejecutadas | 8h Estimadas | 3.5h Disponibles + Dynamic Progress Bar) */}

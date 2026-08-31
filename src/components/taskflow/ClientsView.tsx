@@ -157,34 +157,34 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
       </div>
 
       {/* Overview Stats Bar */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="p-4 rounded-2xl bg-white border border-[#e2e8f0] shadow-xs flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-[#f2ecfb] text-[#501f92] flex items-center justify-center font-bold">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-[#e2e8f0] shadow-xs flex items-center gap-3.5 min-w-0">
+          <div className="w-10 h-10 rounded-xl bg-[#f2ecfb] text-[#501f92] flex items-center justify-center font-bold shrink-0">
             <Building2 className="w-5 h-5" />
           </div>
-          <div>
-            <span className="text-[11px] font-bold text-[#64748b] uppercase">Clientes Activos</span>
-            <div className="text-xl font-extrabold text-[#0f172a]">{activeClients.length} cuentas en curso</div>
+          <div className="min-w-0 flex-1">
+            <span className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider block truncate">Clientes Activos</span>
+            <div className="text-base sm:text-lg lg:text-xl font-extrabold text-[#0f172a] truncate">{activeClients.length} cuentas en curso</div>
           </div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-white border border-[#e2e8f0] shadow-xs flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-[#eff6ff] text-[#2563eb] flex items-center justify-center font-bold">
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-[#e2e8f0] shadow-xs flex items-center gap-3.5 min-w-0">
+          <div className="w-10 h-10 rounded-xl bg-[#eff6ff] text-[#2563eb] flex items-center justify-center font-bold shrink-0">
             <Briefcase className="w-5 h-5" />
           </div>
-          <div>
-            <span className="text-[11px] font-bold text-[#64748b] uppercase">Total Proyectos</span>
-            <div className="text-xl font-extrabold text-[#0f172a]">{totalProjects} en cartera</div>
+          <div className="min-w-0 flex-1">
+            <span className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider block truncate">Total Proyectos</span>
+            <div className="text-base sm:text-lg lg:text-xl font-extrabold text-[#0f172a] truncate">{totalProjects} en cartera</div>
           </div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-white border border-[#e2e8f0] shadow-xs flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-[#ecfdf5] text-[#059669] flex items-center justify-center font-bold">
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-[#e2e8f0] shadow-xs flex items-center gap-3.5 min-w-0 sm:col-span-2 xl:col-span-1">
+          <div className="w-10 h-10 rounded-xl bg-[#ecfdf5] text-[#059669] flex items-center justify-center font-bold shrink-0">
             <TrendingUp className="w-5 h-5" />
           </div>
-          <div>
-            <span className="text-[11px] font-bold text-[#64748b] uppercase">Salud Operativa</span>
-            <div className="text-xl font-extrabold text-[#0f172a]">
+          <div className="min-w-0 flex-1">
+            <span className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider block truncate">Salud Operativa</span>
+            <div className="text-base sm:text-lg lg:text-xl font-extrabold text-[#0f172a] truncate">
               {Math.round((clients.filter((c) => c.healthStatus === 'Saludable').length / clients.length) * 100)}% Saludable
             </div>
           </div>

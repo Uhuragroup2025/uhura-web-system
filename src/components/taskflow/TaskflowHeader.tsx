@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, Menu, X, LogOut, ShieldAlert, Sparkles, Check, ChevronDown, ExternalLink, Clock, Play, Pause, Square, Building2, Search, ArrowRight } from 'lucide-react';
+import { Bell, Menu, X, LogOut, ShieldAlert, Sparkles, Check, ChevronDown, ExternalLink, Clock, Play, Pause, Square, Building2, Search, ArrowRight, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { orbitOperationalAlerts } from './mockData';
 import { ActiveTimerState, TaskItem } from './types';
 
@@ -22,6 +22,8 @@ interface TaskflowHeaderProps {
   loggedHoursToday?: number;
   targetDayHours?: number;
   onNavigateToDashboard?: () => void;
+  sidebarCollapsed?: boolean;
+  onToggleSidebarCollapse?: () => void;
 }
 
 export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
@@ -36,7 +38,9 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
   onSelectTask,
   loggedHoursToday = 3.5,
   targetDayHours = 8.0,
-  onNavigateToDashboard
+  onNavigateToDashboard,
+  sidebarCollapsed = false,
+  onToggleSidebarCollapse
 }) => {
   const [alertsOpen, setAlertsOpen] = useState(false);
   const [dailyProgressOpen, setDailyProgressOpen] = useState(false);
@@ -47,6 +51,8 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const dailyProgressRef = useRef<HTMLDivElement>(null);
+  const alertsContainerRef = useRef<HTMLDivElement>(null);
 
   const unreadCount = activeAlerts.filter((a) => !a.read).length;
 
@@ -60,17 +66,26 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
       }
       if (e.key === 'Escape') {
         setIsSearchOpen(false);
+        setDailyProgressOpen(false);
+        setAlertsOpen(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Close search dropdown on click outside
+  // Close search and popovers on click outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (searchContainerRef.current && !searchContainerRef.current.contains(target)) {
         setIsSearchOpen(false);
+      }
+      if (dailyProgressRef.current && !dailyProgressRef.current.contains(target)) {
+        setDailyProgressOpen(false);
+      }
+      if (alertsContainerRef.current && !alertsContainerRef.current.contains(target)) {
+        setAlertsOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -115,43 +130,42 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
   const remainingHours = Math.max(0, targetDayHours - loggedHoursToday);
 
   return (
-    <header className="bg-white border-b border-[#e5e7eb] px-4 sm:px-7 py-3 flex items-center justify-between sticky top-0 z-30 shadow-2xs gap-3">
-      {/* Left: Mobile Menu Trigger + Current View Title */}
-      <div className="flex items-center gap-3 shrink-0">
+    <header className="bg-white border-b border-[#e5e7eb] px-3 sm:px-5 py-2.5 flex items-center justify-between sticky top-0 z-30 shadow-2xs gap-2 sm:gap-3">
+      {/* Left: Mobile Menu Trigger + View Title (on XL) */}
+      <div className="flex items-center gap-2 shrink-0">
         {onToggleMobileMenu && (
           <button
             onClick={onToggleMobileMenu}
-            className="md:hidden p-2 rounded-xl text-[#6b7280] hover:bg-[#f3f4f6] hover:text-[#111827] transition-colors"
+            className="md:hidden p-1.5 rounded-xl text-[#6b7280] hover:bg-[#f3f4f6] hover:text-[#111827] transition-colors cursor-pointer"
             aria-label="Abrir menú de navegación"
           >
             <Menu className="w-5 h-5" />
           </button>
         )}
 
-        <div className="flex items-center gap-2">
-          <h1 className="text-base sm:text-lg font-bold tracking-tight text-[#0f172a] whitespace-nowrap">
-            {currentViewTitle}
-          </h1>
-        </div>
+        {/* View Title: Displayed on XL screens to prevent visual redundancy with page headers on tablet */}
+        <h1 className="hidden xl:block text-base font-bold tracking-tight text-[#0f172a] whitespace-nowrap">
+          {currentViewTitle}
+        </h1>
       </div>
 
       {/* Center: Global Task Search Bar */}
-      <div ref={searchContainerRef} className="relative flex-1 max-w-md mx-2 hidden md:block">
+      <div ref={searchContainerRef} className="relative flex-1 min-w-[120px] max-w-xs md:max-w-sm lg:max-w-md mx-1">
         <div className="relative">
           <Search className="w-3.5 h-3.5 text-[#94a3b8] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             ref={searchInputRef}
             type="text"
-            placeholder="Buscar tareas, proyectos o responsables..."
+            placeholder="Buscar..."
             value={globalSearchQuery}
             onChange={(e) => {
               setGlobalSearchQuery(e.target.value);
               setIsSearchOpen(true);
             }}
             onFocus={() => setIsSearchOpen(true)}
-            className="w-full bg-[#f8fafc] hover:bg-[#f1f5f9] focus:bg-white border border-[#e2e8f0] focus:border-[#501f92] pl-8 pr-14 py-1.5 rounded-xl text-xs text-[#0f172a] placeholder-[#94a3b8] focus:outline-none transition-all"
+            className="w-full bg-[#f8fafc] hover:bg-[#f1f5f9] focus:bg-white border border-[#e2e8f0] focus:border-[#501f92] pl-8 pr-9 sm:pr-14 py-1.5 rounded-xl text-xs text-[#0f172a] placeholder-[#94a3b8] focus:outline-none transition-all"
           />
-          <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-mono text-[#94a3b8] bg-white border border-[#e2e8f0] px-1.5 py-0.5 rounded shadow-2xs pointer-events-none">
+          <kbd className="hidden sm:inline-block absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-mono text-[#94a3b8] bg-white border border-[#e2e8f0] px-1.5 py-0.5 rounded shadow-2xs pointer-events-none">
             ⌘K
           </kbd>
         </div>
@@ -227,33 +241,55 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
       {/* Right Controls: Daily Progress Capsule (Opción A), Active Timer Badge, Notifications, User */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         {/* OPCIÓN A: Barra / Cápsula de Progreso del Día (Persistente para todos) */}
-        <div className="relative">
+        <div ref={dailyProgressRef} className="relative shrink-0">
           <button
             onClick={() => setDailyProgressOpen(!dailyProgressOpen)}
-            className="flex items-center gap-2.5 px-3 py-1.5 rounded-2xl bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] hover:border-[#cbd5e1] shadow-2xs transition-all cursor-pointer text-left group"
+            className="flex items-center gap-2 sm:gap-2.5 px-2.5 sm:px-3 py-1.5 rounded-2xl bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] hover:border-[#cbd5e1] shadow-2xs transition-all cursor-pointer text-left group shrink-0"
             title="Ver tu progreso del día (Jornada 8h)"
           >
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-[#10b981] animate-pulse" />
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span
+                className={`w-2 h-2 rounded-full shrink-0 ${
+                  dailyPercent >= 90
+                    ? 'bg-[#10b981] animate-pulse'
+                    : dailyPercent >= 60
+                    ? 'bg-[#f59e0b]'
+                    : 'bg-[#ef4444]'
+                }`}
+              />
               <div className="hidden sm:block">
                 <p className="text-[10px] font-bold text-[#64748b] leading-none uppercase tracking-wider">
                   Hoy
                 </p>
-                <p className="text-xs font-mono font-bold text-[#0f172a] leading-tight">
+                <p className="text-xs font-mono font-bold text-[#0f172a] leading-tight whitespace-nowrap">
                   {loggedHoursToday.toFixed(1)}h<span className="text-[#94a3b8] font-normal"> / {targetDayHours.toFixed(1)}h</span>
                 </p>
               </div>
             </div>
 
-            {/* Mini Progress Bar */}
-            <div className="w-12 sm:w-16 h-2 bg-[#e2e8f0] rounded-full overflow-hidden">
+            {/* Mini Progress Bar with Semaphoring (>90% Verde, 60-89% Naranja, <60% Rojo) */}
+            <div className="w-10 sm:w-14 h-2 bg-[#e2e8f0] rounded-full overflow-hidden shrink-0">
               <div
-                style={{ width: `${dailyPercent}%` }}
-                className="h-full bg-gradient-to-r from-[#501f92] to-[#8a4dff] rounded-full transition-all duration-300"
+                style={{ width: `${Math.min(dailyPercent, 100)}%` }}
+                className={`h-full rounded-full transition-all duration-300 ${
+                  dailyPercent >= 90
+                    ? 'bg-[#10b981]'
+                    : dailyPercent >= 60
+                    ? 'bg-[#f59e0b]'
+                    : 'bg-[#ef4444]'
+                }`}
               />
             </div>
 
-            <span className="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded-md bg-[#eff6ff] text-[#1d4ed8] border border-[#bfdbfe]">
+            <span
+              className={`text-[10px] font-bold font-mono px-1.5 py-0.5 rounded-md border shrink-0 ${
+                dailyPercent >= 90
+                  ? 'bg-[#ecfdf5] text-[#059669] border-[#a7f3d0]'
+                  : dailyPercent >= 60
+                  ? 'bg-[#fffbeb] text-[#d97706] border-[#fde68a]'
+                  : 'bg-[#fef2f2] text-[#dc2626] border-[#fecaca]'
+              }`}
+            >
               {dailyPercent}%
             </span>
           </button>
@@ -266,7 +302,15 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
                   <Clock className="w-4 h-4 text-[#501f92]" />
                   <h4 className="text-xs font-bold text-[#0f172a]">Progreso Diario (Hoy)</h4>
                 </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#f2ecfb] text-[#501f92]">
+                <span
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    dailyPercent >= 90
+                      ? 'bg-[#ecfdf5] text-[#059669]'
+                      : dailyPercent >= 60
+                      ? 'bg-[#fffbeb] text-[#d97706]'
+                      : 'bg-[#fef2f2] text-[#dc2626]'
+                  }`}
+                >
                   {dailyPercent}%
                 </span>
               </div>
@@ -286,11 +330,17 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
                 </div>
               </div>
 
-              {/* Progress bar */}
+              {/* Progress bar with Semaphoring */}
               <div className="w-full h-2.5 bg-[#e2e8f0] rounded-full overflow-hidden">
                 <div
-                  style={{ width: `${dailyPercent}%` }}
-                  className="h-full bg-gradient-to-r from-[#501f92] to-[#8a4dff] rounded-full"
+                  style={{ width: `${Math.min(dailyPercent, 100)}%` }}
+                  className={`h-full rounded-full transition-all ${
+                    dailyPercent >= 90
+                      ? 'bg-[#10b981]'
+                      : dailyPercent >= 60
+                      ? 'bg-[#f59e0b]'
+                      : 'bg-[#ef4444]'
+                  }`}
                 />
               </div>
 
@@ -355,7 +405,7 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
         )}
 
         {/* Operational Alerts Bell Dropdown */}
-        <div className="relative">
+        <div ref={alertsContainerRef} className="relative">
           <button
             onClick={() => setAlertsOpen(!alertsOpen)}
             className="p-2 rounded-xl text-[#6b7280] hover:bg-[#f3f4f6] hover:text-[#111827] transition-colors relative cursor-pointer"
@@ -440,13 +490,13 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
         </div>
 
         {/* User Badge: Paola Lead PM */}
-        <div className="flex items-center gap-3 pl-2 sm:pl-3 border-l border-[#e5e7eb]">
-          <div className="w-8 h-8 rounded-full bg-[#501f92] text-white flex items-center justify-center text-xs font-bold ring-2 ring-[#8a4dff]/20">
+        <div className="flex items-center gap-2 pl-2 sm:pl-3 border-l border-[#e5e7eb] shrink-0" title="Paola (Lead PM) · Uhura Group Admin">
+          <div className="w-8 h-8 rounded-full bg-[#501f92] text-white flex items-center justify-center text-xs font-bold ring-2 ring-[#8a4dff]/20 shrink-0">
             PL
           </div>
-          <div className="hidden sm:block text-left">
-            <p className="text-xs font-bold text-[#111827] leading-tight">Paola (Lead PM)</p>
-            <p className="text-[10px] text-[#6b7280] font-medium leading-tight">Uhura Group Admin</p>
+          <div className="hidden xl:block text-left">
+            <p className="text-xs font-bold text-[#111827] leading-tight whitespace-nowrap">Paola (Lead PM)</p>
+            <p className="text-[10px] text-[#6b7280] font-medium leading-tight whitespace-nowrap">Uhura Group Admin</p>
           </div>
         </div>
       </div>

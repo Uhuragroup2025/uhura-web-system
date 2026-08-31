@@ -136,9 +136,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* 1. Operational Greeting & Quick Actions */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-xs text-[#64748b]">
-          <span className="w-2 h-2 rounded-full bg-[#10b981]" />
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-xs text-[#64748b] shrink-0">
+          <span className="w-2 h-2 rounded-full bg-[#10b981] shrink-0" />
           <span>
             Vista activa:{' '}
             <strong className="text-[#0f172a]">
@@ -152,12 +152,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* Role Switcher & Action Button */}
-        <div className="flex items-center gap-2.5 flex-wrap self-start md:self-auto">
+        <div className="flex items-center gap-2.5 flex-wrap">
           {/* Dynamic Role Tab Switcher */}
-          <div className="flex items-center bg-[#f1f5f9] p-1 rounded-xl border border-[#e2e8f0]">
+          <div className="flex items-center bg-[#f1f5f9] p-1 rounded-xl border border-[#e2e8f0] overflow-x-auto max-w-full">
             <button
               onClick={() => setDashboardRole('executive')}
-              className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+              className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap ${
                 dashboardRole === 'executive'
                   ? 'bg-white text-[#501f92] shadow-2xs'
                   : 'text-[#64748b] hover:text-[#0f172a]'
@@ -167,7 +167,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </button>
             <button
               onClick={() => setDashboardRole('creative')}
-              className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+              className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap ${
                 dashboardRole === 'creative'
                   ? 'bg-white text-[#501f92] shadow-2xs'
                   : 'text-[#64748b] hover:text-[#0f172a]'
@@ -177,7 +177,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </button>
             <button
               onClick={() => setDashboardRole('tech')}
-              className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+              className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap ${
                 dashboardRole === 'tech'
                   ? 'bg-white text-[#501f92] shadow-2xs'
                   : 'text-[#64748b] hover:text-[#0f172a]'
@@ -190,7 +190,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {dashboardRole === 'executive' && (
             <button
               onClick={() => setIsTargetModalOpen(true)}
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white text-[#0f172a] border border-[#e2e8f0] hover:bg-[#f8fafc] hover:border-[#cbd5e1] text-xs font-semibold shadow-2xs transition-all cursor-pointer"
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white text-[#0f172a] border border-[#e2e8f0] hover:bg-[#f8fafc] hover:border-[#cbd5e1] text-xs font-semibold shadow-2xs transition-all cursor-pointer shrink-0 whitespace-nowrap"
             >
               <Target className="w-3.5 h-3.5 text-[#501f92]" />
               <span>{monthlyTarget ? 'Ajustar Meta' : 'Definir Meta'}</span>
@@ -204,7 +204,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   onOpenManualLog(todayTasks[0]?.id || 'task-1');
                 }
               }}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold shadow-xs transition-all cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold shadow-xs transition-all cursor-pointer shrink-0 whitespace-nowrap"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Cargar Horas (+)</span>
@@ -217,18 +217,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* OPCIÓN B: CONTROL UNIVERSAL DE RITMO PERSONAL (DÍA · SEMANA · MES) */}
       {/* Visible para todos los roles: Dirección/PM, Diseñador y Tech/Dev */}
       {/* ========================================================================= */}
-      <div className="bg-white p-6 rounded-3xl border border-[#e2e8f0] shadow-xs space-y-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white p-5 sm:p-6 rounded-3xl border border-[#e2e8f0] shadow-xs space-y-5">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#f2ecfb] text-[#501f92] border border-[#8a4dff]/20">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#f2ecfb] text-[#501f92] border border-[#8a4dff]/20 shrink-0 whitespace-nowrap">
                 Control de Jornada & Ritmo Personal
               </span>
               <span className="text-xs text-[#64748b]">
                 • {dashboardRole === 'executive' ? 'Tu Control de Tiempo (PM / Dirección)' : 'Tu Jornada de Especialista'}
               </span>
             </div>
-            <h2 className="text-lg font-bold text-[#0f172a] mt-1 tracking-tight">
+            <h2 className="text-base sm:text-lg font-bold text-[#0f172a] mt-1 tracking-tight">
               {personalTimeRange === 'day'
                 ? 'Progreso de Hoy (Jornada Diaria)'
                 : personalTimeRange === 'week'
@@ -238,10 +238,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           {/* Selector de Granularidad: Día / Semana / Mes */}
-          <div className="flex items-center bg-[#f1f5f9] p-1 rounded-xl border border-[#e2e8f0] self-start sm:self-auto">
+          <div className="flex items-center bg-[#f1f5f9] p-1 rounded-xl border border-[#e2e8f0] overflow-x-auto max-w-full shrink-0">
             <button
               onClick={() => setPersonalTimeRange('day')}
-              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
                 personalTimeRange === 'day'
                   ? 'bg-white text-[#501f92] shadow-2xs'
                   : 'text-[#64748b] hover:text-[#0f172a]'
@@ -252,7 +252,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </button>
             <button
               onClick={() => setPersonalTimeRange('week')}
-              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
                 personalTimeRange === 'week'
                   ? 'bg-white text-[#501f92] shadow-2xs'
                   : 'text-[#64748b] hover:text-[#0f172a]'
@@ -263,7 +263,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </button>
             <button
               onClick={() => setPersonalTimeRange('month')}
-              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
                 personalTimeRange === 'month'
                   ? 'bg-white text-[#501f92] shadow-2xs'
                   : 'text-[#64748b] hover:text-[#0f172a]'
@@ -280,13 +280,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="space-y-4 animate-in fade-in duration-150">
             {/* Metric Bar */}
             <div className="bg-[#f8fafc] p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-                <div className="flex items-center gap-3">
-                  <Clock className="w-4 h-4 text-[#501f92]" />
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2 text-xs">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                  <Clock className="w-4 h-4 text-[#501f92] shrink-0" />
                   <span className="font-semibold text-[#0f172a]">
                     Total Cargado Hoy: <strong className="font-mono text-base font-black text-[#0f172a]">{loggedHoursToday.toFixed(1)}h / {targetDayHours.toFixed(1)}h</strong>
                   </span>
-                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-[#eff6ff] text-[#1d4ed8] border border-[#bfdbfe]">
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-[#eff6ff] text-[#1d4ed8] border border-[#bfdbfe] shrink-0 whitespace-nowrap">
                     {progressDailyPercent}% de la jornada
                   </span>
                 </div>

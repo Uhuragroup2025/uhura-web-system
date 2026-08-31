@@ -252,12 +252,12 @@ export const BoardView: React.FC<BoardViewProps> = ({
 
           <div className="flex items-center gap-2">
             {/* Project Filter Dropdown */}
-            <div className="flex items-center gap-1 bg-[#f8fafc] px-2.5 py-1 rounded-xl border border-[#e2e8f0]">
-              <Filter className="w-3.5 h-3.5 text-[#501f92]" />
+            <div className="relative flex items-center min-w-0">
+              <Filter className="w-3.5 h-3.5 text-[#501f92] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none shrink-0" />
               <select
                 value={selectedProject}
                 onChange={(e) => setSelectedProject(e.target.value)}
-                className="bg-transparent text-xs font-semibold text-[#0f172a] focus:outline-none cursor-pointer pr-1"
+                className="bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] pl-8.5 pr-8 py-1.5 rounded-xl text-xs font-semibold text-[#0f172a] focus:outline-none focus:border-[#501f92] cursor-pointer transition-colors"
               >
                 <option value="all">Todos los proyectos ({tasks.length})</option>
                 {availableProjects.map((proj) => (
@@ -271,9 +271,9 @@ export const BoardView: React.FC<BoardViewProps> = ({
             {onOpenNewTaskModal && (
               <button
                 onClick={onOpenNewTaskModal}
-                className="px-3.5 py-1.5 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                className="px-3.5 py-1.5 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs whitespace-nowrap"
               >
-                <Plus className="w-3.5 h-3.5" />
+                <Plus className="w-3.5 h-3.5 shrink-0" />
                 <span>Nueva Tarea</span>
               </button>
             )}
@@ -281,7 +281,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
         </div>
       )}
 
-      {/* Kanban Columns Grid */}
+      {/* Kanban Columns Grid (Fluid 4-cols on XL, 2-cols or smooth swipe on tablet & mobile) */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-start">
         {columns.map((col) => {
           const colTasks = filteredTasks.filter((t) => t.status === col.id);
