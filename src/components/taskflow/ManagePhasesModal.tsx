@@ -119,43 +119,43 @@ export const ManagePhasesModal: React.FC<ManagePhasesModalProps> = ({
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150 overflow-y-auto"
     >
-      <div className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl border border-[#e2e8f0] flex flex-col max-h-[90vh]">
+      <div className="bg-white rounded-2xl sm:rounded-3xl w-full max-w-3xl overflow-hidden shadow-2xl border border-[#e2e8f0] flex flex-col max-h-[92vh] my-auto">
         {/* Header */}
-        <div className="p-5 sm:p-6 border-b border-[#e2e8f0] flex items-center justify-between bg-[#f8fafc]">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#501f92]/10 border border-[#501f92]/20 flex items-center justify-center text-[#501f92]">
+        <div className="p-4 sm:p-5 md:p-6 border-b border-[#e2e8f0] flex items-center justify-between bg-[#f8fafc] shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-2xl bg-[#501f92]/10 border border-[#501f92]/20 flex items-center justify-center text-[#501f92] shrink-0">
               <Layers className="w-5 h-5" />
             </div>
-            <div>
-              <h2 className="text-base sm:text-lg font-extrabold text-[#0f172a]">
+            <div className="min-w-0">
+              <h2 className="text-base sm:text-lg font-extrabold text-[#0f172a] truncate">
                 Configuración de Fases del Proyecto
               </h2>
-              <p className="text-xs text-[#64748b]">{projectName} · Ciclo de vida y cronograma</p>
+              <p className="text-xs text-[#64748b] truncate">{projectName} · Ciclo de vida y cronograma</p>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full text-[#64748b] hover:text-[#0f172a] hover:bg-[#e2e8f0] flex items-center justify-center cursor-pointer transition-colors"
+            className="w-8 h-8 rounded-full text-[#64748b] hover:text-[#0f172a] hover:bg-[#e2e8f0] flex items-center justify-center cursor-pointer transition-colors shrink-0 ml-2"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-5 sm:p-6 overflow-y-auto space-y-5 flex-1 custom-scrollbar">
+        <div className="p-4 sm:p-5 md:p-6 overflow-y-auto overflow-x-hidden space-y-4 sm:space-y-5 flex-1 custom-scrollbar">
           {warningMsg && (
-            <div className="p-3.5 rounded-2xl bg-[#fffbeb] border border-[#fde68a] text-xs text-[#92400e] flex items-start gap-2.5">
+            <div className="p-3 sm:p-3.5 rounded-2xl bg-[#fffbeb] border border-[#fde68a] text-xs text-[#92400e] flex items-start gap-2.5">
               <AlertCircle className="w-4 h-4 text-[#d97706] shrink-0 mt-0.5" />
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <span className="font-bold">Aviso importante: </span>
                 {warningMsg}
               </div>
               <button
                 onClick={() => setWarningMsg(null)}
-                className="text-[#92400e] hover:text-[#78350f] text-xs font-bold"
+                className="text-[#92400e] hover:text-[#78350f] text-xs font-bold shrink-0 cursor-pointer"
               >
                 ✕
               </button>
@@ -163,13 +163,13 @@ export const ManagePhasesModal: React.FC<ManagePhasesModalProps> = ({
           )}
 
           <div className="space-y-1">
-            <p className="text-xs text-[#475569] leading-relaxed">
+            <p className="text-xs sm:text-[13px] text-[#475569] leading-relaxed">
               Define las etapas de ejecución para este proyecto. Puedes reordenarlas, fijar fechas estimadas y cambiar su estado conforme el equipo avanza.
             </p>
           </div>
 
           {/* Phases List */}
-          <div className="space-y-2.5">
+          <div className="space-y-3">
             {phases.map((phase, index) => {
               const taskCount = tasks.filter(
                 (t) => (t.phase?.toLowerCase() === phase.name.toLowerCase() || t.fase?.toLowerCase() === phase.name.toLowerCase())
@@ -178,16 +178,17 @@ export const ManagePhasesModal: React.FC<ManagePhasesModalProps> = ({
               return (
                 <div
                   key={phase.id}
-                  className="p-3.5 rounded-2xl border border-[#e2e8f0] bg-white hover:border-[#cbd5e1] transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs"
+                  className="p-3 sm:p-4 rounded-2xl border border-[#e2e8f0] bg-white hover:border-[#cbd5e1] transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-2xs"
                 >
-                  <div className="flex items-center gap-2.5 flex-1">
-                    <div className="flex flex-col gap-0.5">
+                  {/* Top / Left Section: Reorder, Order Num, Name input, Tasks badge */}
+                  <div className="flex items-center gap-2 sm:gap-2.5 flex-1 min-w-0">
+                    <div className="flex flex-col gap-0.5 shrink-0">
                       <button
                         type="button"
                         disabled={index === 0}
                         onClick={() => handleMovePhase(index, 'up')}
                         className={`p-1 rounded text-[#94a3b8] hover:text-[#501f92] hover:bg-[#f1f5f9] transition-colors ${
-                          index === 0 ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'
+                          index === 0 ? 'opacity-25 cursor-not-allowed' : 'cursor-pointer'
                         }`}
                         title="Subir fase"
                       >
@@ -198,7 +199,7 @@ export const ManagePhasesModal: React.FC<ManagePhasesModalProps> = ({
                         disabled={index === phases.length - 1}
                         onClick={() => handleMovePhase(index, 'down')}
                         className={`p-1 rounded text-[#94a3b8] hover:text-[#501f92] hover:bg-[#f1f5f9] transition-colors ${
-                          index === phases.length - 1 ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'
+                          index === phases.length - 1 ? 'opacity-25 cursor-not-allowed' : 'cursor-pointer'
                         }`}
                         title="Bajar fase"
                       >
@@ -214,63 +215,65 @@ export const ManagePhasesModal: React.FC<ManagePhasesModalProps> = ({
                       type="text"
                       value={phase.name}
                       onChange={(e) => handleUpdatePhase(phase.id, { name: e.target.value })}
-                      className="text-xs font-bold text-[#0f172a] bg-transparent border-b border-transparent hover:border-[#cbd5e1] focus:border-[#501f92] px-1 py-0.5 outline-none flex-1"
+                      className="text-xs sm:text-sm font-bold text-[#0f172a] bg-transparent border-b border-transparent hover:border-[#cbd5e1] focus:border-[#501f92] px-1 py-0.5 outline-none flex-1 min-w-0"
                       placeholder="Nombre de la fase"
                     />
 
-                    <span className="text-[10px] text-[#64748b] bg-[#f8fafc] px-2 py-0.5 rounded-full border border-[#e2e8f0] shrink-0">
+                    <span className="text-[10px] font-medium text-[#64748b] bg-[#f8fafc] px-2 py-0.5 rounded-full border border-[#e2e8f0] shrink-0 whitespace-nowrap">
                       {taskCount} tareas
                     </span>
                   </div>
 
-                  {/* Dates & Status Controls */}
-                  <div className="flex flex-wrap items-center gap-2 shrink-0">
-                    <div className="flex items-center gap-1 text-[11px] text-[#64748b]">
+                  {/* Bottom / Right Section: Dates, Status, Delete */}
+                  <div className="flex items-center flex-wrap sm:flex-nowrap gap-2 justify-between md:justify-end border-t md:border-t-0 pt-2 md:pt-0 border-[#f1f5f9] shrink-0">
+                    <div className="flex items-center gap-1.5 text-[11px] text-[#64748b] flex-1 sm:flex-none">
                       <input
                         type="date"
                         value={phase.startDate || ''}
                         onChange={(e) => handleUpdatePhase(phase.id, { startDate: e.target.value })}
-                        className="text-[11px] bg-[#f8fafc] border border-[#e2e8f0] rounded-lg px-2 py-1 outline-none text-[#334155]"
+                        className="text-[11px] bg-[#f8fafc] border border-[#e2e8f0] rounded-lg px-2 py-1 outline-none text-[#334155] focus:border-[#501f92] min-w-0 flex-1 sm:flex-none"
                         title="Fecha inicio"
                       />
-                      <span>→</span>
+                      <span className="text-[#94a3b8] font-bold">→</span>
                       <input
                         type="date"
                         value={phase.endDate || ''}
                         onChange={(e) => handleUpdatePhase(phase.id, { endDate: e.target.value })}
-                        className="text-[11px] bg-[#f8fafc] border border-[#e2e8f0] rounded-lg px-2 py-1 outline-none text-[#334155]"
+                        className="text-[11px] bg-[#f8fafc] border border-[#e2e8f0] rounded-lg px-2 py-1 outline-none text-[#334155] focus:border-[#501f92] min-w-0 flex-1 sm:flex-none"
                         title="Fecha fin"
                       />
                     </div>
 
-                    <select
-                      value={phase.status}
-                      onChange={(e) =>
-                        handleUpdatePhase(phase.id, {
-                          status: e.target.value as 'pending' | 'in_progress' | 'completed'
-                        })
-                      }
-                      className={`text-[11px] font-bold px-2 py-1 rounded-lg border outline-none cursor-pointer ${
-                        phase.status === 'completed'
-                          ? 'bg-[#ecfdf5] text-[#065f46] border-[#a7f3d0]'
-                          : phase.status === 'in_progress'
-                          ? 'bg-[#f5f3ff] text-[#501f92] border-[#e9d5ff]'
-                          : 'bg-[#f8fafc] text-[#64748b] border-[#e2e8f0]'
-                      }`}
-                    >
-                      <option value="pending">Pendiente</option>
-                      <option value="in_progress">En proceso</option>
-                      <option value="completed">Completada</option>
-                    </select>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <select
+                        value={phase.status}
+                        onChange={(e) =>
+                          handleUpdatePhase(phase.id, {
+                            status: e.target.value as 'pending' | 'in_progress' | 'completed'
+                          })
+                        }
+                        className={`text-[11px] font-bold px-2 py-1 rounded-lg border outline-none cursor-pointer ${
+                          phase.status === 'completed'
+                            ? 'bg-[#ecfdf5] text-[#065f46] border-[#a7f3d0]'
+                            : phase.status === 'in_progress'
+                            ? 'bg-[#f5f3ff] text-[#501f92] border-[#e9d5ff]'
+                            : 'bg-[#f8fafc] text-[#64748b] border-[#e2e8f0]'
+                        }`}
+                      >
+                        <option value="pending">Pendiente</option>
+                        <option value="in_progress">En proceso</option>
+                        <option value="completed">Completada</option>
+                      </select>
 
-                    <button
-                      type="button"
-                      onClick={() => handleDeletePhase(phase.id, phase.name)}
-                      className="p-1.5 rounded-lg text-[#94a3b8] hover:text-[#ef4444] hover:bg-[#fee2e2]/50 transition-colors cursor-pointer"
-                      title="Eliminar fase"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeletePhase(phase.id, phase.name)}
+                        className="p-1.5 rounded-lg text-[#94a3b8] hover:text-[#ef4444] hover:bg-[#fee2e2]/50 transition-colors cursor-pointer"
+                        title="Eliminar fase"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -278,7 +281,7 @@ export const ManagePhasesModal: React.FC<ManagePhasesModalProps> = ({
           </div>
 
           {/* Add New Phase Form */}
-          <form onSubmit={handleAddPhase} className="flex items-center gap-2 pt-2">
+          <form onSubmit={handleAddPhase} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-2">
             <input
               type="text"
               value={newPhaseName}
@@ -289,7 +292,7 @@ export const ManagePhasesModal: React.FC<ManagePhasesModalProps> = ({
             <button
               type="submit"
               disabled={!newPhaseName.trim()}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-xs ${
+              className={`flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-xs shrink-0 ${
                 newPhaseName.trim()
                   ? 'bg-[#501f92] hover:bg-[#381566] text-white cursor-pointer'
                   : 'bg-[#e2e8f0] text-[#94a3b8] cursor-not-allowed'
@@ -302,7 +305,7 @@ export const ManagePhasesModal: React.FC<ManagePhasesModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-4 sm:p-5 border-t border-[#e2e8f0] bg-[#f8fafc] flex items-center justify-end gap-2.5">
+        <div className="p-4 sm:p-5 border-t border-[#e2e8f0] bg-[#f8fafc] flex items-center justify-end gap-2.5 shrink-0">
           <button
             type="button"
             onClick={onClose}

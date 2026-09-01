@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
-import { Copy, Check, Info, Sparkles, Type, Grid } from 'lucide-react';
+import { Copy, Check, Info, Sparkles, Type, Grid, Sliders, Waves } from 'lucide-react';
 
 export const Foundations: React.FC = () => {
   const [copiedText, setCopiedText] = useState<string | null>(null);
+  const [grainIntensity, setGrainIntensity] = useState<'none' | 'soft' | 'analog'>('analog');
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -31,41 +32,47 @@ export const Foundations: React.FC = () => {
     { name: 'Uhura Light 2 (Sky)', hex: '#eaf5ff', variable: '--uhura-light-2', role: 'Variante clara con tinte cian para contrastes', textDark: true },
   ];
 
+  // 6 OFFICIAL 2026 GRADIENTS ENHANCED WITH AUTHENTIC MULTI-POINT AURORA & PRESERVING SURFACE LIGHT
   const gradients = [
     {
-      id: 'primary',
-      name: '1. Gradient Primary',
-      css: 'linear-gradient(135deg, #8a4dff 0%, #501f92 100%)',
-      desc: 'Gradiente oficial más usado. Para fondos de sección, tarjetas de conversión y CTAs en modo claro.',
-      tag: 'Principal (70%)',
+      id: 'violet-mono',
+      name: '1. Gradient Violet Deep (Slide 4)',
+      css: 'radial-gradient(140% 120% at 50% 20%, #8b45ff 0%, #6f26d9 35%, #501f92 70%, #340c66 100%)',
+      desc: 'Violeta vibrante y etéreo con halo de luz superior suave, sin bandas marcadas.',
+      tag: 'Brand Core (Slide 4)',
+      slideRef: 'Slide 4',
     },
     {
-      id: 'hero',
-      name: '2. Gradient Hero',
-      css: 'linear-gradient(135deg, #501f92 0%, #8a4dff 50%, #4be5ff 100%)',
-      desc: 'Para hero headers principales con profundidad espacial.',
-      tag: 'Heros Principales',
+      id: 'aurora-lime-cyan',
+      name: '2. Aurora Multi-Mesh Vibrante (Slide 6)',
+      css: 'radial-gradient(110% 110% at -5% 105%, #d4ff4a 0%, #76ef6b 25%, #2ad0ca 45%, transparent 75%), radial-gradient(120% 120% at 10% 15%, #38e1ff 0%, #3b82f6 40%, transparent 80%), radial-gradient(130% 130% at 105% -5%, #a855f7 0%, #7c3aed 45%, transparent 80%), radial-gradient(120% 120% at 105% 105%, #6d28d9 0%, #4c1d95 60%, transparent 80%), #4755f5',
+      desc: 'Degradado fluido continuo: el Lime inferior izquierdo se diluye suavemente en un Cyan amplio que se funde sin cortes en el Violeta e Índigo superior.',
+      tag: 'Aurora Keynote (Slide 6)',
+      slideRef: 'Slide 6',
     },
     {
-      id: 'holographic',
-      name: '3. Gradient Holographic',
-      css: 'linear-gradient(135deg, #8a4dff 0%, #4be5ff 50%, #d4ff4a 100%)',
-      desc: 'Para elementos premium, badges tecnológicos e innovaciones destacadas.',
-      tag: 'Highlights Especiales',
+      id: 'aurora-soft-pastel',
+      name: '3. Aurora Soft Glow (Slide 8)',
+      css: 'radial-gradient(100% 100% at -5% 105%, #d4ff4a 0%, #6ee7b7 30%, #38bdf8 55%, transparent 80%), radial-gradient(120% 120% at 105% 95%, #e879f9 0%, #c084fc 35%, #818cf8 65%, transparent 85%), radial-gradient(120% 120% at 85% 0%, #7e22ce 0%, #6366f1 50%, transparent 85%), radial-gradient(100% 100% at 20% 30%, #38e1ff 0%, #60a5fa 45%, transparent 80%), #501f92',
+      desc: 'Atmósfera difusa y luminosa con transición sedosa entre Lime (#d4ff4a), Cyan etéreo, núcleo Índigo y suave resplandor Magenta/Lavanda (#e879f9) a la derecha.',
+      tag: 'Soft Aurora (Slide 8)',
+      slideRef: 'Slide 8',
     },
     {
-      id: 'mesh',
-      name: '4. Gradient Mesh Dark',
-      css: 'radial-gradient(at 0% 0%, #8a4dff 0%, transparent 50%), radial-gradient(at 100% 100%, #4be5ff 0%, transparent 50%), radial-gradient(at 100% 0%, #cd79e8 0%, transparent 50%), #140b24',
-      desc: 'Efecto de malla radial multicolor para fondos inmersivos de la web.',
-      tag: 'Fondos Inmersivos',
+      id: 'deep-mesh-cyan',
+      name: '4. Deep Cosmic Glow (Slide 11)',
+      css: 'radial-gradient(130% 90% at 50% -15%, rgba(42, 10, 80, 0.6) 0%, rgba(60, 18, 116, 0.3) 25%, transparent 60%), radial-gradient(110% 110% at -10% 110%, rgba(228, 255, 110, 0.95) 0%, rgba(180, 252, 106, 0.75) 20%, rgba(94, 234, 212, 0.45) 45%, transparent 70%), radial-gradient(120% 120% at 110% 110%, rgba(6, 182, 212, 0.9) 0%, rgba(14, 165, 233, 0.8) 25%, rgba(59, 130, 246, 0.6) 50%, rgba(99, 102, 241, 0.3) 75%, transparent 90%), radial-gradient(130% 130% at -5% -5%, rgba(216, 180, 254, 0.85) 0%, rgba(192, 132, 252, 0.7) 25%, rgba(168, 85, 247, 0.45) 50%, transparent 80%), radial-gradient(140% 140% at 90% 30%, rgba(76, 29, 149, 0.95) 0%, rgba(67, 56, 202, 0.75) 40%, transparent 85%), radial-gradient(160% 160% at 45% 45%, #7e22ce 0%, #6b21a8 30%, #581c87 60%, #3b0764 100%)',
+      desc: 'Nube de color difusa y sedosa con inicio sutil en violeta profundo en la parte superior que transiciona hacia el violeta central, conservando el resplandor lavanda, el destello lima y el cian inferior.',
+      tag: 'Cosmic Contrast (Slide 11)',
+      slideRef: 'Slide 11',
     },
     {
-      id: 'accent',
-      name: '5. Gradient Accent (Lime)',
-      css: 'linear-gradient(135deg, #d4ff4a 0%, #edff9b 100%)',
-      desc: 'Para botones principales en dark mode con texto oscuro (#17131f).',
-      tag: 'CTA Dark Mode',
+      id: 'holographic-flow',
+      name: '5. Gradient Holographic Flow',
+      css: 'linear-gradient(135deg, #8a4dff 0%, #4be5ff 45%, #d4ff4a 100%)',
+      desc: 'Para elementos interactivos premium, badges de innovación tecnológica y bordes con iluminación.',
+      tag: 'Highlights & CTAs',
+      slideRef: 'System Core',
     },
     {
       id: 'surface',
@@ -73,6 +80,7 @@ export const Foundations: React.FC = () => {
       css: 'linear-gradient(180deg, #f2ecfb 0%, #ffffff 100%)',
       desc: 'Para fondos sutiles con relieve vertical en secciones claras.',
       tag: 'Secciones Claras',
+      slideRef: 'Oficial Inalterado',
     },
   ];
 
@@ -223,55 +231,146 @@ export const Foundations: React.FC = () => {
         </div>
       </section>
 
-      {/* 2. THE 6 OFFICIAL GRADIENTS */}
+      {/* 2. THE 6 OFFICIAL GRADIENTS WITH FILM NOISE TEXTURE */}
       <section className="space-y-6 pt-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#e0e0e0]">
           <div>
             <h2 className="text-2xl font-extrabold text-[#17131f] flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-[#8a4dff]" />
-              Los 6 Gradientes Oficiales 2026
+              Los 6 Gradientes Oficiales 2026 & Malla Granular
             </h2>
             <p className="text-xs text-[#616161]">
-              Gradientes normados e implementados en la web oficial de Uhura Group.
+              Degradados radiales y de malla orgánica fiel a los Keynotes 2026 de Uhura con emulación de textura de grano (Film Grain Noise).
             </p>
           </div>
-          <Badge variant="purple" size="sm">6 Gradientes Canónicos</Badge>
+
+          {/* Granularity / Noise Texture Controller */}
+          <div className="flex items-center gap-2 bg-[#f2ecfb] p-1.5 rounded-2xl border border-[#8a4dff]/20">
+            <div className="flex items-center gap-1.5 px-2 text-xs font-bold text-[#501f92]">
+              <Waves className="w-3.5 h-3.5" />
+              <span>Granulosidad:</span>
+            </div>
+            <div className="flex items-center bg-white rounded-xl p-0.5 shadow-2xs">
+              <button
+                type="button"
+                onClick={() => setGrainIntensity('none')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  grainIntensity === 'none'
+                    ? 'bg-[#501f92] text-white shadow-xs'
+                    : 'text-[#64748b] hover:text-[#0f172a]'
+                }`}
+              >
+                Liso
+              </button>
+              <button
+                type="button"
+                onClick={() => setGrainIntensity('soft')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  grainIntensity === 'soft'
+                    ? 'bg-[#501f92] text-white shadow-xs'
+                    : 'text-[#64748b] hover:text-[#0f172a]'
+                }`}
+              >
+                Soft
+              </button>
+              <button
+                type="button"
+                onClick={() => setGrainIntensity('analog')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  grainIntensity === 'analog'
+                    ? 'bg-[#501f92] text-white shadow-xs'
+                    : 'text-[#64748b] hover:text-[#0f172a]'
+                }`}
+              >
+                Film Grain
+              </button>
+            </div>
+          </div>
         </div>
 
+        {/* SVG Noise Filter Asset Definition (Embedded lightweight) */}
+        <svg className="hidden" aria-hidden="true">
+          <filter id="uhuraNoiseFilter">
+            <feTurbulence
+              type="fractalNoise"
+              baseFrequency={grainIntensity === 'soft' ? '0.65' : '0.85'}
+              numOctaves="4"
+              stitchTiles="stitch"
+            />
+            <feColorMatrix type="saturate" values="0" />
+            <feComponentTransfer>
+              <feFuncR type="linear" slope="1.5" />
+              <feFuncG type="linear" slope="1.5" />
+              <feFuncB type="linear" slope="1.5" />
+            </feComponentTransfer>
+          </filter>
+        </svg>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {gradients.map((grad) => (
-            <div
-              key={grad.id}
-              className="rounded-2xl overflow-hidden border border-[#e0e0e0] shadow-sm bg-white flex flex-col justify-between"
-            >
+          {gradients.map((grad) => {
+            const isLight = grad.id === 'surface';
+            return (
               <div
-                className="h-44 p-5 flex flex-col justify-between text-white relative shadow-inner"
-                style={{ background: grad.css }}
+                key={grad.id}
+                className="rounded-2xl overflow-hidden border border-[#e0e0e0] shadow-sm bg-white flex flex-col justify-between"
               >
-                <div className="flex items-center justify-between">
-                  <Badge variant="glass" size="xs">{grad.tag}</Badge>
-                  <button
-                    onClick={() => copyToClipboard(grad.css, grad.name)}
-                    className="p-1.5 rounded-lg bg-black/25 hover:bg-black/40 text-white backdrop-blur-md transition-all cursor-pointer flex items-center gap-1 text-[11px]"
-                  >
-                    {copiedText === grad.name ? <Check className="w-3.5 h-3.5 text-[#d4ff4a]" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>CSS</span>
-                  </button>
+                <div
+                  className="h-48 p-5 flex flex-col justify-between relative shadow-inner overflow-hidden"
+                  style={{ background: grad.css }}
+                >
+                  {/* Film Grain Texture Layer with High Visibility SVG grain */}
+                  {grainIntensity !== 'none' && grad.id !== 'surface' && (
+                    <>
+                      <div
+                        className="absolute inset-0 pointer-events-none transition-opacity duration-300 bg-repeat"
+                        style={{
+                          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E")`,
+                          opacity: grainIntensity === 'soft' ? 0.22 : 0.38,
+                          mixBlendMode: 'overlay',
+                        }}
+                      />
+                      <div
+                        className="absolute inset-0 pointer-events-none transition-opacity duration-300"
+                        style={{
+                          filter: 'url(#uhuraNoiseFilter)',
+                          opacity: grainIntensity === 'soft' ? 0.15 : 0.28,
+                          mixBlendMode: 'color-dodge',
+                        }}
+                      />
+                    </>
+                  )}
+
+                  <div className="flex items-center justify-between relative z-10">
+                    <Badge variant="glass" size="xs">{grad.tag}</Badge>
+                    <button
+                      onClick={() => copyToClipboard(grad.css, grad.name)}
+                      className={`p-1.5 rounded-lg backdrop-blur-md transition-all cursor-pointer flex items-center gap-1 text-[11px] font-bold ${
+                        isLight
+                          ? 'bg-[#501f92]/10 hover:bg-[#501f92]/20 text-[#501f92]'
+                          : 'bg-black/30 hover:bg-black/50 text-white'
+                      }`}
+                    >
+                      {copiedText === grad.name ? <Check className="w-3.5 h-3.5 text-[#d4ff4a]" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>Copiar CSS</span>
+                    </button>
+                  </div>
+                  <div className="relative z-10">
+                    <h3 className={`text-base sm:text-lg font-bold drop-shadow-xs ${isLight ? 'text-[#17131f]' : 'text-white'}`}>
+                      {grad.name}
+                    </h3>
+                  </div>
                 </div>
-                <div>
-                  <h3 className={`text-lg font-bold drop-shadow-xs ${grad.id === 'accent' || grad.id === 'surface' ? 'text-[#17131f]' : 'text-white'}`}>
-                    {grad.name}
-                  </h3>
+                <div className="p-4 bg-white space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-[#616161] leading-relaxed">{grad.desc}</p>
+                  </div>
+                  <code className="text-[10px] font-mono text-[#501f92] bg-[#f2ecfb] p-2.5 rounded-xl block overflow-x-auto whitespace-pre-wrap border border-[#8a4dff]/15">
+                    {grad.css}
+                  </code>
                 </div>
               </div>
-              <div className="p-4 bg-white space-y-2">
-                <p className="text-xs text-[#616161] leading-relaxed">{grad.desc}</p>
-                <code className="text-[10px] font-mono text-[#8a4dff] bg-[#8a4dff]/5 p-2 rounded block overflow-x-auto whitespace-pre-wrap">
-                  {grad.css}
-                </code>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 

@@ -296,53 +296,55 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* 1. Header Superior de Control de Capacidad */}
-      <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div className="bg-white p-3 sm:p-4 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
         {/* Izquierda: Selector de Perspectiva (Mi Capacidad vs Equipo vs Organización) */}
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center bg-[#f1f5f9] p-1 rounded-xl text-xs font-bold shrink-0">
+        <div className="flex items-center overflow-x-auto pb-1 md:pb-0 scrollbar-none w-full md:w-auto">
+          <div className="flex items-center bg-[#f1f5f9] p-1 rounded-xl text-xs font-bold shrink-0 w-full sm:w-auto justify-between sm:justify-start">
             <button
               onClick={() => setPerspective('personal')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap text-center ${
                 perspective === 'personal'
                   ? 'bg-white text-[#0f172a] shadow-xs'
                   : 'text-[#64748b] hover:text-[#0f172a]'
               }`}
             >
-              <User className="w-3.5 h-3.5" />
+              <User className="w-3.5 h-3.5 shrink-0" />
               <span>Mi Capacidad</span>
             </button>
             <button
               onClick={() => setPerspective('team')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap text-center ${
                 perspective === 'team'
                   ? 'bg-white text-[#0f172a] shadow-xs'
                   : 'text-[#64748b] hover:text-[#0f172a]'
               }`}
             >
-              <Users className="w-3.5 h-3.5" />
-              <span>Mi Equipo (PM / Lead)</span>
+              <Users className="w-3.5 h-3.5 shrink-0" />
+              <span className="hidden sm:inline">Mi Equipo (PM / Lead)</span>
+              <span className="sm:hidden">Equipo</span>
             </button>
             <button
               onClick={() => setPerspective('org')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap text-center ${
                 perspective === 'org'
                   ? 'bg-white text-[#0f172a] shadow-xs'
                   : 'text-[#64748b] hover:text-[#0f172a]'
               }`}
             >
-              <Building2 className="w-3.5 h-3.5" />
-              <span>Organización</span>
+              <Building2 className="w-3.5 h-3.5 shrink-0" />
+              <span className="hidden sm:inline">Organización</span>
+              <span className="sm:hidden">Org</span>
             </button>
           </div>
         </div>
 
         {/* Derecha: Selector de Temporalidad (Hoy · Semana · Mes) + Badge Legal */}
-        <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap sm:flex-nowrap justify-between lg:justify-end">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap justify-between md:justify-end w-full md:w-auto">
           {/* Timeframe Tabs */}
           <div className="flex items-center bg-[#f1f5f9] p-1 rounded-xl text-xs font-bold shrink-0">
             <button
               onClick={() => setTimeframe('today')}
-              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                 timeframe === 'today' ? 'bg-white text-[#0f172a] shadow-xs' : 'text-[#64748b] hover:text-[#0f172a]'
               }`}
             >
@@ -350,7 +352,7 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
             </button>
             <button
               onClick={() => setTimeframe('week')}
-              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                 timeframe === 'week' ? 'bg-white text-[#0f172a] shadow-xs' : 'text-[#64748b] hover:text-[#0f172a]'
               }`}
             >
@@ -358,11 +360,11 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
             </button>
             <button
               onClick={() => setTimeframe('month')}
-              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                 timeframe === 'month' ? 'bg-white text-[#0f172a] shadow-xs' : 'text-[#64748b] hover:text-[#0f172a]'
               }`}
             >
-              Mes (Agosto)
+              Mes
             </button>
           </div>
 
@@ -373,6 +375,7 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
           >
             <span className="w-2 h-2 rounded-full bg-[#10b981]" />
             <span className="hidden sm:inline">Jornada Col: <strong>42h/sem</strong></span>
+            <span className="sm:hidden"><strong>42h/sem</strong></span>
             <span className="text-[10px] text-[#64748b] bg-white px-1.5 py-0.5 rounded border border-[#e2e8f0]">Sin festivos</span>
           </div>
         </div>
@@ -762,7 +765,7 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
           </div>
 
           {/* Grid / Lista de Miembros con Barras de Capacidad */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-3.5">
             {filteredTeam.map((member) => {
               const isOver = member.status === 'overloaded';
               const isLow = member.utilPercent < 65;

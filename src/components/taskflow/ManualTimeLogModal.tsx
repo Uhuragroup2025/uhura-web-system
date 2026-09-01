@@ -350,9 +350,44 @@ export const ManualTimeLogModal: React.FC<ManualTimeLogModalProps> = ({
 
             {/* Duración (Solo Horas y Minutos) */}
             <div>
-              <label className="block font-bold text-xs text-[#0f172a] mb-1.5">
-                Duración del trabajo *
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block font-bold text-xs text-[#0f172a]">
+                  Duración del trabajo *
+                </label>
+                {/* Presets rápidos */}
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => { setHours('1'); setMinutes('0'); }}
+                    className="px-2 py-0.5 rounded-md bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[10px] font-bold text-[#475569] cursor-pointer"
+                  >
+                    1h
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setHours('2'); setMinutes('0'); }}
+                    className="px-2 py-0.5 rounded-md bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[10px] font-bold text-[#475569] cursor-pointer"
+                  >
+                    2h
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setHours('4'); setMinutes('0'); }}
+                    className="px-2 py-0.5 rounded-md bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[10px] font-bold text-[#475569] cursor-pointer"
+                  >
+                    4h
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setHours('8'); setMinutes('0'); }}
+                    className="px-2 py-0.5 rounded-md bg-[#f2ecfb] hover:bg-[#e9d5ff] text-[10px] font-bold text-[#501f92] cursor-pointer"
+                    title="Jornada completa"
+                  >
+                    8h
+                  </button>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <div className="flex items-center gap-2 bg-[#f8fafc] border border-[#e2e8f0] px-3.5 py-2 rounded-xl focus-within:border-[#501f92] focus-within:bg-white">
@@ -384,9 +419,33 @@ export const ManualTimeLogModal: React.FC<ManualTimeLogModalProps> = ({
                   </div>
                 </div>
               </div>
-              <p className="text-[10px] text-[#64748b] mt-1">
-                Registra el tiempo exacto trabajado en esta sesión.
-              </p>
+
+              {/* Advertencia si la carga supera el presupuesto estimado de la tarea */}
+              {selectedTask && (
+                (() => {
+                  const inputHours = (parseInt(hours, 10) || 0) + (parseInt(minutes, 10) || 0) / 60;
+                  const currentConsumedHours = (selectedTask.consumedSeconds || 0) / 3600;
+                  const newTotalHours = currentConsumedHours + inputHours;
+                  const budgeted = selectedTask.budgetedHours || 0;
+                  const isExceeding = budgeted > 0 && newTotalHours > budgeted;
+
+                  if (isExceeding) {
+                    return (
+                      <div className="mt-2 p-2.5 rounded-xl bg-[#fffbeb] border border-[#fde68a] text-[11px] text-[#92400e] flex items-center gap-2">
+                        <span className="font-bold text-[#b45309]">⚠️ Advertencia:</span>
+                        <span>
+                          Con este registro acumularás <strong>{newTotalHours.toFixed(1)}h</strong>, superando el estimado de <strong>{budgeted}h</strong> en la tarea.
+                        </span>
+                      </div>
+                    );
+                  }
+                  return (
+                    <p className="text-[10px] text-[#64748b] mt-1">
+                      Registra el tiempo exacto trabajado en esta sesión.
+                    </p>
+                  );
+                })()
+              )}
             </div>
 
             {/* Descripción */}
