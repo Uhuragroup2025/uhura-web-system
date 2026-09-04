@@ -1,4 +1,5 @@
 export type OrbitView =
+  | 'mi-dia'
   | 'dashboard'
   | 'proyectos'
   | 'tareas'

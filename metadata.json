@@ -1,6 +1,6 @@
 {
   "name": "Uhura Web System",
-  "description": "Unified Design System & Component Library for Uhura Group 2026 Canonical Standards",
+  "description": "Unified Design System & Orbit Operating System with Beaver Gamification for Uhura Group",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

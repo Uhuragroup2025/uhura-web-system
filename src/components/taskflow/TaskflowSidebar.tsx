@@ -116,6 +116,29 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
           </div>
         )}
 
+        {/* 0. Mi Día & Bucky el Castor (Experiencia Personal / Gamificación Uhura) */}
+        <div>
+          <button
+            onClick={() => onSelectView('mi-dia')}
+            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+              currentView === 'mi-dia'
+                ? 'bg-gradient-to-r from-[#2e1859] to-[#1e113a] text-white shadow-sm border-l-2 border-[#d4ff4a]'
+                : 'text-[#c9b7ff] hover:bg-[#1a0f30] hover:text-white'
+            }`}
+            title="Mi Día · Bucky el Castor de Orbit"
+          >
+            <div className="flex items-center gap-2.5">
+              <span className="text-sm">🦫</span>
+              {!collapsed && <span className="font-bold">Mi Día</span>}
+            </div>
+            {!collapsed && (
+              <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded-full bg-[#f97316]/20 text-[#fdba74] border border-[#f97316]/30 flex items-center gap-0.5">
+                🔥 6d
+              </span>
+            )}
+          </button>
+        </div>
+
         {/* 1. Dashboard Principal Item */}
         <div>
           <button

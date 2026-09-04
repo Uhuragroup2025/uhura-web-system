@@ -40,16 +40,16 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
 
   const navItems = [
     {
-      id: 'tareas' as OrbitView,
-      label: 'Tareas',
+      id: 'mi-dia' as OrbitView,
+      label: 'Mi Día 🦫',
       icon: CheckSquare,
-      isActive: currentView === 'tareas'
+      isActive: currentView === 'mi-dia'
     },
     {
-      id: 'proyectos' as OrbitView,
-      label: 'Proyectos',
+      id: 'tareas' as OrbitView,
+      label: 'Tareas',
       icon: Folder,
-      isActive: currentView === 'proyectos'
+      isActive: currentView === 'tareas'
     },
     // Center Action Button: Cargar Horas (Rápido)
     {
@@ -148,6 +148,21 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                   Operación & Relaciones
                 </span>
                 <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => handleNavClick('proyectos')}
+                    className={`p-3 rounded-2xl border text-left flex items-center gap-2.5 transition-all cursor-pointer ${
+                      currentView === 'proyectos'
+                        ? 'bg-[#241344] border-[#8a4dff] text-white'
+                        : 'bg-[#140b24] border-[#261845] text-[#c9b7ff]'
+                    }`}
+                  >
+                    <Folder className="w-4 h-4 text-[#8a4dff] shrink-0" />
+                    <div className="truncate">
+                      <span className="block text-xs font-bold truncate">Proyectos</span>
+                      <span className="text-[10px] text-[#c9b7ff]/60 block truncate">Portafolio Uhura</span>
+                    </div>
+                  </button>
+
                   <button
                     onClick={() => handleNavClick('clientes')}
                     className={`p-3 rounded-2xl border text-left flex items-center gap-2.5 transition-all cursor-pointer ${

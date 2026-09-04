@@ -39,6 +39,8 @@ import { ManualTimeLogModal } from '../components/taskflow/ManualTimeLogModal';
 import { BandejaDelDiaWidget } from '../components/taskflow/BandejaDelDiaWidget';
 import { TaskDetailModal } from '../components/taskflow/TaskDetailModal';
 import { CapacityView } from '../components/taskflow/CapacityView';
+import { MiDiaView } from '../components/taskflow/MiDiaView';
+import { FloatingBeaverWidget } from '../components/taskflow/FloatingBeaverWidget';
 import { TimerSummaryModal, TimerSummaryData } from '../components/taskflow/TimerSummaryModal';
 import { MobileBottomNav } from '../components/taskflow/MobileBottomNav';
 import { MobileTimerMiniPlayer } from '../components/taskflow/MobileTimerMiniPlayer';
@@ -187,7 +189,7 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
 ];
 
 export const TaskFlowPrototype: React.FC = () => {
-  const [currentView, setCurrentView] = useState<OrbitView>('dashboard');
+  const [currentView, setCurrentView] = useState<OrbitView>('mi-dia');
   const [saasFont, setSaasFont] = useState<'jakarta' | 'inter' | 'montserrat'>('jakarta');
   const [tasks, setTasks] = useState<TaskItem[]>(initialTasks);
   const [users, setUsers] = useState<UserItem[]>(initialUsers);
@@ -950,8 +952,38 @@ export const TaskFlowPrototype: React.FC = () => {
     setUsers((prev) => prev.filter((u) => u.id !== userId));
   };
 
+  // Calculate live logged hours today from timesheets
+  const loggedHoursToday = timeLogs.reduce((acc, log) => acc + (log.durationSeconds || 0) / 3600, 0);
+
+  // Quick Log Hours for Beaver Feeding & Uhura Bags
+  const handleQuickLogHours = (
+    hours: number,
+    label: string,
+    category: 'client' | 'internal' = 'internal',
+    projectName: string = 'Uhura Group'
+  ) => {
+    const durationSeconds = Math.round(hours * 3600);
+    const newLog: TimeLog = {
+      id: `log-${Date.now()}`,
+      taskId: 'quick-log',
+      taskTitle: label,
+      clientName: 'UHURA GROUP',
+      projectName: projectName,
+      categoryType: category,
+      userName: 'Paola Monsalve',
+      userInitials: 'PM',
+      userAvatarBg: '#501f92',
+      isLiveTimer: false,
+      date: 'Hoy, ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' hs',
+      durationSeconds: durationSeconds
+    };
+    setTimeLogs((prev) => [newLog, ...prev]);
+  };
+
   const getHeaderTitle = () => {
     switch (currentView) {
+      case 'mi-dia':
+        return 'Mi Día · Bucky el Castor de Orbit 🦫';
       case 'dashboard':
         return 'Dashboard';
       case 'proyectos':
@@ -1118,6 +1150,8 @@ export const TaskFlowPrototype: React.FC = () => {
                 onStopTimer={handleStopTimer}
                 onOpenTaskDetail={handleOpenTaskDetail}
                 tasks={tasks}
+                loggedHoursToday={loggedHoursToday}
+                targetDayHours={8.0}
                 onSelectTask={(task) => {
                   setSelectedTaskForDetail(task);
                   setIsTaskDetailModalOpen(true);
@@ -1126,6 +1160,24 @@ export const TaskFlowPrototype: React.FC = () => {
 
               {/* View Content */}
               <div className="p-4 sm:p-7 pb-28 md:pb-7 flex-1">
+                {/* 0. MI DÍA & BUCKY EL CASTOR */}
+                {currentView === 'mi-dia' && (
+                  <MiDiaView
+                    tasks={tasks}
+                    activeTimer={activeTimer}
+                    onStartTimer={handleStartTimer}
+                    onPauseResumeTimer={handlePauseResumeTimer}
+                    onStopTimer={handleStopTimer}
+                    onOpenTaskDetail={handleOpenTaskDetail}
+                    onOpenManualLog={handleOpenManualLogWithTask}
+                    onToggleTask={handleToggleTask}
+                    onQuickLogHours={handleQuickLogHours}
+                    loggedHoursToday={loggedHoursToday}
+                    targetDayHours={8.0}
+                    onNavigateToView={handleSelectView}
+                  />
+                )}
+
                 {/* 1. DASHBOARD EJECUTIVO */}
                 {currentView === 'dashboard' && (
                   <DashboardView
@@ -1443,6 +1495,15 @@ export const TaskFlowPrototype: React.FC = () => {
             setIsTaskDetailModalOpen(true);
           }
         }}
+      />
+
+      {/* Floating Beaver Mascot Companion (Codex-Style Interactive Character with Vida Propia) */}
+      <FloatingBeaverWidget
+        loggedHoursToday={loggedHoursToday}
+        targetDayHours={8.0}
+        onQuickLogHours={handleQuickLogHours}
+        onNavigateToView={handleSelectView}
+        streakDays={6}
       />
     </div>
   );
