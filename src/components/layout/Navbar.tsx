@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavigationSection } from '../../types';
 import { Badge } from '../ui/Badge';
+import { UhuraLogo } from '../ui/UhuraLogo';
 import { Layers, Sparkles, Box, Activity, Palette, FileCode, CheckCircle2, LayoutGrid } from 'lucide-react';
 
 export interface NavbarProps {
@@ -30,7 +31,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSection, onSelectSection }
           className="flex items-center gap-3 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[#d4ff4a] focus-visible:ring-offset-2 focus-visible:ring-offset-[#090513] rounded-xl p-1 -ml-1 transition-transform"
         >
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#8a4dff] to-[#501f92] flex items-center justify-center shadow-[0_0_15px_rgba(138,77,255,0.4)]">
-            <span className="text-white font-extrabold text-base tracking-tighter">U</span>
+            <UhuraLogo size={20} color="#ffffff" />
           </div>
           <div>
             <div className="flex items-center gap-2">
