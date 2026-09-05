@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import {
   TaskItem,
   ActiveTimerState,
-  OrbitView
+  OrbitView,
+  BuckyMascotState
 } from './types';
+import { BuckyMascot, BUCKY_STATE_META } from './BuckyMascot';
 import beaverMascotImg from '../../assets/images/orbit_mascot_cutout.png';
 import {
   Flame,
@@ -201,6 +203,8 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
   const [chatModalTask, setChatModalTask] = useState<TaskItem | null>(null);
   const [selectedReason, setSelectedReason] = useState('Ajustes de brief no contemplados / cambios solicitados por cliente');
   const [extraHoursEstimate, setExtraHoursEstimate] = useState<number>(2.5);
+  const [manualBuckyState, setManualBuckyState] = useState<BuckyMascotState | null>(null);
+  const [showPosesSelector, setShowPosesSelector] = useState<boolean>(false);
 
   const handleCopyRender = async () => {
     try {
@@ -667,19 +671,52 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                   }`} />
                 </div>
 
-                <div className="relative group flex flex-col items-center">
-                  <img
-                    src={beaverMascotImg}
-                    alt="Bucky el Castor de Orbit (Render Transparente)"
-                    referrerPolicy="no-referrer"
-                    className="w-56 sm:w-64 h-64 sm:h-72 object-contain filter drop-shadow-[0_12px_24px_rgba(20,11,36,0.22)] hover:scale-105 transition-transform duration-300 select-none"
+                <div className="relative group flex flex-col items-center w-full">
+                  <BuckyMascot
+                    state={
+                      manualBuckyState ||
+                      (criticalOvertimeTasks.length > 0
+                        ? 'warning'
+                        : hasNotifiedAny
+                        ? 'celebrate'
+                        : loggedHoursToday >= targetDayHours
+                        ? 'celebrate'
+                        : 'idle')
+                    }
+                    size="xl"
+                    interactive={true}
+                    showSelector={showPosesSelector}
+                    onStateChange={(st) => setManualBuckyState(st)}
                   />
-                  
-                  {/* Quick Export Render Bar */}
-                  <div className="mt-2 flex items-center justify-center gap-2">
+
+                  {/* Toggle Poses & Expressions Showcase Button */}
+                  <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                    <button
+                      onClick={() => setShowPosesSelector(!showPosesSelector)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer border shadow-xs ${
+                        showPosesSelector
+                          ? 'bg-[#501f92] text-[#d4ff4a] border-[#8a4dff]'
+                          : 'bg-[#ede9fe] text-[#501f92] border-[#c4b5fd] hover:bg-[#ddd6fe]'
+                      }`}
+                      title="Probar las 12 poses y expresiones creadas para Bucky"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>{showPosesSelector ? 'Ocultar Selector de Poses' : 'Ver las 12 Poses & Renders'}</span>
+                    </button>
+
+                    {manualBuckyState && (
+                      <button
+                        onClick={() => setManualBuckyState(null)}
+                        className="px-2.5 py-1.5 rounded-xl bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[#64748b] text-xs font-bold transition-all cursor-pointer"
+                        title="Restablecer a estado automático según presupuesto"
+                      >
+                        Auto
+                      </button>
+                    )}
+
                     <button
                       onClick={handleCopyRender}
-                      className="px-3 py-1.5 rounded-xl bg-[#f1f5f9] hover:bg-[#8a4dff] text-[#0f172a] hover:text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border border-[#e2e8f0] hover:border-[#8a4dff] shadow-xs"
+                      className="px-2.5 py-1.5 rounded-xl bg-[#f1f5f9] hover:bg-[#8a4dff] text-[#0f172a] hover:text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border border-[#e2e8f0] hover:border-[#8a4dff] shadow-xs"
                       title="Copiar imagen PNG transparente al portapapeles"
                     >
                       {copiedToast ? (
@@ -687,7 +724,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                       ) : (
                         <Copy className="w-3.5 h-3.5 text-[#8a4dff] group-hover:text-white" />
                       )}
-                      <span>{copiedToast ? '¡Copiado al portapapeles!' : 'Copiar PNG'}</span>
+                      <span>{copiedToast ? '¡Copiado!' : 'Copiar PNG'}</span>
                     </button>
 
                     <button
@@ -696,7 +733,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                       title="Descargar archivo PNG en alta calidad sin fondo"
                     >
                       <Download className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">Descargar</span>
+                      <span>Descargar</span>
                     </button>
                   </div>
                 </div>

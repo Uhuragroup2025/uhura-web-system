@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import beaverMascotImg from '../../assets/images/orbit_mascot_cutout.png';
+import { BuckyMascot, BUCKY_STATE_META, playMascotSound } from './BuckyMascot';
 import {
   Flame,
   Zap,
@@ -22,7 +22,7 @@ import {
   Download,
   Check
 } from 'lucide-react';
-import { OrbitView } from './types';
+import { OrbitView, BuckyMascotState } from './types';
 
 interface FloatingBeaverWidgetProps {
   loggedHoursToday: number;
@@ -32,7 +32,7 @@ interface FloatingBeaverWidgetProps {
   streakDays?: number;
 }
 
-export type BuckyAction = 'idle' | 'wave' | 'yawn' | 'stretch' | 'exercise' | 'hydrate';
+export type BuckyAction = BuckyMascotState;
 
 // Sound synthesizer using Web Audio API (Zero dependencies, gentle ambient sounds)
 const playChime = (type: 'feed' | 'tickle' | 'pop' | 'celebrate' | 'wave' | 'yawn' | 'stretch' | 'exercise' | 'hydrate') => {
@@ -262,42 +262,22 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
     if (speechTimeoutRef.current) clearTimeout(speechTimeoutRef.current);
 
     setCurrentAction(action);
-    if (soundEnabled && action !== 'idle') playChime(action);
-
-    let phrase = customText;
-    let duration = 3000;
-
-    switch (action) {
-      case 'wave':
-        phrase = phrase || '¡Hola Pao! 👋 ¡Qué gusto verte! ¿En qué construimos hoy?';
-        duration = 2600;
-        break;
-      case 'yawn':
-        phrase = phrase || '*Uaaaah*... ¡Qué rico bostezo! 🥱 Un sorbito de café y listos ☕';
-        duration = 2600;
-        break;
-      case 'stretch':
-        phrase = phrase || '¡Uff, qué delicia de estirón! 🧘‍♀️ Estira los brazos hacia el cielo tú también.';
-        duration = 2400;
-        break;
-      case 'exercise':
-        phrase = phrase || '¡Pausa activa relámpago! 🏃‍♂️ Mueve los hombros en círculos 3 veces hacia atrás.';
-        duration = 3200;
-        break;
-      case 'hydrate':
-        phrase = phrase || '¡Hora de un trago de agua fresca! 💧 La mente hidratada rinde un 30% más.';
-        duration = 3000;
-        break;
-      default:
-        phrase = phrase || '¡Todo listo en la nave Orbit!';
-        duration = 2000;
+    if (soundEnabled && action !== 'idle') {
+      playMascotSound(action);
     }
+
+    const stateMap = BUCKY_STATE_META as Record<string, { label: string; description: string; emoji: string; defaultSpeech: string; badgeColor: string; durationMs: number; }>;
+    const meta = stateMap[action];
+    const phrase = customText || meta?.defaultSpeech || '¡Todo listo en la nave Orbit!';
+    const duration = meta?.durationMs || 2500;
 
     setSpeechBubbleText(phrase);
 
-    actionTimeoutRef.current = setTimeout(() => {
-      setCurrentAction('idle');
-    }, duration);
+    if (action !== 'idle' && action !== 'sleep') {
+      actionTimeoutRef.current = setTimeout(() => {
+        setCurrentAction('idle');
+      }, duration);
+    }
 
     speechTimeoutRef.current = setTimeout(() => {
       setSpeechBubbleText(null);
@@ -316,7 +296,7 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
   useEffect(() => {
     const interval = setInterval(() => {
       if (!isOpen && !isMinimized && !isDragging && !activeBreakActive && currentAction === 'idle') {
-        const livingBehaviors: BuckyAction[] = ['wave', 'yawn', 'stretch', 'exercise', 'hydrate'];
+        const livingBehaviors: BuckyAction[] = ['wave', 'clap', 'letsGo', 'stretch', 'yawn'];
         const randomAction = livingBehaviors[Math.floor(Math.random() * livingBehaviors.length)];
         triggerLivingAction(randomAction);
       }
@@ -353,7 +333,7 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
     setActiveBreakActive(true);
     setBreakTimer(30);
     setBreakStep(1);
-    triggerLivingAction('exercise', 'Paso 1: Mueve los hombros en círculos hacia atrás 3 veces 🙆‍♀️');
+    triggerLivingAction('stretch', 'Paso 1: Mueve los hombros en círculos hacia atrás 3 veces 🙆‍♀️');
   };
 
   // Trigger celebration sound if reached 8h
@@ -478,36 +458,13 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
   const getActionAnimationClass = () => {
     if (isDragging) return '';
     if (isWiggling) return 'animate-bounce';
-    switch (currentAction) {
-      case 'wave':
-        return 'animate-beaver-wave';
-      case 'yawn':
-        return 'animate-beaver-yawn';
-      case 'stretch':
-        return 'animate-beaver-stretch';
-      case 'exercise':
-        return 'animate-beaver-exercise';
-      default:
-        return 'animate-float';
-    }
+    return '';
   };
 
   // Status emoji badge floating beside his ear during actions
   const getActionEmojiBadge = () => {
-    switch (currentAction) {
-      case 'wave':
-        return '👋';
-      case 'yawn':
-        return '🥱';
-      case 'stretch':
-        return '🧘';
-      case 'exercise':
-        return '🏃';
-      case 'hydrate':
-        return '💧';
-      default:
-        return null;
-    }
+    if (currentAction === 'idle') return null;
+    return (BUCKY_STATE_META as Record<string, { emoji: string }>)[currentAction]?.emoji || null;
   };
 
   if (!coords) return null;
@@ -585,12 +542,11 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
               )}
 
               {/* Solito suelto: Clean Full-Body Cutout of the Cute Lovable Mascot without any box */}
-              <img
-                src={beaverMascotImg}
-                alt="Bucky el Castor de Orbit"
-                referrerPolicy="no-referrer"
-                draggable={false}
-                className="w-28 sm:w-32 h-36 sm:h-44 object-contain filter drop-shadow-[0_12px_22px_rgba(20,11,36,0.35)] select-none pointer-events-none"
+              <BuckyMascot
+                state={currentAction}
+                size="md"
+                interactive={false}
+                soundEnabled={soundEnabled}
               />
             </div>
 
@@ -742,57 +698,49 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#d4ff4a] flex items-center gap-1">
                     <Sparkles className="w-3 h-3 text-[#d4ff4a]" />
-                    Rutinas de Vida con Bucky
+                    Expresiones y Poses de Bucky (12 Estados)
                   </span>
-                  <span className="text-[9px] text-[#c9b7ff]">Haz clic para interactuar</span>
+                  <span className="text-[9px] text-[#c9b7ff] font-mono">
+                    {(BUCKY_STATE_META as Record<string, { label: string }>)[currentAction]?.label || currentAction}
+                  </span>
                 </div>
 
-                {/* Living action trigger buttons */}
-                <div className="grid grid-cols-5 gap-1.5">
-                  <button
-                    onClick={() => triggerLivingAction('wave')}
-                    className="p-2 rounded-xl bg-white/5 hover:bg-[#8a4dff]/40 border border-white/10 hover:border-[#8a4dff] transition-all flex flex-col items-center gap-1 cursor-pointer text-center"
-                    title="Saludar a Bucky"
-                  >
-                    <span className="text-sm">👋</span>
-                    <span className="text-[9px] font-bold text-white/80">Hola</span>
-                  </button>
-
-                  <button
-                    onClick={() => triggerLivingAction('yawn')}
-                    className="p-2 rounded-xl bg-white/5 hover:bg-[#8a4dff]/40 border border-white/10 hover:border-[#8a4dff] transition-all flex flex-col items-center gap-1 cursor-pointer text-center"
-                    title="Bostezar y despabilar"
-                  >
-                    <span className="text-sm">🥱</span>
-                    <span className="text-[9px] font-bold text-white/80">Bostezo</span>
-                  </button>
-
-                  <button
-                    onClick={() => triggerLivingAction('stretch')}
-                    className="p-2 rounded-xl bg-white/5 hover:bg-[#8a4dff]/40 border border-white/10 hover:border-[#8a4dff] transition-all flex flex-col items-center gap-1 cursor-pointer text-center"
-                    title="Estirar la espalda"
-                  >
-                    <span className="text-sm">🧘</span>
-                    <span className="text-[9px] font-bold text-white/80">Estirón</span>
-                  </button>
-
-                  <button
-                    onClick={() => triggerLivingAction('exercise')}
-                    className="p-2 rounded-xl bg-white/5 hover:bg-[#8a4dff]/40 border border-white/10 hover:border-[#8a4dff] transition-all flex flex-col items-center gap-1 cursor-pointer text-center"
-                    title="Ejercicio rápido"
-                  >
-                    <span className="text-sm">🏃</span>
-                    <span className="text-[9px] font-bold text-white/80">Moverse</span>
-                  </button>
-
-                  <button
-                    onClick={() => triggerLivingAction('hydrate')}
-                    className="p-2 rounded-xl bg-white/5 hover:bg-[#8a4dff]/40 border border-white/10 hover:border-[#8a4dff] transition-all flex flex-col items-center gap-1 cursor-pointer text-center"
-                    title="Tomar agua"
-                  >
-                    <span className="text-sm">💧</span>
-                    <span className="text-[9px] font-bold text-white/80">Agua</span>
-                  </button>
+                {/* 12 Living action trigger buttons */}
+                <div className="grid grid-cols-4 gap-1.5">
+                  {([
+                    'wave',
+                    'clap',
+                    'celebrate',
+                    'letsGo',
+                    'point',
+                    'stretch',
+                    'yawn',
+                    'tired',
+                    'warning',
+                    'sad',
+                    'sleep',
+                    'idle'
+                  ] as BuckyAction[]).map((act) => {
+                    const info = (BUCKY_STATE_META as Record<string, { label: string; description: string; emoji: string }>)[act];
+                    const isSelected = currentAction === act;
+                    return (
+                      <button
+                        key={act}
+                        onClick={() => triggerLivingAction(act)}
+                        className={`p-1.5 rounded-xl border transition-all flex flex-col items-center gap-0.5 cursor-pointer text-center ${
+                          isSelected
+                            ? 'bg-[#8a4dff] text-white border-[#d4ff4a] shadow-md scale-103'
+                            : 'bg-white/5 hover:bg-[#8a4dff]/30 text-white/90 border-white/10 hover:border-[#8a4dff]'
+                        }`}
+                        title={info.description}
+                      >
+                        <span className="text-base">{info.emoji}</span>
+                        <span className="text-[9px] font-bold truncate max-w-full">
+                          {info.label.split(' ')[0]}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
 
                 {/* Interactive Active Break Banner */}

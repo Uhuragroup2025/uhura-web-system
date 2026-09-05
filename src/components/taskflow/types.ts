@@ -1,3 +1,17 @@
+export type BuckyMascotState =
+  | 'idle'       // respira, parpadea, mueve ligeramente la cola
+  | 'wave'       // saluda con una mano
+  | 'clap'       // aplaude 3 veces
+  | 'celebrate'  // pequeño salto + brazos arriba
+  | 'letsGo'     // puño arriba / gesto "¡Vamos!"
+  | 'stretch'    // se estira hacia un lado y luego al otro
+  | 'yawn'       // bostezo + ojos cerrados
+  | 'tired'      // hombros caídos, parpadeo lento
+  | 'warning'    // expresión preocupada + mira hacia el indicador
+  | 'sad'        // baja cabeza suavemente
+  | 'point'      // señala un CTA/tarea
+  | 'sleep';     // se duerme lentamente
+
 export type OrbitView =
   | 'mi-dia'
   | 'dashboard'
