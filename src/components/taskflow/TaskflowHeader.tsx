@@ -240,108 +240,58 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
 
       {/* Right Controls: Daily Progress Capsule (Opción A), Active Timer Badge, Notifications, User */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-        {/* OPCIÓN A: Barra / Cápsula de Progreso del Día (Persistente para todos) */}
+        {/* Cápsula de Actividad del Día (Enfoque saludable y balance de Orbit) */}
         <div ref={dailyProgressRef} className="relative shrink-0">
           <button
             onClick={() => setDailyProgressOpen(!dailyProgressOpen)}
             className="flex items-center gap-2 sm:gap-2.5 px-2.5 sm:px-3 py-1.5 rounded-2xl bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] hover:border-[#cbd5e1] shadow-2xs transition-all cursor-pointer text-left group shrink-0"
-            title="Ver tu progreso del día (Jornada 8h)"
+            title="Ver tiempo ejecutado hoy"
           >
             <div className="flex items-center gap-1.5 shrink-0">
               <span
-                className={`w-2 h-2 rounded-full shrink-0 ${
-                  dailyPercent >= 90
-                    ? 'bg-[#10b981] animate-pulse'
-                    : dailyPercent >= 60
-                    ? 'bg-[#f59e0b]'
-                    : 'bg-[#ef4444]'
-                }`}
+                className="w-2 h-2 rounded-full shrink-0 bg-[#501f92]"
               />
               <div className="hidden sm:block">
                 <p className="text-[10px] font-bold text-[#64748b] leading-none uppercase tracking-wider">
                   Hoy
                 </p>
                 <p className="text-xs font-mono font-bold text-[#0f172a] leading-tight whitespace-nowrap">
-                  {loggedHoursToday.toFixed(1)}h<span className="text-[#94a3b8] font-normal"> / {targetDayHours.toFixed(1)}h</span>
+                  {loggedHoursToday.toFixed(1)}h <span className="text-[#94a3b8] font-normal text-[10px]">registradas</span>
                 </p>
               </div>
             </div>
 
-            {/* Mini Progress Bar with Semaphoring (>90% Verde, 60-89% Naranja, <60% Rojo) */}
-            <div className="w-10 sm:w-14 h-2 bg-[#e2e8f0] rounded-full overflow-hidden shrink-0">
-              <div
-                style={{ width: `${Math.min(dailyPercent, 100)}%` }}
-                className={`h-full rounded-full transition-all duration-300 ${
-                  dailyPercent >= 90
-                    ? 'bg-[#10b981]'
-                    : dailyPercent >= 60
-                    ? 'bg-[#f59e0b]'
-                    : 'bg-[#ef4444]'
-                }`}
-              />
-            </div>
-
-            <span
-              className={`text-[10px] font-bold font-mono px-1.5 py-0.5 rounded-md border shrink-0 ${
-                dailyPercent >= 90
-                  ? 'bg-[#ecfdf5] text-[#059669] border-[#a7f3d0]'
-                  : dailyPercent >= 60
-                  ? 'bg-[#fffbeb] text-[#d97706] border-[#fde68a]'
-                  : 'bg-[#fef2f2] text-[#dc2626] border-[#fecaca]'
-              }`}
-            >
-              {dailyPercent}%
+            <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-md bg-[#f2ecfb] text-[#501f92] border border-[#e9d5ff] shrink-0">
+              Activo
             </span>
           </button>
 
-          {/* Daily Progress Quick Popover */}
+          {/* Daily Activity Popover */}
           {dailyProgressOpen && (
             <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-[#e2e8f0] z-50 p-4 animate-in fade-in zoom-in-95 space-y-3">
               <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-2.5">
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4 text-[#501f92]" />
-                  <h4 className="text-xs font-bold text-[#0f172a]">Progreso Diario (Hoy)</h4>
+                  <h4 className="text-xs font-bold text-[#0f172a]">Tiempo Registrado (Hoy)</h4>
                 </div>
-                <span
-                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                    dailyPercent >= 90
-                      ? 'bg-[#ecfdf5] text-[#059669]'
-                      : dailyPercent >= 60
-                      ? 'bg-[#fffbeb] text-[#d97706]'
-                      : 'bg-[#fef2f2] text-[#dc2626]'
-                  }`}
-                >
-                  {dailyPercent}%
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#ecfdf5] text-[#059669]">
+                  Lunes - Viernes
                 </span>
               </div>
 
               <div className="space-y-1.5 text-xs text-[#64748b]">
                 <div className="flex justify-between">
-                  <span>Horas Registradas:</span>
+                  <span>Horas Invertidas Hoy:</span>
                   <strong className="text-[#0f172a] font-mono">{loggedHoursToday.toFixed(1)}h</strong>
                 </div>
                 <div className="flex justify-between">
-                  <span>Meta de la Jornada:</span>
-                  <span className="text-[#0f172a] font-mono">{targetDayHours.toFixed(1)}h</span>
-                </div>
-                <div className="flex justify-between pt-1 border-t border-[#f1f5f9] text-[11px]">
-                  <span>Restante para hoy:</span>
-                  <strong className="text-[#501f92] font-mono">{remainingHours.toFixed(1)}h</strong>
+                  <span>Criterio Orbit:</span>
+                  <span className="text-[#64748b] text-[11px]">Enfoque en avance real</span>
                 </div>
               </div>
 
-              {/* Progress bar with Semaphoring */}
-              <div className="w-full h-2.5 bg-[#e2e8f0] rounded-full overflow-hidden">
-                <div
-                  style={{ width: `${Math.min(dailyPercent, 100)}%` }}
-                  className={`h-full rounded-full transition-all ${
-                    dailyPercent >= 90
-                      ? 'bg-[#10b981]'
-                      : dailyPercent >= 60
-                      ? 'bg-[#f59e0b]'
-                      : 'bg-[#ef4444]'
-                  }`}
-                />
+              <div className="p-2.5 rounded-xl bg-[#f8fafc] border border-[#f1f5f9] text-[11px] text-[#64748b] leading-relaxed">
+                Orbit registra el tiempo real ejecutado sobre tareas sin imponer cuotas de llenado artificial.
               </div>
 
               {onNavigateToDashboard && (
@@ -352,7 +302,7 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
                   }}
                   className="w-full py-2 px-3 rounded-xl bg-[#f8fafc] hover:bg-[#501f92] text-[#501f92] hover:text-white border border-[#e2e8f0] hover:border-[#501f92] text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                 >
-                  <span>Ver Ritmo (Día · Semana · Mes)</span>
+                  <span>Ver Ritmo y Capacidad</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               )}

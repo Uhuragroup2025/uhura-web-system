@@ -2062,54 +2062,126 @@ export const initialActivities: ActivityItem[] = [
   }
 ];
 
-export const orbitClientsData: ClientProfile[] = [
-  {
-    id: 'cli-bambu',
-    name: 'BAMBÚ BPO',
-    nit: '999999999',
-    type: 'Proyecto único',
-    healthStatus: 'Saludable',
-    portalActive: false,
-    projectsCount: 1,
-    activeProjectsCount: 1,
-    closedProjectsCount: 0,
-    averageMarginPercent: null,
-    billedCOP: '$0',
-    billedInvoicesCount: 0,
-    receivableCOP: '$0',
-    receivableStatus: 'al día',
-    commercialInfo: {
-      contactName: 'Mariana Zapata',
-      contactRole: 'Coordinadora Comercial',
-      contactEmail: 'mariana.zapata@bambubpo.com',
-      contactPhone: '+57 (301) 489-2210',
-      clientSince: '15 de Julio de 2026',
-      brands: ['BAMBÚ BPO']
+export const UHURA_INTERNAL_CLIENT: ClientProfile = {
+  id: 'cli-uhura-internal',
+  name: 'UHURA Group',
+  isInternal: true,
+  status: 'active',
+  type: 'Interno / No facturable',
+  healthStatus: 'Saludable',
+  portalActive: false,
+  projectsCount: 4,
+  activeProjectsCount: 4,
+  closedProjectsCount: 0,
+  averageMarginPercent: null,
+  billedCOP: '$0',
+  billedInvoicesCount: 0,
+  receivableCOP: '$0',
+  receivableStatus: 'al día',
+  accountManagerId: 'u-19',
+  accountManagerName: 'Laura Salazar',
+  taxEntities: [
+    {
+      id: 'tax-uhu-1',
+      nit: '901.882.341-0',
+      businessName: 'Uhura Group S.A.S.',
+      city: 'Medellín',
+      isPrimary: true,
+      alegraContactId: 'alg-uhu-001',
+      notes: 'Entidad corporativa institucional para proyectos internos no facturables'
+    }
+  ],
+  contacts: [
+    {
+      id: 'con-uhu-1',
+      name: 'Ana María Giraldo',
+      roleTitle: 'CEO & Founder',
+      email: 'ana@uhuragroup.com',
+      phone: '+57 (310) 887-2341',
+      contactType: 'directivo',
+      isPrimary: true
     },
-    behavior: {
-      rentabilidad: 35,
-      cartera: 100,
-      cumplimiento: 80,
-      relacion: 40
-    },
-    projectsHistory: [
-      {
-        id: 'prj-bam-hist-1',
-        name: 'Admin de pauta BAMBÚ BPO',
-        tag: 'FIN',
-        brand: 'BAMBÚ BPO',
-        status: 'Activo',
-        quotedValueCOP: '$950.000',
-        realMarginPercent: null,
-        trafficLight: 'rojo',
-        progressPercent: 78
-      }
-    ]
+    {
+      id: 'con-uhu-2',
+      name: 'Laura Salazar',
+      roleTitle: 'Líder Operaciones & Admin',
+      email: 'admin@uhuragroup.com',
+      phone: '+57 (300) 412-8890',
+      contactType: 'operativo',
+      isPrimary: false
+    }
+  ],
+  commercialInfo: {
+    contactName: 'Ana María Giraldo',
+    contactRole: 'CEO & Founder',
+    contactEmail: 'ana@uhuragroup.com',
+    contactPhone: '+57 (310) 887-2341',
+    clientSince: '1 de Enero de 2024',
+    brands: ['UHURA Group', 'Orbit', 'Uhura Labs']
   },
+  behavior: {
+    rentabilidad: 100,
+    cartera: 100,
+    cumplimiento: 100,
+    relacion: 100
+  },
+  projectsHistory: [
+    {
+      id: 'prj-uhu-1',
+      name: 'Administración & Comités de Dirección',
+      tag: 'FIN',
+      brand: 'UHURA Group',
+      status: 'Activo',
+      quotedValueCOP: '$0',
+      realMarginPercent: null,
+      trafficLight: 'verde',
+      progressPercent: 90
+    },
+    {
+      id: 'prj-uhu-2',
+      name: 'Innovación, Producto & Orbit Labs',
+      tag: 'DEV',
+      brand: 'Orbit',
+      status: 'Activo',
+      quotedValueCOP: '$0',
+      realMarginPercent: null,
+      trafficLight: 'verde',
+      progressPercent: 75
+    },
+    {
+      id: 'prj-uhu-3',
+      name: 'Comercial & Prospección New Business',
+      tag: 'FEE',
+      brand: 'UHURA Group',
+      status: 'Activo',
+      quotedValueCOP: '$0',
+      realMarginPercent: null,
+      trafficLight: 'verde',
+      progressPercent: 60
+    },
+    {
+      id: 'prj-uhu-4',
+      name: 'Capacitaciones, Talento & Cultura',
+      tag: 'FEE',
+      brand: 'UHURA Group',
+      status: 'Activo',
+      quotedValueCOP: '$0',
+      realMarginPercent: null,
+      trafficLight: 'verde',
+      progressPercent: 85
+    }
+  ],
+  notes: 'Cliente institucional protegido de Uhura Group. Contiene todos los proyectos internos no facturables: comités, weeklys, labs, capacitaciones y prospección.'
+};
+
+export const orbitClientsData: ClientProfile[] = [
+  UHURA_INTERNAL_CLIENT,
   {
     id: 'cli-danone',
     name: 'Danone S.A.',
     nit: '860.003.456-2',
+    isInternal: false,
+    status: 'active',
     type: 'Fee mensual',
     healthStatus: 'Saludable',
     portalActive: true,
@@ -2121,6 +2193,57 @@ export const orbitClientsData: ClientProfile[] = [
     billedInvoicesCount: 12,
     receivableCOP: '$28.500.000',
     receivableStatus: 'al día',
+    accountManagerId: 'u-17',
+    accountManagerName: 'Catalina Tejada',
+    taxEntities: [
+      {
+        id: 'tax-dan-1',
+        nit: '860.003.456-2',
+        businessName: 'Bonafont Colombia S.A.S.',
+        city: 'Bogotá',
+        isPrimary: true,
+        alegraContactId: 'alg-dan-001',
+        notes: 'Facturación principal para parrilla digital y banners mensuales'
+      },
+      {
+        id: 'tax-dan-2',
+        nit: '830.551.229-4',
+        businessName: 'Envasadoras de Aguas Danone de Colombia S.A.',
+        city: 'Cali',
+        isPrimary: false,
+        alegraContactId: 'alg-dan-002',
+        notes: 'Razón social alternativa para campañas especiales de temporada'
+      }
+    ],
+    contacts: [
+      {
+        id: 'con-dan-1',
+        name: 'Carlos Mendoza',
+        roleTitle: 'Brand & Growth Director',
+        email: 'carlos.mendoza@danone.com',
+        phone: '+57 (310) 902-8314',
+        contactType: 'directivo',
+        isPrimary: true
+      },
+      {
+        id: 'con-dan-2',
+        name: 'Marcela Arango',
+        roleTitle: 'Líder de Facturación & Proveedores',
+        email: 'marcela.arango@danone.com',
+        phone: '+57 (301) 455-8910',
+        contactType: 'facturacion',
+        isPrimary: false
+      },
+      {
+        id: 'con-dan-3',
+        name: 'Esteban Quintero',
+        roleTitle: 'Product Manager Aguas & Bebidas',
+        email: 'esteban.quintero@danone.com',
+        phone: '+57 (315) 234-9988',
+        contactType: 'operativo',
+        isPrimary: false
+      }
+    ],
     commercialInfo: {
       contactName: 'Carlos Mendoza',
       contactRole: 'Brand & Growth Director',
@@ -2161,9 +2284,157 @@ export const orbitClientsData: ClientProfile[] = [
     ]
   },
   {
+    id: 'cli-yamaha',
+    name: 'INCOLMOTOS YAMAHA S.A.',
+    nit: '890.900.943-1',
+    isInternal: false,
+    status: 'active',
+    type: 'Fee mensual',
+    healthStatus: 'Saludable',
+    portalActive: true,
+    projectsCount: 2,
+    activeProjectsCount: 2,
+    closedProjectsCount: 5,
+    averageMarginPercent: 41.5,
+    billedCOP: '$380.000.000',
+    billedInvoicesCount: 9,
+    receivableCOP: '$18.000.000',
+    receivableStatus: 'al día',
+    accountManagerId: 'u-18',
+    accountManagerName: 'Luisa Urazán',
+    taxEntities: [
+      {
+        id: 'tax-yam-1',
+        nit: '890.900.943-1',
+        businessName: 'Incolmotos Yamaha S.A.',
+        city: 'Girardota / Medellín',
+        isPrimary: true,
+        alegraContactId: 'alg-yam-001',
+        notes: 'NIT corporativo principal para ensamble y comercialización de motocicletas y repuestos'
+      }
+    ],
+    contacts: [
+      {
+        id: 'con-yam-1',
+        name: 'Mauricio Saldarriaga',
+        roleTitle: 'Director Nacional de Mercadeo',
+        email: 'msaldarriaga@incolmotos-yamaha.com.co',
+        phone: '+57 (311) 789-4450',
+        contactType: 'directivo',
+        isPrimary: true
+      },
+      {
+        id: 'con-yam-2',
+        name: 'Paula Restrepo',
+        roleTitle: 'Coordinadora de Campañas y Eventos',
+        email: 'prestrepo@incolmotos-yamaha.com.co',
+        phone: '+57 (314) 620-1122',
+        contactType: 'operativo',
+        isPrimary: false
+      }
+    ],
+    commercialInfo: {
+      contactName: 'Mauricio Saldarriaga',
+      contactRole: 'Director Nacional de Mercadeo',
+      contactEmail: 'msaldarriaga@incolmotos-yamaha.com.co',
+      contactPhone: '+57 (311) 789-4450',
+      clientSince: '15 de Mayo de 2024',
+      brands: ['Yamaha', 'Yamalube', 'Motos Clásicas']
+    },
+    behavior: {
+      rentabilidad: 85,
+      cartera: 98,
+      cumplimiento: 90,
+      relacion: 95
+    },
+    projectsHistory: [
+      {
+        id: 'prj-yam-hist-1',
+        name: 'Campaña Navidad Yamaha',
+        tag: 'DEV',
+        brand: 'Yamaha',
+        status: 'Activo',
+        quotedValueCOP: '$38.000.000',
+        realMarginPercent: 41.5,
+        trafficLight: 'verde',
+        progressPercent: 45
+      }
+    ]
+  },
+  {
+    id: 'cli-bambu',
+    name: 'BAMBÚ BPO',
+    nit: '999999999',
+    isInternal: false,
+    status: 'active',
+    type: 'Proyecto único',
+    healthStatus: 'Saludable',
+    portalActive: false,
+    projectsCount: 1,
+    activeProjectsCount: 1,
+    closedProjectsCount: 0,
+    averageMarginPercent: null,
+    billedCOP: '$0',
+    billedInvoicesCount: 0,
+    receivableCOP: '$0',
+    receivableStatus: 'al día',
+    accountManagerId: 'u-17',
+    accountManagerName: 'Catalina Tejada',
+    taxEntities: [
+      {
+        id: 'tax-bam-1',
+        nit: '900.551.482-1',
+        businessName: 'Bambú Business Process Outsourcing S.A.S.',
+        city: 'Medellín',
+        isPrimary: true,
+        alegraContactId: 'alg-bam-001'
+      }
+    ],
+    contacts: [
+      {
+        id: 'con-bam-1',
+        name: 'Mariana Zapata',
+        roleTitle: 'Coordinadora Comercial',
+        email: 'mariana.zapata@bambubpo.com',
+        phone: '+57 (301) 489-2210',
+        contactType: 'comercial',
+        isPrimary: true
+      }
+    ],
+    commercialInfo: {
+      contactName: 'Mariana Zapata',
+      contactRole: 'Coordinadora Comercial',
+      contactEmail: 'mariana.zapata@bambubpo.com',
+      contactPhone: '+57 (301) 489-2210',
+      clientSince: '15 de Julio de 2026',
+      brands: ['BAMBÚ BPO']
+    },
+    behavior: {
+      rentabilidad: 35,
+      cartera: 100,
+      cumplimiento: 80,
+      relacion: 40
+    },
+    projectsHistory: [
+      {
+        id: 'prj-bam-hist-1',
+        name: 'Admin de pauta BAMBÚ BPO',
+        tag: 'FIN',
+        brand: 'BAMBÚ BPO',
+        status: 'Activo',
+        quotedValueCOP: '$950.000',
+        realMarginPercent: null,
+        trafficLight: 'rojo',
+        progressPercent: 78
+      }
+    ]
+  },
+  {
     id: 'cli-prisma',
     name: 'Prisma Kiddos',
     nit: '900.876.543-9',
+    isInternal: false,
+    status: 'active',
     type: 'Mixto',
     healthStatus: 'Saludable',
     portalActive: true,
@@ -2175,6 +2446,29 @@ export const orbitClientsData: ClientProfile[] = [
     billedInvoicesCount: 6,
     receivableCOP: '$0',
     receivableStatus: 'al día',
+    accountManagerId: 'u-18',
+    accountManagerName: 'Luisa Urazán',
+    taxEntities: [
+      {
+        id: 'tax-pris-1',
+        nit: '900.876.543-9',
+        businessName: 'Prisma Kiddos Education S.A.S.',
+        city: 'Bogotá',
+        isPrimary: true,
+        alegraContactId: 'alg-pris-001'
+      }
+    ],
+    contacts: [
+      {
+        id: 'con-pris-1',
+        name: 'Valeria Restrepo',
+        roleTitle: 'Directora Digital & E-commerce',
+        email: 'valeria@prismakiddos.com',
+        phone: '+57 (315) 771-4402',
+        contactType: 'comercial',
+        isPrimary: true
+      }
+    ],
     commercialInfo: {
       contactName: 'Valeria Restrepo',
       contactRole: 'Directora Digital & E-commerce',
@@ -2215,63 +2509,11 @@ export const orbitClientsData: ClientProfile[] = [
     ]
   },
   {
-    id: 'cli-yamaha',
-    name: 'Incolmotos Yamaha S.A.',
-    nit: '890.900.123-4',
-    type: 'Proyecto único',
-    healthStatus: 'En Riesgo',
-    portalActive: true,
-    projectsCount: 2,
-    activeProjectsCount: 2,
-    closedProjectsCount: 4,
-    averageMarginPercent: 28.1,
-    billedCOP: '$320.000.000',
-    billedInvoicesCount: 8,
-    receivableCOP: '$54.000.000',
-    receivableStatus: 'en mora',
-    commercialInfo: {
-      contactName: 'Juan Camilo Vélez',
-      contactRole: 'Brand Lead Marketing',
-      contactEmail: 'jc.velez@incolmotos-yamaha.com.co',
-      contactPhone: '+57 (312) 660-1928',
-      clientSince: '05 de Enero de 2024',
-      brands: ['Yamaha', 'Yamalube']
-    },
-    behavior: {
-      rentabilidad: 62,
-      cartera: 45,
-      cumplimiento: 72,
-      relacion: 70
-    },
-    projectsHistory: [
-      {
-        id: 'prj-yam-hist-1',
-        name: 'Yamaha R15 · Campaña Social & Web',
-        tag: 'DEV',
-        brand: 'Yamaha',
-        status: 'Activo',
-        quotedValueCOP: '$38.000.000',
-        realMarginPercent: 26.5,
-        trafficLight: 'amarillo',
-        progressPercent: 88
-      },
-      {
-        id: 'prj-yam-hist-2',
-        name: 'Yamaha MT-03 · Lanzamiento',
-        tag: 'FIN',
-        brand: 'Yamaha',
-        status: 'Activo',
-        quotedValueCOP: '$28.000.000',
-        realMarginPercent: 29.8,
-        trafficLight: 'verde',
-        progressPercent: 45
-      }
-    ]
-  },
-  {
     id: 'cli-bancolombia',
     name: 'Bancolombia',
     nit: '890.903.938-8',
+    isInternal: false,
+    status: 'active',
     type: 'Proyecto único',
     healthStatus: 'Saludable',
     portalActive: true,
@@ -2283,6 +2525,29 @@ export const orbitClientsData: ClientProfile[] = [
     billedInvoicesCount: 4,
     receivableCOP: '$0',
     receivableStatus: 'al día',
+    accountManagerId: 'u-17',
+    accountManagerName: 'Catalina Tejada',
+    taxEntities: [
+      {
+        id: 'tax-bco-1',
+        nit: '890.903.938-8',
+        businessName: 'Bancolombia S.A.',
+        city: 'Medellín',
+        isPrimary: true,
+        alegraContactId: 'alg-bco-001'
+      }
+    ],
+    contacts: [
+      {
+        id: 'con-bco-1',
+        name: 'Andrea Henao',
+        roleTitle: 'Líder Canales Digitales',
+        email: 'ahenao@bancolombia.com.co',
+        phone: '+57 (300) 554-1189',
+        contactType: 'directivo',
+        isPrimary: true
+      }
+    ],
     commercialInfo: {
       contactName: 'Andrea Henao',
       contactRole: 'Líder Canales Digitales',
@@ -2315,6 +2580,8 @@ export const orbitClientsData: ClientProfile[] = [
     id: 'cli-exito',
     name: 'Grupo Éxito',
     nit: '890.900.608-9',
+    isInternal: false,
+    status: 'active',
     type: 'Fee mensual',
     healthStatus: 'Saludable',
     portalActive: true,
@@ -2326,6 +2593,29 @@ export const orbitClientsData: ClientProfile[] = [
     billedInvoicesCount: 7,
     receivableCOP: '$12.000.000',
     receivableStatus: 'al día',
+    accountManagerId: 'u-17',
+    accountManagerName: 'Catalina Tejada',
+    taxEntities: [
+      {
+        id: 'tax-ext-1',
+        nit: '890.900.608-9',
+        businessName: 'Almacenes Éxito S.A.',
+        city: 'Envigado',
+        isPrimary: true,
+        alegraContactId: 'alg-ext-001'
+      }
+    ],
+    contacts: [
+      {
+        id: 'con-ext-1',
+        name: 'Felipe Gómez',
+        roleTitle: 'Director E-commerce',
+        email: 'fgomez@grupo-exito.com',
+        phone: '+57 (318) 402-9912',
+        contactType: 'directivo',
+        isPrimary: true
+      }
+    ],
     commercialInfo: {
       contactName: 'Felipe Gómez',
       contactRole: 'Director E-commerce',
@@ -2369,17 +2659,42 @@ export const orbitClientsData: ClientProfile[] = [
     id: 'cli-rockandride',
     name: 'Rock and Ride S.A.S.',
     nit: '901.442.890-1',
+    isInternal: false,
+    status: 'paused',
     type: 'Proyecto único',
     healthStatus: 'Saludable',
     portalActive: true,
     projectsCount: 1,
-    activeProjectsCount: 1,
-    closedProjectsCount: 0,
+    activeProjectsCount: 0,
+    closedProjectsCount: 1,
     averageMarginPercent: 44.0,
     billedCOP: '$48.000.000',
     billedInvoicesCount: 2,
     receivableCOP: '$0',
     receivableStatus: 'al día',
+    accountManagerId: 'u-18',
+    accountManagerName: 'Luisa Urazán',
+    taxEntities: [
+      {
+        id: 'tax-rnr-1',
+        nit: '901.442.890-1',
+        businessName: 'Rock and Ride S.A.S.',
+        city: 'Medellín',
+        isPrimary: true,
+        alegraContactId: 'alg-rnr-001'
+      }
+    ],
+    contacts: [
+      {
+        id: 'con-rnr-1',
+        name: 'Santiago Giraldo',
+        roleTitle: 'Gerente General',
+        email: 'santiago@rockandride.co',
+        phone: '+57 (311) 555-9012',
+        contactType: 'directivo',
+        isPrimary: true
+      }
+    ],
     commercialInfo: {
       contactName: 'Santiago Giraldo',
       contactRole: 'Gerente General',

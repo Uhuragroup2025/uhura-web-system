@@ -139,6 +139,21 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                       <span className="text-[10px] text-[#c9b7ff]/60 block truncate">Margen y fees</span>
                     </div>
                   </button>
+
+                  <button
+                    onClick={() => handleNavClick('la-colonia')}
+                    className={`p-3 rounded-2xl border text-left flex items-center gap-2.5 transition-all cursor-pointer ${
+                      currentView === 'la-colonia'
+                        ? 'bg-[#241344] border-[#8a4dff] text-white'
+                        : 'bg-[#140b24] border-[#261845] text-[#c9b7ff]'
+                    }`}
+                  >
+                    <span className="text-base shrink-0">🪵</span>
+                    <div className="truncate">
+                      <span className="block text-xs font-bold truncate">La Colonia</span>
+                      <span className="text-[10px] text-[#d4ff4a] block truncate">Hábitat de Bucky</span>
+                    </div>
+                  </button>
                 </div>
               </div>
 

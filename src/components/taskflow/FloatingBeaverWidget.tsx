@@ -35,9 +35,12 @@ import {
   Smile,
   AlertTriangle,
   Home,
-  Shirt
+  Shirt,
+  AlertOctagon
 } from 'lucide-react';
-import { OrbitView } from './types';
+import { OrbitView, TaskItem, ActiveTimerState } from './types';
+import { resolveBuckyState } from './buckyEngine';
+import { BuckyLabModal } from './BuckyLabModal';
 import { UhuraLogo } from '../ui/UhuraLogo';
 
 interface FloatingBeaverWidgetProps {
@@ -46,6 +49,8 @@ interface FloatingBeaverWidgetProps {
   onQuickLogHours: (hours: number, label: string, category?: 'client' | 'internal', projectName?: string) => void;
   onNavigateToView: (view: OrbitView) => void;
   streakDays?: number;
+  tasks?: TaskItem[];
+  activeTimer?: ActiveTimerState | null;
 }
 
 export type BuckyAction =
@@ -64,10 +69,14 @@ export type BuckyAction =
   | 'exercise'
   | 'hydrate'
   | 'rest'
-  | 'focus';
+  | 'focus'
+  | 'clap'
+  | 'sleep'
+  | 'sad'
+  | 'tired';
 
 // Sound synthesizer using Web Audio API (Zero dependencies, gentle ambient sounds)
-const playChime = (type: 'feed' | 'tickle' | 'pop' | 'celebrate' | 'wave' | 'yawn' | 'stretch' | 'exercise' | 'hydrate' | 'step' | 'alert' | 'jump' | 'rest' | 'focus' | 'stand' | 'happy') => {
+const playChime = (type: 'feed' | 'tickle' | 'pop' | 'celebrate' | 'wave' | 'yawn' | 'stretch' | 'exercise' | 'hydrate' | 'step' | 'alert' | 'jump' | 'rest' | 'focus' | 'stand' | 'happy' | 'clap' | 'sleep' | 'sad' | 'tired') => {
   try {
     const AudioContext = window.AudioContext || (window as unknown as { webkitAudioContext: typeof window.AudioContext }).webkitAudioContext;
     if (!AudioContext) return;
@@ -246,6 +255,62 @@ const playChime = (type: 'feed' | 'tickle' | 'pop' | 'celebrate' | 'wave' | 'yaw
       gain.connect(ctx.destination);
       osc.start();
       osc.stop(ctx.currentTime + 0.32);
+    } else if (type === 'clap') {
+      // 3 rhythmic cheerful applause pops
+      [0, 0.1, 0.2].forEach((offset) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(600, ctx.currentTime + offset);
+        osc.frequency.exponentialRampToValueAtTime(180, ctx.currentTime + offset + 0.08);
+        gain.gain.setValueAtTime(0.09, ctx.currentTime + offset);
+        gain.gain.exponentialRampToValueAtTime(0.005, ctx.currentTime + offset + 0.09);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + offset);
+        osc.stop(ctx.currentTime + offset + 0.1);
+      });
+    } else if (type === 'sleep') {
+      // Gentle lullaby chime
+      [523.25, 659.25, 587.33, 440].forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.12);
+        gain.gain.setValueAtTime(0.05, ctx.currentTime + i * 0.12);
+        gain.gain.exponentialRampToValueAtTime(0.005, ctx.currentTime + i * 0.12 + 0.35);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + i * 0.12);
+        osc.stop(ctx.currentTime + i * 0.12 + 0.38);
+      });
+    } else if (type === 'sad') {
+      // Empathetic descending sigh
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(360, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.45);
+      gain.gain.setValueAtTime(0.06, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.005, ctx.currentTime + 0.5);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.52);
+    } else if (type === 'tired') {
+      // Relaxed resting tone
+      [330, 261.63].forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.15);
+        gain.gain.setValueAtTime(0.05, ctx.currentTime + i * 0.15);
+        gain.gain.exponentialRampToValueAtTime(0.005, ctx.currentTime + i * 0.15 + 0.4);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + i * 0.15);
+        osc.stop(ctx.currentTime + i * 0.15 + 0.42);
+      });
     }
   } catch {
     // AudioContext blocked or silent environment
@@ -257,14 +322,15 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
   targetDayHours = 8.0,
   onQuickLogHours,
   onNavigateToView,
-  streakDays = 6
+  streakDays = 6,
+  tasks = [],
+  activeTimer = null
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const [speechBubbleText, setSpeechBubbleText] = useState<string | null>(
-    '¡Hola Pao! Soy Bucky. ¿Cómo va esa represa hoy?'
-  );
+  const [speechBubbleText, setSpeechBubbleText] = useState<string | null>(null);
+  const [isBuckyLabOpen, setIsBuckyLabOpen] = useState(false);
 
   // Position state (Draggable coordinates)
   const [coords, setCoords] = useState<{ x: number; y: number } | null>(null);
@@ -280,7 +346,7 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
   const [currentAction, setCurrentAction] = useState<BuckyAction>('idle');
   const actionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Locomotion & Free Movement states
+  // Locomotion & Free Movement states (preserved intact)
   const [isWalking, setIsWalking] = useState(false);
   const [walkDuration, setWalkDuration] = useState(2.0);
   const [facingDirection, setFacingDirection] = useState<'left' | 'right'>('right');
@@ -289,75 +355,53 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
 
   // Guided Active Break (Pausa Activa)
   const [activeBreakActive, setActiveBreakActive] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [activePoseTab, setActivePoseTab] = useState<'movement' | 'moods' | 'poses' | 'actions'>('moods');
-  const [useUhuraHoodie, setUseUhuraHoodie] = useState<boolean>(() => {
-    try {
-      const saved = localStorage.getItem('orbit_bucky_hoodie');
-      return saved !== null ? JSON.parse(saved) : true;
-    } catch {
-      return true;
-    }
-  });
-
-  const toggleUhuraHoodie = () => {
-    setUseUhuraHoodie((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem('orbit_bucky_hoodie', JSON.stringify(next));
-      } catch {}
-      return next;
-    });
-  };
-
-  const [selectedRenderPose, setSelectedRenderPose] = useState<'stand' | 'wave' | 'alert' | 'celebrate' | 'rest' | 'focus' | 'master'>('stand');
-
-  const getRenderPath = (pose: string) => {
-    switch (pose) {
-      case 'stand':
-      case 'happy': return '/bucky_hip_uhura_v3.png';
-      case 'wave': return '/bucky_waving_cutout.png';
-      case 'alert': return '/bucky_alert_cutout.png';
-      case 'celebrate': return '/bucky_celebrating_cutout.png';
-      case 'rest': return '/bucky_resting_cutout.png';
-      case 'focus': return '/bucky_focus_cutout.png';
-      case 'master': return '/orbit_mascot_cutout.png';
-      default: return '/bucky_hip_uhura_v3.png';
-    }
-  };
-
-  const handleCopyRender = async (poseOverride?: typeof selectedRenderPose) => {
-    try {
-      const path = getRenderPath(poseOverride || selectedRenderPose);
-      const response = await fetch(path);
-      const blob = await response.blob();
-      if (navigator.clipboard && window.ClipboardItem) {
-        await navigator.clipboard.write([
-          new ClipboardItem({ 'image/png': blob })
-        ]);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 3000);
-      } else {
-        handleDownloadRender(poseOverride);
-      }
-    } catch {
-      handleDownloadRender(poseOverride);
-    }
-  };
-
-  const handleDownloadRender = (poseOverride?: typeof selectedRenderPose) => {
-    const chosenPose = poseOverride || selectedRenderPose;
-    const link = document.createElement('a');
-    link.href = getRenderPath(chosenPose);
-    link.download = `bucky_${chosenPose}_cutout.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 3000);
-  };
   const [breakStep, setBreakStep] = useState<number>(1);
   const [breakTimer, setBreakTimer] = useState<number>(30);
+
+  // Cooldown and sound deduplication
+  const hasAlertedOvertimeRef = useRef(false);
+
+  // Resolved central Bucky state
+  const criticalOvertimeTasks = tasks.filter(
+    (t) => (t.consumedSeconds || 0) > (t.budgetedHours || 0) * 3600
+  );
+  const allTasksDone = tasks.length > 0 && tasks.every((t) => t.status === 'Done' || t.completed);
+
+  const buckyState = resolveBuckyState({
+    loggedHoursToday,
+    targetDayHours,
+    criticalOvertimeTasks,
+    activeTimer,
+    allTasksCompleted: allTasksDone,
+    hasTasks: tasks.length > 0,
+    recentTaskCompleted: currentAction === 'clap',
+    isBreakRecommended: activeBreakActive ? false : undefined
+  });
+
+  /**
+   * ⚠️ MECANISMOS TEMPORALES DE DESARROLLO / PROTOTIPADO:
+   * Los atajos 'Shift + Alt + B' y '?buckyLab=true' son exclusivamente provisionales.
+   * En producción, BuckyLabModal DEBE protegerse con autenticación y permisos reales
+   * de usuario/administrador (RBAC: e.g. user.role === 'admin' o permiso 'taskflow:bucky_lab').
+   * En el build final de producción, estos listeners públicos deben quedar desactivados.
+   */
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.shiftKey && e.altKey && (e.key === 'B' || e.key === 'b')) {
+        setIsBuckyLabOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('buckyLab') === 'true' || urlParams.get('dev') === 'true') {
+        setIsBuckyLabOpen(true);
+      }
+    } catch {}
+
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const percent = Math.min(100, Math.round((loggedHoursToday / targetDayHours) * 100));
 
@@ -594,15 +638,19 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
     return () => window.removeEventListener('orbit-mascot-reaction', handleMascotReaction);
   }, []);
 
-  // Initial cheerful greeting when component mounts
+  // Initial cheerful greeting when component mounts (with once-per-session cooldown)
   useEffect(() => {
-    const timer = setTimeout(() => {
-      triggerLivingAction('wave', '¡Hola Pao! 👋 Aquí Bucky. Cuidando que construyamos con calma y sin sobrecarga.');
-    }, 1800);
-    return () => clearTimeout(timer);
+    const hasGreeted = sessionStorage.getItem('orbit_bucky_greeted');
+    if (!hasGreeted) {
+      sessionStorage.setItem('orbit_bucky_greeted', 'true');
+      const timer = setTimeout(() => {
+        triggerLivingAction('wave', '¡Hola Pao! 👋 Aquí Bucky. Cuidando que construyamos con calma y sin sobrecarga.');
+      }, 1800);
+      return () => clearTimeout(timer);
+    }
   }, []);
 
-  // Autonomous Living Cycle (Cada 35s realiza una acción de vida si no está ocupado)
+  // Autonomous Living Cycle (Spaced out, no spammy actions)
   useEffect(() => {
     const interval = setInterval(() => {
       if (!isOpen && !isMinimized && !isDragging && !activeBreakActive && currentAction === 'idle') {
@@ -610,7 +658,7 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
         const randomAction = livingBehaviors[Math.floor(Math.random() * livingBehaviors.length)];
         triggerLivingAction(randomAction);
       }
-    }, 38000);
+    }, 45000);
 
     return () => clearInterval(interval);
   }, [isOpen, isMinimized, isDragging, activeBreakActive, currentAction]);
@@ -646,15 +694,17 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
     triggerLivingAction('exercise', 'Paso 1: Mueve los hombros en círculos hacia atrás 3 veces 🙆‍♀️');
   };
 
-  // Check balance and state: not gamifying 8h, but healthy system
+  // Check balance and state: deduplicated alert and celebrate
   useEffect(() => {
-    if (loggedHoursToday > 8.5) {
-      triggerLivingAction('alert', 'Hoy está pesado 👀 Cuidado con sobrecargarte; si una pieza requiere más recurso, avisa al equipo.');
-    } else if (loggedHoursToday >= targetDayHours && soundEnabled) {
-      playChime('celebrate');
-      triggerLivingAction('celebrate', 'Tu día está sincronizado. Estructura estable en la colonia ✨ Listo por hoy, cierra Orbit y ve a descansar.');
+    if (criticalOvertimeTasks.length > 0 || loggedHoursToday > 8.5) {
+      if (!hasAlertedOvertimeRef.current) {
+        hasAlertedOvertimeRef.current = true;
+        triggerLivingAction('alert', buckyState.speech);
+      }
+    } else {
+      hasAlertedOvertimeRef.current = false;
     }
-  }, [loggedHoursToday, targetDayHours, soundEnabled]);
+  }, [criticalOvertimeTasks.length, loggedHoursToday, buckyState.speech]);
 
   const handleTickle = () => {
     if (soundEnabled) playChime('tickle');
@@ -779,26 +829,38 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
   const getCurrentBeaverImage = () => {
     if (isDragging) return buckyCelebratingImg;
     if (isWalking || currentAction === 'walk') return buckyHoodieHappyImg;
-    switch (currentAction) {
-      case 'stand':
-      case 'happy':
-        return buckyHoodieHappyImg;
-      case 'wave':
-        return buckyWavingImg;
-      case 'celebrate':
-      case 'jump':
-      case 'motivate':
-        return buckyCelebratingImg;
-      case 'alert':
-        return buckyAlertImg;
-      case 'rest':
-        return buckyRestingImg;
-      case 'point':
-      case 'focus':
-        return buckyFocusImg;
-      default:
-        return useUhuraHoodie ? buckyHoodieHappyImg : beaverMascotImg;
+
+    // Transient lifelike reaction (active for the duration of the reaction)
+    if (currentAction !== 'idle') {
+      switch (currentAction) {
+        case 'stand':
+        case 'happy':
+          return buckyHoodieHappyImg;
+        case 'wave':
+          return buckyWavingImg;
+        case 'celebrate':
+        case 'jump':
+        case 'motivate':
+        case 'clap':
+          return buckyCelebratingImg;
+        case 'alert':
+        case 'sad':
+          return buckyAlertImg;
+        case 'rest':
+        case 'sleep':
+        case 'tired':
+          return buckyRestingImg;
+        case 'point':
+        case 'focus':
+          return buckyFocusImg;
+        default:
+          break;
+      }
     }
+
+    // After transient reaction (clap, celebrate, etc.), return strictly to the
+    // contextual state resolved by resolveBuckyState(context)
+    return buckyState.image;
   };
 
   // Animation class based on current lifelike action
@@ -806,27 +868,38 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
     if (isDragging) return 'scale-110';
     if (isWalking) return 'animate-beaver-walk';
     if (isWiggling) return 'animate-bounce';
-    switch (currentAction) {
-      case 'walk':
-        return 'animate-beaver-walk';
-      case 'wave':
-        return 'animate-beaver-wave';
-      case 'jump':
-      case 'celebrate':
-        return 'animate-beaver-jump';
-      case 'alert':
-        return 'animate-beaver-alert';
-      case 'point':
-        return 'animate-beaver-point';
-      case 'yawn':
-        return 'animate-beaver-yawn';
-      case 'stretch':
-        return 'animate-beaver-stretch';
-      case 'exercise':
-        return 'animate-beaver-exercise';
-      default:
-        return 'animate-float';
+
+    if (currentAction !== 'idle') {
+      switch (currentAction) {
+        case 'walk':
+          return 'animate-beaver-walk';
+        case 'wave':
+          return 'animate-beaver-wave';
+        case 'jump':
+        case 'celebrate':
+        case 'clap':
+          return 'animate-beaver-jump';
+        case 'alert':
+        case 'sad':
+          return 'animate-beaver-alert';
+        case 'point':
+          return 'animate-beaver-point';
+        case 'yawn':
+        case 'tired':
+        case 'sleep':
+          return 'animate-beaver-yawn';
+        case 'stretch':
+          return 'animate-beaver-stretch';
+        case 'exercise':
+          return 'animate-beaver-exercise';
+        default:
+          return 'animate-float';
+      }
     }
+
+    // Contextual animation when returning to idle
+    if (buckyState.pose === 'alert') return 'animate-beaver-alert';
+    return 'animate-float';
   };
 
   // Status emoji badge floating beside his ear during actions
@@ -840,16 +913,24 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
         return '✨';
       case 'celebrate':
         return '🎉';
+      case 'clap':
+        return '👏';
       case 'motivate':
         return '💪';
       case 'wave':
         return '👋';
       case 'alert':
         return '⚠️';
+      case 'sad':
+        return '🥺';
       case 'point':
         return '👉';
       case 'yawn':
         return '🥱';
+      case 'tired':
+        return '😮‍💨';
+      case 'sleep':
+        return '💤';
       case 'stretch':
         return '🧘';
       case 'exercise':
@@ -1015,24 +1096,21 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
           </button>
         )}
 
-        {/* 3. ADJACENT INTERACTIVE HUD MODAL (NEVER COVERS BUCKY!) */}
+        {/* 3. MINIMALIST BUCKY POPOVER (USER RUNTIME) */}
         {isOpen && (
           <div
             style={hudContainerStyle}
-            className="absolute w-[315px] sm:w-[345px] bg-[#140b24] text-white rounded-3xl p-4 sm:p-5 border border-[#8a4dff]/60 shadow-2xl animate-in zoom-in-95 duration-200 backdrop-blur-xl z-50 max-h-[85vh] overflow-y-auto"
+            className="absolute w-[290px] sm:w-[320px] bg-[#140b24] text-white rounded-3xl p-4 sm:p-5 border border-[#8a4dff]/50 shadow-2xl animate-in zoom-in-95 duration-150 backdrop-blur-xl z-50 space-y-3"
           >
             {/* Header controls */}
-            <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-3">
+            <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
               <div className="flex items-center gap-2">
-                <span className="text-lg">🦫</span>
+                <span className="text-base">🦫</span>
                 <div>
-                  <h4 className="text-xs font-black text-white tracking-wide uppercase flex items-center gap-1.5">
-                    <span>Bucky · Orbit Companion</span>
-                    <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-[#d4ff4a]/20 text-[#d4ff4a] font-mono font-bold">
-                      Vivo ✨
-                    </span>
+                  <h4 className="text-xs font-black text-white tracking-wide uppercase">
+                    Bucky
                   </h4>
-                  <p className="text-[10px] text-[#c9b7ff]">Tu compañero de equipo en Uhura</p>
+                  <p className="text-[10px] text-[#c9b7ff]">Orbit Companion</p>
                 </div>
               </div>
 
@@ -1040,726 +1118,124 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
                 {/* Sound Toggle */}
                 <button
                   onClick={() => setSoundEnabled(!soundEnabled)}
-                  className="p-1 rounded-lg hover:bg-white/10 text-white/70 hover:text-white cursor-pointer transition-colors"
+                  className="p-1.5 rounded-lg hover:bg-white/10 text-white/70 hover:text-white cursor-pointer transition-colors"
                   title={soundEnabled ? 'Silenciar efectos' : 'Activar efectos'}
                 >
-                  {soundEnabled ? <Volume2 className="w-3.5 h-3.5 text-[#d4ff4a]" /> : <VolumeX className="w-3.5 h-3.5 text-white/40" />}
+                  {soundEnabled ? (
+                    <Volume2 className="w-3.5 h-3.5 text-[#d4ff4a]" />
+                  ) : (
+                    <VolumeX className="w-3.5 h-3.5 text-white/40" />
+                  )}
                 </button>
 
                 {/* Reset position */}
                 <button
                   onClick={handleResetPosition}
-                  className="p-1 rounded-lg hover:bg-white/10 text-white/70 hover:text-white cursor-pointer transition-colors"
-                  title="Restablecer a la esquina inferior"
+                  className="p-1.5 rounded-lg hover:bg-white/10 text-white/70 hover:text-white cursor-pointer transition-colors"
+                  title="Restablecer a la esquina base"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                 </button>
 
-                {/* Minimize */}
-                <button
-                  onClick={() => {
-                    setIsOpen(false);
-                    setIsMinimized(true);
-                  }}
-                  className="p-1 rounded-lg hover:bg-white/10 text-white/70 hover:text-white cursor-pointer transition-colors"
-                  title="Minimizar"
-                >
-                  <Minimize2 className="w-3.5 h-3.5" />
-                </button>
-
-                {/* Close HUD */}
+                {/* Close */}
                 <button
                   onClick={() => setIsOpen(false)}
-                  className="p-1 rounded-lg hover:bg-white/10 text-white/70 hover:text-white cursor-pointer transition-colors"
-                  title="Cerrar panel"
+                  className="p-1.5 rounded-lg hover:bg-white/10 text-white/70 hover:text-white cursor-pointer transition-colors"
+                  title="Cerrar"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
             </div>
 
-            {/* Beaver Status & Live Stats */}
-            <div className="space-y-3">
-              <div className="bg-white/5 p-3 rounded-2xl border border-white/10 flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#c9b7ff]">
-                    Recurso Registrado
-                  </span>
-                  <div className="flex items-baseline gap-1.5 mt-0.5">
-                    <span className="text-xl font-black text-white font-mono">
-                      {loggedHoursToday.toFixed(1)}h
-                    </span>
-                    <span className="text-xs text-white/60">energía hoy</span>
-                  </div>
-                </div>
-
-                <div className="text-right">
-                  <span className="text-[10px] font-bold text-[#d4ff4a] flex items-center gap-1 justify-end">
-                    <Sparkles className="w-3 h-3 text-[#d4ff4a]" />
-                    {loggedHoursToday > 8.5 ? 'Sobrecarga' : 'Equilibrio'}
-                  </span>
-                  <span className="text-[10px] text-[#fdba74] font-bold block mt-0.5">
-                    Consistencia: {streakDays}d
-                  </span>
-                </div>
+            {/* Human status badge + Headline */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] uppercase font-bold text-white/50 tracking-wider">
+                  Estado actual
+                </span>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#501f92] text-[#d4ff4a] border border-[#8a4dff]/50">
+                  {buckyState.humanBadge}
+                </span>
               </div>
-
-              {/* Progress bar */}
-              <div className="space-y-1">
-                <div className="flex items-center justify-between text-[11px] font-bold">
-                  <span className="text-white/80">Estabilidad del Hábitat</span>
-                  <span className="text-[#d4ff4a] font-mono">
-                    {loggedHoursToday > 8.5 ? 'Demasiado peso' : percent >= 100 ? 'Sincronizado' : `${percent}% balance`}
-                  </span>
-                </div>
-                <div className="w-full h-2.5 bg-black/40 rounded-full overflow-hidden p-0.5 border border-white/10">
-                  <div
-                    style={{ width: `${Math.min(100, percent)}%` }}
-                    className={`h-full rounded-full transition-all duration-500 ${
-                      loggedHoursToday > 8.5
-                        ? 'bg-[#ef4444]'
-                        : percent >= 90
-                        ? 'bg-gradient-to-r from-[#10b981] to-[#d4ff4a]'
-                        : 'bg-gradient-to-r from-[#8a4dff] to-[#3b82f6]'
-                    }`}
-                  />
-                </div>
-              </div>
-
-              {/* TAB NAVIGATION: BUZO & MOODS / PASEO / 10 POSES / RUTINAS */}
-              <div className="flex items-center gap-1 p-1 bg-black/40 rounded-2xl border border-white/10 text-[11px] font-bold">
-                <button
-                  onClick={() => setActivePoseTab('moods')}
-                  className={`flex-1 py-1.5 px-1.5 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 ${
-                    activePoseTab === 'moods'
-                      ? 'bg-[#8a4dff] text-white shadow-md'
-                      : 'text-white/60 hover:text-white hover:bg-white/5'
-                  }`}
-                >
-                  <Shirt className="w-3.5 h-3.5 text-[#d4ff4a]" />
-                  <span>Buzo & Moods</span>
-                </button>
-
-                <button
-                  onClick={() => setActivePoseTab('movement')}
-                  className={`flex-1 py-1.5 px-1.5 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 ${
-                    activePoseTab === 'movement'
-                      ? 'bg-[#8a4dff] text-white shadow-md'
-                      : 'text-white/60 hover:text-white hover:bg-white/5'
-                  }`}
-                >
-                  <Footprints className="w-3.5 h-3.5 text-[#d4ff4a]" />
-                  <span>Paseo</span>
-                </button>
-
-                <button
-                  onClick={() => setActivePoseTab('actions')}
-                  className={`flex-1 py-1.5 px-1.5 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 ${
-                    activePoseTab === 'actions'
-                      ? 'bg-[#8a4dff] text-white shadow-md'
-                      : 'text-white/60 hover:text-white hover:bg-white/5'
-                  }`}
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-[#d4ff4a]" />
-                  <span>Rutinas</span>
-                </button>
-              </div>
-
-              {/* TAB 0: BUZO OFICIAL UHURA Y ESTADOS DE ÁNIMO */}
-              {activePoseTab === 'moods' && (
-                <div className="bg-[#1f103b]/90 p-3.5 rounded-2xl border border-[#8a4dff]/50 space-y-3 animate-in fade-in duration-200">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] font-black uppercase tracking-wider text-[#d4ff4a] flex items-center gap-1.5">
-                        <Shirt className="w-3.5 h-3.5 text-[#d4ff4a]" />
-                        Buzo Oficial Uhura & Moods
-                      </span>
-                      <p className="text-[10px] text-white/70 mt-0.5">
-                        {useUhuraHoodie ? '✨ Bucky viste el buzo morado con el favicon Uhura' : '🪵 Bucky en edición clásica sin indumentaria'}
-                      </p>
-                    </div>
-
-                    <button
-                      onClick={toggleUhuraHoodie}
-                      className={`px-2.5 py-1 rounded-full text-[10px] font-black flex items-center gap-1.5 transition-all cursor-pointer border ${
-                        useUhuraHoodie
-                          ? 'bg-[#d4ff4a] text-[#140b24] border-[#d4ff4a] shadow-md shadow-[#d4ff4a]/20'
-                          : 'bg-white/10 text-white/60 border-white/20 hover:text-white'
-                      }`}
-                      title="Activar o desactivar el buzo con favicon Uhura"
-                    >
-                      <span>{useUhuraHoodie ? 'Buzo: ACTIVO 🚀' : 'Buzo: OFF'}</span>
-                    </button>
-                  </div>
-
-                  {/* Showcase preview card: Galería de los 5 Estados Auténticos */}
-                  <div className="p-3 bg-black/40 rounded-xl border border-[#8a4dff]/40 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] uppercase font-black tracking-wider text-[#d4ff4a]">
-                        5 Estados Oficiales (Base en el Principal)
-                      </span>
-                      <span className="text-[8px] bg-[#d4ff4a] text-[#140b24] font-black px-1.5 py-0.5 rounded-full uppercase">
-                        Colección Completa
-                      </span>
-                    </div>
-
-                    {/* Preview interactivo grande del estado seleccionado */}
-                    <div className="p-3 rounded-xl bg-gradient-to-br from-[#501f92]/40 via-[#140b24] to-black/80 border border-[#8a4dff]/40 flex items-center gap-3">
-                      <div className="w-20 h-20 shrink-0 rounded-xl bg-black/40 p-1 border border-[#d4ff4a]/40 flex items-center justify-center relative shadow-lg">
-                        <img
-                          src={getRenderPath(selectedRenderPose)}
-                          alt={`Bucky ${selectedRenderPose}`}
-                          referrerPolicy="no-referrer"
-                          className="w-full h-full object-contain filter drop-shadow-md"
-                        />
-                        <span className="absolute -top-1.5 -right-1.5 bg-[#d4ff4a] text-[#140b24] text-[8px] font-black px-1 rounded-full">
-                          ✓
-                        </span>
-                      </div>
-
-                      <div className="flex-1 min-w-0 space-y-1">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-xs font-black text-white">
-                            {selectedRenderPose === 'stand' && '1. Mano en Cintura 💜'}
-                            {selectedRenderPose === 'wave' && '2. Saludando 👋'}
-                            {selectedRenderPose === 'alert' && '3. Alerta / Sobrecarga 👀'}
-                            {selectedRenderPose === 'celebrate' && '4. Celebrando Cierre 🎉'}
-                            {selectedRenderPose === 'rest' && '5. Modo Descanso ☕'}
-                            {selectedRenderPose === 'focus' && '6. Foco Profundo 🎧'}
-                            {selectedRenderPose === 'master' && '0. Modelo Principal Clásico 🪵'}
-                          </span>
-                          <span className="text-[8px] bg-[#8a4dff]/60 text-[#d4ff4a] font-bold px-1.5 py-0.2 rounded-full">
-                            {selectedRenderPose === 'alert' ? 'Buzo liso #501f92' : selectedRenderPose === 'master' ? 'Canónico 3D' : 'Buzo #501f92 + Favicon'}
-                          </span>
-                        </div>
-                        <p className="text-[10px] text-white/75 leading-tight">
-                          {selectedRenderPose === 'stand' && 'Pose icónica con mano en la cintura y sonrisa cordial. Buzo morado con el logo blanco oficial de Uhura.'}
-                          {selectedRenderPose === 'wave' && 'Gesto enérgico de bienvenida con pata alzada. Idéntico al rostro y proporciones del modelo principal.'}
-                          {selectedRenderPose === 'alert' && 'Expresión atenta con ceja alzada y pata gesticulando alerta. Con buzo morado liso y limpio.'}
-                          {selectedRenderPose === 'celebrate' && 'Brazos en alto con confeti festejando el cierre exitoso de la jornada y tareas del día.'}
-                          {selectedRenderPose === 'rest' && 'Postura relajada y serena sosteniendo una taza humeante para pausas activas y mindfulness.'}
-                          {selectedRenderPose === 'focus' && 'Con audífonos de estudio y tableta digital en modo de concentración y flujo profundo.'}
-                          {selectedRenderPose === 'master' && 'Personaje canónico original de Orbit sin indumentaria. Base referencial de toda la colección.'}
-                        </p>
-
-                        <div className="flex items-center gap-2 pt-1">
-                          <button
-                            onClick={() => {
-                              triggerLivingAction(
-                                selectedRenderPose === 'stand' ? 'stand' :
-                                selectedRenderPose === 'alert' ? 'alert' :
-                                selectedRenderPose === 'celebrate' ? 'celebrate' :
-                                selectedRenderPose === 'rest' ? 'rest' :
-                                selectedRenderPose === 'focus' ? 'focus' : 'wave',
-                                selectedRenderPose === 'stand' ? '¡Aquí Bucky, cuidando tu ritmo! 💜' :
-                                selectedRenderPose === 'alert' ? '¡Ojo con las horas! Cuidemos el ritmo ⚠️' :
-                                selectedRenderPose === 'celebrate' ? '¡Objetivos cumplidos! ¡A celebrar! 🎉' :
-                                selectedRenderPose === 'rest' ? 'Momento de pausa activa y recarga ☕' :
-                                selectedRenderPose === 'focus' ? 'Enfocado al 100% en la tarea actual 🎧' :
-                                '¡Hola! Construyendo juntos en Orbit 👋'
-                              );
-                            }}
-                            className="px-2 py-1 rounded-lg bg-[#d4ff4a] hover:bg-[#bceb36] text-[#140b24] text-[9px] font-black flex items-center gap-1 transition-all cursor-pointer shadow-xs"
-                          >
-                            <Sparkles className="w-2.5 h-2.5" />
-                            <span>Probar en Bucky</span>
-                          </button>
-
-                          <button
-                            onClick={() => handleCopyRender(selectedRenderPose)}
-                            className="px-2 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-white text-[9px] font-bold flex items-center gap-1 transition-all cursor-pointer border border-white/10"
-                          >
-                            <Copy className="w-2.5 h-2.5 text-[#d4ff4a]" />
-                            <span>{copied ? '¡Copiado!' : 'Copiar PNG'}</span>
-                          </button>
-
-                          <button
-                            onClick={() => handleDownloadRender(selectedRenderPose)}
-                            className="px-2 py-1 rounded-lg bg-[#8a4dff]/40 hover:bg-[#8a4dff]/60 text-white text-[9px] font-bold flex items-center gap-1 transition-all cursor-pointer border border-[#8a4dff]/50"
-                          >
-                            <Download className="w-2.5 h-2.5 text-[#d4ff4a]" />
-                            <span>Descargar</span>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Selector en miniatura de los 6 estados + principal */}
-                    <div className="grid grid-cols-7 gap-1">
-                      {[
-                        { id: 'stand', label: 'Cintura', icon: '💜', path: '/bucky_hip_uhura_v3.png' },
-                        { id: 'wave', label: 'Saludo', icon: '👋', path: '/bucky_waving_cutout.png' },
-                        { id: 'alert', label: 'Alerta', icon: '👀', path: '/bucky_alert_cutout.png' },
-                        { id: 'celebrate', label: 'Cierre', icon: '🎉', path: '/bucky_celebrating_cutout.png' },
-                        { id: 'rest', label: 'Descanso', icon: '☕', path: '/bucky_resting_cutout.png' },
-                        { id: 'focus', label: 'Foco', icon: '🎧', path: '/bucky_focus_cutout.png' },
-                        { id: 'master', label: 'Base', icon: '🪵', path: '/orbit_mascot_cutout.png' },
-                      ].map((item) => {
-                        const isSelected = selectedRenderPose === item.id;
-                        return (
-                          <button
-                            key={item.id}
-                            onClick={() => setSelectedRenderPose(item.id as any)}
-                            className={`p-1 rounded-xl flex flex-col items-center transition-all cursor-pointer border ${
-                              isSelected
-                                ? 'bg-[#8a4dff]/40 border-[#d4ff4a] shadow-md shadow-[#8a4dff]/30 scale-105'
-                                : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
-                            }`}
-                          >
-                            <div className="w-9 h-9 flex items-center justify-center p-0.5">
-                              <img
-                                src={item.path}
-                                alt={item.label}
-                                referrerPolicy="no-referrer"
-                                className="w-full h-full object-contain filter drop-shadow-xs"
-                              />
-                            </div>
-                            <span className={`text-[8px] font-bold mt-0.5 leading-none ${isSelected ? 'text-[#d4ff4a]' : 'text-white/70'}`}>
-                              {item.icon} {item.label}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {/* Badge de Fidelidad de Marca */}
-                    <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-[#501f92]/30 border border-[#8a4dff]/30 text-[10px]">
-                      <div className="flex items-center gap-2">
-                        <div className="w-5 h-5 rounded bg-white flex items-center justify-center p-0.5 shadow-xs">
-                          <UhuraLogo size={15} color="#501f92" />
-                        </div>
-                        <span className="text-white font-medium">Favicon Oficial Uhura (SVG Exacto)</span>
-                      </div>
-                      <span className="text-[#d4ff4a] font-bold text-[9px] flex items-center gap-1">
-                        <Check className="w-3 h-3 text-[#d4ff4a]" /> 100% Consistencia con el Principal
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 1: MOVIMIENTO LIBRE Y LOCOMOCIÓN */}
-              {activePoseTab === 'movement' && (
-                <div className="bg-[#1f103b]/90 p-3.5 rounded-2xl border border-[#8a4dff]/50 space-y-3 animate-in fade-in duration-200">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] font-black uppercase tracking-wider text-[#d4ff4a] flex items-center gap-1.5">
-                        <Footprints className="w-3.5 h-3.5 text-[#d4ff4a]" />
-                        Locomoción Libre de Bucky
-                      </span>
-                      <p className="text-[10px] text-white/70 mt-0.5">
-                        {isWalking
-                          ? '🚶‍♂️ Caminando activamente hacia nuevo punto...'
-                          : '✨ Esperando orden de marcha o arrastre libre'}
-                      </p>
-                    </div>
-
-                    {/* Toggle Paseo Autónomo */}
-                    <button
-                      onClick={() => {
-                        const next = !isFreeRoamActive;
-                        setIsFreeRoamActive(next);
-                        if (next) {
-                          setSpeechBubbleText('¡Paseo autónomo encendido! Exploraré la pantalla libremente 🐾');
-                          if (soundEnabled) playChime('celebrate');
-                        } else {
-                          setSpeechBubbleText('Paseo pausado. Me quedaré atento aquí 🦫');
-                        }
-                      }}
-                      className={`px-2.5 py-1 rounded-full text-[10px] font-black flex items-center gap-1.5 transition-all cursor-pointer border ${
-                        isFreeRoamActive
-                          ? 'bg-[#d4ff4a] text-[#140b24] border-[#d4ff4a] shadow-md shadow-[#d4ff4a]/20'
-                          : 'bg-white/10 text-white/60 border-white/20 hover:text-white'
-                      }`}
-                      title="Activar o pausar paseo continuo cada 19s"
-                    >
-                      <span className={`w-2 h-2 rounded-full ${isFreeRoamActive ? 'bg-[#140b24] animate-ping' : 'bg-white/40'}`} />
-                      <span>{isFreeRoamActive ? 'Auto: ACTIVO' : 'Auto: OFF'}</span>
-                    </button>
-                  </div>
-
-                  {/* Quick Walk Control Buttons */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={handleRandomRoam}
-                      disabled={isWalking}
-                      className="p-2.5 rounded-xl bg-gradient-to-r from-[#8a4dff] to-[#501f92] hover:brightness-110 disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer border border-[#8a4dff]/80 shadow-md"
-                    >
-                      <Footprints className="w-4 h-4 text-[#d4ff4a]" />
-                      <span>{isWalking ? 'Caminando...' : 'Explorar rincón'}</span>
-                    </button>
-
-                    <button
-                      onClick={handleWalkToCenter}
-                      disabled={isWalking}
-                      className="p-2.5 rounded-xl bg-white/10 hover:bg-[#8a4dff]/40 disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer border border-white/10"
-                    >
-                      <Compass className="w-4 h-4 text-[#d4ff4a]" />
-                      <span>Ir al centro</span>
-                    </button>
-
-                    <button
-                      onClick={handleReturnHome}
-                      disabled={isWalking}
-                      className="p-2.5 rounded-xl bg-white/10 hover:bg-[#8a4dff]/40 disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer border border-white/10"
-                    >
-                      <Home className="w-4 h-4 text-[#c9b7ff]" />
-                      <span>Volver a base</span>
-                    </button>
-
-                    <button
-                      onClick={() => triggerLivingAction('jump', '¡Salto alegre de victoria! 🦫✨')}
-                      className="p-2.5 rounded-xl bg-white/10 hover:bg-[#8a4dff]/40 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer border border-white/10"
-                    >
-                      <Sparkles className="w-4 h-4 text-[#f59e0b]" />
-                      <span>Dar un salto</span>
-                    </button>
-                  </div>
-
-                  <div className="p-2 bg-black/30 rounded-xl border border-white/5 text-[10px] text-white/70 flex items-center gap-2">
-                    <Move className="w-3.5 h-3.5 text-[#d4ff4a] shrink-0" />
-                    <span>Arrastra a Bucky con el cursor hacia cualquier parte de tu pantalla; recordará su posición.</span>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 2: CATÁLOGO DE LAS 10 POSES DE BUCKY */}
-              {activePoseTab === 'poses' && (
-                <div className="bg-[#1f103b]/90 p-3 rounded-2xl border border-[#8a4dff]/50 space-y-2.5 animate-in fade-in duration-200">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-[#d4ff4a] flex items-center gap-1.5">
-                      <Smile className="w-3.5 h-3.5 text-[#d4ff4a]" />
-                      Las 10 Poses Oficiales de Bucky
-                    </span>
-                    <span className="text-[9px] text-[#c9b7ff]">Clic para adoptar</span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-1.5 max-h-[220px] overflow-y-auto pr-1">
-                    <button
-                      onClick={() => triggerLivingAction('idle', '¡Bucky atento y listo para la acción! 🦫')}
-                      className={`p-2 rounded-xl text-left transition-all border cursor-pointer flex items-center gap-2 ${
-                        currentAction === 'idle'
-                          ? 'bg-[#8a4dff] text-white border-[#d4ff4a]'
-                          : 'bg-white/5 hover:bg-white/10 text-white/80 border-white/10'
-                      }`}
-                    >
-                      <span className="text-base">1️⃣</span>
-                      <div>
-                        <div className="text-[11px] font-bold text-white">Neutral / Atento</div>
-                        <div className="text-[9px] text-white/60">Pose clásica</div>
-                      </div>
-                    </button>
-
-                    <button
-                      onClick={() => triggerLivingAction('wave', '¡Hola Pao! 👋 ¿Qué construimos hoy?')}
-                      className={`p-2 rounded-xl text-left transition-all border cursor-pointer flex items-center gap-2 ${
-                        currentAction === 'wave'
-                          ? 'bg-[#8a4dff] text-white border-[#d4ff4a]'
-                          : 'bg-white/5 hover:bg-white/10 text-white/80 border-white/10'
-                      }`}
-                    >
-                      <span className="text-base">2️⃣</span>
-                      <div>
-                        <div className="text-[11px] font-bold text-white">Saludo amable</div>
-                        <div className="text-[9px] text-white/60">Mano alzada 👋</div>
-                      </div>
-                    </button>
-
-                    <button
-                      onClick={() => triggerLivingAction('celebrate', '¡Bravo! 👏 ¡Celebramos el avance del equipo!')}
-                      className={`p-2 rounded-xl text-left transition-all border cursor-pointer flex items-center gap-2 ${
-                        currentAction === 'celebrate'
-                          ? 'bg-[#8a4dff] text-white border-[#d4ff4a]'
-                          : 'bg-white/5 hover:bg-white/10 text-white/80 border-white/10'
-                      }`}
-                    >
-                      <span className="text-base">3️⃣</span>
-                      <div>
-                        <div className="text-[11px] font-bold text-white">Celebración</div>
-                        <div className="text-[9px] text-white/60">Aplauso alegre 🎉</div>
-                      </div>
-                    </button>
-
-                    <button
-                      onClick={() => triggerLivingAction('motivate', '¡Vamos con todo! 💪 ¡La represa queda sólida!')}
-                      className={`p-2 rounded-xl text-left transition-all border cursor-pointer flex items-center gap-2 ${
-                        currentAction === 'motivate'
-                          ? 'bg-[#8a4dff] text-white border-[#d4ff4a]'
-                          : 'bg-white/5 hover:bg-white/10 text-white/80 border-white/10'
-                      }`}
-                    >
-                      <span className="text-base">4️⃣</span>
-                      <div>
-                        <div className="text-[11px] font-bold text-white">Motivador</div>
-                        <div className="text-[9px] text-white/60">¡Vamos equipo! 💪</div>
-                      </div>
-                    </button>
-
-                    <button
-                      onClick={() => triggerLivingAction('jump', '¡Yuuupi! 🦫✨ ¡Salto de felicidad!')}
-                      className={`p-2 rounded-xl text-left transition-all border cursor-pointer flex items-center gap-2 ${
-                        currentAction === 'jump'
-                          ? 'bg-[#8a4dff] text-white border-[#d4ff4a]'
-                          : 'bg-white/5 hover:bg-white/10 text-white/80 border-white/10'
-                      }`}
-                    >
-                      <span className="text-base">5️⃣</span>
-                      <div>
-                        <div className="text-[11px] font-bold text-white">Pequeño salto</div>
-                        <div className="text-[9px] text-white/60">Patitas arriba ✨</div>
-                      </div>
-                    </button>
-
-                    <button
-                      onClick={() => triggerLivingAction('stretch', '¡Qué delicia de estirón! 🧘‍♀️')}
-                      className={`p-2 rounded-xl text-left transition-all border cursor-pointer flex items-center gap-2 ${
-                        currentAction === 'stretch'
-                          ? 'bg-[#8a4dff] text-white border-[#d4ff4a]'
-                          : 'bg-white/5 hover:bg-white/10 text-white/80 border-white/10'
-                      }`}
-                    >
-                      <span className="text-base">6️⃣</span>
-                      <div>
-                        <div className="text-[11px] font-bold text-white">Estiramiento</div>
-                        <div className="text-[9px] text-white/60">Brazos al cielo 🧘</div>
-                      </div>
-                    </button>
-
-                    <button
-                      onClick={() => triggerLivingAction('yawn', '*Uaaah*... 🥱 Un sorbito de café y listos ☕')}
-                      className={`p-2 rounded-xl text-left transition-all border cursor-pointer flex items-center gap-2 ${
-                        currentAction === 'yawn'
-                          ? 'bg-[#8a4dff] text-white border-[#d4ff4a]'
-                          : 'bg-white/5 hover:bg-white/10 text-white/80 border-white/10'
-                      }`}
-                    >
-                      <span className="text-base">7️⃣</span>
-                      <div>
-                        <div className="text-[11px] font-bold text-white">Bostezo</div>
-                        <div className="text-[9px] text-white/60">Tierno y dormilón ☕</div>
-                      </div>
-                    </button>
-
-                    <button
-                      onClick={() => triggerLivingAction('walk', '¡Caminando con energía por Orbit! 🚶‍♂️')}
-                      className={`p-2 rounded-xl text-left transition-all border cursor-pointer flex items-center gap-2 ${
-                        currentAction === 'walk'
-                          ? 'bg-[#8a4dff] text-white border-[#d4ff4a]'
-                          : 'bg-white/5 hover:bg-white/10 text-white/80 border-white/10'
-                      }`}
-                    >
-                      <span className="text-base">8️⃣</span>
-                      <div>
-                        <div className="text-[11px] font-bold text-white">Caminando</div>
-                        <div className="text-[9px] text-white/60">Zancada activa 🚶‍♂️</div>
-                      </div>
-                    </button>
-
-                    <button
-                      onClick={() => triggerLivingAction('alert', '¡Atención Pao! ⚠️ Cuidado con sobretiempos.')}
-                      className={`p-2 rounded-xl text-left transition-all border cursor-pointer flex items-center gap-2 ${
-                        currentAction === 'alert'
-                          ? 'bg-[#8a4dff] text-white border-[#d4ff4a]'
-                          : 'bg-white/5 hover:bg-white/10 text-white/80 border-white/10'
-                      }`}
-                    >
-                      <span className="text-base">9️⃣</span>
-                      <div>
-                        <div className="text-[11px] font-bold text-white">Preocupado / Alerta</div>
-                        <div className="text-[9px] text-white/60">Ojo con los límites ⚠️</div>
-                      </div>
-                    </button>
-
-                    <button
-                      onClick={() => triggerLivingAction('point', '¡Mira esa tarea importante! 👉')}
-                      className={`p-2 rounded-xl text-left transition-all border cursor-pointer flex items-center gap-2 ${
-                        currentAction === 'point'
-                          ? 'bg-[#8a4dff] text-white border-[#d4ff4a]'
-                          : 'bg-white/5 hover:bg-white/10 text-white/80 border-white/10'
-                      }`}
-                    >
-                      <span className="text-base">🔟</span>
-                      <div>
-                        <div className="text-[11px] font-bold text-white">Señalando CTA</div>
-                        <div className="text-[9px] text-white/60">Dedo al objetivo 👉</div>
-                      </div>
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 3: RUTINAS DE COMPAÑERO & PAUSA ACTIVA */}
-              {activePoseTab === 'actions' && (
-                <div className="bg-[#1f103b]/80 p-3 rounded-2xl border border-[#8a4dff]/40 space-y-2 animate-in fade-in duration-200">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#d4ff4a] flex items-center gap-1">
-                      <Sparkles className="w-3 h-3 text-[#d4ff4a]" />
-                      Rutinas & Salud Laboral
-                    </span>
-                    <span className="text-[9px] text-[#c9b7ff]">Interactúa</span>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-1.5">
-                    <button
-                      onClick={() => triggerLivingAction('stretch')}
-                      className="p-2 rounded-xl bg-white/5 hover:bg-[#8a4dff]/40 border border-white/10 hover:border-[#8a4dff] transition-all flex flex-col items-center gap-1 cursor-pointer text-center"
-                    >
-                      <span className="text-sm">🧘</span>
-                      <span className="text-[9px] font-bold text-white/80">Estirar</span>
-                    </button>
-
-                    <button
-                      onClick={() => triggerLivingAction('exercise')}
-                      className="p-2 rounded-xl bg-white/5 hover:bg-[#8a4dff]/40 border border-white/10 hover:border-[#8a4dff] transition-all flex flex-col items-center gap-1 cursor-pointer text-center"
-                    >
-                      <span className="text-sm">🏃</span>
-                      <span className="text-[9px] font-bold text-white/80">Moverse</span>
-                    </button>
-
-                    <button
-                      onClick={() => triggerLivingAction('hydrate')}
-                      className="p-2 rounded-xl bg-white/5 hover:bg-[#8a4dff]/40 border border-white/10 hover:border-[#8a4dff] transition-all flex flex-col items-center gap-1 cursor-pointer text-center"
-                    >
-                      <span className="text-sm">💧</span>
-                      <span className="text-[9px] font-bold text-white/80">Agua</span>
-                    </button>
-                  </div>
-
-                  {/* Interactive Active Break Banner */}
-                  {!activeBreakActive ? (
-                    <button
-                      onClick={startActiveBreak}
-                      className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-[#501f92] to-[#8a4dff] hover:brightness-110 text-white text-xs font-bold flex items-center justify-between transition-all cursor-pointer border border-[#8a4dff]/60 shadow-md"
-                    >
-                      <span className="flex items-center gap-1.5">
-                        <Activity className="w-3.5 h-3.5 text-[#d4ff4a]" />
-                        <span>Pausa Activa Guiada (30s)</span>
-                      </span>
-                      <span className="text-[10px] text-[#d4ff4a] font-mono">+25 Orbs</span>
-                    </button>
-                  ) : (
-                    <div className="bg-[#140b24] p-2.5 rounded-xl border border-[#d4ff4a] text-center space-y-1 animate-pulse">
-                      <div className="flex items-center justify-between text-xs font-bold text-[#d4ff4a]">
-                        <span>Paso {breakStep} de 3 en curso</span>
-                        <span className="font-mono text-sm">{breakTimer}s</span>
-                      </div>
-                      <p className="text-[11px] text-white font-medium">
-                        {breakStep === 1 && '🙆‍♂️ Mueve los hombros en círculos amplios'}
-                        {breakStep === 2 && '🧘 Gira suavemente el cuello de lado a lado'}
-                        {breakStep === 3 && '👀 Mira a un punto lejano y parpadea'}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Quick Feed Actions */}
-                  <div className="space-y-1.5 pt-1">
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="font-extrabold text-[#c9b7ff] uppercase tracking-wider">
-                        🪵 Madera:
-                      </span>
-                      <button
-                        onClick={handleTickle}
-                        className="text-[10px] font-bold text-[#ec4899] hover:underline cursor-pointer flex items-center gap-1"
-                      >
-                        <Heart className="w-3 h-3 fill-[#ec4899]" />
-                        Cosquillas (+5)
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-1.5">
-                      <button
-                        onClick={() => handleFeedHours(1.0, '1h Sprint de Trabajo')}
-                        className="py-1.5 px-1 rounded-xl bg-white/10 hover:bg-[#8a4dff] text-white text-xs font-bold transition-all cursor-pointer flex flex-col items-center border border-white/10"
-                      >
-                        <span>+1.0h</span>
-                        <span className="text-[9px] text-white/60">1 Tronco</span>
-                      </button>
-
-                      <button
-                        onClick={() => handleFeedHours(2.0, '2h Diseño')}
-                        className="py-1.5 px-1 rounded-xl bg-white/10 hover:bg-[#8a4dff] text-white text-xs font-bold transition-all cursor-pointer flex flex-col items-center border border-white/10"
-                      >
-                        <span>+2.0h</span>
-                        <span className="text-[9px] text-white/60">2 Troncos</span>
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          const needed = Math.max(0.5, targetDayHours - loggedHoursToday);
-                          handleFeedHours(needed, 'Jornada Completa');
-                        }}
-                        className="py-1.5 px-1 rounded-xl bg-gradient-to-r from-[#8a4dff] to-[#501f92] hover:opacity-95 text-white text-xs font-bold transition-all cursor-pointer flex flex-col items-center border border-[#8a4dff]"
-                      >
-                        <span className="text-[#d4ff4a]">Llenar</span>
-                        <span className="text-[9px] text-white/80">a 8h</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* RENDER EXPORT BAR: SELECTOR DE POSE PARA COPIAR O DESCARGAR PNG */}
-              <div className="pt-2 border-t border-white/10 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#c9b7ff] flex items-center gap-1">
-                    <Download className="w-3 h-3 text-[#d4ff4a]" />
-                    Exportar Render PNG Transparente:
-                  </span>
-                  <select
-                    value={selectedRenderPose}
-                    onChange={(e) => setSelectedRenderPose(e.target.value as any)}
-                    className="bg-[#1f103b] text-white text-[10px] font-bold py-1 px-2 rounded-lg border border-[#8a4dff]/40 outline-none cursor-pointer"
-                  >
-                    <option value="wave">👋 1. Saludando (Buzo Uhura)</option>
-                    <option value="alert">👀 2. Alerta / Sobrecarga</option>
-                    <option value="celebrate">🎉 3. Celebrando Cierre</option>
-                    <option value="rest">☕ 4. Modo Descanso / Pausa Activa</option>
-                    <option value="focus">🎧 5. Foco Profundo / Concentrado</option>
-                    <option value="master">🪵 Modelo Principal Clásico</option>
-                  </select>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleCopyRender()}
-                    className="flex-1 py-1.5 px-2 rounded-xl bg-white/10 hover:bg-[#8a4dff] text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer border border-white/10 shadow-xs"
-                    title="Copiar imagen PNG transparente seleccionada al portapapeles"
-                  >
-                    {copied ? (
-                      <Check className="w-3.5 h-3.5 text-[#d4ff4a]" />
-                    ) : (
-                      <Copy className="w-3.5 h-3.5 text-[#d4ff4a]" />
-                    )}
-                    <span>{copied ? '¡Copiado!' : 'Copiar PNG'}</span>
-                  </button>
-
-                  <button
-                    onClick={() => handleDownloadRender()}
-                    className="py-1.5 px-3 rounded-xl bg-white/5 hover:bg-white/15 text-white/80 hover:text-white text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer border border-white/10"
-                    title="Descargar archivo PNG transparente seleccionado"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Descargar</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Navigation Shortlink to Mi Día */}
-              <div className="pt-1 flex items-center justify-between">
-                <button
-                  onClick={() => {
-                    onNavigateToView('mi-dia');
-                    setIsOpen(false);
-                  }}
-                  className="w-full py-2 px-3 rounded-xl bg-[#2e1859] hover:bg-[#3d2075] text-[#d4ff4a] text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer border border-[#8a4dff]/40"
-                >
-                  <span>Ir al Ecosistema Mi Día & La Colonia</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
+              <h5 className="text-xs font-bold text-white leading-tight">
+                {buckyState.headline}
+              </h5>
             </div>
+
+            {/* Contextual speech */}
+            <div className="bg-white/5 p-3 rounded-2xl border border-white/10 text-xs text-white/90 leading-relaxed font-medium">
+              "{buckyState.speech}"
+            </div>
+
+            {/* Active Break section (when in progress or starting) */}
+            {activeBreakActive ? (
+              <div className="p-3 bg-[#501f92]/40 rounded-2xl border border-[#d4ff4a]/50 text-center space-y-1">
+                <div className="text-xs font-bold text-[#d4ff4a] flex items-center justify-center gap-1.5">
+                  <Coffee className="w-3.5 h-3.5" />
+                  <span>Pausa Activa en curso ({breakTimer}s)</span>
+                </div>
+                <p className="text-[11px] text-white/80 leading-tight">
+                  Paso {breakStep}:{' '}
+                  {breakStep === 1
+                    ? 'Mueve los hombros en círculos 🙆‍♀️'
+                    : breakStep === 2
+                    ? 'Gira el cuello suavemente 🧘'
+                    : 'Descansa la vista 20s en un punto lejano 👀'}
+                </p>
+              </div>
+            ) : (
+              <button
+                onClick={startActiveBreak}
+                className="w-full py-2 px-3 rounded-xl bg-white/10 hover:bg-[#8a4dff]/30 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-white/10 hover:border-[#8a4dff]/50"
+              >
+                <Coffee className="w-3.5 h-3.5 text-[#d4ff4a]" />
+                <span>Pausa activa (30s)</span>
+              </button>
+            )}
+
+            {/* Contextual action CTA if applicable */}
+            {buckyState.cta && (
+              <button
+                onClick={() => {
+                  onNavigateToView('mi-dia');
+                  setIsOpen(false);
+                }}
+                className={`w-full py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs ${
+                  buckyState.cta.actionType === 'notify_overtime'
+                    ? 'bg-[#dc2626] hover:bg-[#b91c1c] text-white'
+                    : 'bg-[#d4ff4a] hover:bg-[#b5e035] text-[#140b24]'
+                }`}
+              >
+                {buckyState.cta.actionType === 'notify_overtime' ? (
+                  <AlertOctagon className="w-3.5 h-3.5" />
+                ) : (
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                )}
+                <span>{buckyState.cta.label}</span>
+              </button>
+            )}
+
+            {/* Navigation link to Mi Día */}
+            <button
+              onClick={() => {
+                onNavigateToView('mi-dia');
+                setIsOpen(false);
+              }}
+              className="w-full py-1.5 px-3 rounded-xl text-white/60 hover:text-white text-[11px] font-medium flex items-center justify-center gap-1 transition-colors cursor-pointer hover:bg-white/5"
+            >
+              <span>Ver Hábitat en Mi Día</span>
+              <ArrowRight className="w-3 h-3 text-[#d4ff4a]" />
+            </button>
           </div>
         )}
+
+        {/* PROTECTED BUCKY LAB MODAL (Accessible via Shift+Alt+B or ?buckyLab=true) */}
+        <BuckyLabModal
+          isOpen={isBuckyLabOpen}
+          onClose={() => setIsBuckyLabOpen(false)}
+        />
+
       </div>
     </div>
   );

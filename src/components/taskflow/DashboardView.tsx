@@ -55,6 +55,7 @@ interface DashboardViewProps {
   onNavigateToClients?: () => void;
   onNavigateToCapacity?: () => void;
   onNavigateToFinance?: () => void;
+  onNavigateToColonia?: () => void;
   onSelectClientDetail?: (clientName: string) => void;
 }
 
@@ -71,6 +72,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigateToClients,
   onNavigateToCapacity,
   onNavigateToFinance,
+  onNavigateToColonia,
   onSelectClientDetail
 }) => {
   // Global Filters State
@@ -194,6 +196,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             >
               <Target className="w-3.5 h-3.5 text-[#501f92]" />
               <span>{monthlyTarget ? 'Ajustar Meta' : 'Definir Meta'}</span>
+            </button>
+          )}
+
+          {/* Acceso Directo a La Colonia de Bucky desde el Dashboard */}
+          {onNavigateToColonia && (
+            <button
+              onClick={onNavigateToColonia}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#1e0e38] to-[#2e1859] hover:from-[#2e1859] hover:to-[#501f92] text-white text-xs font-bold shadow-xs border border-[#8a4dff]/40 transition-all cursor-pointer shrink-0 whitespace-nowrap hover:scale-102"
+              title="Abrir La Colonia · Hábitat y minijuegos rápidos en equipo"
+            >
+              <span className="text-sm">🦫</span>
+              <span>La Colonia</span>
+              <span className="text-[10px] font-black px-1.5 py-0.2 rounded-full bg-[#d4ff4a] text-[#120822]">
+                15s
+              </span>
             </button>
           )}
 
@@ -570,6 +587,59 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
         )}
+      </div>
+
+      {/* ========================================================================= */}
+      {/* TARJETA INTERACTIVA DE LA COLONIA · ESPACIO LÚDICO & RETOS DE EQUIPO */}
+      {/* Visible para que el usuario pueda abrirlo directamente desde su dashboard */}
+      {/* ========================================================================= */}
+      <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-[#170c2a] via-[#241344] to-[#120822] border border-[#8a4dff]/40 shadow-xl text-white flex flex-col md:flex-row md:items-center justify-between gap-5 relative overflow-hidden">
+        <div className="space-y-1.5 z-10 max-w-xl">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#501f92] text-[#d4ff4a] border border-[#8a4dff]/50 inline-flex items-center gap-1.5">
+              <span>🦫</span>
+              <span>La Colonia · Uhura Group</span>
+            </span>
+            <span className="text-[11px] text-[#c9b7ff] font-bold">
+              Hábitat & Micro-Pausas de 15s
+            </span>
+          </div>
+          <h3 className="text-base sm:text-lg font-black text-white tracking-tight">
+            Tus hábitos saludables de Orbit hacen crecer el hábitat de Bucky 🪵
+          </h3>
+          <p className="text-xs text-[#c9b7ff] leading-relaxed">
+            Sin sobrecargas ni medir horas de más: premia la claridad, cumplimiento de lo asignado y prevención temprana de riesgos. Juega micro-retos de 15s o reta a Catalina, Andrés, Laura o Camilo.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 z-10 shrink-0">
+          <div className="flex items-center gap-2 bg-[#0d0718]/80 px-3 py-2 rounded-2xl border border-white/10 text-xs">
+            <div className="flex items-center gap-1 text-[#fdba74] font-mono font-black" title="Madera fina ganada">
+              <span>🪵</span>
+              <span>28</span>
+            </div>
+            <span className="text-white/20">|</span>
+            <div className="flex items-center gap-1 text-[#93c5fd] font-mono font-black" title="Energía vital ganada">
+              <span>⚡</span>
+              <span>14</span>
+            </div>
+            <span className="text-white/20">|</span>
+            <div className="flex items-center gap-1 text-[#d4ff4a] font-mono font-black" title="Orbes de claridad ganados">
+              <span>✨</span>
+              <span>3</span>
+            </div>
+          </div>
+
+          {onNavigateToColonia && (
+            <button
+              onClick={onNavigateToColonia}
+              className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-[#d4ff4a] to-[#4be5ff] hover:from-[#c2f331] hover:to-[#38d4ee] text-[#120822] text-xs font-black shadow-lg transition-all hover:scale-102 cursor-pointer flex items-center gap-2 whitespace-nowrap"
+            >
+              <span>Entrar a La Colonia</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ========================================================================= */}

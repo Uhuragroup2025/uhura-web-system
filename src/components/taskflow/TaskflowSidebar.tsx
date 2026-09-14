@@ -117,7 +117,7 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
         )}
 
         {/* 0. Mi Día & Bucky el Castor (Experiencia Personal / Gamificación Uhura) */}
-        <div>
+        <div className="space-y-1">
           <button
             onClick={() => onSelectView('mi-dia')}
             className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
@@ -134,6 +134,27 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
             {!collapsed && (
               <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded-full bg-[#f97316]/20 text-[#fdba74] border border-[#f97316]/30 flex items-center gap-0.5">
                 🔥 6d
+              </span>
+            )}
+          </button>
+
+          {/* 0.1 La Colonia · Hábitat lúdico y experiencial de Bucky */}
+          <button
+            onClick={() => onSelectView('la-colonia')}
+            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+              currentView === 'la-colonia'
+                ? 'bg-gradient-to-r from-[#2e1859] to-[#1e113a] text-white shadow-sm border-l-2 border-[#d4ff4a]'
+                : 'text-[#c9b7ff] hover:bg-[#1a0f30] hover:text-white'
+            }`}
+            title="La Colonia · Espacio lúdico y hábitat de Bucky"
+          >
+            <div className="flex items-center gap-2.5">
+              <span className="text-sm">🪵</span>
+              {!collapsed && <span>La Colonia</span>}
+            </div>
+            {!collapsed && (
+              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-[#501f92] text-[#d4ff4a] border border-[#8a4dff]/40">
+                Nivel 1
               </span>
             )}
           </button>

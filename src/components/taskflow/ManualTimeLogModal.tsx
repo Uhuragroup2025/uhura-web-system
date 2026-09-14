@@ -99,6 +99,10 @@ export const ManualTimeLogModal: React.FC<ManualTimeLogModalProps> = ({
     const totalSeconds = (parseInt(hours || '0', 10) * 3600) + (parseInt(minutes || '0', 10) * 60);
     if (totalSeconds <= 0) return;
 
+    if (!note.trim()) {
+      return;
+    }
+
     // Format date string for human display (e.g. "29 Ago 2026")
     let formattedDate = 'Hoy';
     if (logDate) {
@@ -119,16 +123,21 @@ export const ManualTimeLogModal: React.FC<ManualTimeLogModalProps> = ({
       clientName: selectedTask.clientName || 'Cliente',
       projectName: selectedTask.projectName || selectedTask.board,
       categoryType: selectedTask.categoryType,
+      userId: selectedTask.assignee?.id || 'u-pao',
+      budgetedRoleId: selectedTask.budgetedRoleId || selectedTask.budgetedRole || 'Diseñador Gráfico',
       userName: selectedTask.assignee?.name || 'Usuario',
       userInitials: selectedTask.assignee?.initials || 'US',
       userAvatarBg: selectedTask.assignee?.avatarBg || 'bg-[#501f92]',
       durationSeconds: totalSeconds,
+      source: 'manual',
+      description: note.trim(),
+      note: note.trim(),
       startTime: '',
       endTime: '',
       isLiveTimer: false,
       date: formattedDate,
-      note: note.trim() || 'Carga manual de horas reportadas.',
-      deliverableUrl: ''
+      deliverableUrl: '',
+      createdAt: new Date().toISOString()
     });
 
     onClose();
@@ -448,16 +457,18 @@ export const ManualTimeLogModal: React.FC<ManualTimeLogModalProps> = ({
               )}
             </div>
 
-            {/* Descripción */}
+            {/* Descripción (Obligatoria para carga manual) */}
             <div>
-              <label className="block font-bold text-xs text-[#0f172a] mb-1.5">
-                Descripción de lo realizado
+              <label className="block font-bold text-xs text-[#0f172a] mb-1.5 flex items-center justify-between">
+                <span>Descripción del trabajo realizado *</span>
+                <span className="text-[10px] font-normal text-[#64748b]">Obligatorio para trazabilidad</span>
               </label>
               <textarea
                 rows={3}
+                required
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                placeholder="Detalle de actividades o entregable avanzado..."
+                placeholder="Detalla qué hiciste en esta sesión (e.g. maquetación de hero, diseño de copies)..."
                 className="w-full bg-[#f8fafc] border border-[#e2e8f0] p-3 rounded-xl text-xs text-[#0f172a] placeholder-[#94a3b8] focus:outline-none focus:border-[#501f92] focus:bg-white resize-none"
               />
             </div>

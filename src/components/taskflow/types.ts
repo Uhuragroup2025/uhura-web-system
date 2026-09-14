@@ -14,6 +14,7 @@ export type BuckyMascotState =
 
 export type OrbitView =
   | 'mi-dia'
+  | 'la-colonia'
   | 'dashboard'
   | 'proyectos'
   | 'tareas'
@@ -32,12 +33,138 @@ export type OrbitView =
 
 export type TaskFlowView = OrbitView | 'board' | 'tasks' | 'users' | 'settings' | 'projects';
 
-export type TaskPriority = 'High' | 'Medium' | 'Low';
-export type TaskStatus = 'In Progress' | 'Done' | 'To Do' | 'Review';
+export type TaskPriority = 'High' | 'Medium' | 'Low' | 'urgent' | 'high' | 'medium' | 'low';
+export type CanonicalTaskStatus = 'todo' | 'in_progress' | 'in_review' | 'completed';
+export type TaskStatus = 'In Progress' | 'Done' | 'To Do' | 'Review' | 'todo' | 'in_progress' | 'in_review' | 'completed';
+
+export interface TaskAssigneeAllocation {
+  userId: string;
+  userName?: string;
+  userAvatarBg?: string;
+  userInitials?: string;
+  estimatedHours: number; // Esfuerzo planificado correspondiente a esta persona
+}
 
 export type TaskCategoryType = 'client' | 'internal';
 
-export type ProjectType = 'fee_monthly' | 'fixed_milestones' | 'internal';
+export type ProjectType =
+  | 'fee_monthly'
+  | 'fixed_project'
+  | 'internal_non_billable'
+  | 'fixed_milestones' // compatibilidad
+  | 'internal';        // compatibilidad
+
+export type FeeRolloverPolicy = 'none' | 'carry_over' | 'contractual_cap';
+
+export interface DeliverableRoleBudget {
+  id: string;
+  roleId: string;       // ej. 'Diseñador Gráfico', 'Front End', 'Tech Lead'
+  roleName: string;
+  quotedHours: number;  // Horas presupuestadas para este rol (0h permitido para proyectos internos o frentes organizativos)
+}
+
+export interface ProjectDeliverable {
+  id: string;
+  projectId: string;
+  name: string;         // ej. 'Redes Sociales', 'Landing Page', 'Pauta Digital'
+  description?: string;
+  order: number;
+  status: 'pending' | 'in_progress' | 'review' | 'completed' | 'cancelled';
+  startDate?: string;
+  dueDate?: string;
+  roleBudgets: DeliverableRoleBudget[];
+  // Rollups calculados (no campos editables directos):
+  totalQuotedHours?: number;   // rollup: suma de roleBudgets[].quotedHours
+  totalExecutedHours?: number; // rollup: suma de logs de tareas con deliverableId
+  progressPercentage?: number; // avance en %
+}
+
+export interface ProjectMonthlyCycle {
+  monthKey: string;          // ej. "2026-08", "2026-09"
+  monthLabel: string;        // ej. "Agosto 2026", "Septiembre 2026"
+  quotedHours: number;       // Horas cotizadas contratadas para este ciclo
+  rolloverHoursIn?: number;  // Horas traspasadas del ciclo anterior si aplica
+  executedHours: number;     // Horas ejecutadas reales en este ciclo (rollup)
+  status: 'closed' | 'active' | 'upcoming';
+  notes?: string;
+}
+
+
+
+export type AssignmentNature = 'governance' | 'core_execution' | 'temporary_support';
+
+export interface AllocationPeriod {
+  id: string;
+  startDate: string;                  // ISO Date (YYYY-MM-DD)
+  endDate?: string | null;            // ISO Date (YYYY-MM-DD), null si es indefinido mientras el proyecto esté activo
+  weeklyHours: number;                // Horas semanales planificadas durante esta ventana temporal
+  notes?: string;
+}
+
+export interface ProjectAssignment {
+  id: string;                         // UUID de la asignación
+  projectId: string;                  // FK -> Project
+  userId: string;                     // FK -> User (fuente de verdad de nombre, avatar, disponibilidad contractual)
+  roleId: string;                     // FK -> Role del catálogo (ej. 'role-product-lead', 'role-frontend')
+  nature: AssignmentNature;           // 'governance' | 'core_execution' | 'temporary_support'
+  deliverableId?: string | null;      // Opcional: vinculado a un entregable específico
+  allocations: AllocationPeriod[];    // Ventanas de asignación temporal (permite modular dedicación por semana/fase)
+  isActive: boolean;
+  notes?: string;
+  createdAt?: string;
+  createdByUserId?: string;
+}
+
+export interface ProjectStakeholder {
+  id: string;
+  projectId: string;
+  userId: string;
+  titleOrDepartment?: string;
+  notes?: string;
+  addedAt?: string;
+}
+
+export type AssignmentChangeReason =
+  | 'project_kickoff'
+  | 'scope_change'
+  | 'capacity_rebalance'
+  | 'planned_absence'
+  | 'temporary_reinforcement'
+  | 'permanent_replacement'
+  | 'role_change'
+  | 'project_exit'
+  | 'availability_change';
+
+export interface AssignmentHistory {
+  id: string;
+  projectId: string;
+  assignmentId?: string;
+  userId: string;                     // Persona afectada
+  roleId?: string;                    // Rol afectado si aplica
+  action: 'created' | 'updated' | 'ended' | 'removed';
+  previousWeeklyHours?: number | null;
+  newWeeklyHours: number;
+  previousEndDate?: string | null;
+  newEndDate?: string | null;
+  reason: AssignmentChangeReason;
+  notes?: string;
+  affectedPeriod?: string;            // ej. "2026-W38" o "Septiembre 2026"
+  changedByUserId: string;
+  changedByName?: string;
+  changedAt: string;                  // ISO Timestamp
+}
+
+export interface ProjectTeamMember {
+  id: string;
+  name: string;
+  initials: string;
+  avatarBg: string;
+  role: string;
+  isLead?: boolean;
+  weeklyAllocatedHours?: number; // Carga planificada estimada semanal (sin asumir 8h universales)
+  // Desglose multi-rol cuando aplica
+  assignments?: ProjectAssignment[];
+}
 
 export type ProjectPhase =
   | 'Discovery & Arquitectura'
@@ -60,28 +187,69 @@ export interface ProjectPhaseItem {
 
 export interface ProjectSummaryItem {
   id: string;
+  code?: string;
   name: string;
+  clientId?: string;          // ID estricto a ClientProfile
   clientName: string;
+  taxEntityId?: string | null; // 100% opcional, vínculo a ClientTaxEntity
   brand?: string;
   leadName: string;
   leadAvatarBg: string;
+  leadRole?: string;
   projectType: ProjectType;
   serviceBase: string;
   areas?: string[];
-  budgetedHours: number;
+  budgetedHours: number;      // Rollup derivado de deliverables o ciclo activo
   soldHours?: number;
   soldValueCOP?: number;
   soldCurrency?: 'COP' | 'USD';
   startDate?: string;
   endDate?: string;
   brief?: string;
+  
+  // Entregables y Equipo Formal
+  deliverables?: ProjectDeliverable[];
+  coreTeam?: ProjectTeamMember[]; // Compatibilidad transitoria
+  assignments?: ProjectAssignment[]; // Fuente de verdad de asignaciones multirol
+  stakeholders?: ProjectStakeholder[]; // Seguidores/stakeholders (sin roleId ni consumo de horas)
+  assignmentHistory?: AssignmentHistory[]; // Auditoría inmutable de cambios de equipo
+
+  rolloverPolicy?: FeeRolloverPolicy;
+  currentMonthCycle?: string;
+  monthlyCycles?: ProjectMonthlyCycle[];
+  
+  // Vectores para análisis y alertas (Indunova)
+  riskVectors?: {
+    timeElapsedRatio: number;      // % tiempo transcurrido
+    hoursConsumedRatio: number;    // % horas ejecutadas vs cotizadas
+    operationalProgress: number;   // % tareas completadas
+    burnProgressVariance: number;  // desvío entre consumo y avance
+    blockedTasksCount: number;
+    overdueTasksCount: number;
+  };
+  
+  // Metadatos de integración futura (desacoplados)
+  alegraContractId?: string | null;
+  hubspotDealId?: string | null;
+  commercialQuoteId?: string | null;
+
   teamMembers?: { name: string; role?: string; avatarBg: string; initials?: string }[];
-  status: 'Activo' | 'En Pausa' | 'Cerrado' | 'Planificación' | 'Archivado';
+  status: 'Activo' | 'En Pausa' | 'Cerrado' | 'Planificación' | 'Archivado' | 'draft' | 'active' | 'on_hold' | 'completed' | 'cancelled';
   healthStatus: 'verde' | 'amarillo' | 'rojo';
   healthNote?: string;
   hasPhasesAndBacklog?: boolean;
   phasesList?: ProjectPhaseItem[];
+  
+  // Runtime Task associations
+  tasks?: TaskItem[];
+  consumedHours?: number;
+  completedTasksCount?: number;
+  totalTasksCount?: number;
+  tasksAssignedHours?: number;
+  inReviewCount?: number;
 }
+
+export type ProjectProfile = ProjectSummaryItem;
 
 export type FeeActivityCategory =
   | 'Mantenimiento Web'
@@ -138,23 +306,70 @@ export interface TaskDeliverable {
   criteriaChecked?: string[];
 }
 
-export interface TimeLog {
+export type TimeLogSource = 'timer' | 'manual';
+
+export interface TimeLogItem {
+  id: string;                         // UUID inmutable
+  taskId: string;                     // FK -> Task (OBLIGATORIO: siempre sobre tarea)
+  userId: string;                     // FK -> User que ejecutó el trabajo
+  budgetedRoleId: string;             // Derivado inmutable de task.budgetedRoleId (o task.budgetedRole)
+  durationSeconds: number;            // Entero exacto en segundos
+  date: string;                       // YYYY-MM-DD (fecha de ejecución)
+  description?: string;               // Detalle del trabajo realizado
+  source: TimeLogSource;              // 'timer' | 'manual'
+  startedAt?: string | null;          // ISO Timestamp
+  stoppedAt?: string | null;          // ISO Timestamp
+
+  // Apoyo puntual (Decisión 4: no autoasignado a la tarea)
+  isAdHocSupport?: boolean;           // Si el usuario no estaba en assigneeAllocations pero apoyó
+
+  // Fin de semana / Fuera de calendario habitual (Ajuste 2)
+  isOutsideRegularSchedule?: boolean; // Sábado o Domingo (no genera premio ni expectativa)
+
+  // Auditoría y trazabilidad
+  isEdited?: boolean;
+  originalDurationSeconds?: number;
+  editReason?: string | null;
+  editedByUserId?: string | null;
+  editedAt?: string | null;
+  isDeleted?: boolean;                // Soft delete
+  deletedAt?: string | null;
+
+  // Timestamps de sistema
+  createdAt: string;
+  updatedAt?: string;
+
+  // Campos de compatibilidad de visualización (desnormalizados para UI rápida)
+  taskTitle?: string;
+  projectName?: string;
+  clientName?: string;
+  userName?: string;
+  userInitials?: string;
+  userAvatarBg?: string;
+}
+
+export type TimeTrackingEventType =
+  | 'TIMER_STARTED'
+  | 'TIMER_STOPPED'
+  | 'TIME_LOG_CREATED'
+  | 'TIME_LOG_UPDATED'
+  | 'TIME_LOG_DELETED'
+  | 'TASK_ESTIMATE_EXCEEDED';
+
+export interface TimeTrackingEvent {
   id: string;
-  taskId: string;
-  taskTitle: string;
-  clientName: string;
-  projectName: string;
-  userName: string;
-  userInitials: string;
-  userAvatarBg: string;
-  categoryType?: TaskCategoryType;
-  durationSeconds: number;
+  type: TimeTrackingEventType;
+  timestamp: string;
+  payload: Record<string, any>;
+}
+
+export interface TimeLog extends TimeLogItem {
   startTime?: string;
   endTime?: string;
-  isLiveTimer: boolean;
-  date: string;
+  isLiveTimer?: boolean;
   note?: string;
   deliverableUrl?: string;
+  categoryType?: TaskCategoryType;
 }
 
 export interface TaskCommentAttachment {
@@ -212,10 +427,14 @@ export interface TaskItem {
   description?: string;
   department: string;
   board: string;
+  clientId?: string;
   clientName?: string;
+  projectId?: string;
   projectName?: string;
-  frente?: string; // e.g. 'Redes Sociales', 'Landing Page', 'Pauta'
-  budgetedRole?: string; // e.g. 'Web Designer', 'Front End', etc.
+  deliverableId?: string; // Vínculo formal a ProjectDeliverable
+  frente?: string; // e.g. 'Redes Sociales', 'Landing Page', 'Pauta' (compatibilidad)
+  budgetedRole?: string; // e.g. 'Web Designer', 'Front End', etc. (compatibilidad)
+  budgetedRoleId?: string; // FK estricta a rol cotizado que descuenta horas de la cotización
   executedRoleSnapshot?: string; // snapshot of the role under which hours were executed
   categoryType?: TaskCategoryType;
   requestedBy?: string;
@@ -225,7 +444,8 @@ export interface TaskItem {
     avatarBg: string;
     role?: string;
   };
-  requiresValidation?: boolean; // Deprecated - replaced by Review status flow
+  requiresReview?: boolean; // Decisión 1: Si es true requiere QA/Lead; si es false el ejecutor la completa directamente
+  requiresValidation?: boolean; // Deprecated - replaced by requiresReview
   reviewer?: {
     name: string;
     initials: string;
@@ -238,6 +458,8 @@ export interface TaskItem {
     avatarBg: string;
     role?: string;
   };
+  assigneeIds?: string[]; // IDs de colaboradores asignados
+  assigneeAllocations?: TaskAssigneeAllocation[]; // Decisión 3: Distribución de esfuerzo por colaborador
   managerAssignee?: {
     name: string;
     initials: string;
@@ -258,6 +480,9 @@ export interface TaskItem {
   date: string;
   startDate?: string;
   dueDate: string;
+  targetDate?: string | null; // Fecha objetivo (opcional según contexto de proyecto)
+  scheduledDate?: string | null; // Fecha planificada para ejecución (usada en Mi Día)
+  isDeadlineStrict?: boolean; // Flag de deadline estricto vs fecha orientativa
   dueStatus: 'normal' | 'soon' | 'overdue' | 'tomorrow';
   dueText: string;
   status: TaskStatus;
@@ -265,8 +490,17 @@ export interface TaskItem {
   completed: boolean;
   completedAt?: string;
   isArchived?: boolean;
+  // Bloqueo como flag y no como estado (Decisión 5)
+  isBlocked?: boolean;
+  blockedReason?: string | null;
+  blockedAt?: string | null;
+  // Retrabajos y ajustes trazables
+  isRework?: boolean;
+  originalTaskId?: string | null;
+  reworkReason?: 'client_feedback' | 'internal_qa' | 'brief_change' | string | null;
   // Rentabilidad y tiempos
   budgetedHours: number;
+  estimatedHours?: number; // Esfuerzo total combinado (suma de assigneeAllocations)
   plannedHours?: number;
   consumedSeconds: number;
   executionSeconds?: number;
@@ -306,9 +540,13 @@ export interface ActiveTimerState {
   projectName: string;
   categoryType?: TaskCategoryType;
   startTime: number; // Date.now() timestamp
+  startedAtISO?: string; // ISO string
   elapsedSeconds: number;
-  isPaused: boolean;
+  isPaused: boolean; // conservado para compatibilidad suave
   role?: string;
+  deliverableId?: string;
+  budgetedRoleId?: string;
+  isOutsideRegularSchedule?: boolean;
 }
 
 export interface ActivityItem {
@@ -453,24 +691,74 @@ export interface ClientCommercialInfo {
 
 export type ClientType = 'Fee mensual' | 'Proyecto único' | 'Interno / No facturable' | 'Mixto' | 'Fee Recurrente' | 'Proyecto';
 
-export interface ClientProfile {
+export type ClientContactRole = 'operativo' | 'comercial' | 'facturacion' | 'directivo';
+
+export interface ClientContact {
   id: string;
   name: string;
+  roleTitle?: string;
+  email: string;
+  phone?: string;
+  contactType: ClientContactRole;
+  isPrimary: boolean;
+}
+
+export interface ClientTaxEntity {
+  id: string;
   nit: string;
-  type: ClientType;
-  healthStatus: 'Saludable' | 'En Riesgo' | 'Crítico';
-  portalActive: boolean;
-  projectsCount: number;
-  activeProjectsCount: number;
-  closedProjectsCount: number;
-  averageMarginPercent: number | null;
-  billedCOP: string;
-  billedInvoicesCount: number;
-  receivableCOP: string;
-  receivableStatus: string;
-  commercialInfo: ClientCommercialInfo;
-  behavior: ClientBehaviorScores;
-  projectsHistory: ClientProjectHistoryItem[];
+  businessName: string;
+  city?: string;
+  isPrimary: boolean;
+  alegraContactId?: string; // Referencia de integración externa
+  notes?: string;
+}
+
+/**
+ * ClientProfile Status:
+ * - 'active': Operación vigente.
+ * - 'paused': Relación temporalmente detenida, conserva histórico.
+ * - 'archived': Cliente histórico, no disponible para nueva operación.
+ */
+export type ClientStatus = 'active' | 'paused' | 'archived';
+
+export interface ClientProfile {
+  id: string;
+  name: string;                         // Nombre Comercial / Marca Sombrilla
+  isInternal?: boolean;                 // true para UHURA Group interno protegido
+  status: ClientStatus;                 // 'active' | 'paused' | 'archived'
+  
+  // Múltiples Razones Sociales / NITs (0 a N, no bloquea creación)
+  taxEntities: ClientTaxEntity[];
+  
+  // Directorio de Contactos (0 a N)
+  contacts: ClientContact[];
+  
+  // Responsable de cuenta en Uhura (opcional, asignación explícita)
+  accountManagerId?: string;
+  accountManagerName?: string;
+  
+  // Notas y referencias de integración externa (no parte de la lógica principal)
+  notes?: string;
+  hubspotCompanyId?: string;
+  createdAt?: string;
+  updatedAt?: string;
+
+  // Campos de compatibilidad y métricas operativas
+  nit?: string;                         // Compatibilidad de lectura: devuelve taxEntity principal o el primero
+  type?: ClientType;                    // Compatibilidad histórica mientras se desacopla en Proyecto
+  healthStatus?: 'Saludable' | 'En Riesgo' | 'Crítico';
+  portalActive?: boolean;
+  projectsCount?: number;
+  activeProjectsCount?: number;
+  closedProjectsCount?: number;
+  averageMarginPercent?: number | null;
+  billedCOP?: string;
+  billedInvoicesCount?: number;
+  receivableCOP?: string;
+  receivableStatus?: string;
+  commercialInfo?: ClientCommercialInfo;
+  behavior?: ClientBehaviorScores;
+  projectsHistory?: ClientProjectHistoryItem[];
 }
 
 export interface ClientProjectNode {

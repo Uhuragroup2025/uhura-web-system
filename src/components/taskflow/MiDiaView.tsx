@@ -4,18 +4,14 @@ import {
   ActiveTimerState,
   OrbitView
 } from './types';
-import buckyHoodieHappyImg from '../../assets/images/bucky_hip_uhura_v3.png';
-import buckyWavingImg from '../../assets/images/bucky_waving_cutout.png';
-import buckyCelebratingImg from '../../assets/images/bucky_celebrating_cutout.png';
-import buckyAlertImg from '../../assets/images/bucky_alert_cutout.png';
-import buckyRestingImg from '../../assets/images/bucky_resting_cutout.png';
-import buckyFocusImg from '../../assets/images/bucky_focus_cutout.png';
+import { resolveBuckyState } from './buckyEngine';
 import {
   Clock,
   CheckCircle2,
   Circle,
   Play,
   Pause,
+  Square,
   Plus,
   Sparkles,
   AlertTriangle,
@@ -83,7 +79,6 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
   const [consistencyDays, setConsistencyDays] = useState(6);
   const [activeTab, setActiveTab] = useState<'habitat' | 'colonia'>('habitat');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [copiedToast, setCopiedToast] = useState(false);
   const [supportedMembers, setSupportedMembers] = useState<Record<string, boolean>>({});
 
   // Real-world tasks representing construction blocks in the Orbit Habitat
@@ -291,83 +286,16 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
     );
   };
 
-  // Determine Bucky's current habitat state & speech
-  const getBuckyHabitatState = () => {
-    // 1. All tasks completed
-    if (allTasksCompleted && localTasks.length > 0) {
-      return {
-        pose: 'celebrate',
-        image: buckyCelebratingImg,
-        badgeText: 'Celebrando Cierre · Estructura Estable',
-        badgeColor: 'bg-[#ecfdf5] text-[#059669] border-[#a7f3d0]',
-        headline: '¡Listo por hoy! 🎉',
-        speech: '¡Todas las metas encajadas! Cierra Orbit con orgullo y ve a descansar 🛋️✨',
-        description: 'Todas las piezas de hoy fueron encajadas a tiempo y con precisión.',
-        isAlert: false
-      };
-    }
-
-    // 2. Overload / Too much weight ("Demasiado peso")
-    if (criticalOvertimeTasks.length > 0) {
-      const crit = criticalOvertimeTasks[0];
-      const consumedHrs = ((crit.consumedSeconds || 0) / 3600).toFixed(1);
-      const budgetedHrs = (crit.budgetedHours || 1).toFixed(1);
-
-      return {
-        pose: 'alert',
-        image: buckyAlertImg,
-        badgeText: 'Alerta / Demasiado peso',
-        badgeColor: 'bg-[#fef2f2] text-[#dc2626] border-[#fecaca]',
-        headline: 'Hoy está pesado 👀',
-        speech: 'Hoy está pesado 👀 Cuidado con sobrecargarte; si una pieza requiere más recurso, avisa al equipo.',
-        description: `En "${crit.title.slice(0, 32)}..." llevas ${consumedHrs}h de ${budgetedHrs}h. Para cuidar el equilibrio del sistema, avisa al ejecutivo comercial.`,
-        isAlert: true,
-        criticalTask: crit
-      };
-    }
-
-    // 3. Deep Focus (Active timer running)
-    if (activeTimer && !activeTimer.isPaused) {
-      return {
-        pose: 'focus',
-        image: buckyFocusImg,
-        badgeText: 'Foco Profundo · En el Flujo',
-        badgeColor: 'bg-[#f5f3ff] text-[#501f92] border-[#ddd6fe]',
-        headline: 'En concentración total 🎧',
-        speech: `Construyendo con ritmo constante en "${activeTimer.taskTitle.slice(0, 28)}...". ¡Cada minuto suma a la colonia!`,
-        description: 'Sesión activa de cronometraje para registrar con exactitud cada avance.',
-        isAlert: false
-      };
-    }
-
-    // 4. Project protected after notification
-    if (hasNotifiedAny) {
-      return {
-        pose: 'rest',
-        image: buckyRestingImg,
-        badgeText: 'Pausa Activa & Proyecto Protegido',
-        badgeColor: 'bg-[#f5f3ff] text-[#7c3aed] border-[#ddd6fe]',
-        headline: 'Equilibrio restablecido ☕',
-        speech: 'Avisaste a tiempo. Tómate un respiro, el proyecto está protegido y el equipo coordinado 🛡️☕',
-        description: 'La extensión quedó informada para que el ejecutivo gestione la cotización con el cliente.',
-        isAlert: false
-      };
-    }
-
-    // 5. Balanced load / Tasks in sync (En Guardia / Mano en la cintura)
-    return {
-      pose: 'happy',
-      image: buckyHoodieHappyImg,
-      badgeText: 'Buzo Uhura · En Equilibrio 💜',
-      badgeColor: 'bg-[#f5f3ff] text-[#501f92] border-[#ddd6fe]',
-      headline: 'Tu día está sincronizado 💜',
-      speech: '¡Hola! Tu día está sincronizado. Con el buzo morado Uhura construyendo la colonia en armonía 🚀🪵',
-      description: 'Los recursos consumidos y las piezas activas se encuentran en equilibrio.',
-      isAlert: false
-    };
-  };
-
-  const buckyState = getBuckyHabitatState();
+  // Automated Bucky Runtime State via central resolveBuckyState
+  const buckyState = resolveBuckyState({
+    loggedHoursToday,
+    targetDayHours: 8.0,
+    criticalOvertimeTasks,
+    activeTimer,
+    allTasksCompleted,
+    hasTasks: localTasks.length > 0,
+    hasNotifiedOvertime: hasNotifiedAny
+  });
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -383,7 +311,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
         if (t.id === taskId) {
           const nextVal = !t.completed;
           if (nextVal) {
-            notifyMascot('celebrate', '¡Pieza lista! 👏 Estructura reforzada.');
+            notifyMascot('clap', '¡Pieza lista! 👏 Estructura reforzada.');
             showToast('¡Pieza completada! Bucky aplaude el avance 👏');
           }
           return { ...t, completed: nextVal };
@@ -423,33 +351,6 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
     notifyMascot('wave', 'Aviso enviado al equipo. Proyecto protegido y balance asegurado 🛡️');
     showToast('Aviso de extensión enviado. El ejecutivo ya cuenta con el detalle para recotizar.');
     setChatModalTask(null);
-  };
-
-  const handleCopyRender = async () => {
-    try {
-      const response = await fetch('/orbit_bucky_render.png');
-      const blob = await response.blob();
-      if (navigator.clipboard && window.ClipboardItem) {
-        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-        setCopiedToast(true);
-        setTimeout(() => setCopiedToast(false), 3000);
-      } else {
-        handleDownloadRender();
-      }
-    } catch {
-      handleDownloadRender();
-    }
-  };
-
-  const handleDownloadRender = () => {
-    const link = document.createElement('a');
-    link.href = '/orbit_bucky_render.png';
-    link.download = 'bucky_render_transparente.png';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    setCopiedToast(true);
-    setTimeout(() => setCopiedToast(false), 3000);
   };
 
   // Clean support bags (Uhura non-billables)
@@ -643,31 +544,6 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                     referrerPolicy="no-referrer"
                     className="w-60 sm:w-72 h-72 sm:h-80 object-contain select-none transition-transform duration-300 hover:scale-102"
                   />
-
-                  {/* Clean export buttons */}
-                  <div className="mt-2 flex items-center justify-center gap-2">
-                    <button
-                      onClick={handleCopyRender}
-                      className="px-3 py-1.5 rounded-xl bg-[#f8fafc] hover:bg-[#f1f5f9] text-[#334155] hover:text-[#0f172a] text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer border border-[#e2e8f0]"
-                      title="Copiar imagen PNG transparente al portapapeles"
-                    >
-                      {copiedToast ? (
-                        <Check className="w-3.5 h-3.5 text-[#10b981]" />
-                      ) : (
-                        <Copy className="w-3.5 h-3.5 text-[#64748b]" />
-                      )}
-                      <span>{copiedToast ? 'Copiado' : 'Copiar PNG'}</span>
-                    </button>
-
-                    <button
-                      onClick={handleDownloadRender}
-                      className="px-3 py-1.5 rounded-xl bg-[#f8fafc] hover:bg-[#f1f5f9] text-[#64748b] hover:text-[#0f172a] text-xs font-medium flex items-center gap-1 transition-all cursor-pointer border border-[#e2e8f0]"
-                      title="Descargar archivo PNG transparente"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>Descargar</span>
-                    </button>
-                  </div>
                 </div>
 
                 {/* Subtitle description */}
@@ -677,6 +553,31 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                 <p className="text-xs text-[#64748b] max-w-sm mt-1 leading-relaxed">
                   {buckyState.description}
                 </p>
+
+                {/* Banner de acceso a La Colonia */}
+                <div className="mt-4 w-full p-4 rounded-2xl bg-gradient-to-r from-[#1c0e38] to-[#140b24] border border-[#8a4dff]/40 text-left space-y-2 text-white shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">🪵✨</span>
+                      <span className="text-xs font-black text-[#d4ff4a] uppercase tracking-wider">
+                        La Colonia de Bucky
+                      </span>
+                    </div>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#501f92] text-white font-bold">
+                      Nivel 1
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[#c9b7ff] leading-relaxed">
+                    Tus hábitos de orden y prevención de hoy generan recursos para el hábitat de Bucky.
+                  </p>
+                  <button
+                    onClick={() => onNavigateToView?.('la-colonia')}
+                    className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-[#501f92] to-[#8a4dff] hover:from-[#43197a] hover:to-[#7c3aed] text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                  >
+                    <span>Visitar La Colonia</span>
+                    <span>→</span>
+                  </button>
+                </div>
 
                 {/* Overtime Alert Action Banner */}
                 {criticalOvertimeTasks.length > 0 && (
@@ -702,47 +603,60 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                 )}
               </div>
 
-              {/* Clean Quick Resource Logging (Alimentar / Cargar recurso) */}
+              {/* Clean Quick Task Time Logging */}
               <div className="pt-4 border-t border-[#f1f5f9] space-y-2.5">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-bold text-[#334155]">Registrar recurso en 1 clic</span>
-                  <span className="text-[#64748b] text-[11px]">Acomodar pieza en el hábitat</span>
+                  <span className="font-bold text-[#334155]">Registrar tiempo rápido</span>
+                  <button
+                    onClick={() => onOpenManualLog()}
+                    className="text-[#501f92] hover:text-[#381566] text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                  >
+                    <span>Carga manual</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
                 </div>
 
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   <button
-                    onClick={() => handleLogResource(1.0, '1h Producción')}
+                    onClick={() => {
+                      const firstTask = localTasks.find(t => !t.completed) || localTasks[0];
+                      if (firstTask) {
+                        onQuickLogHours(0.5, '30m avance operativo', 'client', firstTask.projectName);
+                        showToast(`+30m registrados en ${firstTask.title}`);
+                      }
+                    }}
                     className="py-2.5 rounded-xl bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] text-xs font-bold text-[#0f172a] transition-all cursor-pointer flex flex-col items-center"
                   >
-                    <span>+1h</span>
-                    <span className="text-[10px] text-[#64748b] font-normal">1 bloque</span>
-                  </button>
-
-                  <button
-                    onClick={() => handleLogResource(2.0, '2h Sprint')}
-                    className="py-2.5 rounded-xl bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] text-xs font-bold text-[#0f172a] transition-all cursor-pointer flex flex-col items-center"
-                  >
-                    <span>+2h</span>
-                    <span className="text-[10px] text-[#64748b] font-normal">2 bloques</span>
-                  </button>
-
-                  <button
-                    onClick={() => handleLogResource(4.0, '4h Media jornada')}
-                    className="py-2.5 rounded-xl bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] text-xs font-bold text-[#0f172a] transition-all cursor-pointer flex flex-col items-center"
-                  >
-                    <span>+4h</span>
-                    <span className="text-[10px] text-[#64748b] font-normal">Media jornada</span>
+                    <span>+30 min</span>
+                    <span className="text-[10px] text-[#64748b] font-normal">Bloque corto</span>
                   </button>
 
                   <button
                     onClick={() => {
-                      const needed = Math.max(0.5, targetDayHours - loggedHoursToday);
-                      handleLogResource(needed, 'Completar jornada');
+                      const firstTask = localTasks.find(t => !t.completed) || localTasks[0];
+                      if (firstTask) {
+                        onQuickLogHours(1.0, '1h producción continua', 'client', firstTask.projectName);
+                        showToast(`+1h registrada en ${firstTask.title}`);
+                      }
                     }}
-                    className="py-2.5 rounded-xl bg-[#0f172a] hover:bg-[#1e293b] text-xs font-bold text-white transition-all cursor-pointer flex flex-col items-center shadow-xs"
+                    className="py-2.5 rounded-xl bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] text-xs font-bold text-[#0f172a] transition-all cursor-pointer flex flex-col items-center"
                   >
-                    <span>Sincronizar</span>
-                    <span className="text-[10px] text-white/70 font-normal">Equilibrar</span>
+                    <span>+1 hora</span>
+                    <span className="text-[10px] text-[#64748b] font-normal">1 bloque</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      const firstTask = localTasks.find(t => !t.completed) || localTasks[0];
+                      if (firstTask) {
+                        onQuickLogHours(2.0, '2h sprint enfocado', 'client', firstTask.projectName);
+                        showToast(`+2h registradas en ${firstTask.title}`);
+                      }
+                    }}
+                    className="py-2.5 rounded-xl bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] text-xs font-bold text-[#0f172a] transition-all cursor-pointer flex flex-col items-center"
+                  >
+                    <span>+2 horas</span>
+                    <span className="text-[10px] text-[#64748b] font-normal">Sprint</span>
                   </button>
                 </div>
               </div>
@@ -753,10 +667,10 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
               <div className="flex items-center justify-between">
                 <div>
                   <h4 className="text-xs font-bold uppercase tracking-wider text-[#0f172a]">
-                    Bolsas de Soporte de la Colonia
+                    Bolsas de Soporte Interno
                   </h4>
                   <p className="text-[11px] text-[#64748b]">
-                    Tiempo operativo interno de Uhura sin fricción
+                    Actividades operativas internas de Uhura (Lunes a Viernes)
                   </p>
                 </div>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#f1f5f9] text-[#64748b] font-medium">
@@ -791,11 +705,11 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
 
           {/* RIGHT 7 COLS: Misiones de hoy (Tus tareas reales) */}
           <div className="lg:col-span-7 space-y-6">
-            {/* Active Timer Pill if running */}
+            {/* Active Timer Pill if running (Start / Stop canonical model, no pause) */}
             {activeTimer && (
               <div className="bg-[#0f172a] p-4 rounded-3xl text-white border border-[#1e293b] shadow-sm flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center shrink-0">
+                  <div className="w-9 h-9 rounded-xl bg-white/10 text-[#d4ff4a] flex items-center justify-center shrink-0">
                     <Clock className="w-4 h-4" />
                   </div>
                   <div className="min-w-0">
@@ -810,16 +724,10 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
 
                 <div className="flex items-center gap-2 shrink-0">
                   <button
-                    onClick={onPauseResumeTimer}
-                    className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white cursor-pointer transition-colors"
-                  >
-                    {activeTimer.isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
-                  </button>
-                  <button
                     onClick={onStopTimer}
-                    className="px-3 py-1.5 rounded-xl bg-white text-[#0f172a] font-bold text-xs cursor-pointer transition-colors hover:bg-[#f1f5f9]"
+                    className="px-3.5 py-2 rounded-xl bg-[#dc2626] hover:bg-[#b91c1c] text-white font-bold text-xs cursor-pointer transition-colors flex items-center gap-1.5 shadow-xs"
                   >
-                    Detener y Registrar
+                    <span>Detener y Registrar</span>
                   </button>
                 </div>
               </div>
@@ -954,11 +862,12 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
 
                           {isTimerActive ? (
                             <button
-                              onClick={onPauseResumeTimer}
-                              className="p-2.5 rounded-xl bg-[#0f172a] text-white hover:bg-[#1e293b] cursor-pointer transition-colors shadow-2xs"
-                              title="Pausar timer"
+                              onClick={onStopTimer}
+                              className="px-3 py-1.5 rounded-xl bg-[#dc2626] text-white hover:bg-[#b91c1c] cursor-pointer transition-colors shadow-2xs text-xs font-bold flex items-center gap-1"
+                              title="Detener y registrar tiempo"
                             >
-                              {activeTimer.isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
+                              <Square className="w-3.5 h-3.5 fill-current" />
+                              <span>Detener</span>
                             </button>
                           ) : (
                             <button
@@ -966,7 +875,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                               className="p-2.5 rounded-xl bg-[#f8fafc] text-[#0f172a] hover:bg-[#e2e8f0] border border-[#e2e8f0] cursor-pointer transition-colors"
                               title="Iniciar cronómetro"
                             >
-                              <Play className="w-4 h-4" />
+                              <Play className="w-4 h-4 text-[#501f92]" />
                             </button>
                           )}
                         </div>

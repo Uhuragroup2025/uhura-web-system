@@ -1,90 +1,60 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { ClientProfile, ClientTaxEntity, ClientContact, ClientContactRole, ClientStatus } from './types';
 import { X, Building2, User, Mail, Phone, Plus, Trash2, Star, ShieldCheck, Check, AlertCircle, FileText, Globe } from 'lucide-react';
 
-interface EditClientModalProps {
+interface CreateClientModalProps {
   isOpen: boolean;
   onClose: () => void;
-  client: ClientProfile | null;
-  onSaveClient: (updatedClient: ClientProfile) => void;
+  onCreateClient: (newClient: ClientProfile) => void;
 }
 
-export const EditClientModal: React.FC<EditClientModalProps> = ({
+export const CreateClientModal: React.FC<CreateClientModalProps> = ({
   isOpen,
   onClose,
-  client,
-  onSaveClient
+  onCreateClient
 }) => {
+  // 1. Marca Sombrilla / Cuenta
   const [name, setName] = useState('');
   const [status, setStatus] = useState<ClientStatus>('active');
-  const [accountManagerName, setAccountManagerName] = useState('');
+  const [accountManagerName, setAccountManagerName] = useState('Laura Salazar');
   const [notes, setNotes] = useState('');
-  const [portalActive, setPortalActive] = useState(true);
-  const [receivableStatus, setReceivableStatus] = useState('al día');
-  const [brandsInput, setBrandsInput] = useState('');
 
-  // Tax entities
-  const [taxEntities, setTaxEntities] = useState<ClientTaxEntity[]>([]);
-
-  // Contacts
-  const [contacts, setContacts] = useState<ClientContact[]>([]);
-
-  useEffect(() => {
-    if (client) {
-      setName(client.name);
-      setStatus(client.status || 'active');
-      setAccountManagerName(client.accountManagerName || '');
-      setNotes(client.notes || '');
-      setPortalActive(Boolean(client.portalActive));
-      setReceivableStatus(client.receivableStatus || 'al día');
-      setBrandsInput(client.commercialInfo?.brands?.join(', ') || '');
-      
-      // Si el cliente no tenía taxEntities explícitos pero tenía NIT, crear uno base
-      if (client.taxEntities && client.taxEntities.length > 0) {
-        setTaxEntities(client.taxEntities);
-      } else if (client.nit && client.nit !== 'Sin NIT registrado') {
-        setTaxEntities([
-          {
-            id: `tax-init-${client.id}`,
-            nit: client.nit,
-            businessName: client.name,
-            isPrimary: true
-          }
-        ]);
-      } else {
-        setTaxEntities([]);
-      }
-
-      // Si el cliente no tenía contacts explícitos pero tenía commercialInfo
-      if (client.contacts && client.contacts.length > 0) {
-        setContacts(client.contacts);
-      } else if (client.commercialInfo?.contactName) {
-        setContacts([
-          {
-            id: `con-init-${client.id}`,
-            name: client.commercialInfo.contactName,
-            roleTitle: client.commercialInfo.contactRole,
-            email: client.commercialInfo.contactEmail || '',
-            phone: client.commercialInfo.contactPhone || '',
-            contactType: 'comercial',
-            isPrimary: true
-          }
-        ]);
-      } else {
-        setContacts([]);
-      }
+  // 2. Razones Sociales (taxEntities) - Inicialmente vacías o con 1 opcional
+  const [taxEntities, setTaxEntities] = useState<Array<Omit<ClientTaxEntity, 'id'>>>([
+    {
+      nit: '',
+      businessName: '',
+      city: '',
+      isPrimary: true,
+      alegraContactId: '',
+      notes: ''
     }
-  }, [client]);
+  ]);
 
-  if (!isOpen || !client) return null;
+  // 3. Contactos
+  const [contacts, setContacts] = useState<Array<Omit<ClientContact, 'id'>>>([
+    {
+      name: '',
+      roleTitle: '',
+      email: '',
+      phone: '',
+      contactType: 'operativo',
+      isPrimary: true
+    }
+  ]);
 
-  // Handlers Tax Entities
+  // Portal
+  const [portalActive, setPortalActive] = useState(true);
+
+  if (!isOpen) return null;
+
+  // Handlers para taxEntities
   const handleAddTaxEntity = () => {
+    // Si ya existe alguna con isPrimary, la nueva es false
     const hasPrimary = taxEntities.some((t) => t.isPrimary);
     setTaxEntities([
       ...taxEntities,
       {
-        id: `tax-edit-${Date.now()}-${taxEntities.length}`,
         nit: '',
         businessName: '',
         city: '',
@@ -95,36 +65,36 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
     ]);
   };
 
-  const handleRemoveTaxEntity = (id: string) => {
+  const handleRemoveTaxEntity = (index: number) => {
     // Regla de consistencia: Si se elimina el principal, NO reasignar automáticamente otro
-    setTaxEntities((prev) => prev.filter((t) => t.id !== id));
+    setTaxEntities(taxEntities.filter((_, idx) => idx !== index));
   };
 
-  const handleTogglePrimaryTax = (id: string) => {
+  const handleTogglePrimaryTax = (index: number) => {
     // Regla de consistencia: Máximo un elemento con isPrimary = true. Si se desmarca, se tolera ninguno.
     setTaxEntities((prev) =>
-      prev.map((item) => {
-        if (item.id === id) {
+      prev.map((item, idx) => {
+        if (idx === index) {
           return { ...item, isPrimary: !item.isPrimary };
         }
-        return item.isPrimary ? { ...item, isPrimary: false } : item;
+        // Si el seleccionado se marca como true, los demás pasan a false
+        return item.isPrimary && !prev[index].isPrimary ? { ...item, isPrimary: false } : item;
       })
     );
   };
 
-  const handleUpdateTaxEntity = (id: string, field: keyof ClientTaxEntity, value: any) => {
+  const handleUpdateTaxEntity = (index: number, field: keyof Omit<ClientTaxEntity, 'id'>, value: any) => {
     setTaxEntities((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, [field]: value } : item))
+      prev.map((item, idx) => (idx === index ? { ...item, [field]: value } : item))
     );
   };
 
-  // Handlers Contacts
+  // Handlers para contacts
   const handleAddContact = () => {
     const hasPrimary = contacts.some((c) => c.isPrimary);
     setContacts([
       ...contacts,
       {
-        id: `con-edit-${Date.now()}-${contacts.length}`,
         name: '',
         roleTitle: '',
         email: '',
@@ -135,26 +105,26 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
     ]);
   };
 
-  const handleRemoveContact = (id: string) => {
+  const handleRemoveContact = (index: number) => {
     // Regla de consistencia: Si se elimina el principal, NO reasignar automáticamente otro
-    setContacts((prev) => prev.filter((c) => c.id !== id));
+    setContacts(contacts.filter((_, idx) => idx !== index));
   };
 
-  const handleTogglePrimaryContact = (id: string) => {
+  const handleTogglePrimaryContact = (index: number) => {
     // Regla de consistencia: Máximo un elemento con isPrimary = true. Si se desmarca, se tolera ninguno.
     setContacts((prev) =>
-      prev.map((item) => {
-        if (item.id === id) {
+      prev.map((item, idx) => {
+        if (idx === index) {
           return { ...item, isPrimary: !item.isPrimary };
         }
-        return item.isPrimary ? { ...item, isPrimary: false } : item;
+        return item.isPrimary && !prev[index].isPrimary ? { ...item, isPrimary: false } : item;
       })
     );
   };
 
-  const handleUpdateContact = (id: string, field: keyof ClientContact, value: any) => {
+  const handleUpdateContact = (index: number, field: keyof Omit<ClientContact, 'id'>, value: any) => {
     setContacts((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, [field]: value } : item))
+      prev.map((item, idx) => (idx === index ? { ...item, [field]: value } : item))
     );
   };
 
@@ -162,42 +132,75 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
     e.preventDefault();
     if (!name.trim()) return;
 
-    // Regla protegida: UHURA_INTERNAL_CLIENT no se puede archivar ni cambiar de interno
-    const isUhuraInternal = client.isInternal || client.id === 'cli-uhura-internal';
-    const finalStatus: ClientStatus = isUhuraInternal ? 'active' : status;
+    // Filtrar taxEntities que tengan al menos NIT o Razón social
+    const cleanTaxEntities: ClientTaxEntity[] = taxEntities
+      .filter((t) => t.nit.trim() || t.businessName.trim())
+      .map((t, idx) => ({
+        id: `tax-new-${Date.now()}-${idx}`,
+        nit: t.nit.trim(),
+        businessName: t.businessName.trim() || name.trim(),
+        city: t.city?.trim() || undefined,
+        isPrimary: t.isPrimary,
+        alegraContactId: t.alegraContactId?.trim() || undefined,
+        notes: t.notes?.trim() || undefined
+      }));
 
-    const brands = brandsInput
-      .split(',')
-      .map((b) => b.trim())
-      .filter((b) => b.length > 0);
+    // Filtrar contactos que tengan al menos nombre o email
+    const cleanContacts: ClientContact[] = contacts
+      .filter((c) => c.name.trim() || c.email.trim())
+      .map((c, idx) => ({
+        id: `con-new-${Date.now()}-${idx}`,
+        name: c.name.trim() || 'Contacto',
+        roleTitle: c.roleTitle?.trim() || undefined,
+        email: c.email.trim(),
+        phone: c.phone?.trim() || undefined,
+        contactType: c.contactType,
+        isPrimary: c.isPrimary
+      }));
 
-    const primaryTax = taxEntities.find((t) => t.isPrimary) || taxEntities[0];
-    const primaryContact = contacts.find((c) => c.isPrimary) || contacts[0];
+    const primaryTax = cleanTaxEntities.find((t) => t.isPrimary) || cleanTaxEntities[0];
+    const primaryContact = cleanContacts.find((c) => c.isPrimary) || cleanContacts[0];
 
-    const updated: ClientProfile = {
-      ...client,
+    const newClient: ClientProfile = {
+      id: `cli-${Date.now()}`,
       name: name.trim(),
-      status: finalStatus,
-      accountManagerName: accountManagerName.trim() || undefined,
+      isInternal: false,
+      status,
+      taxEntities: cleanTaxEntities,
+      contacts: cleanContacts,
+      accountManagerName: accountManagerName.trim(),
       notes: notes.trim() || undefined,
       portalActive,
-      receivableStatus,
-      taxEntities,
-      contacts,
-      // Actualizar campos derivados y de compatibilidad
+      healthStatus: 'Saludable',
+      // Compatibilidad operativa
       nit: primaryTax ? primaryTax.nit : 'Sin NIT registrado',
+      type: 'Proyecto único',
+      projectsCount: 0,
+      activeProjectsCount: 0,
+      closedProjectsCount: 0,
+      averageMarginPercent: null,
+      billedCOP: '$0',
+      billedInvoicesCount: 0,
+      receivableCOP: '$0',
+      receivableStatus: 'al día',
       commercialInfo: {
-        contactName: primaryContact ? primaryContact.name : (client.commercialInfo?.contactName || 'Por asignar'),
-        contactRole: primaryContact?.roleTitle || client.commercialInfo?.contactRole || 'Contacto',
-        contactEmail: primaryContact?.email || client.commercialInfo?.contactEmail || '',
-        contactPhone: primaryContact?.phone || client.commercialInfo?.contactPhone || '',
-        clientSince: client.commercialInfo?.clientSince || 'Hoy',
-        brands: brands.length > 0 ? brands : (client.commercialInfo?.brands || [name.trim()]),
-        tier: client.commercialInfo?.tier
-      }
+        contactName: primaryContact ? primaryContact.name : 'Por asignar',
+        contactRole: primaryContact?.roleTitle || 'Contacto operativo',
+        contactEmail: primaryContact?.email || '',
+        contactPhone: primaryContact?.phone || '',
+        clientSince: 'Hoy',
+        brands: [name.trim()]
+      },
+      behavior: {
+        rentabilidad: 100,
+        cartera: 100,
+        cumplimiento: 100,
+        relacion: 100
+      },
+      projectsHistory: []
     };
 
-    onSaveClient(updated);
+    onCreateClient(newClient);
     onClose();
   };
 
@@ -216,10 +219,8 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
               <Building2 className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="font-extrabold text-base text-[#0f172a]">Editar Cuenta de Cliente</h2>
-              <p className="text-xs text-[#64748b]">
-                {client.name} {client.isInternal && '• Cliente Interno Uhura Group'}
-              </p>
+              <h2 className="font-extrabold text-base text-[#0f172a]">Crear Nueva Cuenta de Cliente</h2>
+              <p className="text-xs text-[#64748b]">Marca sombrilla operativa · No bloquea por falta de NIT</p>
             </div>
           </div>
           <button
@@ -232,18 +233,14 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-6 overflow-y-auto flex-1 text-xs">
-          {/* 1. Datos Principales de Cuenta */}
+          {/* 1. Datos de Cuenta / Marca Sombrilla */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-xs text-[#501f92] uppercase tracking-wider flex items-center gap-1.5">
                 <Building2 className="w-3.5 h-3.5" />
                 <span>1. Marca Sombrilla / Cuenta Operativa</span>
               </h3>
-              {client.isInternal && (
-                <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-[#f2ecfb] text-[#501f92] border border-[#8a4dff]/20">
-                  Cuenta Interna Protegida
-                </span>
-              )}
+              <span className="text-[11px] text-[#64748b]">Identificador comercial en Orbit</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -254,10 +251,10 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
                 <input
                   type="text"
                   required
+                  placeholder="Ej: Postobón, Danone, Incolmotos Yamaha"
                   value={name}
-                  disabled={client.isInternal}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] text-[#0f172a] font-semibold focus:outline-none focus:border-[#501f92] focus:bg-white disabled:opacity-60"
+                  className="w-full px-3 py-2 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] text-[#0f172a] font-semibold focus:outline-none focus:border-[#501f92] focus:bg-white"
                 />
               </div>
 
@@ -265,9 +262,8 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
                 <label className="block font-semibold text-[#334155] mb-1">Estado de Operación</label>
                 <select
                   value={status}
-                  disabled={client.isInternal}
                   onChange={(e) => setStatus(e.target.value as ClientStatus)}
-                  className="w-full px-3 py-2 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] text-[#0f172a] font-semibold focus:outline-none focus:border-[#501f92] cursor-pointer disabled:opacity-60"
+                  className="w-full px-3 py-2 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] text-[#0f172a] font-semibold focus:outline-none focus:border-[#501f92] cursor-pointer"
                 >
                   <option value="active">🟢 Activo (Operación vigente)</option>
                   <option value="paused">🟡 Pausado (Detenido temporalmente)</option>
@@ -303,17 +299,6 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
               </div>
 
               <div className="sm:col-span-3">
-                <label className="block font-semibold text-[#334155] mb-1">Marcas Asociadas (separadas por comas)</label>
-                <input
-                  type="text"
-                  value={brandsInput}
-                  onChange={(e) => setBrandsInput(e.target.value)}
-                  placeholder="Ej: Marca Principal, Línea B2B, Marca Retail"
-                  className="w-full px-3 py-2 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] text-[#0f172a] focus:outline-none focus:border-[#501f92] focus:bg-white"
-                />
-              </div>
-
-              <div className="sm:col-span-3">
                 <label className="block font-semibold text-[#334155] mb-1">Notas de la Cuenta / Observaciones</label>
                 <textarea
                   rows={2}
@@ -326,16 +311,16 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
             </div>
           </div>
 
-          {/* 2. Razones Sociales (Multi-NIT) */}
+          {/* 2. Razones Sociales / NITs (Multi-NIT, no bloquea creación) */}
           <div className="space-y-3 pt-3 border-t border-[#f1f5f9]">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="font-bold text-xs text-[#501f92] uppercase tracking-wider flex items-center gap-1.5">
                   <FileText className="w-3.5 h-3.5" />
-                  <span>2. Razones Sociales / Facturación ({taxEntities.length})</span>
+                  <span>2. Razones Sociales / Facturación (0 a N)</span>
                 </h3>
                 <p className="text-[11px] text-[#64748b]">
-                  Máximo una principal. Si no se marca ninguna, el sistema lo tolera sin error.
+                  El NIT no bloquea la operación. Si aún está pendiente de registro contable en Alegra, puedes dejarlo vacío.
                 </p>
               </div>
               <button
@@ -350,14 +335,14 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
 
             {taxEntities.length === 0 ? (
               <div className="p-4 rounded-xl bg-[#f8fafc] border border-dashed border-[#cbd5e1] text-center text-[#64748b]">
-                <p className="font-medium">No hay razones sociales registradas.</p>
-                <p className="text-[11px]">La cuenta opera sin NIT hasta que se agregue una entidad fiscal.</p>
+                <p className="font-medium">No se han registrado razones sociales aún.</p>
+                <p className="text-[11px]">La cuenta puede operar sin NIT y asignarse más adelante al facturar.</p>
               </div>
             ) : (
               <div className="space-y-3">
                 {taxEntities.map((tax, idx) => (
                   <div
-                    key={tax.id}
+                    key={idx}
                     className={`p-3.5 rounded-xl border transition-all ${
                       tax.isPrimary
                         ? 'bg-[#faf5ff] border-[#8a4dff]/40 shadow-xs'
@@ -368,13 +353,13 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => handleTogglePrimaryTax(tax.id)}
+                          onClick={() => handleTogglePrimaryTax(idx)}
                           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold cursor-pointer transition-colors ${
                             tax.isPrimary
                               ? 'bg-[#501f92] text-white'
                               : 'bg-white text-[#64748b] border border-[#cbd5e1] hover:text-[#501f92]'
                           }`}
-                          title="Máximo un NIT principal"
+                          title="Máximo una entidad principal. Si se desmarca, se tolera ninguna."
                         >
                           <Star className={`w-3 h-3 ${tax.isPrimary ? 'fill-current' : ''}`} />
                           <span>{tax.isPrimary ? 'Razón Social Principal' : 'Hacer Principal'}</span>
@@ -383,9 +368,9 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
                       </div>
                       <button
                         type="button"
-                        onClick={() => handleRemoveTaxEntity(tax.id)}
+                        onClick={() => handleRemoveTaxEntity(idx)}
                         className="p-1 rounded-md text-[#94a3b8] hover:text-[#ef4444] hover:bg-[#fee2e2] transition-colors cursor-pointer"
-                        title="Eliminar razón social (no reasigna automáticamente)"
+                        title="Eliminar razón social (no reasigna principal automáticamente)"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -396,8 +381,9 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
                         <label className="block text-[11px] font-semibold text-[#475569] mb-0.5">NIT / ID Fiscal</label>
                         <input
                           type="text"
+                          placeholder="Ej: 901.882.341-0"
                           value={tax.nit}
-                          onChange={(e) => handleUpdateTaxEntity(tax.id, 'nit', e.target.value)}
+                          onChange={(e) => handleUpdateTaxEntity(idx, 'nit', e.target.value)}
                           className="w-full px-2.5 py-1.5 rounded-lg border border-[#e2e8f0] bg-white text-[#0f172a] font-mono text-xs focus:outline-none focus:border-[#501f92]"
                         />
                       </div>
@@ -406,8 +392,9 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
                         <label className="block text-[11px] font-semibold text-[#475569] mb-0.5">Razón Social Legal</label>
                         <input
                           type="text"
+                          placeholder="Ej: Danone de Colombia S.A.S."
                           value={tax.businessName}
-                          onChange={(e) => handleUpdateTaxEntity(tax.id, 'businessName', e.target.value)}
+                          onChange={(e) => handleUpdateTaxEntity(idx, 'businessName', e.target.value)}
                           className="w-full px-2.5 py-1.5 rounded-lg border border-[#e2e8f0] bg-white text-[#0f172a] font-semibold text-xs focus:outline-none focus:border-[#501f92]"
                         />
                       </div>
@@ -416,8 +403,9 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
                         <label className="block text-[11px] font-semibold text-[#475569] mb-0.5">Ciudad</label>
                         <input
                           type="text"
-                          value={tax.city || ''}
-                          onChange={(e) => handleUpdateTaxEntity(tax.id, 'city', e.target.value)}
+                          placeholder="Ej: Medellín, Bogotá"
+                          value={tax.city}
+                          onChange={(e) => handleUpdateTaxEntity(idx, 'city', e.target.value)}
                           className="w-full px-2.5 py-1.5 rounded-lg border border-[#e2e8f0] bg-white text-[#0f172a] text-xs focus:outline-none focus:border-[#501f92]"
                         />
                       </div>
@@ -426,8 +414,9 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
                         <label className="block text-[11px] font-semibold text-[#475569] mb-0.5">ID Alegra / Notas Facturación</label>
                         <input
                           type="text"
-                          value={tax.alegraContactId || ''}
-                          onChange={(e) => handleUpdateTaxEntity(tax.id, 'alegraContactId', e.target.value)}
+                          placeholder="Ref externa de integración (ej: alg-dan-001)"
+                          value={tax.alegraContactId}
+                          onChange={(e) => handleUpdateTaxEntity(idx, 'alegraContactId', e.target.value)}
                           className="w-full px-2.5 py-1.5 rounded-lg border border-[#e2e8f0] bg-white text-[#0f172a] font-mono text-xs focus:outline-none focus:border-[#501f92]"
                         />
                       </div>
@@ -438,16 +427,16 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
             )}
           </div>
 
-          {/* 3. Directorio de Contactos (Multi-contacto) */}
+          {/* 3. Directorio de Contactos (Multi-contacto, tipificado) */}
           <div className="space-y-3 pt-3 border-t border-[#f1f5f9]">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="font-bold text-xs text-[#501f92] uppercase tracking-wider flex items-center gap-1.5">
                   <User className="w-3.5 h-3.5" />
-                  <span>3. Directorio de Contactos ({contacts.length})</span>
+                  <span>3. Directorio de Contactos (0 a N)</span>
                 </h3>
                 <p className="text-[11px] text-[#64748b]">
-                  Roles: operativo, comercial, facturación o directivo.
+                  Contactos tipificados: operativo, comercial, facturación o directivo.
                 </p>
               </div>
               <button
@@ -463,7 +452,7 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
             <div className="space-y-3">
               {contacts.map((contact, idx) => (
                 <div
-                  key={contact.id}
+                  key={idx}
                   className={`p-3.5 rounded-xl border transition-all ${
                     contact.isPrimary
                       ? 'bg-[#faf5ff] border-[#8a4dff]/40 shadow-xs'
@@ -474,27 +463,29 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => handleTogglePrimaryContact(contact.id)}
+                        onClick={() => handleTogglePrimaryContact(idx)}
                         className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold cursor-pointer transition-colors ${
                           contact.isPrimary
                             ? 'bg-[#501f92] text-white'
                             : 'bg-white text-[#64748b] border border-[#cbd5e1] hover:text-[#501f92]'
                         }`}
-                        title="Máximo un contacto principal"
+                        title="Máximo un contacto principal. Si se desmarca, se tolera ninguno."
                       >
                         <Star className={`w-3 h-3 ${contact.isPrimary ? 'fill-current' : ''}`} />
                         <span>{contact.isPrimary ? 'Contacto Principal' : 'Hacer Principal'}</span>
                       </button>
                       <span className="text-[11px] text-[#64748b]">Contacto #{idx + 1}</span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveContact(contact.id)}
-                      className="p-1 rounded-md text-[#94a3b8] hover:text-[#ef4444] hover:bg-[#fee2e2] transition-colors cursor-pointer"
-                      title="Eliminar contacto"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    {contacts.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveContact(idx)}
+                        className="p-1 rounded-md text-[#94a3b8] hover:text-[#ef4444] hover:bg-[#fee2e2] transition-colors cursor-pointer"
+                        title="Eliminar contacto (no reasigna automáticamente)"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
@@ -502,8 +493,9 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
                       <label className="block text-[11px] font-semibold text-[#475569] mb-0.5">Nombre Completo</label>
                       <input
                         type="text"
+                        placeholder="Ej: Carlos Mendoza"
                         value={contact.name}
-                        onChange={(e) => handleUpdateContact(contact.id, 'name', e.target.value)}
+                        onChange={(e) => handleUpdateContact(idx, 'name', e.target.value)}
                         className="w-full px-2.5 py-1.5 rounded-lg border border-[#e2e8f0] bg-white text-[#0f172a] font-semibold text-xs focus:outline-none focus:border-[#501f92]"
                       />
                     </div>
@@ -512,8 +504,9 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
                       <label className="block text-[11px] font-semibold text-[#475569] mb-0.5">Cargo / Rol</label>
                       <input
                         type="text"
-                        value={contact.roleTitle || ''}
-                        onChange={(e) => handleUpdateContact(contact.id, 'roleTitle', e.target.value)}
+                        placeholder="Ej: Brand & Growth Director"
+                        value={contact.roleTitle}
+                        onChange={(e) => handleUpdateContact(idx, 'roleTitle', e.target.value)}
                         className="w-full px-2.5 py-1.5 rounded-lg border border-[#e2e8f0] bg-white text-[#0f172a] text-xs focus:outline-none focus:border-[#501f92]"
                       />
                     </div>
@@ -522,7 +515,7 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
                       <label className="block text-[11px] font-semibold text-[#475569] mb-0.5">Tipo de Contacto</label>
                       <select
                         value={contact.contactType}
-                        onChange={(e) => handleUpdateContact(contact.id, 'contactType', e.target.value as ClientContactRole)}
+                        onChange={(e) => handleUpdateContact(idx, 'contactType', e.target.value as ClientContactRole)}
                         className="w-full px-2.5 py-1.5 rounded-lg border border-[#e2e8f0] bg-white text-[#0f172a] font-semibold text-xs focus:outline-none focus:border-[#501f92] cursor-pointer"
                       >
                         <option value="operativo">Operativo</option>
@@ -536,8 +529,9 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
                       <label className="block text-[11px] font-semibold text-[#475569] mb-0.5">Correo Electrónico</label>
                       <input
                         type="email"
+                        placeholder="carlos.mendoza@empresa.com"
                         value={contact.email}
-                        onChange={(e) => handleUpdateContact(contact.id, 'email', e.target.value)}
+                        onChange={(e) => handleUpdateContact(idx, 'email', e.target.value)}
                         className="w-full px-2.5 py-1.5 rounded-lg border border-[#e2e8f0] bg-white text-[#0f172a] text-xs focus:outline-none focus:border-[#501f92]"
                       />
                     </div>
@@ -546,8 +540,9 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
                       <label className="block text-[11px] font-semibold text-[#475569] mb-0.5">Teléfono</label>
                       <input
                         type="text"
-                        value={contact.phone || ''}
-                        onChange={(e) => handleUpdateContact(contact.id, 'phone', e.target.value)}
+                        placeholder="+57 (310) 902-8314"
+                        value={contact.phone}
+                        onChange={(e) => handleUpdateContact(idx, 'phone', e.target.value)}
                         className="w-full px-2.5 py-1.5 rounded-lg border border-[#e2e8f0] bg-white text-[#0f172a] font-mono text-xs focus:outline-none focus:border-[#501f92]"
                       />
                     </div>
@@ -572,7 +567,7 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
               className="px-5 py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] disabled:opacity-50 text-white font-bold shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
             >
               <Check className="w-4 h-4" />
-              <span>Guardar Cambios</span>
+              <span>Crear Cuenta de Cliente</span>
             </button>
           </div>
         </form>

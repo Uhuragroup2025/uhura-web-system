@@ -4,6 +4,12 @@ export type { ProjectSummaryItem };
 import { BoardView } from './BoardView';
 import { ManagePhasesModal } from './ManagePhasesModal';
 import { ImportBacklogModal } from './ImportBacklogModal';
+import { ProjectOverviewTab } from './projects/ProjectOverviewTab';
+import { ProjectDeliverablesTab } from './projects/ProjectDeliverablesTab';
+import { ProjectSettingsTab } from './projects/ProjectSettingsTab';
+import { ProjectTeamTab } from './projects/ProjectTeamTab';
+import { ProjectTasksTab } from './projects/ProjectTasksTab';
+import { initialUsers } from './mockData';
 import {
   Button,
   Badge,
@@ -43,6 +49,7 @@ import {
   Activity,
   FileSpreadsheet,
   Settings2,
+  LayoutDashboard,
   Upload,
   ArrowRight,
   RotateCcw,
@@ -78,7 +85,7 @@ interface ProjectsViewProps {
   onDeleteProject?: (projectId: string) => void;
 }
 
-type ProjectDetailTab = 'tasks' | 'backlog' | 'budget' | 'team' | 'activity';
+type ProjectDetailTab = 'overview' | 'deliverables' | 'tasks' | 'team' | 'settings' | 'backlog' | 'budget' | 'activity';
 type TasksGroupBy = 'frente' | 'fase' | 'kanban' | 'lista';
 
 export const ProjectsView: React.FC<ProjectsViewProps> = ({
@@ -106,7 +113,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   const [activeProjectMenu, setActiveProjectMenu] = useState<string | null>(null);
   const [projectPendingDelete, setProjectPendingDelete] = useState<ProjectSummaryItem | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterType, setFilterType] = useState<'all' | 'fee_monthly' | 'fixed_milestones' | 'risk'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'fee_monthly' | 'fixed_milestones' | 'internal_non_billable' | 'risk'>('all');
   const [filterClient, setFilterClient] = useState<string>('all');
   
   // Sync selected project ID if prop changes from outside (e.g. breadcrumb navigation)
@@ -115,7 +122,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   }, [initialSelectedProjectId]);
   
   // Project Detail Tab & Grouping
-  const [activeTab, setActiveTab] = useState<ProjectDetailTab>('tasks');
+  const [activeTab, setActiveTab] = useState<ProjectDetailTab>('overview');
   const [tasksGroupBy, setTasksGroupBy] = useState<TasksGroupBy>('frente');
   const [taskSortDirection, setTaskSortDirection] = useState<'asc' | 'desc'>('asc');
   const [collapsedFrentes, setCollapsedFrentes] = useState<Record<string, boolean>>({});
@@ -180,7 +187,16 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
       const tasksAssignedHours = projectTasks.reduce((acc, t) => acc + (t.budgetedHours || 0), 0);
       const projectSoldHours = prj.soldHours || prj.budgetedHours || 0;
-      const effectiveBudgetedHours = projectSoldHours > 0 ? projectSoldHours : tasksAssignedHours;
+      
+      // Rollup from deliverables roleBudgets if defined
+      const deliverablesQuoted = prj.deliverables?.reduce(
+        (sum, d) => sum + (d.roleBudgets?.reduce((rSum, r) => rSum + (r.quotedHours || 0), 0) || 0),
+        0
+      ) || 0;
+
+      const effectiveBudgetedHours = deliverablesQuoted > 0
+        ? deliverablesQuoted
+        : (projectSoldHours > 0 ? projectSoldHours : tasksAssignedHours);
 
       const totalConsumedSeconds = projectTasks.reduce((acc, t) => acc + (t.consumedSeconds || 0), 0);
       const consumedHours = totalConsumedSeconds / 3600;
@@ -194,7 +210,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
       if (consumedHours > effectiveBudgetedHours && effectiveBudgetedHours > 0) {
         healthStatus = 'rojo';
-        healthNote = `Desvío: +${(consumedHours - effectiveBudgetedHours).toFixed(1)}h sobre lo vendido`;
+        healthNote = `Desvío: +${(consumedHours - effectiveBudgetedHours).toFixed(1)}h sobre lo cotizado`;
       } else if (consumedHours > effectiveBudgetedHours * 0.85 && effectiveBudgetedHours > 0) {
         healthStatus = 'amarillo';
         healthNote = `Consumo alto (${Math.round((consumedHours / effectiveBudgetedHours) * 100)}%)`;
@@ -210,6 +226,10 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
         totalTasksCount,
         healthStatus,
         healthNote,
+        deliverables: prj.deliverables || [],
+        coreTeam: prj.coreTeam || [],
+        monthlyCycles: prj.monthlyCycles || [],
+        rolloverPolicy: prj.rolloverPolicy || 'none',
         tasks: projectTasks
       };
     });
@@ -238,8 +258,9 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
       let matchType = true;
       if (filterType === 'fee_monthly') matchType = p.projectType === 'fee_monthly';
-      else if (filterType === 'fixed_milestones') matchType = p.projectType === 'fixed_milestones';
-      else if (filterType === 'risk') matchType = p.healthStatus === 'rojo' || p.healthStatus === 'amarillo';
+      else if (filterType === 'fixed_milestones') matchType = p.projectType === 'fixed_milestones' || p.projectType === 'fixed_project';
+      else if (filterType === 'internal_non_billable') matchType = p.projectType === 'internal_non_billable' || p.projectType === 'internal';
+      else if (filterType === 'risk') matchType = p.healthStatus === 'rojo' || p.healthStatus === 'amarillo' || p.consumedHours > p.budgetedHours;
 
       return matchSearch && matchClient && matchType;
     });
@@ -683,8 +704,32 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
           </div>
         </div>
 
-        {/* Main Tabs: Tareas | Backlog (if unique project) | Horas | Equipo | Actividad */}
+        {/* Main Tabs: Resumen | Frentes | Tareas | Equipo | Configuración | Horas | Actividad */}
         <div className="flex items-center gap-2 border-b border-[#e2e8f0] pb-1 overflow-x-auto custom-scrollbar">
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+              activeTab === 'overview'
+                ? 'bg-[#f5f3ff] text-[#501f92] border border-[#ddd6fe] shadow-2xs'
+                : 'text-[#64748b] hover:text-[#501f92] hover:bg-[#f8fafc] border border-transparent'
+            }`}
+          >
+            <LayoutDashboard className="w-3.5 h-3.5 text-current" />
+            <span>Resumen</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('deliverables')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+              activeTab === 'deliverables'
+                ? 'bg-[#f5f3ff] text-[#501f92] border border-[#ddd6fe] shadow-2xs'
+                : 'text-[#64748b] hover:text-[#501f92] hover:bg-[#f8fafc] border border-transparent'
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5 text-current" />
+            <span>Frentes & Roles ({currentProject.deliverables?.length || 0})</span>
+          </button>
+
           <button
             onClick={() => setActiveTab('tasks')}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
@@ -697,7 +742,31 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             <span>Tareas ({currentProject.tasks.length})</span>
           </button>
 
-          {!isFeeProject && (
+          <button
+            onClick={() => setActiveTab('team')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+              activeTab === 'team'
+                ? 'bg-[#f5f3ff] text-[#501f92] border border-[#ddd6fe] shadow-2xs'
+                : 'text-[#64748b] hover:text-[#501f92] hover:bg-[#f8fafc] border border-transparent'
+            }`}
+          >
+            <Users className="w-3.5 h-3.5 text-current" />
+            <span>Equipo ({currentProject.assignments?.length || currentProject.coreTeam?.length || 0})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+              activeTab === 'settings'
+                ? 'bg-[#f5f3ff] text-[#501f92] border border-[#ddd6fe] shadow-2xs'
+                : 'text-[#64748b] hover:text-[#501f92] hover:bg-[#f8fafc] border border-transparent'
+            }`}
+          >
+            <Settings2 className="w-3.5 h-3.5 text-current" />
+            <span>Configuración</span>
+          </button>
+
+          {!isFeeProject && currentProject.phasesList && currentProject.phasesList.length > 0 && (
             <button
               onClick={() => setActiveTab('backlog')}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
@@ -729,19 +798,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             }`}
           >
             <FileSpreadsheet className="w-3.5 h-3.5 text-current" />
-            <span>Horas</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('team')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
-              activeTab === 'team'
-                ? 'bg-[#f5f3ff] text-[#501f92] border border-[#ddd6fe] shadow-2xs'
-                : 'text-[#64748b] hover:text-[#501f92] hover:bg-[#f8fafc] border border-transparent'
-            }`}
-          >
-            <Users className="w-3.5 h-3.5 text-current" />
-            <span>Equipo</span>
+            <span>Matriz Horas</span>
           </button>
 
           <button
@@ -757,771 +814,89 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
           </button>
         </div>
 
-        {/* TAB 1: TAREAS */}
-        {activeTab === 'tasks' && (
-          <div className="space-y-4">
-            {/* Sub-bar: Group by selector */}
-            <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-[#e2e8f0]">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-[#64748b]">Agrupar por:</span>
-                <div className="flex items-center bg-[#f1f5f9] p-1 rounded-xl text-xs font-semibold gap-1">
-                  <button
-                    onClick={() => setTasksGroupBy('frente')}
-                    className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all cursor-pointer ${
-                      tasksGroupBy === 'frente' ? 'bg-white text-[#0f172a] shadow-xs' : 'text-[#64748b]'
-                    }`}
-                  >
-                    <FolderKanban className="w-3.5 h-3.5 text-[#501f92]" />
-                    <span>Frente</span>
-                  </button>
+        {/* TAB 0: RESUMEN EJECUTIVO (OVERVIEW) */}
+        {activeTab === 'overview' && (
+          <ProjectOverviewTab
+            project={currentProject}
+            deliverables={currentProject.deliverables || []}
+            coreTeam={currentProject.coreTeam || []}
+            onNavigateToDeliverables={() => setActiveTab('deliverables')}
+            onNavigateToTasks={(frenteName) => {
+              setActiveTab('tasks');
+              if (frenteName) setSelectedFrenteFilter(frenteName);
+            }}
+            onNavigateToTeam={() => setActiveTab('team')}
+            onSelectClient={(cName) => {
+              if (onNavigateToClient) onNavigateToClient(cName);
+            }}
+          />
+        )}
 
-                  {!isFeeProject && (
-                    <button
-                      onClick={() => setTasksGroupBy('fase')}
-                      className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all cursor-pointer ${
-                        tasksGroupBy === 'fase' ? 'bg-white text-[#0f172a] shadow-xs' : 'text-[#64748b]'
-                      }`}
-                    >
-                      <Layers className="w-3.5 h-3.5 text-[#501f92]" />
-                      <span>Fase</span>
-                    </button>
-                  )}
+        {/* TAB DELIVERABLES: FRENTES & ROLES */}
+        {activeTab === 'deliverables' && (
+          <ProjectDeliverablesTab
+            deliverables={currentProject.deliverables || []}
+            tasks={currentProject.tasks}
+            projectName={currentProject.name}
+            onUpdateDeliverables={(newDeliverables) => {
+              if (onUpdateProject) {
+                const newTotalQuoted = newDeliverables.reduce(
+                  (sum, d) => sum + (d.roleBudgets?.reduce((rSum, r) => rSum + (r.quotedHours || 0), 0) || 0),
+                  0
+                );
+                onUpdateProject({
+                  ...currentProject,
+                  deliverables: newDeliverables,
+                  budgetedHours: newTotalQuoted > 0 ? newTotalQuoted : currentProject.budgetedHours
+                });
+              }
+            }}
+            onNavigateToTasksWithFilter={(frenteName) => {
+              setActiveTab('tasks');
+              setSelectedFrenteFilter(frenteName);
+            }}
+          />
+        )}
 
-                  <button
-                    onClick={() => setTasksGroupBy('kanban')}
-                    className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all cursor-pointer ${
-                      tasksGroupBy === 'kanban' ? 'bg-white text-[#0f172a] shadow-xs' : 'text-[#64748b]'
-                    }`}
-                  >
-                    <LayoutGrid className="w-3.5 h-3.5" />
-                    <span>Kanban</span>
-                  </button>
-                </div>
-              </div>
+        {/* TAB SETTINGS: CONFIGURACIÓN & NIT/DESACOPLADO */}
+        {activeTab === 'settings' && (
+          <ProjectSettingsTab
+            project={currentProject}
+            client={clients.find((c) => c.id === currentProject.clientId || c.name === currentProject.clientName)}
+            onUpdateProject={(updated) => {
+              if (onUpdateProject) {
+                onUpdateProject(updated);
+              }
+            }}
+          />
+        )}
 
-              <div className="flex items-center gap-2">
-                {!isFeeProject && (
-                  <button
-                    onClick={() => setIsManagePhasesOpen(true)}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold text-[#501f92] hover:bg-[#f5f3ff] rounded-lg border border-[#e9d5ff] transition-colors cursor-pointer"
-                  >
-                    <Settings2 className="w-3.5 h-3.5" />
-                    <span>Configurar Fases</span>
-                  </button>
-                )}
-                <span className="text-xs text-[#64748b]">
-                  {currentProject.tasks.length} tareas totales ·{' '}
-                  <strong className="text-[#0f172a]">
-                    {currentProject.tasks.filter((t) => t.completed || t.status === 'Done').length} listas
-                  </strong>
-                </span>
-              </div>
-            </div>
-
-            {/* A. VIEW BY FRENTE (The Core Model: Proyecto -> Frente -> Tareas) */}
-            {tasksGroupBy === 'frente' && (
-              <div className="space-y-4">
-                {frentesBreakdown.length === 0 ? (
-                  <div className="bg-white p-12 text-center rounded-2xl border border-[#e2e8f0] text-[#94a3b8]">
-                    No hay tareas con frentes creadas aún.
-                  </div>
-                ) : (
-                  frentesBreakdown.map((frenteGroup, index) => {
-                    const isDefaultCollapsed = index !== 0;
-                    const isCollapsed = collapsedFrentes[frenteGroup.name] !== undefined
-                      ? collapsedFrentes[frenteGroup.name]
-                      : isDefaultCollapsed;
-                    const frentePercent = frenteGroup.budgetedHours > 0
-                      ? Math.round((frenteGroup.consumedHours / frenteGroup.budgetedHours) * 100)
-                      : 0;
-                    const isFrenteOver = frenteGroup.consumedHours > frenteGroup.budgetedHours;
-
-                    return (
-                      <div
-                        key={frenteGroup.name}
-                        className="bg-white rounded-2xl border border-[#e2e8f0] shadow-xs overflow-hidden"
-                      >
-                        {/* Frente Header Banner */}
-                        <div
-                          onClick={() => toggleCollapseFrente(frenteGroup.name, isDefaultCollapsed)}
-                          className="p-4 bg-[#f8fafc] border-b border-[#e2e8f0] flex flex-wrap items-center justify-between gap-3 cursor-pointer hover:bg-[#f1f5f9] transition-colors"
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-7 h-7 rounded-lg bg-[#501f92]/10 border border-[#501f92]/20 flex items-center justify-center text-[#501f92]">
-                              <FolderKanban className="w-4 h-4" />
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <h3 className="font-extrabold text-sm text-[#0f172a]">{frenteGroup.name}</h3>
-                                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#f1f5f9] text-[#475569] border border-[#e2e8f0]">
-                                  {frenteGroup.tasks.length} tareas
-                                </span>
-                              </div>
-                              <span className="text-[11px] text-[#64748b]">
-                                {frenteGroup.completedCount} de {frenteGroup.tasks.length} tareas completadas
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Frente Hours Progress */}
-                          <div className="flex items-center gap-4">
-                            <div className="text-right">
-                              <span className="text-xs font-mono font-bold text-[#0f172a]">
-                                {frenteGroup.consumedHours.toFixed(1)} h / {frenteGroup.budgetedHours.toFixed(1)} h cotizadas
-                              </span>
-                              <span className={`text-[11px] font-bold block ${isFrenteOver ? 'text-[#ef4444]' : 'text-[#64748b]'}`}>
-                                ({frentePercent}%) {isFrenteOver ? '⚠️ Desvío' : ''}
-                              </span>
-                            </div>
-
-                            <button className="text-[#94a3b8] p-1 rounded-lg">
-                              {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Frente Tasks (Mobile Cards + Desktop Table) */}
-                        {!isCollapsed && (
-                          <div>
-                            {/* 1. Mobile Cards View (md:hidden) */}
-                            <div className="md:hidden divide-y divide-[#f1f5f9]">
-                              {frenteGroup.tasks.map((task) => {
-                                const isRunning = activeTimer?.taskId === task.id;
-                                const taskConsumedH = (task.consumedSeconds || 0) / 3600;
-
-                                return (
-                                  <div
-                                    key={`mob-${task.id}`}
-                                    onClick={() => onOpenTaskDetail(task)}
-                                    className={`p-3 space-y-2 transition-colors cursor-pointer ${
-                                      task.completed ? 'bg-[#f8fafc]/50' : 'bg-white hover:bg-[#f8fafc]'
-                                    }`}
-                                  >
-                                    <div className="flex items-start gap-2.5 justify-between">
-                                      <div className="flex items-start gap-2 min-w-0 flex-1">
-                                        <button
-                                          type="button"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            onToggleTask(task.id);
-                                          }}
-                                          className="text-[#94a3b8] hover:text-[#501f92] transition-colors cursor-pointer mt-0.5 shrink-0"
-                                        >
-                                          {task.completed ? (
-                                            <CheckCircle2 className="w-4 h-4 text-[#10b981]" />
-                                          ) : (
-                                            <div className="w-4 h-4 rounded-full border border-[#cbd5e1] hover:border-[#501f92]" />
-                                          )}
-                                        </button>
-                                        <div className="min-w-0 flex-1">
-                                          <h5
-                                            className={`font-semibold text-xs text-[#0f172a] leading-tight ${
-                                              task.completed ? 'line-through text-[#94a3b8]' : ''
-                                            }`}
-                                          >
-                                            {task.title}
-                                          </h5>
-                                          <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                                            {task.budgetedRole && (
-                                              <RoleChip role={task.budgetedRole} size="xs" />
-                                            )}
-                                            {task.dependencyTaskTitle && (
-                                              <Tooltip content={`Predecesora: ${task.dependencyTaskTitle}`}>
-                                                <span className="inline-flex items-center gap-0.5 text-[10px] text-[#b45309] bg-[#fef3c7] px-1.5 py-0.2 rounded font-medium">
-                                                  <Lock className="w-2.5 h-2.5" />
-                                                  Dep
-                                                </span>
-                                              </Tooltip>
-                                            )}
-                                          </div>
-                                        </div>
-                                      </div>
-
-                                      {/* Canonical Status Badge */}
-                                      <TaskStatusBadge
-                                        status={task.status}
-                                        completed={task.completed}
-                                        size="xs"
-                                      />
-                                    </div>
-
-                                    {/* Bottom Meta & Quick Controls */}
-                                    <div className="flex items-center justify-between gap-2 pt-1 border-t border-[#f1f5f9] text-[11px] text-[#64748b]">
-                                      <div className="flex items-center gap-2 min-w-0">
-                                        <div className="flex items-center gap-1">
-                                          <div
-                                            className={`w-4 h-4 rounded-full ${task.assignee.avatarBg} text-white flex items-center justify-center text-[7px] font-bold shrink-0`}
-                                          >
-                                            {task.assignee.initials}
-                                          </div>
-                                          <span className="truncate max-w-[85px] text-[#334155] font-medium">
-                                            {task.assignee.name}
-                                          </span>
-                                        </div>
-
-                                        <span className="text-[#cbd5e1]">·</span>
-
-                                        <span className={`font-mono font-bold text-xs shrink-0 ${taskConsumedH > (task.budgetedHours || 0) ? 'text-[#ef4444]' : 'text-[#0f172a]'}`}>
-                                          {taskConsumedH.toFixed(1)}h / {task.budgetedHours}h
-                                        </span>
-                                      </div>
-
-                                      {/* Timer Quick Action */}
-                                      <div onClick={(e) => e.stopPropagation()} className="shrink-0">
-                                        {isRunning ? (
-                                          <Button
-                                            variant="danger"
-                                            size="xs"
-                                            onClick={onStopTimer}
-                                            icon={<Square className="w-2.5 h-2.5 fill-current" />}
-                                            className="animate-pulse py-1 px-2 text-[10px]"
-                                          >
-                                            Parar
-                                          </Button>
-                                        ) : (
-                                          <Button
-                                            variant="ghost"
-                                            size="xs"
-                                            onClick={() => onStartTimer(task)}
-                                            icon={<Play className="w-3 h-3 fill-current text-[#64748b]" />}
-                                            className="p-1.5 h-7 w-7 border border-[#e2e8f0]"
-                                          />
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-
-                            {/* 2. Desktop Table View (hidden md:block) - Compact density */}
-                            <div className="hidden md:block overflow-x-auto">
-                              <table className="w-full text-left text-xs border-collapse">
-                                <thead>
-                                  <tr className="border-b border-[#f1f5f9] text-[10px] font-bold text-[#64748b] uppercase tracking-wider bg-white">
-                                    <th className="py-2 px-3">TAREA</th>
-                                    <th
-                                      onClick={() => setTaskSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
-                                      className="py-2 px-2.5 cursor-pointer hover:text-[#501f92] transition-colors select-none group w-28"
-                                      title="Clic para ordenar por fecha de vencimiento"
-                                    >
-                                      <div className="flex items-center gap-1">
-                                        <span>VENCE</span>
-                                        {taskSortDirection === 'asc' ? (
-                                          <ArrowUp className="w-3 h-3 text-[#501f92]" />
-                                        ) : (
-                                          <ArrowDown className="w-3 h-3 text-[#501f92]" />
-                                        )}
-                                      </div>
-                                    </th>
-                                    <th className="py-2 px-2.5 w-32">ROL COTIZADO</th>
-                                    <th className="py-2 px-2.5 w-36">RESPONSABLE</th>
-                                    <th className="py-2 px-2.5 w-28">HORAS</th>
-                                    <th className="py-2 px-2 text-center w-14">TIMER</th>
-                                    <th className="py-2 px-3 text-right pr-4 w-28">ESTADO</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-[#f1f5f9]">
-                                  {frenteGroup.tasks.map((task) => {
-                                    const isRunning = activeTimer?.taskId === task.id;
-                                    const taskConsumedH = (task.consumedSeconds || 0) / 3600;
-
-                                    return (
-                                      <tr
-                                        key={task.id}
-                                        onClick={() => onOpenTaskDetail(task)}
-                                        className={`hover:bg-[#f8fafc] cursor-pointer transition-colors group ${
-                                          task.completed ? 'bg-[#f8fafc]/40 text-[#94a3b8]' : 'text-[#0f172a]'
-                                        }`}
-                                      >
-                                        {/* Tarea & Predecesora */}
-                                        <td className="py-2 px-3">
-                                          <div className="flex items-center gap-2">
-                                            <button
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                onToggleTask(task.id);
-                                              }}
-                                              className="text-[#94a3b8] hover:text-[#501f92] transition-colors cursor-pointer shrink-0"
-                                            >
-                                              {task.completed ? (
-                                                <CheckCircle2 className="w-3.5 h-3.5 text-[#10b981]" />
-                                              ) : (
-                                                <div className="w-3.5 h-3.5 rounded-full border border-[#cbd5e1] hover:border-[#501f92]" />
-                                              )}
-                                            </button>
-                                            <div className="min-w-0 flex-1">
-                                              <div className="flex items-center gap-1.5">
-                                                <span className={`font-semibold text-xs group-hover:text-[#501f92] truncate ${task.completed ? 'line-through' : ''}`}>
-                                                  {task.title}
-                                                </span>
-                                                {task.dependencyTaskTitle && (
-                                                  <Tooltip content={`Depende de: ${task.dependencyTaskTitle}`}>
-                                                    <span className="inline-flex items-center gap-0.5 text-[9px] text-[#b45309] bg-[#fef3c7] px-1 py-0.2 rounded font-medium shrink-0">
-                                                      <Lock className="w-2 h-2 text-[#f59e0b]" />
-                                                      Dep
-                                                    </span>
-                                                  </Tooltip>
-                                                )}
-                                              </div>
-                                            </div>
-                                          </div>
-                                        </td>
-
-                                        {/* Vence / Due Date */}
-                                        <td className="py-2 px-2.5">
-                                          <div className="flex items-center gap-1">
-                                            <Calendar className={`w-3 h-3 shrink-0 ${
-                                              task.dueStatus === 'overdue'
-                                                ? 'text-[#ef4444]'
-                                                : task.dueStatus === 'soon' || task.dueStatus === 'tomorrow'
-                                                ? 'text-[#f59e0b]'
-                                                : 'text-[#94a3b8]'
-                                            }`} />
-                                            <span className={`text-[11px] truncate ${
-                                              task.dueStatus === 'overdue'
-                                                ? 'text-[#ef4444] font-bold'
-                                                : task.dueStatus === 'soon' || task.dueStatus === 'tomorrow'
-                                                ? 'text-[#d97706] font-semibold'
-                                                : 'text-[#334155] font-medium'
-                                            }`}>
-                                              {task.dueDate || 'Sin fecha'}
-                                            </span>
-                                          </div>
-                                        </td>
-
-                                        {/* Rol Cotizado */}
-                                        <td className="py-2 px-2.5">
-                                          <RoleChip role={task.budgetedRole || 'Especialista'} size="xs" />
-                                        </td>
-
-                                        {/* Responsable Real */}
-                                        <td className="py-2 px-2.5">
-                                          <div className="flex items-center gap-1.5 min-w-0">
-                                            <div className={`w-4 h-4 rounded-full ${task.assignee.avatarBg} text-white flex items-center justify-center text-[7px] font-bold shrink-0`}>
-                                              {task.assignee.initials}
-                                            </div>
-                                            <span className="text-xs text-[#334155] font-medium truncate">{task.assignee.name}</span>
-                                          </div>
-                                        </td>
-
-                                        {/* Horas Cotizadas vs Ejecutadas */}
-                                        <td className="py-2 px-2.5 font-mono font-bold text-xs">
-                                          <span className={taskConsumedH > task.budgetedHours ? 'text-[#ef4444]' : 'text-[#0f172a]'}>
-                                            {taskConsumedH.toFixed(1)}h
-                                          </span>
-                                          <span className="text-[10px] text-[#64748b] font-normal"> / {task.budgetedHours}h</span>
-                                        </td>
-
-                                        {/* Timer Play / Stop */}
-                                        <td className="py-2 px-2 text-center" onClick={(e) => e.stopPropagation()}>
-                                          {isRunning ? (
-                                            <Button
-                                              variant="danger"
-                                              size="xs"
-                                              onClick={onStopTimer}
-                                              icon={<Square className="w-2.5 h-2.5 fill-current" />}
-                                              className="p-1 h-6 w-6 animate-pulse"
-                                            />
-                                          ) : (
-                                            <Button
-                                              variant="ghost"
-                                              size="xs"
-                                              onClick={() => onStartTimer(task)}
-                                              icon={<Play className="w-2.5 h-2.5 fill-current text-[#64748b]" />}
-                                              className="p-1 h-6 w-6 border border-[#e2e8f0]"
-                                            />
-                                          )}
-                                        </td>
-
-                                        {/* Status */}
-                                        <td className="py-2 px-3 text-right pr-4">
-                                          <TaskStatusBadge
-                                            status={task.status}
-                                            completed={task.completed}
-                                            size="xs"
-                                          />
-                                        </td>
-                                      </tr>
-                                    );
-                                  })}
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            )}
-
-            {/* B. VIEW BY FASE (Discovery -> Prototipo -> Dev -> QA -> Cierre) */}
-            {tasksGroupBy === 'fase' && (
-              <div className="space-y-4">
-                {phasesBreakdown.map((phaseGroup) => {
-                  const isCollapsed = collapsedPhases[phaseGroup.name];
-                  const phasePercent = phaseGroup.budgetedHours > 0
-                    ? Math.round((phaseGroup.consumedHours / phaseGroup.budgetedHours) * 100)
-                    : 0;
-                  const isPhaseOver = phaseGroup.consumedHours > phaseGroup.budgetedHours;
-
-                  return (
-                    <div
-                      key={phaseGroup.id || phaseGroup.name}
-                      className="bg-white rounded-2xl border border-[#e2e8f0] shadow-xs overflow-hidden"
-                    >
-                      {/* Phase Header Banner */}
-                      <div
-                        onClick={() => toggleCollapsePhase(phaseGroup.name)}
-                        className="p-4 bg-[#f8fafc] border-b border-[#e2e8f0] flex flex-wrap items-center justify-between gap-3 cursor-pointer hover:bg-[#f1f5f9] transition-colors"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs ${
-                            phaseGroup.status === 'completed'
-                              ? 'bg-[#10b981]/15 text-[#10b981] border border-[#10b981]/30'
-                              : phaseGroup.status === 'in_progress'
-                              ? 'bg-[#501f92] text-white shadow-xs'
-                              : 'bg-[#f1f5f9] text-[#64748b] border border-[#e2e8f0]'
-                          }`}>
-                            {phaseGroup.order || 1}
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <h3 className="font-extrabold text-sm text-[#0f172a]">{phaseGroup.name}</h3>
-                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                phaseGroup.status === 'completed'
-                                  ? 'bg-[#ecfdf5] text-[#065f46]'
-                                  : phaseGroup.status === 'in_progress'
-                                  ? 'bg-[#f2ecfb] text-[#501f92] border border-[#e9d5ff]'
-                                  : 'bg-[#f1f5f9] text-[#64748b]'
-                              }`}>
-                                {phaseGroup.status === 'completed' ? 'Completada' : phaseGroup.status === 'in_progress' ? 'En curso' : 'Pendiente'}
-                              </span>
-                            </div>
-                            <span className="text-[11px] text-[#64748b]">
-                              {phaseGroup.startDate || 'Inicio'} → {phaseGroup.endDate || 'Fin'} · {phaseGroup.completedCount} de {phaseGroup.tasks.length} actividades listas
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Phase Hours Progress */}
-                        <div className="flex items-center gap-4">
-                          <div className="text-right">
-                            <span className="text-xs font-mono font-bold text-[#0f172a]">
-                              {phaseGroup.consumedHours.toFixed(1)} h / {phaseGroup.budgetedHours.toFixed(1)} h
-                            </span>
-                            <span className={`text-[11px] font-bold block ${isPhaseOver ? 'text-[#ef4444]' : 'text-[#64748b]'}`}>
-                              ({phasePercent}%) {isPhaseOver ? '⚠️ Desvío' : ''}
-                            </span>
-                          </div>
-
-                          <button className="text-[#94a3b8] p-1 rounded-lg">
-                            {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Phase Tasks Table */}
-                      {!isCollapsed && (
-                        <div className="overflow-x-auto">
-                          {phaseGroup.tasks.length === 0 ? (
-                            <div className="p-6 text-center text-xs text-[#94a3b8]">
-                              No hay tareas asociadas a esta fase todavía.{' '}
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setQuickFase(phaseGroup.name);
-                                  setIsQuickAddOpen(true);
-                                  setActiveTab('backlog');
-                                }}
-                                className="text-[#501f92] font-bold hover:underline ml-1"
-                              >
-                                + Agregar desde el Backlog
-                              </button>
-                            </div>
-                          ) : (
-                            <div>
-                              {/* 1. Mobile Cards View (md:hidden) */}
-                              <div className="md:hidden divide-y divide-[#f1f5f9]">
-                                {phaseGroup.tasks.map((task) => {
-                                  const isRunning = activeTimer?.taskId === task.id;
-                                  const taskConsumedH = (task.consumedSeconds || 0) / 3600;
-
-                                  return (
-                                    <div
-                                      key={`phase-mob-${task.id}`}
-                                      onClick={() => onOpenTaskDetail(task)}
-                                      className={`p-3 space-y-2 transition-colors cursor-pointer ${
-                                        task.completed ? 'bg-[#f8fafc]/50' : 'bg-white hover:bg-[#f8fafc]'
-                                      }`}
-                                    >
-                                      <div className="flex items-start gap-2.5 justify-between">
-                                        <div className="flex items-start gap-2 min-w-0 flex-1">
-                                          <button
-                                            type="button"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              onToggleTask(task.id);
-                                            }}
-                                            className="text-[#94a3b8] hover:text-[#501f92] transition-colors cursor-pointer mt-0.5 shrink-0"
-                                          >
-                                            {task.completed ? (
-                                              <CheckCircle2 className="w-4 h-4 text-[#10b981]" />
-                                            ) : (
-                                              <div className="w-4 h-4 rounded-full border border-[#cbd5e1] hover:border-[#501f92]" />
-                                            )}
-                                          </button>
-                                          <div className="min-w-0 flex-1">
-                                            <h5
-                                              className={`font-semibold text-xs text-[#0f172a] leading-tight ${
-                                                task.completed ? 'line-through text-[#94a3b8]' : ''
-                                              }`}
-                                            >
-                                              {task.title}
-                                            </h5>
-                                            <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                                              {task.budgetedRole && (
-                                                <RoleChip role={task.budgetedRole} size="xs" />
-                                              )}
-                                              {task.frente && (
-                                                <span className="text-[10px] text-[#64748b]">
-                                                  {task.frente}
-                                                </span>
-                                              )}
-                                            </div>
-                                          </div>
-                                        </div>
-
-                                        {/* Status Badge */}
-                                        <TaskStatusBadge
-                                          status={task.status}
-                                          completed={task.completed}
-                                          size="xs"
-                                        />
-                                      </div>
-
-                                      {/* Bottom Meta & Quick Controls */}
-                                      <div className="flex items-center justify-between gap-2 pt-1 border-t border-[#f1f5f9] text-[11px] text-[#64748b]">
-                                        <div className="flex items-center gap-2 min-w-0">
-                                          <div className="flex items-center gap-1">
-                                            <div
-                                              className={`w-4 h-4 rounded-full ${task.assignee.avatarBg} text-white flex items-center justify-center text-[7px] font-bold shrink-0`}
-                                            >
-                                              {task.assignee.initials}
-                                            </div>
-                                            <span className="truncate max-w-[85px] text-[#334155] font-medium">
-                                              {task.assignee.name}
-                                            </span>
-                                          </div>
-
-                                          <span className="text-[#cbd5e1]">·</span>
-
-                                          <span className={`font-mono font-bold text-xs shrink-0 ${taskConsumedH > (task.budgetedHours || 0) ? 'text-[#ef4444]' : 'text-[#0f172a]'}`}>
-                                            {taskConsumedH.toFixed(1)}h / {task.budgetedHours}h
-                                          </span>
-                                        </div>
-
-                                        {/* Timer Quick Action */}
-                                        <div onClick={(e) => e.stopPropagation()} className="shrink-0">
-                                          {isRunning ? (
-                                            <Button
-                                              variant="danger"
-                                              size="xs"
-                                              onClick={onStopTimer}
-                                              icon={<Square className="w-2.5 h-2.5 fill-current" />}
-                                              className="animate-pulse py-1 px-2 text-[10px]"
-                                            >
-                                              Parar
-                                            </Button>
-                                          ) : (
-                                            <Button
-                                              variant="ghost"
-                                              size="xs"
-                                              onClick={() => onStartTimer(task)}
-                                              icon={<Play className="w-3 h-3 fill-current text-[#64748b]" />}
-                                              className="p-1.5 h-7 w-7 border border-[#e2e8f0]"
-                                            />
-                                          )}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-
-                              {/* 2. Desktop Table View (hidden md:block) */}
-                              <div className="hidden md:block overflow-x-auto custom-scrollbar">
-                                <table className="w-full text-left text-xs border-collapse min-w-[650px]">
-                                  <thead>
-                                    <tr className="border-b border-[#f1f5f9] text-[10px] font-bold text-[#64748b] uppercase tracking-wider bg-white">
-                                      <th className="py-2 px-3 min-w-[180px]">ACTIVIDAD</th>
-                                      <th
-                                        onClick={() => setTaskSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
-                                        className="py-2 px-2.5 cursor-pointer hover:text-[#501f92] transition-colors select-none group w-28"
-                                        title="Clic para ordenar por fecha de vencimiento"
-                                      >
-                                        <div className="flex items-center gap-1">
-                                          <span>VENCE</span>
-                                          {taskSortDirection === 'asc' ? (
-                                            <ArrowUp className="w-3 h-3 text-[#501f92]" />
-                                          ) : (
-                                            <ArrowDown className="w-3 h-3 text-[#501f92]" />
-                                          )}
-                                        </div>
-                                      </th>
-                                      <th className="py-2 px-2.5 w-32">ROL COTIZADO</th>
-                                      <th className="py-2 px-2.5 w-36">RESPONSABLE</th>
-                                      <th className="py-2 px-2.5 w-28">HORAS</th>
-                                      <th className="py-2 px-2 text-center w-14">TIMER</th>
-                                      <th className="py-2 px-3 text-right pr-4 w-28">ESTADO</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody className="divide-y divide-[#f1f5f9]">
-                                    {phaseGroup.tasks.map((task) => {
-                                      const isRunning = activeTimer?.taskId === task.id;
-                                      const taskConsumedH = (task.consumedSeconds || 0) / 3600;
-
-                                      return (
-                                        <tr
-                                          key={task.id}
-                                          onClick={() => onOpenTaskDetail(task)}
-                                          className="hover:bg-[#f8fafc] cursor-pointer transition-colors group text-[#0f172a]"
-                                        >
-                                          <td className="py-2 px-3">
-                                            <div className="flex items-center gap-2">
-                                              <button
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  onToggleTask(task.id);
-                                                }}
-                                                className="text-[#94a3b8] hover:text-[#501f92] transition-colors cursor-pointer shrink-0"
-                                              >
-                                                {task.completed ? (
-                                                  <CheckCircle2 className="w-3.5 h-3.5 text-[#10b981]" />
-                                                ) : (
-                                                  <div className="w-3.5 h-3.5 rounded-full border border-[#cbd5e1] hover:border-[#501f92]" />
-                                                )}
-                                              </button>
-                                              <div className="min-w-0 flex-1">
-                                                <div className="flex items-center gap-1.5">
-                                                  <span className={`font-semibold text-xs group-hover:text-[#501f92] truncate ${task.completed ? 'line-through text-[#94a3b8]' : ''}`}>
-                                                    {task.title}
-                                                  </span>
-                                                  {task.frente && (
-                                                    <span className="text-[10px] text-[#64748b] bg-[#f1f5f9] px-1.5 py-0.2 rounded shrink-0">
-                                                      {task.frente}
-                                                    </span>
-                                                  )}
-                                                </div>
-                                              </div>
-                                            </div>
-                                          </td>
-
-                                          {/* Vence / Due Date */}
-                                          <td className="py-2 px-2.5">
-                                            <div className="flex items-center gap-1">
-                                              <Calendar className={`w-3 h-3 shrink-0 ${
-                                                task.dueStatus === 'overdue'
-                                                  ? 'text-[#ef4444]'
-                                                  : task.dueStatus === 'soon' || task.dueStatus === 'tomorrow'
-                                                  ? 'text-[#f59e0b]'
-                                                  : 'text-[#94a3b8]'
-                                              }`} />
-                                              <span className={`text-[11px] truncate ${
-                                                task.dueStatus === 'overdue'
-                                                  ? 'text-[#ef4444] font-bold'
-                                                  : task.dueStatus === 'soon' || task.dueStatus === 'tomorrow'
-                                                  ? 'text-[#d97706] font-semibold'
-                                                  : 'text-[#334155] font-medium'
-                                              }`}>
-                                                {task.dueDate || 'Sin fecha'}
-                                              </span>
-                                            </div>
-                                          </td>
-
-                                          <td className="py-2 px-2.5">
-                                            <RoleChip role={task.budgetedRole || 'Especialista'} size="xs" />
-                                          </td>
-
-                                          <td className="py-2 px-2.5">
-                                            <div className="flex items-center gap-1.5 min-w-0">
-                                              <div className={`w-4 h-4 rounded-full ${task.assignee.avatarBg} text-white flex items-center justify-center text-[7px] font-bold shrink-0`}>
-                                                {task.assignee.initials}
-                                              </div>
-                                              <span className="text-xs text-[#334155] font-medium truncate">{task.assignee.name}</span>
-                                            </div>
-                                          </td>
-
-                                          <td className="py-2 px-2.5 font-mono font-bold text-xs">
-                                            <span className={taskConsumedH > task.budgetedHours ? 'text-[#ef4444]' : 'text-[#0f172a]'}>
-                                              {taskConsumedH.toFixed(1)}h
-                                            </span>
-                                            <span className="text-[10px] text-[#64748b] font-normal"> / {task.budgetedHours}h</span>
-                                          </td>
-
-                                          <td className="py-2 px-2 text-center" onClick={(e) => e.stopPropagation()}>
-                                            {isRunning ? (
-                                              <Button
-                                                variant="danger"
-                                                size="xs"
-                                                onClick={onStopTimer}
-                                                icon={<Square className="w-2.5 h-2.5 fill-current" />}
-                                                className="p-1 h-6 w-6 animate-pulse"
-                                              />
-                                            ) : (
-                                              <Button
-                                                variant="ghost"
-                                                size="xs"
-                                                onClick={() => onStartTimer(task)}
-                                                icon={<Play className="w-2.5 h-2.5 fill-current text-[#64748b]" />}
-                                                className="p-1 h-6 w-6 border border-[#e2e8f0]"
-                                              />
-                                            )}
-                                          </td>
-
-                                          <td className="py-2 px-3 text-right pr-4">
-                                            <TaskStatusBadge
-                                              status={task.status}
-                                              completed={task.completed}
-                                              size="xs"
-                                            />
-                                          </td>
-                                        </tr>
-                                      );
-                                    })}
-                                  </tbody>
-                                </table>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* C. VIEW KANBAN */}
-            {tasksGroupBy === 'kanban' && (
-              <BoardView
-                tasks={currentProject.tasks}
-                isProjectDetail={true}
-                onToggleTask={onToggleTask}
-                onOpenNewTaskModal={() => {
-                  if (onOpenNewTaskModalWithProject) {
-                    onOpenNewTaskModalWithProject(currentProject.name, currentProject.clientName);
-                  }
-                }}
-                activeTimer={activeTimer}
-                onStartTimer={onStartTimer}
-                onPauseResumeTimer={onPauseResumeTimer}
-                onOpenTaskDetail={onOpenTaskDetail}
-              />
-            )}
-          </div>
+        {/* TAB 1: TAREAS (NORMALIZADO PASO 4 - ATOMIC UNIT) */}
+        {activeTab === "tasks" && (
+          <ProjectTasksTab
+            project={currentProject}
+            tasks={currentProject.tasks}
+            allProjects={projectsList}
+            users={initialUsers}
+            activeTimer={activeTimer}
+            onStartTimer={onStartTimer}
+            onPauseResumeTimer={onPauseResumeTimer}
+            onOpenTaskDetail={onOpenTaskDetail}
+            onUpdateTasks={(newTasks) => {
+              if (onUpdateProject) {
+                const totalConsumed = newTasks.reduce((sum, t) => sum + (t.consumedSeconds || 0) / 3600, 0);
+                const completedCount = newTasks.filter((t) => t.status === "Done" || t.completed || t.status === "completed").length;
+                onUpdateProject({
+                  ...currentProject,
+                  tasks: newTasks,
+                  consumedHours: totalConsumed,
+                  completedTasksCount: completedCount,
+                  totalTasksCount: newTasks.length
+                });
+              }
+            }}
+            onUpdateProject={onUpdateProject}
+          />
         )}
 
         {/* TAB: BACKLOG & CRONOGRAMA (For Projects with Backlog & Phases) */}
@@ -2156,24 +1531,18 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
           </div>
         )}
 
-        {/* TAB 3: EQUIPO */}
+        {/* TAB 3: EQUIPO Y ASIGNACIONES */}
         {activeTab === 'team' && (
-          <div className="bg-white rounded-3xl p-6 border border-[#e2e8f0] space-y-4">
-            <h3 className="font-extrabold text-sm text-[#0f172a]">Equipo y Asignaciones</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-              {rolesBreakdown.map((r) => (
-                <div key={r.role} className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] space-y-2">
-                  <span className="text-xs font-bold text-[#501f92] block">{r.role}</span>
-                  <div className="flex items-center justify-between text-xs text-[#64748b]">
-                    <span>Asignado: {r.assigneesList.join(', ')}</span>
-                  </div>
-                  <div className="text-xs font-mono font-bold text-[#0f172a]">
-                    {r.executedHours.toFixed(1)} h ejecutadas / {r.budgetedHours.toFixed(1)} h cotizadas
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          <ProjectTeamTab
+            project={currentProject}
+            allProjects={projectsList}
+            tasks={currentProject.tasks}
+            onUpdateProject={(updated) => {
+              if (onUpdateProject) {
+                onUpdateProject(updated);
+              }
+            }}
+          />
         )}
 
         {/* TAB 5: ACTIVIDAD */}
@@ -2343,6 +1712,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             <option value="all">Todos los tipos</option>
             <option value="fee_monthly">Fees mensuales</option>
             <option value="fixed_milestones">Proyectos únicos</option>
+            <option value="internal_non_billable">Proyectos internos</option>
             <option value="risk">En riesgo / atención</option>
           </select>
 
