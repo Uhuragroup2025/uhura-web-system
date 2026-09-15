@@ -1,18 +1,13 @@
 import React, { useState } from 'react';
 import { OrbitView } from './types';
 import {
-  LayoutDashboard,
   Briefcase,
   Layers,
   Clock,
   Users2,
-  DollarSign,
   Users,
   Calculator,
   Wallet,
-  Sparkles,
-  BarChart3,
-  BrainCircuit,
   Shield,
   KeyRound,
   UserCheck,
@@ -20,9 +15,11 @@ import {
   ChevronDown,
   ChevronRight,
   TrendingUp,
-  AlertCircle,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  BookOpen,
+  Target,
+  Sparkles
 } from 'lucide-react';
 
 interface TaskflowSidebarProps {
@@ -41,9 +38,8 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
   const [openSections, setOpenSections] = useState<{ [key: string]: boolean }>({
     operacion: true,
     comercial: true,
-    inteligencia: false,
-    configuracion: false,
-    portal: false,
+    experiencia: true,
+    sistema: false
   });
 
   const toggleSection = (section: string) => {
@@ -66,7 +62,6 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
               title="Desplegar menú lateral (Sidebar)"
             >
               <div className="w-full h-full bg-[#0d0718] rounded-[10px] flex items-center justify-center relative overflow-hidden">
-                {/* Orbit Logo Spiral */}
                 <div className="w-5 h-5 rounded-full border-2 border-t-[#d4ff4a] border-r-[#8a4dff] border-b-[#4be5ff] border-l-transparent animate-spin-slow" />
                 <div className="w-2 h-2 rounded-full bg-[#d4ff4a] absolute" />
               </div>
@@ -86,7 +81,6 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#8a4dff] via-[#501f92] to-[#140b24] p-0.5 flex items-center justify-center shrink-0 shadow-sm ring-1 ring-[#8a4dff]/40">
                 <div className="w-full h-full bg-[#0d0718] rounded-[10px] flex items-center justify-center relative overflow-hidden">
-                  {/* Orbit Logo Spiral */}
                   <div className="w-5 h-5 rounded-full border-2 border-t-[#d4ff4a] border-r-[#8a4dff] border-b-[#4be5ff] border-l-transparent animate-spin-slow" />
                   <div className="w-2 h-2 rounded-full bg-[#d4ff4a] absolute" />
                 </div>
@@ -116,73 +110,8 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
           </div>
         )}
 
-        {/* 0. Mi Día & Bucky el Castor (Experiencia Personal / Gamificación Uhura) */}
+        {/* 1. OPERACIÓN */}
         <div className="space-y-1">
-          <button
-            onClick={() => onSelectView('mi-dia')}
-            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-              currentView === 'mi-dia'
-                ? 'bg-gradient-to-r from-[#2e1859] to-[#1e113a] text-white shadow-sm border-l-2 border-[#d4ff4a]'
-                : 'text-[#c9b7ff] hover:bg-[#1a0f30] hover:text-white'
-            }`}
-            title="Mi Día · Bucky el Castor de Orbit"
-          >
-            <div className="flex items-center gap-2.5">
-              <span className="text-sm">🦫</span>
-              {!collapsed && <span className="font-bold">Mi Día</span>}
-            </div>
-            {!collapsed && (
-              <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded-full bg-[#f97316]/20 text-[#fdba74] border border-[#f97316]/30 flex items-center gap-0.5">
-                🔥 6d
-              </span>
-            )}
-          </button>
-
-          {/* 0.1 La Colonia · Hábitat lúdico y experiencial de Bucky */}
-          <button
-            onClick={() => onSelectView('la-colonia')}
-            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-              currentView === 'la-colonia'
-                ? 'bg-gradient-to-r from-[#2e1859] to-[#1e113a] text-white shadow-sm border-l-2 border-[#d4ff4a]'
-                : 'text-[#c9b7ff] hover:bg-[#1a0f30] hover:text-white'
-            }`}
-            title="La Colonia · Espacio lúdico y hábitat de Bucky"
-          >
-            <div className="flex items-center gap-2.5">
-              <span className="text-sm">🪵</span>
-              {!collapsed && <span>La Colonia</span>}
-            </div>
-            {!collapsed && (
-              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-[#501f92] text-[#d4ff4a] border border-[#8a4dff]/40">
-                Nivel 1
-              </span>
-            )}
-          </button>
-        </div>
-
-        {/* 1. Dashboard Principal Item */}
-        <div>
-          <button
-            onClick={() => onSelectView('dashboard')}
-            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-              currentView === 'dashboard'
-                ? 'bg-[#241344] text-white shadow-2xs border-l-2 border-[#8a4dff]'
-                : 'text-[#c9b7ff] hover:bg-[#1a0f30] hover:text-white'
-            }`}
-            title="Dashboard Ejecutivo"
-          >
-            <div className="flex items-center gap-2.5">
-              <LayoutDashboard className={`w-4 h-4 ${currentView === 'dashboard' ? 'text-[#d4ff4a]' : 'text-[#8a4dff]'}`} />
-              {!collapsed && <span>Dashboard</span>}
-            </div>
-            {!collapsed && (
-              <span className="w-1.5 h-1.5 rounded-full bg-[#d4ff4a]" />
-            )}
-          </button>
-        </div>
-
-        {/* 2. OPERACIÓN */}
-        <div className="space-y-1 pt-1">
           {!collapsed ? (
             <button
               onClick={() => toggleSection('operacion')}
@@ -200,7 +129,28 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
           )}
 
           {(openSections.operacion || collapsed) && (
-            <div className="space-y-0.5 pl-1">
+            <div className="space-y-0.5 pl-0.5">
+              {/* Mi Día · Home Contextual de Orbit */}
+              <button
+                onClick={() => onSelectView('mi-dia')}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                  currentView === 'mi-dia' || currentView === 'dashboard'
+                    ? 'bg-gradient-to-r from-[#2e1859] to-[#1e113a] text-white shadow-sm border-l-2 border-[#d4ff4a]'
+                    : 'text-[#c9b7ff] hover:bg-[#1a0f30] hover:text-white'
+                }`}
+                title="Mi Día · Home Contextual con perspectivas de rol"
+              >
+                <div className="flex items-center gap-2.5">
+                  <span className="text-sm">🦫</span>
+                  {!collapsed && <span className="font-bold">Mi Día</span>}
+                </div>
+                {!collapsed && (
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#d4ff4a]/20 text-[#d4ff4a] border border-[#d4ff4a]/30">
+                    Home
+                  </span>
+                )}
+              </button>
+
               <button
                 onClick={() => onSelectView('proyectos')}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
@@ -272,7 +222,7 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
           )}
         </div>
 
-        {/* 3. COMERCIAL */}
+        {/* 2. COMERCIAL */}
         <div className="space-y-1 pt-1">
           {!collapsed ? (
             <button
@@ -291,7 +241,7 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
           )}
 
           {(openSections.comercial || collapsed) && (
-            <div className="space-y-0.5 pl-1">
+            <div className="space-y-0.5 pl-0.5">
               <button
                 onClick={() => onSelectView('clientes')}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
@@ -308,13 +258,33 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
               </button>
 
               <button
+                onClick={() => onSelectView('plantillas-producto')}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                  currentView === 'plantillas-producto'
+                    ? 'bg-[#1e113a] text-white font-semibold'
+                    : 'text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white'
+                }`}
+                title="Biblioteca de Plantillas Maestras de Producto"
+              >
+                <div className="flex items-center gap-2.5">
+                  <BookOpen className="w-3.5 h-3.5 text-[#8a4dff]" />
+                  {!collapsed && <span>Plantillas</span>}
+                </div>
+                {!collapsed && (
+                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-[#8a4dff]/25 text-[#d4ff4a]">
+                    Producto
+                  </span>
+                )}
+              </button>
+
+              <button
                 onClick={() => onSelectView('cotizador')}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
                   currentView === 'cotizador'
                     ? 'bg-[#1e113a] text-white font-semibold'
                     : 'text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white'
                 }`}
-                title="Cotizador"
+                title="Cotizador & Backlog Comercial"
               >
                 <div className="flex items-center gap-2.5">
                   <Calculator className="w-3.5 h-3.5 text-[#8a4dff]" />
@@ -322,90 +292,44 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
                 </div>
               </button>
 
+              {/* New Business (Sustituye a Pipeline, enfocado en discovery, backlog, cotización y conversión) */}
               <button
-                onClick={() => onSelectView('finanzas')}
+                onClick={() => onSelectView('new-business')}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                  currentView === 'finanzas'
+                  currentView === 'new-business'
                     ? 'bg-[#1e113a] text-white font-semibold'
                     : 'text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white'
                 }`}
-                title="Finanzas y Metas"
+                title="New Business · Discovery, backlog y conversión de proyectos"
               >
                 <div className="flex items-center gap-2.5">
-                  <Wallet className="w-3.5 h-3.5 text-[#8a4dff]" />
-                  {!collapsed && <span>Finanzas</span>}
-                </div>
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* 4. INTELIGENCIA */}
-        <div className="space-y-1 pt-1">
-          {!collapsed ? (
-            <button
-              onClick={() => toggleSection('inteligencia')}
-              className="w-full flex items-center justify-between px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-[#c9b7ff]/70 hover:text-white transition-colors"
-            >
-              <span>INTELIGENCIA</span>
-              {openSections.inteligencia ? (
-                <ChevronDown className="w-3.5 h-3.5" />
-              ) : (
-                <ChevronRight className="w-3.5 h-3.5" />
-              )}
-            </button>
-          ) : (
-            <div className="h-px bg-[#261845] my-2" />
-          )}
-
-          {(openSections.inteligencia || collapsed) && (
-            <div className="space-y-0.5 pl-1">
-              <button
-                onClick={() => onSelectView('el-muro')}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                  currentView === 'el-muro'
-                    ? 'bg-[#1e113a] text-white font-semibold'
-                    : 'text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white'
-                }`}
-                title="El Muro"
-              >
-                <div className="flex items-center gap-2.5">
-                  <TrendingUp className="w-3.5 h-3.5 text-[#4be5ff]" />
-                  {!collapsed && <span>El Muro</span>}
-                </div>
-              </button>
-
-              <button
-                onClick={() => onSelectView('reportes')}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                  currentView === 'reportes'
-                    ? 'bg-[#1e113a] text-white font-semibold'
-                    : 'text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white'
-                }`}
-                title="Reportes Ejecutivos"
-              >
-                <div className="flex items-center gap-2.5">
-                  <BarChart3 className="w-3.5 h-3.5 text-[#4be5ff]" />
-                  {!collapsed && <span>Reportes</span>}
-                </div>
-              </button>
-
-              <button
-                onClick={() => onSelectView('nova-ia')}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                  currentView === 'nova-ia'
-                    ? 'bg-[#1e113a] text-white font-semibold'
-                    : 'text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white'
-                }`}
-                title="NOVA IA Asistente"
-              >
-                <div className="flex items-center gap-2.5">
-                  <BrainCircuit className="w-3.5 h-3.5 text-[#d4ff4a]" />
-                  {!collapsed && <span>NOVA IA</span>}
+                  <Target className="w-3.5 h-3.5 text-[#4be5ff]" />
+                  {!collapsed && <span>New Business</span>}
                 </div>
                 {!collapsed && (
-                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-[#d4ff4a]/20 text-[#d4ff4a] border border-[#d4ff4a]/30">
-                    AI PRO
+                  <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-[#4be5ff]/15 text-[#4be5ff]">
+                    Discovery
+                  </span>
+                )}
+              </button>
+
+              {/* Finanzas Operativas (Sub-ítem secundario; no compite como módulo principal en esta fase) */}
+              <button
+                onClick={() => onSelectView('finanzas')}
+                className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition-colors ${
+                  currentView === 'finanzas'
+                    ? 'bg-[#1e113a] text-white font-semibold'
+                    : 'text-[#c9b7ff]/60 hover:bg-[#160c2b] hover:text-[#c9b7ff]'
+                }`}
+                title="Finanzas Operativas (Fase posterior / En definición)"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Wallet className="w-3.5 h-3.5 text-[#8a4dff]/70" />
+                  {!collapsed && <span className="text-[11px]">Finanzas</span>}
+                </div>
+                {!collapsed && (
+                  <span className="text-[9px] text-[#c9b7ff]/50 px-1 py-0.2 rounded bg-white/5 border border-white/10">
+                    Fase posterior
                   </span>
                 )}
               </button>
@@ -413,15 +337,15 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
           )}
         </div>
 
-        {/* 5. CONFIGURACIÓN */}
+        {/* 3. EXPERIENCIA */}
         <div className="space-y-1 pt-1">
           {!collapsed ? (
             <button
-              onClick={() => toggleSection('configuracion')}
+              onClick={() => toggleSection('experiencia')}
               className="w-full flex items-center justify-between px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-[#c9b7ff]/70 hover:text-white transition-colors"
             >
-              <span>CONFIGURACIÓN</span>
-              {openSections.configuracion ? (
+              <span>EXPERIENCIA</span>
+              {openSections.experiencia ? (
                 <ChevronDown className="w-3.5 h-3.5" />
               ) : (
                 <ChevronRight className="w-3.5 h-3.5" />
@@ -431,26 +355,68 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
             <div className="h-px bg-[#261845] my-2" />
           )}
 
-          {(openSections.configuracion || collapsed) && (
-            <div className="space-y-0.5 pl-1">
+          {(openSections.experiencia || collapsed) && (
+            <div className="space-y-0.5 pl-0.5">
+              {/* La Colonia · Hábitat lúdico y de descanso de Bucky */}
               <button
-                onClick={() => onSelectView('config-roles')}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white"
-                title="Configuración de roles"
+                onClick={() => onSelectView('la-colonia')}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                  currentView === 'la-colonia'
+                    ? 'bg-gradient-to-r from-[#2e1859] to-[#1e113a] text-white shadow-sm border-l-2 border-[#d4ff4a]'
+                    : 'text-[#c9b7ff] hover:bg-[#1a0f30] hover:text-white'
+                }`}
+                title="La Colonia · Hábitat de Bucky, logros y pasear libre"
               >
-                <Shield className="w-3.5 h-3.5 text-[#8a4dff]" />
-                {!collapsed && <span className="truncate">Config. de roles</span>}
+                <div className="flex items-center gap-2.5">
+                  <span className="text-sm">🪵</span>
+                  {!collapsed && <span>La Colonia</span>}
+                </div>
+                {!collapsed && (
+                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-[#501f92] text-[#d4ff4a] border border-[#8a4dff]/40">
+                    Nivel 1
+                  </span>
+                )}
               </button>
 
+              {/* El Muro · Reconocimiento y Cultura */}
               <button
-                onClick={() => onSelectView('config-permisos')}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white"
-                title="Configuración de permisos"
+                onClick={() => onSelectView('el-muro')}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                  currentView === 'el-muro'
+                    ? 'bg-[#1e113a] text-white font-semibold'
+                    : 'text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white'
+                }`}
+                title="El Muro · Cultura y reconocimiento Uhura"
               >
-                <KeyRound className="w-3.5 h-3.5 text-[#8a4dff]" />
-                {!collapsed && <span className="truncate">Config. permisos</span>}
+                <div className="flex items-center gap-2.5">
+                  <TrendingUp className="w-3.5 h-3.5 text-[#4be5ff]" />
+                  {!collapsed && <span>El Muro</span>}
+                </div>
               </button>
+            </div>
+          )}
+        </div>
 
+        {/* 4. SISTEMA & CONFIGURACIÓN */}
+        <div className="space-y-1 pt-1">
+          {!collapsed ? (
+            <button
+              onClick={() => toggleSection('sistema')}
+              className="w-full flex items-center justify-between px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-[#c9b7ff]/70 hover:text-white transition-colors"
+            >
+              <span>SISTEMA</span>
+              {openSections.sistema ? (
+                <ChevronDown className="w-3.5 h-3.5" />
+              ) : (
+                <ChevronRight className="w-3.5 h-3.5" />
+              )}
+            </button>
+          ) : (
+            <div className="h-px bg-[#261845] my-2" />
+          )}
+
+          {(openSections.sistema || collapsed) && (
+            <div className="space-y-0.5 pl-0.5">
               <button
                 onClick={() => onSelectView('usuarios')}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
@@ -465,48 +431,34 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
                   {!collapsed && <span>Usuarios</span>}
                 </div>
               </button>
-            </div>
-          )}
-        </div>
 
-        {/* 6. PORTAL */}
-        <div className="space-y-1 pt-1">
-          {!collapsed ? (
-            <button
-              onClick={() => toggleSection('portal')}
-              className="w-full flex items-center justify-between px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-[#c9b7ff]/70 hover:text-white transition-colors"
-            >
-              <span>PORTAL</span>
-              {openSections.portal ? (
-                <ChevronDown className="w-3.5 h-3.5" />
-              ) : (
-                <ChevronRight className="w-3.5 h-3.5" />
-              )}
-            </button>
-          ) : (
-            <div className="h-px bg-[#261845] my-2" />
-          )}
+              <button
+                onClick={() => onSelectView('config-roles')}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white"
+                title="Configuración de roles y permisos"
+              >
+                <Shield className="w-3.5 h-3.5 text-[#8a4dff]" />
+                {!collapsed && <span className="truncate">Roles & Permisos</span>}
+              </button>
 
-          {(openSections.portal || collapsed) && (
-            <div className="space-y-0.5 pl-1">
               <button
                 onClick={() => onSelectView('portal-cliente')}
                 className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white"
-                title="Portal de cliente"
+                title="Vista previa del portal de cliente"
               >
                 <Globe className="w-3.5 h-3.5 text-[#4be5ff]" />
-                {!collapsed && <span>Portal de cliente</span>}
+                {!collapsed && <span>Portal Cliente</span>}
               </button>
             </div>
           )}
         </div>
       </div>
 
-      {/* Footer / Quick Status */}
+      {/* Footer */}
       {!collapsed && (
         <div className="pt-3 mt-2 border-t border-[#261845] text-[11px] text-[#c9b7ff]/60 flex items-center justify-between px-2">
-          <span>Fase 0 · Fundación</span>
-          <span className="font-mono text-[10px]">v0.1.0</span>
+          <span>Uhura OS · Orbit</span>
+          <span className="font-mono text-[10px]">v2.6</span>
         </div>
       )}
     </aside>

@@ -13,7 +13,8 @@ import {
   X,
   ChevronRight,
   TrendingUp,
-  Folder
+  Folder,
+  BookOpen
 } from 'lucide-react';
 
 interface MobileBottomNavProps {
@@ -43,7 +44,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       id: 'mi-dia' as OrbitView,
       label: 'Mi Día 🦫',
       icon: CheckSquare,
-      isActive: currentView === 'mi-dia'
+      isActive: currentView === 'mi-dia' || currentView === 'dashboard'
     },
     {
       id: 'tareas' as OrbitView,
@@ -68,7 +69,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       id: 'more' as const,
       label: 'Más',
       icon: LayoutDashboard,
-      isActive: ['dashboard', 'clientes', 'capacidad', 'finanzas', 'usuarios', 'el-muro', 'nova-ia'].includes(currentView)
+      isActive: ['proyectos', 'clientes', 'capacidad', 'plantillas-producto', 'cotizador', 'new-business', 'finanzas', 'usuarios', 'el-muro', 'la-colonia'].includes(currentView)
     }
   ];
 
@@ -104,63 +105,10 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
 
             {/* Modules Grid */}
             <div className="space-y-4">
-              {/* Estratégico & Finanzas */}
+              {/* Operación */}
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-[#c9b7ff]/60 block mb-2">
-                  Estratégico & Control
-                </span>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => handleNavClick('dashboard')}
-                    className={`p-3 rounded-2xl border text-left flex items-center gap-2.5 transition-all cursor-pointer ${
-                      currentView === 'dashboard'
-                        ? 'bg-[#241344] border-[#8a4dff] text-white'
-                        : 'bg-[#140b24] border-[#261845] text-[#c9b7ff]'
-                    }`}
-                  >
-                    <LayoutDashboard className="w-4 h-4 text-[#d4ff4a] shrink-0" />
-                    <div className="truncate">
-                      <span className="block text-xs font-bold truncate">Dashboard</span>
-                      <span className="text-[10px] text-[#c9b7ff]/60 block truncate">KPIs Ejecutivos</span>
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={() => handleNavClick('finanzas')}
-                    className={`p-3 rounded-2xl border text-left flex items-center gap-2.5 transition-all cursor-pointer ${
-                      currentView === 'finanzas'
-                        ? 'bg-[#241344] border-[#8a4dff] text-white'
-                        : 'bg-[#140b24] border-[#261845] text-[#c9b7ff]'
-                    }`}
-                  >
-                    <DollarSign className="w-4 h-4 text-[#10b981] shrink-0" />
-                    <div className="truncate">
-                      <span className="block text-xs font-bold truncate">Finanzas</span>
-                      <span className="text-[10px] text-[#c9b7ff]/60 block truncate">Margen y fees</span>
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={() => handleNavClick('la-colonia')}
-                    className={`p-3 rounded-2xl border text-left flex items-center gap-2.5 transition-all cursor-pointer ${
-                      currentView === 'la-colonia'
-                        ? 'bg-[#241344] border-[#8a4dff] text-white'
-                        : 'bg-[#140b24] border-[#261845] text-[#c9b7ff]'
-                    }`}
-                  >
-                    <span className="text-base shrink-0">🪵</span>
-                    <div className="truncate">
-                      <span className="block text-xs font-bold truncate">La Colonia</span>
-                      <span className="text-[10px] text-[#d4ff4a] block truncate">Hábitat de Bucky</span>
-                    </div>
-                  </button>
-                </div>
-              </div>
-
-              {/* Clientes & Capacidad */}
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#c9b7ff]/60 block mb-2">
-                  Operación & Relaciones
+                  Operación
                 </span>
                 <div className="grid grid-cols-2 gap-2">
                   <button
@@ -174,10 +122,33 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                     <Folder className="w-4 h-4 text-[#8a4dff] shrink-0" />
                     <div className="truncate">
                       <span className="block text-xs font-bold truncate">Proyectos</span>
-                      <span className="text-[10px] text-[#c9b7ff]/60 block truncate">Portafolio Uhura</span>
+                      <span className="text-[10px] text-[#c9b7ff]/60 block truncate">Portafolio</span>
                     </div>
                   </button>
 
+                  <button
+                    onClick={() => handleNavClick('capacidad')}
+                    className={`p-3 rounded-2xl border text-left flex items-center gap-2.5 transition-all cursor-pointer ${
+                      currentView === 'capacidad'
+                        ? 'bg-[#241344] border-[#8a4dff] text-white'
+                        : 'bg-[#140b24] border-[#261845] text-[#c9b7ff]'
+                    }`}
+                  >
+                    <TrendingUp className="w-4 h-4 text-[#f59e0b] shrink-0" />
+                    <div className="truncate">
+                      <span className="block text-xs font-bold truncate">Capacidad</span>
+                      <span className="text-[10px] text-[#c9b7ff]/60 block truncate">Cargas del equipo</span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Comercial */}
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#c9b7ff]/60 block mb-2">
+                  Comercial
+                </span>
+                <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={() => handleNavClick('clientes')}
                     className={`p-3 rounded-2xl border text-left flex items-center gap-2.5 transition-all cursor-pointer ${
@@ -194,26 +165,94 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                   </button>
 
                   <button
-                    onClick={() => handleNavClick('capacidad')}
+                    onClick={() => handleNavClick('plantillas-producto')}
                     className={`p-3 rounded-2xl border text-left flex items-center gap-2.5 transition-all cursor-pointer ${
-                      currentView === 'capacidad'
+                      currentView === 'plantillas-producto'
                         ? 'bg-[#241344] border-[#8a4dff] text-white'
                         : 'bg-[#140b24] border-[#261845] text-[#c9b7ff]'
                     }`}
                   >
-                    <TrendingUp className="w-4 h-4 text-[#f59e0b] shrink-0" />
+                    <BookOpen className="w-4 h-4 text-[#d4ff4a] shrink-0" />
                     <div className="truncate">
-                      <span className="block text-xs font-bold truncate">Capacidad</span>
-                      <span className="text-[10px] text-[#c9b7ff]/60 block truncate">Carga del equipo</span>
+                      <span className="block text-xs font-bold truncate">Plantillas</span>
+                      <span className="text-[10px] text-[#d4ff4a] block truncate">Biblioteca Producto</span>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => handleNavClick('cotizador')}
+                    className={`p-3 rounded-2xl border text-left flex items-center gap-2.5 transition-all cursor-pointer ${
+                      currentView === 'cotizador'
+                        ? 'bg-[#241344] border-[#8a4dff] text-white'
+                        : 'bg-[#140b24] border-[#261845] text-[#c9b7ff]'
+                    }`}
+                  >
+                    <DollarSign className="w-4 h-4 text-[#d4ff4a] shrink-0" />
+                    <div className="truncate">
+                      <span className="block text-xs font-bold truncate">Cotizador</span>
+                      <span className="text-[10px] text-[#c9b7ff]/60 block truncate">Backlog y alcance</span>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => handleNavClick('new-business')}
+                    className={`p-3 rounded-2xl border text-left flex items-center gap-2.5 transition-all cursor-pointer ${
+                      currentView === 'new-business'
+                        ? 'bg-[#241344] border-[#8a4dff] text-white'
+                        : 'bg-[#140b24] border-[#261845] text-[#c9b7ff]'
+                    }`}
+                  >
+                    <Briefcase className="w-4 h-4 text-[#4be5ff] shrink-0" />
+                    <div className="truncate">
+                      <span className="block text-xs font-bold truncate">New Business</span>
+                      <span className="text-[10px] text-[#4be5ff] block truncate">Discovery & backlog</span>
                     </div>
                   </button>
                 </div>
               </div>
 
-              {/* Colaboración & IA */}
+              {/* Experiencia & Cultura */}
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-[#c9b7ff]/60 block mb-2">
-                  Equipo & Asistente
+                  Experiencia & Hábitat
+                </span>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => handleNavClick('la-colonia')}
+                    className={`p-3 rounded-2xl border text-left flex items-center gap-2.5 transition-all cursor-pointer ${
+                      currentView === 'la-colonia'
+                        ? 'bg-[#241344] border-[#8a4dff] text-white'
+                        : 'bg-[#140b24] border-[#261845] text-[#c9b7ff]'
+                    }`}
+                  >
+                    <span className="text-base shrink-0">🪵</span>
+                    <div className="truncate">
+                      <span className="block text-xs font-bold truncate">La Colonia</span>
+                      <span className="text-[10px] text-[#d4ff4a] block truncate">Hábitat de Bucky</span>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => handleNavClick('el-muro')}
+                    className={`p-3 rounded-2xl border text-left flex items-center gap-2.5 transition-all cursor-pointer ${
+                      currentView === 'el-muro'
+                        ? 'bg-[#241344] border-[#8a4dff] text-white'
+                        : 'bg-[#140b24] border-[#261845] text-[#c9b7ff]'
+                    }`}
+                  >
+                    <span className="text-base shrink-0">🚀</span>
+                    <div className="truncate">
+                      <span className="block text-xs font-bold truncate">El Muro</span>
+                      <span className="text-[10px] text-[#c9b7ff]/60 block truncate">Cultura & kudos</span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Sistema */}
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#c9b7ff]/60 block mb-2">
+                  Configuración
                 </span>
                 <div className="grid grid-cols-2 gap-2">
                   <button
@@ -226,23 +265,23 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                   >
                     <Users className="w-4 h-4 text-[#cbd5e1] shrink-0" />
                     <div className="truncate">
-                      <span className="block text-xs font-bold truncate">Equipo</span>
+                      <span className="block text-xs font-bold truncate">Usuarios</span>
                       <span className="text-[10px] text-[#c9b7ff]/60 block truncate">Roles y accesos</span>
                     </div>
                   </button>
 
                   <button
-                    onClick={() => handleNavClick('nova-ia')}
+                    onClick={() => handleNavClick('portal-cliente')}
                     className={`p-3 rounded-2xl border text-left flex items-center gap-2.5 transition-all cursor-pointer ${
-                      currentView === 'nova-ia'
+                      currentView === 'portal-cliente'
                         ? 'bg-[#241344] border-[#8a4dff] text-white'
                         : 'bg-[#140b24] border-[#261845] text-[#c9b7ff]'
                     }`}
                   >
-                    <BrainCircuit className="w-4 h-4 text-[#d4ff4a] shrink-0" />
+                    <span className="text-base shrink-0">🌐</span>
                     <div className="truncate">
-                      <span className="block text-xs font-bold truncate">Nova IA</span>
-                      <span className="text-[10px] text-[#c9b7ff]/60 block truncate">Copiloto predictivo</span>
+                      <span className="block text-xs font-bold truncate">Portal Cliente</span>
+                      <span className="text-[10px] text-[#4be5ff] block truncate">Preview externo</span>
                     </div>
                   </button>
                 </div>

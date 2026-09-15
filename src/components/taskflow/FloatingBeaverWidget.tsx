@@ -46,11 +46,14 @@ import { UhuraLogo } from '../ui/UhuraLogo';
 interface FloatingBeaverWidgetProps {
   loggedHoursToday: number;
   targetDayHours?: number;
-  onQuickLogHours: (hours: number, label: string, category?: 'client' | 'internal', projectName?: string) => void;
+  onQuickLogHours?: (hours: number, label: string, category?: 'client' | 'internal', projectName?: string) => void;
   onNavigateToView: (view: OrbitView) => void;
   streakDays?: number;
   tasks?: TaskItem[];
   activeTimer?: ActiveTimerState | null;
+  currentView?: OrbitView;
+  onPauseResumeTimer?: () => void;
+  onStopTimer?: () => void;
 }
 
 export type BuckyAction =
@@ -324,13 +327,55 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
   onNavigateToView,
   streakDays = 6,
   tasks = [],
-  activeTimer = null
+  activeTimer = null,
+  currentView,
+  onPauseResumeTimer,
+  onStopTimer
 }) => {
+  // Bucky se oculta dentro de La Colonia
+  if (currentView === 'la-colonia') {
+    return null;
+  }
+
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [speechBubbleText, setSpeechBubbleText] = useState<string | null>(null);
   const [isBuckyLabOpen, setIsBuckyLabOpen] = useState(false);
+
+  // Live timer seconds tracking
+  const [liveTimerSeconds, setLiveTimerSeconds] = useState(activeTimer?.elapsedSeconds || 0);
+
+  useEffect(() => {
+    if (!activeTimer) {
+      setLiveTimerSeconds(0);
+      return;
+    }
+    setLiveTimerSeconds(activeTimer.elapsedSeconds || 0);
+    if (!activeTimer.isRunning) return;
+
+    const interval = setInterval(() => {
+      setLiveTimerSeconds((prev) => prev + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [activeTimer?.taskId, activeTimer?.isRunning, activeTimer?.elapsedSeconds]);
+
+  const formatTimerClock = (totalSec: number) => {
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+    if (h > 0) {
+      return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    }
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  // Consume Core risk events
+  const coreRiskTask = tasks.find(
+    (t) =>
+      (t.budgetedHours && t.consumedSeconds / 3600 > t.budgetedHours) ||
+      (t.priority === 'urgent' && !t.completed)
+  );
 
   // Position state (Draggable coordinates)
   const [coords, setCoords] = useState<{ x: number; y: number } | null>(null);
@@ -942,158 +987,160 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
     }
   };
 
-  if (!coords) return null;
-
   return (
-    <div
-      style={{
-        left: `${coords.x}px`,
-        top: `${coords.y}px`,
-        touchAction: 'none',
-        transition: isWalking
-          ? `left ${walkDuration}s cubic-bezier(0.25, 1, 0.5, 1), top ${walkDuration}s cubic-bezier(0.25, 1, 0.5, 1)`
-          : isDragging
-          ? 'none'
-          : 'transform 0.1s ease'
-      }}
-      className="fixed z-50 font-sans pointer-events-none select-none"
-    >
-      {/* Container: Re-enable pointer events inside */}
-      <div className="relative pointer-events-auto flex flex-col items-center">
-        {/* HEARTS PARTICLES ON TICKLE */}
-        {hearts.map((h) => (
-          <div
-            key={h.id}
-            style={{ transform: `translate(${h.x}px, ${h.y}px)` }}
-            className="absolute -top-6 right-8 text-[#ec4899] animate-out fade-out slide-out-to-top-8 duration-1000 z-50 flex items-center gap-1 font-bold text-xs pointer-events-none"
-          >
-            <Heart className="w-4 h-4 fill-[#ec4899]" />
-            <span>+5</span>
-          </div>
-        ))}
-
-        {/* 1. FLOATING SPEECH BUBBLE (VIDA PROPIA) */}
-        {speechBubbleText && !isDragging && (
-          <div className="mb-2 max-w-[250px] bg-[#140b24] text-white p-3 rounded-2xl shadow-2xl border border-[#8a4dff]/50 text-xs animate-in zoom-in-95 duration-200 relative">
+    <div className="fixed bottom-6 right-6 z-40 font-sans select-none pointer-events-auto">
+      <div className="relative flex flex-col items-end">
+        {/* Floating speech bubble / Core risk notification */}
+        {(speechBubbleText || (coreRiskTask && isOpen)) && (
+          <div className="mb-2 max-w-[260px] bg-[#140b24] text-white p-3 rounded-2xl shadow-2xl border border-[#8a4dff]/50 text-xs animate-in zoom-in-95 duration-150 relative">
             <div className="flex items-start justify-between gap-2">
-              <span className="leading-snug font-medium text-[#f1f5f9]">
-                {speechBubbleText}
-              </span>
+              <div className="space-y-1">
+                {coreRiskTask && (
+                  <div className="flex items-center gap-1.5 text-[#f59e0b] font-bold text-[11px]">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                    <span>Desvío detectado en Core</span>
+                  </div>
+                )}
+                <p className="text-[#f1f5f9] text-[11px] leading-relaxed">
+                  {speechBubbleText ||
+                    `Atento: La tarea "${coreRiskTask?.title}" superó su presupuesto de horas.`}
+                </p>
+              </div>
               <button
-                onClick={() => setSpeechBubbleText(null)}
-                className="text-white/40 hover:text-white cursor-pointer -mt-1 -mr-1 p-0.5"
-                title="Cerrar mensaje"
+                type="button"
+                onClick={() => {
+                  setSpeechBubbleText(null);
+                  setIsOpen(false);
+                }}
+                className="text-white/40 hover:text-white cursor-pointer p-0.5"
+                title="Cerrar"
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="w-3 h-3" />
               </button>
             </div>
-            {/* Speech bubble tail pointer pointing down to Bucky */}
-            <div className="absolute -bottom-1.5 left-10 w-3 h-3 bg-[#140b24] border-r border-b border-[#8a4dff]/50 transform rotate-45" />
+            <div className="mt-2 pt-2 border-t border-white/10 flex items-center justify-between text-[10px]">
+              <button
+                type="button"
+                onClick={() => {
+                  onNavigateToView('la-colonia');
+                  setIsOpen(false);
+                }}
+                className="text-[#d4ff4a] hover:underline font-bold cursor-pointer"
+              >
+                Ir a La Colonia 🪵
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onNavigateToView('mi-dia');
+                  setIsOpen(false);
+                }}
+                className="text-[#c9b7ff] hover:text-white cursor-pointer"
+              >
+                Ver Mi Día
+              </button>
+            </div>
           </div>
         )}
 
-        {/* 2. THE DRAGGABLE & FREELY MOVING COMPANION (SOLITO Y CON VIDA PROPIA) */}
-        {!isMinimized && (
-          <div className="relative group flex flex-col items-center">
-            {/* Draggable Bucky Character */}
+        {/* MODE 1: ACTIVE TIMER CAPSULE */}
+        {activeTimer ? (
+          <div className="flex items-center gap-3 bg-[#140b24]/95 border border-[#8a4dff]/60 shadow-2xl rounded-2xl p-2 pr-3.5 backdrop-blur-md animate-in fade-in slide-in-from-bottom-2 duration-150">
+            {/* Compact Avatar with Active Focus Pulse */}
             <div
-              onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
-              onPointerUp={handlePointerUp}
-              onDoubleClick={handleTickle}
-              title="Arrastra libremente · Clic para abrir panel de control · Doble clic para cosquillas"
-              className={`relative select-none flex flex-col items-center transition-transform duration-200 ${
-                isDragging
-                  ? 'cursor-grabbing scale-110'
-                  : 'cursor-grab hover:scale-105 active:scale-95'
-              } ${getActionAnimationClass()}`}
+              onClick={() => setIsOpen(!isOpen)}
+              className="relative w-11 h-11 rounded-xl bg-gradient-to-br from-[#501f92] to-[#1e113a] flex items-center justify-center cursor-pointer hover:scale-105 transition-transform overflow-hidden border border-[#8a4dff]/40 shrink-0"
+              title="Bucky · Timer en curso"
             >
-              {/* Flame Badge / Streak Indicator - Stays non-flipped beside shoulder */}
-              <div className="absolute top-2 -right-1 z-20 bg-[#140b24]/90 text-white text-[10px] font-black px-2 py-0.5 rounded-full border border-[#8a4dff]/60 shadow-lg flex items-center gap-1 backdrop-blur-xs">
-                <Flame className="w-3 h-3 text-[#f97316] fill-[#f97316]" />
-                <span>{streakDays}d</span>
-              </div>
-
-              {/* Real-Time Action Mood Badge */}
-              {getActionEmojiBadge() && (
-                <div className="absolute top-1 -left-2 z-20 bg-[#501f92] text-white text-xs px-2 py-0.5 rounded-full border border-[#d4ff4a] shadow-xl animate-bounce">
-                  {getActionEmojiBadge()}
-                </div>
-              )}
-
-              {/* Solito suelto: Clean Cutout with Orientation Mirroring on Walk/Direction */}
-              <div
-                style={{
-                  transform: facingDirection === 'left' ? 'scaleX(-1)' : 'scaleX(1)',
-                  transition: 'transform 0.22s ease-out'
-                }}
-                className="flex flex-col items-center"
-              >
-                <img
-                  src={getCurrentBeaverImage()}
-                  alt="Bucky el Castor de Orbit"
-                  referrerPolicy="no-referrer"
-                  draggable={false}
-                  className="w-36 sm:w-42 h-48 sm:h-56 object-contain select-none pointer-events-none"
-                />
-              </div>
-            </div>
-
-            {/* Micro Fuel Indicator Pill under Bucky */}
-            <div className="mt-1 flex items-center gap-1.5 bg-[#140b24]/90 backdrop-blur-md px-2.5 py-0.5 rounded-full border border-[#8a4dff]/40 text-[10px] font-bold text-white shadow-md">
-              <span
-                className={`w-2 h-2 rounded-full ${
-                  percent >= 100
-                    ? 'bg-[#10b981]'
-                    : percent >= 50
-                    ? 'bg-[#d4ff4a]'
-                    : 'bg-[#f59e0b]'
-                } animate-pulse`}
+              <img
+                src={buckyFocusImg}
+                alt="Bucky En Foco"
+                className="w-10 h-10 object-contain select-none pointer-events-none"
               />
-              <span>{loggedHoursToday.toFixed(1)} / {targetDayHours}h</span>
+              <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[#10b981] animate-ping" />
             </div>
 
-            {/* Quick Free Roam / Walk Buttons floating directly under Bucky */}
-            <div className="mt-1.5 flex items-center gap-1.5 opacity-90 group-hover:opacity-100 transition-opacity">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleRandomRoam();
-                }}
-                disabled={isWalking}
-                className="flex items-center gap-1 bg-[#140b24]/90 backdrop-blur-md px-2.5 py-0.5 rounded-full border border-[#d4ff4a]/70 text-[10px] font-black text-[#d4ff4a] shadow-md hover:scale-105 active:scale-95 cursor-pointer disabled:opacity-50 transition-transform"
-                title="Hacer que Bucky camine libremente hacia otro rincón de la pantalla"
-              >
-                <span className="text-xs">🚶‍♂️</span>
-                <span>{isWalking ? 'Paseando...' : 'Pasear libre'}</span>
-              </button>
+            {/* Active task details & live timer clock */}
+            <div className="min-w-0 max-w-[170px] sm:max-w-[210px]">
+              <div className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] shrink-0" />
+                <span className="text-[9px] uppercase font-bold text-[#d4ff4a] tracking-wider truncate">
+                  {activeTimer.projectName || 'En Curso'}
+                </span>
+              </div>
+              <p className="text-xs font-bold text-white truncate" title={activeTimer.taskTitle}>
+                {activeTimer.taskTitle}
+              </p>
+              <p className="text-[11px] font-mono font-black text-[#c9b7ff]">
+                {formatTimerClock(liveTimerSeconds)}
+              </p>
+            </div>
 
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleReturnHome();
-                }}
-                disabled={isWalking}
-                className="flex items-center gap-0.5 bg-[#140b24]/80 backdrop-blur-md px-2 py-0.5 rounded-full border border-white/20 text-[10px] font-medium text-white/80 hover:text-white shadow-xs hover:scale-105 active:scale-95 cursor-pointer disabled:opacity-50 transition-transform"
-                title="Regresar a la esquina base"
-              >
-                <Home className="w-3 h-3 text-[#c9b7ff]" />
-                <span>Base</span>
-              </button>
+            {/* Timer Actions: Pause/Resume + Stop */}
+            <div className="flex items-center gap-1.5 pl-1.5 border-l border-[#261845]">
+              {onPauseResumeTimer && (
+                <button
+                  type="button"
+                  onClick={onPauseResumeTimer}
+                  className="p-2 rounded-xl bg-[#261845] hover:bg-[#362160] text-[#c9b7ff] hover:text-white transition-colors cursor-pointer"
+                  title={activeTimer.isRunning ? 'Pausar cronómetro' : 'Reanudar cronómetro'}
+                >
+                  {activeTimer.isRunning ? (
+                    <Pause className="w-3.5 h-3.5" />
+                  ) : (
+                    <Play className="w-3.5 h-3.5 text-[#d4ff4a]" />
+                  )}
+                </button>
+              )}
+              {onStopTimer && (
+                <button
+                  type="button"
+                  onClick={onStopTimer}
+                  className="p-2 rounded-xl bg-[#ef4444]/20 hover:bg-[#ef4444]/30 text-[#fca5a5] hover:text-white transition-colors cursor-pointer"
+                  title="Detener cronómetro y registrar horas"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
           </div>
-        )}
+        ) : (
+          /* MODE 2: COMPACT FLOATING AVATAR (NO TIMER) */
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setIsOpen(!isOpen);
+                handlePoke();
+              }}
+              className="relative group p-1.5 rounded-2xl bg-[#140b24]/90 border border-[#8a4dff]/50 shadow-xl backdrop-blur-md hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center gap-2"
+              title="Bucky · Copiloto de Orbit (Clic para opciones)"
+            >
+              <div className="relative w-11 h-11 rounded-xl bg-gradient-to-br from-[#501f92] to-[#1e113a] flex items-center justify-center overflow-hidden border border-[#8a4dff]/40 shrink-0">
+                <img
+                  src={coreRiskTask ? buckyAlertImg : getCurrentBeaverImage()}
+                  alt="Bucky Orbit"
+                  className="w-10 h-10 object-contain select-none pointer-events-none"
+                />
+                {coreRiskTask && (
+                  <span className="absolute top-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-[#f59e0b] border border-[#140b24] animate-ping" />
+                )}
+              </div>
 
-        {/* Minimized Pill state (if user collapsed it) */}
-        {isMinimized && (
-          <button
-            onClick={() => setIsMinimized(false)}
-            className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-[#140b24] text-white border border-[#8a4dff] shadow-xl hover:scale-105 transition-transform cursor-pointer"
-          >
-            <span className="text-base">🦫</span>
-            <span className="text-xs font-bold text-[#c9b7ff]">Bucky {loggedHoursToday.toFixed(1)}h</span>
-            <Maximize2 className="w-3.5 h-3.5 text-[#d4ff4a]" />
-          </button>
+              {/* Contextual Status Pill */}
+              <div className="hidden sm:flex flex-col items-start pr-2 text-left">
+                <span className="text-[10px] font-bold text-[#d4ff4a] uppercase tracking-wider flex items-center gap-1">
+                  <span>Bucky</span>
+                  {streakDays > 0 && (
+                    <span className="text-[9px] text-[#f97316] font-bold">🔥{streakDays}d</span>
+                  )}
+                </span>
+                <span className="text-[11px] font-medium text-[#c9b7ff] truncate max-w-[110px]">
+                  {coreRiskTask ? '⚠️ Desvío' : 'En guardia'}
+                </span>
+              </div>
+            </button>
+          </div>
         )}
 
         {/* 3. MINIMALIST BUCKY POPOVER (USER RUNTIME) */}
@@ -1126,15 +1173,6 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
                   ) : (
                     <VolumeX className="w-3.5 h-3.5 text-white/40" />
                   )}
-                </button>
-
-                {/* Reset position */}
-                <button
-                  onClick={handleResetPosition}
-                  className="p-1.5 rounded-lg hover:bg-white/10 text-white/70 hover:text-white cursor-pointer transition-colors"
-                  title="Restablecer a la esquina base"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
                 </button>
 
                 {/* Close */}

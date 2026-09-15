@@ -22,6 +22,8 @@ export type OrbitView =
   | 'capacidad'
   | 'clientes'
   | 'cotizador'
+  | 'new-business'
+  | 'plantillas-producto'
   | 'finanzas'
   | 'el-muro'
   | 'reportes'
@@ -232,6 +234,9 @@ export interface ProjectSummaryItem {
   alegraContractId?: string | null;
   hubspotDealId?: string | null;
   commercialQuoteId?: string | null;
+  originOpportunityId?: string | null;
+  originQuoteIds?: string[];
+  approvedQuoteSnapshots?: QuoteProposalSnapshot[];
 
   teamMembers?: { name: string; role?: string; avatarBg: string; initials?: string }[];
   status: 'Activo' | 'En Pausa' | 'Cerrado' | 'Planificación' | 'Archivado' | 'draft' | 'active' | 'on_hold' | 'completed' | 'cancelled';
@@ -420,6 +425,43 @@ export const STANDARD_UHURA_ROLES = [
 ] as const;
 
 export type StandardUhuraRole = typeof STANDARD_UHURA_ROLES[number];
+
+/**
+ * Constante oficial para roles técnicos en plantillas o cotizaciones que aún no están asignados a un rol estándar.
+ */
+export const ROLE_PENDING_DEFINITION = 'Pendiente de definición';
+
+/**
+ * Definición oficial de rol en el catálogo de Uhura
+ */
+export interface RoleDefinition {
+  id: string;
+  name: string;
+  isPendingDefinition?: boolean;
+}
+
+/**
+ * Catálogo canónico de definiciones de roles para plantillas, cotizaciones y proyectos
+ */
+export const OFFICIAL_ROLE_DEFINITIONS: RoleDefinition[] = [
+  ...STANDARD_UHURA_ROLES.map((role) => ({
+    id: role,
+    name: role,
+    isPendingDefinition: false
+  })),
+  {
+    id: 'pendiente-definicion',
+    name: ROLE_PENDING_DEFINITION,
+    isPendingDefinition: true
+  }
+];
+
+export const ALL_AVAILABLE_TEMPLATE_ROLES = [
+  ...STANDARD_UHURA_ROLES,
+  ROLE_PENDING_DEFINITION
+] as const;
+
+export type TemplateItemRole = StandardUhuraRole | typeof ROLE_PENDING_DEFINITION;
 
 export interface TaskItem {
   id: string;
@@ -778,3 +820,274 @@ export interface ClientProjectNode {
     phases?: ProjectPhase[];
   }[];
 }
+
+// ============================================================================
+// MODELO FUNCIONAL: NEW BUSINESS → COTIZACIÓN → PROYECTO EN ORBIT
+// ============================================================================
+
+/**
+ * DECISIÓN 1 — Categorías estándar de plantillas maestras gestionadas por Producto
+ */
+export type ProductBacklogTemplateCategory =
+  | 'wordpress'          // Sitio WordPress hasta 8 páginas internas
+  | 'mantenimiento_web'  // Mantenimiento web
+  | 'landing_page'       // Landing Page
+  | 'tienda_online'      // Tienda Online hasta 20 SKUs simples o 10 variables
+  | 'shopify'            // Shopify
+  | 'portal_platform'    // Portal / Plataforma
+  | 'custom'             // Proyecto a la medida
+  | string;
+
+export type TemplateStatus = 'draft' | 'active' | 'archived';
+
+/**
+ * Actividad técnica estimada en la plantilla maestra de Producto
+ */
+export interface TemplateBacklogItem {
+  id: string;
+  templateDeliverableId: string;
+  title: string;
+  description?: string;
+  roleId: string;                 // FK -> Role del catálogo estándar (RoleDefinition)
+  roleName: string;               // ej. 'Product Lead', 'Front End', 'Diseñador Gráfico'
+  estimatedHours: number;         // Horas estimadas para la actividad
+  order: number;
+  dependencyIds?: string[];       // IDs de otras actividades predecesoras
+  dependencies?: string[];        // Alias retrocompatible
+  optional?: boolean;             // Si la actividad es opcional o modular
+}
+
+/**
+ * Entregable dentro de una plantilla maestra de Producto
+ */
+export interface TemplateDeliverable {
+  id: string;
+  templateId: string;
+  name: string;                   // ej. 'Arquitectura / UX', 'Diseño UI', 'Desarrollo'
+  description?: string;
+  order: number;
+  roleBudgets: DeliverableRoleBudget[];
+  activities: TemplateBacklogItem[];
+  totalHoursRollup?: number;
+}
+
+/**
+ * Plantilla Maestra de Backlog gobernada por Producto
+ * Reutilizable, versionable y duplicable para New Business
+ */
+export interface ProductBacklogTemplate {
+  id: string;
+  name: string;                   // ej. 'Sitio WordPress hasta 8 páginas internas'
+  description: string;
+  category: ProductBacklogTemplateCategory;
+  version: string;                // ej. '1.0', '1.1'
+  status: TemplateStatus;         // 'draft' | 'active' | 'archived'
+  isReusable: boolean;
+  governedBy?: string;            // 'Producto'
+  deliverables: TemplateDeliverable[];
+  totalHours: number;             // Rollup total de horas (Nivel 3)
+  roleBudgetsRollup?: DeliverableRoleBudget[]; // Rollup de horas por rol (Nivel 2)
+  estimatedDurationWeeks?: number;
+  createdByUserId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Contrato preparado para futura integración de la Calculadora Comercial (Sheets)
+ * No inventa tarifas, salarios, markup ni márgenes.
+ */
+export interface CommercialCalculatorContract {
+  quoteId: string;
+  roleBudgets: QuoteRoleBudget[];
+  totalHours: number;
+  currency?: 'COP' | 'USD';
+  estimatedTotalValue?: number | null;
+  status: 'pending_sheets_formula' | 'calculated';
+  notes?: string;
+}
+
+/**
+ * DECISIÓN 2 — Estados del ciclo de vida de la Oportunidad comercial/operativa
+ */
+export type OpportunityStatus =
+  | 'discovery'        // Discovery / Briefing inicial
+  | 'quoting'          // En Cotización / Estimación técnica con plantillas
+  | 'internal_review'  // Revisión interna entre Líder y Dirección
+  | 'proposal_sent'    // Propuesta presentada al cliente
+  | 'negotiation'      // Ajustes de alcance o versiones alternativas
+  | 'won'              // Ganada: todas o selección de cotizaciones aprobadas
+  | 'partial_won'      // Ganada parcialmente (unas aprobadas, otras rechazadas)
+  | 'lost'             // Perdida con motivo documentado
+  | 'archived';        // Archivada / descartada
+
+export type OpportunityType =
+  | 'new_client'       // Cliente nuevo (prospecto)
+  | 'upsell'           // Ampliación de alcance a cliente activo
+  | 'cross_sell'       // Nuevo servicio a cliente activo
+  | 'renewal';         // Renovación de fee o contrato recurrente
+
+/**
+ * Estados individuales por cada Cotización (Quote)
+ */
+export type QuoteProposalStatus =
+  | 'draft'            // Borrador en construcción
+  | 'internal_review'  // En revisión interna de viabilidad
+  | 'sent'             // Presentada al cliente
+  | 'approved'         // Aprobada por el cliente (candidata a Proyecto)
+  | 'rejected'         // Rechazada por el cliente (conservada en histórico)
+  | 'archived';        // Archivada
+
+/**
+ * Bolsa presupuestada de horas por rol dentro de un entregable cotizado
+ */
+export interface QuoteRoleBudget {
+  id: string;
+  quoteDeliverableId: string;
+  roleId: string;                 // FK -> Role del catálogo estándar
+  roleName: string;
+  quotedHours: number;            // Horas cotizadas para este rol
+}
+
+/**
+ * Tarea técnica estimada en preventa (el embrión de la futura TaskItem)
+ */
+export interface QuoteBacklogItem {
+  id: string;
+  quoteDeliverableId: string;
+  title: string;
+  description?: string;
+  roleId: string;                 // FK -> Role presupuestado
+  roleName: string;
+  estimatedHours: number;
+  order: number;
+  dependencies?: string[];
+  // DECISIÓN 5: Por defecto null/vacío al convertir. Solo si hubo acuerdo explícito:
+  suggestedUserId?: string | null;
+}
+
+/**
+ * Entregable cotizado dentro de una cotización
+ */
+export interface QuoteDeliverable {
+  id: string;
+  quoteId: string;
+  name: string;                   // ej. 'Landing Page', 'Pauta Digital'
+  description?: string;
+  order: number;
+  roleBudgets: QuoteRoleBudget[];
+  backlogItems: QuoteBacklogItem[];
+  totalHoursRollup?: number;      // Suma calculada de roleBudgets / backlogItems
+}
+
+/**
+ * Snapshot inmutable congelado al momento exacto de la aprobación comercial
+ */
+export interface QuoteProposalSnapshot {
+  quoteId: string;
+  opportunityId: string;
+  projectId?: string;
+  frozenData: {
+    versionLabel: string;
+    deliverables: QuoteDeliverable[];
+    totalHours: number;
+    totalValueCOP?: number;
+    currency?: 'COP' | 'USD';
+    rolesSummary: {
+      roleId: string;
+      roleName: string;
+      totalHours: number;
+    }[];
+  };
+  approvedAt: string;
+  approvedByUserId: string;
+}
+
+/**
+ * Cotización (Quote Proposal)
+ * Cada oportunidad puede tener 1..N cotizaciones simultáneas (Decisión 2)
+ */
+export interface QuoteProposal {
+  id: string;
+  opportunityId: string;
+  versionLabel: string;           // ej. 'V1 - Alcance Base', 'V2 - Full Scope', 'Opción A'
+  order: number;
+  templateId?: string | null;     // Referencia a ProductBacklogTemplate si derivó de una plantilla
+  status: QuoteProposalStatus;    // 'draft' | 'internal_review' | 'sent' | 'approved' | 'rejected' | 'archived'
+  deliverables: QuoteDeliverable[];
+  totalHoursRollup: number;       // Sumatoria total de horas cotizadas
+  totalQuotedValueCOP?: number;
+  currency?: 'COP' | 'USD';
+  approvalNotes?: string;
+  approvedAt?: string;
+  approvedByUserId?: string;
+  rejectionReason?: string;
+  rejectedAt?: string;
+  snapshotAtWon?: QuoteProposalSnapshot | null;
+  convertedToProjectId?: string | null; // Idempotencia: evita reconversiones duplicadas
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Oportunidad de New Business (Comercial & Operativa)
+ */
+export interface NewBusinessOpportunity {
+  id: string;
+  title: string;                  // Título comercial de la oportunidad
+  type: OpportunityType;          // 'new_client' | 'upsell' | 'cross_sell' | 'renewal'
+  
+  // Resolución de cliente: si es prospecto nuevo clientId es null hasta ganar
+  clientId?: string | null;       // FK -> ClientProfile si es cliente existente
+  prospectAccountName?: string;   // Nombre comercial si clientId es null
+  contactName?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+
+  leadUserId: string;             // Responsable de preventa / comercial en Uhura
+  leadUserName?: string;
+
+  // Hooks de integración externa (desacoplados)
+  hubspotDealId?: string | null;  // Hook externo con CRM HubSpot
+
+  // Discovery y notas técnicas
+  discoveryNotes?: string;
+  briefSummary?: string;
+  targetKickoffDate?: string;
+
+  status: OpportunityStatus;      // 'discovery' | 'quoting' | ... | 'won' | 'lost'
+  lossReason?: string;            // Documentación de causa si pasa a 'lost'
+  lossNotes?: string;
+
+  // DECISIÓN 2: Múltiples cotizaciones simultáneas
+  quotes: QuoteProposal[];
+
+  // DECISIÓN 4: Registro de preventa interno bajo Client: UHURA Group, Project: New Business
+  preventaTimeLogTaskId?: string; // Tarea interna para imputación de horas de preventa
+
+  // Idempotencia de conversión a Proyecto
+  convertedProjectId?: string | null;
+  convertedAt?: string | null;
+
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Parámetros para la conversión transaccional de Oportunidad a Proyecto
+ */
+export interface OpportunityProjectConversionPayload {
+  opportunityId: string;
+  approvedQuoteIds: string[];     // IDs de las cotizaciones aprobadas a consolidar
+  targetProjectName: string;
+  projectType: ProjectType;       // 'fixed_project' | 'fee_monthly'
+  serviceBase: string;
+  startDate: string;
+  endDate?: string;
+  // Resolución de cliente:
+  clientId?: string;              // Existente o generado
+  newClientName?: string;         // Si era prospecto
+  // DECISIÓN 3: NIT NO es bloqueante para la creación operativa
+  taxEntityNit?: string | null;   // Opcional, completable posteriormente por Administración
+}
+
