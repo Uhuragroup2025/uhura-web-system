@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   TaskItem,
   ActiveTimerState,
@@ -10,79 +10,89 @@ import {
   CheckCircle2,
   Circle,
   Play,
-  Pause,
   Square,
   Plus,
-  Sparkles,
   AlertTriangle,
-  Send,
-  Users2,
-  ChevronRight,
+  AlertOctagon,
   ShieldCheck,
   Check,
   MessageSquare,
-  AlertOctagon,
   X,
-  Radio,
-  Copy,
-  Download,
-  Flame,
-  Zap,
-  Coffee,
-  Heart,
-  HelpCircle,
+  Send,
+  Calendar,
   Layers,
-  ArrowUpRight
+  ChevronRight,
+  Repeat,
+  Flame,
+  Coffee,
+  Users2,
+  ArrowUpRight,
+  Briefcase
 } from 'lucide-react';
 
 interface MiDiaViewProps {
   tasks: TaskItem[];
   activeTimer: ActiveTimerState | null;
   onStartTimer: (task: TaskItem) => void;
-  onPauseResumeTimer: () => void;
+  onPauseResumeTimer?: () => void;
   onStopTimer: () => void;
   onOpenTaskDetail: (taskId: string) => void;
   onOpenManualLog: (taskId?: string) => void;
   onToggleTask: (taskId: string) => void;
-  onQuickLogHours: (hours: number, label: string, category: 'client' | 'internal', projectName?: string) => void;
-  loggedHoursToday: number;
-  targetDayHours: number;
-  onNavigateToView: (view: OrbitView) => void;
-}
-
-interface ColonyMember {
-  id: string;
-  name: string;
-  role: string;
-  avatarBg: string;
-  hoursLogged: number;
-  capacityHours: number;
-  status: 'balanced' | 'building' | 'overloaded';
-  consistencyDays: number;
-  statusNote: string;
+  onQuickLogHours: (hours: number, label: string, category?: 'client' | 'internal', projectName?: string) => void;
+  loggedHoursToday?: number;
+  configuredCapacityHours?: number;
+  targetDayHours?: number;
+  onNavigateToView?: (view: OrbitView) => void;
 }
 
 export const MiDiaView: React.FC<MiDiaViewProps> = ({
   tasks,
   activeTimer,
   onStartTimer,
-  onPauseResumeTimer,
   onStopTimer,
   onOpenTaskDetail,
   onOpenManualLog,
   onToggleTask,
   onQuickLogHours,
   loggedHoursToday = 5.5,
-  targetDayHours = 8.0,
+  configuredCapacityHours = 8.0,
   onNavigateToView
 }) => {
-  const [consistencyDays, setConsistencyDays] = useState(6);
-  const [activeTab, setActiveTab] = useState<'habitat' | 'colonia'>('habitat');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [supportedMembers, setSupportedMembers] = useState<Record<string, boolean>>({});
 
-  // Real-world tasks representing construction blocks in the Orbit Habitat
+  // Tareas operativas de Paola para hoy, incluyendo una pieza en retrabajo explícito
   const [localTasks, setLocalTasks] = useState<TaskItem[]>([
+    {
+      id: 't-demo-rework-yamaha',
+      title: 'Ajustes de arte según feedback de cliente (Ronda 2)',
+      description: 'Ajuste tipográfico en banners display y corrección de logo según mesa técnica.',
+      department: 'Creatividad & Diseño',
+      board: 'Campaña Navidad Yamaha',
+      clientName: 'INCOLMOTOS YAMAHA S.A.',
+      projectName: 'Campaña Navidad Yamaha',
+      budgetedHours: 1.5,
+      consumedSeconds: 1800, // 0.5h
+      completed: false,
+      isRework: true,
+      reworkReason: 'Feedback de cliente en mesa técnica (Ronda 2)',
+      reworkRound: 2,
+      date: 'Hoy',
+      dueDate: '2026-08-25',
+      dueStatus: 'urgent',
+      status: 'In Progress',
+      priority: 'High',
+      dueText: 'Hoy, 3:00 PM',
+      budgetedRoleId: 'Diseñador Gráfico',
+      assignee: {
+        id: 'u-pao',
+        name: 'Pao Morales',
+        initials: 'PM',
+        avatarBg: 'bg-[#8a4dff]',
+        role: 'Diseñador Gráfico'
+      },
+      tags: ['Ajuste', 'Feedback', 'Urgente']
+    },
     {
       id: 't-demo-yamaha',
       title: 'Diseño de key visuals & adaptaciones de campaña',
@@ -92,15 +102,17 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
       clientName: 'INCOLMOTOS YAMAHA S.A.',
       projectName: 'Campaña Navidad Yamaha',
       budgetedHours: 3.0,
-      consumedSeconds: 19800, // 5.5h (sobrecarga / desvío)
+      consumedSeconds: 19800, // 5.5h (desvío presupuestal para decisión de gestión)
       completed: false,
       date: 'Hoy',
-      dueDate: '2026-03-30',
+      dueDate: '2026-08-25',
       dueStatus: 'normal',
       status: 'In Progress',
       priority: 'High',
       dueText: 'Hoy, 5:00 PM',
+      budgetedRoleId: 'Diseñador Gráfico',
       assignee: {
+        id: 'u-pao',
         name: 'Pao Morales',
         initials: 'PM',
         avatarBg: 'bg-[#8a4dff]',
@@ -117,15 +129,17 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
       clientName: 'FLAMINGO S.A.S.',
       projectName: 'Pauta & Growth Q3',
       budgetedHours: 2.0,
-      consumedSeconds: 7920, // 2.2h (+0.2h variación normal en tolerancia)
+      consumedSeconds: 7920, // 2.2h (variación normal)
       completed: false,
       date: 'Hoy',
-      dueDate: '2026-03-30',
+      dueDate: '2026-08-25',
       dueStatus: 'normal',
       status: 'In Progress',
       priority: 'Medium',
       dueText: 'Hoy',
+      budgetedRoleId: 'Copywriter Creativo',
       assignee: {
+        id: 'u-pao',
         name: 'Pao Morales',
         initials: 'PM',
         avatarBg: 'bg-[#8a4dff]',
@@ -142,15 +156,17 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
       clientName: 'CORPORACION PARQUE EXPLORA',
       projectName: 'Landing Page STEM',
       budgetedHours: 3.0,
-      consumedSeconds: 6480, // 1.8h (en tiempo)
+      consumedSeconds: 6480, // 1.8h
       completed: false,
-      date: 'Hoy',
-      dueDate: '2026-03-31',
+      date: 'Mañana',
+      dueDate: '2026-08-26',
       dueStatus: 'normal',
       status: 'In Progress',
       priority: 'High',
-      dueText: 'Mañana',
+      dueText: 'Mañana, 12:00 PM',
+      budgetedRoleId: 'Desarrollador Web Front-End',
       assignee: {
+        id: 'u-pao',
         name: 'Pao Morales',
         initials: 'PM',
         avatarBg: 'bg-[#8a4dff]',
@@ -169,13 +185,15 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
       budgetedHours: 1.5,
       consumedSeconds: 0,
       completed: false,
-      date: 'Hoy',
-      dueDate: '2026-04-01',
+      date: 'Próximos días',
+      dueDate: '2026-08-27',
       dueStatus: 'normal',
       status: 'To Do',
       priority: 'Low',
-      dueText: 'En cola',
+      dueText: 'Jueves',
+      budgetedRoleId: 'Diseñador Web',
       assignee: {
+        id: 'u-pao',
         name: 'Pao Morales',
         initials: 'PM',
         avatarBg: 'bg-[#8a4dff]',
@@ -185,89 +203,25 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
     }
   ]);
 
-  // Notifications map for extensions: taskId -> details
+  // Modal de notificación de extensiones
   const [notifiedTasks, setNotifiedTasks] = useState<Record<string, { extraHours: number; reason: string; timestamp: string }>>({});
   const [chatModalTask, setChatModalTask] = useState<TaskItem | null>(null);
   const [selectedReason, setSelectedReason] = useState('Ajustes de brief no contemplados / cambios solicitados por cliente');
   const [extraHoursEstimate, setExtraHoursEstimate] = useState<number>(2.5);
 
-  // Colony Members (Uhura team in harmonious equilibrium)
-  const [colonyMembers, setColonyMembers] = useState<ColonyMember[]>([
-    {
-      id: 'usr-pao',
-      name: 'Paola (Tú)',
-      role: 'Lead PM & Producto',
-      avatarBg: 'bg-[#501f92]',
-      hoursLogged: loggedHoursToday,
-      capacityHours: 8.0,
-      status: loggedHoursToday > 8.5 ? 'overloaded' : 'balanced',
-      consistencyDays: consistencyDays,
-      statusNote: 'Construyendo con el equipo y balanceando entregas.'
-    },
-    {
-      id: 'usr-cata',
-      name: 'Catalina T.',
-      role: 'Directora Comercial',
-      avatarBg: 'bg-[#ec4899]',
-      hoursLogged: 6.5,
-      capacityHours: 8.0,
-      status: 'balanced',
-      consistencyDays: 8,
-      statusNote: 'Revisando acuerdos y cotizaciones con Yamaha.'
-    },
-    {
-      id: 'usr-luisa',
-      name: 'Luisa U.',
-      role: 'Operaciones & PM',
-      avatarBg: 'bg-[#0284c7]',
-      hoursLogged: 7.0,
-      capacityHours: 8.0,
-      status: 'balanced',
-      consistencyDays: 14,
-      statusNote: 'Supervisando estabilidad de cronograma.'
-    },
-    {
-      id: 'usr-diego',
-      name: 'Diego G.',
-      role: 'Creative Designer',
-      avatarBg: 'bg-[#8b5cf6]',
-      hoursLogged: 5.0,
-      capacityHours: 8.0,
-      status: 'building',
-      consistencyDays: 4,
-      statusNote: 'Bloques visuales de campaña en fase de pulido.'
-    },
-    {
-      id: 'usr-cami',
-      name: 'Camilo V.',
-      role: 'Growth & Media Lead',
-      avatarBg: 'bg-[#f59e0b]',
-      hoursLogged: 2.0,
-      capacityHours: 8.0,
-      status: 'building',
-      consistencyDays: 3,
-      statusNote: 'Configurando pauta de conversión.'
-    },
-    {
-      id: 'usr-ana',
-      name: 'Ana María G.',
-      role: 'CEO & Dirección',
-      avatarBg: 'bg-[#10b981]',
-      hoursLogged: 7.5,
-      capacityHours: 8.0,
-      status: 'balanced',
-      consistencyDays: 21,
-      statusNote: 'Equilibrio financiero y planeación estratégica.'
-    }
-  ]);
+  // Tareas de hoy (filtradas)
+  const todayTasks = localTasks.filter((t) => t.date === 'Hoy');
+  const reworkTasks = localTasks.filter((t) => t.isRework && !t.completed);
+  const upcomingDeadlines = [...localTasks].sort((a, b) => (a.dueDate > b.dueDate ? 1 : -1));
 
-  // Operational metrics
-  const totalAssignedToday = localTasks.reduce((acc, t) => acc + (t.budgetedHours || 0), 0);
-  const totalExecutedToday = localTasks.reduce((acc, t) => acc + ((t.consumedSeconds || 0) / 3600), 0);
-  const allTasksCompleted = localTasks.every((t) => t.completed);
-  const completedCount = localTasks.filter((t) => t.completed).length;
+  // MODELO DE CAPACIDAD ORBIT:
+  // Capacidad disponible = Disponibilidad configurada - Carga planificada
+  const assignedHoursToday = todayTasks.reduce((acc, t) => acc + (t.budgetedHours || 0), 0); // 6.5h
+  const configuredCapacity = configuredCapacityHours; // 8.0h por defecto (L-V)
+  const availableCapacityHours = Number(Math.max(0, configuredCapacity - assignedHoursToday).toFixed(1));
+  const isOverCapacity = assignedHoursToday > configuredCapacity;
 
-  // Detect critical overtime tasks that have not been notified
+  // Detección de tareas con desvío crítico presupuestal (> 25% del estimado cotizado)
   const criticalOvertimeTasks = localTasks.filter((t) => {
     const consumed = (t.consumedSeconds || 0) / 3600;
     const budgeted = t.budgetedHours || 1;
@@ -275,24 +229,17 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
   });
 
   const hasNotifiedAny = Object.keys(notifiedTasks).length > 0;
-  const isOverloaded = loggedHoursToday > 8.5 || criticalOvertimeTasks.length > 0;
 
-  // Emit event to Bucky's floating mascot companion
-  const notifyMascot = (action: string, phrase: string) => {
-    window.dispatchEvent(
-      new CustomEvent('orbit-mascot-reaction', {
-        detail: { action, phrase }
-      })
-    );
-  };
-
-  // Automated Bucky Runtime State via central resolveBuckyState
+  // Bucky Contextual Companion State
   const buckyState = resolveBuckyState({
     loggedHoursToday,
-    targetDayHours: 8.0,
+    assignedHoursToday,
+    configuredCapacityHours: configuredCapacity,
+    availableCapacityHours,
     criticalOvertimeTasks,
+    isOverCapacity,
     activeTimer,
-    allTasksCompleted,
+    allTasksCompleted: localTasks.every((t) => t.completed),
     hasTasks: localTasks.length > 0,
     hasNotifiedOvertime: hasNotifiedAny
   });
@@ -301,18 +248,16 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
     setToastMessage(msg);
     setTimeout(() => {
       setToastMessage(null);
-    }, 3800);
+    }, 3500);
   };
 
-  // Handling task completion -> Bucky applauds
   const handleToggleLocalTask = (taskId: string) => {
     setLocalTasks((prev) =>
       prev.map((t) => {
         if (t.id === taskId) {
           const nextVal = !t.completed;
           if (nextVal) {
-            notifyMascot('clap', '¡Pieza lista! 👏 Estructura reforzada.');
-            showToast('¡Pieza completada! Bucky aplaude el avance 👏');
+            showToast('¡Pieza completada! Registrado el avance.');
           }
           return { ...t, completed: nextVal };
         }
@@ -322,20 +267,6 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
     onToggleTask(taskId);
   };
 
-  // Handling hour registration -> Bucky adjusts habitat block
-  const handleLogResource = (hours: number, label: string) => {
-    onQuickLogHours(hours, label, 'internal', 'Uhura Group');
-    notifyMascot('stretch', `Acomodando pieza en el hábitat... +${hours}h de recurso registrado 🪵`);
-    showToast(`Recurso registrado (+${hours}h). Pieza encajada en el hábitat.`);
-  };
-
-  // Handling team support action
-  const handleSupportMember = (member: ColonyMember) => {
-    setSupportedMembers((prev) => ({ ...prev, [member.id]: true }));
-    showToast(`Mensaje de coordinación enviado a ${member.name.split(' ')[0]}.`);
-  };
-
-  // Handling project extension notice
   const handleSendChatNotification = () => {
     if (!chatModalTask) return;
 
@@ -348,717 +279,799 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
       }
     }));
 
-    notifyMascot('wave', 'Aviso enviado al equipo. Proyecto protegido y balance asegurado 🛡️');
-    showToast('Aviso de extensión enviado. El ejecutivo ya cuenta con el detalle para recotizar.');
+    showToast('Aviso de desvío enviado. El equipo de gestión evaluará redistribución de carga o ajuste de alcance.');
     setChatModalTask(null);
   };
 
-  // Clean support bags (Uhura non-billables)
+  // Bolsas de Soporte Interno Uhura (No facturables a cliente)
   const supportBags = [
-    {
-      id: 'bag-weekly',
-      title: 'Comité Operativo / Weekly',
-      hours: 1.0,
-      icon: Users2
-    },
-    {
-      id: 'bag-mgmt',
-      title: 'Gestión & Coordinación',
-      hours: 1.0,
-      icon: MessageSquare
-    },
-    {
-      id: 'bag-training',
-      title: 'Capacitación / Lab Uhura',
-      hours: 2.0,
-      icon: Sparkles
-    },
-    {
-      id: 'bag-medical',
-      title: 'Permiso Personal / Cita',
-      hours: 2.0,
-      icon: Heart
-    }
+    { id: 'bag-daily', title: 'Daily & Sincronización', hours: 0.5 },
+    { id: 'bag-weekly', title: 'Comité Operativo / Weekly', hours: 1.0 },
+    { id: 'bag-cultura', title: 'Capacitación & Cultura Uhura', hours: 1.0 },
+    { id: 'bag-admin', title: 'Gestión Interna & Soporte', hours: 0.5 }
+  ];
+
+  // Semana laboral planificada (Lunes a Viernes)
+  const weekPlanDays = [
+    { name: 'Lunes', date: '24 Ago', assigned: 4.0, executed: 4.0, available: 4.0, status: 'completed' },
+    { name: 'Martes', date: '25 Ago', assigned: assignedHoursToday, executed: loggedHoursToday, available: availableCapacityHours, status: 'today' },
+    { name: 'Miércoles', date: '26 Ago', assigned: 4.5, executed: 0, available: 3.5, status: 'planned' },
+    { name: 'Jueves', date: '27 Ago', assigned: 4.0, executed: 0, available: 4.0, status: 'planned' },
+    { name: 'Viernes', date: '28 Ago', assigned: 3.5, executed: 0, available: 4.5, status: 'planned' }
   ];
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-12 animate-in fade-in duration-200">
-      {/* Toast notification */}
+    <div className="space-y-6 animate-in fade-in duration-200">
+      {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-16 right-6 z-50 bg-[#0f172a] text-white px-4 py-2.5 rounded-2xl border border-[#334155] shadow-xl flex items-center gap-2.5 text-xs font-medium animate-in slide-in-from-top-3">
-          <Sparkles className="w-4 h-4 text-[#a78bfa] shrink-0" />
+        <div className="fixed bottom-6 right-6 z-70 bg-[#0f172a] text-white text-xs px-4 py-3 rounded-2xl shadow-xl border border-[#334155] flex items-center gap-2.5 animate-in slide-in-from-bottom-2">
+          <Check className="w-4 h-4 text-[#d4ff4a]" />
           <span>{toastMessage}</span>
         </div>
       )}
 
-      {/* Clean Top Bar: Orbit Habitat Status & Balance */}
-      <div className="bg-white rounded-3xl p-5 sm:p-6 border border-[#e2e8f0] shadow-xs space-y-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748b]">
-                Orbit Habitat · La Colonia Orbital
-              </span>
-              <span className={`px-2.5 py-0.5 rounded-full border text-[11px] font-bold ${buckyState.badgeColor}`}>
-                {buckyState.badgeText}
+      {/* 1. TOP OPERATIONAL HEADER: GREETING & PRIMARY CTAS */}
+      <div className="bg-white rounded-3xl p-5 sm:p-6 border border-[#e2e8f0] shadow-xs">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#10b981]" />
+              <span className="text-xs font-semibold text-[#64748b] uppercase tracking-wide">
+                Mi Día Operativo · Uhura OS
               </span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#0f172a]">
-              Hola Paola, construyamos en equilibrio
+            <h1 className="text-xl sm:text-2xl font-black text-[#0f172a] mt-0.5">
+              Hola, Paola 👋
             </h1>
-            <p className="text-xs text-[#64748b]">
-              Orbit mantiene la colonia saludable: cuidamos que cada proyecto avance sin sobrecargar al equipo.
+            <p className="text-xs text-[#64748b] mt-0.5">
+              Foco en ejecución real, balance de capacidad y control de desvíos en tareas.
             </p>
           </div>
 
-          {/* Navigation Tab: Mi Hábitat vs La Colonia */}
-          <div className="flex items-center gap-2 bg-[#f8fafc] p-1 rounded-2xl border border-[#e2e8f0] text-xs font-medium self-stretch sm:self-auto">
+          {/* PRIMARY CTAS: CARGAR TIEMPO / INICIAR TIMER */}
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            {/* CTA 1: CARGAR TIEMPO MANUAL */}
             <button
-              onClick={() => setActiveTab('habitat')}
-              className={`flex-1 sm:flex-initial px-4 py-2 rounded-xl transition-all cursor-pointer ${
-                activeTab === 'habitat'
-                  ? 'bg-white text-[#0f172a] font-bold shadow-xs border border-[#e2e8f0]'
-                  : 'text-[#64748b] hover:text-[#0f172a]'
-              }`}
+              onClick={() => onOpenManualLog()}
+              className="px-4 py-2.5 rounded-2xl bg-[#501f92] hover:bg-[#401875] text-white text-xs font-bold flex items-center gap-2 shadow-xs transition-all cursor-pointer"
             >
-              Mi Día
+              <Plus className="w-4 h-4 text-[#d4ff4a]" />
+              <span>Cargar tiempo</span>
             </button>
-            <button
-              onClick={() => setActiveTab('colonia')}
-              className={`flex-1 sm:flex-initial px-4 py-2 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                activeTab === 'colonia'
-                  ? 'bg-white text-[#0f172a] font-bold shadow-xs border border-[#e2e8f0]'
-                  : 'text-[#64748b] hover:text-[#0f172a]'
-              }`}
-            >
-              <Users2 className="w-3.5 h-3.5 text-[#64748b]" />
-              <span>La Colonia</span>
-            </button>
+
+            {/* CTA 2: INICIAR TIMER / TIMER ACTIVO */}
+            {activeTimer ? (
+              <div className="flex items-center gap-2 bg-[#0f172a] text-white px-3.5 py-2 rounded-2xl border border-[#1e293b]">
+                <div className="w-2 h-2 rounded-full bg-[#d4ff4a] animate-pulse" />
+                <span className="text-xs font-mono font-bold text-[#d4ff4a]">
+                  En curso: {activeTimer.taskTitle.slice(0, 20)}...
+                </span>
+                <button
+                  onClick={onStopTimer}
+                  className="ml-1 px-2.5 py-1 rounded-xl bg-[#dc2626] hover:bg-[#b91c1c] text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                >
+                  <Square className="w-3 h-3 fill-current" />
+                  <span>Detener</span>
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => {
+                  const firstPending = localTasks.find((t) => !t.completed);
+                  if (firstPending) {
+                    onStartTimer(firstPending);
+                    showToast(`Cronómetro iniciado en: ${firstPending.title}`);
+                  } else {
+                    onOpenManualLog();
+                  }
+                }}
+                className="px-4 py-2.5 rounded-2xl bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#cbd5e1] text-[#0f172a] text-xs font-bold flex items-center gap-2 shadow-2xs transition-all cursor-pointer"
+              >
+                <Play className="w-4 h-4 text-[#501f92]" />
+                <span>Iniciar timer</span>
+              </button>
+            )}
           </div>
         </div>
 
-        {/* 4 Clean System Pillars */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-3 border-t border-[#f1f5f9]">
-          <div className="p-3 rounded-2xl bg-[#f8fafc] border border-[#f1f5f9]">
+        {/* INDICADOR DE CAPACIDAD REAL ORBIT (Sin meta universal de 8h) */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-4 mt-4 border-t border-[#f1f5f9]">
+          {/* Carga asignada */}
+          <div className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#f1f5f9]">
             <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wide block">
-              Misiones Activas
+              Carga Asignada Hoy
             </span>
-            <div className="flex items-baseline gap-1 mt-0.5">
-              <span className="text-base font-bold text-[#0f172a]">{localTasks.length} bloques</span>
-              <span className="text-xs text-[#64748b]">({completedCount} listos)</span>
+            <div className="flex items-baseline gap-1.5 mt-0.5">
+              <span className="text-lg font-black font-mono text-[#0f172a]">
+                {assignedHoursToday.toFixed(1)}h
+              </span>
+              <span className="text-xs text-[#64748b]">
+                ({todayTasks.length} tareas)
+              </span>
             </div>
+            <span className="text-[11px] text-[#64748b] block mt-0.5">
+              Planificado para la jornada
+            </span>
           </div>
 
-          <div className="p-3 rounded-2xl bg-[#f8fafc] border border-[#f1f5f9]">
+          {/* Carga ejecutada */}
+          <div className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#f1f5f9]">
             <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wide block">
-              Recurso Registrado
+              Carga Ejecutada
             </span>
-            <div className="flex items-baseline gap-1 mt-0.5">
-              <span className="text-base font-bold text-[#0f172a] font-mono">{totalExecutedToday.toFixed(1)}h</span>
-              <span className="text-xs text-[#64748b]">invertidas hoy</span>
+            <div className="flex items-baseline gap-1.5 mt-0.5">
+              <span className="text-lg font-black font-mono text-[#501f92]">
+                {loggedHoursToday.toFixed(1)}h
+              </span>
+              <span className="text-xs text-[#059669] font-medium">
+                registradas
+              </span>
             </div>
+            <span className="text-[11px] text-[#64748b] block mt-0.5">
+              Tiempo real sobre misiones
+            </span>
           </div>
 
-          <div className="p-3 rounded-2xl bg-[#f8fafc] border border-[#f1f5f9]">
-            <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wide block">
-              Estabilidad
+          {/* Capacidad disponible */}
+          <div className="p-3.5 rounded-2xl bg-[#ecfdf5] border border-[#a7f3d0]">
+            <span className="text-[10px] font-bold text-[#065f46] uppercase tracking-wide block">
+              Capacidad Disponible
+            </span>
+            <div className="flex items-baseline gap-1.5 mt-0.5">
+              <span className="text-lg font-black font-mono text-[#047857]">
+                +{availableCapacityHours.toFixed(1)}h
+              </span>
+              <span className="text-xs text-[#065f46] font-medium">
+                libres
+              </span>
+            </div>
+            <span className="text-[11px] text-[#065f46] block mt-0.5">
+              Disponibilidad - Plan ({configuredCapacity}h base)
+            </span>
+          </div>
+
+          {/* Diagnóstico de sobrecarga / desvío */}
+          <div className={`p-3.5 rounded-2xl border ${
+            criticalOvertimeTasks.length > 0 && !hasNotifiedAny
+              ? 'bg-[#fef2f2] border-[#fecaca]'
+              : isOverCapacity
+              ? 'bg-[#fffbeb] border-[#fde68a]'
+              : 'bg-[#f8fafc] border-[#f1f5f9]'
+          }`}>
+            <span className="text-[10px] font-bold uppercase tracking-wide block text-[#64748b]">
+              Diagnóstico de Carga
             </span>
             <div className="flex items-center gap-1.5 mt-0.5">
-              {criticalOvertimeTasks.length > 0 ? (
+              {criticalOvertimeTasks.length > 0 && !hasNotifiedAny ? (
                 <span className="text-xs font-bold text-[#dc2626] flex items-center gap-1">
-                  <AlertOctagon className="w-3.5 h-3.5" />
-                  Demasiado peso (+2.5h)
+                  <AlertOctagon className="w-3.5 h-3.5 shrink-0" />
+                  <span>Desvío presupuestal (+2.5h)</span>
                 </span>
-              ) : hasNotifiedAny ? (
-                <span className="text-xs font-bold text-[#7c3aed] flex items-center gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  Proyecto protegido
+              ) : isOverCapacity ? (
+                <span className="text-xs font-bold text-[#b45309] flex items-center gap-1">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                  <span>Sobreasignado</span>
                 </span>
               ) : (
                 <span className="text-xs font-bold text-[#059669] flex items-center gap-1">
-                  <Check className="w-3.5 h-3.5" />
-                  Sin pendientes de registro
+                  <Check className="w-3.5 h-3.5 shrink-0" />
+                  <span>Capacidad en equilibrio</span>
                 </span>
+              )}
+            </div>
+            <span className="text-[11px] text-[#64748b] block mt-0.5">
+              {criticalOvertimeTasks.length > 0 && !hasNotifiedAny
+                ? 'Yamaha superó cotización'
+                : 'Sin sobrecarga de jornada'}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* 2. MAIN OPERATIONAL GRID: 8 COLS OPERATIONS / 4 COLS CONTEXT & COMPANION */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* LEFT / CENTER 8 COLS: EJECUCIÓN PURA */}
+        <div className="lg:col-span-8 space-y-6">
+
+          {/* SECCIÓN 1: ¿QUÉ RETRABAJOS / AJUSTES TENGO? */}
+          <div className="bg-white rounded-3xl p-5 sm:p-6 border border-[#e2e8f0] shadow-xs space-y-3.5">
+            <div className="flex items-center justify-between pb-2.5 border-b border-[#f1f5f9]">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-xl bg-[#fffbeb] text-[#b45309] flex items-center justify-center font-bold">
+                  <Repeat className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-[#0f172a] flex items-center gap-2">
+                    <span>Retrabajos y Ajustes</span>
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#fef3c7] text-[#92400e] border border-[#fde68a]">
+                      {reworkTasks.length} pendiente{reworkTasks.length !== 1 ? 's' : ''}
+                    </span>
+                  </h3>
+                  <p className="text-[11px] text-[#64748b]">
+                    Piezas devueltas por cliente o control de calidad que requieren corrección prioritaria.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {reworkTasks.length > 0 ? (
+              <div className="space-y-3">
+                {reworkTasks.map((rework) => (
+                  <div
+                    key={rework.id}
+                    className="p-4 rounded-2xl bg-[#fffdf5] border border-[#fde68a] space-y-2.5 transition-all hover:border-[#f59e0b]"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="space-y-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-[#fef3c7] text-[#92400e]">
+                            {rework.clientName}
+                          </span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#fee2e2] text-[#b91c1c] border border-[#fecaca] flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3" />
+                            Ronda {rework.reworkRound || 1} · {rework.dueText}
+                          </span>
+                          <span className="text-[10px] text-[#64748b]">
+                            Bolsa: <strong>{rework.budgetedRoleId || 'Diseñador Gráfico'}</strong>
+                          </span>
+                        </div>
+                        <h4
+                          onClick={() => onOpenTaskDetail(rework.id)}
+                          className="text-xs sm:text-sm font-bold text-[#0f172a] hover:text-[#501f92] cursor-pointer transition-colors"
+                        >
+                          {rework.title}
+                        </h4>
+                        <p className="text-xs text-[#78350f] font-medium bg-[#fef9c3]/60 px-2.5 py-1 rounded-lg border border-[#fef08a] inline-block">
+                          Motivo: {rework.reworkReason}
+                        </p>
+                      </div>
+
+                      {/* Quick Actions sobre el retrabajo */}
+                      <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                        <button
+                          onClick={() => onOpenManualLog(rework.id)}
+                          className="px-3 py-1.5 rounded-xl bg-white hover:bg-[#fef3c7] border border-[#fde68a] text-[#78350f] text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
+                        >
+                          <Clock className="w-3.5 h-3.5" />
+                          <span>Cargar tiempo</span>
+                        </button>
+                        {activeTimer?.taskId === rework.id ? (
+                          <button
+                            onClick={onStopTimer}
+                            className="px-3 py-1.5 rounded-xl bg-[#dc2626] hover:bg-[#b91c1c] text-white text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                          >
+                            <Square className="w-3.5 h-3.5 fill-current" />
+                            <span>Detener</span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => onStartTimer(rework)}
+                            className="px-3 py-1.5 rounded-xl bg-[#501f92] hover:bg-[#401875] text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
+                          >
+                            <Play className="w-3.5 h-3.5 text-[#d4ff4a]" />
+                            <span>Iniciar</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-4 rounded-2xl bg-[#f8fafc] border border-[#f1f5f9] flex items-center gap-3 text-xs text-[#64748b]">
+                <ShieldCheck className="w-5 h-5 text-[#10b981] shrink-0" />
+                <span>Sin retrabajos pendientes. Todas las entregas aprobadas sin observaciones.</span>
+              </div>
+            )}
+          </div>
+
+          {/* SECCIÓN 2: ¿QUÉ TENGO QUE HACER HOY? (MISIONES ACTIVAS) */}
+          <div className="bg-white rounded-3xl p-5 sm:p-6 border border-[#e2e8f0] shadow-xs space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[#f1f5f9]">
+              <div>
+                <h3 className="text-sm font-bold text-[#0f172a] flex items-center gap-2">
+                  <span>¿Qué tengo que hacer hoy?</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-[#f1f5f9] text-[#64748b] font-medium">
+                    {todayTasks.length} misiones
+                  </span>
+                </h3>
+                <p className="text-xs text-[#64748b] mt-0.5">
+                  Piezas asignadas para hoy. Marca avance, inicia el timer o carga tiempo con un clic.
+                </p>
+              </div>
+
+              <span className="text-xs font-bold text-[#501f92] bg-[#f5f3ff] px-2.5 py-1 rounded-xl border border-[#ddd6fe]">
+                Total plan: {assignedHoursToday.toFixed(1)}h
+              </span>
+            </div>
+
+            {/* Listado de tareas */}
+            <div className="space-y-3">
+              {todayTasks.map((task) => {
+                const consumedHrs = (task.consumedSeconds || 0) / 3600;
+                const budgetedHrs = task.budgetedHours || 1;
+                const ratio = consumedHrs / budgetedHrs;
+                const isCriticalOver = ratio > 1.25;
+                const isSlightOver = ratio > 1.0 && ratio <= 1.25;
+                const isTimerActive = activeTimer?.taskId === task.id;
+                const isNotified = notifiedTasks[task.id];
+                const excessHours = Math.max(0, consumedHrs - budgetedHrs).toFixed(1);
+
+                return (
+                  <div
+                    key={task.id}
+                    className={`p-4 rounded-2xl border transition-all ${
+                      isTimerActive
+                        ? 'border-[#8a4dff] bg-[#fbf9ff] shadow-xs'
+                        : task.completed
+                        ? 'border-[#e2e8f0] bg-[#f8fafc]/60 opacity-60'
+                        : 'border-[#e2e8f0] bg-white hover:border-[#cbd5e1]'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      {/* Left: Checkbox & Task info */}
+                      <div className="flex items-start gap-3 min-w-0 flex-1">
+                        <button
+                          onClick={() => handleToggleLocalTask(task.id)}
+                          className="mt-0.5 text-[#64748b] hover:text-[#501f92] cursor-pointer transition-colors shrink-0"
+                        >
+                          {task.completed ? (
+                            <CheckCircle2 className="w-5 h-5 text-[#10b981] fill-[#ecfdf5]" />
+                          ) : (
+                            <Circle className="w-5 h-5 text-[#cbd5e1] hover:text-[#94a3b8]" />
+                          )}
+                        </button>
+
+                        <div className="space-y-1 min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-[#f1f5f9] text-[#334155] truncate max-w-[150px]">
+                              {task.clientName || 'Cliente'}
+                            </span>
+                            <span className="text-[#94a3b8] text-xs">›</span>
+                            <span className="text-[10px] text-[#64748b] truncate max-w-[180px]">
+                              {task.projectName || task.board}
+                            </span>
+                            <span className="text-[10px] text-[#64748b] bg-[#f8fafc] px-2 py-0.5 rounded border border-[#e2e8f0]">
+                              Rol: {task.budgetedRoleId || 'Diseñador'}
+                            </span>
+
+                            {/* Alerta de Desvío / Protección */}
+                            {isCriticalOver && !isNotified && (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#fef2f2] text-[#dc2626] border border-[#fecaca] flex items-center gap-1">
+                                <AlertOctagon className="w-3 h-3" />
+                                Desvío (+{excessHours}h)
+                              </span>
+                            )}
+                            {isCriticalOver && isNotified && (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#f5f3ff] text-[#7c3aed] border border-[#ddd6fe] flex items-center gap-1">
+                                <ShieldCheck className="w-3 h-3" />
+                                Protegido (+{isNotified.extraHours}h en cotización)
+                              </span>
+                            )}
+                            {isSlightOver && (
+                              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#fffbeb] text-[#b45309] border border-[#fde68a]">
+                                En tolerancia (+{excessHours}h)
+                              </span>
+                            )}
+                          </div>
+
+                          <p
+                            onClick={() => onOpenTaskDetail(task.id)}
+                            className={`text-sm font-bold cursor-pointer hover:text-[#501f92] transition-colors truncate ${
+                              task.completed ? 'line-through text-[#64748b]' : 'text-[#0f172a]'
+                            }`}
+                          >
+                            {task.title}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Right: Consumption & Timer actions */}
+                      <div className="flex items-center gap-2.5 shrink-0">
+                        <div className="text-right">
+                          <span className="text-[10px] text-[#64748b] block font-medium">Consumido</span>
+                          <span
+                            className={`text-xs font-mono font-bold ${
+                              isCriticalOver && !isNotified
+                                ? 'text-[#dc2626]'
+                                : isSlightOver
+                                ? 'text-[#b45309]'
+                                : 'text-[#0f172a]'
+                            }`}
+                          >
+                            {consumedHrs.toFixed(1)}h / {budgetedHrs.toFixed(1)}h
+                          </span>
+                        </div>
+
+                        {/* Botón Cargar manual sobre tarea */}
+                        <button
+                          onClick={() => onOpenManualLog(task.id)}
+                          className="p-2 rounded-xl bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] text-[#64748b] hover:text-[#0f172a] cursor-pointer transition-colors"
+                          title="Cargar horas manuales sobre esta tarea"
+                        >
+                          <Clock className="w-4 h-4" />
+                        </button>
+
+                        {/* Botón Start / Stop Timer */}
+                        {isTimerActive ? (
+                          <button
+                            onClick={onStopTimer}
+                            className="px-3 py-1.5 rounded-xl bg-[#dc2626] text-white hover:bg-[#b91c1c] cursor-pointer transition-colors shadow-2xs text-xs font-bold flex items-center gap-1"
+                            title="Detener cronómetro y registrar"
+                          >
+                            <Square className="w-3.5 h-3.5 fill-current" />
+                            <span>Detener</span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => onStartTimer(task)}
+                            className="p-2 rounded-xl bg-[#501f92] text-white hover:bg-[#401875] cursor-pointer transition-colors shadow-2xs"
+                            title="Iniciar cronómetro sobre esta tarea"
+                          >
+                            <Play className="w-4 h-4 text-[#d4ff4a]" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Barra de consumo vs cotización */}
+                    <div className="mt-2.5 w-full h-1.5 rounded-full bg-[#f1f5f9] overflow-hidden">
+                      <div
+                        style={{ width: `${Math.min(100, (consumedHrs / budgetedHrs) * 100)}%` }}
+                        className={`h-full transition-all duration-300 ${
+                          isCriticalOver && !isNotified
+                            ? 'bg-[#ef4444]'
+                            : isCriticalOver && isNotified
+                            ? 'bg-[#8a4dff]'
+                            : isSlightOver
+                            ? 'bg-[#f59e0b]'
+                            : 'bg-[#10b981]'
+                        }`}
+                      />
+                    </div>
+
+                    {/* Notificación de desvío para no asumir costos en silencio */}
+                    {isCriticalOver && !isNotified && (
+                      <div className="mt-3 p-3 rounded-xl bg-[#fef2f2] border border-[#fecaca] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                        <span className="text-xs text-[#991b1b] leading-tight">
+                          Esta pieza superó el tiempo estimado (+{excessHours}h). Avisa al equipo para cotizar los ajustes con el cliente.
+                        </span>
+                        <button
+                          onClick={() => {
+                            setChatModalTask(task);
+                            setExtraHoursEstimate(Math.max(1.0, Number(excessHours)));
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-[#dc2626] hover:bg-[#b91c1c] text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 shadow-2xs"
+                        >
+                          <MessageSquare className="w-3.5 h-3.5" />
+                          <span>Avisar en chat</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* SECCIÓN 3: ¿QUÉ DEADLINES TENGO PRÓXIMOS? */}
+          <div className="bg-white rounded-3xl p-5 sm:p-6 border border-[#e2e8f0] shadow-xs space-y-3.5">
+            <div className="flex items-center justify-between pb-2 border-b border-[#f1f5f9]">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-[#501f92]" />
+                <h3 className="text-sm font-bold text-[#0f172a]">
+                  ¿Qué deadlines tengo próximos?
+                </h3>
+              </div>
+              <span className="text-[11px] text-[#64748b]">
+                Orden cronológico de entrega
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {upcomingDeadlines.slice(0, 3).map((item) => (
+                <div
+                  key={item.id}
+                  onClick={() => onOpenTaskDetail(item.id)}
+                  className="p-3 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] hover:border-[#cbd5e1] cursor-pointer transition-all space-y-1.5"
+                >
+                  <div className="flex items-center justify-between text-[10px]">
+                    <span className="font-bold text-[#334155] uppercase truncate max-w-[110px]">
+                      {item.clientName}
+                    </span>
+                    <span className={`font-bold px-1.5 py-0.2 rounded-md ${
+                      item.dueStatus === 'urgent'
+                        ? 'bg-[#fee2e2] text-[#dc2626]'
+                        : 'bg-[#eff6ff] text-[#1d4ed8]'
+                    }`}>
+                      {item.dueText}
+                    </span>
+                  </div>
+                  <p className="text-xs font-bold text-[#0f172a] line-clamp-1">
+                    {item.title}
+                  </p>
+                  <div className="flex items-center justify-between text-[10px] text-[#64748b] pt-0.5">
+                    <span>Presupuesto: {item.budgetedHours}h</span>
+                    <span className="text-[#501f92] font-semibold">Ver detalle →</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* SECCIÓN 4: ¿CÓMO ESTÁ MI SEMANA? (LUNES A VIERNES) */}
+          <div className="bg-white rounded-3xl p-5 sm:p-6 border border-[#e2e8f0] shadow-xs space-y-3.5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 pb-2 border-b border-[#f1f5f9]">
+              <div>
+                <h3 className="text-sm font-bold text-[#0f172a] flex items-center gap-2">
+                  <span>¿Cómo está mi semana?</span>
+                  <span className="text-xs font-medium text-[#64748b]">(Lunes a Viernes)</span>
+                </h3>
+                <p className="text-[11px] text-[#64748b]">
+                  Carga planificada vs disponibilidad habitual. Sábado y domingo no cuentan como capacidad esperada.
+                </p>
+              </div>
+
+              <span className="text-[11px] text-[#059669] font-bold px-2.5 py-1 rounded-full bg-[#ecfdf5] border border-[#a7f3d0] shrink-0 self-start sm:self-auto">
+                Semana balanceada
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+              {weekPlanDays.map((d) => (
+                <div
+                  key={d.name}
+                  className={`p-3 rounded-2xl border space-y-1.5 ${
+                    d.status === 'today'
+                      ? 'bg-[#fbf9ff] border-2 border-[#8a4dff] shadow-xs'
+                      : d.status === 'completed'
+                      ? 'bg-white border-[#e2e8f0]'
+                      : 'bg-[#f8fafc] border-[#f1f5f9]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className={`text-xs font-bold ${d.status === 'today' ? 'text-[#501f92]' : 'text-[#0f172a]'}`}>
+                      {d.name}
+                    </span>
+                    <span className="text-[10px] text-[#64748b]">{d.date}</span>
+                  </div>
+
+                  <div className="space-y-0.5">
+                    <p className="font-mono text-xs font-bold text-[#0f172a]">
+                      {d.assigned.toFixed(1)}h <span className="text-[10px] font-normal text-[#64748b]">plan</span>
+                    </p>
+                    <span className="text-[10px] text-[#059669] font-semibold block">
+                      +{d.available.toFixed(1)}h libres
+                    </span>
+                  </div>
+
+                  <div className="w-full h-1.5 rounded-full bg-[#e2e8f0] overflow-hidden">
+                    <div
+                      style={{ width: `${Math.min(100, (d.assigned / 8) * 100)}%` }}
+                      className={`h-full rounded-full ${
+                        d.status === 'today'
+                          ? 'bg-[#8a4dff]'
+                          : d.status === 'completed'
+                          ? 'bg-[#10b981]'
+                          : 'bg-[#3b82f6]'
+                      }`}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <p className="text-[11px] text-[#64748b] leading-relaxed pt-1">
+              * La disponibilidad estándar de Uhura se planifica de lunes a viernes. Si realizas labores extraordinarias en fin de semana, Orbit te permite registrarlas con total libertad sin computarlas como cuota pendiente.
+            </p>
+          </div>
+        </div>
+
+        {/* RIGHT 4 COLS: BUCKY ACOMPAÑANTE CONTEXTUAL & ATAJOS */}
+        <div className="lg:col-span-4 space-y-6">
+
+          {/* TARJETA BUCKY EL CASTOR (COMPACTA, ELEGANTE, NO INVASIVA) */}
+          <div className="bg-white rounded-3xl p-5 border border-[#e2e8f0] shadow-xs relative">
+            {/* Header Bucky Status */}
+            <div className="flex items-center justify-between pb-3 border-b border-[#f1f5f9]">
+              <div className="flex items-center gap-2">
+                <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${buckyState.badgeColor}`}>
+                  {buckyState.badgeText}
+                </span>
+              </div>
+              <span className="text-[11px] text-[#64748b]">
+                Acompañante Contextual
+              </span>
+            </div>
+
+            {/* Bucky Stage Proporcionado */}
+            <div className="py-3 flex flex-col items-center text-center space-y-2">
+              {/* Dialogue Bubble */}
+              <div className="w-full max-w-[260px] animate-in fade-in">
+                <div
+                  className={`text-xs font-medium px-3.5 py-2.5 rounded-2xl shadow-2xs text-center border ${
+                    buckyState.isAlert
+                      ? 'bg-[#fff5f5] border-[#fecaca] text-[#991b1b]'
+                      : 'bg-[#f8fafc] border-[#e2e8f0] text-[#0f172a]'
+                  }`}
+                >
+                  {buckyState.speech}
+                </div>
+                <div
+                  className={`w-2.5 h-2.5 transform rotate-45 mx-auto -mt-1 border-r border-b ${
+                    buckyState.isAlert
+                      ? 'bg-[#fff5f5] border-[#fecaca]'
+                      : 'bg-[#f8fafc] border-[#e2e8f0]'
+                  }`}
+                />
+              </div>
+
+              {/* Bucky Cutout Image con buzo morado Uhura oficial (~100px compacto) */}
+              <div className="relative flex flex-col items-center pt-1">
+                <img
+                  src={buckyState.image}
+                  alt="Bucky el Castor"
+                  referrerPolicy="no-referrer"
+                  className="w-28 h-28 object-contain select-none transition-transform duration-200 hover:scale-105"
+                />
+              </div>
+
+              <div>
+                <h4 className="text-xs font-bold text-[#0f172a]">
+                  {buckyState.headline}
+                </h4>
+                <p className="text-[11px] text-[#64748b] max-w-xs mt-0.5 leading-relaxed">
+                  {buckyState.description}
+                </p>
+              </div>
+
+              {/* Botón de visita discreta a La Colonia */}
+              {onNavigateToView && (
+                <button
+                  onClick={() => onNavigateToView('la-colonia')}
+                  className="w-full mt-2 py-2 px-3 rounded-xl bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] text-xs font-bold text-[#501f92] flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <span>🪵 Visitar La Colonia de Bucky</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
               )}
             </div>
           </div>
 
-          <div className="p-3 rounded-2xl bg-[#f8fafc] border border-[#f1f5f9]">
-            <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wide block">
-              Consistencia
-            </span>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <Flame className="w-3.5 h-3.5 text-[#ea580c] fill-[#ea580c]" />
-              <span className="text-xs font-bold text-[#0f172a]">
-                {consistencyDays} días en equilibrio
+          {/* ATAJOS RÁPIDOS DE CARGA DE TIEMPO */}
+          <div className="bg-white rounded-3xl p-5 border border-[#e2e8f0] shadow-xs space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#0f172a]">
+                Carga Rápida de Horas
+              </h4>
+              <button
+                onClick={() => onOpenManualLog()}
+                className="text-xs text-[#501f92] font-bold hover:underline cursor-pointer"
+              >
+                Manual +
+              </button>
+            </div>
+            <p className="text-[11px] text-[#64748b]">
+              Registra bloques directos en tu tarea prioritaria en curso:
+            </p>
+
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                onClick={() => {
+                  const target = localTasks.find((t) => !t.completed) || localTasks[0];
+                  if (target) {
+                    onQuickLogHours(0.5, '30m avance operativo', 'client', target.projectName);
+                    showToast(`+30m cargados en ${target.title}`);
+                  }
+                }}
+                className="py-2 px-2 rounded-xl bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] text-xs font-bold text-[#0f172a] transition-all cursor-pointer flex flex-col items-center"
+              >
+                <span>+30m</span>
+                <span className="text-[10px] text-[#64748b] font-normal">Bloque</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  const target = localTasks.find((t) => !t.completed) || localTasks[0];
+                  if (target) {
+                    onQuickLogHours(1.0, '1h producción continua', 'client', target.projectName);
+                    showToast(`+1h cargada en ${target.title}`);
+                  }
+                }}
+                className="py-2 px-2 rounded-xl bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] text-xs font-bold text-[#0f172a] transition-all cursor-pointer flex flex-col items-center"
+              >
+                <span>+1h</span>
+                <span className="text-[10px] text-[#64748b] font-normal">1 hora</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  const target = localTasks.find((t) => !t.completed) || localTasks[0];
+                  if (target) {
+                    onQuickLogHours(2.0, '2h sprint enfocado', 'client', target.projectName);
+                    showToast(`+2h cargadas en ${target.title}`);
+                  }
+                }}
+                className="py-2 px-2 rounded-xl bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] text-xs font-bold text-[#0f172a] transition-all cursor-pointer flex flex-col items-center"
+              >
+                <span>+2h</span>
+                <span className="text-[10px] text-[#64748b] font-normal">Sprint</span>
+              </button>
+            </div>
+          </div>
+
+          {/* BOLSAS DE SOPORTE INTERNO (UHURA GROUP) */}
+          <div className="bg-white rounded-3xl p-5 border border-[#e2e8f0] shadow-xs space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-[#0f172a]">
+                  Soporte Interno Uhura
+                </h4>
+                <p className="text-[11px] text-[#64748b]">
+                  Actividades no facturables a clientes
+                </p>
+              </div>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#f1f5f9] text-[#64748b] font-medium">
+                Interno
               </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              {supportBags.map((bag) => (
+                <button
+                  key={bag.id}
+                  onClick={() => {
+                    onQuickLogHours(bag.hours, bag.title, 'internal', 'Uhura Group');
+                    showToast(`+${bag.hours}h registradas en ${bag.title}`);
+                  }}
+                  className="p-2.5 rounded-2xl border border-[#e2e8f0] bg-[#f8fafc] hover:bg-white hover:border-[#cbd5e1] text-left transition-all cursor-pointer flex flex-col justify-between gap-1 shadow-2xs"
+                >
+                  <span className="text-xs font-medium text-[#0f172a] line-clamp-1">
+                    {bag.title}
+                  </span>
+                  <span className="text-[10px] font-mono font-bold text-[#501f92]">
+                    +{bag.hours}h
+                  </span>
+                </button>
+              ))}
             </div>
           </div>
         </div>
       </div>
 
-      {/* TAB 1: MI HÁBITAT (VERY CLEAN MI DÍA) */}
-      {activeTab === 'habitat' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* LEFT 5 COLS: Bucky el Castor & Carga de Recurso */}
-          <div className="lg:col-span-5 space-y-6">
-            <div className="bg-white rounded-3xl p-6 border border-[#e2e8f0] shadow-xs relative">
-              {/* Header Status */}
-              <div className="flex items-center justify-between pb-3 border-b border-[#f1f5f9]">
-                <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${buckyState.badgeColor}`}>
-                  {buckyState.badgeText}
-                </span>
-                <span className="text-xs text-[#64748b]">
-                  Compañero de colonia
-                </span>
-              </div>
-
-              {/* Bucky Stage with Dialogue Bubble */}
-              <div className="py-4 flex flex-col items-center text-center">
-                {/* Clean Speech Bubble */}
-                <div className="mb-2 max-w-[290px] animate-in fade-in zoom-in-95">
-                  <div
-                    className={`text-xs font-medium px-4 py-2.5 rounded-2xl shadow-sm text-center border ${
-                      buckyState.isAlert
-                        ? 'bg-[#fff5f5] border-[#fecaca] text-[#991b1b]'
-                        : 'bg-[#f8fafc] border-[#e2e8f0] text-[#0f172a]'
-                    }`}
-                  >
-                    {buckyState.speech}
-                  </div>
-                  {/* Bubble Pointer */}
-                  <div
-                    className={`w-3 h-3 transform rotate-45 mx-auto -mt-1.5 border-r border-b ${
-                      buckyState.isAlert
-                        ? 'bg-[#fff5f5] border-[#fecaca]'
-                        : 'bg-[#f8fafc] border-[#e2e8f0]'
-                    }`}
-                  />
-                </div>
-
-                {/* Beaver Cutout Image */}
-                <div className="relative group flex flex-col items-center">
-                  <img
-                    src={buckyState.image}
-                    alt="Bucky el Castor de Orbit"
-                    referrerPolicy="no-referrer"
-                    className="w-60 sm:w-72 h-72 sm:h-80 object-contain select-none transition-transform duration-300 hover:scale-102"
-                  />
-                </div>
-
-                {/* Subtitle description */}
-                <h3 className="text-base font-bold text-[#0f172a] mt-3">
-                  {buckyState.headline}
-                </h3>
-                <p className="text-xs text-[#64748b] max-w-sm mt-1 leading-relaxed">
-                  {buckyState.description}
-                </p>
-
-                {/* Banner de acceso a La Colonia */}
-                <div className="mt-4 w-full p-4 rounded-2xl bg-gradient-to-r from-[#1c0e38] to-[#140b24] border border-[#8a4dff]/40 text-left space-y-2 text-white shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-base">🪵✨</span>
-                      <span className="text-xs font-black text-[#d4ff4a] uppercase tracking-wider">
-                        La Colonia de Bucky
-                      </span>
-                    </div>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#501f92] text-white font-bold">
-                      Nivel 1
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-[#c9b7ff] leading-relaxed">
-                    Tus hábitos de orden y prevención de hoy generan recursos para el hábitat de Bucky.
-                  </p>
-                  <button
-                    onClick={() => onNavigateToView?.('la-colonia')}
-                    className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-[#501f92] to-[#8a4dff] hover:from-[#43197a] hover:to-[#7c3aed] text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm"
-                  >
-                    <span>Visitar La Colonia</span>
-                    <span>→</span>
-                  </button>
-                </div>
-
-                {/* Overtime Alert Action Banner */}
-                {criticalOvertimeTasks.length > 0 && (
-                  <div className="mt-4 w-full p-4 rounded-2xl bg-[#fef2f2] border border-[#fecaca] text-left space-y-2.5">
-                    <div className="flex items-center gap-2 text-xs font-bold text-[#dc2626]">
-                      <AlertOctagon className="w-4 h-4 shrink-0" />
-                      <span>Desvío en {criticalOvertimeTasks[0].projectName}</span>
-                    </div>
-                    <p className="text-xs text-[#991b1b] leading-relaxed">
-                      Esta pieza superó el recurso asignado (+2.5h). Para no asumir el costo en silencio, avisa en el canal del proyecto para cotizar o reasignar.
-                    </p>
-                    <button
-                      onClick={() => {
-                        setChatModalTask(criticalOvertimeTasks[0]);
-                        setExtraHoursEstimate(2.5);
-                      }}
-                      className="w-full py-2.5 px-4 rounded-xl bg-[#dc2626] hover:bg-[#b91c1c] text-white text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer"
-                    >
-                      <MessageSquare className="w-4 h-4" />
-                      <span>Avisar extensión al equipo</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Clean Quick Task Time Logging */}
-              <div className="pt-4 border-t border-[#f1f5f9] space-y-2.5">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-bold text-[#334155]">Registrar tiempo rápido</span>
-                  <button
-                    onClick={() => onOpenManualLog()}
-                    className="text-[#501f92] hover:text-[#381566] text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
-                  >
-                    <span>Carga manual</span>
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    onClick={() => {
-                      const firstTask = localTasks.find(t => !t.completed) || localTasks[0];
-                      if (firstTask) {
-                        onQuickLogHours(0.5, '30m avance operativo', 'client', firstTask.projectName);
-                        showToast(`+30m registrados en ${firstTask.title}`);
-                      }
-                    }}
-                    className="py-2.5 rounded-xl bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] text-xs font-bold text-[#0f172a] transition-all cursor-pointer flex flex-col items-center"
-                  >
-                    <span>+30 min</span>
-                    <span className="text-[10px] text-[#64748b] font-normal">Bloque corto</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      const firstTask = localTasks.find(t => !t.completed) || localTasks[0];
-                      if (firstTask) {
-                        onQuickLogHours(1.0, '1h producción continua', 'client', firstTask.projectName);
-                        showToast(`+1h registrada en ${firstTask.title}`);
-                      }
-                    }}
-                    className="py-2.5 rounded-xl bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] text-xs font-bold text-[#0f172a] transition-all cursor-pointer flex flex-col items-center"
-                  >
-                    <span>+1 hora</span>
-                    <span className="text-[10px] text-[#64748b] font-normal">1 bloque</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      const firstTask = localTasks.find(t => !t.completed) || localTasks[0];
-                      if (firstTask) {
-                        onQuickLogHours(2.0, '2h sprint enfocado', 'client', firstTask.projectName);
-                        showToast(`+2h registradas en ${firstTask.title}`);
-                      }
-                    }}
-                    className="py-2.5 rounded-xl bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] text-xs font-bold text-[#0f172a] transition-all cursor-pointer flex flex-col items-center"
-                  >
-                    <span>+2 horas</span>
-                    <span className="text-[10px] text-[#64748b] font-normal">Sprint</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Clean Support Bags (No-facturables Uhura) */}
-            <div className="bg-white rounded-3xl p-5 border border-[#e2e8f0] shadow-xs space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-[#0f172a]">
-                    Bolsas de Soporte Interno
-                  </h4>
-                  <p className="text-[11px] text-[#64748b]">
-                    Actividades operativas internas de Uhura (Lunes a Viernes)
-                  </p>
-                </div>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#f1f5f9] text-[#64748b] font-medium">
-                  Interno
-                </span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2.5">
-                {supportBags.map((bag) => {
-                  const Icon = bag.icon;
-                  return (
-                    <button
-                      key={bag.id}
-                      onClick={() => handleLogResource(bag.hours, bag.title)}
-                      className="p-3 rounded-2xl border border-[#e2e8f0] bg-[#f8fafc] hover:bg-white hover:border-[#cbd5e1] text-left transition-all cursor-pointer flex flex-col justify-between gap-2 shadow-2xs"
-                    >
-                      <div className="flex items-center justify-between">
-                        <Icon className="w-4 h-4 text-[#64748b]" />
-                        <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-white text-[#0f172a] border border-[#e2e8f0]">
-                          +{bag.hours}h
-                        </span>
-                      </div>
-                      <span className="text-xs font-medium text-[#0f172a] line-clamp-1">
-                        {bag.title}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          {/* RIGHT 7 COLS: Misiones de hoy (Tus tareas reales) */}
-          <div className="lg:col-span-7 space-y-6">
-            {/* Active Timer Pill if running (Start / Stop canonical model, no pause) */}
-            {activeTimer && (
-              <div className="bg-[#0f172a] p-4 rounded-3xl text-white border border-[#1e293b] shadow-sm flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-white/10 text-[#d4ff4a] flex items-center justify-center shrink-0">
-                    <Clock className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-[10px] uppercase font-bold tracking-wider text-[#94a3b8]">
-                      Cronómetro activo · {activeTimer.clientName}
-                    </span>
-                    <h4 className="text-sm font-bold text-white truncate">
-                      {activeTimer.taskTitle}
-                    </h4>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    onClick={onStopTimer}
-                    className="px-3.5 py-2 rounded-xl bg-[#dc2626] hover:bg-[#b91c1c] text-white font-bold text-xs cursor-pointer transition-colors flex items-center gap-1.5 shadow-xs"
-                  >
-                    <span>Detener y Registrar</span>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Misiones de hoy (Tus tareas reales) */}
-            <div className="bg-white rounded-3xl p-6 border border-[#e2e8f0] shadow-xs space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-[#f1f5f9]">
-                <div>
-                  <h3 className="text-base font-bold text-[#0f172a] flex items-center gap-2">
-                    <span>Misiones de hoy</span>
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-[#f1f5f9] text-[#64748b] font-medium">
-                      Tus tareas reales ({localTasks.length})
-                    </span>
-                  </h3>
-                  <p className="text-xs text-[#64748b] mt-0.5">
-                    Piezas asignadas para hoy. Cada tarea completada refuerza la estabilidad de la colonia.
-                  </p>
-                </div>
-
-                <button
-                  onClick={() => onNavigateToView('tareas')}
-                  className="text-xs font-bold text-[#501f92] hover:text-[#8a4dff] flex items-center gap-1 cursor-pointer transition-colors"
-                >
-                  <span>Ver todas ({tasks.length})</span>
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Task Items List */}
-              <div className="space-y-3">
-                {localTasks.map((task) => {
-                  const isTimerActive = activeTimer?.taskId === task.id;
-                  const consumedHrs = Number(((task.consumedSeconds || 0) / 3600).toFixed(1));
-                  const budgetedHrs = Number((task.budgetedHours || 1).toFixed(1));
-                  const ratio = consumedHrs / budgetedHrs;
-                  const isSlightOver = ratio > 1.0 && ratio <= 1.25;
-                  const isCriticalOver = ratio > 1.25;
-                  const isNotified = notifiedTasks[task.id];
-                  const excessHours = (consumedHrs - budgetedHrs).toFixed(1);
-
-                  return (
-                    <div
-                      key={task.id}
-                      className={`p-4 sm:p-5 rounded-2xl border transition-all ${
-                        task.completed
-                          ? 'bg-[#f8fafc] border-[#e2e8f0] opacity-80'
-                          : isCriticalOver && !isNotified
-                          ? 'bg-[#fffbfb] border-[#fecaca]'
-                          : isTimerActive
-                          ? 'bg-[#faf5ff] border-[#8a4dff]'
-                          : 'bg-white border-[#e2e8f0] hover:border-[#cbd5e1]'
-                      }`}
-                    >
-                      {/* Top row */}
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-start gap-3 min-w-0 flex-1">
-                          <button
-                            onClick={() => handleToggleLocalTask(task.id)}
-                            className="mt-0.5 text-[#94a3b8] hover:text-[#10b981] transition-colors cursor-pointer shrink-0"
-                            title={task.completed ? 'Marcar como pendiente' : 'Marcar como completada'}
-                          >
-                            {task.completed ? (
-                              <CheckCircle2 className="w-5 h-5 text-[#10b981]" />
-                            ) : (
-                              <Circle className="w-5 h-5" />
-                            )}
-                          </button>
-
-                          <div className="space-y-1 min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-[#f1f5f9] text-[#334155] truncate max-w-[150px]">
-                                {task.clientName || 'Cliente'}
-                              </span>
-                              <span className="text-[#94a3b8] text-xs">›</span>
-                              <span className="text-[10px] text-[#64748b] truncate max-w-[180px]">
-                                {task.projectName || task.board}
-                              </span>
-
-                              {/* Alert scale: Neutral (in time), Amber (near limit/slight over), Red (over-consumption) */}
-                              {isCriticalOver && !isNotified && (
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#fef2f2] text-[#dc2626] border border-[#fecaca] flex items-center gap-1">
-                                  <AlertOctagon className="w-3 h-3" />
-                                  Demasiado peso (+{excessHours}h)
-                                </span>
-                              )}
-                              {isCriticalOver && isNotified && (
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#f5f3ff] text-[#7c3aed] border border-[#ddd6fe] flex items-center gap-1">
-                                  <ShieldCheck className="w-3 h-3" />
-                                  Protegido (+{isNotified.extraHours}h en cotización)
-                                </span>
-                              )}
-                              {isSlightOver && (
-                                <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#fffbeb] text-[#b45309] border border-[#fde68a]">
-                                  Variación normal (+{excessHours}h)
-                                </span>
-                              )}
-                              {!isCriticalOver && !isSlightOver && consumedHrs > 0 && (
-                                <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#ecfdf5] text-[#059669] border border-[#a7f3d0]">
-                                  En rango ({Math.round(ratio * 100)}%)
-                                </span>
-                              )}
-                            </div>
-
-                            <p
-                              onClick={() => onOpenTaskDetail(task.id)}
-                              className={`text-sm font-bold cursor-pointer hover:text-[#501f92] transition-colors truncate ${
-                                task.completed ? 'line-through text-[#64748b]' : 'text-[#0f172a]'
-                              }`}
-                            >
-                              {task.title}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Right side: Resource indicator & Timer action */}
-                        <div className="flex items-center gap-3 shrink-0">
-                          <div className="text-right">
-                            <span className="text-[10px] text-[#64748b] block font-medium">Recurso</span>
-                            <span
-                              className={`text-xs font-mono font-bold ${
-                                isCriticalOver && !isNotified
-                                  ? 'text-[#dc2626]'
-                                  : isSlightOver
-                                  ? 'text-[#b45309]'
-                                  : 'text-[#0f172a]'
-                              }`}
-                            >
-                              {consumedHrs.toFixed(1)}h / {budgetedHrs.toFixed(1)}h
-                            </span>
-                          </div>
-
-                          {isTimerActive ? (
-                            <button
-                              onClick={onStopTimer}
-                              className="px-3 py-1.5 rounded-xl bg-[#dc2626] text-white hover:bg-[#b91c1c] cursor-pointer transition-colors shadow-2xs text-xs font-bold flex items-center gap-1"
-                              title="Detener y registrar tiempo"
-                            >
-                              <Square className="w-3.5 h-3.5 fill-current" />
-                              <span>Detener</span>
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => onStartTimer(task)}
-                              className="p-2.5 rounded-xl bg-[#f8fafc] text-[#0f172a] hover:bg-[#e2e8f0] border border-[#e2e8f0] cursor-pointer transition-colors"
-                              title="Iniciar cronómetro"
-                            >
-                              <Play className="w-4 h-4 text-[#501f92]" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Clean resource bar */}
-                      <div className="mt-2.5 w-full h-1.5 rounded-full bg-[#f1f5f9] overflow-hidden">
-                        <div
-                          style={{ width: `${Math.min(100, (consumedHrs / budgetedHrs) * 100)}%` }}
-                          className={`h-full transition-all duration-300 ${
-                            isCriticalOver && !isNotified
-                              ? 'bg-[#ef4444]'
-                              : isCriticalOver && isNotified
-                              ? 'bg-[#8a4dff]'
-                              : isSlightOver
-                              ? 'bg-[#f59e0b]'
-                              : 'bg-[#10b981]'
-                          }`}
-                        />
-                      </div>
-
-                      {/* Contextual notification if critical */}
-                      {isCriticalOver && !isNotified && (
-                        <div className="mt-3 p-3 rounded-xl bg-[#fef2f2] border border-[#fecaca] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                          <span className="text-xs text-[#991b1b] leading-tight">
-                            Esta pieza superó el tiempo previsto. Avisa al equipo para cotizar los ajustes con el cliente.
-                          </span>
-                          <button
-                            onClick={() => {
-                              setChatModalTask(task);
-                              setExtraHoursEstimate(Math.max(1.0, Number(excessHours)));
-                            }}
-                            className="px-3 py-1.5 rounded-xl bg-[#dc2626] hover:bg-[#b91c1c] text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 shadow-2xs"
-                          >
-                            <MessageSquare className="w-3.5 h-3.5" />
-                            <span>Avisar en chat</span>
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 2: LA COLONIA (EQUILIBRIO DEL EQUIPO) */}
-      {activeTab === 'colonia' && (
-        <div className="space-y-6">
-          {/* Header colony overview */}
-          <div className="bg-white rounded-3xl p-6 border border-[#e2e8f0] shadow-xs space-y-2">
-            <div className="flex items-center gap-2">
-              <Users2 className="w-5 h-5 text-[#501f92]" />
-              <h2 className="text-lg font-bold text-[#0f172a]">
-                Avance de la Colonia · Equilibrio del Equipo
-              </h2>
-            </div>
-            <p className="text-xs text-[#64748b] max-w-2xl leading-relaxed">
-              En Uhura construimos en conjunto. Orbit monitorea que la carga esté balanceada y que ningún integrante cargue demasiado peso en silencio.
-            </p>
-          </div>
-
-          {/* Colony Members Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {colonyMembers.map((member) => {
-              const isSupported = supportedMembers[member.id];
-              return (
-                <div
-                  key={member.id}
-                  className="bg-white rounded-3xl p-5 border border-[#e2e8f0] shadow-xs flex flex-col justify-between gap-4 transition-all hover:border-[#cbd5e1]"
-                >
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`w-10 h-10 rounded-2xl ${member.avatarBg} text-white flex items-center justify-center font-bold text-xs shadow-2xs`}
-                        >
-                          {member.name.slice(0, 2).toUpperCase()}
-                        </div>
-                        <div>
-                          <h4 className="text-sm font-bold text-[#0f172a]">{member.name}</h4>
-                          <p className="text-[11px] text-[#64748b]">{member.role}</p>
-                        </div>
-                      </div>
-
-                      <span className="text-xs font-bold text-[#64748b] flex items-center gap-1 bg-[#f8fafc] px-2 py-1 rounded-xl border border-[#e2e8f0]">
-                        <Flame className="w-3.5 h-3.5 text-[#ea580c] fill-[#ea580c]" />
-                        {member.consistencyDays}d
-                      </span>
-                    </div>
-
-                    <p className="p-3 rounded-2xl bg-[#f8fafc] border border-[#f1f5f9] text-xs text-[#475569] leading-relaxed">
-                      &ldquo;{member.statusNote}&rdquo;
-                    </p>
-
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between text-xs text-[#64748b]">
-                        <span>Recurso invertido</span>
-                        <span className="font-mono font-bold text-[#0f172a]">
-                          {member.hoursLogged.toFixed(1)}h / {member.capacityHours}h
-                        </span>
-                      </div>
-                      <div className="w-full h-2 bg-[#f1f5f9] rounded-full overflow-hidden">
-                        <div
-                          style={{ width: `${Math.min(100, (member.hoursLogged / member.capacityHours) * 100)}%` }}
-                          className={`h-full rounded-full transition-all ${
-                            member.status === 'overloaded'
-                              ? 'bg-[#ef4444]'
-                              : 'bg-[#10b981]'
-                          }`}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="pt-2 border-t border-[#f1f5f9] flex items-center justify-between">
-                    <span
-                      className={`text-[11px] font-bold ${
-                        member.status === 'overloaded'
-                          ? 'text-[#dc2626]'
-                          : 'text-[#059669]'
-                      }`}
-                    >
-                      {member.status === 'overloaded' ? 'Demasiado peso' : 'Carga balanceada'}
-                    </span>
-
-                    {member.id !== 'usr-pao' && (
-                      <button
-                        disabled={isSupported}
-                        onClick={() => handleSupportMember(member)}
-                        className={`text-xs font-medium px-3 py-1.5 rounded-xl border transition-all cursor-pointer ${
-                          isSupported
-                            ? 'bg-[#f8fafc] text-[#94a3b8] border-[#e2e8f0] cursor-not-allowed'
-                            : 'bg-white hover:bg-[#f8fafc] text-[#0f172a] border-[#cbd5e1]'
-                        }`}
-                      >
-                        {isSupported ? 'Apoyo enviado' : 'Coordinar'}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* MODAL: AVISO EN CHAT PARA PROTEGER EL PROYECTO */}
+      {/* 3. MODAL DE NOTIFICACIÓN DE EXTENSIÓN AL EQUIPO */}
       {chatModalTask && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl border border-[#e2e8f0] shadow-2xl max-w-lg w-full overflow-hidden animate-in zoom-in-95 duration-200">
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setChatModalTask(null);
+          }}
+          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in"
+        >
+          <div className="bg-white rounded-3xl shadow-2xl border border-[#e2e8f0] w-full max-w-lg overflow-hidden flex flex-col animate-in zoom-in-95">
             {/* Header */}
-            <div className="p-5 border-b border-[#f1f5f9] flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-[#f5f3ff] text-[#501f92] flex items-center justify-center">
-                  <ShieldCheck className="w-5 h-5" />
-                </div>
+            <div className="px-5 py-4 bg-[#0f172a] text-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <AlertOctagon className="w-5 h-5 text-[#f87171]" />
                 <div>
-                  <span className="text-[10px] uppercase font-bold tracking-wider text-[#64748b]">
-                    Protección de margen & equilibrio
-                  </span>
-                  <h3 className="text-base font-bold text-[#0f172a]">
-                    Notificar extensión de horas
-                  </h3>
+                  <h3 className="font-bold text-sm text-white">Avisar Desvío al Equipo</h3>
+                  <p className="text-[11px] text-[#94a3b8]">Visibilidad para redistribución de carga o ajuste de alcance</p>
                 </div>
               </div>
               <button
                 onClick={() => setChatModalTask(null)}
-                className="p-1.5 rounded-xl text-[#64748b] hover:text-[#0f172a] hover:bg-[#f1f5f9] transition-colors cursor-pointer"
+                className="text-[#94a3b8] hover:text-white p-1 rounded-lg"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Body */}
-            <div className="p-5 sm:p-6 space-y-4 text-xs">
+            <div className="p-5 space-y-4 text-xs">
               <div className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] space-y-1">
                 <div className="flex items-center justify-between text-[10px] text-[#64748b]">
                   <span className="font-bold text-[#0f172a]">{chatModalTask.clientName}</span>
                   <span className="font-mono">
-                    {((chatModalTask.consumedSeconds || 0) / 3600).toFixed(1)}h consumidas de {chatModalTask.budgetedHours}h presupuestadas
+                    {((chatModalTask.consumedSeconds || 0) / 3600).toFixed(1)}h de {chatModalTask.budgetedHours}h presupuestadas
                   </span>
                 </div>
                 <p className="text-xs font-bold text-[#0f172a]">{chatModalTask.title}</p>
@@ -1140,7 +1153,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                 className="px-4 py-2.5 rounded-xl bg-[#0f172a] hover:bg-[#1e293b] text-white text-xs font-bold flex items-center gap-2 shadow-xs transition-all cursor-pointer"
               >
                 <Send className="w-3.5 h-3.5 text-[#a78bfa]" />
-                <span>Enviar aviso y proteger equilibrio</span>
+                <span>Enviar aviso al equipo</span>
               </button>
             </div>
           </div>

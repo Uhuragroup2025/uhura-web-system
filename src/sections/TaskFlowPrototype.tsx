@@ -44,6 +44,7 @@ import { LaColoniaView } from '../components/taskflow/colonia/LaColoniaView';
 import { FloatingBeaverWidget } from '../components/taskflow/FloatingBeaverWidget';
 import { TimerSummaryModal, TimerSummaryData } from '../components/taskflow/TimerSummaryModal';
 import { AssistedTimerRecoveryModal } from '../components/taskflow/time/AssistedTimerRecoveryModal';
+import { ConflictTimerModal } from '../components/taskflow/time/ConflictTimerModal';
 import {
   ABNORMAL_TIMER_THRESHOLD_SECONDS,
   createTimeTrackingEvent,
@@ -634,6 +635,10 @@ export const TaskFlowPrototype: React.FC = () => {
   // Assisted Recovery Modal State (para timers anormalmente largos > 10h)
   const [isAssistedRecoveryOpen, setIsAssistedRecoveryOpen] = useState(false);
 
+  // Conflict Timer Modal State (Solo un timer global; interacción explícita sin transferencias silenciosas)
+  const [isConflictModalOpen, setIsConflictModalOpen] = useState(false);
+  const [pendingTaskForTimer, setPendingTaskForTimer] = useState<TaskItem | null>(null);
+
   // Live Timer Interval Effect (exact seconds, no rounding)
   useEffect(() => {
     if (!activeTimer || activeTimer.isPaused) return;
@@ -651,8 +656,8 @@ export const TaskFlowPrototype: React.FC = () => {
     return () => clearInterval(interval);
   }, [activeTimer?.isPaused, activeTimer?.taskId]);
 
-  // Start / Switch Live Timer (Global: One active timer at a time)
-  const handleStartTimer = (task: TaskItem) => {
+  // Helper para inicializar un nuevo timer
+  const startTimerForTask = (task: TaskItem) => {
     const nowIso = new Date().toISOString();
     const todayDateString = nowIso.split('T')[0];
     const isWeekend = isWeekendWorkDate(todayDateString);
@@ -671,6 +676,48 @@ export const TaskFlowPrototype: React.FC = () => {
       budgetedRoleId: task.budgetedRoleId || task.budgetedRole || 'Diseñador Gráfico',
       isOutsideRegularSchedule: isWeekend
     });
+  };
+
+  // Start / Switch Live Timer (Global: One active timer at a time)
+  // Regla estricta: NO transferir silenciosamente. Si hay un timer activo en otra tarea,
+  // solicitar interacción explícita para detener y registrar el actual antes de iniciar el nuevo.
+  const handleStartTimer = (task: TaskItem) => {
+    if (activeTimer && activeTimer.taskId !== task.id) {
+      setPendingTaskForTimer(task);
+      setIsConflictModalOpen(true);
+      return;
+    }
+
+    startTimerForTask(task);
+  };
+
+  // Confirmación explícita para detener timer actual y arrancar en nueva tarea
+  const handleConfirmSwitchTimer = () => {
+    if (!pendingTaskForTimer) {
+      setIsConflictModalOpen(false);
+      return;
+    }
+
+    const nextTask = pendingTaskForTimer;
+    setIsConflictModalOpen(false);
+    setPendingTaskForTimer(null);
+
+    // Detener y registrar timer actual si acumuló tiempo
+    if (activeTimer) {
+      if (activeTimer.elapsedSeconds >= 10) {
+        commitTimerLog(activeTimer.elapsedSeconds, false);
+      } else {
+        setActiveTimer(null);
+      }
+    }
+
+    // Iniciar timer en la nueva tarea
+    startTimerForTask(nextTask);
+  };
+
+  const handleCancelSwitchTimer = () => {
+    setIsConflictModalOpen(false);
+    setPendingTaskForTimer(null);
   };
 
   // Pause / Resume (Mantenido para compatibilidad interna)
@@ -716,7 +763,7 @@ export const TaskFlowPrototype: React.FC = () => {
     const isWeekend = isWeekendWorkDate(todayIsoDate);
 
     // Identificar si es apoyo puntual (usuario que registra no estaba originalmente planificado en la tarea)
-    const isAssignee = targetTask.assignees?.some(a => a.userId === targetTask.assignee?.id) || true;
+    const isAssignee = targetTask.assigneeAllocations?.some((a) => a.userId === targetTask.assignee?.id) ?? true;
 
     const newLog: TimeLog = {
       id: `log-${Date.now()}`,
@@ -1468,6 +1515,10 @@ export const TaskFlowPrototype: React.FC = () => {
       clientName: 'UHURA GROUP',
       projectName: projectName,
       categoryType: category,
+      userId: 'u-pao',
+      budgetedRoleId: 'Diseñador Gráfico',
+      source: 'manual',
+      createdAt: new Date().toISOString(),
       userName: 'Paola Monsalve',
       userInitials: 'PM',
       userAvatarBg: '#501f92',
@@ -2003,6 +2054,15 @@ export const TaskFlowPrototype: React.FC = () => {
         onClose={() => setIsAssistedRecoveryOpen(false)}
         activeTimer={activeTimer}
         onConfirmDecision={handleConfirmAssistedRecovery}
+      />
+
+      {/* Conflict Timer Modal (No transferencias silenciosas; confirmación explícita) */}
+      <ConflictTimerModal
+        isOpen={isConflictModalOpen}
+        activeTimer={activeTimer}
+        pendingTask={pendingTaskForTimer}
+        onConfirmSwitch={handleConfirmSwitchTimer}
+        onCancel={handleCancelSwitchTimer}
       />
 
       {/* Timer Summary Modal on Stop */}

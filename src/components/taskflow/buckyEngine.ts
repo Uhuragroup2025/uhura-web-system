@@ -65,7 +65,12 @@ export interface BuckyResolvedState {
 export interface BuckyContext {
   loggedHoursToday: number;
   targetDayHours?: number;
+  assignedHoursToday?: number;
+  configuredCapacityHours?: number;
+  availableCapacityHours?: number;
   criticalOvertimeTasks?: TaskItem[];
+  deadlineRiskTasks?: TaskItem[];
+  isOverCapacity?: boolean;
   activeTimer?: ActiveTimerState | null;
   allTasksCompleted?: boolean;
   hasTasks?: boolean;
@@ -232,12 +237,12 @@ export function resolveBuckyState(ctx: BuckyContext): BuckyResolvedState {
       humanBadge: 'Demasiado peso',
       badgeText: 'Demasiado peso',
       badgeColor: 'bg-[#fef2f2] text-[#dc2626] border-[#fecaca]',
-      headline: 'Hoy está pesado 👀',
-      speech: 'Hoy está pesado 👀 Cuidado con sobrecargarte; si una pieza requiere más recurso, avisa al equipo.',
-      description: `En "${critical.title.slice(0, 30)}..." llevas ${consumedHrs}h de ${budgetedHrs}h (+${diff}h). Para proteger el equilibrio, avisa al líder comercial.`,
+      headline: 'Alerta de Carga / Desvío 👀',
+      speech: 'Hay un desvío presupuestal en curso. Avisa al equipo para evaluar redistribución de carga o ajuste de alcance.',
+      description: `En "${critical.title.slice(0, 30)}..." llevas ${consumedHrs}h de ${budgetedHrs}h (+${diff}h). La alerta permite visibilidad de gestión para decidir reasignación o revisión con el cliente.`,
       isAlert: true,
       cta: {
-        label: 'Avisar extensión al equipo',
+        label: 'Avisar desvío al equipo',
         actionType: 'notify_overtime',
         task: critical
       },
@@ -358,7 +363,9 @@ export function resolveBuckyState(ctx: BuckyContext): BuckyResolvedState {
 
   // 8. NORMAL_EQUILIBRIUM (Estado base por defecto: buzo oficial morado Uhura, sereno y en guardia)
   const logged = ctx.loggedHoursToday.toFixed(1);
-  const target = (ctx.targetDayHours || 8.0).toFixed(1);
+  const assigned = (ctx.assignedHoursToday ?? 4.0).toFixed(1);
+  const configured = ctx.configuredCapacityHours ?? 8.0;
+  const available = (ctx.availableCapacityHours ?? Math.max(0, configured - (ctx.assignedHoursToday ?? 4.0))).toFixed(1);
 
   return {
     internalKey: 'NORMAL_EQUILIBRIUM',
@@ -371,7 +378,7 @@ export function resolveBuckyState(ctx: BuckyContext): BuckyResolvedState {
     speech: ctx.hasNotifiedOvertime
       ? 'Avisaste a tiempo. Tómate un respiro, el proyecto está protegido y el equipo coordinado 🛡️☕'
       : '¡Hola! Tu día está sincronizado. Con el buzo morado Uhura construyendo la colonia en armonía 🚀🪵',
-    description: `Llevas ${logged}h registradas de ${target}h planeadas. Los recursos se encuentran en equilibrio.`,
+    description: `Llevas ${logged}h ejecutadas de ${assigned}h asignadas. Capacidad disponible: ${available}h.`,
     isAlert: false,
     soundType: 'happy'
   };

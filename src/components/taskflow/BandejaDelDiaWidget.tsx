@@ -7,15 +7,17 @@ interface BandejaDelDiaWidgetProps {
   onOpenManualModal: () => void;
   onDeleteLog?: (id: string) => void;
   onOpenTaskDetail?: (taskId: string) => void;
+  configuredDailyHours?: number;
 }
 
 export const BandejaDelDiaWidget: React.FC<BandejaDelDiaWidgetProps> = ({
   timeLogs,
   onOpenManualModal,
   onDeleteLog,
-  onOpenTaskDetail
+  onOpenTaskDetail,
+  configuredDailyHours = 8.0
 }) => {
-  const targetDaySeconds = 8 * 3600; // 8 hours standard day (28,800 seconds)
+  const targetDaySeconds = configuredDailyHours * 3600;
 
   const totalLoggedSeconds = timeLogs.reduce((acc, log) => acc + log.durationSeconds, 0);
   const clientSeconds = timeLogs
@@ -30,29 +32,26 @@ export const BandejaDelDiaWidget: React.FC<BandejaDelDiaWidgetProps> = ({
   const internalHours = internalSeconds / 3600;
 
   const percentFilled = Math.min(100, (totalLoggedSeconds / targetDaySeconds) * 100);
-  const remainingHours = Math.max(0, 8.0 - totalHours);
+  const remainingHours = Math.max(0, configuredDailyHours - totalHours);
 
-  // Semáforo de avance:
-  // - Verde (>= 90%): Carga óptima o completa
-  // - Naranja (60% - 89%): En proceso
-  // - Rojo (< 60%): Carga muy baja
-  const progressColor = percentFilled >= 90
+  // Semáforo de avance según disponibilidad configurada
+  const progressColor = percentFilled >= 80
     ? 'bg-[#10b981]'
-    : percentFilled >= 60
-    ? 'bg-[#f59e0b]'
-    : 'bg-[#ef4444]';
+    : percentFilled >= 50
+    ? 'bg-[#8a4dff]'
+    : 'bg-[#3b82f6]';
 
-  const badgeBg = percentFilled >= 90
+  const badgeBg = percentFilled >= 80
     ? 'bg-[#ecfdf5] text-[#059669] border-[#a7f3d0]'
-    : percentFilled >= 60
-    ? 'bg-[#fffbeb] text-[#d97706] border-[#fde68a]'
-    : 'bg-[#fef2f2] text-[#dc2626] border-[#fecaca]';
+    : percentFilled >= 50
+    ? 'bg-[#f5f3ff] text-[#6d28d9] border-[#ddd6fe]'
+    : 'bg-[#eff6ff] text-[#1d4ed8] border-[#bfdbfe]';
 
-  const badgeText = percentFilled >= 90
-    ? '✓ Jornada Óptima (≥90%)'
-    : percentFilled >= 60
-    ? '⚡ En Progreso (60% - 89%)'
-    : '⏳ Carga Pendiente (<60%)';
+  const badgeText = percentFilled >= 80
+    ? '✓ Disponibilidad Cubierta'
+    : percentFilled >= 50
+    ? '⚡ Registro en Progreso'
+    : '⏱️ Sesiones Registradas';
 
   return (
     <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-[#e2e8f0] shadow-xs space-y-5 sm:space-y-6">
@@ -61,12 +60,12 @@ export const BandejaDelDiaWidget: React.FC<BandejaDelDiaWidgetProps> = ({
         <div>
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#f2ecfb] text-[#501f92] border border-[#8a4dff]/20">
-              Bandeja del Día · Jornada de 8 Horas
+              Bandeja de Horas del Día
             </span>
             <span className="text-xs text-[#64748b]">• Hoy, 22 Agosto 2026</span>
           </div>
           <h2 className="text-base sm:text-lg font-bold text-[#0f172a] mt-1 tracking-tight">
-            Timeline de Horas Cargadas vs. Capacidad Diaria (8.0h)
+            Timeline de Horas Registradas vs. Disponibilidad ({configuredDailyHours.toFixed(1)}h)
           </h2>
         </div>
 
@@ -81,33 +80,33 @@ export const BandejaDelDiaWidget: React.FC<BandejaDelDiaWidgetProps> = ({
         </div>
       </div>
 
-      {/* Progress Bar with Semaphoring (>90% Verde, 60-89% Naranja, <60% Rojo) */}
+      {/* Progress Bar */}
       <div className="space-y-2 bg-[#f8fafc] p-3.5 sm:p-4 rounded-2xl border border-[#e2e8f0]">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-semibold text-[#0f172a]">
-              Total Cargado: <strong className="font-mono text-sm">{totalHours.toFixed(1)}h / 8.0h</strong>
+              Total Registrado: <strong className="font-mono text-sm">{totalHours.toFixed(1)}h / {configuredDailyHours.toFixed(1)}h</strong>
             </span>
             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${badgeBg}`}>
               {badgeText}
             </span>
           </div>
           <span className="text-[#64748b] text-[11px] sm:text-xs font-medium">
-            {remainingHours > 0 ? `Restante para 8h: ${remainingHours.toFixed(1)}h` : '¡Jornada de 8h completada!'}
+            {remainingHours > 0 ? `Disponibilidad restante: ${remainingHours.toFixed(1)}h` : 'Disponibilidad cubierta'}
           </span>
         </div>
 
-        {/* Barra de Progreso Unificada con Lógica Semafórica */}
+        {/* Barra de Progreso Unificada */}
         <div className="w-full h-3 bg-[#e2e8f0] rounded-full overflow-hidden flex">
           <div
             style={{ width: `${percentFilled}%` }}
             className={`h-full transition-all duration-500 rounded-full ${progressColor}`}
-            title={`Avance: ${Math.round(percentFilled)}% (${totalHours.toFixed(1)}h / 8.0h)`}
+            title={`Avance: ${Math.round(percentFilled)}% (${totalHours.toFixed(1)}h / ${configuredDailyHours.toFixed(1)}h)`}
           />
         </div>
 
         <div className="flex items-center justify-between text-[11px] text-[#64748b] pt-0.5">
-          <span className="font-medium">Meta diaria requerida: <strong>≥ 5.6h (70%)</strong></span>
+          <span className="font-medium text-[#64748b]">Disponibilidad diaria configurada: <strong>{configuredDailyHours.toFixed(1)}h</strong></span>
           <span className="font-bold font-mono text-[#0f172a]">{Math.round(percentFilled)}%</span>
         </div>
       </div>

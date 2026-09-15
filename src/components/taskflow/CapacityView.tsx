@@ -67,10 +67,11 @@ const COLOMBIA_HOLIDAYS_2026: { date: string; name: string; month: number; day: 
   { date: '2026-12-25', name: 'Navidad', month: 12, day: 25 },
 ];
 
-// Configuración Legal Colombia: Ley 2101 de 2021 (Jornada máxima 42 horas/semana)
-// Para semana estándar de 5 días hábiles (Lunes a Viernes): 8.4h por día laborable.
-const LEGAL_WEEKLY_HOURS = 42.0;
-const STANDARD_DAILY_HOURS = 8.4;
+// Configuración de Capacidad Orbit:
+// Fórmula canónica: availableCapacity = configuredAvailability - plannedLoad
+// La disponibilidad semanal proviene de la disponibilidad configurada del usuario para el periodo.
+// Puede haber colaboradores con dedicación completa, media jornada, permisos o vacaciones.
+const DEFAULT_FALLBACK_WEEKLY_HOURS = 40.0;
 
 export const CapacityView: React.FC<CapacityViewProps> = ({
   tasks,
@@ -103,21 +104,24 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
     { dayName: 'Viernes', date: '28 Ago', fullDate: '2026-08-28', isHoliday: false, holidayName: '' },
   ];
 
-  // Cálculo de Capacidad Legal del Periodo
-  const calculatePeriodLegalCapacity = (period: CapacityTimeframe) => {
+  // Helper para calcular disponibilidad de un usuario según periodo
+  const getUserConfiguredCapacity = (configuredWeeklyHours: number, period: CapacityTimeframe) => {
+    const dailyBase = configuredWeeklyHours / 5;
     if (period === 'today') {
-      return STANDARD_DAILY_HOURS; // 8.4h
+      return Number(dailyBase.toFixed(1));
     }
     if (period === 'week') {
-      // Si la semana tiene días festivos, se descuentan 8.4h por cada festivo
       const holidayCountInWeek = weekDays.filter(d => d.isHoliday).length;
-      return LEGAL_WEEKLY_HOURS - (holidayCountInWeek * STANDARD_DAILY_HOURS);
+      return Number((configuredWeeklyHours - (holidayCountInWeek * dailyBase)).toFixed(1));
     }
-    // Mes de Agosto 2026: 21 días hábiles (2 festivos: 7 y 17 de agosto) -> 21 * 8.4 = 176.4h
-    return 176.4;
+    // Mes (aprox. 4.2 semanas laborables)
+    return Number((configuredWeeklyHours * 4.2).toFixed(1));
   };
 
-  const periodLegalCapacity = calculatePeriodLegalCapacity(timeframe);
+  // Disponibilidad configurada para el usuario actual (Paola: 40h semanales configuradas)
+  const myConfiguredWeeklyHours = 40.0;
+  const periodLegalCapacity = getUserConfiguredCapacity(myConfiguredWeeklyHours, timeframe);
+  const myDailyCapacity = Number((myConfiguredWeeklyHours / 5).toFixed(1));
 
   // Datos calculados para el usuario actual (Paola / Personal)
   const myTasks = useMemo(() => {
@@ -168,42 +172,44 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
 
   // Distribución del equipo completo con cálculo de horas reales
   const teamMembersData = useMemo(() => {
-    // Lista completa de colaboradores con sus áreas y roles según la estructura organizacional oficial
+    // Lista completa de colaboradores con sus áreas, roles y disponibilidad semanal pactada
+    // (ej. full-time 40h, media jornada 20-30h, vacaciones o permisos temporales)
     const teamList = [
       // ÁREA DIRECCIÓN / C-LEVEL
-      { id: 'u-am', name: 'Ana María Giraldo', role: 'CEO (C-Level)', initials: 'AM', avatarBg: 'bg-[#501f92]', assigned: 38.0, executed: 34.0, dept: 'C-Level' },
+      { id: 'u-am', name: 'Ana María Giraldo', role: 'CEO (C-Level)', initials: 'AM', avatarBg: 'bg-[#501f92]', assigned: 38.0, executed: 34.0, dept: 'C-Level', weeklyHours: 40.0 },
 
       // ÁREA PRODUCTO
-      { id: 'u-pm', name: 'Paola Monsalve', role: 'Product Lead / Digital Designer', initials: 'PM', avatarBg: 'bg-[#501f92]', assigned: 39.5, executed: 35.0, dept: 'Área Producto' },
-      { id: 'u-lg', name: 'Laura Gómez', role: 'Desarrollador Web Front-End', initials: 'LG', avatarBg: 'bg-[#0284c7]', assigned: 40.0, executed: 36.5, dept: 'Área Producto' },
-      { id: 'u-oc', name: 'Oscar Cerpa', role: 'Desarrollador Web Front-End', initials: 'OC', avatarBg: 'bg-[#f59e0b]', assigned: 26.0, executed: 20.0, dept: 'Área Producto' },
-      { id: 'u-dd', name: 'Digital Designer', role: 'Digital Designer', initials: 'DD', avatarBg: 'bg-[#8b5cf6]', assigned: 36.0, executed: 30.5, dept: 'Área Producto' },
-      { id: 'u-sv', name: 'Simón Vélez', role: 'Digiops / Trafficker Media', initials: 'SV', avatarBg: 'bg-[#10b981]', assigned: 38.5, executed: 33.0, dept: 'Área Producto' },
+      { id: 'u-pm', name: 'Paola Monsalve', role: 'Product Lead / Digital Designer', initials: 'PM', avatarBg: 'bg-[#501f92]', assigned: 39.5, executed: 35.0, dept: 'Área Producto', weeklyHours: 40.0 },
+      { id: 'u-lg', name: 'Laura Gómez', role: 'Desarrollador Web Front-End', initials: 'LG', avatarBg: 'bg-[#0284c7]', assigned: 40.0, executed: 36.5, dept: 'Área Producto', weeklyHours: 40.0 },
+      { id: 'u-oc', name: 'Oscar Cerpa', role: 'Desarrollador Web Front-End', initials: 'OC', avatarBg: 'bg-[#f59e0b]', assigned: 26.0, executed: 20.0, dept: 'Área Producto', weeklyHours: 32.0 }, // Jornada flexible/parcial
+      { id: 'u-dd', name: 'Digital Designer', role: 'Digital Designer', initials: 'DD', avatarBg: 'bg-[#8b5cf6]', assigned: 36.0, executed: 30.5, dept: 'Área Producto', weeklyHours: 40.0 },
+      { id: 'u-sv', name: 'Simón Vélez', role: 'Digiops / Trafficker Media', initials: 'SV', avatarBg: 'bg-[#10b981]', assigned: 38.5, executed: 33.0, dept: 'Área Producto', weeklyHours: 40.0 },
 
       // ÁREA CREATIVIDAD
-      { id: 'u-dc', name: 'Diego Cadavid', role: 'Creative Strategy Lead', initials: 'DC', avatarBg: 'bg-[#dc2626]', assigned: 41.0, executed: 38.0, dept: 'Área Creatividad' },
-      { id: 'u-sr', name: 'Sara Rivera', role: 'Community Manager', initials: 'SR', avatarBg: 'bg-[#ec4899]', assigned: 32.0, executed: 26.0, dept: 'Área Creatividad' },
-      { id: 'u-sl', name: 'Sara Mar Lagos', role: 'Creative Designer', initials: 'SL', avatarBg: 'bg-[#f43f5e]', assigned: 39.0, executed: 34.5, dept: 'Área Creatividad' },
-      { id: 'u-ct-c', name: 'Camilo Torres', role: 'Creative Designer', initials: 'CT', avatarBg: 'bg-[#6366f1]', assigned: 35.0, executed: 29.0, dept: 'Área Creatividad' },
-      { id: 'u-mg', name: 'Melisa Gil', role: 'Creative Designer', initials: 'MG', avatarBg: 'bg-[#d946ef]', assigned: 40.5, executed: 36.0, dept: 'Área Creatividad' },
-      { id: 'u-af', name: 'Alejandro Florez', role: 'Creative Designer', initials: 'AF', avatarBg: 'bg-[#06b6d4]', assigned: 36.5, executed: 31.0, dept: 'Área Creatividad' },
-      { id: 'u-ed', name: 'Esmeralda Duque', role: 'Content Creator', initials: 'ED', avatarBg: 'bg-[#8b5cf6]', assigned: 38.0, executed: 32.5, dept: 'Área Creatividad' },
+      { id: 'u-dc', name: 'Diego Cadavid', role: 'Creative Strategy Lead', initials: 'DC', avatarBg: 'bg-[#dc2626]', assigned: 41.0, executed: 38.0, dept: 'Área Creatividad', weeklyHours: 40.0 },
+      { id: 'u-sr', name: 'Sara Rivera', role: 'Community Manager', initials: 'SR', avatarBg: 'bg-[#ec4899]', assigned: 32.0, executed: 26.0, dept: 'Área Creatividad', weeklyHours: 40.0 },
+      { id: 'u-sl', name: 'Sara Mar Lagos', role: 'Creative Designer', initials: 'SL', avatarBg: 'bg-[#f43f5e]', assigned: 39.0, executed: 34.5, dept: 'Área Creatividad', weeklyHours: 40.0 },
+      { id: 'u-ct-c', name: 'Camilo Torres', role: 'Creative Designer', initials: 'CT', avatarBg: 'bg-[#6366f1]', assigned: 35.0, executed: 29.0, dept: 'Área Creatividad', weeklyHours: 40.0 },
+      { id: 'u-mg', name: 'Melisa Gil', role: 'Creative Designer', initials: 'MG', avatarBg: 'bg-[#d946ef]', assigned: 40.5, executed: 36.0, dept: 'Área Creatividad', weeklyHours: 40.0 },
+      { id: 'u-af', name: 'Alejandro Florez', role: 'Creative Designer', initials: 'AF', avatarBg: 'bg-[#06b6d4]', assigned: 36.5, executed: 31.0, dept: 'Área Creatividad', weeklyHours: 40.0 },
+      { id: 'u-ed', name: 'Esmeralda Duque', role: 'Content Creator', initials: 'ED', avatarBg: 'bg-[#8b5cf6]', assigned: 38.0, executed: 32.5, dept: 'Área Creatividad', weeklyHours: 40.0 },
 
       // ÁREA GROWTH
-      { id: 'u-cv', name: 'Camilo Vélez', role: 'Growth Manager', initials: 'CV', avatarBg: 'bg-[#059669]', assigned: 39.0, executed: 33.5, dept: 'Área Growth' },
-      { id: 'u-nb', name: 'Nayeliz Brunal', role: 'Digital Content Specialist', initials: 'NB', avatarBg: 'bg-[#14b8a6]', assigned: 31.0, executed: 25.0, dept: 'Área Growth' },
-      { id: 'u-sc', name: 'Sebastián Caicedo', role: 'Trafficker Media', initials: 'SC', avatarBg: 'bg-[#10b981]', assigned: 41.5, executed: 37.0, dept: 'Área Growth' },
+      { id: 'u-cv', name: 'Camilo Vélez', role: 'Growth Manager', initials: 'CV', avatarBg: 'bg-[#059669]', assigned: 39.0, executed: 33.5, dept: 'Área Growth', weeklyHours: 40.0 },
+      { id: 'u-nb', name: 'Nayeliz Brunal', role: 'Digital Content Specialist', initials: 'NB', avatarBg: 'bg-[#14b8a6]', assigned: 31.0, executed: 25.0, dept: 'Área Growth', weeklyHours: 35.0 },
+      { id: 'u-sc', name: 'Sebastián Caicedo', role: 'Trafficker Media', initials: 'SC', avatarBg: 'bg-[#10b981]', assigned: 41.5, executed: 37.0, dept: 'Área Growth', weeklyHours: 40.0 },
 
       // ÁREA COMERCIAL
-      { id: 'u-ct-d', name: 'Catalina Tejada', role: 'Directora Comercial', initials: 'CT', avatarBg: 'bg-[#7c3aed]', assigned: 38.0, executed: 32.0, dept: 'Área Comercial' },
-      { id: 'u-lu', name: 'Luisa Urazán', role: 'Client Relationship Strategist', initials: 'LU', avatarBg: 'bg-[#0284c7]', assigned: 33.5, executed: 27.5, dept: 'Área Comercial' },
+      { id: 'u-ct-d', name: 'Catalina Tejada', role: 'Directora Comercial', initials: 'CT', avatarBg: 'bg-[#7c3aed]', assigned: 38.0, executed: 32.0, dept: 'Área Comercial', weeklyHours: 40.0 },
+      { id: 'u-lu', name: 'Luisa Urazán', role: 'Client Relationship Strategist', initials: 'LU', avatarBg: 'bg-[#0284c7]', assigned: 33.5, executed: 27.5, dept: 'Área Comercial', weeklyHours: 40.0 },
 
       // ÁREA ADMINISTRATIVA
-      { id: 'u-ls', name: 'Laura Salazar', role: 'Administración', initials: 'LS', avatarBg: 'bg-[#64748b]', assigned: 28.0, executed: 22.0, dept: 'Área Administrativa' }
+      { id: 'u-ls', name: 'Laura Salazar', role: 'Administración', initials: 'LS', avatarBg: 'bg-[#64748b]', assigned: 28.0, executed: 22.0, dept: 'Área Administrativa', weeklyHours: 30.0 } // Media jornada pactada
     ];
 
     return teamList.map(member => {
-      const cap = periodLegalCapacity;
+      const memberWeeklyHours = member.weeklyHours || DEFAULT_FALLBACK_WEEKLY_HOURS;
+      const cap = getUserConfiguredCapacity(memberWeeklyHours, timeframe);
       let assigned = member.assigned;
       let executed = member.executed;
 
@@ -215,23 +221,20 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
         executed = Number((member.executed * 4.2).toFixed(1));
       }
 
-      const utilPercent = Math.round((assigned / cap) * 100);
+      const utilPercent = cap > 0 ? Math.round((assigned / cap) * 100) : 0;
       const diffHours = Number((cap - assigned).toFixed(1));
       
-      // Lógica de Semáforo de Capacidad y Estado:
-      // - Verde (> 90%): Carga óptima / alta utilización efectiva
-      // - Naranja (60% - 90%): En proceso / utilización media
-      // - Rojo (< 60% o > 105% sobrecarga extrema): Muy bajo o sobrecarga
+      // Lógica canónica de Capacidad Orbit:
+      // availableCapacity = configuredAvailability - plannedLoad
+      // Quien tiene menos horas planificadas cuenta con capacidad disponible para absorber proyectos.
       let status: 'optimal' | 'available' | 'overloaded' | 'tight' = 'optimal';
 
-      if (utilPercent > 105) {
-        status = 'overloaded';
-      } else if (utilPercent < 65) {
-        status = 'available';
-      } else if (utilPercent >= 90) {
-        status = 'optimal';
+      if (assigned > cap) {
+        status = 'overloaded'; // Sobreasignación real respecto a su disponibilidad configurada
+      } else if (assigned < cap * 0.75) {
+        status = 'available'; // Capacidad libre disponible para absorber proyectos
       } else {
-        status = 'tight';
+        status = 'optimal'; // Carga equilibrada
       }
 
       return {
@@ -239,12 +242,13 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
         assigned,
         executed,
         capacity: cap,
+        configuredWeeklyHours: memberWeeklyHours,
         utilPercent,
         diffHours,
         status
       };
     });
-  }, [periodLegalCapacity, timeframe]);
+  }, [timeframe]);
 
   // Filtrado de equipo por departamento
   const filteredTeam = useMemo(() => {
@@ -262,7 +266,7 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
     const avgUtilization = Math.round((totalAssigned / totalCapacity) * 100);
     const overloadedCount = teamMembersData.filter(m => m.status === 'overloaded').length;
     const availableCount = teamMembersData.filter(m => m.status === 'available').length;
-    const optimalCount = teamMembersData.filter(m => m.status === 'optimal' || m.status === 'tight').length;
+    const optimalCount = teamMembersData.filter(m => m.status === 'optimal').length;
 
     return {
       totalMembers,
@@ -348,7 +352,7 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
                 timeframe === 'today' ? 'bg-white text-[#0f172a] shadow-xs' : 'text-[#64748b] hover:text-[#0f172a]'
               }`}
             >
-              Hoy (8.4h)
+              Hoy
             </button>
             <button
               onClick={() => setTimeframe('week')}
@@ -356,7 +360,7 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
                 timeframe === 'week' ? 'bg-white text-[#0f172a] shadow-xs' : 'text-[#64748b] hover:text-[#0f172a]'
               }`}
             >
-              Semana (42h)
+              Semana (L-V)
             </button>
             <button
               onClick={() => setTimeframe('month')}
@@ -368,15 +372,15 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
             </button>
           </div>
 
-          {/* Badge Ley Colombiana */}
+          {/* Disponibilidad Pactada L-V */}
           <div
             className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl text-[11px] font-medium text-[#475569] shrink-0"
-            title="Jornada máxima legal en Colombia: 42 horas/semana (Ley 2101 de 2021). Festivos oficiales no suman horas laborales."
+            title="Capacidad configurada de lunes a viernes. Fines de semana no computan como cuota esperada ni horas pendientes."
           >
             <span className="w-2 h-2 rounded-full bg-[#10b981]" />
-            <span className="hidden sm:inline">Jornada Col: <strong>42h/sem</strong></span>
-            <span className="sm:hidden"><strong>42h/sem</strong></span>
-            <span className="text-[10px] text-[#64748b] bg-white px-1.5 py-0.5 rounded border border-[#e2e8f0]">Sin festivos</span>
+            <span className="hidden sm:inline">Disponibilidad base: <strong>L-V</strong></span>
+            <span className="sm:hidden"><strong>Base L-V</strong></span>
+            <span className="text-[10px] text-[#059669] bg-[#ecfdf5] px-1.5 py-0.5 rounded border border-[#a7f3d0]">Sin cuota 8h universal</span>
           </div>
         </div>
       </div>
@@ -517,13 +521,13 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
               </span>
             </div>
             <p className="text-xs text-[#64748b] mt-1 leading-relaxed">
-              Semana transcurrida al <strong>60%</strong> (Miércoles). Horas ejecutadas al <strong>58%</strong> de la meta semanal.
+              Semana transcurrida al <strong>60%</strong> (Miércoles). Carga planificada ejecutada en balance saludable.
             </p>
           </div>
 
           <div className="pt-1 flex items-center justify-between text-xs text-[#475569] border-t border-[#f1f5f9]">
-            <span>Meta semanal: <strong>42.0h</strong></span>
-            <span className="text-[#501f92] font-semibold">Proyección: 41.5h</span>
+            <span>Disponibilidad base: <strong>40.0h (L-V)</strong></span>
+            <span className="text-[#501f92] font-semibold">Carga asignada: {myCurrentAssigned.toFixed(1)}h</span>
           </div>
         </div>
       </div>
@@ -533,12 +537,12 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
       {/* PERSPECTIVA A: MI CAPACIDAD (VISTA INDIVIDUAL COLABORADOR) */}
       {perspective === 'personal' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Columna Izquierda / Central: Matriz de la Semana (Lunes a Viernes 42h) */}
+          {/* Columna Izquierda / Central: Matriz de la Semana (Lunes a Viernes) */}
           <div className="lg:col-span-2 bg-white p-5 rounded-2xl border border-[#e2e8f0] shadow-xs space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-[#f1f5f9]">
               <div>
                 <h3 className="text-sm font-bold text-[#0f172a]">Distribución de Carga Semanal</h3>
-                <p className="text-xs text-[#64748b]">Jornada de 8.4h/día · Lunes a Viernes (42h máx legal)</p>
+                <p className="text-xs text-[#64748b]">Disponibilidad configurada de {myDailyCapacity}h/día ({myConfiguredWeeklyHours}h/semana) · Lunes a Viernes</p>
               </div>
               <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-[#f8fafc] border border-[#e2e8f0] text-[#334155]">
                 Semana 24 - 28 Ago 2026
@@ -548,19 +552,17 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
             {/* 5 Columnas de Días */}
             <div className="grid grid-cols-1 sm:grid-cols-5 gap-2.5">
               {weekDays.map((day, idx) => {
-                const dayAssigned = [7.8, 8.4, 7.6, 7.8, 5.5][idx];
-                const dayExecuted = [7.5, 8.0, 6.5, 5.0, 3.5][idx];
-                const isOver = dayAssigned > STANDARD_DAILY_HOURS;
-                const dayUtil = Math.round((dayAssigned / STANDARD_DAILY_HOURS) * 100);
-                const isToday = idx === 2; // Miércoles
+                const dayAssigned = [5.5, 6.5, 4.5, 5.0, 4.0][idx];
+                const dayExecuted = [5.5, 3.5, 0, 0, 0][idx];
+                const isOver = dayAssigned > myDailyCapacity;
+                const freeHours = Number((myDailyCapacity - dayAssigned).toFixed(1));
+                const isToday = idx === 1; // Martes
 
                 const dayBarColor = isOver
                   ? 'bg-[#dc2626]'
-                  : dayUtil >= 90
-                  ? 'bg-[#10b981]' // Verde >90%
-                  : dayUtil >= 65
-                  ? 'bg-[#f59e0b]' // Naranja en proceso
-                  : 'bg-[#ef4444]'; // Rojo bajo
+                  : isToday
+                  ? 'bg-[#8a4dff]'
+                  : 'bg-[#10b981]';
 
                 return (
                   <div
@@ -577,29 +579,29 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
                     <div className="flex items-center justify-between mb-1.5">
                       <span className="text-xs font-bold text-[#0f172a]">{day.dayName}</span>
                       {isToday && (
-                        <span className="w-2 h-2 rounded-full bg-[#10b981] animate-pulse" title="Hoy" />
+                        <span className="w-2 h-2 rounded-full bg-[#8a4dff] animate-pulse" title="Hoy" />
                       )}
                     </div>
                     <p className="text-[11px] text-[#64748b] mb-2">{day.date}</p>
 
-                    {/* Barra Vertical / Horizontal del Día */}
+                    {/* Barra del Día */}
                     <div className="space-y-1">
                       <div className="flex justify-between text-[10px] font-mono">
-                        <span className="text-[#64748b]">Carga:</span>
+                        <span className="text-[#64748b]">Plan:</span>
                         <span className={`font-bold ${isOver ? 'text-[#dc2626]' : 'text-[#0f172a]'}`}>
-                          {dayAssigned}h / 8.4h
+                          {dayAssigned}h
                         </span>
                       </div>
                       <div className="h-2 w-full bg-[#e2e8f0] rounded-full overflow-hidden">
                         <div
-                          style={{ width: `${Math.min(100, (dayAssigned / STANDARD_DAILY_HOURS) * 100)}%` }}
+                          style={{ width: `${Math.min(100, (dayAssigned / myDailyCapacity) * 100)}%` }}
                           className={`h-full rounded-full transition-all duration-300 ${dayBarColor}`}
                         />
                       </div>
                       <div className="flex justify-between text-[9px] text-[#64748b] pt-0.5">
-                        <span>Hecho: {dayExecuted}h</span>
+                        <span>{dayExecuted > 0 ? `Hecho: ${dayExecuted}h` : 'Pendiente'}</span>
                         <span className={isOver ? 'text-[#dc2626] font-semibold' : 'text-[#059669]'}>
-                          {isOver ? `+${(dayAssigned - STANDARD_DAILY_HOURS).toFixed(1)}h` : `${(STANDARD_DAILY_HOURS - dayAssigned).toFixed(1)}h libre`}
+                          {isOver ? `+${(dayAssigned - myDailyCapacity).toFixed(1)}h` : `+${freeHours}h libre`}
                         </span>
                       </div>
                     </div>
@@ -768,37 +770,25 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-3.5">
             {filteredTeam.map((member) => {
               const isOver = member.status === 'overloaded';
-              const isLow = member.utilPercent < 65;
-              const isHigh = member.utilPercent >= 90 && !isOver;
-              const isMedium = member.utilPercent >= 65 && member.utilPercent < 90;
+              const isAvailable = member.status === 'available';
 
-              // Color semafórico exacto solicitado por el usuario:
-              // Verde: > 90% (Carga óptima alta)
-              // Naranja: En proceso (65% - 90%)
-              // Rojo: Muy bajo (< 65%) o sobrecarga extrema (> 105%)
               const barColor = isOver
                 ? 'bg-[#dc2626]'
-                : isHigh
-                ? 'bg-[#10b981]' // Verde > 90%
-                : isMedium
-                ? 'bg-[#f59e0b]' // Naranja (en proceso / medio)
-                : 'bg-[#ef4444]'; // Rojo (muy bajo)
+                : isAvailable
+                ? 'bg-[#3b82f6]' // Azul capacidad disponible
+                : 'bg-[#10b981]'; // Verde equilibrado
 
               const statusBadgeBg = isOver
                 ? 'bg-[#fee2e2] text-[#b91c1c] border-[#fca5a5]'
-                : isHigh
-                ? 'bg-[#ecfdf5] text-[#047857] border-[#a7f3d0]'
-                : isMedium
-                ? 'bg-[#fffbeb] text-[#b45309] border-[#fde68a]'
-                : 'bg-[#fef2f2] text-[#b91c1c] border-[#fecaca]';
+                : isAvailable
+                ? 'bg-[#eff6ff] text-[#1d4ed8] border-[#bfdbfe]'
+                : 'bg-[#ecfdf5] text-[#047857] border-[#a7f3d0]';
 
               const statusLabel = isOver
-                ? `⚠️ Sobrecarga (+${Math.abs(member.diffHours)}h)`
-                : isHigh
-                ? `Óptimo / >90% (${member.utilPercent}%)`
-                : isMedium
-                ? `En Proceso (${member.utilPercent}%)`
-                : `Muy Bajo (${member.utilPercent}%)`;
+                ? `⚠️ Sobreasignado (+${Math.abs(member.diffHours)}h)`
+                : isAvailable
+                ? `+${member.diffHours}h disponibles`
+                : `Equilibrado (${member.assigned}h)`;
 
               return (
                 <div
@@ -807,11 +797,9 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
                   className={`p-4 rounded-xl border transition-all cursor-pointer hover:shadow-xs ${
                     isOver
                       ? 'bg-[#fffbfa] border-[#fecdd3] hover:border-[#fda4af]'
-                      : isLow
-                      ? 'bg-[#fffdfd] border-[#fecdd3]/60 hover:border-[#fca5a5]'
-                      : isHigh
-                      ? 'bg-[#fcfdfd] border-[#e2e8f0] hover:border-[#a7f3d0]'
-                      : 'bg-white border-[#e2e8f0] hover:border-[#cbd5e1]'
+                      : isAvailable
+                      ? 'bg-[#fcfdff] border-[#e2e8f0] hover:border-[#bfdbfe]'
+                      : 'bg-white border-[#e2e8f0] hover:border-[#a7f3d0]'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -838,7 +826,7 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
                         Asignado: <strong className="text-[#0f172a]">{member.assigned}h</strong> / {member.capacity}h
                       </span>
                       <span className={`font-bold ${
-                        isHigh ? 'text-[#059669]' : isMedium ? 'text-[#d97706]' : 'text-[#dc2626]'
+                        isOver ? 'text-[#dc2626]' : isAvailable ? 'text-[#1d4ed8]' : 'text-[#059669]'
                       }`}>
                         {member.utilPercent}%
                       </span>
@@ -891,8 +879,9 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
             {/* Resumen Numérico */}
             <div className="grid grid-cols-3 gap-2.5 text-center">
               <div className="p-3 bg-[#f8fafc] rounded-xl border border-[#e2e8f0]">
-                <p className="text-[10px] text-[#64748b] uppercase font-bold">Capacidad Legal</p>
+                <p className="text-[10px] text-[#64748b] uppercase font-bold">Disponibilidad Configurada</p>
                 <p className="text-base font-extrabold font-mono text-[#0f172a]">{selectedMemberObj.capacity}h</p>
+                <p className="text-[9px] text-[#64748b] mt-0.5">({selectedMemberObj.configuredWeeklyHours}h/sem)</p>
               </div>
               <div className="p-3 bg-[#f8fafc] rounded-xl border border-[#e2e8f0]">
                 <p className="text-[10px] text-[#64748b] uppercase font-bold">Asignado</p>

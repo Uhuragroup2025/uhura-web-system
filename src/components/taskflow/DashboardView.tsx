@@ -128,12 +128,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }
   };
 
-  // Operational Tasks for Creative & Tech roles (priority today)
+  // Operational Tasks & Capacity Model (Orbit: Capacidad disponible = Disponibilidad configurada - Carga planificada)
   const todayTasks = tasks.length > 0 ? tasks.slice(0, 5) : [];
   const loggedHoursToday = 3.5;
-  const targetDayHours = 8.0;
-  const progressDailyPercent = Math.min(100, Math.round((loggedHoursToday / targetDayHours) * 100));
-  const remainingHours = Math.max(0, targetDayHours - loggedHoursToday);
+  const assignedHoursToday = 4.5;
+  const configuredCapacityToday = 8.0;
+  const availableCapacityToday = Number(Math.max(0, configuredCapacityToday - assignedHoursToday).toFixed(1));
+  const planExecutionPercent = Math.min(100, Math.round((loggedHoursToday / assignedHoursToday) * 100));
+  const isOverCapacity = assignedHoursToday > configuredCapacityToday;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
@@ -295,42 +297,44 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* TAB 1: HOY (DÍA) */}
         {personalTimeRange === 'day' && (
           <div className="space-y-4 animate-in fade-in duration-150">
-            {/* Metric Bar */}
+            {/* Metric Bar Orbit Capacity Model */}
             <div className="bg-[#f8fafc] p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] space-y-3">
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2 text-xs">
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                   <Clock className="w-4 h-4 text-[#501f92] shrink-0" />
                   <span className="font-semibold text-[#0f172a]">
-                    Total Cargado Hoy: <strong className="font-mono text-base font-black text-[#0f172a]">{loggedHoursToday.toFixed(1)}h / {targetDayHours.toFixed(1)}h</strong>
+                    Ejecutado Hoy: <strong className="font-mono text-base font-black text-[#0f172a]">{loggedHoursToday.toFixed(1)}h</strong> de <strong className="font-mono text-base font-black text-[#501f92]">{assignedHoursToday.toFixed(1)}h</strong> asignadas
                   </span>
-                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-[#eff6ff] text-[#1d4ed8] border border-[#bfdbfe] shrink-0 whitespace-nowrap">
-                    {progressDailyPercent}% de la jornada
+                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-md bg-[#eff6ff] text-[#1d4ed8] border border-[#bfdbfe] shrink-0 whitespace-nowrap">
+                    {planExecutionPercent}% del plan del día
                   </span>
                 </div>
-                <span className="text-xs text-[#64748b] font-medium">
-                  {remainingHours > 0 ? `Faltan ${remainingHours.toFixed(1)}h para completar las 8.0h de hoy` : '¡Jornada de 8h completada!'}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-[#059669] font-bold px-2.5 py-0.5 rounded-full bg-[#ecfdf5] border border-[#a7f3d0]">
+                    Capacidad disponible: {availableCapacityToday}h
+                  </span>
+                </div>
               </div>
 
-              {/* Unified Progress Bar */}
+              {/* Orbit Execution Progress Bar */}
               <div className="w-full h-3.5 bg-[#e2e8f0] rounded-full overflow-hidden">
                 <div
-                  style={{ width: `${progressDailyPercent}%` }}
+                  style={{ width: `${planExecutionPercent}%` }}
                   className="h-full bg-gradient-to-r from-[#501f92] to-[#8a4dff] rounded-full transition-all duration-500 shadow-xs"
                 />
               </div>
 
               <div className="flex items-center justify-between text-[11px] text-[#64748b] pt-0.5">
-                <span>0.0h</span>
-                <span className="font-medium">Meta mínima recomendada: 5.6h (70%)</span>
-                <span>8.0h meta diaria</span>
+                <span>0.0h ejecutadas</span>
+                <span className="font-medium text-[#0f172a]">Carga asignada: {assignedHoursToday.toFixed(1)}h · Sin sobreasignación</span>
+                <span className="text-[#059669] font-medium">+{availableCapacityToday}h disponibles para proyectos</span>
               </div>
             </div>
 
             {/* Actividades con tiempo cargado hoy */}
             <div className="pt-1 space-y-2">
               <h4 className="text-xs font-bold text-[#64748b] uppercase tracking-wider">
-                Registros cargados hoy (3.5h total):
+                Registros cargados hoy ({loggedHoursToday.toFixed(1)}h total):
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="p-3 bg-[#f8fafc] rounded-xl border border-[#e2e8f0] flex items-center justify-between">
@@ -359,59 +363,62 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* TAB 2: ESTA SEMANA (LUNES A VIERNES) */}
         {personalTimeRange === 'week' && (
           <div className="space-y-4 animate-in fade-in duration-150">
-            {/* Metric Bar */}
+            {/* Metric Bar Orbit Weekly Model */}
             <div className="bg-[#f8fafc] p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
                 <div className="flex items-center gap-3">
                   <Calendar className="w-4 h-4 text-[#501f92]" />
                   <span className="font-semibold text-[#0f172a]">
-                    Total Esta Semana: <strong className="font-mono text-base font-black text-[#0f172a]">19.5h / 40.0h</strong>
+                    Carga Semanal: <strong className="font-mono text-base font-black text-[#0f172a]">19.5h</strong> ejecutadas de <strong className="font-mono text-base font-black text-[#501f92]">22.0h</strong> asignadas
                   </span>
                   <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-[#ecfdf5] text-[#065f46] border border-[#a7f3d0]">
-                    48.8% acumulado
+                    88.6% del plan semanal
                   </span>
                 </div>
-                <span className="text-xs text-[#64748b] font-medium">
-                  2 de 5 días completados · 20.5h restantes en la semana
+                <span className="text-xs text-[#059669] font-bold px-2.5 py-0.5 rounded-full bg-[#ecfdf5] border border-[#a7f3d0]">
+                  Capacidad libre en la semana: 18.0h
                 </span>
               </div>
 
               {/* Weekly Progress Bar */}
               <div className="w-full h-3.5 bg-[#e2e8f0] rounded-full overflow-hidden">
                 <div
-                  style={{ width: '48.8%' }}
+                  style={{ width: '88.6%' }}
                   className="h-full bg-gradient-to-r from-[#10b981] via-[#501f92] to-[#8a4dff] rounded-full transition-all duration-500 shadow-xs"
                 />
               </div>
 
               <div className="flex items-center justify-between text-[11px] text-[#64748b] pt-0.5">
-                <span>0.0h</span>
-                <span className="font-medium">Meta semana laboral (40.0h)</span>
-                <span>40.0h</span>
+                <span>0.0h ejecutadas</span>
+                <span className="font-medium text-[#0f172a]">Lunes a Viernes (40h disponibilidad habitual)</span>
+                <span className="text-[#059669] font-medium">+18.0h disponibles para nuevos proyectos</span>
               </div>
             </div>
 
             {/* Lunes a Viernes Micro-Cards */}
             <div className="space-y-2">
-              <h4 className="text-xs font-bold text-[#64748b] uppercase tracking-wider">
-                Desglose diario (Lunes a Viernes):
-              </h4>
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold text-[#64748b] uppercase tracking-wider">
+                  Carga planificada vs ejecutada (Lunes a Viernes):
+                </h4>
+                <span className="text-[11px] text-[#64748b]">Sábado y domingo no cuentan como capacidad esperada</span>
+              </div>
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                 {/* Lunes */}
                 <div className="p-3.5 rounded-2xl bg-white border border-[#a7f3d0] shadow-2xs space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-[#0f172a]">Lunes</span>
                     <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-[#ecfdf5] text-[#065f46]">
-                      ✓ Listo
+                      ✓ Al día
                     </span>
                   </div>
                   <p className="font-mono text-base font-black text-[#0f172a]">
-                    8.2h <span className="text-[10px] font-normal text-[#64748b]">/ 8h</span>
+                    4.0h <span className="text-[10px] font-normal text-[#64748b]">/ 4.0h plan</span>
                   </p>
                   <div className="w-full h-2 bg-[#e2e8f0] rounded-full overflow-hidden">
                     <div className="w-full h-full bg-[#10b981] rounded-full" />
                   </div>
-                  <span className="text-[10px] text-[#64748b] block">20 Ago · 102%</span>
+                  <span className="text-[10px] text-[#059669] font-medium block">+4.0h disponibles</span>
                 </div>
 
                 {/* Martes */}
@@ -419,16 +426,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-[#0f172a]">Martes</span>
                     <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-[#ecfdf5] text-[#065f46]">
-                      ✓ Listo
+                      ✓ Al día
                     </span>
                   </div>
                   <p className="font-mono text-base font-black text-[#0f172a]">
-                    7.8h <span className="text-[10px] font-normal text-[#64748b]">/ 8h</span>
+                    4.5h <span className="text-[10px] font-normal text-[#64748b]">/ 4.5h plan</span>
                   </p>
                   <div className="w-full h-2 bg-[#e2e8f0] rounded-full overflow-hidden">
-                    <div style={{ width: '98%' }} className="h-full bg-[#10b981] rounded-full" />
+                    <div style={{ width: '100%' }} className="h-full bg-[#10b981] rounded-full" />
                   </div>
-                  <span className="text-[10px] text-[#64748b] block">21 Ago · 98%</span>
+                  <span className="text-[10px] text-[#059669] font-medium block">+3.5h disponibles</span>
                 </div>
 
                 {/* Miércoles (Hoy) */}
@@ -440,46 +447,46 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </span>
                   </div>
                   <p className="font-mono text-base font-black text-[#501f92]">
-                    3.5h <span className="text-[10px] font-normal text-[#64748b]">/ 8h</span>
+                    3.5h <span className="text-[10px] font-normal text-[#64748b]">/ 4.5h plan</span>
                   </p>
                   <div className="w-full h-2 bg-[#e2e8f0] rounded-full overflow-hidden">
-                    <div style={{ width: '44%' }} className="h-full bg-[#8a4dff] rounded-full" />
+                    <div style={{ width: '78%' }} className="h-full bg-[#8a4dff] rounded-full" />
                   </div>
-                  <span className="text-[10px] text-[#501f92] font-semibold block">22 Ago · En curso</span>
+                  <span className="text-[10px] text-[#501f92] font-semibold block">+3.5h disponibles</span>
                 </div>
 
                 {/* Jueves */}
-                <div className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] opacity-75 space-y-2">
+                <div className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-[#64748b]">Jueves</span>
-                    <span className="text-[10px] font-medium px-1.5 py-0.2 rounded-full bg-[#f1f5f9] text-[#64748b]">
-                      Pendiente
+                    <span className="text-xs font-bold text-[#0f172a]">Jueves</span>
+                    <span className="text-[10px] font-medium px-1.5 py-0.2 rounded-full bg-[#eff6ff] text-[#1d4ed8]">
+                      Planificado
                     </span>
                   </div>
-                  <p className="font-mono text-base font-bold text-[#64748b]">
-                    0.0h <span className="text-[10px] font-normal text-[#94a3b8]">/ 8h</span>
+                  <p className="font-mono text-base font-bold text-[#0f172a]">
+                    4.0h <span className="text-[10px] font-normal text-[#64748b]">asignadas</span>
                   </p>
                   <div className="w-full h-2 bg-[#e2e8f0] rounded-full overflow-hidden">
-                    <div className="w-0 h-full bg-[#94a3b8] rounded-full" />
+                    <div className="w-1/2 h-full bg-[#3b82f6] rounded-full" />
                   </div>
-                  <span className="text-[10px] text-[#94a3b8] block">23 Ago</span>
+                  <span className="text-[10px] text-[#059669] font-medium block">+4.0h disponibles</span>
                 </div>
 
                 {/* Viernes */}
-                <div className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] opacity-75 space-y-2">
+                <div className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-[#64748b]">Viernes</span>
-                    <span className="text-[10px] font-medium px-1.5 py-0.2 rounded-full bg-[#f1f5f9] text-[#64748b]">
-                      Pendiente
+                    <span className="text-xs font-bold text-[#0f172a]">Viernes</span>
+                    <span className="text-[10px] font-medium px-1.5 py-0.2 rounded-full bg-[#eff6ff] text-[#1d4ed8]">
+                      Planificado
                     </span>
                   </div>
-                  <p className="font-mono text-base font-bold text-[#64748b]">
-                    0.0h <span className="text-[10px] font-normal text-[#94a3b8]">/ 8h</span>
+                  <p className="font-mono text-base font-bold text-[#0f172a]">
+                    5.0h <span className="text-[10px] font-normal text-[#64748b]">asignadas</span>
                   </p>
                   <div className="w-full h-2 bg-[#e2e8f0] rounded-full overflow-hidden">
-                    <div className="w-0 h-full bg-[#94a3b8] rounded-full" />
+                    <div className="w-[62%] h-full bg-[#3b82f6] rounded-full" />
                   </div>
-                  <span className="text-[10px] text-[#94a3b8] block">24 Ago</span>
+                  <span className="text-[10px] text-[#059669] font-medium block">+3.0h disponibles</span>
                 </div>
               </div>
             </div>
@@ -498,7 +505,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     Total Mensual (Agosto 2026): <strong className="font-mono text-base font-black text-[#0f172a]">84.0h / 160.0h</strong>
                   </span>
                   <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-[#eff6ff] text-[#1d4ed8] border border-[#bfdbfe]">
-                    52.5% del mes
+                    52.5% de disponibilidad base
                   </span>
                 </div>
                 <span className="text-xs text-[#64748b] font-medium">
@@ -516,7 +523,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
               <div className="flex items-center justify-between text-[11px] text-[#64748b] pt-0.5">
                 <span>0.0h</span>
-                <span className="font-medium">Meta mensual laborable (160.0h)</span>
+                <span className="font-medium">Disponibilidad mensual base (160.0h)</span>
                 <span>160.0h</span>
               </div>
             </div>

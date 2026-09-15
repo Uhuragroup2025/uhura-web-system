@@ -5,9 +5,10 @@ import { formatDurationCompact } from './timeTrackingEngine';
 
 interface AssistedTimerRecoveryModalProps {
   isOpen: boolean;
-  activeTimer: ActiveTimerState;
+  activeTimer: ActiveTimerState | null;
   task?: TaskItem;
-  onConfirmRecovery: (action: 'keep' | 'adjust' | 'discard', adjustedSeconds?: number) => void;
+  onConfirmRecovery?: (action: 'keep' | 'adjust' | 'discard', adjustedSeconds?: number) => void;
+  onConfirmDecision?: (action: 'keep' | 'adjust' | 'discard', adjustedSeconds?: number) => void;
   onClose: () => void;
 }
 
@@ -16,9 +17,10 @@ export const AssistedTimerRecoveryModal: React.FC<AssistedTimerRecoveryModalProp
   activeTimer,
   task,
   onConfirmRecovery,
+  onConfirmDecision,
   onClose
 }) => {
-  if (!isOpen) return null;
+  if (!isOpen || !activeTimer) return null;
 
   const currentElapsedHours = (activeTimer.elapsedSeconds / 3600).toFixed(1);
   const [selectedAction, setSelectedAction] = useState<'adjust' | 'keep' | 'discard'>('adjust');
@@ -28,14 +30,22 @@ export const AssistedTimerRecoveryModal: React.FC<AssistedTimerRecoveryModalProp
   const [adjustedMinutes, setAdjustedMinutes] = useState('30');
   const [adjustmentNote, setAdjustmentNote] = useState('Ajuste asistido: timer quedó encendido fuera de sesión.');
 
+  const triggerDecision = (action: 'keep' | 'adjust' | 'discard', adjustedSecs?: number) => {
+    if (onConfirmDecision) {
+      onConfirmDecision(action, adjustedSecs);
+    } else if (onConfirmRecovery) {
+      onConfirmRecovery(action, adjustedSecs);
+    }
+  };
+
   const handleApply = () => {
     if (selectedAction === 'discard') {
-      onConfirmRecovery('discard');
+      triggerDecision('discard');
     } else if (selectedAction === 'keep') {
-      onConfirmRecovery('keep');
+      triggerDecision('keep');
     } else {
       const totalSecs = (parseInt(adjustedHours || '0', 10) * 3600) + (parseInt(adjustedMinutes || '0', 10) * 60);
-      onConfirmRecovery('adjust', Math.max(60, totalSecs));
+      triggerDecision('adjust', Math.max(60, totalSecs));
     }
   };
 

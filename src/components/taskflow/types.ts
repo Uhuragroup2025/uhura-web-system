@@ -311,12 +311,12 @@ export type TimeLogSource = 'timer' | 'manual';
 export interface TimeLogItem {
   id: string;                         // UUID inmutable
   taskId: string;                     // FK -> Task (OBLIGATORIO: siempre sobre tarea)
-  userId: string;                     // FK -> User que ejecutó el trabajo
-  budgetedRoleId: string;             // Derivado inmutable de task.budgetedRoleId (o task.budgetedRole)
+  userId?: string;                    // FK -> User que ejecutó el trabajo
+  budgetedRoleId?: string;            // Derivado inmutable de task.budgetedRoleId (o task.budgetedRole)
   durationSeconds: number;            // Entero exacto en segundos
   date: string;                       // YYYY-MM-DD (fecha de ejecución)
   description?: string;               // Detalle del trabajo realizado
-  source: TimeLogSource;              // 'timer' | 'manual'
+  source?: TimeLogSource;             // 'timer' | 'manual'
   startedAt?: string | null;          // ISO Timestamp
   stoppedAt?: string | null;          // ISO Timestamp
 
@@ -336,7 +336,7 @@ export interface TimeLogItem {
   deletedAt?: string | null;
 
   // Timestamps de sistema
-  createdAt: string;
+  createdAt?: string;
   updatedAt?: string;
 
   // Campos de compatibilidad de visualización (desnormalizados para UI rápida)
@@ -453,6 +453,7 @@ export interface TaskItem {
     role?: string;
   };
   assignee: {
+    id?: string;
     name: string;
     initials: string;
     avatarBg: string;
@@ -483,7 +484,7 @@ export interface TaskItem {
   targetDate?: string | null; // Fecha objetivo (opcional según contexto de proyecto)
   scheduledDate?: string | null; // Fecha planificada para ejecución (usada en Mi Día)
   isDeadlineStrict?: boolean; // Flag de deadline estricto vs fecha orientativa
-  dueStatus: 'normal' | 'soon' | 'overdue' | 'tomorrow';
+  dueStatus: 'normal' | 'soon' | 'overdue' | 'tomorrow' | 'urgent';
   dueText: string;
   status: TaskStatus;
   priority: TaskPriority;
@@ -496,6 +497,7 @@ export interface TaskItem {
   blockedAt?: string | null;
   // Retrabajos y ajustes trazables
   isRework?: boolean;
+  reworkRound?: number;
   originalTaskId?: string | null;
   reworkReason?: 'client_feedback' | 'internal_qa' | 'brief_change' | string | null;
   // Rentabilidad y tiempos

@@ -11,10 +11,21 @@ import {
 } from '../types';
 
 /**
- * Umbral de advertencia para Timer anormalmente largo (en segundos).
- * 10 horas = 36,000 segundos.
+ * Configuración de Umbrales de Time Tracking.
+ * NOTA DE ARQUITECTURA:
+ * El valor de 10 horas (36,000 segundos) es un valor PROVISIONAL/CONFIGURABLE de prototipo.
+ * No es una regla de negocio hardcoded: la arquitectura está preparada para que el backend
+ * defina/configure este umbral según políticas de la organización, tipo de cliente o rol.
  */
-export const ABNORMAL_TIMER_THRESHOLD_SECONDS = 10 * 3600;
+export const DEFAULT_ABNORMAL_TIMER_THRESHOLD_SECONDS = 10 * 3600;
+
+export function getAbnormalTimerThresholdSeconds(configuredThresholdSeconds?: number): number {
+  return configuredThresholdSeconds && configuredThresholdSeconds > 0
+    ? configuredThresholdSeconds
+    : DEFAULT_ABNORMAL_TIMER_THRESHOLD_SECONDS;
+}
+
+export const ABNORMAL_TIMER_THRESHOLD_SECONDS = DEFAULT_ABNORMAL_TIMER_THRESHOLD_SECONDS;
 
 /**
  * Determina si una fecha YYYY-MM-DD cae en fin de semana (Sábado o Domingo).
