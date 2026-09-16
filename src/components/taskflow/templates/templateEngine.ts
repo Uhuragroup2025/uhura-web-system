@@ -217,8 +217,8 @@ export function createBlankCustomQuote(options?: {
         quoteDeliverableId: initialDeliverableId,
         title: 'Discovery técnico inicial & Requerimientos',
         description: 'Levantamiento de especificaciones con el cliente',
-        roleId: STANDARD_UHURA_ROLES[3], // Product Lead
-        roleName: STANDARD_UHURA_ROLES[3],
+        roleId: 'Product Lead',
+        roleName: 'Product Lead',
         estimatedHours: 4.0,
         order: 1,
         dependencies: [],
@@ -233,8 +233,8 @@ export function createBlankCustomQuote(options?: {
     {
       id: `qrb-${initialDeliverableId}-1`,
       quoteDeliverableId: initialDeliverableId,
-      roleId: STANDARD_UHURA_ROLES[3],
-      roleName: STANDARD_UHURA_ROLES[3],
+      roleId: 'Product Lead',
+      roleName: 'Product Lead',
       quotedHours: 4.0
     }
   ];

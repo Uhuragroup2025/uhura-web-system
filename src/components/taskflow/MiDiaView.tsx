@@ -27,8 +27,15 @@ import {
   Coffee,
   Users2,
   ArrowUpRight,
-  Briefcase
+  Briefcase,
+  Gift,
+  Award,
+  Palmtree,
+  Sparkles
 } from 'lucide-react';
+import { initialUsers } from './mockData';
+import { processTeamLifeEvents } from './copilot/teamLifeEngine';
+import { TeamLifeEventsModal } from './copilot/TeamLifeEventsModal';
 
 interface MiDiaViewProps {
   tasks: TaskItem[];
@@ -60,8 +67,10 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
   onNavigateToView
 }) => {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isTeamLifeModalOpen, setIsTeamLifeModalOpen] = useState(false);
 
-  // Tareas operativas de Paola para hoy, incluyendo una pieza en retrabajo explícito
+  // Eventos de cultura y operación de equipo para Bucky Copiloto
+  const teamLifeResult = processTeamLifeEvents(initialUsers);
   const [localTasks, setLocalTasks] = useState<TaskItem[]>([
     {
       id: 't-demo-rework-yamaha',
@@ -938,6 +947,93 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
             </div>
           </div>
 
+          {/* TARJETA BUCKY COPILOTO: EVENTOS & RECORDATORIOS DE EQUIPO */}
+          <div className="bg-white rounded-3xl p-5 border border-[#e2e8f0] shadow-xs space-y-3.5">
+            <div className="flex items-center justify-between pb-2 border-b border-[#f1f5f9]">
+              <div className="flex items-center gap-2">
+                <span className="text-base">🦫</span>
+                <div>
+                  <h4 className="text-xs font-bold text-[#0f172a] flex items-center gap-1.5">
+                    <span>Copiloto de Equipo</span>
+                    {teamLifeResult.todayEvents.length > 0 && (
+                      <span className="text-[9px] bg-[#d4ff4a] text-[#140b24] font-black px-1.5 py-0.5 rounded-full">
+                        {teamLifeResult.todayEvents.length} hoy 🎉
+                      </span>
+                    )}
+                  </h4>
+                  <p className="text-[10px] text-[#64748b]">Cultura, ausencias y fechas clave</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsTeamLifeModalOpen(true)}
+                className="text-xs text-[#501f92] font-bold hover:underline cursor-pointer flex items-center gap-0.5"
+              >
+                <span>Ver agenda</span>
+                <ChevronRight className="w-3 h-3" />
+              </button>
+            </div>
+
+            {/* Eventos destacados */}
+            <div className="space-y-2">
+              {teamLifeResult.todayEvents.map((evt) => (
+                <div
+                  key={evt.id}
+                  onClick={() => setIsTeamLifeModalOpen(true)}
+                  className="p-3 rounded-2xl bg-linear-to-r from-[#faf5ff] to-[#f5f3ff] border border-[#ddd6fe] hover:border-[#8a4dff] transition-all cursor-pointer flex items-start gap-2.5"
+                >
+                  <div className={`w-8 h-8 rounded-xl ${evt.userAvatarBg || 'bg-[#501f92]'} text-white flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5`}>
+                    {evt.userInitials}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[9px] font-black uppercase tracking-wider bg-[#501f92] text-[#d4ff4a] px-1.5 py-0.2 rounded-sm">
+                        {evt.type === 'birthday' ? 'Cumpleaños' : 'Aniversario'}
+                      </span>
+                      <span className="text-xs font-bold text-[#0f172a] truncate">
+                        {evt.userName.split(' ')[0]}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-[#475569] mt-0.5 line-clamp-2 leading-tight">
+                      {evt.headline}
+                    </p>
+                  </div>
+                </div>
+              ))}
+
+              {teamLifeResult.activeAbsences.slice(0, 1).map((abs) => (
+                <div
+                  key={abs.id}
+                  onClick={() => setIsTeamLifeModalOpen(true)}
+                  className="p-2.5 rounded-xl bg-[#f0fdf4] border border-[#bbf7d0] hover:border-[#86efac] transition-all cursor-pointer flex items-center justify-between text-xs"
+                >
+                  <div className="flex items-center gap-2 truncate">
+                    <span className="text-sm">🏖️</span>
+                    <span className="text-[#166534] font-semibold truncate">
+                      {abs.userName.split(' ')[0]} de vacaciones
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-bold text-[#15803d] bg-white px-2 py-0.5 rounded-md border border-[#bbf7d0] shrink-0">
+                    Hasta {abs.returnDate?.split('-')[2] || '22'} Sep
+                  </span>
+                </div>
+              ))}
+
+              {teamLifeResult.todayEvents.length === 0 && teamLifeResult.activeAbsences.length === 0 && (
+                <div className="p-3 text-center bg-[#f8fafc] rounded-xl text-xs text-[#64748b]">
+                  Todo el equipo operativo activo hoy.
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={() => setIsTeamLifeModalOpen(true)}
+              className="w-full py-2 px-3 rounded-xl bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] text-xs font-bold text-[#501f92] flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+            >
+              <span>Abrir Agenda de Equipo & Reconocimientos</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
           {/* ATAJOS RÁPIDOS DE CARGA DE TIEMPO */}
           <div className="bg-white rounded-3xl p-5 border border-[#e2e8f0] shadow-xs space-y-3">
             <div className="flex items-center justify-between">
@@ -1159,6 +1255,13 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* MODAL DE EVENTOS Y RECORDATORIOS DE EQUIPO (BUCKY COPILOTO) */}
+      <TeamLifeEventsModal
+        isOpen={isTeamLifeModalOpen}
+        onClose={() => setIsTeamLifeModalOpen(false)}
+        users={initialUsers}
+      />
     </div>
   );
 };

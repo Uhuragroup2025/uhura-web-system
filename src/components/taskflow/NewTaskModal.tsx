@@ -33,9 +33,11 @@ import {
 import { DropdownMenu } from '../ui/DropdownMenu';
 import {
   clientProjectHierarchy,
-  FEE_ACTIVITY_TEMPLATES
+  FEE_ACTIVITY_TEMPLATES,
+  initialUsers
 } from './mockData';
 import { ProjectSummaryItem } from './ProjectsView';
+import { checkAssigneeAvailability } from './copilot/teamLifeEngine';
 
 export interface NewTaskModalProps {
   isOpen: boolean;
@@ -51,16 +53,24 @@ export interface NewTaskModalProps {
 }
 
 const TEAM_MEMBERS = [
-  { name: 'Catalina Tejada', initials: 'CT', avatarBg: 'bg-[#7c3aed]', defaultRole: 'Web Designer' },
-  { name: 'Laura Gómez', initials: 'LG', avatarBg: 'bg-[#0284c7]', defaultRole: 'Front End' },
-  { name: 'Andrés Ríos', initials: 'AR', avatarBg: 'bg-[#ef4444]', defaultRole: 'Product Lead' },
-  { name: 'Sebas (Trafficker)', initials: 'ST', avatarBg: 'bg-[#0284c7]', defaultRole: 'Trafficker' },
-  { name: 'Camilo Vélez', initials: 'CV', avatarBg: 'bg-[#10b981]', defaultRole: 'Content Strategist' },
-  { name: 'Diego Cadavid', initials: 'DC', avatarBg: 'bg-[#f59e0b]', defaultRole: 'Diseñador Gráfico' },
-  { name: 'Mariana Toro', initials: 'MT', avatarBg: 'bg-[#ec4899]', defaultRole: 'Copywriter' },
-  { name: 'Mateo Ruiz', initials: 'MR', avatarBg: 'bg-[#8b5cf6]', defaultRole: 'Community Manager' },
-  { name: 'Esteban Mora', initials: 'EM', avatarBg: 'bg-[#0d9488]', defaultRole: 'Front End' },
-  { name: 'Paola (Lead PM)', initials: 'PL', avatarBg: 'bg-[#501f92]', defaultRole: 'Lead PM' }
+  { name: 'Luisa Fernanda Urazán', initials: 'LU', avatarBg: 'bg-[#0284c7]', defaultRole: 'Client relationship' },
+  { name: 'Diego Cadavid', initials: 'DC', avatarBg: 'bg-[#dc2626]', defaultRole: 'Creative lead' },
+  { name: 'Esmeralda Duque Ramírez', initials: 'ED', avatarBg: 'bg-[#8b5cf6]', defaultRole: 'Content Creator' },
+  { name: 'Nayeliz Brunal', initials: 'NB', avatarBg: 'bg-[#14b8a6]', defaultRole: 'Digital Content Specialist' },
+  { name: 'Laura Isabel Gómez', initials: 'LG', avatarBg: 'bg-[#0284c7]', defaultRole: 'Digital Designer' },
+  { name: 'Catalina Tejada', initials: 'CT', avatarBg: 'bg-[#7c3aed]', defaultRole: 'Directora Comercial' },
+  { name: 'Juan Sebastian', initials: 'JS', avatarBg: 'bg-[#10b981]', defaultRole: 'Tracfiker' },
+  { name: 'Paola Monsalve', initials: 'PM', avatarBg: 'bg-[#501f92]', defaultRole: 'Product Lead' },
+  { name: 'Ana Giraldo', initials: 'AG', avatarBg: 'bg-[#501f92]', defaultRole: 'CEO' },
+  { name: 'Oscar Cerpa', initials: 'OC', avatarBg: 'bg-[#f59e0b]', defaultRole: 'Desarrollador Web Front-End' },
+  { name: 'Sara Rivera', initials: 'SR', avatarBg: 'bg-[#ec4899]', defaultRole: 'Community Manager' },
+  { name: 'Simón Vélez', initials: 'SV', avatarBg: 'bg-[#10b981]', defaultRole: 'Tracfiker y DigiOps' },
+  { name: 'Melisa Gil', initials: 'MG', avatarBg: 'bg-[#d946ef]', defaultRole: 'Creative Designer' },
+  { name: 'Camilo Velez', initials: 'CV', avatarBg: 'bg-[#059669]', defaultRole: 'Growth Manager' },
+  { name: 'Juan Camilo Torres', initials: 'JT', avatarBg: 'bg-[#6366f1]', defaultRole: 'Creative Designer' },
+  { name: 'Alejando Florez Vargas', initials: 'AF', avatarBg: 'bg-[#06b6d4]', defaultRole: 'Creative Designer' },
+  { name: 'Sara Mar L', initials: 'SM', avatarBg: 'bg-[#f43f5e]', defaultRole: 'Creative Designer' },
+  { name: 'Laura Viviana Salazar Perez', initials: 'LS', avatarBg: 'bg-[#64748b]', defaultRole: 'Administrativa' }
 ];
 
 export const NewTaskModal: React.FC<NewTaskModalProps> = ({
@@ -73,7 +83,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
   preselectedClientName,
   projectsList = [],
   clientsList = [],
-  currentUserName = 'Paola (Lead PM)'
+  currentUserName = 'Paola Monsalve'
 }) => {
   // 1. Build list of all existing projects with client associations
   const allProjects = useMemo(() => {
@@ -299,6 +309,23 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
     }
   }, [activeProject]);
 
+  // Bucky Copiloto: Chequeo proactivo de disponibilidad y vacaciones
+  const vacationAlerts = useMemo(() => {
+    const alerts: { name: string; message: string; returnDate?: string }[] = [];
+    const allAssigned = Array.from(new Set([...collaborators, projectLeadName]));
+    allAssigned.forEach((name) => {
+      const check = checkAssigneeAvailability(name, initialUsers);
+      if (check.isOnVacation) {
+        alerts.push({
+          name,
+          message: check.alertMessage || `${name} está de vacaciones.`,
+          returnDate: check.returnDate
+        });
+      }
+    });
+    return alerts;
+  }, [collaborators, projectLeadName]);
+
   if (!isOpen) return null;
 
   // Available templates based on serviceBase
@@ -320,16 +347,16 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
         setCollaborators(['Catalina Tejada']);
         setBudgetedRole('Web Designer');
       } else if (tpl.role.includes('Tech') || tpl.role.includes('Front') || tpl.role.includes('Dev')) {
-        setCollaborators(['Laura Gómez']);
-        setBudgetedRole('Front End');
+        setCollaborators(['Oscar Cerpa']);
+        setBudgetedRole('Desarrollador Web Front-End');
       } else if (tpl.role.includes('Trafficker') || tpl.role.includes('Growth')) {
-        setCollaborators(['Sebas (Trafficker)']);
-        setBudgetedRole('Trafficker');
-      } else if (tpl.role.includes('Copy')) {
-        setCollaborators(['Mariana Toro']);
-        setBudgetedRole('Copywriter');
+        setCollaborators(['Juan Sebastian']);
+        setBudgetedRole('Tracfiker');
+      } else if (tpl.role.includes('Copy') || tpl.role.includes('Content')) {
+        setCollaborators(['Esmeralda Duque Ramírez']);
+        setBudgetedRole('Content Creator');
       } else if (tpl.role.includes('Product') || tpl.role.includes('Lead') || tpl.role.includes('PM')) {
-        setCollaborators(['Andrés Ríos']);
+        setCollaborators(['Paola Monsalve']);
         setBudgetedRole('Product Lead');
       }
 
@@ -780,16 +807,20 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
                       setCollaborators(vals);
                     }
                   }}
-                  options={TEAM_MEMBERS.map((m) => ({
-                    id: m.name,
-                    label: m.name,
-                    sublabel: m.defaultRole,
-                    icon: (
-                      <div className={`w-5 h-5 rounded-full ${m.avatarBg} text-white flex items-center justify-center text-[9px] font-bold shrink-0`}>
-                        {m.initials}
-                      </div>
-                    )
-                  }))}
+                  options={TEAM_MEMBERS.map((m) => {
+                    const u = initialUsers.find((usr) => usr.name === m.name);
+                    const onVac = u?.vacationStatus?.onVacation;
+                    return {
+                      id: m.name,
+                      label: m.name,
+                      sublabel: onVac ? `${m.defaultRole} • 🏖️ De vacaciones` : m.defaultRole,
+                      icon: (
+                        <div className={`w-5 h-5 rounded-full ${m.avatarBg} text-white flex items-center justify-center text-[9px] font-bold shrink-0`}>
+                          {m.initials}
+                        </div>
+                      )
+                    };
+                  })}
                   trigger={
                     <div className="w-full bg-white border border-[#cbd5e1] px-3 py-2 rounded-xl text-xs font-semibold text-[#0f172a] flex items-center justify-between cursor-pointer">
                       <div className="flex items-center gap-1.5 truncate">
@@ -851,6 +882,28 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
                 />
               </div>
             </div>
+
+            {/* AVISO DE COPILOTO OPERATIVO BUCKY: VACACIONES / AUSENCIAS */}
+            {vacationAlerts.length > 0 && (
+              <div className="p-3.5 rounded-2xl bg-[#fffbeb] border border-[#fde68a] text-xs flex items-start gap-3 animate-in fade-in">
+                <div className="w-8 h-8 rounded-xl bg-[#fef3c7] text-[#92400e] flex items-center justify-center text-lg shrink-0 shadow-2xs">
+                  🦫
+                </div>
+                <div className="space-y-1 flex-1">
+                  <div className="font-bold text-[#78350f] flex items-center gap-2">
+                    <span>Bucky Copiloto: Aviso Operativo de Disponibilidad</span>
+                    <span className="text-[10px] bg-[#fef08a] text-[#713f12] px-2 py-0.5 rounded-full font-black">
+                      Vacaciones Aprobadas
+                    </span>
+                  </div>
+                  {vacationAlerts.map((a) => (
+                    <p key={a.name} className="text-[#92400e] leading-relaxed text-[11px]">
+                      <strong>{a.name}</strong> está en período de descanso aprobado hasta el <strong>{a.returnDate || 'próxima semana'}</strong>. Durante su ausencia, Bucky te recuerda coordinar un respaldo o ajustar la fecha de entrega para no sobrecargar su retorno.
+                    </p>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* PASO 5: HORAS, PRIORIDAD Y FECHAS */}

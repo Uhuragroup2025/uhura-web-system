@@ -78,8 +78,8 @@ export const TemplateEditorModal: React.FC<TemplateEditorModalProps> = ({
             templateDeliverableId: initialDelId,
             title: 'Actividad inicial de levantamiento',
             description: 'Definición de requerimientos y alcance',
-            roleId: STANDARD_UHURA_ROLES[3], // Product Lead
-            roleName: STANDARD_UHURA_ROLES[3],
+            roleId: 'Product Lead',
+            roleName: 'Product Lead',
             estimatedHours: 4.0,
             order: 1,
             optional: false
@@ -148,8 +148,8 @@ export const TemplateEditorModal: React.FC<TemplateEditorModalProps> = ({
       templateDeliverableId: delId,
       title: '',
       description: '',
-      roleId: STANDARD_UHURA_ROLES[6], // Front End por defecto
-      roleName: STANDARD_UHURA_ROLES[6],
+      roleId: 'Desarrollador Web Front-End',
+      roleName: 'Desarrollador Web Front-End',
       estimatedHours: 2.0,
       order: targetDel.activities.length + 1,
       optional: false

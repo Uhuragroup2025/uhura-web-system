@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   X,
   Play,
@@ -72,6 +72,8 @@ import {
   STANDARD_UHURA_ROLES
 } from './types';
 import { DropdownMenu, DropdownOption } from '../ui/DropdownMenu';
+import { initialUsers } from './mockData';
+import { checkAssigneeAvailability } from './copilot/teamLifeEngine';
 
 export interface TeamMemberProfile {
   name: string;
@@ -81,18 +83,24 @@ export interface TeamMemberProfile {
 }
 
 const TEAM_MEMBERS_POOL: TeamMemberProfile[] = [
-  { name: 'Paola (Lead PM)', initials: 'PL', avatarBg: 'bg-[#501f92]', role: 'Lead PM' },
-  { name: 'Catalina Tejada', initials: 'CT', avatarBg: 'bg-[#501f92]', role: 'Diseñador Gráfico' },
-  { name: 'Andrés Ríos', initials: 'AR', avatarBg: 'bg-[#501f92]', role: 'Product Lead' },
-  { name: 'Camilo Torres', initials: 'CT', avatarBg: 'bg-[#0284c7]', role: 'Web Designer' },
-  { name: 'Laura Gómez', initials: 'LG', avatarBg: 'bg-[#059669]', role: 'Front End' },
-  { name: 'Sebas (Trafficker)', initials: 'ST', avatarBg: 'bg-[#d97706]', role: 'Trafficker' },
-  { name: 'Mariana Toro', initials: 'MT', avatarBg: 'bg-[#ec4899]', role: 'Copywriter' },
-  { name: 'Camilo Vélez', initials: 'CV', avatarBg: 'bg-[#10b981]', role: 'Content Strategist' },
-  { name: 'Mateo Ruiz', initials: 'MR', avatarBg: 'bg-[#8b5cf6]', role: 'Community Manager' },
-  { name: 'Esteban Mora', initials: 'EM', avatarBg: 'bg-[#0d9488]', role: 'Tech Lead' },
-  { name: 'Luisa Urazán', initials: 'LU', avatarBg: 'bg-[#e11d48]', role: 'Project Manager' },
-  { name: 'Alejandro Florez', initials: 'AF', avatarBg: 'bg-[#0891b2]', role: 'QA & UI Reviewer' }
+  { name: 'Luisa Fernanda Urazán', initials: 'LU', avatarBg: 'bg-[#0284c7]', role: 'Client relationship' },
+  { name: 'Diego Cadavid', initials: 'DC', avatarBg: 'bg-[#dc2626]', role: 'Creative lead' },
+  { name: 'Esmeralda Duque Ramírez', initials: 'ED', avatarBg: 'bg-[#8b5cf6]', role: 'Content Creator' },
+  { name: 'Nayeliz Brunal', initials: 'NB', avatarBg: 'bg-[#14b8a6]', role: 'Digital Content Specialist' },
+  { name: 'Laura Isabel Gómez', initials: 'LG', avatarBg: 'bg-[#0284c7]', role: 'Digital Designer' },
+  { name: 'Catalina Tejada', initials: 'CT', avatarBg: 'bg-[#7c3aed]', role: 'Directora Comercial' },
+  { name: 'Juan Sebastian', initials: 'JS', avatarBg: 'bg-[#10b981]', role: 'Tracfiker' },
+  { name: 'Paola Monsalve', initials: 'PM', avatarBg: 'bg-[#501f92]', role: 'Product Lead' },
+  { name: 'Ana Giraldo', initials: 'AG', avatarBg: 'bg-[#501f92]', role: 'CEO' },
+  { name: 'Oscar Cerpa', initials: 'OC', avatarBg: 'bg-[#f59e0b]', role: 'Desarrollador Web Front-End' },
+  { name: 'Sara Rivera', initials: 'SR', avatarBg: 'bg-[#ec4899]', role: 'Community Manager' },
+  { name: 'Simón Vélez', initials: 'SV', avatarBg: 'bg-[#10b981]', role: 'Tracfiker y DigiOps' },
+  { name: 'Melisa Gil', initials: 'MG', avatarBg: 'bg-[#d946ef]', role: 'Creative Designer' },
+  { name: 'Camilo Velez', initials: 'CV', avatarBg: 'bg-[#059669]', role: 'Growth Manager' },
+  { name: 'Juan Camilo Torres', initials: 'JT', avatarBg: 'bg-[#6366f1]', role: 'Creative Designer' },
+  { name: 'Alejando Florez Vargas', initials: 'AF', avatarBg: 'bg-[#06b6d4]', role: 'Creative Designer' },
+  { name: 'Sara Mar L', initials: 'SM', avatarBg: 'bg-[#f43f5e]', role: 'Creative Designer' },
+  { name: 'Laura Viviana Salazar Perez', initials: 'LS', avatarBg: 'bg-[#64748b]', role: 'Administrativa' }
 ];
 
 const DEFAULT_CRITERIA = [
@@ -250,9 +258,26 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     task?.followers || []
   );
   const [reviewer, setReviewer] = useState<TaskItem['reviewer']>(task?.reviewer);
-  const [requestedBy, setRequestedBy] = useState<string>(task?.requestedBy || 'Andrés Ríos');
+  const [requestedBy, setRequestedBy] = useState<string>(task?.requestedBy || 'Paola Monsalve');
   const [budgetedRole, setBudgetedRole] = useState<string>(task?.budgetedRole || 'Diseñador Gráfico');
   const [requiresValidation, setRequiresValidation] = useState<boolean>(task?.requiresValidation ?? false);
+
+  // Bucky Copiloto: Chequeo de colaboradores asignados en vacaciones
+  const assignedVacationAlerts = useMemo(() => {
+    const alerts: { name: string; message: string; returnDate?: string }[] = [];
+    const assignedList = Array.from(new Set([assignee?.name, ...collaborators.map((c) => c.name)].filter(Boolean) as string[]));
+    assignedList.forEach((name) => {
+      const check = checkAssigneeAvailability(name, initialUsers);
+      if (check.isOnVacation) {
+        alerts.push({
+          name,
+          message: check.alertMessage || `${name} está de vacaciones.`,
+          returnDate: check.returnDate
+        });
+      }
+    });
+    return alerts;
+  }, [assignee, collaborators]);
 
   // Budget inline edit
   const [isEditingBudget, setIsEditingBudget] = useState(false);
@@ -318,7 +343,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
       setCollaborators(task.collaborators || []);
       setFollowers(task.followers || []);
       setReviewer(task.reviewer);
-      setRequestedBy(task.requestedBy || 'Andrés Ríos');
+      setRequestedBy(task.requestedBy || 'Paola Monsalve');
       setBudgetedRole(task.budgetedRole || 'Diseñador Gráfico');
       setRequiresValidation(task.requiresValidation ?? false);
       setOpenTeamDropdown(null);
@@ -2860,16 +2885,20 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
                       applyTeamUpdate(primaryAssignee, rest, reviewer, requestedBy, budgetedRole, requiresValidation, projectLead, followers);
                     }}
-                    options={TEAM_MEMBERS_POOL.map((m) => ({
-                      id: m.name,
-                      label: m.name,
-                      sublabel: m.role,
-                      icon: (
-                        <div className={`w-5 h-5 rounded-full ${m.avatarBg} text-white flex items-center justify-center text-[9px] font-bold shrink-0`}>
-                          {m.initials}
-                        </div>
-                      )
-                    }))}
+                    options={TEAM_MEMBERS_POOL.map((m) => {
+                      const u = initialUsers.find((usr) => usr.name === m.name);
+                      const onVac = u?.vacationStatus?.onVacation;
+                      return {
+                        id: m.name,
+                        label: m.name,
+                        sublabel: onVac ? `${m.role} • 🏖️ De vacaciones` : m.role,
+                        icon: (
+                          <div className={`w-5 h-5 rounded-full ${m.avatarBg} text-white flex items-center justify-center text-[9px] font-bold shrink-0`}>
+                            {m.initials}
+                          </div>
+                        )
+                      };
+                    })}
                     trigger={
                       <div className="w-full flex items-center justify-between p-2 rounded-xl bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] transition-colors text-left cursor-pointer group">
                         <div className="flex items-center gap-2 min-w-0">
@@ -2920,6 +2949,23 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                     className="w-full"
                     menuClassName="w-full z-40 max-h-56"
                   />
+
+                  {/* Bucky Copiloto: Aviso si hay colaboradores en vacaciones asignados */}
+                  {assignedVacationAlerts.length > 0 && (
+                    <div className="mt-2 p-2.5 rounded-xl bg-[#fffbeb] border border-[#fde68a] text-xs flex items-start gap-2">
+                      <span className="text-sm shrink-0">🦫</span>
+                      <div className="space-y-0.5">
+                        <div className="text-[10px] font-bold text-[#78350f] uppercase tracking-wider">
+                          Aviso Operativo de Bucky
+                        </div>
+                        {assignedVacationAlerts.map((a) => (
+                          <p key={a.name} className="text-[#92400e] text-[11px] leading-snug">
+                            <strong>{a.name}</strong> está en vacaciones aprobadas hasta el {a.returnDate || 'próxima semana'}.
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* 3. Seguidores (Enterados, acompañamiento y revisión sin responsabilidad de ejecución) */}

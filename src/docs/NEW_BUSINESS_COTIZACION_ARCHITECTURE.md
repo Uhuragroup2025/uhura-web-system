@@ -213,6 +213,62 @@ $$\text{NewBusinessOpportunity} \begin{cases}
 
 ## 5. Reglas de Idempotencia y Prevención de Duplicados
 
-1. **Bandera `convertedProjectId`**: Tanto en `NewBusinessOpportunity` como en cada `QuoteProposal` se almacena `convertedProjectId: string | null`.
-2. **Bloqueo de Reintentos**: Si una cotización aprobada ya tiene `convertedProjectId` asignado, el sistema bloquea una segunda ejecución y muestra el enlace directo al proyecto creado.
-3. **Inmutabilidad Post-Conversión**: Una vez aprobada y convertida, la cotización pasa a modo de **Solo Lectura**. Cualquier cambio de alcance futuro durante el desarrollo del proyecto se gestiona como un *Adicional / Control de Cambios* en el proyecto vivo, protegiendo la auditoría de la cotización original.
+---
+
+## 6. Propuesta de MVP: Calculadora Comercial UHURA en Orbit
+
+A partir del análisis detallado de las hojas de trabajo de la **Calculadora Comercial UHURA 2026 (V.11/05/2026)** plasmada en las capturas oficiales, se define el diseño del **MVP de la Calculadora Comercial** integrado en New Business de Orbit.
+
+### 6.1. Alcance Funcional del MVP (Fase 1)
+
+El MVP traduce las 8 hojas del Excel en un flujo digital unificado dentro de cada cotización (`QuoteProposal`), garantizando rigor financiero sin sobrecargar a los líderes de proyecto:
+
+1. **Parámetros Globales del Negocio (Configurables en Ajustes / Settings):**
+   * **Tarifa Semanal de Gastos Fijos (Overhead Base UHURA)**: Costo semanal en COP de la operación fija de la agencia (arriendos, herramientas SaaS, salarios de estructura).
+   * **Factores Laborales Colombia**:
+     * Factor prestacional ordinario: `47%` (por defecto).
+     * Factor prestacional integral: `25%` (por defecto).
+     * Base de horas laborales mes: `176 h/mes`.
+   * **Monedas y Tasas de Cambio**: COP (base), USD, MXN, BRL, INR con actualización de TRM.
+
+2. **Dimensionamiento en la Cotización (Proyecto / Deal):**
+   * **Tiempo estimado del proyecto en semanas** ($S$).
+   * **% de Ocupación de Overhead asignado al proyecto** ($O\%$).
+   * **Cálculo automático del Costo Overhead del Proyecto**:
+     $$\text{Costo Overhead} = \text{Tarifa Semanal Gastos Fijos} \times S \times O\%$$
+   * **Margen Deseado ($M\%$)**: Por defecto 40% (con cálculo de margen mínimo 35% y margen máximo 50% para bandas de negociación).
+
+3. **Cálculo de Costos Variables de Recursos (Rol o Persona):**
+   * Cada recurso asignado a las actividades/entregables suma sus horas:
+     * **Modalidad Freelance**: Costo hora directo pactado.
+     * **Modalidad Salario Interno**: (Salario Base mensual $\times (1 + \text{Factor Prestacional})$) / 176 h.
+   * La suma de horas $\times$ costo hora genera el **Costo Variable Directo** del proyecto.
+   * **Total Costos del Proyecto**:
+     $$\text{Total Costos} = \text{Costo Variable Directo} + \text{Costo Overhead Asignado}$$
+
+4. **Tratamiento Tributario e IVA Diferenciado (19% Colombia):**
+   * En proyectos digitales/tecnológicos, la ley colombiana exime de IVA a servicios de desarrollo de software y páginas web, mientras otros servicios creativos/estratégicos son gravados.
+   * El MVP permite etiquetar cada entregable o recurso como:
+     * **Exento de IVA**
+     * **Gravado con IVA (19%)**
+   * La calculadora calcula el subtotal de venta antes de IVA y aplica el 19% **exclusivamente sobre la base gravada**:
+     $$\text{IVA 19\%} = \text{Valor Base Gravado} \times 19\%$$
+     $$\text{Precio Total a Cotizar} = \text{SubTotal (Exento + Gravado)} + \text{IVA 19\%}$$
+
+5. **Modalidades de Cotización (Selector de Tipo):**
+   * **Modo A — Proyecto por Entregables**: Semanas de duración, % overhead y backlog por entregables.
+   * **Modo B — Bolsa de Horas / Tarifario Horario Directo**: Cotización ágil por horas vendidas con tarifa plena por rol (según Hoja 8 de la calculadora, ej. Front-End a $570.608/h, Product Lead a $599.601/h, etc.).
+
+---
+
+### 6.2. Puntos Clave y Dudas a Abordar en la Reunión
+
+Para llevar a la mesa de discusión con el equipo y alinear criterios antes del despliegue final:
+
+| # | Tema / Pregunta | Opciones a Evaluar | Recomendación Técnica |
+|---|---|---|---|
+| **D1** | **¿A qué nivel se define si es Exento o Gravado de IVA?** | **Opción A:** A nivel del **Entregable** (ej. "Desarrollo Front-End Web" = Exento, "Estrategia Creativa / Pauta" = Gravado).<br>**Opción B:** A nivel del **Rol** del catálogo (ej. Desarrollador siempre exento, Trafficker gravado). | **Opción A (Entregable)**: Ofrece mayor flexibilidad contable y coincide con cómo la DIAN audita los objetos contractuales. |
+| **D2** | **Carga del Overhead Fijo de la Compañía** | **Opción A:** Configurar una **Tarifa Semanal Fija de UHURA** en Ajustes de Orbit, y que en la cotización el líder solo ingrese las *semanas* y el *% de ocupación* (idéntico al Excel).<br>**Opción B:** Permitir ingresar el monto directo de Overhead por proyecto. | **Opción A con override**: Calcula automáticamente con la fórmula del Excel, pero permite a la Dirección Comercial ajustar el monto si es necesario. |
+| **D3** | **Tarifario Horario Directo (Hoja 8)** | ¿El tarifario por hora de venta directa (ej. $570.608/h) debe actualizarse automáticamente cuando cambien los salarios base y el overhead, o es una lista de precios comercial fija aprobada por gerencia anualmente? | Mantener una **Lista de Precios Base** editable por Dirección, con simulación de margen real sobre costo subyacente. |
+| **D4** | **Bandas de Descuento y Aprobación Comercial** | La calculadora contempla *Margen Máximo (50%)*, *Margen Esperado (40%)* y *Margen Mínimo (35%)*, arrojando un descuento nominal y porcentual. ¿Si una cotización baja del margen mínimo del 35%, debe requerir un flujo de aprobación de la Dirección General antes de enviarse? | Sí, agregar una alerta visual o candado de "Requiere Visto Bueno de Dirección" si el margen proyectado es menor al 35%. |
+| **D5** | **Integración de Tarifas Iniciales** | ¿Desean precargar en el catálogo de Orbit las 12 tarifas de recursos de la captura (Front-End, Product Lead, Digital Designer, Client Relationship Strategist, Content Creator, Directora Comercial, DigiOps, etc.) con sus costos internos y precios hora de venta? | Sí, precargar los 12 perfiles para que el cotizador sea utilizable de inmediato sin configuración manual extensa. |

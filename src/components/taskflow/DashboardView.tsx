@@ -615,7 +615,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             Tus hábitos saludables de Orbit hacen crecer el hábitat de Bucky 🪵
           </h3>
           <p className="text-xs text-[#c9b7ff] leading-relaxed">
-            Sin sobrecargas ni medir horas de más: premia la claridad, cumplimiento de lo asignado y prevención temprana de riesgos. Juega micro-retos de 15s o reta a Catalina, Andrés, Laura o Camilo.
+            Sin sobrecargas ni medir horas de más: premia la claridad, cumplimiento de lo asignado y prevención temprana de riesgos. Juega micro-retos de 15s o reta a Catalina, Oscar, Laura o Camilo.
           </p>
         </div>
 

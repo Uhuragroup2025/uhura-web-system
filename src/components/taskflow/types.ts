@@ -1,3 +1,5 @@
+import type { QuoteFinancialConfig, QuoteFinancialSummary } from './financial/types';
+
 export type BuckyMascotState =
   | 'idle'       // respira, parpadea, mueve ligeramente la cola
   | 'wave'       // saluda con una mano
@@ -412,16 +414,21 @@ export interface TaskComment {
 }
 
 export const STANDARD_UHURA_ROLES = [
-  'Content Strategist',
-  'Diseñador Gráfico',
-  'Community Manager',
+  'Client relationship',
+  'Creative lead',
+  'Content Creator',
+  'Digital Content Specialist',
+  'Digital Designer',
+  'Directora Comercial',
+  'Tracfiker',
   'Product Lead',
-  'Copywriter',
-  'Web Designer',
-  'Front End',
-  'Trafficker',
-  'Tech Lead',
-  'Lead PM'
+  'CEO',
+  'Desarrollador Web Front-End',
+  'Community Manager',
+  'Tracfiker y DigiOps',
+  'Creative Designer',
+  'Growth Manager',
+  'Administrativa'
 ] as const;
 
 export type StandardUhuraRole = typeof STANDARD_UHURA_ROLES[number];
@@ -621,6 +628,37 @@ export interface UserItem {
   capacityHours?: number;
   utilizedPercent?: number;
   jobTitle?: string;
+  officialRole?: StandardUhuraRole;
+  birthDate?: string;          // Formato ISO 'YYYY-MM-DD'
+  birthDateFormatted?: string; // ej. '18 de Sep'
+  anniversaryDate?: string;    // Formato ISO 'YYYY-MM-DD'
+  anniversaryYears?: number;   // ej. 2
+  vacationStatus?: {
+    onVacation: boolean;
+    startDate?: string;
+    returnDate?: string;
+    note?: string;
+  };
+}
+
+/**
+ * Evento humano/operativo de equipo consumido por Bucky y los módulos de Orbit
+ */
+export interface TeamLifeEvent {
+  id: string;
+  userId: string;
+  userName: string;
+  userRole?: string;
+  userAvatarBg?: string;
+  userInitials?: string;
+  type: 'birthday' | 'anniversary' | 'vacation' | 'absence';
+  date: string;
+  headline: string;
+  message: string;
+  daysRemaining?: number; // 0 = hoy, 1..3 = pronto
+  yearsCount?: number;
+  returnDate?: string;
+  isActiveNow: boolean;
 }
 
 export interface MonthlyBillingData {
@@ -1018,6 +1056,8 @@ export interface QuoteProposal {
   totalHoursRollup: number;       // Sumatoria total de horas cotizadas
   totalQuotedValueCOP?: number;
   currency?: 'COP' | 'USD';
+  financialConfig?: QuoteFinancialConfig;
+  financialSummary?: QuoteFinancialSummary;
   approvalNotes?: string;
   approvedAt?: string;
   approvedByUserId?: string;

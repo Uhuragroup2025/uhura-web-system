@@ -42,6 +42,9 @@ import { OrbitView, TaskItem, ActiveTimerState } from './types';
 import { resolveBuckyState } from './buckyEngine';
 import { BuckyLabModal } from './BuckyLabModal';
 import { UhuraLogo } from '../ui/UhuraLogo';
+import { processTeamLifeEvents, resolveBuckyTeamLifeSpeech } from './copilot/teamLifeEngine';
+import { TeamLifeEventsModal } from './copilot/TeamLifeEventsModal';
+import { initialUsers } from './mockData';
 
 interface FloatingBeaverWidgetProps {
   loggedHoursToday: number;
@@ -342,6 +345,10 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [speechBubbleText, setSpeechBubbleText] = useState<string | null>(null);
   const [isBuckyLabOpen, setIsBuckyLabOpen] = useState(false);
+  const [isTeamLifeModalOpen, setIsTeamLifeModalOpen] = useState(false);
+
+  // Procesar eventos de equipo para el copiloto humano/operativo
+  const teamLifeResult = processTeamLifeEvents(initialUsers);
 
   // Live timer seconds tracking
   const [liveTimerSeconds, setLiveTimerSeconds] = useState(activeTimer?.elapsedSeconds || 0);
@@ -352,13 +359,13 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
       return;
     }
     setLiveTimerSeconds(activeTimer.elapsedSeconds || 0);
-    if (!activeTimer.isRunning) return;
+    if (activeTimer.isPaused) return;
 
     const interval = setInterval(() => {
       setLiveTimerSeconds((prev) => prev + 1);
     }, 1000);
     return () => clearInterval(interval);
-  }, [activeTimer?.taskId, activeTimer?.isRunning, activeTimer?.elapsedSeconds]);
+  }, [activeTimer?.taskId, activeTimer?.isPaused, activeTimer?.elapsedSeconds]);
 
   const formatTimerClock = (totalSec: number) => {
     const h = Math.floor(totalSec / 3600);
@@ -766,7 +773,7 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
 
   const handleFeedHours = (hours: number, label: string) => {
     if (soundEnabled) playChime('feed');
-    onQuickLogHours(hours, label, 'internal', 'Uhura Group');
+    onQuickLogHours?.(hours, label, 'internal', 'Uhura Group');
     setIsWiggling(true);
     setTimeout(() => setIsWiggling(false), 600);
     triggerLivingAction('stretch', `Acomodando pieza en el hábitat... +${hours}h de recurso registrado 🪵`);
@@ -1083,9 +1090,9 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
                   type="button"
                   onClick={onPauseResumeTimer}
                   className="p-2 rounded-xl bg-[#261845] hover:bg-[#362160] text-[#c9b7ff] hover:text-white transition-colors cursor-pointer"
-                  title={activeTimer.isRunning ? 'Pausar cronómetro' : 'Reanudar cronómetro'}
+                  title={!activeTimer.isPaused ? 'Pausar cronómetro' : 'Reanudar cronómetro'}
                 >
-                  {activeTimer.isRunning ? (
+                  {!activeTimer.isPaused ? (
                     <Pause className="w-3.5 h-3.5" />
                   ) : (
                     <Play className="w-3.5 h-3.5 text-[#d4ff4a]" />
@@ -1111,7 +1118,7 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
               type="button"
               onClick={() => {
                 setIsOpen(!isOpen);
-                handlePoke();
+                handleTickle();
               }}
               className="relative group p-1.5 rounded-2xl bg-[#140b24]/90 border border-[#8a4dff]/50 shadow-xl backdrop-blur-md hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center gap-2"
               title="Bucky · Copiloto de Orbit (Clic para opciones)"
@@ -1254,6 +1261,33 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
               </button>
             )}
 
+            {/* Copiloto Humano & Operativo de Equipo */}
+            <button
+              onClick={() => {
+                setIsTeamLifeModalOpen(true);
+                setIsOpen(false);
+              }}
+              className="w-full p-2.5 rounded-2xl bg-linear-to-r from-[#501f92]/30 to-[#8a4dff]/20 hover:from-[#501f92]/40 hover:to-[#8a4dff]/30 text-white text-xs font-semibold flex items-center justify-between transition-all cursor-pointer border border-[#8a4dff]/40 shadow-xs"
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-sm">🦫</span>
+                <div className="text-left">
+                  <div className="text-[11px] font-bold text-white flex items-center gap-1.5">
+                    <span>Copiloto de Equipo</span>
+                    {teamLifeResult.todayEvents.length > 0 && (
+                      <span className="text-[9px] bg-[#d4ff4a] text-[#140b24] font-black px-1.5 py-0.5 rounded-full">
+                        {teamLifeResult.todayEvents.length} hoy 🎉
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[10px] text-white/70">
+                    Cumpleaños, aniversarios y ausencias
+                  </div>
+                </div>
+              </div>
+              <ArrowRight className="w-3.5 h-3.5 text-[#d4ff4a] shrink-0" />
+            </button>
+
             {/* Navigation link to Mi Día */}
             <button
               onClick={() => {
@@ -1267,6 +1301,13 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
             </button>
           </div>
         )}
+
+        {/* MODAL DE EVENTOS & RECORDATORIOS DE EQUIPO (COPILOTO BUCKY) */}
+        <TeamLifeEventsModal
+          isOpen={isTeamLifeModalOpen}
+          onClose={() => setIsTeamLifeModalOpen(false)}
+          users={initialUsers}
+        />
 
         {/* PROTECTED BUCKY LAB MODAL (Accessible via Shift+Alt+B or ?buckyLab=true) */}
         <BuckyLabModal

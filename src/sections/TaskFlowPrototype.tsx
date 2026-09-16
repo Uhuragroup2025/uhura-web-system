@@ -56,6 +56,9 @@ import {
 } from '../components/taskflow/time/timeTrackingEngine';
 import { MobileBottomNav } from '../components/taskflow/MobileBottomNav';
 import { MobileTimerMiniPlayer } from '../components/taskflow/MobileTimerMiniPlayer';
+import { NewBusinessView } from '../components/taskflow/newbusiness/NewBusinessView';
+import { INITIAL_NEW_BUSINESS_OPPORTUNITIES } from '../components/taskflow/newbusiness/mockOpportunities';
+import { NewBusinessOpportunity } from '../components/taskflow/types';
 import {
   Sparkles,
   Clock,
@@ -413,10 +416,10 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
       }
     ],
     coreTeam: [
-      { id: 'u-paola', name: 'Paola (Lead PM)', role: 'Lead PM', avatarBg: 'bg-[#501f92]', initials: 'PL', isLead: true, weeklyAllocatedHours: 4 },
-      { id: 'u-andres', name: 'Andrés Ríos', role: 'Product Lead', avatarBg: 'bg-[#ef4444]', initials: 'AR', weeklyAllocatedHours: 8 },
-      { id: 'u-catalina', name: 'Catalina Tejada', role: 'Web Designer', avatarBg: 'bg-[#7c3aed]', initials: 'CT', weeklyAllocatedHours: 15 },
-      { id: 'u-laura', name: 'Laura Gómez', role: 'Front End', avatarBg: 'bg-[#0284c7]', initials: 'LG', weeklyAllocatedHours: 18 }
+      { id: 'u-paola', name: 'Paola Monsalve', role: 'Product Lead', avatarBg: 'bg-[#501f92]', initials: 'PM', isLead: true, weeklyAllocatedHours: 4 },
+      { id: 'u-oscar', name: 'Oscar Cerpa', role: 'Desarrollador Web Front-End', avatarBg: 'bg-[#f59e0b]', initials: 'OC', weeklyAllocatedHours: 8 },
+      { id: 'u-catalina', name: 'Catalina Tejada', role: 'Directora Comercial', avatarBg: 'bg-[#7c3aed]', initials: 'CT', weeklyAllocatedHours: 15 },
+      { id: 'u-laura', name: 'Laura Isabel Gómez', role: 'Digital Designer', avatarBg: 'bg-[#0284c7]', initials: 'LG', weeklyAllocatedHours: 18 }
     ]
   },
   {
@@ -466,8 +469,8 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
       }
     ],
     coreTeam: [
-      { id: 'u-paola', name: 'Paola (Lead PM)', role: 'Lead PM', avatarBg: 'bg-[#501f92]', initials: 'PL', isLead: true, weeklyAllocatedHours: 5 },
-      { id: 'u-andres', name: 'Andrés Ríos', role: 'Product Lead', avatarBg: 'bg-[#ef4444]', initials: 'AR', weeklyAllocatedHours: 10 }
+      { id: 'u-paola', name: 'Paola Monsalve', role: 'Product Lead', avatarBg: 'bg-[#501f92]', initials: 'PM', isLead: true, weeklyAllocatedHours: 5 },
+      { id: 'u-oscar', name: 'Oscar Cerpa', role: 'Desarrollador Web Front-End', avatarBg: 'bg-[#f59e0b]', initials: 'OC', weeklyAllocatedHours: 10 }
     ]
   },
   {
@@ -504,8 +507,8 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
     clientId: 'cli-flamingo',
     clientName: 'FLAMINGO S.A.S.',
     brand: 'Flamingo',
-    leadName: 'Andrés Ríos',
-    leadAvatarBg: 'bg-[#ef4444]',
+    leadName: 'Camilo Velez',
+    leadAvatarBg: 'bg-[#059669]',
     projectType: 'fee_monthly',
     serviceBase: 'Paid Media & Ads Performance',
     budgetedHours: 60,
@@ -607,6 +610,7 @@ export const TaskFlowPrototype: React.FC = () => {
   const [timeLogs, setTimeLogs] = useState<TimeLog[]>(initialTimeLogs);
   const [productTemplates, setProductTemplates] = useState<ProductBacklogTemplate[]>(INITIAL_PRODUCT_BACKLOG_TEMPLATES);
   const [createdQuotes, setCreatedQuotes] = useState<QuoteProposal[]>([]);
+  const [opportunities, setOpportunities] = useState<NewBusinessOpportunity[]>(INITIAL_NEW_BUSINESS_OPPORTUNITIES);
 
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
@@ -1560,6 +1564,8 @@ export const TaskFlowPrototype: React.FC = () => {
         return 'Clientes';
       case 'plantillas-producto':
         return 'Biblioteca de Plantillas Maestras · Producto';
+      case 'new-business':
+        return 'New Business · Scoping & Oportunidades';
       case 'cotizador':
         return 'Cotizador';
       case 'finanzas':
@@ -1909,6 +1915,24 @@ export const TaskFlowPrototype: React.FC = () => {
                       setCreatedQuotes((prev) => [newQuote, ...prev]);
                       setCurrentView('cotizador');
                     }}
+                  />
+                )}
+
+                {/* 6.7. NEW BUSINESS & SCOPING OPERATIVO (FASE 1) */}
+                {currentView === 'new-business' && (
+                  <NewBusinessView
+                    opportunities={opportunities}
+                    clients={clients}
+                    templates={productTemplates}
+                    onUpdateOpportunity={(updatedOpp) => {
+                      setOpportunities((prev) =>
+                        prev.map((o) => (o.id === updatedOpp.id ? updatedOpp : o))
+                      );
+                    }}
+                    onCreateOpportunity={(newOpp) => {
+                      setOpportunities((prev) => [newOpp, ...prev]);
+                    }}
+                    onNavigateToView={handleSelectView}
                   />
                 )}
 

@@ -70,16 +70,22 @@ export const TEMPLATE_CATEGORIES: TemplateCategoryMeta[] = [
   }
 ];
 
+// Roles oficiales de Uhura Group
+const R_PRODUCT_LEAD = 'Product Lead';
+const R_DIGITAL_DESIGNER = 'Digital Designer';
+const R_FRONT_END = 'Desarrollador Web Front-End';
+const R_CONTENT = 'Content Creator';
+
 /**
  * DATOS DEMO MÍNIMOS DE PLANTILLAS MAESTRAS
- * [PLACEHOLDER - Pendiente de incorporar los backlogs reales de Uhura Group (ej. Proceso Digital Product)]
+ * Basadas en los roles oficiales del equipo Uhura Group
  */
 const rawInitialTemplates: ProductBacklogTemplate[] = [
   // 1. Sitio WordPress hasta 8 páginas internas
   {
     id: 'tmpl-wp-8p',
     name: 'Sitio WordPress hasta 8 páginas internas',
-    description: '[PLACEHOLDER - Pendiente backlog real] Estructura marco para desarrollo de sitio web institucional en WordPress con hasta 8 páginas internas.',
+    description: 'Estructura marco para desarrollo de sitio web institucional en WordPress con hasta 8 páginas internas.',
     category: 'wordpress',
     version: '1.0',
     status: 'active',
@@ -99,8 +105,8 @@ const rawInitialTemplates: ProductBacklogTemplate[] = [
             templateDeliverableId: 'del-wp-ux',
             title: 'Levantamiento de contenidos & Arquitectura de información',
             description: 'Estructura de menú y jerarquía de hasta 8 páginas internas',
-            roleId: STANDARD_UHURA_ROLES[3], // Product Lead
-            roleName: STANDARD_UHURA_ROLES[3],
+            roleId: R_PRODUCT_LEAD,
+            roleName: R_PRODUCT_LEAD,
             estimatedHours: 4.0,
             order: 1,
             optional: false
@@ -110,8 +116,8 @@ const rawInitialTemplates: ProductBacklogTemplate[] = [
             templateDeliverableId: 'del-wp-ux',
             title: 'Wireframes funcionales (Baja fidelidad)',
             description: 'Estructuración de componentes de Home y plantillas interiores',
-            roleId: STANDARD_UHURA_ROLES[5], // Web Designer
-            roleName: STANDARD_UHURA_ROLES[5],
+            roleId: R_DIGITAL_DESIGNER,
+            roleName: R_DIGITAL_DESIGNER,
             estimatedHours: 6.0,
             order: 2,
             optional: false
@@ -131,8 +137,8 @@ const rawInitialTemplates: ProductBacklogTemplate[] = [
             templateDeliverableId: 'del-wp-ui',
             title: 'Diseño UI de Home y Guía de Estilo Digital',
             description: 'Tipografía, colores, botones y look & feel principal',
-            roleId: STANDARD_UHURA_ROLES[5], // Web Designer
-            roleName: STANDARD_UHURA_ROLES[5],
+            roleId: R_DIGITAL_DESIGNER,
+            roleName: R_DIGITAL_DESIGNER,
             estimatedHours: 8.0,
             order: 1,
             optional: false
@@ -142,8 +148,8 @@ const rawInitialTemplates: ProductBacklogTemplate[] = [
             templateDeliverableId: 'del-wp-ui',
             title: 'Diseño UI de Plantillas Interiores (hasta 8 páginas)',
             description: 'Diseño de páginas de servicios, quiénes somos, contacto y blog',
-            roleId: STANDARD_UHURA_ROLES[5], // Web Designer
-            roleName: STANDARD_UHURA_ROLES[5],
+            roleId: R_DIGITAL_DESIGNER,
+            roleName: R_DIGITAL_DESIGNER,
             estimatedHours: 12.0,
             order: 2,
             optional: false
@@ -163,8 +169,8 @@ const rawInitialTemplates: ProductBacklogTemplate[] = [
             templateDeliverableId: 'del-wp-dev',
             title: 'Setup de servidor, WordPress y Theme base',
             description: 'Configuración de entorno de staging, base de datos y plugins estándar',
-            roleId: STANDARD_UHURA_ROLES[8], // Tech Lead
-            roleName: STANDARD_UHURA_ROLES[8],
+            roleId: R_FRONT_END,
+            roleName: R_FRONT_END,
             estimatedHours: 4.0,
             order: 1,
             optional: false
@@ -174,8 +180,8 @@ const rawInitialTemplates: ProductBacklogTemplate[] = [
             templateDeliverableId: 'del-wp-dev',
             title: 'Maquetación Frontend de páginas e interacciones',
             description: 'Construcción en bloques / componentes responsive',
-            roleId: STANDARD_UHURA_ROLES[6], // Front End
-            roleName: STANDARD_UHURA_ROLES[6],
+            roleId: R_FRONT_END,
+            roleName: R_FRONT_END,
             estimatedHours: 20.0,
             order: 2,
             optional: false
@@ -185,8 +191,8 @@ const rawInitialTemplates: ProductBacklogTemplate[] = [
             templateDeliverableId: 'del-wp-dev',
             title: 'Integración de formularios de contacto y seguridad',
             description: 'Anti-spam, SMTP transaccional y protección de login',
-            roleId: STANDARD_UHURA_ROLES[6], // Front End
-            roleName: STANDARD_UHURA_ROLES[6],
+            roleId: R_FRONT_END,
+            roleName: R_FRONT_END,
             estimatedHours: 4.0,
             order: 3,
             optional: false
@@ -206,8 +212,8 @@ const rawInitialTemplates: ProductBacklogTemplate[] = [
             templateDeliverableId: 'del-wp-content',
             title: 'Carga y diagramación de contenidos provistos',
             description: 'Diagramación de textos, imágenes e íconos en las 8 páginas',
-            roleId: STANDARD_UHURA_ROLES[0], // Content Strategist
-            roleName: STANDARD_UHURA_ROLES[0],
+            roleId: R_CONTENT,
+            roleName: R_CONTENT,
             estimatedHours: 6.0,
             order: 1,
             optional: false
@@ -227,8 +233,8 @@ const rawInitialTemplates: ProductBacklogTemplate[] = [
             templateDeliverableId: 'del-wp-qa',
             title: 'Pruebas cross-browser y mobile en dispositivos físicos',
             description: 'Revisión en Chrome, Safari, iOS y Android',
-            roleId: STANDARD_UHURA_ROLES[3], // Product Lead
-            roleName: STANDARD_UHURA_ROLES[3],
+            roleId: R_PRODUCT_LEAD,
+            roleName: R_PRODUCT_LEAD,
             estimatedHours: 4.0,
             order: 1,
             optional: false
@@ -238,8 +244,8 @@ const rawInitialTemplates: ProductBacklogTemplate[] = [
             templateDeliverableId: 'del-wp-qa',
             title: 'Despliegue a producción, DNS y handover técnico',
             description: 'Paso de staging a dominio final y verificación de certificados SSL',
-            roleId: STANDARD_UHURA_ROLES[8], // Tech Lead
-            roleName: STANDARD_UHURA_ROLES[8],
+            roleId: R_FRONT_END,
+            roleName: R_FRONT_END,
             estimatedHours: 3.0,
             order: 2,
             optional: false
@@ -257,7 +263,7 @@ const rawInitialTemplates: ProductBacklogTemplate[] = [
   {
     id: 'tmpl-mantenimiento',
     name: 'Mantenimiento Web Mensual',
-    description: '[PLACEHOLDER - Pendiente backlog real] Bolsa operativa mensual de soporte preventivo, salud del servidor y mejoras continuas.',
+    description: 'Bolsa operativa mensual de soporte preventivo, salud del servidor y mejoras continuas.',
     category: 'mantenimiento_web',
     version: '1.0',
     status: 'active',
@@ -276,8 +282,8 @@ const rawInitialTemplates: ProductBacklogTemplate[] = [
             templateDeliverableId: 'del-mnt-prev',
             title: 'Auditoría mensual de seguridad & Actualización de plugins/core',
             description: 'Revisión de parches de seguridad y copias de respaldo offsite',
-            roleId: STANDARD_UHURA_ROLES[8], // Tech Lead
-            roleName: STANDARD_UHURA_ROLES[8],
+            roleId: R_FRONT_END,
+            roleName: R_FRONT_END,
             estimatedHours: 3.0,
             order: 1
           },
@@ -286,8 +292,8 @@ const rawInitialTemplates: ProductBacklogTemplate[] = [
             templateDeliverableId: 'del-mnt-prev',
             title: 'Monitoreo de uptime y tiempos de respuesta (Core Web Vitals)',
             description: 'Diagnóstico de latencia de base de datos y optimización de caché',
-            roleId: STANDARD_UHURA_ROLES[6], // Front End
-            roleName: STANDARD_UHURA_ROLES[6],
+            roleId: R_FRONT_END,
+            roleName: R_FRONT_END,
             estimatedHours: 2.0,
             order: 2
           }
@@ -305,8 +311,8 @@ const rawInitialTemplates: ProductBacklogTemplate[] = [
             templateDeliverableId: 'del-mnt-ajustes',
             title: 'Atención a tickets de ajustes visuales y de contenido',
             description: 'Reemplazo de banners, actualización de textos y enlaces',
-            roleId: STANDARD_UHURA_ROLES[6], // Front End
-            roleName: STANDARD_UHURA_ROLES[6],
+            roleId: R_FRONT_END,
+            roleName: R_FRONT_END,
             estimatedHours: 5.0,
             order: 1
           }
@@ -323,7 +329,7 @@ const rawInitialTemplates: ProductBacklogTemplate[] = [
   {
     id: 'tmpl-landing-page',
     name: 'Landing Page de Alta Conversión',
-    description: '[PLACEHOLDER - Pendiente backlog real] Página única optimizada para conversión de pauta digital y captación de leads.',
+    description: 'Página única optimizada para conversión de pauta digital y captación de leads.',
     category: 'landing_page',
     version: '1.0',
     status: 'active',
@@ -342,8 +348,8 @@ const rawInitialTemplates: ProductBacklogTemplate[] = [
             templateDeliverableId: 'del-lp-est',
             title: 'Estructura de secciones & Propuesta de valor',
             description: 'Definición de jerarquía de conversión y CTA principal',
-            roleId: STANDARD_UHURA_ROLES[3], // Product Lead
-            roleName: STANDARD_UHURA_ROLES[3],
+            roleId: R_PRODUCT_LEAD,
+            roleName: R_PRODUCT_LEAD,
             estimatedHours: 3.0,
             order: 1
           },
@@ -352,8 +358,8 @@ const rawInitialTemplates: ProductBacklogTemplate[] = [
             templateDeliverableId: 'del-lp-est',
             title: 'Redacción persuasiva (Copywriting)',
             description: 'Headlines, beneficios y llamados a la acción',
-            roleId: STANDARD_UHURA_ROLES[4], // Copywriter
-            roleName: STANDARD_UHURA_ROLES[4],
+            roleId: R_CONTENT,
+            roleName: R_CONTENT,
             estimatedHours: 4.0,
             order: 2
           }
@@ -371,8 +377,8 @@ const rawInitialTemplates: ProductBacklogTemplate[] = [
             templateDeliverableId: 'del-lp-ui',
             title: 'Diseño visual UI Desktop y Mobile',
             description: 'Diseño en Figma y especificaciones para desarrollo',
-            roleId: STANDARD_UHURA_ROLES[5], // Web Designer
-            roleName: STANDARD_UHURA_ROLES[5],
+            roleId: R_DIGITAL_DESIGNER,
+            roleName: R_DIGITAL_DESIGNER,
             estimatedHours: 6.0,
             order: 1
           },
@@ -381,8 +387,8 @@ const rawInitialTemplates: ProductBacklogTemplate[] = [
             templateDeliverableId: 'del-lp-ui',
             title: 'Maquetación frontend & Medición de eventos',
             description: 'Implementación responsive con píxeles de Google y Meta',
-            roleId: STANDARD_UHURA_ROLES[6], // Front End
-            roleName: STANDARD_UHURA_ROLES[6],
+            roleId: R_FRONT_END,
+            roleName: R_FRONT_END,
             estimatedHours: 8.0,
             order: 2
           }
@@ -399,7 +405,7 @@ const rawInitialTemplates: ProductBacklogTemplate[] = [
   {
     id: 'tmpl-ecommerce-20skus',
     name: 'Tienda Online hasta 20 SKUs simples o 10 variables',
-    description: '[PLACEHOLDER - Pendiente backlog real] Comercio electrónico para marcas directas al consumidor con catálogo inicial acotado.',
+    description: 'Comercio electrónico para marcas directas al consumidor con catálogo inicial acotado.',
     category: 'tienda_online',
     version: '1.0',
     status: 'active',
@@ -418,8 +424,8 @@ const rawInitialTemplates: ProductBacklogTemplate[] = [
             templateDeliverableId: 'del-ecom-cat',
             title: 'Definición de atributos de productos y categorías',
             description: 'Taxonomía de variantes (tallas, colores) y cálculo de impuestos',
-            roleId: STANDARD_UHURA_ROLES[3], // Product Lead
-            roleName: STANDARD_UHURA_ROLES[3],
+            roleId: R_PRODUCT_LEAD,
+            roleName: R_PRODUCT_LEAD,
             estimatedHours: 4.0,
             order: 1
           },
@@ -428,8 +434,8 @@ const rawInitialTemplates: ProductBacklogTemplate[] = [
             templateDeliverableId: 'del-ecom-cat',
             title: 'Integración de pasarela de pago (Wompi / PayU / Stripe)',
             description: 'Configuración de webhooks, estados de orden y ambiente de pruebas',
-            roleId: STANDARD_UHURA_ROLES[8], // Tech Lead
-            roleName: STANDARD_UHURA_ROLES[8],
+            roleId: R_FRONT_END,
+            roleName: R_FRONT_END,
             estimatedHours: 6.0,
             order: 2
           }
@@ -447,8 +453,8 @@ const rawInitialTemplates: ProductBacklogTemplate[] = [
             templateDeliverableId: 'del-ecom-dev',
             title: 'Maquetación de Home, PLP, PDP y Carrito',
             description: 'Vistas de tienda con filtros de búsqueda interactivos',
-            roleId: STANDARD_UHURA_ROLES[6], // Front End
-            roleName: STANDARD_UHURA_ROLES[6],
+            roleId: R_FRONT_END,
+            roleName: R_FRONT_END,
             estimatedHours: 24.0,
             order: 1
           },
@@ -457,8 +463,8 @@ const rawInitialTemplates: ProductBacklogTemplate[] = [
             templateDeliverableId: 'del-ecom-dev',
             title: 'Carga inicial de 20 SKUs y pruebas de compra reales',
             description: 'Validación de flujo de pago y notificaciones transaccionales',
-            roleId: STANDARD_UHURA_ROLES[0], // Content Strategist
-            roleName: STANDARD_UHURA_ROLES[0],
+            roleId: R_CONTENT,
+            roleName: R_CONTENT,
             estimatedHours: 6.0,
             order: 2
           }
@@ -475,7 +481,7 @@ const rawInitialTemplates: ProductBacklogTemplate[] = [
   {
     id: 'tmpl-shopify',
     name: 'Shopify Store Estándar',
-    description: '[PLACEHOLDER - Pendiente backlog real] Configuración técnica y visual de tienda sobre la plataforma Shopify.',
+    description: 'Configuración técnica y visual de tienda sobre la plataforma Shopify.',
     category: 'shopify',
     version: '1.0',
     status: 'active',
@@ -494,8 +500,8 @@ const rawInitialTemplates: ProductBacklogTemplate[] = [
             templateDeliverableId: 'del-shp-setup',
             title: 'Parametrización general de tienda Shopify',
             description: 'Monedas, impuestos, zonas de envío y políticas legales',
-            roleId: STANDARD_UHURA_ROLES[3], // Product Lead
-            roleName: STANDARD_UHURA_ROLES[3],
+            roleId: R_PRODUCT_LEAD,
+            roleName: R_PRODUCT_LEAD,
             estimatedHours: 5.0,
             order: 1
           },
@@ -504,8 +510,8 @@ const rawInitialTemplates: ProductBacklogTemplate[] = [
             templateDeliverableId: 'del-shp-setup',
             title: 'Personalización de Tema (Liquid) y Branding',
             description: 'Adaptación de fuentes, paleta de colores y banners en secciones nativas',
-            roleId: STANDARD_UHURA_ROLES[6], // Front End
-            roleName: STANDARD_UHURA_ROLES[6],
+            roleId: R_FRONT_END,
+            roleName: R_FRONT_END,
             estimatedHours: 14.0,
             order: 2
           }
@@ -522,7 +528,7 @@ const rawInitialTemplates: ProductBacklogTemplate[] = [
   {
     id: 'tmpl-portal-platform',
     name: 'Portal / Plataforma Web',
-    description: '[PLACEHOLDER - Pendiente backlog real] Arquitectura de software modular con autenticación y panel de usuario.',
+    description: 'Arquitectura de software modular con autenticación y panel de usuario.',
     category: 'portal_platform',
     version: '1.0',
     status: 'draft',
@@ -541,8 +547,8 @@ const rawInitialTemplates: ProductBacklogTemplate[] = [
             templateDeliverableId: 'del-plt-disc',
             title: 'Modelado de Base de Datos y Endpoints API',
             description: 'Diagrama Entidad-Relación y definición de contratos REST/GraphQL',
-            roleId: STANDARD_UHURA_ROLES[8], // Tech Lead
-            roleName: STANDARD_UHURA_ROLES[8],
+            roleId: R_FRONT_END,
+            roleName: R_FRONT_END,
             estimatedHours: 12.0,
             order: 1
           },
@@ -551,8 +557,8 @@ const rawInitialTemplates: ProductBacklogTemplate[] = [
             templateDeliverableId: 'del-plt-disc',
             title: 'Diseño de Prototipos de Tablero y Módulos de Usuario',
             description: 'Flujos de autenticación, perfil y gestión de entidades',
-            roleId: STANDARD_UHURA_ROLES[5], // Web Designer
-            roleName: STANDARD_UHURA_ROLES[5],
+            roleId: R_DIGITAL_DESIGNER,
+            roleName: R_DIGITAL_DESIGNER,
             estimatedHours: 16.0,
             order: 2
           }
@@ -570,8 +576,8 @@ const rawInitialTemplates: ProductBacklogTemplate[] = [
             templateDeliverableId: 'del-plt-dev',
             title: 'Desarrollo de Vistas Frontend en React / Next.js',
             description: 'Componentes reutilizables y sincronización de estado',
-            roleId: STANDARD_UHURA_ROLES[6], // Front End
-            roleName: STANDARD_UHURA_ROLES[6],
+            roleId: R_FRONT_END,
+            roleName: R_FRONT_END,
             estimatedHours: 32.0,
             order: 1
           }
@@ -588,7 +594,7 @@ const rawInitialTemplates: ProductBacklogTemplate[] = [
   {
     id: 'tmpl-custom-blank',
     name: 'Proyecto a la Medida (Personalizable)',
-    description: '[PLACEHOLDER - Pendiente backlog real] Plantilla base flexible para construir soluciones personalizadas desde cero o por módulos.',
+    description: 'Plantilla base flexible para construir soluciones personalizadas desde cero o por módulos.',
     category: 'custom',
     version: '1.0',
     status: 'active',
@@ -607,8 +613,8 @@ const rawInitialTemplates: ProductBacklogTemplate[] = [
             templateDeliverableId: 'del-cst-scope',
             title: 'Taller de Discovery & Levantamiento Funcional',
             description: 'Definición de requerimientos específicos y criterios de aceptación',
-            roleId: STANDARD_UHURA_ROLES[3], // Product Lead
-            roleName: STANDARD_UHURA_ROLES[3],
+            roleId: R_PRODUCT_LEAD,
+            roleName: R_PRODUCT_LEAD,
             estimatedHours: 8.0,
             order: 1
           },

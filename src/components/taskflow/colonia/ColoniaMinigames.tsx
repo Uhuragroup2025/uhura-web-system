@@ -4,7 +4,7 @@
  * ============================================================================
  * 
  * Diseñados para ser inmediatos, directos y competitivos con los miembros reales
- * de Uhura Group (Catalina, Andrés, Laura, Camilo, Diego, etc.).
+ * de Uhura Group (Catalina, Oscar, Laura, Camilo, Diego, etc.).
  * 
  * Reglas de diseño:
  * - Se entienden en 1 frase.
@@ -48,25 +48,25 @@ export interface MinigameTeamScore {
 // RANKING CON EL EQUIPO REAL DE UHURA GROUP
 export const REAL_UHURA_LEADERBOARDS: Record<ColonyMinigameType, MinigameTeamScore[]> = {
   vado: [
-    { id: 'u-17', name: 'Catalina Tejada', role: 'Directora Comercial', initials: 'CT', avatarBg: 'bg-[#7c3aed]', score: 19 },
-    { id: 'u-1', name: 'Andrés Ríos', role: 'Growth / Tech Lead', initials: 'AR', avatarBg: 'bg-[#ef4444]', score: 16 },
-    { id: 'u-you', name: 'Paola Monsalve (Tú)', role: 'Product Lead / Lead PM', initials: 'PM', avatarBg: 'bg-[#501f92]', score: 14, highlight: true },
-    { id: 'u-3', name: 'Laura Gómez', role: 'Frontend Dev', initials: 'LG', avatarBg: 'bg-[#0284c7]', score: 12 },
-    { id: 'u-14', name: 'Camilo Vélez', role: 'Growth Manager', initials: 'CV', avatarBg: 'bg-[#059669]', score: 9 }
+    { id: 'u-6', name: 'Catalina Tejada', role: 'Directora Comercial', initials: 'CT', avatarBg: 'bg-[#7c3aed]', score: 19 },
+    { id: 'u-10', name: 'Oscar Cerpa', role: 'Desarrollador Web Front-End', initials: 'OC', avatarBg: 'bg-[#f59e0b]', score: 16 },
+    { id: 'u-you', name: 'Paola Monsalve (Tú)', role: 'Product Lead', initials: 'PM', avatarBg: 'bg-[#501f92]', score: 14, highlight: true },
+    { id: 'u-5', name: 'Laura Isabel Gómez', role: 'Digital Designer', initials: 'LG', avatarBg: 'bg-[#0284c7]', score: 12 },
+    { id: 'u-14', name: 'Camilo Velez', role: 'Growth Manager', initials: 'CV', avatarBg: 'bg-[#059669]', score: 9 }
   ],
   respiracion: [
-    { id: 'u-7', name: 'Diego Cadavid', role: 'Creative Strategy Lead', initials: 'DC', avatarBg: 'bg-[#dc2626]', score: 120 },
-    { id: 'u-you', name: 'Paola Monsalve (Tú)', role: 'Product Lead / Lead PM', initials: 'PM', avatarBg: 'bg-[#501f92]', score: 100, highlight: true },
-    { id: 'u-17', name: 'Catalina Tejada', role: 'Directora Comercial', initials: 'CT', avatarBg: 'bg-[#7c3aed]', score: 95 },
-    { id: 'u-1', name: 'Andrés Ríos', role: 'Tech Lead', initials: 'AR', avatarBg: 'bg-[#ef4444]', score: 85 },
-    { id: 'u-8', name: 'Sara Rivera', role: 'Community Manager', initials: 'SR', avatarBg: 'bg-[#ec4899]', score: 75 }
+    { id: 'u-2', name: 'Diego Cadavid', role: 'Creative lead', initials: 'DC', avatarBg: 'bg-[#dc2626]', score: 120 },
+    { id: 'u-you', name: 'Paola Monsalve (Tú)', role: 'Product Lead', initials: 'PM', avatarBg: 'bg-[#501f92]', score: 100, highlight: true },
+    { id: 'u-6', name: 'Catalina Tejada', role: 'Directora Comercial', initials: 'CT', avatarBg: 'bg-[#7c3aed]', score: 95 },
+    { id: 'u-10', name: 'Oscar Cerpa', role: 'Desarrollador Web Front-End', initials: 'OC', avatarBg: 'bg-[#f59e0b]', score: 85 },
+    { id: 'u-11', name: 'Sara Rivera', role: 'Community Manager', initials: 'SR', avatarBg: 'bg-[#ec4899]', score: 75 }
   ],
   clasificador: [
-    { id: 'u-3', name: 'Laura Gómez', role: 'Frontend Dev', initials: 'LG', avatarBg: 'bg-[#0284c7]', score: 22 },
-    { id: 'u-1', name: 'Andrés Ríos', role: 'Tech Lead', initials: 'AR', avatarBg: 'bg-[#ef4444]', score: 18 },
-    { id: 'u-you', name: 'Paola Monsalve (Tú)', role: 'Product Lead / Lead PM', initials: 'PM', avatarBg: 'bg-[#501f92]', score: 15, highlight: true },
-    { id: 'u-17', name: 'Catalina Tejada', role: 'Directora Comercial', initials: 'CT', avatarBg: 'bg-[#7c3aed]', score: 13 },
-    { id: 'u-14', name: 'Camilo Vélez', role: 'Growth Manager', initials: 'CV', avatarBg: 'bg-[#059669]', score: 11 }
+    { id: 'u-5', name: 'Laura Isabel Gómez', role: 'Digital Designer', initials: 'LG', avatarBg: 'bg-[#0284c7]', score: 22 },
+    { id: 'u-10', name: 'Oscar Cerpa', role: 'Desarrollador Web Front-End', initials: 'OC', avatarBg: 'bg-[#f59e0b]', score: 18 },
+    { id: 'u-you', name: 'Paola Monsalve (Tú)', role: 'Product Lead', initials: 'PM', avatarBg: 'bg-[#501f92]', score: 15, highlight: true },
+    { id: 'u-6', name: 'Catalina Tejada', role: 'Directora Comercial', initials: 'CT', avatarBg: 'bg-[#7c3aed]', score: 13 },
+    { id: 'u-14', name: 'Camilo Velez', role: 'Growth Manager', initials: 'CV', avatarBg: 'bg-[#059669]', score: 11 }
   ]
 };
 

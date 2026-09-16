@@ -21,15 +21,15 @@ interface ImportBacklogModalProps {
 }
 
 const SAMPLE_CSV_DATA = `Fase	Frente	Tarea	Rol	Responsable	Horas	Inicio	Entrega	Dependencia
-Discovery & Estrategia	Investigación	Benchmark de competencia y arquitectura	Product Lead	Andrés Ríos	4	2026-09-01	2026-09-03	
-Discovery & Estrategia	Investigación	Entrevistas a usuarios & mapa de empatía	Product Lead	Andrés Ríos	6	2026-09-04	2026-09-08	Benchmark de competencia y arquitectura
-UI/UX & Prototipado	Diseño UI	Design System & Tokens en Figma	Web Designer	Catalina Tejada	12	2026-09-09	2026-09-15	Entrevistas a usuarios & mapa de empatía
-UI/UX & Prototipado	Diseño UI	Wireframes interactivos de Checkout y Catálogo	Web Designer	Catalina Tejada	16	2026-09-16	2026-09-24	Design System & Tokens en Figma
-Implementación Frontend & Backend	Desarrollo Web	Setup de repositorio Next.js + Tailwind CSS	Front End	Laura Gómez	8	2026-09-25	2026-09-28	Wireframes interactivos de Checkout y Catálogo
-Implementación Frontend & Backend	Desarrollo Web	Maquetación de Catálogo y Filtros de Productos	Front End	Laura Gómez	18	2026-09-29	2026-10-10	Setup de repositorio Next.js + Tailwind CSS
-Implementación Frontend & Backend	Integraciones	Integración con Pasarela de Pagos (Wompi / PayU)	Tech Lead	Andrés Ríos	14	2026-10-11	2026-10-18	Maquetación de Catálogo y Filtros de Productos
-QA & Testing	Calidad	Pruebas de estrés y pasarela en Sandbox	QA Lead	Paola (Lead PM)	8	2026-10-19	2026-10-24	Integración con Pasarela de Pagos (Wompi / PayU)
-Despliegue & Cierre	Go-Live	Configuración de Dominio, SSL y CDN en Cloudflare	Tech Lead	Andrés Ríos	4	2026-10-25	2026-10-27	Pruebas de estrés y pasarela en Sandbox`;
+Discovery & Estrategia	Investigación	Benchmark de competencia y arquitectura	Product Lead	Paola Monsalve	4	2026-09-01	2026-09-03	
+Discovery & Estrategia	Investigación	Entrevistas a usuarios & mapa de empatía	Product Lead	Paola Monsalve	6	2026-09-04	2026-09-08	Benchmark de competencia y arquitectura
+UI/UX & Prototipado	Diseño UI	Design System & Tokens en Figma	Digital Designer	Laura Isabel Gómez	12	2026-09-09	2026-09-15	Entrevistas a usuarios & mapa de empatía
+UI/UX & Prototipado	Diseño UI	Wireframes interactivos de Checkout y Catálogo	Digital Designer	Laura Isabel Gómez	16	2026-09-16	2026-09-24	Design System & Tokens en Figma
+Implementación Frontend & Backend	Desarrollo Web	Setup de repositorio Next.js + Tailwind CSS	Desarrollador Web Front-End	Oscar Cerpa	8	2026-09-25	2026-09-28	Wireframes interactivos de Checkout y Catálogo
+Implementación Frontend & Backend	Desarrollo Web	Maquetación de Catálogo y Filtros de Productos	Desarrollador Web Front-End	Oscar Cerpa	18	2026-09-29	2026-10-10	Setup de repositorio Next.js + Tailwind CSS
+Implementación Frontend & Backend	Integraciones	Integración con Pasarela de Pagos (Wompi / PayU)	Desarrollador Web Front-End	Oscar Cerpa	14	2026-10-11	2026-10-18	Maquetación de Catálogo y Filtros de Productos
+QA & Testing	Calidad	Pruebas de estrés y pasarela en Sandbox	Product Lead	Paola Monsalve	8	2026-10-19	2026-10-24	Integración con Pasarela de Pagos (Wompi / PayU)
+Despliegue & Cierre	Go-Live	Configuración de Dominio, SSL y CDN en Cloudflare	Desarrollador Web Front-End	Oscar Cerpa	4	2026-10-25	2026-10-27	Pruebas de estrés y pasarela en Sandbox`;
 
 export const ImportBacklogModal: React.FC<ImportBacklogModalProps> = ({
   isOpen,
