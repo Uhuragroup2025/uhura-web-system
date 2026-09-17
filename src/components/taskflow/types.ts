@@ -1070,6 +1070,72 @@ export interface QuoteProposal {
 }
 
 /**
+ * Referencias a la estructura estándar de 4 carpetas en Google Drive
+ */
+export interface DriveFolderReferences {
+  rootFolderUrl?: string;          // Carpeta raíz: PROSPECTOS/[CLIENTE] o CLIENTES/[CLIENTE]
+  briefFolderUrl?: string;         // 00. BRIEF
+  proposalsFolderUrl?: string;     // 01. PROPUESTAS COMERCIALES
+  adminDocsFolderUrl?: string;     // 02. DOCUMENTOS ADMINISTRATIVOS
+  inputsFolderUrl?: string;        // 03. INSUMOS
+}
+
+/**
+ * Checklist administrativo ligero para Vivian (facturación en Alegra)
+ */
+export interface AdministrativeChecklist {
+  rutStatus: 'pending' | 'received';
+  idCardStatus: 'pending' | 'received';
+  billingEmail?: string;
+  alegraCreated: boolean;
+  alegraContactId?: string;
+  alegraContactUrl?: string;
+  responsibleName?: string;        // ej. 'Vivian'
+  notes?: string;
+}
+
+/**
+ * Condiciones para iniciar el proyecto (gates configurables por cotización/proyecto)
+ * No hardcodea anticipo como obligatorio universal
+ */
+export interface StartConditionsConfig {
+  contractSignedRequired: boolean;      // Obligatorio por defecto (SOW o Contrato)
+  contractSignedCompleted: boolean;
+  downPaymentRequired: 'not_applicable' | 'required'; // 'not_applicable' en fees; 'required' en web/producto
+  downPaymentPercentage?: number;       // ej. 50
+  downPaymentReceived: boolean;
+  fiscalDocsRequiredBeforeBilling: boolean; // Obligatorio antes de facturar, no frena inicio
+  fiscalDocsCompleted: boolean;
+  onboardingCompleted: boolean;
+}
+
+/**
+ * Datos del SOW (Statement of Work) generado desde el alcance aprobado
+ * No expone horas internas por rol al cliente exterior
+ */
+export interface SowDocumentData {
+  title: string;
+  clientName: string;
+  serviceName: string;
+  objective: string;
+  deliverablesScope: string;
+  scheduleNotes: string;
+  exclusions: string;
+  commercialValueFormatted: string;
+  paymentTerms: string;
+  status: 'draft' | 'ready_for_review' | 'sent_for_signature' | 'signed';
+  googleDocUrl?: string;
+  signedDocUrl?: string;
+  lastUpdatedAt?: string;
+}
+
+export type FormalizationGateStatus =
+  | 'aprobado'
+  | 'pendiente_formalizacion'
+  | 'listo_onboarding'
+  | 'activo';
+
+/**
  * Oportunidad de New Business (Comercial & Operativa)
  */
 export interface NewBusinessOpportunity {
@@ -1089,11 +1155,29 @@ export interface NewBusinessOpportunity {
 
   // Hooks de integración externa (desacoplados)
   hubspotDealId?: string | null;  // Hook externo con CRM HubSpot
+  hubspotDealUrl?: string | null; // URL directa al deal en HubSpot
 
-  // Discovery y notas técnicas
+  // Discovery, Brief y Drive
   discoveryNotes?: string;
   briefSummary?: string;
+  briefUrl?: string;              // Link al brief en Google Drive
   targetKickoffDate?: string;
+
+  // Repositorio en Google Drive (estándar 4 carpetas)
+  driveFolderUrl?: string;
+  driveStandardFolders?: DriveFolderReferences;
+
+  // Checklist de Vivian / Alegra
+  administrativeChecklist?: AdministrativeChecklist;
+
+  // Condiciones configurables para iniciar
+  startConditions?: StartConditionsConfig;
+
+  // SOW generado para formalización contractual
+  sowData?: SowDocumentData;
+
+  // Compuerta de maduración formal
+  formalizationStatus?: FormalizationGateStatus;
 
   status: OpportunityStatus;      // 'discovery' | 'quoting' | ... | 'won' | 'lost'
   lossReason?: string;            // Documentación de causa si pasa a 'lost'
@@ -1124,6 +1208,8 @@ export interface OpportunityProjectConversionPayload {
   serviceBase: string;
   startDate: string;
   endDate?: string;
+  initialFormalizationStatus?: FormalizationGateStatus;
+  startConditionsConfig?: StartConditionsConfig;
   // Resolución de cliente:
   clientId?: string;              // Existente o generado
   newClientName?: string;         // Si era prospecto

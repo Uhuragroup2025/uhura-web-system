@@ -161,24 +161,18 @@ Generado por Orbit · Calculadora Comercial UHURA 2026`;
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Top Header Card */}
-      <div className="bg-white p-6 rounded-2xl border border-[#e2e8f0] shadow-2xs space-y-4">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div className="bg-white p-5 rounded-2xl border border-[#e2e8f0] shadow-2xs space-y-3">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#501f92] bg-[#501f92]/10 px-2.5 py-0.5 rounded-full">
-                Calculadora Comercial UHURA 2026 · V.11/05/2026
-              </span>
-              <span className="text-xs text-[#64748b]">
+              <span className="text-xs text-[#64748b] font-medium">
                 {prospectName} · {opportunityTitle}
               </span>
             </div>
-            <h2 className="text-xl font-extrabold text-[#0f172a] mt-1 flex items-center gap-2">
+            <h2 className="text-xl font-extrabold text-[#0f172a] mt-0.5 flex items-center gap-2">
               <Calculator className="w-5 h-5 text-[#501f92]" />
-              <span>Cotizador Financiero & Rentabilidad</span>
+              <span>Cotizador</span>
             </h2>
-            <p className="text-xs text-[#64748b] mt-0.5">
-              Matemática comercial oficial: Horas de Backlog + Gastos Variables + Overhead Asignado + Margen + Tratamiento Tributario de IVA (19% Colombia).
-            </p>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
@@ -223,7 +217,7 @@ Generado por Orbit · Calculadora Comercial UHURA 2026`;
               type="button"
               onClick={handleCopySummary}
               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#cbd5e1] bg-white hover:bg-[#f8fafc] text-xs font-bold text-[#475569] transition-colors cursor-pointer"
-              title="Copiar resumen estructurado para correo o propuesta"
+              title="Copiar resumen para propuesta"
             >
               <Copy className="w-3.5 h-3.5 text-[#501f92]" />
               <span>{copiedNotification ? '¡Copiado!' : 'Copiar Resumen'}</span>
@@ -236,7 +230,7 @@ Generado por Orbit · Calculadora Comercial UHURA 2026`;
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#501f92] hover:bg-[#3d1572] text-xs font-bold text-white transition-colors cursor-pointer shadow-xs"
               >
                 <Layers className="w-3.5 h-3.5" />
-                <span>Ver Backlog de Actividades</span>
+                <span>Ver Alcance</span>
               </button>
             )}
           </div>
@@ -245,7 +239,7 @@ Generado por Orbit · Calculadora Comercial UHURA 2026`;
         {/* Mode Selector Toggle: Proyecto vs Bolsa de Horas */}
         <div className="pt-3 border-t border-[#f1f5f9] flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-[#475569]">Modalidad de Cotización:</span>
+            <span className="text-xs font-bold text-[#475569]">Modalidad:</span>
             <div className="inline-flex rounded-xl bg-[#f1f5f9] p-1 border border-[#e2e8f0]">
               <button
                 type="button"
@@ -259,7 +253,7 @@ Generado por Orbit · Calculadora Comercial UHURA 2026`;
                     : 'text-[#64748b] hover:text-[#0f172a]'
                 }`}
               >
-                Proyecto por Entregables (Semanas + Overhead + Margen)
+                Proyecto por Entregables
               </button>
               <button
                 type="button"
@@ -273,7 +267,7 @@ Generado por Orbit · Calculadora Comercial UHURA 2026`;
                     : 'text-[#64748b] hover:text-[#0f172a]'
                 }`}
               >
-                Bolsa de Horas / Tarifario Directo (Hoja 8)
+                Bolsa de Horas
               </button>
             </div>
           </div>
@@ -281,7 +275,7 @@ Generado por Orbit · Calculadora Comercial UHURA 2026`;
           <div className="text-xs text-[#64748b]">
             {currency !== 'COP' && (
               <span>
-                TRM Referencial {currency}/COP: <strong>${DEFAULT_EXCHANGE_RATES[currency].toLocaleString('es-CO')}</strong>
+                TRM {currency}/COP: <strong>${DEFAULT_EXCHANGE_RATES[currency].toLocaleString('es-CO')}</strong>
               </span>
             )}
           </div>
@@ -311,13 +305,10 @@ Generado por Orbit · Calculadora Comercial UHURA 2026`;
         {/* Driver 1: Semanas del Proyecto */}
         <div className="p-4 bg-white rounded-2xl border border-[#e2e8f0] shadow-xs space-y-2">
           <div className="flex items-center justify-between text-xs text-[#64748b]">
-            <span className="font-bold uppercase tracking-wider text-[10px]">Paso 1: Duración</span>
+            <span className="font-bold text-xs text-[#0f172a]">Duración</span>
             <Calendar className="w-4 h-4 text-[#501f92]" />
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-[#0f172a] block">
-              Tiempo Estimado (Semanas)
-            </label>
             <div className="flex items-center gap-2">
               <input
                 type="number"
@@ -332,28 +323,26 @@ Generado por Orbit · Calculadora Comercial UHURA 2026`;
                 }}
                 className="w-full p-2 rounded-xl bg-[#f8fafc] border border-[#cbd5e1] text-[#0f172a] font-black text-lg focus:ring-2 focus:ring-[#501f92]"
               />
-              <span className="text-xs font-bold text-[#64748b]">sem</span>
+              <span className="text-xs font-bold text-[#64748b]">semanas</span>
             </div>
           </div>
           <p className="text-[11px] text-[#94a3b8]">
-            Multiplica la tarifa semanal de overhead.
+            Tiempo total estimado
           </p>
         </div>
 
         {/* Driver 2: % Ocupación Overhead */}
         <div className="p-4 bg-white rounded-2xl border border-[#e2e8f0] shadow-xs space-y-2">
           <div className="flex items-center justify-between text-xs text-[#64748b]">
-            <span className="font-bold uppercase tracking-wider text-[10px]">Paso 2: Overhead</span>
+            <span className="font-bold text-xs text-[#0f172a]">Overhead</span>
             <TrendingUp className="w-4 h-4 text-[#501f92]" />
           </div>
           <div className="space-y-1">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-[#0f172a]">
-                % Ocupación Overhead
-              </label>
+              <span className="text-xs text-[#64748b]">Ocupación</span>
               <span className="text-xs font-black text-[#501f92]">{occupancyPct}%</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="pt-1">
               <input
                 type="range"
                 min="1"
@@ -367,41 +356,27 @@ Generado por Orbit · Calculadora Comercial UHURA 2026`;
                 }}
                 className="w-full accent-[#501f92] cursor-pointer"
               />
-              <input
-                type="number"
-                min="1"
-                max="100"
-                value={occupancyPct}
-                onChange={(e) => {
-                  const val = Math.max(0, parseFloat(e.target.value) || 0);
-                  setOccupancyPct(val);
-                  handleSaveConfig({ overheadOccupancyPct: val });
-                }}
-                className="w-16 p-1 rounded-lg bg-[#f8fafc] border border-[#cbd5e1] text-xs font-bold text-center"
-              />
             </div>
           </div>
           <p className="text-[11px] text-[#94a3b8]">
-            Carga asignada: <strong>{formatFinancialCurrency(financialSummary.overheadCostCOP)}</strong>
+            {formatFinancialCurrency(financialSummary.overheadCostCOP)}
           </p>
         </div>
 
         {/* Driver 3: Margen Objetivo */}
         <div className="p-4 bg-white rounded-2xl border border-[#e2e8f0] shadow-xs space-y-2">
           <div className="flex items-center justify-between text-xs text-[#64748b]">
-            <span className="font-bold uppercase tracking-wider text-[10px]">Paso 3: Rentabilidad</span>
+            <span className="font-bold text-xs text-[#0f172a]">Margen</span>
             <Percent className="w-4 h-4 text-[#501f92]" />
           </div>
           <div className="space-y-1">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-[#0f172a]">
-                Margen Deseado
-              </label>
+              <span className="text-xs text-[#64748b]">Utilidad</span>
               <span className={`text-xs font-black ${targetMargin < 35 ? 'text-[#b45309]' : 'text-[#501f92]'}`}>
                 {targetMargin}%
               </span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="pt-1">
               <input
                 type="range"
                 min="15"
@@ -415,42 +390,27 @@ Generado por Orbit · Calculadora Comercial UHURA 2026`;
                 }}
                 className="w-full accent-[#501f92] cursor-pointer"
               />
-              <input
-                type="number"
-                min="5"
-                max="90"
-                value={targetMargin}
-                onChange={(e) => {
-                  const val = Math.max(5, parseFloat(e.target.value) || 5);
-                  setTargetMargin(val);
-                  handleSaveConfig({ targetMarginPct: val });
-                }}
-                className="w-16 p-1 rounded-lg bg-[#f8fafc] border border-[#cbd5e1] text-xs font-bold text-center"
-              />
             </div>
           </div>
           <p className="text-[11px] text-[#94a3b8]">
-            Mínimo institucional sugerido: <strong>35%</strong>
+            Sugerido: <strong>35%</strong>
           </p>
         </div>
 
         {/* Driver 4: Total Horas Rollup */}
         <div className="p-4 bg-white rounded-2xl border border-[#e2e8f0] shadow-xs space-y-2">
           <div className="flex items-center justify-between text-xs text-[#64748b]">
-            <span className="font-bold uppercase tracking-wider text-[10px]">Backlog</span>
+            <span className="font-bold text-xs text-[#0f172a]">Horas</span>
             <Layers className="w-4 h-4 text-[#501f92]" />
           </div>
           <div className="space-y-1">
-            <span className="text-xs font-semibold text-[#64748b] block">
-              Esfuerzo Total Estructurado
-            </span>
             <span className="text-2xl font-black text-[#501f92] block">
               {financialSummary.totalHours}h
             </span>
           </div>
           <div className="flex items-center justify-between text-[11px] text-[#475569] pt-1">
-            <span>{resourceLines.length} roles requeridos</span>
-            <span className="font-bold text-[#0f172a]">{quote.deliverables.length} frentes</span>
+            <span>{resourceLines.length} roles</span>
+            <span className="font-bold text-[#0f172a]">{quote.deliverables.length} servicios</span>
           </div>
         </div>
       </div>
@@ -463,19 +423,15 @@ Generado por Orbit · Calculadora Comercial UHURA 2026`;
           <div className="bg-white p-5 rounded-2xl border border-[#e2e8f0] shadow-xs space-y-3">
             <div className="flex items-center justify-between">
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#501f92]">
-                  Tratamiento Tributario (Colombia)
-                </span>
                 <h3 className="text-sm font-bold text-[#0f172a]">
-                  Clasificación de Frentes de Trabajo (Exento vs Gravado)
+                  Tratamiento de IVA por Servicio
                 </h3>
               </div>
               <span className="text-xs text-[#64748b]">IVA 19%</span>
             </div>
 
-            <p className="text-xs text-[#64748b] leading-relaxed">
-              En Colombia, el desarrollo de software y plataformas web está exento de IVA (Art. 476 E.T.). 
-              Puedes marcar cada frente según su naturaleza:
+            <p className="text-xs text-[#64748b]">
+              El desarrollo web y de software está exento en Colombia. Configura el estado para cada servicio:
             </p>
 
             <div className="space-y-2 pt-1">
@@ -647,11 +603,8 @@ Generado por Orbit · Calculadora Comercial UHURA 2026`;
             {/* Header */}
             <div className="pb-3 border-b border-[#e2e8f0] flex items-center justify-between">
               <div>
-                <span className="text-[10px] font-black uppercase tracking-wider text-[#501f92] block">
-                  Hoja 1 · Resumen Oficial
-                </span>
                 <h3 className="text-base font-extrabold text-[#0f172a]">
-                  Resumen Costos / Rentabilidad
+                  Resumen Financiero
                 </h3>
               </div>
               <span className="p-2 rounded-xl bg-[#501f92]/10 text-[#501f92]">
@@ -660,45 +613,35 @@ Generado por Orbit · Calculadora Comercial UHURA 2026`;
             </div>
 
             {/* Breakdown Lines (Excel Rows) */}
-            <div className="space-y-2.5 text-xs">
+            <div className="space-y-2 text-xs">
               <div className="flex items-center justify-between text-[#475569]">
-                <span>Costo Exento IVA:</span>
+                <span>Costo Exento:</span>
                 <strong className="text-[#0f172a]">
                   {formatFinancialCurrency(financialSummary.variableCostExemptCOP)}
                 </strong>
               </div>
 
               <div className="flex items-center justify-between text-[#475569]">
-                <span>Costo Gravado IVA:</span>
+                <span>Costo Gravado:</span>
                 <strong className="text-[#0f172a]">
                   {formatFinancialCurrency(financialSummary.variableCostTaxedCOP)}
                 </strong>
               </div>
 
               <div className="flex items-center justify-between font-bold text-[#0f172a] pt-1 border-t border-[#f1f5f9]">
-                <span>Costo Variable del Proyecto:</span>
+                <span>Costo Variable:</span>
                 <span className="text-[#501f92]">
                   {formatFinancialCurrency(financialSummary.totalVariableCostCOP)}
                 </span>
               </div>
 
               <div className="flex items-center justify-between text-[#475569]">
-                <span>Tiempo Estimado Proyecto:</span>
-                <strong className="text-[#0f172a]">{weeks} semanas</strong>
-              </div>
-
-              <div className="flex items-center justify-between text-[#475569]">
-                <span>Ocupación Equipo Overhead:</span>
-                <strong className="text-[#0f172a]">{occupancyPct}%</strong>
-              </div>
-
-              <div className="flex items-center justify-between font-bold text-[#0f172a] pt-1 border-t border-[#f1f5f9]">
-                <span>Costo Overhead / Load del Proyecto:</span>
+                <span>Overhead ({occupancyPct}%):</span>
                 <span>{formatFinancialCurrency(financialSummary.overheadCostCOP)}</span>
               </div>
 
               <div className="flex items-center justify-between font-black text-sm text-[#0f172a] p-2.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
-                <span>Total Costos del Proyecto:</span>
+                <span>Costo Total:</span>
                 <span>{formatFinancialCurrency(financialSummary.totalProjectCostCOP)}</span>
               </div>
 
@@ -712,30 +655,18 @@ Generado por Orbit · Calculadora Comercial UHURA 2026`;
 
             {/* Subtotal Before Tax */}
             <div className="p-3 rounded-xl bg-[#501f92]/5 border border-[#501f92]/20 space-y-1.5">
-              <div className="flex items-center justify-between text-xs text-[#501f92] font-bold">
-                <span>SubTotal Costos Variables:</span>
-                <span>{formatFinancialCurrency(financialSummary.totalVariableCostCOP)}</span>
-              </div>
-              <div className="flex items-center justify-between text-xs text-[#501f92] font-bold">
-                <span>SubTotal Overhead + Margen:</span>
-                <span>
-                  {formatFinancialCurrency(
-                    financialSummary.overheadCostCOP + financialSummary.marginAmountCOP
-                  )}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-sm font-extrabold text-[#0f172a] pt-1.5 border-t border-[#501f92]/20">
-                <span>Precio a Cotizar antes de IVA:</span>
+              <div className="flex items-center justify-between text-sm font-extrabold text-[#0f172a]">
+                <span>Subtotal antes de IVA:</span>
                 <span>{formatFinancialCurrency(financialSummary.subtotalBeforeTaxCOP)}</span>
               </div>
             </div>
 
             {/* Tax Treatment Lines */}
-            <div className="p-3 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-2 text-xs">
+            <div className="p-3 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-1.5 text-xs">
               <div className="flex items-center justify-between text-[#475569]">
                 <span className="flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-[#059669]" />
-                  <span>Valor Total Exento IVA:</span>
+                  <span>Base Exenta:</span>
                 </span>
                 <strong className="text-[#0f172a]">
                   {formatFinancialCurrency(financialSummary.subtotalExemptCOP)}
@@ -745,7 +676,7 @@ Generado por Orbit · Calculadora Comercial UHURA 2026`;
               <div className="flex items-center justify-between text-[#475569]">
                 <span className="flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-[#dc2626]" />
-                  <span>Valor Total Gravado IVA:</span>
+                  <span>Base Gravada:</span>
                 </span>
                 <strong className="text-[#0f172a]">
                   {formatFinancialCurrency(financialSummary.subtotalTaxedCOP)}
@@ -753,7 +684,7 @@ Generado por Orbit · Calculadora Comercial UHURA 2026`;
               </div>
 
               <div className="flex items-center justify-between font-bold text-[#b45309] pt-1 border-t border-[#e2e8f0]">
-                <span>IVA 19% (sobre base gravada):</span>
+                <span>IVA 19%:</span>
                 <span>{formatFinancialCurrency(financialSummary.ivaTaxAmountCOP)}</span>
               </div>
             </div>
@@ -761,7 +692,7 @@ Generado por Orbit · Calculadora Comercial UHURA 2026`;
             {/* BIG FINAL TOTAL PRICE */}
             <div className="p-4 rounded-2xl bg-linear-to-br from-[#501f92] to-[#3b126f] text-white shadow-lg space-y-1">
               <span className="text-[10px] uppercase tracking-wider font-bold text-white/80 block">
-                Valor Total Proyecto más IVA
+                Total con IVA
               </span>
               <div className="text-2xl font-black tracking-tight">
                 {formatFinancialCurrency(financialSummary.finalPriceWithTaxCOP)} COP
@@ -784,33 +715,33 @@ Generado por Orbit · Calculadora Comercial UHURA 2026`;
           <div className="bg-white rounded-2xl border border-[#e2e8f0] shadow-xs p-4 space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="text-xs font-bold text-[#0f172a] uppercase tracking-wider">
-                Bandas de Descuento & Negociación
+                Bandas Comerciales
               </h4>
-              <span className="text-[10px] text-[#64748b]">Simulación de piso y techo</span>
+              <span className="text-[10px] text-[#64748b]">Simulación</span>
             </div>
 
             <div className="space-y-2 text-xs">
               <div className="flex items-center justify-between text-[#475569]">
-                <span>Valor Máximo Proyecto (Mg. 50%):</span>
+                <span>Techo (Margen 50%):</span>
                 <strong className="text-[#0f172a]">
                   {formatFinancialCurrency(financialSummary.bands.maxPriceWithTaxCOP)}
                 </strong>
               </div>
 
               <div className="flex items-center justify-between text-[#501f92] font-bold">
-                <span>Valor Objetivo (Mg. {targetMargin}%):</span>
+                <span>Objetivo (Margen {targetMargin}%):</span>
                 <span>{formatFinancialCurrency(financialSummary.finalPriceWithTaxCOP)}</span>
               </div>
 
               <div className="flex items-center justify-between text-[#475569]">
-                <span>Valor Mínimo Proyecto (Mg. 35%):</span>
+                <span>Piso (Margen 35%):</span>
                 <strong className="text-[#0f172a]">
                   {formatFinancialCurrency(financialSummary.bands.minPriceWithTaxCOP)}
                 </strong>
               </div>
 
               <div className="p-2 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] flex items-center justify-between text-[11px] font-semibold">
-                <span className="text-[#64748b]">Descuento comercial vs. Techo:</span>
+                <span className="text-[#64748b]">Descuento vs. Techo:</span>
                 <span className="text-[#dc2626]">
                   -{formatFinancialCurrency(financialSummary.bands.nominalDiscountCOP)} (
                   {financialSummary.bands.percentDiscount}%)
@@ -835,20 +766,21 @@ Generado por Orbit · Calculadora Comercial UHURA 2026`;
 
             {showOverheadConfig && (
               <div className="pt-3 mt-2 border-t border-[#f1f5f9] space-y-2 animate-in fade-in">
-                <label className="text-[11px] text-[#475569] block">
+                <label className="text-[11px] font-bold text-[#1e293b] block">
                   Tarifa Semanal de Gastos Fijos UHURA (COP):
                 </label>
                 <div className="flex items-center gap-2">
                   <input
                     type="number"
                     step="100000"
+                    placeholder="21060426"
                     value={weeklyOverhead}
                     onChange={(e) => {
                       const val = parseFloat(e.target.value) || DEFAULT_WEEKLY_FIXED_OVERHEAD_COP;
                       setWeeklyOverhead(val);
                       handleSaveConfig({ weeklyFixedOverheadCOP: val });
                     }}
-                    className="w-full p-1.5 rounded-lg bg-[#f8fafc] border border-[#cbd5e1] font-bold text-xs"
+                    className="w-full p-2 rounded-xl bg-white border-2 border-[#cbd5e1] text-[#0f172a] placeholder:text-[#64748b] font-bold text-xs shadow-2xs focus:border-[#501f92] focus:ring-2 focus:ring-[#501f92]/20"
                   />
                   <button
                     type="button"
@@ -856,11 +788,15 @@ Generado por Orbit · Calculadora Comercial UHURA 2026`;
                       setWeeklyOverhead(DEFAULT_WEEKLY_FIXED_OVERHEAD_COP);
                       handleSaveConfig({ weeklyFixedOverheadCOP: DEFAULT_WEEKLY_FIXED_OVERHEAD_COP });
                     }}
-                    className="p-1.5 rounded-lg border border-[#cbd5e1] text-[#64748b] hover:text-[#0f172a]"
+                    className="p-2 rounded-xl border border-[#cbd5e1] bg-white text-[#475569] hover:text-[#0f172a] hover:bg-[#f1f5f9] transition-colors cursor-pointer shadow-2xs"
                     title="Restablecer al valor por defecto ($21.060.426 COP)"
                   >
-                    <RotateCcw className="w-3.5 h-3.5" />
+                    <RotateCcw className="w-4 h-4" />
                   </button>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-[#64748b] pt-0.5">
+                  <span>Valor en uso:</span>
+                  <strong className="text-[#0f172a]">{formatFinancialCurrency(weeklyOverhead)} / semana</strong>
                 </div>
                 <p className="text-[10px] text-[#94a3b8]">
                   Calculado del Excel oficial: $18.533.175 COP para 8 sem × 11% ocupación.

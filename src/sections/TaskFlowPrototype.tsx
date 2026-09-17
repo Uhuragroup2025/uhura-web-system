@@ -12,7 +12,8 @@ import {
   ProjectType,
   TaskRework,
   ProductBacklogTemplate,
-  QuoteProposal
+  QuoteProposal,
+  NewBusinessOpportunity
 } from '../components/taskflow/types';
 import { INITIAL_PRODUCT_BACKLOG_TEMPLATES } from '../components/taskflow/templates/templateData';
 import { TemplateLibraryView } from '../components/taskflow/templates/TemplateLibraryView';
@@ -58,7 +59,6 @@ import { MobileBottomNav } from '../components/taskflow/MobileBottomNav';
 import { MobileTimerMiniPlayer } from '../components/taskflow/MobileTimerMiniPlayer';
 import { NewBusinessView } from '../components/taskflow/newbusiness/NewBusinessView';
 import { INITIAL_NEW_BUSINESS_OPPORTUNITIES } from '../components/taskflow/newbusiness/mockOpportunities';
-import { NewBusinessOpportunity } from '../components/taskflow/types';
 import {
   Sparkles,
   Clock,
@@ -1497,6 +1497,186 @@ export const TaskFlowPrototype: React.FC = () => {
     setClients((prev) => [newClient, ...prev]);
   };
 
+  // Convert New Business Opportunity to Client & Active Project
+  const handleConvertOpportunityToProject = (payload: {
+    opportunity: NewBusinessOpportunity;
+    selectedQuote: QuoteProposal;
+    projectName: string;
+    projectType: ProjectType;
+    leadName: string;
+    startDate: string;
+    endDate?: string;
+  }) => {
+    const opp = payload.opportunity;
+    const quote = payload.selectedQuote;
+
+    // 1. Resolver o registrar el Cliente en Orbit
+    let resolvedClientId = opp.clientId;
+    let resolvedClientName = opp.prospectAccountName || 'Cliente';
+
+    if (!resolvedClientId) {
+      resolvedClientId = `cli-${Date.now()}`;
+      const newClient: ClientProfile = {
+        id: resolvedClientId,
+        name: resolvedClientName,
+        status: 'active',
+        type: payload.projectType === 'fee_monthly' ? 'Fee mensual' : 'Proyecto único',
+        taxEntities: [],
+        contacts: opp.contactName
+          ? [
+              {
+                id: `con-${Date.now()}`,
+                name: opp.contactName,
+                email: opp.contactEmail || '',
+                phone: opp.contactPhone,
+                contactType: 'comercial',
+                isPrimary: true
+              }
+            ]
+          : [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      setClients((prev) => [newClient, ...prev]);
+    } else {
+      const existing = clients.find((c) => c.id === resolvedClientId);
+      if (existing) {
+        resolvedClientName = existing.name;
+        setClients((prev) =>
+          prev.map((c) =>
+            c.id === resolvedClientId
+              ? {
+                  ...c,
+                  projectsCount: (c.projectsCount || 0) + 1,
+                  activeProjectsCount: (c.activeProjectsCount || 0) + 1
+                }
+              : c
+          )
+        );
+      }
+    }
+
+    // 2. Crear Proyecto en projectsList con sus entregables
+    const newProjectId = `prj-${Date.now()}`;
+    const codePrefix = payload.projectName.slice(0, 3).toUpperCase().replace(/[^A-Z]/g, 'PRJ') || 'PRJ';
+    const soldCOP = quote.financialSummary?.finalPriceWithTaxCOP || quote.totalQuotedValueCOP || 0;
+
+    const newProjectDeliverables = quote.deliverables.map((qd, idx) => ({
+      id: `del-${newProjectId}-${idx + 1}`,
+      projectId: newProjectId,
+      name: qd.name,
+      description: qd.description,
+      order: qd.order || idx + 1,
+      status: 'pending' as const,
+      roleBudgets: qd.roleBudgets.map((rb) => ({
+        id: `rb-${newProjectId}-${rb.id}`,
+        roleId: rb.roleId,
+        roleName: rb.roleName,
+        quotedHours: rb.quotedHours
+      })),
+      totalQuotedHours: qd.totalHoursRollup || 0,
+      totalExecutedHours: 0,
+      progressPercentage: 0
+    }));
+
+    const newPrj: ProjectSummaryItem = {
+      id: newProjectId,
+      code: `${codePrefix}-${Math.floor(10 + Math.random() * 90)}`,
+      name: payload.projectName,
+      clientId: resolvedClientId,
+      clientName: resolvedClientName,
+      taxEntityId: null,
+      brand: resolvedClientName,
+      leadName: payload.leadName || opp.leadUserName || 'Product Lead',
+      leadAvatarBg: 'bg-[#501f92]',
+      leadRole: payload.leadName || opp.leadUserName || 'Product Lead',
+      projectType: payload.projectType,
+      serviceBase: 'Desarrollo & Estrategia',
+      budgetedHours: quote.totalHoursRollup || 0,
+      soldHours: quote.totalHoursRollup || 0,
+      soldValueCOP: soldCOP,
+      soldCurrency: quote.currency || 'COP',
+      startDate: payload.startDate,
+      endDate: payload.endDate,
+      brief: opp.briefSummary || opp.discoveryNotes,
+      deliverables: newProjectDeliverables,
+      coreTeam: [
+        {
+          id: 'u-lead',
+          name: payload.leadName || opp.leadUserName || 'Product Lead',
+          role: payload.leadName || opp.leadUserName || 'Product Lead',
+          avatarBg: 'bg-[#501f92]',
+          initials: (payload.leadName || 'PL').slice(0, 2).toUpperCase(),
+          isLead: true,
+          weeklyAllocatedHours: 4
+        }
+      ],
+      status: 'Activo',
+      healthStatus: 'verde',
+      healthNote: 'Proyecto recién ganado y aprobado en New Business'
+    };
+
+    setProjectsList((prev) => [newPrj, ...prev]);
+
+    // 3. Crear tareas operativas en `tasks` a partir de las actividades del backlog
+    const newTasksToCreate: TaskItem[] = [];
+    quote.deliverables.forEach((qd, dIdx) => {
+      const parentDelId = `del-${newProjectId}-${dIdx + 1}`;
+      qd.backlogItems.forEach((bItem, bIdx) => {
+        newTasksToCreate.push({
+          id: `task-${newProjectId}-${dIdx + 1}-${bIdx + 1}`,
+          title: bItem.title,
+          status: 'todo',
+          priority: 'Medium',
+          projectId: newProjectId,
+          projectName: payload.projectName,
+          clientName: resolvedClientName,
+          deliverableId: parentDelId,
+          frente: qd.name,
+          board: payload.projectName,
+          department: 'Operaciones',
+          date: new Date().toISOString().slice(0, 10),
+          dueDate: payload.endDate || new Date().toISOString().slice(0, 10),
+          dueStatus: 'normal',
+          dueText: 'Planificado en Scoping',
+          budgetedHours: bItem.estimatedHours || 0,
+          consumedSeconds: 0,
+          completed: false,
+          budgetedRole: bItem.roleName,
+          assignee: {
+            id: 'unassigned',
+            name: `Pendiente (${bItem.roleName})`,
+            role: bItem.roleName,
+            avatarBg: 'bg-[#94a3b8]',
+            initials: bItem.roleName.slice(0, 2).toUpperCase()
+          }
+        });
+      });
+    });
+
+    if (newTasksToCreate.length > 0) {
+      setTasks((prev) => [...newTasksToCreate, ...prev]);
+    }
+
+    // 4. Actualizar estado de la oportunidad a ganada y vinculada al nuevo proyecto
+    const updatedOpp: NewBusinessOpportunity = {
+      ...opp,
+      status: 'won',
+      convertedProjectId: newProjectId,
+      convertedAt: new Date().toISOString(),
+      clientId: resolvedClientId,
+      quotes: opp.quotes.map((q) =>
+        q.id === quote.id
+          ? { ...q, status: 'approved', convertedToProjectId: newProjectId }
+          : q
+      )
+    };
+
+    setOpportunities((prev) =>
+      prev.map((o) => (o.id === opp.id ? updatedOpp : o))
+    );
+  };
+
   // Add task
   const handleAddTask = (newTask: TaskItem) => {
     setTasks((prev) => [newTask, ...prev]);
@@ -1933,6 +2113,7 @@ export const TaskFlowPrototype: React.FC = () => {
                       setOpportunities((prev) => [newOpp, ...prev]);
                     }}
                     onNavigateToView={handleSelectView}
+                    onConvertOpportunityToProject={handleConvertOpportunityToProject}
                   />
                 )}
 

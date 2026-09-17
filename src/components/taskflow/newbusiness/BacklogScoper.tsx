@@ -24,7 +24,8 @@ import {
   ArrowRight,
   TrendingUp,
   AlertTriangle,
-  FolderPlus
+  FolderPlus,
+  Calculator
 } from 'lucide-react';
 
 interface BacklogScoperProps {
@@ -36,6 +37,7 @@ interface BacklogScoperProps {
   templates?: ProductBacklogTemplate[];
   opportunityTitle?: string;
   prospectName?: string;
+  onGoToCalculator?: () => void;
 }
 
 // Role badge styling configuration
@@ -64,7 +66,8 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
   onCreateNewQuoteVersion,
   templates = [],
   opportunityTitle,
-  prospectName
+  prospectName,
+  onGoToCalculator
 }) => {
   const [collapsedDeliverables, setCollapsedDeliverables] = useState<Record<string, boolean>>({});
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -128,22 +131,12 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
     const newDeliverable: QuoteDeliverable = {
       id: newDelId,
       quoteId: quote.id,
-      name: `Nuevo Frente ${quote.deliverables.length + 1}`,
+      name: `Nuevo Servicio ${quote.deliverables.length + 1}`,
       description: '',
       order: quote.deliverables.length + 1,
       roleBudgets: [],
-      backlogItems: [
-        {
-          id: `act-${Date.now()}-1`,
-          quoteDeliverableId: newDelId,
-          title: 'Definición y Alcance Inicial',
-          roleId: 'Product Lead',
-          roleName: 'Product Lead',
-          estimatedHours: 4,
-          order: 1
-        }
-      ],
-      totalHoursRollup: 4
+      backlogItems: [],
+      totalHoursRollup: 0
     };
 
     const updated = recomputeQuoteRollups([...quote.deliverables, newDeliverable]);
@@ -161,7 +154,6 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
   };
 
   const handleRemoveDeliverable = (delId: string) => {
-    if (quote.deliverables.length <= 1) return;
     const updated = quote.deliverables.filter((d) => d.id !== delId);
     onUpdateQuote(recomputeQuoteRollups(updated));
   };
@@ -358,18 +350,29 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
               className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-[#501f92] bg-[#501f92]/10 hover:bg-[#501f92]/15 rounded-xl transition-colors cursor-pointer"
             >
               <BookOpen className="w-4 h-4" />
-              <span>Importar Plantilla Maestra</span>
+              <span>Importar Plantilla</span>
             </button>
           )}
 
           <button
             type="button"
             onClick={handleAddDeliverable}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-[#501f92] hover:bg-[#3d1572] rounded-xl transition-colors cursor-pointer shadow-xs"
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-[#475569] bg-white hover:bg-[#f8fafc] border border-[#cbd5e1] rounded-xl transition-colors cursor-pointer"
           >
-            <Plus className="w-4 h-4" />
-            <span>Agregar Frente de Trabajo</span>
+            <Plus className="w-4 h-4 text-[#501f92]" />
+            <span>Agregar Servicio</span>
           </button>
+
+          {onGoToCalculator && (
+            <button
+              type="button"
+              onClick={onGoToCalculator}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-[#501f92] hover:bg-[#3d1572] rounded-xl transition-colors cursor-pointer shadow-xs"
+            >
+              <Calculator className="w-4 h-4" />
+              <span>Cotizador</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -377,88 +380,119 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Column: Entregables y Actividades (8 cols) */}
         <div className="lg:col-span-8 space-y-4">
-          {quote.deliverables.map((del, delIdx) => {
-            const isCollapsed = !!collapsedDeliverables[del.id];
-            const delTotalHours = del.backlogItems.reduce(
-              (sum, item) => sum + (Number(item.estimatedHours) || 0),
-              0
-            );
+          {quote.deliverables.length === 0 ? (
+            <div className="p-8 text-center bg-white rounded-2xl border border-dashed border-[#cbd5e1] space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-[#501f92]/10 flex items-center justify-center mx-auto text-[#501f92]">
+                <Layers className="w-6 h-6" />
+              </div>
+              <h3 className="text-sm font-bold text-[#0f172a]">
+                Sin servicios definidos todavía
+              </h3>
+              <p className="text-xs text-[#64748b] max-w-md mx-auto">
+                Define el alcance agregando servicios a la medida o importando la estructura desde una plantilla institucional.
+              </p>
+              <div className="flex items-center justify-center gap-2 pt-2">
+                {templates.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setIsImportModalOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-[#501f92] bg-[#501f92]/10 hover:bg-[#501f92]/15 rounded-xl transition-colors cursor-pointer"
+                  >
+                    <BookOpen className="w-4 h-4" />
+                    <span>Importar Plantilla</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleAddDeliverable}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-[#501f92] hover:bg-[#3d1572] rounded-xl transition-colors cursor-pointer shadow-xs"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Crear Servicio a la Medida</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            quote.deliverables.map((del, delIdx) => {
+              const isCollapsed = !!collapsedDeliverables[del.id];
+              const delTotalHours = del.backlogItems.reduce(
+                (sum, item) => sum + (Number(item.estimatedHours) || 0),
+                0
+              );
 
-            return (
-              <div
-                key={del.id}
-                className="bg-white rounded-2xl border border-[#e2e8f0] shadow-xs overflow-hidden transition-all"
-              >
-                {/* Deliverable Header */}
-                <div className="p-4 bg-[#f8fafc] border-b border-[#e2e8f0] flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                    <button
-                      type="button"
-                      onClick={() => toggleDeliverableCollapse(del.id)}
-                      className="text-[#64748b] hover:text-[#0f172a] p-1 rounded transition-colors cursor-pointer"
-                    >
-                      {isCollapsed ? (
-                        <ChevronRight className="w-4 h-4" />
-                      ) : (
-                        <ChevronDown className="w-4 h-4" />
-                      )}
-                    </button>
-                    <span className="w-6 h-6 rounded-full bg-[#501f92]/10 text-[#501f92] text-xs font-bold flex items-center justify-center shrink-0">
-                      {delIdx + 1}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <input
-                        type="text"
-                        value={del.name}
-                        onChange={(e) => handleUpdateDeliverableName(del.id, e.target.value)}
-                        placeholder="Nombre del Frente (ej. Desarrollo Web, Diseño UI, Carga de Contenidos...)"
-                        className="font-bold text-sm text-[#0f172a] bg-transparent border-b border-transparent hover:border-[#cbd5e1] focus:border-[#501f92] outline-hidden px-1 py-0.5 w-full transition-colors"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    <div className="px-2.5 py-1 rounded-lg bg-white border border-[#cbd5e1] text-right">
-                      <span className="text-[10px] text-[#64748b] font-semibold uppercase mr-1">
-                        Subtotal:
+              return (
+                <div
+                  key={del.id}
+                  className="bg-white rounded-2xl border border-[#e2e8f0] shadow-xs overflow-hidden transition-all"
+                >
+                  {/* Deliverable Header */}
+                  <div className="p-4 bg-[#f8fafc] border-b border-[#e2e8f0] flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                      <button
+                        type="button"
+                        onClick={() => toggleDeliverableCollapse(del.id)}
+                        className="text-[#64748b] hover:text-[#0f172a] p-1 rounded transition-colors cursor-pointer"
+                      >
+                        {isCollapsed ? (
+                          <ChevronRight className="w-4 h-4" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4" />
+                        )}
+                      </button>
+                      <span className="w-6 h-6 rounded-full bg-[#501f92]/10 text-[#501f92] text-xs font-bold flex items-center justify-center shrink-0">
+                        {delIdx + 1}
                       </span>
-                      <span className="text-xs font-black text-[#501f92]">
-                        {delTotalHours}h
-                      </span>
+                      <div className="flex-1 min-w-0">
+                        <input
+                          type="text"
+                          value={del.name}
+                          onChange={(e) => handleUpdateDeliverableName(del.id, e.target.value)}
+                          placeholder="Nombre del Servicio (ej. Desarrollo Web, Diseño UI, Redes Sociales...)"
+                          className="font-bold text-sm text-[#0f172a] bg-transparent border-b border-transparent hover:border-[#cbd5e1] focus:border-[#501f92] outline-hidden px-1 py-0.5 w-full transition-colors"
+                        />
+                      </div>
                     </div>
 
-                    {quote.deliverables.length > 1 && (
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className="px-2.5 py-1 rounded-lg bg-white border border-[#cbd5e1] text-right">
+                        <span className="text-[10px] text-[#64748b] font-semibold uppercase mr-1">
+                          Subtotal:
+                        </span>
+                        <span className="text-xs font-black text-[#501f92]">
+                          {delTotalHours}h
+                        </span>
+                      </div>
+
                       <button
                         type="button"
                         onClick={() => handleRemoveDeliverable(del.id)}
                         className="p-1.5 text-[#94a3b8] hover:text-[#ef4444] rounded-lg hover:bg-white transition-colors cursor-pointer"
-                        title="Eliminar este frente completo"
+                        title="Eliminar este servicio"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
-                    )}
+                    </div>
                   </div>
-                </div>
 
-                {/* Deliverable Body */}
-                {!isCollapsed && (
-                  <div className="p-4 space-y-3">
-                    {/* Optional Deliverable Description */}
-                    <input
-                      type="text"
-                      value={del.description || ''}
-                      onChange={(e) => handleUpdateDeliverableDesc(del.id, e.target.value)}
-                      placeholder="Alcance o especificaciones generales de este frente (opcional)..."
-                      className="text-xs text-[#64748b] bg-[#f8fafc]/60 border border-transparent hover:border-[#e2e8f0] focus:border-[#501f92] rounded-lg px-2.5 py-1.5 w-full outline-hidden transition-colors"
-                    />
+                  {/* Deliverable Body */}
+                  {!isCollapsed && (
+                    <div className="p-4 space-y-3">
+                      {/* Optional Deliverable Description */}
+                      <input
+                        type="text"
+                        value={del.description || ''}
+                        onChange={(e) => handleUpdateDeliverableDesc(del.id, e.target.value)}
+                        placeholder="Alcance o especificaciones generales de este servicio (opcional)..."
+                        className="text-xs text-[#64748b] bg-[#f8fafc]/60 border border-transparent hover:border-[#e2e8f0] focus:border-[#501f92] rounded-lg px-2.5 py-1.5 w-full outline-hidden transition-colors"
+                      />
 
-                    {/* Activities List (Table-like cards) */}
-                    <div className="space-y-2 pt-1">
-                      {del.backlogItems.length === 0 ? (
-                        <div className="p-4 rounded-xl bg-[#f8fafc] border border-dashed border-[#cbd5e1] text-center text-xs text-[#64748b]">
-                          No hay actividades en este frente. Haz clic en <strong>"+ Agregar Actividad"</strong> abajo.
-                        </div>
-                      ) : (
+                      {/* Activities List (Table-like cards) */}
+                      <div className="space-y-2 pt-1">
+                        {del.backlogItems.length === 0 ? (
+                          <div className="p-4 rounded-xl bg-[#f8fafc] border border-dashed border-[#cbd5e1] text-center text-xs text-[#64748b]">
+                            No hay actividades en este servicio. Haz clic en <strong>"+ Agregar Actividad"</strong> abajo.
+                          </div>
+                        ) : (
                         del.backlogItems.map((act, actIdx) => {
                           const badgeStyle =
                             ROLE_BADGE_STYLES[act.roleName] || {
@@ -574,7 +608,7 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
                 )}
               </div>
             );
-          })}
+          }))}
 
           {/* Bottom Add Deliverable CTA */}
           <button
@@ -583,7 +617,7 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
             className="w-full py-3.5 rounded-2xl border-2 border-dashed border-[#cbd5e1] hover:border-[#501f92] bg-white hover:bg-[#501f92]/5 text-xs font-bold text-[#501f92] flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs"
           >
             <Plus className="w-4 h-4" />
-            <span>+ Agregar Otro Frente / Entregable</span>
+            <span>+ Agregar Servicio</span>
           </button>
         </div>
 
@@ -716,8 +750,20 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
             </p>
             <div className="pt-1 flex items-center gap-1.5 text-[10px] text-[#059669] font-bold">
               <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Rollup dinámico sincronizado para Fase 2 (Cotizador)</span>
+              <span>Rollup dinámico sincronizado con Calculadora Financiera</span>
             </div>
+
+            {onGoToCalculator && (
+              <button
+                type="button"
+                onClick={onGoToCalculator}
+                className="w-full mt-2 py-2 px-3 rounded-xl bg-white border border-[#501f92]/30 text-xs font-bold text-[#501f92] hover:bg-[#501f92]/5 transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+              >
+                <Calculator className="w-3.5 h-3.5" />
+                <span>Abrir Cotizador Financiero</span>
+                <ArrowRight className="w-3 h-3" />
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -777,7 +823,7 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
                       <div className="font-bold text-[#0f172a]">{t.name}</div>
                       <div>{t.description}</div>
                       <div className="text-[11px] text-[#501f92] font-semibold pt-1">
-                        Aportará {t.deliverables.length} frentes y {t.totalHours}h de actividades al alcance actual.
+                        Aportará {t.deliverables.length} servicios y {t.totalHours}h de actividades al alcance actual.
                       </div>
                     </>
                   );

@@ -219,41 +219,24 @@ export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
       )}
 
       {/* Header Principal de Biblioteca */}
-      <div className="bg-white p-6 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white p-5 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#8a4dff]/10 text-[#8a4dff] uppercase tracking-wider">
-              Gobernado por Producto
-            </span>
-            <span className="text-[11px] font-semibold text-[#64748b]">
-              Fuente de Verdad Operativa
-            </span>
-          </div>
-          <h1 className="text-xl font-extrabold text-[#0f172a] tracking-tight">
-            Biblioteca de Plantillas Maestras
+          <h1 className="text-xl font-extrabold text-[#0f172a] tracking-tight flex items-center gap-2">
+            <BookOpen className="w-5 h-5 text-[#8a4dff]" />
+            <span>Catálogo de Plantillas</span>
           </h1>
-          <p className="text-xs text-[#64748b] max-w-2xl leading-relaxed">
-            Estructuras técnicas de productos y servicios Uhura. Define entregables, actividades y roles presupuestados. 
-            Al cotizar, Orbit clona una copia independiente para que el equipo ajuste el alcance sin alterar la plantilla maestra.
+          <p className="text-xs text-[#64748b] max-w-2xl">
+            Estructuras estándar de servicios y entregables de la agencia. Modifícalas solo cuando evolucione el proceso operativo.
           </p>
         </div>
 
         <div className="flex items-center gap-2.5 shrink-0">
           <button
-            onClick={() => handleOpenCloneModal()}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#e2e8f0] hover:bg-[#f8fafc] text-xs font-bold text-[#334155] shadow-2xs transition-colors cursor-pointer"
-            title="Crear una cotización directamente sin usar plantilla"
-          >
-            <Sparkles className="w-4 h-4 text-[#8a4dff]" />
-            <span>Crear desde Cero</span>
-          </button>
-
-          <button
             onClick={handleOpenCreateModal}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#8a4dff] hover:bg-[#7839ee] text-xs font-bold text-white shadow-sm transition-colors cursor-pointer"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#8a4dff] hover:bg-[#7839ee] text-xs font-bold text-white shadow-xs transition-colors cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>+ Nueva Plantilla Maestra</span>
+            <span>Nueva Plantilla</span>
           </button>
         </div>
       </div>
@@ -570,18 +553,12 @@ export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
                 <div className="px-5 py-3 bg-[#fafbfc] border-t border-[#f1f5f9] flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1">
                     <button
-                      onClick={() => handleOpenEditModal(tmpl)}
-                      className="p-1.5 text-[#64748b] hover:text-[#0f172a] hover:bg-[#f1f5f9] rounded-lg transition-colors cursor-pointer"
-                      title="Editar plantilla maestra"
-                    >
-                      <Edit3 className="w-3.5 h-3.5" />
-                    </button>
-                    <button
                       onClick={() => handleDuplicateTemplate(tmpl)}
-                      className="p-1.5 text-[#64748b] hover:text-[#0f172a] hover:bg-[#f1f5f9] rounded-lg transition-colors cursor-pointer"
-                      title="Duplicar plantilla maestra como borrador"
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-[#64748b] hover:text-[#0f172a] hover:bg-[#f1f5f9] rounded-lg transition-colors cursor-pointer"
+                      title="Duplicar plantilla como borrador"
                     >
                       <Copy className="w-3.5 h-3.5" />
+                      <span>Duplicar</span>
                     </button>
                     <button
                       onClick={() => handleRequestDelete(tmpl)}
@@ -593,11 +570,11 @@ export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
                   </div>
 
                   <button
-                    onClick={() => handleOpenCloneModal(tmpl.id)}
+                    onClick={() => handleOpenEditModal(tmpl)}
                     className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#8a4dff] hover:bg-[#7839ee] text-white text-xs font-bold shadow-2xs transition-colors cursor-pointer"
                   >
-                    <Copy className="w-3.5 h-3.5" />
-                    <span>Usar en Cotización (Clonar)</span>
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>Editar Plantilla</span>
                   </button>
                 </div>
               </div>

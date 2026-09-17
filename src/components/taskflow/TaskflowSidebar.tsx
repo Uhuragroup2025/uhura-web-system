@@ -242,57 +242,7 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
 
           {(openSections.comercial || collapsed) && (
             <div className="space-y-0.5 pl-0.5">
-              <button
-                onClick={() => onSelectView('clientes')}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                  currentView === 'clientes'
-                    ? 'bg-[#1e113a] text-white font-semibold'
-                    : 'text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white'
-                }`}
-                title="Clientes"
-              >
-                <div className="flex items-center gap-2.5">
-                  <Users className="w-3.5 h-3.5 text-[#8a4dff]" />
-                  {!collapsed && <span>Clientes</span>}
-                </div>
-              </button>
-
-              <button
-                onClick={() => onSelectView('plantillas-producto')}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                  currentView === 'plantillas-producto'
-                    ? 'bg-[#1e113a] text-white font-semibold'
-                    : 'text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white'
-                }`}
-                title="Biblioteca de Plantillas Maestras de Producto"
-              >
-                <div className="flex items-center gap-2.5">
-                  <BookOpen className="w-3.5 h-3.5 text-[#8a4dff]" />
-                  {!collapsed && <span>Plantillas</span>}
-                </div>
-                {!collapsed && (
-                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-[#8a4dff]/25 text-[#d4ff4a]">
-                    Producto
-                  </span>
-                )}
-              </button>
-
-              <button
-                onClick={() => onSelectView('cotizador')}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                  currentView === 'cotizador'
-                    ? 'bg-[#1e113a] text-white font-semibold'
-                    : 'text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white'
-                }`}
-                title="Cotizador & Backlog Comercial"
-              >
-                <div className="flex items-center gap-2.5">
-                  <Calculator className="w-3.5 h-3.5 text-[#8a4dff]" />
-                  {!collapsed && <span>Cotizador</span>}
-                </div>
-              </button>
-
-              {/* New Business (Sustituye a Pipeline, enfocado en discovery, backlog, cotización y conversión) */}
+              {/* New Business (Scoping, dimensionamiento, cotización y SOW) */}
               <button
                 onClick={() => onSelectView('new-business')}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
@@ -300,7 +250,7 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
                     ? 'bg-[#1e113a] text-white font-semibold'
                     : 'text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white'
                 }`}
-                title="New Business · Discovery, backlog y conversión de proyectos"
+                title="New Business · Scoping, cotización y SOW"
               >
                 <div className="flex items-center gap-2.5">
                   <Target className="w-3.5 h-3.5 text-[#4be5ff]" />
@@ -308,12 +258,49 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
                 </div>
                 {!collapsed && (
                   <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-[#4be5ff]/15 text-[#4be5ff]">
-                    Discovery
+                    Brief
                   </span>
                 )}
               </button>
 
-              {/* Finanzas Operativas (Sub-ítem secundario; no compite como módulo principal en esta fase) */}
+              {/* Clientes */}
+              <button
+                onClick={() => onSelectView('clientes')}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                  currentView === 'clientes'
+                    ? 'bg-[#1e113a] text-white font-semibold'
+                    : 'text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white'
+                }`}
+                title="Clientes de Uhura"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Users className="w-3.5 h-3.5 text-[#8a4dff]" />
+                  {!collapsed && <span>Clientes</span>}
+                </div>
+              </button>
+
+              {/* Catálogo de Servicios (Plantillas estándar de la agencia) */}
+              <button
+                onClick={() => onSelectView('plantillas-producto')}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                  currentView === 'plantillas-producto'
+                    ? 'bg-[#1e113a] text-white font-semibold'
+                    : 'text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white'
+                }`}
+                title="Catálogo de Servicios de Uhura (Plantillas Maestras)"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Briefcase className="w-3.5 h-3.5 text-[#8a4dff]" />
+                  {!collapsed && <span>Servicios</span>}
+                </div>
+                {!collapsed && (
+                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-[#8a4dff]/25 text-[#d4ff4a]">
+                    Catálogo
+                  </span>
+                )}
+              </button>
+
+              {/* Finanzas Operativas (Sub-ítem secundario) */}
               <button
                 onClick={() => onSelectView('finanzas')}
                 className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition-colors ${
