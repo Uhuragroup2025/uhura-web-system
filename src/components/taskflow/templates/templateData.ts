@@ -78,10 +78,10 @@ export const TEMPLATE_CATEGORIES: TemplateCategoryMeta[] = [
   }
 ];
 
-// Roles estándar del catálogo oficial Uhura
+// Roles estándar del catálogo oficial Uhura (12 roles canónicos)
 const R_PRODUCT_LEAD = 'Product Lead';
-const R_FRONT_END = 'Desarrollador Web Front-End';
-const R_CLIENT_RELATIONSHIP = 'Client relationship';
+const R_FRONT_END = 'Front-End Dev';
+const R_CLIENT_RELATIONSHIP = 'Client Relationship Strategist';
 const R_DIGITAL_CONTENT = 'Digital Content Specialist';
 const R_CREATIVE_DESIGNER = 'Creative Designer';
 const R_DIGITAL_DESIGNER = 'Digital Designer'; // Normalizado para Web Designer del formato

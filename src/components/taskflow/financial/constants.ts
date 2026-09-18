@@ -36,8 +36,8 @@ export const DEFAULT_WEEKLY_FIXED_OVERHEAD_COP = 21060426;
  */
 export const UHURA_ROLE_FINANCIAL_RATES: UhuraRoleFinancialRate[] = [
   {
-    roleName: 'Desarrollador Web Front-End',
-    matchedStandardRole: 'Desarrollador Web Front-End',
+    roleName: 'Front-End Dev',
+    matchedStandardRole: 'Front-End Dev',
     costPerHourCOP: 33638,
     sellingRatePerHourCOP: 570608,
     defaultTaxClassification: 'exempt' // Software y desarrollo web exento bajo marco tributario COL
@@ -71,8 +71,8 @@ export const UHURA_ROLE_FINANCIAL_RATES: UhuraRoleFinancialRate[] = [
     defaultTaxClassification: 'taxed'
   },
   {
-    roleName: 'Client relationship',
-    matchedStandardRole: 'Client relationship',
+    roleName: 'Client Relationship Strategist',
+    matchedStandardRole: 'Client Relationship Strategist',
     costPerHourCOP: 28598,
     sellingRatePerHourCOP: 562208,
     defaultTaxClassification: 'taxed'
@@ -99,15 +99,15 @@ export const UHURA_ROLE_FINANCIAL_RATES: UhuraRoleFinancialRate[] = [
     defaultTaxClassification: 'taxed'
   },
   {
-    roleName: 'Tracfiker',
-    matchedStandardRole: 'Tracfiker',
+    roleName: 'Trafficker Media',
+    matchedStandardRole: 'Trafficker Media',
     costPerHourCOP: 32000,
     sellingRatePerHourCOP: 572543,
     defaultTaxClassification: 'taxed'
   },
   {
-    roleName: 'Creative lead',
-    matchedStandardRole: 'Creative lead',
+    roleName: 'Creative Strategy Lead',
+    matchedStandardRole: 'Creative Strategy Lead',
     costPerHourCOP: 54000,
     sellingRatePerHourCOP: 646492,
     defaultTaxClassification: 'taxed'
@@ -117,27 +117,6 @@ export const UHURA_ROLE_FINANCIAL_RATES: UhuraRoleFinancialRate[] = [
     matchedStandardRole: 'Content Creator',
     costPerHourCOP: 26500,
     sellingRatePerHourCOP: 560329,
-    defaultTaxClassification: 'taxed'
-  },
-  {
-    roleName: 'Tracfiker y DigiOps',
-    matchedStandardRole: 'Tracfiker y DigiOps',
-    costPerHourCOP: 31000,
-    sellingRatePerHourCOP: 558882,
-    defaultTaxClassification: 'taxed'
-  },
-  {
-    roleName: 'CEO',
-    matchedStandardRole: 'CEO',
-    costPerHourCOP: 85000,
-    sellingRatePerHourCOP: 750000,
-    defaultTaxClassification: 'taxed'
-  },
-  {
-    roleName: 'Administrativa',
-    matchedStandardRole: 'Administrativa',
-    costPerHourCOP: 22000,
-    sellingRatePerHourCOP: 350000,
     defaultTaxClassification: 'taxed'
   }
 ];

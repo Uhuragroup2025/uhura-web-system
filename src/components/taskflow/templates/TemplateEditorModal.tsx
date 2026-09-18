@@ -148,8 +148,8 @@ export const TemplateEditorModal: React.FC<TemplateEditorModalProps> = ({
       templateDeliverableId: delId,
       title: '',
       description: '',
-      roleId: 'Desarrollador Web Front-End',
-      roleName: 'Desarrollador Web Front-End',
+      roleId: 'Front-End Dev',
+      roleName: 'Front-End Dev',
       estimatedHours: 2.0,
       order: targetDel.activities.length + 1,
       optional: false

@@ -133,7 +133,7 @@ ADMINISTRACIÓN
 El flujo lineal de la información a través del sistema se rige por la siguiente cadena de valor:
 
 ```text
-[HUBSPOT Deal / Brief]
+[HUBSPOT: Brief Recibido & Necesidad de Scoping Técnico]
          │
          ▼
 [1. New Business: Registro de Oportunidad]
@@ -193,9 +193,14 @@ El flujo lineal de la información a través del sistema se rige por la siguient
 
 #### 1.1 Propósito
 Espacio centralizado donde los líderes técnicos y de producto reciben oportunidades desde el área comercial (briefs), dimensionan el alcance técnico, generan cotizaciones, gestionan el SOW y las condiciones de inicio, y ejecutan la conversión formal a proyectos operativos.
+- **Referencias de Código:**
+  - **Vista Principal:** [`src/components/taskflow/newbusiness/NewBusinessView.tsx`](../components/taskflow/newbusiness/NewBusinessView.tsx)
+  - **Scoper de Alcance:** [`src/components/taskflow/newbusiness/BacklogScoper.tsx`](../components/taskflow/newbusiness/BacklogScoper.tsx)
+  - **Calculadora Financiera:** [`src/components/taskflow/newbusiness/FinancialCalculatorView.tsx`](../components/taskflow/newbusiness/FinancialCalculatorView.tsx)
+  - **Tipos de Dominio:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`NewBusinessOpportunity`, `QuoteProposal`, `QuoteDeliverable`, `QuoteBacklogItem`)
 
 #### 1.2 Usuarios y Roles
-- **Product Lead / Creative Lead / Growth Manager / CEO:** Dimensionamiento técnico de entregables y actividades.
+- **Product Lead / Creative Strategy Lead / Growth Manager / CEO:** Dimensionamiento técnico de entregables y actividades.
 - **Directora Comercial:** Supervisión de márgenes, bandas de negociación y creación de nuevas versiones de cotización.
 - **Vivian (Administración):** Validación de datos de facturación previa a la emisión fiscal.
 
@@ -209,7 +214,7 @@ La navegación por pestañas (`Resumen & Brief`, `Alcance & Backlog`, `Cotizaci�
   - `title`: String (Nombre del requerimiento/proyecto).
   - `prospectAccountName`: String (Nombre de la empresa prospecto).
   - `clientId`: UUID (Opcional, si el cliente ya existe en Orbit).
-  - `leadUserId` / `leadUserName`: String (Líder asignado: *Product Lead, Creative Lead, Growth Manager, CEO, Directora Comercial*).
+  - `leadUserId` / `leadUserName`: String (Líder asignado: *Product Lead, Creative Strategy Lead, Growth Manager, CEO, Directora Comercial*).
   - `contactName`, `contactEmail`, `contactPhone`: String.
   - `hubspotDealId`, `hubspotDealUrl`: String (Identificador en HubSpot).
   - `briefUrl`: String (URL al documento de Google Drive).
@@ -226,7 +231,7 @@ La navegación por pestañas (`Resumen & Brief`, `Alcance & Backlog`, `Cotizaci�
 #### 1.5 Reglas de Negocio
 1. **Autonomía Multi-Quote:** Una oportunidad puede contener N cotizaciones. El cliente puede aprobar una y descartar otra.
 2. **Gobernanza de Horas de Preventa:** El tiempo dedicado a dimensionar la oportunidad nunca se factura al cliente ni se resta del presupuesto vendido. Se imputa internamente a `Cliente: UHURA Group`, `Proyecto: New Business`.
-3. **No Duplicidad de CRM:** New Business no maneja funnels de prospección en frío ni llamadas comerciales; solo se abre cuando hay un brief calificado para costear.
+3. **Trigger de Entrada (Brief Calificado + Necesidad de Scoping):** New Business se activa **únicamente cuando se recibe un Brief comercial en HubSpot y surge la necesidad de realizar un dimensionamiento técnico de alcance (scoping) y costeo operativo**. NO se dispara por el mero hecho de 'ganar' un deal comercial, ni gestiona prospección comercial en frío.
 
 ---
 
@@ -234,20 +239,26 @@ La navegación por pestañas (`Resumen & Brief`, `Alcance & Backlog`, `Cotizaci�
 
 #### 2.1 Propósito
 Biblioteca centralizada de plantillas maestras de servicios estandarizados de Uhura Group, gobernada por el área de Producto para asegurar consistencia en estimaciones.
-- **Referencia de Implementación:** [`src/components/taskflow/templates/templateData.ts`](../components/taskflow/templates/templateData.ts), [`src/components/taskflow/templates/templateEngine.ts`](../components/taskflow/templates/templateEngine.ts) y [`src/components/taskflow/types.ts`](../components/taskflow/types.ts).
+- **Referencias de Código:**
+  - **Especificación Completa del Catálogo:** [`src/docs/SERVICE_CATALOG.md`](./SERVICE_CATALOG.md)
+  - **Datos de Plantillas Maestra:** [`src/components/taskflow/templates/templateData.ts`](../components/taskflow/templates/templateData.ts)
+  - **Motor de Recálculo Recursivo:** [`src/components/taskflow/templates/templateEngine.ts`](../components/taskflow/templates/templateEngine.ts)
+  - **Interfaz de Biblioteca:** [`src/components/taskflow/templates/TemplateLibraryView.tsx`](../components/taskflow/templates/TemplateLibraryView.tsx)
+  - **Modal de Clonación Desacoplada:** [`src/components/taskflow/templates/CloneToQuoteModal.tsx`](../components/taskflow/templates/CloneToQuoteModal.tsx)
+  - **Tipos de Dominio:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`ProductBacklogTemplate`, `STANDARD_UHURA_ROLES`)
 
 #### 2.2 Catálogo Oficial de Servicios (Normalizado 2026)
 Fuente: *"FORMATO DE PROCESO DE ÁREA UHURA (2026) - PRODUCTO DIGITAL"*
 
-| Servicio / Plantilla | Horas Totales | Entregables Clave | Roles Involucrados | Duración Est. |
+| Servicio / Plantilla | Horas Totales | Entregables Clave | Roles Involucrados (Canónicos) | Duración Est. |
 |---|---|---|---|---|
-| **Landing Page WordPress / Webflow** | 31.0 hrs | Onboarding & Insumos, UX & Contenido, Implementación & Analítica, Entrega & Soporte | Product Lead, Digital Content Specialist, Desarrollador Web Front-End | 3 semanas |
-| **Sitio Web Informativo WordPress** | 140.0 hrs | Kick-off & Discovery, UX & Contenido & Gate 1, Implementación & Gate 2, Analítica & Go Live, Entrega & Soporte | Client relationship, Product Lead, Digital Content Specialist, Creative Designer, Desarrollador Web Front-End | 8 semanas |
-| **Mantenimiento Web WordPress** | 9.0 hrs/mes | Análisis, Diagnóstico & Backups, Actualizaciones & Seguridad, Ajustes Menores & Soporte | Desarrollador Web Front-End, Client relationship | 4 semanas (recurrente) |
-| **Tienda Online Shopify (hasta 20 SKUs)** | 116.0 hrs | Kick-off & Arquitectura, Contenido & Banners, Setup & Config Comercial, Template & UI, Catálogo, QA & Go Live, Entrega | Client relationship, Product Lead, Digital Content Specialist, Creative Designer, Digital Designer, Desarrollador Web Front-End | 8 semanas |
-| **Chatbot con ManyChat (WhatsApp API / IG)** | 46.5 hrs | Kick-off & Flujos, Gestión Meta & WhatsApp API, Config ManyChat & Triggers, Entrega & Soporte | Product Lead, Client relationship, Digital Content Specialist, Desarrollador Web Front-End | 4 semanas |
-| **Tienda Oficial en Mercado Libre** | 42.0 hrs | Fase 0 – Kickoff & Alcance, Setup Tienda ML, Publicación, Validación & Capacitación | Product Lead, Client relationship, Digital Content Specialist, Digital Designer, Creative Designer | 4 semanas |
-| **Digital Shelf (Optimización PDPs)** | 5.5 hrs | Gestión & Diagnóstico, Contenido & SEO, Optimización de Imágenes (hasta 5 PDPs) | Client relationship, Product Lead, Digital Content Specialist, Creative Designer | 2 semanas |
+| **Landing Page WordPress / Webflow** | 31.0 hrs | Onboarding & Insumos, UX & Contenido, Implementación & Analítica, Entrega & Soporte | Product Lead, Digital Content Specialist, Front-End Dev | 3 semanas |
+| **Sitio Web Informativo WordPress** | 140.0 hrs | Kick-off & Discovery, UX & Contenido & Gate 1, Implementación & Gate 2, Analítica & Go Live, Entrega & Soporte | Client Relationship Strategist, Product Lead, Digital Content Specialist, Creative Designer, Front-End Dev | 8 semanas |
+| **Mantenimiento Web WordPress** | 9.0 hrs/mes | Análisis, Diagnóstico & Backups, Actualizaciones & Seguridad, Ajustes Menores & Soporte | Front-End Dev, Client Relationship Strategist | 4 semanas (recurrente) |
+| **Tienda Online Shopify (hasta 20 SKUs)** | 116.0 hrs | Kick-off & Arquitectura, Contenido & Banners, Setup & Config Comercial, Template & UI, Catálogo, QA & Go Live, Entrega | Client Relationship Strategist, Product Lead, Digital Content Specialist, Creative Designer, Digital Designer, Front-End Dev | 8 semanas |
+| **Chatbot con ManyChat (WhatsApp API / IG)** | 46.5 hrs | Kick-off & Flujos, Gestión Meta & WhatsApp API, Config ManyChat & Triggers, Entrega & Soporte | Product Lead, Client Relationship Strategist, Digital Content Specialist, Front-End Dev | 4 semanas |
+| **Tienda Oficial en Mercado Libre** | 42.0 hrs | Fase 0 – Kickoff & Alcance, Setup Tienda ML, Publicación, Validación & Capacitación | Product Lead, Client Relationship Strategist, Digital Content Specialist, Digital Designer, Creative Designer | 4 semanas |
+| **Digital Shelf (Optimización PDPs)** | 5.5 hrs | Gestión & Diagnóstico, Contenido & SEO, Optimización de Imágenes (hasta 5 PDPs) | Client Relationship Strategist, Product Lead, Digital Content Specialist, Creative Designer | 2 semanas |
 | **Proyecto a la Medida (Personalizable)** | 12.0 hrs (base) | Discovery Técnico & Levantamiento Funcional, Arquitectura | Product Lead, Pendiente de definición técnica | 6 semanas |
 
 #### 2.3 Entidades y Campos Principales
@@ -269,7 +280,7 @@ Fuente: *"FORMATO DE PROCESO DE ÁREA UHURA (2026) - PRODUCTO DIGITAL"*
 
 #### 2.4 Reglas de Negocio
 1. **Independencia de Snapshot:** Al importar una plantilla a una cotización en New Business, se genera una copia desacoplada. Las modificaciones que haga el líder técnico en la cotización NO alteran la plantilla maestra, y futuros cambios en la plantilla maestra NO alteran cotizaciones ya creadas.
-2. **Roles Estándar Obligatorios:** Las plantillas solo pueden construirse con roles del catálogo oficial de Uhura (`STANDARD_UHURA_ROLES`). Nombres informales (*"diseñador web"*, *"redactor"*, *"developer"*) han sido normalizados a sus respectivos roles oficiales (*"Digital Designer"*, *"Digital Content Specialist"*, *"Desarrollador Web Front-End"*).
+2. **Roles Estándar Obligatorios:** Las plantillas solo pueden construirse con roles del catálogo oficial de Uhura (`STANDARD_UHURA_ROLES`). Nombres informales (*"diseñador web"*, *"redactor"*, *"developer"*, *"tracfiker"*) han sido normalizados a sus respectivos 12 roles canónicos (*"Digital Designer"*, *"Digital Content Specialist"*, *"Front-End Dev"*, *"Client Relationship Strategist"*, *"Trafficker Media"*).
 3. **Cálculo Recursivo de Horas:** Toda plantilla recalcula automáticamente sus horas por actividad, horas acumuladas por entregable y total de horas por rol usando [`recalculateTemplateHours`](../components/taskflow/templates/templateEngine.ts).
 
 ---
@@ -278,6 +289,9 @@ Fuente: *"FORMATO DE PROCESO DE ÁREA UHURA (2026) - PRODUCTO DIGITAL"*
 
 #### 3.1 Propósito
 Constructor jerárquico de la ingeniería de la propuesta técnica. Permite a los líderes desglosar el servicio en Entregables y Actividades concretas con asignación de rol y presupuesto de horas.
+- **Referencias de Código:**
+  - **Componente Scoper de Backlog:** [`src/components/taskflow/newbusiness/BacklogScoper.tsx`](../components/taskflow/newbusiness/BacklogScoper.tsx)
+  - **Tipos de Datos:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`QuoteDeliverable`, `QuoteBacklogItem`)
 
 #### 3.2 Estructura Jerárquica y Objetos
 ```text
@@ -308,6 +322,11 @@ Entregable (Servicio / Frente)
 
 #### 4.1 Propósito
 Motor de pricing y rentabilidad que traduce las horas técnicas estructuradas en el backlog a una propuesta comercial económicamente viable y rentable para Uhura Group.
+- **Referencias de Código:**
+  - **Motor de Cálculo Financiero:** [`src/components/taskflow/financial/financialEngine.ts`](../components/taskflow/financial/financialEngine.ts)
+  - **Constantes y Tarifario Salarial:** [`src/components/taskflow/financial/constants.ts`](../components/taskflow/financial/constants.ts) (`UHURA_ROLE_FINANCIAL_RATES`, `FINANCIAL_CONSTANTS`)
+  - **Interfaz de Calculadora:** [`src/components/taskflow/newbusiness/FinancialCalculatorView.tsx`](../components/taskflow/newbusiness/FinancialCalculatorView.tsx)
+  - **Tipos Financieros:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`QuoteFinancialSummary`, `QuoteFinancialConfig`)
 
 #### 4.2 Fuente de Verdad Financiera: Status Actual
 > **ADVERTENCIA CRÍTICA PARA BACKEND (INDUNOVA):**  
@@ -348,6 +367,10 @@ Motor de pricing y rentabilidad que traduce las horas técnicas estructuradas en
 
 #### 5.1 Propósito
 Documento comercial y financiero formal que se presenta al cliente. Es el contenedor del snapshot de alcance y pricing.
+- **Referencias de Código:**
+  - **Modal de Versiones de Cotización:** [`src/components/taskflow/newbusiness/QuoteVersioningModal.tsx`](../components/taskflow/newbusiness/QuoteVersioningModal.tsx)
+  - **Vista de Presentación Comercial (PDF/Web):** [`src/components/taskflow/newbusiness/QuotePresentationView.tsx`](../components/taskflow/newbusiness/QuotePresentationView.tsx)
+  - **Tipos de Dominio:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`QuoteProposal`, `QuoteStatus`)
 
 #### 5.2 Entidades y Campos Principales
 - **`QuoteProposal`:**
@@ -372,6 +395,8 @@ Documento comercial y financiero formal que se presenta al cliente. Es el conten
 
 #### 6.1 Propósito
 Gobernanza y trazabilidad de los archivos asociados a la oportunidad y al proyecto, estructurados bajo el estándar de carpetas de Uhura Group.
+- **Referencias de Código:**
+  - **Pestaña Documental en New Business:** [`src/components/taskflow/newbusiness/DocumentsDriveTab.tsx`](../components/taskflow/newbusiness/DocumentsDriveTab.tsx)
 
 #### 6.2 Estructura Estándar de Carpetas (Uhura Drive)
 Toda oportunidad y proyecto en Orbit se organiza bajo la siguiente convención:
@@ -396,6 +421,9 @@ PROSPECTOS / [Nombre Empresa] (en fase comercial)
 
 #### 7.1 Propósito
 Generador de la plantilla contractual técnica entre Uhura Group y el Cliente, extraída directamente del alcance aprobado en la cotización activa.
+- **Referencias de Código:**
+  - **Modal Generador de SOW:** [`src/components/taskflow/newbusiness/SowDocumentModal.tsx`](../components/taskflow/newbusiness/SowDocumentModal.tsx)
+  - **Tipos de Datos:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`SowDocumentData`)
 
 #### 7.2 Regla de Oro de Confidencialidad Operativa
 > **REGLA ESTRICTA DE GOBERNANZA:**  
@@ -418,6 +446,11 @@ Generador de la plantilla contractual técnica entre Uhura Group y el Cliente, e
 
 #### 8.1 Propósito
 Asegurar que la operación no arranque a ciegas, pero sin generar bloqueos burocráticos innecesarios que deterioren la experiencia del cliente o del equipo.
+- **Referencias de Código:**
+  - **Modal Condiciones de Inicio:** [`src/components/taskflow/newbusiness/StartConditionsModal.tsx`](../components/taskflow/newbusiness/StartConditionsModal.tsx)
+  - **Modal Checklist Administrativo:** [`src/components/taskflow/newbusiness/AdministrativeChecklistModal.tsx`](../components/taskflow/newbusiness/AdministrativeChecklistModal.tsx)
+  - **Modal Conversión a Proyecto:** [`src/components/taskflow/newbusiness/ConvertOpportunityModal.tsx`](../components/taskflow/newbusiness/ConvertOpportunityModal.tsx)
+  - **Tipos de Dominio:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`StartConditionsConfig`, `AdministrativeChecklist`, `FormalizationStatus`)
 
 #### 8.2 Estados de Transición hacia Operación
 ```text
@@ -449,6 +482,10 @@ Asegurar que la operación no arranque a ciegas, pero sin generar bloqueos buroc
 
 #### 9.1 Propósito
 Entidad que representa la cuenta comercial, operativa y de marca sombrilla con la que trabaja Uhura Group.
+- **Referencias de Código:**
+  - **Vista Principal de Clientes:** [`src/components/taskflow/clients/ClientsView.tsx`](../components/taskflow/clients/ClientsView.tsx)
+  - **Modal Nuevo Cliente:** [`src/components/taskflow/clients/NewClientModal.tsx`](../components/taskflow/clients/NewClientModal.tsx)
+  - **Tipos de Dominio:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`ClientProfile`, `ClientContact`, `ClientTaxEntity`)
 
 #### 9.2 Entidades y Campos Principales
 - **`ClientProfile`:**
@@ -469,6 +506,10 @@ Entidad que representa la cuenta comercial, operativa y de marca sombrilla con l
 
 #### 10.1 Propósito
 Gestión de datos de facturación electrónica y articulación con el sistema contable Alegra.
+- **Referencias de Código:**
+  - **Modal de Entidades Fiscales y Facturación:** [`src/components/taskflow/clients/ClientTaxEntitiesModal.tsx`](../components/taskflow/clients/ClientTaxEntitiesModal.tsx)
+  - **Checklist Administrativo Vivian:** [`src/components/taskflow/newbusiness/AdministrativeChecklistModal.tsx`](../components/taskflow/newbusiness/AdministrativeChecklistModal.tsx)
+  - **Tipos Fiscales:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`ClientTaxEntity`, `AdministrativeChecklist`)
 
 #### 10.2 Responsable y Flujo de Trabajo
 - **Responsable en Uhura:** Vivian (Administración & Finanzas).
@@ -489,6 +530,10 @@ Gestión de datos de facturación electrónica y articulación con el sistema co
 
 #### 11.1 Propósito
 Contenedor principal de la ejecución operativa, control de presupuesto de horas y entrega de valor al cliente.
+- **Referencias de Código:**
+  - **Vista Detalle de Proyecto:** [`src/components/taskflow/projects/ProjectDetailView.tsx`](../components/taskflow/projects/ProjectDetailView.tsx)
+  - **Modal Nuevo Proyecto Operativo:** [`src/components/taskflow/NewProjectModal.tsx`](../components/taskflow/NewProjectModal.tsx)
+  - **Tipos de Dominio:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`ProjectProfile`, `ProjectType`, `ProjectStatus`)
 
 #### 11.2 Tipos de Proyecto
 1. `fixed_project`: Proyecto de alcance cerrado (fecha inicio, fecha fin, entregables fijos, bolsa de horas cerrada).
@@ -518,6 +563,9 @@ Contenedor principal de la ejecución operativa, control de presupuesto de horas
 
 #### 12.1 Propósito
 Componente o fase operativa que agrupa un conjunto de tareas y un presupuesto específico de horas por rol.
+- **Referencias de Código:**
+  - **Vista y Lista de Entregables:** [`src/components/taskflow/projects/DeliverablesListView.tsx`](../components/taskflow/projects/DeliverablesListView.tsx)
+  - **Tipos de Dominio:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`ProjectDeliverable`, `DeliverableRoleBudget`)
 
 #### 12.2 Estructura y Rollup
 - **`ProjectDeliverable`:**
@@ -540,6 +588,10 @@ Componente o fase operativa que agrupa un conjunto de tareas y un presupuesto es
 
 #### 13.1 Propósito
 Unidad atómica de trabajo ejecutable por el equipo.
+- **Referencias de Código:**
+  - **Componente Tarjeta de Tarea:** [`src/components/taskflow/tasks/TaskCard.tsx`](../components/taskflow/tasks/TaskCard.tsx)
+  - **Modal Nueva Tarea:** [`src/components/taskflow/NewTaskModal.tsx`](../components/taskflow/NewTaskModal.tsx)
+  - **Tipos de Dominio:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`Task`, `TaskStatus`, `TaskAssigneeAllocation`)
 
 #### 13.2 Reglas Invariantes de Producto
 1. **Sin Subtareas en MVP:** Para evitar dispersión y falta de control, la tarea es atómica. Si algo requiere división, se crean múltiples tareas bajo el mismo entregable.
@@ -560,9 +612,12 @@ Unidad atómica de trabajo ejecutable por el equipo.
 
 #### 14.1 Propósito
 Asignación formal de personas del equipo a los proyectos, garantizando que el trabajo esté cubierto sin sobrecargar la capacidad.
+- **Referencias de Código:**
+  - **Matriz de Staffing:** [`src/components/taskflow/staffing/StaffingMatrixView.tsx`](../components/taskflow/staffing/StaffingMatrixView.tsx)
+  - **Tipos de Dominio:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`ProjectAssignment`, `AssignmentNature`)
 
 #### 14.2 Diferencia Crítica: Rol Cotizado vs. Persona Asignada
-- **Rol Cotizado (`budgetedRoleId`):** Perfil conceptual presupuestado en New Business (ej. *Senior Fullstack Developer*, tarifa $65.000/h).
+- **Rol Cotizado (`budgetedRoleId`):** Perfil conceptual presupuestado en New Business (ej. *Front-End Dev*, tarifa de costo nómina según tarifario).
 - **Persona Real (`assignedUserId`):** Colaborador específico de la empresa (ej. *Juan Pérez*, desarrollador real contratado).
 - Orbit permite comparar si la persona asignada coincide con el perfil cotizado o si hubo un cambio de seniorities que altere la rentabilidad real del proyecto.
 
@@ -581,6 +636,9 @@ Asignación formal de personas del equipo a los proyectos, garantizando que el t
 
 #### 15.1 Propósito
 Visibilidad matemática de la disponibilidad real del equipo para asumir nuevos proyectos y evitar el burnout.
+- **Referencias de Código:**
+  - **Vista de Capacidad de Equipo:** [`src/components/taskflow/capacity/TeamCapacityView.tsx`](../components/taskflow/capacity/TeamCapacityView.tsx)
+  - **Tipos de Capacidad:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`TeamMemberCapacity`)
 
 #### 15.2 Reglas Fundamentales de Capacidad
 1. **No a la Asunción Universal de 8 Horas Diarias:** Cada colaborador tiene una capacidad contractual y operativa configurada (ej. contratos de 40h semanales tienen típicamente 32h productivas y 8h de ceremonias/gestión interna).
@@ -596,7 +654,7 @@ Visibilidad matemática de la disponibilidad real del equipo para asumir nuevos 
 Captura fidedigna y sin fricción de las horas realmente invertidas por el equipo en la ejecución de las tareas.
 
 #### 16.2 Reglas Invariantes del Cronómetro
-- **Referencia de Implementación:** [`src/components/taskflow/timer/GlobalTimerContext.tsx`](../components/taskflow/timer/GlobalTimerContext.tsx), [`src/components/taskflow/tasks/TaskCard.tsx`](../components/taskflow/tasks/TaskCard.tsx) y [`src/components/taskflow/timetracking/TimeTrackingView.tsx`](../components/taskflow/timetracking/TimeTrackingView.tsx).
+- **Referencias de Código:** [`src/components/taskflow/timer/GlobalTimerContext.tsx`](../components/taskflow/timer/GlobalTimerContext.tsx), [`src/components/taskflow/tasks/TaskCard.tsx`](../components/taskflow/tasks/TaskCard.tsx) y [`src/components/taskflow/timetracking/TimeTrackingView.tsx`](../components/taskflow/timetracking/TimeTrackingView.tsx).
 
 1. **Todo TimeLog pertenece obligatoriamente a una Tarea:** No existe registro de tiempo "huérfano" en el vacío.
 2. **Un Solo Timer Activo por Usuario:** El sistema solo permite tener un cronómetro activo o en pausa a la vez a nivel global. Si el usuario intenta iniciar un timer en la Tarea B mientras hay uno corriendo o pausado en la Tarea A, el sistema le exige detener o guardar el timer de la Tarea A.
@@ -614,6 +672,8 @@ Captura fidedigna y sin fricción de las horas realmente invertidas por el equip
 
 #### 17.1 Propósito
 Pantalla principal de inicio para todo usuario de Orbit, adaptada a su rol y prioridades de trabajo diario. Elimina la dispersión entre dashboards analíticos y listas de tareas.
+- **Referencias de Código:**
+  - **Vista Principal Mi Día:** [`src/components/taskflow/myday/MyDayView.tsx`](../components/taskflow/myday/MyDayView.tsx)
 
 #### 17.2 Perspectivas por Rol
 - **Colaborador / Operativo:** Tareas asignadas para hoy, tareas en revisión, timer activo, horas registradas hoy vs. planificadas restantes.
@@ -628,6 +688,10 @@ Pantalla principal de inicio para todo usuario de Orbit, adaptada a su rol y pri
 #### 18.1 Propósito
 - **Bucky:** Asistente contextual de Orbit que acompaña la jornada laboral, alerta sobre timers olvidados, tareas bloqueadas y deadlines.
 - **La Colonia:** Espacio visual optativo de gamificación donde la consistencia en el registro de horas y los hábitos saludables construyen un entorno virtual en equipo.
+- **Referencias de Código:**
+  - **Modal Copiloto Bucky:** [`src/components/taskflow/bucky/BuckyCopilotModal.tsx`](../components/taskflow/bucky/BuckyCopilotModal.tsx)
+  - **Leaderboard La Colonia:** [`src/components/taskflow/colony/ColonyLeaderboardView.tsx`](../components/taskflow/colony/ColonyLeaderboardView.tsx)
+  - **Assets de Bucky:** [`/public/bucky_*.png`](../../public/)
 
 #### 18.2 Directrices Técnicas para Backend
 - Bucky y La Colonia son componentes **Evolutivos / No Bloqueantes**.
@@ -701,6 +765,12 @@ Durante la auditoría end-to-end se detectaron las siguientes inconsistencias qu
    Las tareas se crean correctamente a partir de las actividades cotizadas, pero quedan con `assigneeAllocations = []`. Esto es correcto según la especificación, pero en UI faltaba el botón directo de "Iniciar Staffing" desde la ficha del proyecto.
 6. **Hardcode Financiero:**  
    El overhead semanal y el salario base por rol están en constantes de TypeScript (`constants.ts`). En backend deben ser leídos desde tablas de configuración para que Finanzas pueda actualizar salarios anuales sin desplegar nuevo código.
+7. **Regla de Cronómetro / Timer en Pausa:**  
+   El tiempo transcurrido con el cronómetro en estado `PAUSED` **bajo ninguna circunstancia cuenta como tiempo efectivo de trabajo**. Únicamente los lapsos en estado activo `RUNNING` suman a la duración total del `TimeLog` al momento de hacer `Stop`.
+8. **Disparador Canónico de New Business (Brief + Scoping):**  
+   New Business no se inicia cuando un deal se marca como "ganado" en el CRM ni sustituye la prospección comercial en frío. Se dispara exclusivamente cuando **se recibe un brief comercial calificado desde HubSpot que exige dimensionamiento técnico de entregables (scoping) y costeo operativo**.
+9. **Fuente Canónica Financiera:**  
+   La fuente de verdad financiera de Uhura Group es la **"Calculadora Comercial UHURA 2026" (Google Sheet)** administrada por Finanzas y Dirección. La implementación en `financialEngine.ts` es un prototipo algorítmico y el backend debe proveer persistencia paramétrica configurable para garantizar coherencia absoluta.
 
 ---
 

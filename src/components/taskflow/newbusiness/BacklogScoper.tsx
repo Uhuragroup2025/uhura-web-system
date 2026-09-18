@@ -40,22 +40,23 @@ interface BacklogScoperProps {
   onGoToCalculator?: () => void;
 }
 
-// Role badge styling configuration
+// Role badge styling configuration for 12 canonical Uhura roles
 const ROLE_BADGE_STYLES: Record<string, { bg: string; text: string; border: string }> = {
-  'Desarrollador Web Front-End': { bg: 'bg-[#0284c7]/10', text: 'text-[#0284c7]', border: 'border-[#0284c7]/20' },
+  'Front-End Dev': { bg: 'bg-[#0284c7]/10', text: 'text-[#0284c7]', border: 'border-[#0284c7]/20' },
   'Product Lead': { bg: 'bg-[#501f92]/10', text: 'text-[#501f92]', border: 'border-[#501f92]/20' },
   'Digital Designer': { bg: 'bg-[#ec4899]/10', text: 'text-[#ec4899]', border: 'border-[#ec4899]/20' },
   'Creative Designer': { bg: 'bg-[#d946ef]/10', text: 'text-[#d946ef]', border: 'border-[#d946ef]/20' },
   'Content Creator': { bg: 'bg-[#f59e0b]/10', text: 'text-[#f59e0b]', border: 'border-[#f59e0b]/20' },
   'Digital Content Specialist': { bg: 'bg-[#eab308]/10', text: 'text-[#ca8a04]', border: 'border-[#eab308]/20' },
-  'Client relationship': { bg: 'bg-[#10b981]/10', text: 'text-[#10b981]', border: 'border-[#10b981]/20' },
-  'Creative lead': { bg: 'bg-[#8b5cf6]/10', text: 'text-[#8b5cf6]', border: 'border-[#8b5cf6]/20' },
-  'Tracfiker': { bg: 'bg-[#06b6d4]/10', text: 'text-[#06b6d4]', border: 'border-[#06b6d4]/20' },
-  'Tracfiker y DigiOps': { bg: 'bg-[#0891b2]/10', text: 'text-[#0891b2]', border: 'border-[#0891b2]/20' },
+  'Client Relationship Strategist': { bg: 'bg-[#10b981]/10', text: 'text-[#10b981]', border: 'border-[#10b981]/20' },
+  'Creative Strategy Lead': { bg: 'bg-[#8b5cf6]/10', text: 'text-[#8b5cf6]', border: 'border-[#8b5cf6]/20' },
+  'Trafficker Media': { bg: 'bg-[#06b6d4]/10', text: 'text-[#06b6d4]', border: 'border-[#06b6d4]/20' },
   'Growth Manager': { bg: 'bg-[#14b8a6]/10', text: 'text-[#14b8a6]', border: 'border-[#14b8a6]/20' },
-  'CEO': { bg: 'bg-[#475569]/10', text: 'text-[#475569]', border: 'border-[#475569]/20' },
+  'Community Manager': { bg: 'bg-[#10b981]/10', text: 'text-[#059669]', border: 'border-[#10b981]/20' },
   'Directora Comercial': { bg: 'bg-[#6366f1]/10', text: 'text-[#6366f1]', border: 'border-[#6366f1]/20' },
-  'Administrativa': { bg: 'bg-[#64748b]/10', text: 'text-[#64748b]', border: 'border-[#64748b]/20' }
+  // Compatibility fallback for legacy entries
+  'Desarrollador Web Front-End': { bg: 'bg-[#0284c7]/10', text: 'text-[#0284c7]', border: 'border-[#0284c7]/20' },
+  'Client relationship': { bg: 'bg-[#10b981]/10', text: 'text-[#10b981]', border: 'border-[#10b981]/20' }
 };
 
 export const BacklogScoper: React.FC<BacklogScoperProps> = ({
@@ -164,8 +165,8 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
       id: `act-${Date.now()}`,
       quoteDeliverableId: delId,
       title: '',
-      roleId: 'Desarrollador Web Front-End',
-      roleName: 'Desarrollador Web Front-End',
+      roleId: 'Front-End Dev',
+      roleName: 'Front-End Dev',
       estimatedHours: 8,
       order: 99
     };

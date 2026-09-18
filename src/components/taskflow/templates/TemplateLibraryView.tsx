@@ -232,12 +232,41 @@ export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
 
         <div className="flex items-center gap-2.5 shrink-0">
           <button
+            onClick={() => handleOpenCloneModal()}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#501f92] hover:bg-[#30108b] text-xs font-bold text-white shadow-xs transition-colors cursor-pointer"
+            title="Iniciar flujo de clonado a cotización independiente"
+          >
+            <Copy className="w-4 h-4" />
+            <span>Clonar a Cotización</span>
+          </button>
+          <button
             onClick={handleOpenCreateModal}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#8a4dff] hover:bg-[#7839ee] text-xs font-bold text-white shadow-xs transition-colors cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Nueva Plantilla</span>
           </button>
+        </div>
+      </div>
+
+      {/* Flujo de Trabajo Normalizado */}
+      <div className="bg-white px-5 py-3.5 rounded-xl border border-[#e2e8f0] shadow-2xs">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+          <span className="font-bold text-[#0f172a] flex items-center gap-1.5">
+            <Sparkles className="w-4 h-4 text-[#8a4dff]" />
+            Flujo Oficial de Cotización:
+          </span>
+          <div className="flex flex-wrap items-center gap-2 text-[#64748b] text-[11px] font-medium">
+            <span className="px-2 py-1 rounded-md bg-[#8a4dff]/10 text-[#501f92] font-bold">1. Catálogo</span>
+            <span className="text-[#cbd5e1]">➔</span>
+            <span className="px-2 py-1 rounded-md bg-[#f1f5f9] text-[#334155]">2. Seleccionar</span>
+            <span className="text-[#cbd5e1]">➔</span>
+            <span className="px-2 py-1 rounded-md bg-[#f1f5f9] text-[#334155]">3. Clonar Snapshot</span>
+            <span className="text-[#cbd5e1]">➔</span>
+            <span className="px-2 py-1 rounded-md bg-[#f1f5f9] text-[#334155]">4. Personalizar Alcance</span>
+            <span className="text-[#cbd5e1]">➔</span>
+            <span className="px-2 py-1 rounded-md bg-[#10b981]/10 text-[#065f46] font-bold">5. Cotizar & SOW</span>
+          </div>
         </div>
       </div>
 
@@ -550,11 +579,11 @@ export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
                 </div>
 
                 {/* Footer de Acciones de la Tarjeta */}
-                <div className="px-5 py-3 bg-[#fafbfc] border-t border-[#f1f5f9] flex items-center justify-between gap-2">
+                <div className="px-5 py-3 bg-[#fafbfc] border-t border-[#f1f5f9] flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => handleDuplicateTemplate(tmpl)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-[#64748b] hover:text-[#0f172a] hover:bg-[#f1f5f9] rounded-lg transition-colors cursor-pointer"
+                      className="inline-flex items-center gap-1 px-2 py-1.5 text-xs text-[#64748b] hover:text-[#0f172a] hover:bg-[#f1f5f9] rounded-lg transition-colors cursor-pointer"
                       title="Duplicar plantilla como borrador"
                     >
                       <Copy className="w-3.5 h-3.5" />
@@ -569,13 +598,23 @@ export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
                     </button>
                   </div>
 
-                  <button
-                    onClick={() => handleOpenEditModal(tmpl)}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#8a4dff] hover:bg-[#7839ee] text-white text-xs font-bold shadow-2xs transition-colors cursor-pointer"
-                  >
-                    <Edit3 className="w-3.5 h-3.5" />
-                    <span>Editar Plantilla</span>
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => handleOpenEditModal(tmpl)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#e2e8f0] bg-white hover:bg-[#f8fafc] text-[#475569] text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                      <span>Editar</span>
+                    </button>
+                    <button
+                      onClick={() => handleOpenCloneModal(tmpl.id)}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#501f92] hover:bg-[#30108b] text-white text-xs font-bold shadow-2xs transition-colors cursor-pointer"
+                      title="Clonar esta plantilla hacia una nueva cotización independiente"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-[#e1ff64]" />
+                      <span>Clonar a Cotización</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             );
