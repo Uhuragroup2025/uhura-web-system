@@ -232,13 +232,17 @@ export interface ProjectSummaryItem {
     overdueTasksCount: number;
   };
   
-  // Metadatos de integración futura (desacoplados)
+  // Metadatos de interoperabilidad externa (Portabilidad Base)
   alegraContractId?: string | null;
+  alegraContactId?: string | null;
+  selectedTaxEntityId?: string | null; // Razón social / NIT facturable en este proyecto
   hubspotDealId?: string | null;
   commercialQuoteId?: string | null;
   originOpportunityId?: string | null;
   originQuoteIds?: string[];
   approvedQuoteSnapshots?: QuoteProposalSnapshot[];
+  driveFolderId?: string | null;
+  driveFolderUrl?: string | null;
 
   teamMembers?: { name: string; role?: string; avatarBg: string; initials?: string }[];
   status: 'Activo' | 'En Pausa' | 'Cerrado' | 'Planificación' | 'Archivado' | 'draft' | 'active' | 'on_hold' | 'completed' | 'cancelled';
@@ -414,21 +418,18 @@ export interface TaskComment {
 }
 
 export const STANDARD_UHURA_ROLES = [
-  'Client relationship',
-  'Creative lead',
-  'Content Creator',
-  'Digital Content Specialist',
-  'Digital Designer',
-  'Directora Comercial',
-  'Tracfiker',
-  'Product Lead',
-  'CEO',
-  'Desarrollador Web Front-End',
+  'Client Relationship Strategist',
+  'Front-End Dev',
   'Community Manager',
-  'Tracfiker y DigiOps',
+  'Digital Designer',
+  'Digital Content Specialist',
+  'Product Lead',
+  'Trafficker Media',
+  'Creative Strategy Lead',
   'Creative Designer',
-  'Growth Manager',
-  'Administrativa'
+  'Content Creator',
+  'Directora Comercial',
+  'Growth Manager'
 ] as const;
 
 export type StandardUhuraRole = typeof STANDARD_UHURA_ROLES[number];
@@ -787,11 +788,19 @@ export interface ClientContact {
 
 export interface ClientTaxEntity {
   id: string;
-  nit: string;
-  businessName: string;
+  nit: string;                          // Número de Identificación Tributaria (con DV)
+  businessName: string;                 // Razón Social registrada
+  rutUrl?: string;                      // Archivo o link al RUT actualizado
+  legalRepresentativeId?: string;       // Cédula / identificación del representante legal
+  legalRepresentativeName?: string;     // Nombre del representante legal
+  billingEmail?: string;                // Correo para recepción de facturas electrónicas
   city?: string;
-  isPrimary: boolean;
-  alegraContactId?: string; // Referencia de integración externa
+  isPrimary: boolean;                   // Entidad fiscal por defecto para facturación
+  isActive?: boolean;                   // Estado activo / inactivo
+  validationStatus?: 'pending' | 'verified' | 'rejected'; // Estado de validación administrativa
+  alegraCreated?: boolean;              // Creado en Alegra: sí/no
+  alegraContactId?: string;             // ID único del tercero/contacto en Alegra para este NIT
+  alegraContactUrl?: string;            // Link directo a la ficha del tercero en Alegra
   notes?: string;
 }
 
@@ -1073,11 +1082,18 @@ export interface QuoteProposal {
  * Referencias a la estructura estándar de 4 carpetas en Google Drive
  */
 export interface DriveFolderReferences {
+  driveFolderId?: string;          // ID de carpeta en Google Drive para backend/API
   rootFolderUrl?: string;          // Carpeta raíz: PROSPECTOS/[CLIENTE] o CLIENTES/[CLIENTE]
   briefFolderUrl?: string;         // 00. BRIEF
   proposalsFolderUrl?: string;     // 01. PROPUESTAS COMERCIALES
   adminDocsFolderUrl?: string;     // 02. DOCUMENTOS ADMINISTRATIVOS
   inputsFolderUrl?: string;        // 03. INSUMOS
+  standardSubfolderIds?: {         // IDs de Google Drive por convención
+    briefFolderId?: string;
+    proposalsFolderId?: string;
+    adminDocsFolderId?: string;
+    inputsFolderId?: string;
+  };
 }
 
 /**
@@ -1153,19 +1169,26 @@ export interface NewBusinessOpportunity {
   leadUserId: string;             // Responsable de preventa / comercial en Uhura
   leadUserName?: string;
 
-  // Hooks de integración externa (desacoplados)
-  hubspotDealId?: string | null;  // Hook externo con CRM HubSpot
-  hubspotDealUrl?: string | null; // URL directa al deal en HubSpot
+  // Hooks de integración externa (desacoplados - Portabilidad Base)
+  hubspotDealId?: string | null;      // Hook externo con CRM HubSpot (Source of Truth Comercial)
+  hubspotDealUrl?: string | null;     // URL directa al deal en HubSpot
+  hubspotCompanyId?: string | null;   // Referencia a Empresa en HubSpot
+  hubspotContactId?: string | null;   // Referencia a Contacto en HubSpot
 
   // Discovery, Brief y Drive
   discoveryNotes?: string;
   briefSummary?: string;
-  briefUrl?: string;              // Link al brief en Google Drive
+  briefUrl?: string;                  // Link al brief en Google Drive
+  briefFileId?: string;               // ID de archivo en Google Drive (convención 00. BRIEF)
   targetKickoffDate?: string;
 
-  // Repositorio en Google Drive (estándar 4 carpetas)
-  driveFolderUrl?: string;
+  // Repositorio en Google Drive (estándar 4 carpetas: 00-03)
+  driveFolderId?: string;             // ID de carpeta en Google Drive para backend
+  driveFolderUrl?: string;            // URL de la carpeta raíz
   driveStandardFolders?: DriveFolderReferences;
+
+  // Selección fiscal explícita de facturación (1..N razones sociales)
+  selectedTaxEntityId?: string | null; // FK -> ClientTaxEntity elegida para este negocio/facturación
 
   // Checklist de Vivian / Alegra
   administrativeChecklist?: AdministrativeChecklist;

@@ -33,7 +33,7 @@ export function getRoleFinancialRate(roleName: string): UhuraRoleFinancialRate {
 
   // Búsqueda por palabras clave comunes
   if (normalized.includes('desarroll') || normalized.includes('front') || normalized.includes('dev')) {
-    return UHURA_ROLE_FINANCIAL_RATES[0]; // Desarrollador Web Front-End
+    return UHURA_ROLE_FINANCIAL_RATES[0]; // Front-End Dev
   }
   if (normalized.includes('product') || normalized.includes('lead') || normalized.includes('pm')) {
     return UHURA_ROLE_FINANCIAL_RATES[1]; // Product Lead
@@ -45,13 +45,13 @@ export function getRoleFinancialRate(roleName: string): UhuraRoleFinancialRate {
     return UHURA_ROLE_FINANCIAL_RATES[4]; // Digital Content Specialist
   }
   if (normalized.includes('client') || normalized.includes('cuenta') || normalized.includes('account')) {
-    return UHURA_ROLE_FINANCIAL_RATES[5]; // Client relationship
+    return UHURA_ROLE_FINANCIAL_RATES[5]; // Client Relationship Strategist
   }
   if (normalized.includes('growth') || normalized.includes('analyst')) {
     return UHURA_ROLE_FINANCIAL_RATES[7]; // Growth Manager
   }
   if (normalized.includes('traff') || normalized.includes('pauta') || normalized.includes('media')) {
-    return UHURA_ROLE_FINANCIAL_RATES[9]; // Tracfiker
+    return UHURA_ROLE_FINANCIAL_RATES[9]; // Trafficker Media
   }
 
   // Fallback promedio
@@ -85,7 +85,7 @@ export function extractRoleBreakdown(
     const deliverableTaxOverride = customTaxStatus ? customTaxStatus[del.id] : undefined;
 
     (del.backlogItems || []).forEach((item) => {
-      const roleName = item.roleName || 'Desarrollador Web Front-End';
+      const roleName = item.roleName || 'Front-End Dev';
       const hours = Number(item.estimatedHours) || 0;
       const rate = getRoleFinancialRate(roleName);
 

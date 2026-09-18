@@ -53,18 +53,18 @@ export interface NewTaskModalProps {
 }
 
 const TEAM_MEMBERS = [
-  { name: 'Luisa Fernanda Urazán', initials: 'LU', avatarBg: 'bg-[#0284c7]', defaultRole: 'Client relationship' },
-  { name: 'Diego Cadavid', initials: 'DC', avatarBg: 'bg-[#dc2626]', defaultRole: 'Creative lead' },
+  { name: 'Luisa Fernanda Urazán', initials: 'LU', avatarBg: 'bg-[#0284c7]', defaultRole: 'Client Relationship Strategist' },
+  { name: 'Diego Cadavid', initials: 'DC', avatarBg: 'bg-[#dc2626]', defaultRole: 'Creative Strategy Lead' },
   { name: 'Esmeralda Duque Ramírez', initials: 'ED', avatarBg: 'bg-[#8b5cf6]', defaultRole: 'Content Creator' },
   { name: 'Nayeliz Brunal', initials: 'NB', avatarBg: 'bg-[#14b8a6]', defaultRole: 'Digital Content Specialist' },
   { name: 'Laura Isabel Gómez', initials: 'LG', avatarBg: 'bg-[#0284c7]', defaultRole: 'Digital Designer' },
   { name: 'Catalina Tejada', initials: 'CT', avatarBg: 'bg-[#7c3aed]', defaultRole: 'Directora Comercial' },
-  { name: 'Juan Sebastian', initials: 'JS', avatarBg: 'bg-[#10b981]', defaultRole: 'Tracfiker' },
+  { name: 'Juan Sebastian', initials: 'JS', avatarBg: 'bg-[#10b981]', defaultRole: 'Trafficker Media' },
   { name: 'Paola Monsalve', initials: 'PM', avatarBg: 'bg-[#501f92]', defaultRole: 'Product Lead' },
   { name: 'Ana Giraldo', initials: 'AG', avatarBg: 'bg-[#501f92]', defaultRole: 'CEO' },
-  { name: 'Oscar Cerpa', initials: 'OC', avatarBg: 'bg-[#f59e0b]', defaultRole: 'Desarrollador Web Front-End' },
+  { name: 'Oscar Cerpa', initials: 'OC', avatarBg: 'bg-[#f59e0b]', defaultRole: 'Front-End Dev' },
   { name: 'Sara Rivera', initials: 'SR', avatarBg: 'bg-[#ec4899]', defaultRole: 'Community Manager' },
-  { name: 'Simón Vélez', initials: 'SV', avatarBg: 'bg-[#10b981]', defaultRole: 'Tracfiker y DigiOps' },
+  { name: 'Simón Vélez', initials: 'SV', avatarBg: 'bg-[#10b981]', defaultRole: 'Trafficker Media' },
   { name: 'Melisa Gil', initials: 'MG', avatarBg: 'bg-[#d946ef]', defaultRole: 'Creative Designer' },
   { name: 'Camilo Velez', initials: 'CV', avatarBg: 'bg-[#059669]', defaultRole: 'Growth Manager' },
   { name: 'Juan Camilo Torres', initials: 'JT', avatarBg: 'bg-[#6366f1]', defaultRole: 'Creative Designer' },
@@ -348,10 +348,10 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
         setBudgetedRole('Web Designer');
       } else if (tpl.role.includes('Tech') || tpl.role.includes('Front') || tpl.role.includes('Dev')) {
         setCollaborators(['Oscar Cerpa']);
-        setBudgetedRole('Desarrollador Web Front-End');
+        setBudgetedRole('Front-End Dev');
       } else if (tpl.role.includes('Trafficker') || tpl.role.includes('Growth')) {
         setCollaborators(['Juan Sebastian']);
-        setBudgetedRole('Tracfiker');
+        setBudgetedRole('Trafficker Media');
       } else if (tpl.role.includes('Copy') || tpl.role.includes('Content')) {
         setCollaborators(['Esmeralda Duque Ramírez']);
         setBudgetedRole('Content Creator');

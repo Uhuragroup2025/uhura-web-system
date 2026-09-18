@@ -74,33 +74,33 @@ interface NewProjectModalProps {
 const AVAILABLE_LEADS = [
   { id: 'lead-1', name: 'Paola Monsalve', role: 'Product Lead', avatarBg: 'bg-[#501f92]', initials: 'PM' },
   { id: 'lead-2', name: 'Catalina Tejada', role: 'Directora Comercial', avatarBg: 'bg-[#7c3aed]', initials: 'CT' },
-  { id: 'lead-3', name: 'Diego Cadavid', role: 'Creative lead', avatarBg: 'bg-[#dc2626]', initials: 'DC' },
+  { id: 'lead-3', name: 'Diego Cadavid', role: 'Creative Strategy Lead', avatarBg: 'bg-[#dc2626]', initials: 'DC' },
   { id: 'lead-4', name: 'Camilo Velez', role: 'Growth Manager', avatarBg: 'bg-[#059669]', initials: 'CV' },
   { id: 'lead-5', name: 'Ana Giraldo', role: 'CEO', avatarBg: 'bg-[#501f92]', initials: 'AG' },
-  { id: 'lead-6', name: 'Luisa Fernanda Urazán', role: 'Client relationship', avatarBg: 'bg-[#0284c7]', initials: 'LU' }
+  { id: 'lead-6', name: 'Luisa Fernanda Urazán', role: 'Client Relationship Strategist', avatarBg: 'bg-[#0284c7]', initials: 'LU' }
 ];
 
 export const AVAILABLE_TEAM_MEMBERS: {
   id: string;
   name: string;
-  role: StandardUhuraRole;
+  role: StandardUhuraRole | 'CEO' | 'Administrativa';
   avatarBg: string;
   initials: string;
   configuredWeeklyHours: number;
   currentAllocatedWeeklyHours: number;
 }[] = [
-  { id: 'tm-1', name: 'Luisa Fernanda Urazán', role: 'Client relationship', avatarBg: 'bg-[#0284c7]', initials: 'LU', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 18 },
-  { id: 'tm-2', name: 'Diego Cadavid', role: 'Creative lead', avatarBg: 'bg-[#dc2626]', initials: 'DC', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 28 },
+  { id: 'tm-1', name: 'Luisa Fernanda Urazán', role: 'Client Relationship Strategist', avatarBg: 'bg-[#0284c7]', initials: 'LU', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 18 },
+  { id: 'tm-2', name: 'Diego Cadavid', role: 'Creative Strategy Lead', avatarBg: 'bg-[#dc2626]', initials: 'DC', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 28 },
   { id: 'tm-3', name: 'Esmeralda Duque Ramírez', role: 'Content Creator', avatarBg: 'bg-[#8b5cf6]', initials: 'ED', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 22 },
   { id: 'tm-4', name: 'Nayeliz Brunal', role: 'Digital Content Specialist', avatarBg: 'bg-[#14b8a6]', initials: 'NB', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 19 },
   { id: 'tm-5', name: 'Laura Isabel Gómez', role: 'Digital Designer', avatarBg: 'bg-[#0284c7]', initials: 'LG', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 25 },
   { id: 'tm-6', name: 'Catalina Tejada', role: 'Directora Comercial', avatarBg: 'bg-[#7c3aed]', initials: 'CT', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 20 },
-  { id: 'tm-7', name: 'Juan Sebastian', role: 'Tracfiker', avatarBg: 'bg-[#10b981]', initials: 'JS', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 30 },
+  { id: 'tm-7', name: 'Juan Sebastian', role: 'Trafficker Media', avatarBg: 'bg-[#10b981]', initials: 'JS', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 30 },
   { id: 'tm-8', name: 'Paola Monsalve', role: 'Product Lead', avatarBg: 'bg-[#501f92]', initials: 'PM', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 24 },
   { id: 'tm-9', name: 'Ana Giraldo', role: 'CEO', avatarBg: 'bg-[#501f92]', initials: 'AG', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 15 },
-  { id: 'tm-10', name: 'Oscar Cerpa', role: 'Desarrollador Web Front-End', avatarBg: 'bg-[#f59e0b]', initials: 'OC', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 26 },
+  { id: 'tm-10', name: 'Oscar Cerpa', role: 'Front-End Dev', avatarBg: 'bg-[#f59e0b]', initials: 'OC', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 26 },
   { id: 'tm-11', name: 'Sara Rivera', role: 'Community Manager', avatarBg: 'bg-[#ec4899]', initials: 'SR', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 18 },
-  { id: 'tm-12', name: 'Simón Vélez', role: 'Tracfiker y DigiOps', avatarBg: 'bg-[#10b981]', initials: 'SV', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 27 },
+  { id: 'tm-12', name: 'Simón Vélez', role: 'Trafficker Media', avatarBg: 'bg-[#10b981]', initials: 'SV', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 27 },
   { id: 'tm-13', name: 'Melisa Gil', role: 'Creative Designer', avatarBg: 'bg-[#d946ef]', initials: 'MG', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 29 },
   { id: 'tm-14', name: 'Camilo Velez', role: 'Growth Manager', avatarBg: 'bg-[#059669]', initials: 'CV', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 22 },
   { id: 'tm-15', name: 'Juan Camilo Torres', role: 'Creative Designer', avatarBg: 'bg-[#6366f1]', initials: 'JT', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 24 },
@@ -162,7 +162,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
       description: 'Diseño, prototipado y ajustes de interfaz web',
       roleBudgets: [
         { id: 'rb-draft-3', roleName: 'Digital Designer', quotedHours: 6, assignedMemberIds: ['tm-5'] },
-        { id: 'rb-draft-4', roleName: 'Desarrollador Web Front-End', quotedHours: 10, assignedMemberIds: ['tm-10'] }
+        { id: 'rb-draft-4', roleName: 'Front-End Dev', quotedHours: 10, assignedMemberIds: ['tm-10'] }
       ]
     }
   ]);
@@ -353,7 +353,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
           ...d,
           roleBudgets: [
             ...d.roleBudgets,
-            { id: `rb-${Date.now()}`, roleName: 'Desarrollador Web Front-End', quotedHours: 0, assignedMemberIds: [] }
+            { id: `rb-${Date.now()}`, roleName: 'Front-End Dev', quotedHours: 0, assignedMemberIds: [] }
           ]
         };
       })
