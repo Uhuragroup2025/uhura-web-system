@@ -4,6 +4,7 @@ import {
   QuoteProposal,
   QuoteDeliverable,
   QuoteBacklogItem,
+  NewBusinessOpportunity,
   STANDARD_UHURA_ROLES,
   StandardUhuraRole,
   ROLE_PENDING_DEFINITION,
@@ -31,23 +32,40 @@ import {
   ArrowRight,
   ShieldCheck,
   Search,
-  Sliders
+  Sliders,
+  Briefcase,
+  Target
 } from 'lucide-react';
 
 interface CloneToQuoteModalProps {
   isOpen: boolean;
   templates: ProductBacklogTemplate[];
+  opportunities?: NewBusinessOpportunity[];
   preselectedTemplateId?: string | null;
+  preselectedOpportunityId?: string | null;
   onClose: () => void;
-  onQuoteCreated: (quote: QuoteProposal) => void;
+  onQuoteCreated?: (quote: QuoteProposal) => void;
+  onSaveToOpportunity?: (opportunityId: string, quote: QuoteProposal) => void;
+  onCreateOpportunityWithQuote?: (
+    opportunityData: {
+      title: string;
+      prospectAccountName?: string;
+      leadUserName?: string;
+    },
+    quote: QuoteProposal
+  ) => void;
 }
 
 export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
   isOpen,
   templates,
+  opportunities = [],
   preselectedTemplateId,
+  preselectedOpportunityId,
   onClose,
-  onQuoteCreated
+  onQuoteCreated,
+  onSaveToOpportunity,
+  onCreateOpportunityWithQuote
 }) => {
   if (!isOpen) return null;
 
@@ -60,8 +78,17 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
   );
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  // Datos de la oportunidad
-  const [opportunityName, setOpportunityName] = useState<string>('Prospecto Demo - Cotización 2026');
+  // Selección de Oportunidad Contenedora (Regla arquitectónica: QuoteProposal siempre pertenece a NewBusinessOpportunity)
+  const [targetOpportunityMode, setTargetOpportunityMode] = useState<'existing' | 'new'>(
+    preselectedOpportunityId || opportunities.length > 0 ? 'existing' : 'new'
+  );
+  const [selectedOpportunityId, setSelectedOpportunityId] = useState<string>(
+    preselectedOpportunityId || opportunities[0]?.id || ''
+  );
+  const [newOpportunityTitle, setNewOpportunityTitle] = useState<string>('');
+  const [newProspectAccountName, setNewProspectAccountName] = useState<string>('');
+
+  // Etiqueta de la cotización
   const [versionLabel, setVersionLabel] = useState<string>('Opción A: Alcance Recomendado');
 
   // Paso 2: Vista de personalización de la copia independiente clonada
@@ -69,6 +96,7 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
   const [expandedDelId, setExpandedDelId] = useState<string | null>(null);
 
   const selectedTemplate = templates.find((t) => t.id === selectedTemplateId) || templates[0];
+  const targetExistingOpp = opportunities.find((o) => o.id === selectedOpportunityId);
 
   // Filtrado de plantillas
   const filteredTemplates = templates.filter((t) =>
@@ -77,15 +105,31 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
     t.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // ACCIÓN: CLONAR HACIA COPIA INDEPENDIENTE
+  // Nombre de visualización de la oportunidad
+  const displayOpportunityName =
+    targetOpportunityMode === 'existing'
+      ? targetExistingOpp
+        ? `${targetExistingOpp.title} (${targetExistingOpp.prospectAccountName || 'Cliente'})`
+        : 'Oportunidad Seleccionada'
+      : newOpportunityTitle.trim() || 'Nueva Oportunidad Comercial';
+
+  // ACCIÓN: CLONAR HACIA COPIA INDEPENDIENTE CON OPPORTUNITY ID RESUELTO
   const handleGenerateClone = () => {
+    // Resolver opportunityId legítimo
+    const resolvedOppId =
+      targetOpportunityMode === 'existing' && selectedOpportunityId
+        ? selectedOpportunityId
+        : `opp-${Date.now()}`;
+
     let quote: QuoteProposal;
     if (mode === 'template' && selectedTemplate) {
       quote = cloneTemplateToQuote(selectedTemplate, {
+        opportunityId: resolvedOppId,
         versionLabel: versionLabel.trim() || `Opción: ${selectedTemplate.name}`
       });
     } else {
       quote = createBlankCustomQuote({
+        opportunityId: resolvedOppId,
         versionLabel: versionLabel.trim() || 'Cotización a la Medida (Desde Cero)'
       });
     }
@@ -224,10 +268,32 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
     });
   };
 
-  // Guardar cotización en el sistema
+  // Guardar cotización en la oportunidad correspondiente
   const handleFinalizeQuote = () => {
     if (!clonedQuote) return;
-    onQuoteCreated(clonedQuote);
+
+    if (targetOpportunityMode === 'existing' && selectedOpportunityId) {
+      if (onSaveToOpportunity) {
+        onSaveToOpportunity(selectedOpportunityId, clonedQuote);
+      } else if (onQuoteCreated) {
+        onQuoteCreated(clonedQuote);
+      }
+    } else {
+      // Crear nueva oportunidad vinculada
+      if (onCreateOpportunityWithQuote) {
+        onCreateOpportunityWithQuote(
+          {
+            title: newOpportunityTitle.trim() || `Oportunidad: ${clonedQuote.versionLabel}`,
+            prospectAccountName: newProspectAccountName.trim() || 'Nuevo Prospecto',
+            leadUserName: 'Comercial Lead'
+          },
+          clonedQuote
+        );
+      } else if (onQuoteCreated) {
+        onQuoteCreated(clonedQuote);
+      }
+    }
+
     onClose();
   };
 
@@ -312,33 +378,118 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                 </button>
               </div>
 
-              {/* Datos de contexto */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
-                <div>
-                  <label className="block text-xs font-semibold text-[#334155] mb-1">
-                    Nombre de la Oportunidad / Negocio
-                  </label>
-                  <input
-                    type="text"
-                    value={opportunityName}
-                    onChange={(e) => setOpportunityName(e.target.value)}
-                    placeholder="ej. Grupo Argos - Rediseño Web 2026"
-                    className="w-full px-3 py-2 text-xs rounded-lg border border-[#cbd5e1] focus:ring-2 focus:ring-[#8a4dff] focus:border-transparent outline-hidden bg-white"
-                  />
+              {/* Datos de contexto y Asociación con New Business Opportunity */}
+              <div className="p-4 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-4">
+                <div className="flex items-center justify-between border-b border-[#e2e8f0] pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <Target className="w-4 h-4 text-[#8a4dff]" />
+                    <span className="text-xs font-bold text-[#0f172a] uppercase tracking-wider">
+                      Asociación con Oportunidad de New Business
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 text-[11px]">
+                    <button
+                      type="button"
+                      onClick={() => setTargetOpportunityMode('existing')}
+                      disabled={opportunities.length === 0}
+                      className={`px-2.5 py-1 rounded-md font-semibold transition-colors cursor-pointer ${
+                        targetOpportunityMode === 'existing'
+                          ? 'bg-[#8a4dff] text-white'
+                          : opportunities.length === 0
+                          ? 'text-[#94a3b8] cursor-not-allowed'
+                          : 'bg-white text-[#64748b] border border-[#cbd5e1] hover:bg-[#f1f5f9]'
+                      }`}
+                    >
+                      Oportunidad Existente ({opportunities.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTargetOpportunityMode('new')}
+                      className={`px-2.5 py-1 rounded-md font-semibold transition-colors cursor-pointer ${
+                        targetOpportunityMode === 'new'
+                          ? 'bg-[#8a4dff] text-white'
+                          : 'bg-white text-[#64748b] border border-[#cbd5e1] hover:bg-[#f1f5f9]'
+                      }`}
+                    >
+                      Crear desde Brief / Nueva
+                    </button>
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-[#334155] mb-1">
-                    Etiqueta de la Cotización / Opción
-                  </label>
-                  <input
-                    type="text"
-                    value={versionLabel}
-                    onChange={(e) => setVersionLabel(e.target.value)}
-                    placeholder="ej. Opción A: Alcance Recomendado"
-                    className="w-full px-3 py-2 text-xs rounded-lg border border-[#cbd5e1] focus:ring-2 focus:ring-[#8a4dff] focus:border-transparent outline-hidden bg-white"
-                  />
-                </div>
+                {targetOpportunityMode === 'existing' ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-[#334155] mb-1">
+                        Seleccionar Oportunidad de New Business
+                      </label>
+                      <select
+                        value={selectedOpportunityId}
+                        onChange={(e) => setSelectedOpportunityId(e.target.value)}
+                        className="w-full px-3 py-2 text-xs rounded-lg border border-[#cbd5e1] focus:ring-2 focus:ring-[#8a4dff] focus:border-transparent outline-hidden bg-white text-[#0f172a]"
+                      >
+                        {opportunities.map((opp) => (
+                          <option key={opp.id} value={opp.id}>
+                            {opp.title} · {opp.prospectAccountName || 'Cliente'} (Etapa: {opp.stage})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-[#334155] mb-1">
+                        Etiqueta de la Cotización / Opción
+                      </label>
+                      <input
+                        type="text"
+                        value={versionLabel}
+                        onChange={(e) => setVersionLabel(e.target.value)}
+                        placeholder="ej. Opción A: Alcance Recomendado"
+                        className="w-full px-3 py-2 text-xs rounded-lg border border-[#cbd5e1] focus:ring-2 focus:ring-[#8a4dff] focus:border-transparent outline-hidden bg-white"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-[#334155] mb-1">
+                        Título de la Nueva Oportunidad
+                      </label>
+                      <input
+                        type="text"
+                        value={newOpportunityTitle}
+                        onChange={(e) => setNewOpportunityTitle(e.target.value)}
+                        placeholder="ej. Rediseño Web & Integración ERP"
+                        className="w-full px-3 py-2 text-xs rounded-lg border border-[#cbd5e1] focus:ring-2 focus:ring-[#8a4dff] focus:border-transparent outline-hidden bg-white"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-[#334155] mb-1">
+                        Cuenta / Prospecto / Cliente
+                      </label>
+                      <input
+                        type="text"
+                        value={newProspectAccountName}
+                        onChange={(e) => setNewProspectAccountName(e.target.value)}
+                        placeholder="ej. Grupo Argos"
+                        className="w-full px-3 py-2 text-xs rounded-lg border border-[#cbd5e1] focus:ring-2 focus:ring-[#8a4dff] focus:border-transparent outline-hidden bg-white"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-[#334155] mb-1">
+                        Etiqueta de la Cotización
+                      </label>
+                      <input
+                        type="text"
+                        value={versionLabel}
+                        onChange={(e) => setVersionLabel(e.target.value)}
+                        placeholder="ej. Opción A: Alcance Recomendado"
+                        className="w-full px-3 py-2 text-xs rounded-lg border border-[#cbd5e1] focus:ring-2 focus:ring-[#8a4dff] focus:border-transparent outline-hidden bg-white"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Si es modo plantilla: Selector y Previsualización */}
@@ -488,8 +639,8 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
               {/* Resumen de la Oportunidad */}
               <div className="flex items-center justify-between p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
                 <div>
-                  <span className="text-[11px] text-[#64748b] block">Oportunidad:</span>
-                  <span className="text-xs font-bold text-[#0f172a]">{opportunityName}</span>
+                  <span className="text-[11px] text-[#64748b] block">Oportunidad de New Business:</span>
+                  <span className="text-xs font-bold text-[#0f172a]">{displayOpportunityName}</span>
                 </div>
                 <div className="text-right">
                   <span className="text-[11px] text-[#64748b] block">Etiqueta:</span>

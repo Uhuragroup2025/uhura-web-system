@@ -280,8 +280,9 @@ Fuente: *"FORMATO DE PROCESO DE ÁREA UHURA (2026) - PRODUCTO DIGITAL"*
 
 #### 2.4 Reglas de Negocio
 1. **Independencia de Snapshot:** Al importar una plantilla a una cotización en New Business, se genera una copia desacoplada. Las modificaciones que haga el líder técnico en la cotización NO alteran la plantilla maestra, y futuros cambios en la plantilla maestra NO alteran cotizaciones ya creadas.
-2. **Roles Estándar Obligatorios:** Las plantillas solo pueden construirse con roles del catálogo oficial de Uhura (`STANDARD_UHURA_ROLES`). Nombres informales (*"diseñador web"*, *"redactor"*, *"developer"*, *"tracfiker"*) han sido normalizados a sus respectivos 12 roles canónicos (*"Digital Designer"*, *"Digital Content Specialist"*, *"Front-End Dev"*, *"Client Relationship Strategist"*, *"Trafficker Media"*).
-3. **Cálculo Recursivo de Horas:** Toda plantilla recalcula automáticamente sus horas por actividad, horas acumuladas por entregable y total de horas por rol usando [`recalculateTemplateHours`](../components/taskflow/templates/templateEngine.ts).
+2. **Flujo "Usar en New Business" y Asociación Previa Obligatoria:** La plantilla no genera cotizaciones huérfanas en el vacío ni en estados paralelos. La oportunidad debe existir previamente antes de persistir la cotización: el usuario selecciona una oportunidad existente en New Business o crea una nueva a partir de un Brief/prospecto, asignando `opportunityId` antes de finalizar la cotización.
+3. **Roles Estándar Obligatorios:** Las plantillas solo pueden construirse con roles del catálogo oficial de Uhura (`STANDARD_UHURA_ROLES`). Nombres informales (*"diseñador web"*, *"redactor"*, *"developer"*, *"tracfiker"*) han sido normalizados a sus respectivos 12 roles canónicos (*"Digital Designer"*, *"Digital Content Specialist"*, *"Front-End Dev"*, *"Client Relationship Strategist"*, *"Trafficker Media"*).
+4. **Cálculo Recursivo de Horas:** Toda plantilla recalcula automáticamente sus horas por actividad, horas acumuladas por entregable y total de horas por rol usando [`recalculateTemplateHours`](../components/taskflow/templates/templateEngine.ts).
 
 ---
 
@@ -386,8 +387,9 @@ Documento comercial y financiero formal que se presenta al cliente. Es el conten
   - `totalHoursRollup`: Decimal.
 
 #### 5.3 Reglas de Negocio
-1. **Inmutabilidad del Snapshot:** Al aprobarse una cotización, su contenido queda congelado. No puede editarse; si el cliente pide cambios, se crea una nueva versión (`V2`).
-2. **Aprobación Selectiva:** Múltiples cotizaciones aprobadas para una misma cuenta pueden agruparse en un único proyecto o dar origen a proyectos separados según decisión comercial.
+1. **Pertenencia Estricta a NewBusinessOpportunity (Única Fuente de Verdad):** Toda entidad `QuoteProposal` pertenece obligatoria e indisolublemente a una `NewBusinessOpportunity` vía `opportunityId`. Se prohíbe terminantemente la creación de cotizaciones huérfanas o la persistencia en estados paralelos de quotes (`createdQuotes`). La persistencia se realiza exclusivamente dentro del array `quotes` de la oportunidad correspondiente.
+2. **Inmutabilidad del Snapshot:** Al aprobarse una cotización, su contenido queda congelado. No puede editarse; si el cliente pide cambios, se crea una nueva versión (`V2`).
+3. **Aprobación Selectiva:** Múltiples cotizaciones aprobadas para una misma cuenta pueden agruparse en un único proyecto o dar origen a proyectos separados según decisión comercial.
 
 ---
 
@@ -771,6 +773,8 @@ Durante la auditoría end-to-end se detectaron las siguientes inconsistencias qu
    New Business no se inicia cuando un deal se marca como "ganado" en el CRM ni sustituye la prospección comercial en frío. Se dispara exclusivamente cuando **se recibe un brief comercial calificado desde HubSpot que exige dimensionamiento técnico de entregables (scoping) y costeo operativo**.
 9. **Fuente Canónica Financiera:**  
    La fuente de verdad financiera de Uhura Group es la **"Calculadora Comercial UHURA 2026" (Google Sheet)** administrada por Finanzas y Dirección. La implementación en `financialEngine.ts` es un prototipo algorítmico y el backend debe proveer persistencia paramétrica configurable para garantizar coherencia absoluta.
+10. **Eliminación de Cotizaciones Huérfanas y Única Fuente de Verdad:**  
+    En el prototipo existía un contenedor huérfano (`createdQuotes`) y una vista independiente (`cotizador`) desconectada de las oportunidades. **Corrección de dominio:** Se eliminó la vista y el estado paralelo. Toda cotización (`QuoteProposal`) debe existir y persistirse exclusivamente dentro de una `NewBusinessOpportunity`. En el flujo "Usar en New Business" del catálogo de plantillas, la oportunidad debe existir previamente (seleccionando una existente o creándola desde Brief) antes de fijar y persistir el snapshot de cotización.
 
 ---
 

@@ -4,6 +4,7 @@ import {
   ProductBacklogTemplateCategory,
   TemplateStatus,
   QuoteProposal,
+  NewBusinessOpportunity,
   STANDARD_UHURA_ROLES,
   ROLE_PENDING_DEFINITION
 } from '../types';
@@ -37,6 +38,16 @@ import {
 interface TemplateLibraryViewProps {
   templates: ProductBacklogTemplate[];
   onUpdateTemplates: (templates: ProductBacklogTemplate[]) => void;
+  opportunities?: NewBusinessOpportunity[];
+  onSaveToOpportunity?: (opportunityId: string, quote: QuoteProposal) => void;
+  onCreateOpportunityWithQuote?: (
+    opportunityData: {
+      title: string;
+      prospectAccountName?: string;
+      leadUserName?: string;
+    },
+    quote: QuoteProposal
+  ) => void;
   onQuoteCreated?: (quote: QuoteProposal) => void;
   quotes?: QuoteProposal[];
 }
@@ -44,6 +55,9 @@ interface TemplateLibraryViewProps {
 export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
   templates,
   onUpdateTemplates,
+  opportunities = [],
+  onSaveToOpportunity,
+  onCreateOpportunityWithQuote,
   onQuoteCreated,
   quotes = []
 }) => {
@@ -234,10 +248,10 @@ export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
           <button
             onClick={() => handleOpenCloneModal()}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#501f92] hover:bg-[#30108b] text-xs font-bold text-white shadow-xs transition-colors cursor-pointer"
-            title="Iniciar flujo de clonado a cotización independiente"
+            title="Usar plantilla en New Business (asociada a oportunidad)"
           >
             <Copy className="w-4 h-4" />
-            <span>Clonar a Cotización</span>
+            <span>Usar en New Business</span>
           </button>
           <button
             onClick={handleOpenCreateModal}
@@ -254,18 +268,18 @@ export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
           <span className="font-bold text-[#0f172a] flex items-center gap-1.5">
             <Sparkles className="w-4 h-4 text-[#8a4dff]" />
-            Flujo Oficial de Cotización:
+            Flujo Oficial:
           </span>
           <div className="flex flex-wrap items-center gap-2 text-[#64748b] text-[11px] font-medium">
             <span className="px-2 py-1 rounded-md bg-[#8a4dff]/10 text-[#501f92] font-bold">1. Catálogo</span>
             <span className="text-[#cbd5e1]">➔</span>
-            <span className="px-2 py-1 rounded-md bg-[#f1f5f9] text-[#334155]">2. Seleccionar</span>
+            <span className="px-2 py-1 rounded-md bg-[#f1f5f9] text-[#334155]">2. Usar en New Business</span>
             <span className="text-[#cbd5e1]">➔</span>
-            <span className="px-2 py-1 rounded-md bg-[#f1f5f9] text-[#334155]">3. Clonar Snapshot</span>
+            <span className="px-2 py-1 rounded-md bg-[#f1f5f9] text-[#334155]">3. Oportunidad (Existente o Brief)</span>
             <span className="text-[#cbd5e1]">➔</span>
-            <span className="px-2 py-1 rounded-md bg-[#f1f5f9] text-[#334155]">4. Personalizar Alcance</span>
+            <span className="px-2 py-1 rounded-md bg-[#f1f5f9] text-[#334155]">4. Snapshot Plantilla</span>
             <span className="text-[#cbd5e1]">➔</span>
-            <span className="px-2 py-1 rounded-md bg-[#10b981]/10 text-[#065f46] font-bold">5. Cotizar & SOW</span>
+            <span className="px-2 py-1 rounded-md bg-[#10b981]/10 text-[#065f46] font-bold">5. QuoteProposal en Oportunidad</span>
           </div>
         </div>
       </div>
@@ -609,10 +623,10 @@ export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
                     <button
                       onClick={() => handleOpenCloneModal(tmpl.id)}
                       className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#501f92] hover:bg-[#30108b] text-white text-xs font-bold shadow-2xs transition-colors cursor-pointer"
-                      title="Clonar esta plantilla hacia una nueva cotización independiente"
+                      title="Usar esta plantilla para cotizar en New Business"
                     >
                       <Sparkles className="w-3.5 h-3.5 text-[#e1ff64]" />
-                      <span>Clonar a Cotización</span>
+                      <span>Usar en New Business</span>
                     </button>
                   </div>
                 </div>
@@ -634,8 +648,29 @@ export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
       <CloneToQuoteModal
         isOpen={isCloneModalOpen}
         templates={templates}
+        opportunities={opportunities}
         preselectedTemplateId={templateToCloneId}
         onClose={() => setIsCloneModalOpen(false)}
+        onSaveToOpportunity={(oppId, quote) => {
+          if (onSaveToOpportunity) {
+            onSaveToOpportunity(oppId, quote);
+          } else if (onQuoteCreated) {
+            onQuoteCreated(quote);
+          }
+          triggerFeedback(
+            `Cotización "${quote.versionLabel}" guardada en la oportunidad (${quote.totalHoursRollup}h).`
+          );
+        }}
+        onCreateOpportunityWithQuote={(oppData, quote) => {
+          if (onCreateOpportunityWithQuote) {
+            onCreateOpportunityWithQuote(oppData, quote);
+          } else if (onQuoteCreated) {
+            onQuoteCreated(quote);
+          }
+          triggerFeedback(
+            `Nueva oportunidad "${oppData.title}" creada con la cotización "${quote.versionLabel}" (${quote.totalHoursRollup}h).`
+          );
+        }}
         onQuoteCreated={handleQuoteCreatedInternal}
       />
 

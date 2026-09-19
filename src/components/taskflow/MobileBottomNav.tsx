@@ -69,7 +69,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       id: 'more' as const,
       label: 'Más',
       icon: LayoutDashboard,
-      isActive: ['proyectos', 'clientes', 'capacidad', 'plantillas-producto', 'cotizador', 'new-business', 'finanzas', 'usuarios', 'el-muro', 'la-colonia'].includes(currentView)
+      isActive: ['proyectos', 'clientes', 'capacidad', 'plantillas-producto', 'new-business', 'finanzas', 'usuarios', 'el-muro', 'la-colonia'].includes(currentView)
     }
   ];
 
@@ -174,23 +174,8 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                   >
                     <BookOpen className="w-4 h-4 text-[#d4ff4a] shrink-0" />
                     <div className="truncate">
-                      <span className="block text-xs font-bold truncate">Plantillas</span>
-                      <span className="text-[10px] text-[#d4ff4a] block truncate">Biblioteca Producto</span>
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={() => handleNavClick('cotizador')}
-                    className={`p-3 rounded-2xl border text-left flex items-center gap-2.5 transition-all cursor-pointer ${
-                      currentView === 'cotizador'
-                        ? 'bg-[#241344] border-[#8a4dff] text-white'
-                        : 'bg-[#140b24] border-[#261845] text-[#c9b7ff]'
-                    }`}
-                  >
-                    <DollarSign className="w-4 h-4 text-[#d4ff4a] shrink-0" />
-                    <div className="truncate">
-                      <span className="block text-xs font-bold truncate">Cotizador</span>
-                      <span className="text-[10px] text-[#c9b7ff]/60 block truncate">Backlog y alcance</span>
+                      <span className="block text-xs font-bold truncate">Servicios</span>
+                      <span className="text-[10px] text-[#d4ff4a] block truncate">Catálogo de Plantillas</span>
                     </div>
                   </button>
 

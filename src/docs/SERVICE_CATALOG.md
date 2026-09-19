@@ -10,7 +10,7 @@
 > - Tipos y Roles Canónicos: [`src/components/taskflow/types.ts`](../components/taskflow/types.ts)
 > - Motor Financiero: [`src/components/taskflow/financial/financialEngine.ts`](../components/taskflow/financial/financialEngine.ts)
 > - Interfaz de Biblioteca: [`src/components/taskflow/templates/TemplateLibraryView.tsx`](../components/taskflow/templates/TemplateLibraryView.tsx)
-> - Modal de Clonación a Cotización: [`src/components/taskflow/templates/CloneToQuoteModal.tsx`](../components/taskflow/templates/CloneToQuoteModal.tsx)
+> - Modal de Clonación e Integración con New Business: [`src/components/taskflow/templates/CloneToQuoteModal.tsx`](../components/taskflow/templates/CloneToQuoteModal.tsx)
 
 ---
 
@@ -19,8 +19,9 @@
 El **Catálogo de Servicios** constituye la biblioteca oficial de especificaciones técnicas para los servicios comercializados y ejecutados por Uhura Group. Su propósito es garantizar:
 
 1. **Estimaciones Técnicas Rigurosas:** Todo dimensionamiento parte de actividades atómicas previamente costeadas con horas y roles estándar.
-2. **Desacoplamiento de Plantillas Maestras:** Al clonar una plantilla para una oportunidad en New Business, se genera una copia independiente (*snapshot*). Los cambios en la oportunidad nunca alteran la plantilla maestra, y las actualizaciones futuras de la plantilla no modifican cotizaciones históricas.
-3. **Normalización Estricta de Roles:** Queda prohibido el uso de nombres informales, cargos ad-hoc o nombres de personas en la definición de actividades. Toda asignación presupuestada debe corresponder a uno de los 12 roles del catálogo oficial de Uhura.
+2. **Desacoplamiento e Inmutabilidad de Plantillas:** Al usar una plantilla para New Business, se genera un *snapshot* desacoplado de entregables y actividades. Los cambios en la oportunidad nunca alteran la plantilla maestra, y las actualizaciones futuras de la plantilla no modifican cotizaciones históricas.
+3. **Flujo "Usar en New Business" y Única Fuente de Verdad:** No existen cotizaciones huérfanas ni estados paralelos de quotes fuera del ciclo comercial. Toda cotización derivada de una plantilla maestra se persiste obligatoriamente dentro de una `NewBusinessOpportunity` (seleccionando una oportunidad existente o creándola desde Brief/prospecto con asignación previa de `opportunityId`).
+4. **Normalización Estricta de Roles:** Queda prohibido el uso de nombres informales, cargos ad-hoc o nombres de personas en la definición de actividades. Toda asignación presupuestada debe corresponder a uno de los 12 roles del catálogo oficial de Uhura.
 
 ---
 

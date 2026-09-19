@@ -609,7 +609,6 @@ export const TaskFlowPrototype: React.FC = () => {
   const [activities, setActivities] = useState(initialActivities);
   const [timeLogs, setTimeLogs] = useState<TimeLog[]>(initialTimeLogs);
   const [productTemplates, setProductTemplates] = useState<ProductBacklogTemplate[]>(INITIAL_PRODUCT_BACKLOG_TEMPLATES);
-  const [createdQuotes, setCreatedQuotes] = useState<QuoteProposal[]>([]);
   const [opportunities, setOpportunities] = useState<NewBusinessOpportunity[]>(INITIAL_NEW_BUSINESS_OPPORTUNITIES);
 
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
@@ -1677,6 +1676,59 @@ export const TaskFlowPrototype: React.FC = () => {
     );
   };
 
+  // Guardar cotización en oportunidad existente de New Business
+  const handleSaveQuoteToOpportunity = (opportunityId: string, quote: QuoteProposal) => {
+    setOpportunities((prev) =>
+      prev.map((opp) => {
+        if (opp.id === opportunityId) {
+          const existingQuotes = opp.quotes || [];
+          const quoteExists = existingQuotes.some((q) => q.id === quote.id);
+          const updatedQuotes = quoteExists
+            ? existingQuotes.map((q) => (q.id === quote.id ? quote : q))
+            : [quote, ...existingQuotes];
+          return {
+            ...opp,
+            quotes: updatedQuotes,
+            updatedAt: new Date().toISOString()
+          };
+        }
+        return opp;
+      })
+    );
+  };
+
+  // Crear nueva oportunidad a partir de Brief/Prospecto y adjuntar la cotización inmediatamente
+  const handleCreateOpportunityWithQuote = (
+    opportunityData: {
+      title: string;
+      prospectAccountName?: string;
+      leadUserName?: string;
+    },
+    quote: QuoteProposal
+  ) => {
+    const newOpportunityId = quote.opportunityId || `opp-${Date.now()}`;
+    const finalizedQuote: QuoteProposal = {
+      ...quote,
+      opportunityId: newOpportunityId
+    };
+
+    const newOpp: NewBusinessOpportunity = {
+      id: newOpportunityId,
+      title: opportunityData.title,
+      clientName: opportunityData.prospectAccountName || 'Prospecto New Business',
+      status: 'scoping',
+      probability: 60,
+      estimatedValueCOP: (finalizedQuote.totalHoursRollup || 0) * 120000,
+      totalQuotedHours: finalizedQuote.totalHoursRollup || 0,
+      leadUserName: opportunityData.leadUserName || 'Product Lead',
+      quotes: [finalizedQuote],
+      createdAt: new Date().toISOString().split('T')[0],
+      briefSummary: `Oportunidad generada desde plantilla ${quote.templateName || ''}.`
+    };
+
+    setOpportunities((prev) => [newOpp, ...prev]);
+  };
+
   // Add task
   const handleAddTask = (newTask: TaskItem) => {
     setTasks((prev) => [newTask, ...prev]);
@@ -1746,8 +1798,6 @@ export const TaskFlowPrototype: React.FC = () => {
         return 'Biblioteca de Plantillas Maestras · Producto';
       case 'new-business':
         return 'New Business · Scoping & Oportunidades';
-      case 'cotizador':
-        return 'Cotizador';
       case 'finanzas':
         return 'Finanzas';
       case 'el-muro':
@@ -2090,10 +2140,20 @@ export const TaskFlowPrototype: React.FC = () => {
                   <TemplateLibraryView
                     templates={productTemplates}
                     onUpdateTemplates={setProductTemplates}
-                    quotes={createdQuotes}
+                    opportunities={opportunities}
+                    onSaveToOpportunity={(oppId, quote) => {
+                      handleSaveQuoteToOpportunity(oppId, quote);
+                      setCurrentView('new-business');
+                    }}
+                    onCreateOpportunityWithQuote={(oppData, quote) => {
+                      handleCreateOpportunityWithQuote(oppData, quote);
+                      setCurrentView('new-business');
+                    }}
                     onQuoteCreated={(newQuote) => {
-                      setCreatedQuotes((prev) => [newQuote, ...prev]);
-                      setCurrentView('cotizador');
+                      if (newQuote.opportunityId) {
+                        handleSaveQuoteToOpportunity(newQuote.opportunityId, newQuote);
+                      }
+                      setCurrentView('new-business');
                     }}
                   />
                 )}
@@ -2115,163 +2175,6 @@ export const TaskFlowPrototype: React.FC = () => {
                     onNavigateToView={handleSelectView}
                     onConvertOpportunityToProject={handleConvertOpportunityToProject}
                   />
-                )}
-
-                {/* 7. COTIZADOR (Pipeline Comercial & Instancias de Cotización) */}
-                {currentView === 'cotizador' && (
-                  <div className="space-y-6 animate-in fade-in duration-200">
-                    {/* Header & Acceso a la Biblioteca de Plantillas */}
-                    <div className="bg-white p-6 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#8a4dff]/10 text-[#8a4dff] uppercase tracking-wider">
-                            Fase: New Business → Cotización
-                          </span>
-                          <span className="text-[11px] text-[#64748b]">
-                            Instancias Clonadas de Backlog
-                          </span>
-                        </div>
-                        <h2 className="text-xl font-extrabold text-[#0f172a] tracking-tight">
-                          Cotizador & Backlog Comercial
-                        </h2>
-                        <p className="text-xs text-[#64748b] max-w-2xl leading-relaxed">
-                          Las cotizaciones se estructuran a partir de copias independientes de la Biblioteca de Plantillas 
-                          o se diseñan desde cero para requerimientos a la medida. El cálculo de horas por rol (Nivel 2) 
-                          se transfiere sin pérdida de granularidad al contrato de la calculadora financiera.
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-2.5 shrink-0">
-                        <button
-                          onClick={() => setCurrentView('plantillas-producto')}
-                          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#8a4dff] hover:bg-[#7839ee] text-xs font-bold text-white shadow-sm transition-colors cursor-pointer"
-                        >
-                          <BookOpen className="w-4 h-4" />
-                          <span>Abrir Biblioteca de Plantillas</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Lista de Cotizaciones Generadas */}
-                    {createdQuotes.length === 0 ? (
-                      <div className="bg-white p-10 text-center rounded-2xl border border-[#e2e8f0] space-y-4 shadow-2xs">
-                        <div className="w-12 h-12 rounded-2xl bg-[#8a4dff]/10 flex items-center justify-center mx-auto text-[#8a4dff]">
-                          <Layers className="w-6 h-6" />
-                        </div>
-                        <div>
-                          <h3 className="text-sm font-bold text-[#0f172a]">
-                            No hay cotizaciones activas en esta sesión
-                          </h3>
-                          <p className="text-xs text-[#64748b] max-w-md mx-auto mt-1">
-                            Dirígete a la Biblioteca de Plantillas Maestras para seleccionar un producto (ej. Sitio WordPress, Landing Page, Tienda Online) y generar una copia independiente con cálculo de horas por rol.
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => setCurrentView('plantillas-producto')}
-                          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#8a4dff] hover:bg-[#7839ee] text-xs font-bold text-white shadow-sm transition-colors cursor-pointer"
-                        >
-                          <BookOpen className="w-4 h-4" />
-                          <span>Ir a Plantillas y Cotizar</span>
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-xs font-bold uppercase tracking-wider text-[#334155]">
-                            Cotizaciones Generadas ({createdQuotes.length})
-                          </h3>
-                          <span className="text-xs text-[#10b981] font-semibold flex items-center gap-1.5">
-                            <span className="w-2 h-2 rounded-full bg-[#10b981]" />
-                            Copias independientes aisladas de la biblioteca
-                          </span>
-                        </div>
-
-                        <div className="grid grid-cols-1 gap-4">
-                          {createdQuotes.map((q, qIdx) => (
-                            <div
-                              key={q.id}
-                              className="bg-white p-5 rounded-2xl border border-[#e2e8f0] shadow-xs space-y-4"
-                            >
-                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#f1f5f9]">
-                                <div>
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-xs font-bold text-[#8a4dff]">
-                                      #{qIdx + 1}
-                                    </span>
-                                    <h4 className="text-sm font-bold text-[#0f172a]">
-                                      {q.versionLabel}
-                                    </h4>
-                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#10b981]/15 text-[#10b981]">
-                                      Borrador Técnico
-                                    </span>
-                                  </div>
-                                  <p className="text-[11px] text-[#64748b] mt-0.5">
-                                    ID Cotización: <code>{q.id}</code> · {q.deliverables.length} entregables · 
-                                    {q.deliverables.flatMap((d) => d.backlogItems).length} actividades
-                                  </p>
-                                </div>
-
-                                <div className="text-right">
-                                  <span className="text-[10px] uppercase font-bold text-[#64748b] block">
-                                    Nivel 3: Total Horas
-                                  </span>
-                                  <span className="text-base font-black text-[#8a4dff]">
-                                    {q.totalHoursRollup} hrs
-                                  </span>
-                                </div>
-                              </div>
-
-                              {/* Nivel 2: Rollup de Horas por Rol */}
-                              <div className="space-y-1.5">
-                                <span className="text-[11px] font-bold uppercase tracking-wider text-[#475569] block">
-                                  Nivel 2: Horas Cotizadas por Rol (Presupuesto para Calculadora):
-                                </span>
-                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                                  {q.deliverables
-                                    .flatMap((d) => d.roleBudgets)
-                                    .reduce((acc, rb) => {
-                                      const found = acc.find((item) => item.roleId === rb.roleId);
-                                      if (found) {
-                                        found.quotedHours += rb.quotedHours;
-                                      } else {
-                                        acc.push({ ...rb });
-                                      }
-                                      return acc;
-                                    }, [] as typeof q.deliverables[0]['roleBudgets'])
-                                    .map((rb) => (
-                                      <div
-                                        key={rb.roleId}
-                                        className="p-2 rounded-lg bg-[#f8fafc] border border-[#e2e8f0] flex items-center justify-between text-xs"
-                                      >
-                                        <span className="text-[#475569] font-medium truncate mr-2" title={rb.roleName}>
-                                          {rb.roleName}
-                                        </span>
-                                        <strong className="text-[#8a4dff] shrink-0 font-bold">
-                                          {Math.round(rb.quotedHours * 10) / 10}h
-                                        </strong>
-                                      </div>
-                                    ))}
-                                </div>
-                              </div>
-
-                              {/* Estado del contrato de calculadora comercial */}
-                              <div className="p-3 rounded-xl bg-[#0e1726] text-white border border-[#1e293b] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
-                                <div className="flex items-center gap-2">
-                                  <FileSpreadsheet className="w-4 h-4 text-[#38bdf8] shrink-0" />
-                                  <span className="text-[#cbd5e1]">
-                                    <strong>Contrato Comercial:</strong> Preparado para matrices de tarifas en Google Sheets (pendiente fórmula real).
-                                  </span>
-                                </div>
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#38bdf8]/20 text-[#38bdf8] whitespace-nowrap">
-                                  pending_sheets_formula
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
                 )}
 
                 {/* 7.5. FINANZAS */}
