@@ -429,7 +429,7 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                       >
                         {opportunities.map((opp) => (
                           <option key={opp.id} value={opp.id}>
-                            {opp.title} · {opp.prospectAccountName || 'Cliente'} (Etapa: {opp.stage})
+                            {opp.title} · {opp.prospectAccountName || 'Cliente'} (Etapa: {opp.status})
                           </option>
                         ))}
                       </select>

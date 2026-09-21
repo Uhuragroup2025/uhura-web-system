@@ -1715,15 +1715,15 @@ export const TaskFlowPrototype: React.FC = () => {
     const newOpp: NewBusinessOpportunity = {
       id: newOpportunityId,
       title: opportunityData.title,
-      clientName: opportunityData.prospectAccountName || 'Prospecto New Business',
-      status: 'scoping',
-      probability: 60,
-      estimatedValueCOP: (finalizedQuote.totalHoursRollup || 0) * 120000,
-      totalQuotedHours: finalizedQuote.totalHoursRollup || 0,
+      type: 'new_client',
+      prospectAccountName: opportunityData.prospectAccountName || 'Prospecto New Business',
+      leadUserId: 'usr-paola',
       leadUserName: opportunityData.leadUserName || 'Product Lead',
+      status: 'quoting',
       quotes: [finalizedQuote],
       createdAt: new Date().toISOString().split('T')[0],
-      briefSummary: `Oportunidad generada desde plantilla ${quote.templateName || ''}.`
+      updatedAt: new Date().toISOString().split('T')[0],
+      briefSummary: `Oportunidad generada desde plantilla ${quote.versionLabel || ''}.`
     };
 
     setOpportunities((prev) => [newOpp, ...prev]);
