@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { OrbitView } from './types';
+import { OrbitView, UserItem } from './types';
+import { canAccessModule } from './auth/permissions';
 import {
   Briefcase,
   Layers,
@@ -27,13 +28,15 @@ interface TaskflowSidebarProps {
   onSelectView: (view: OrbitView) => void;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
+  currentUser?: UserItem;
 }
 
 export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
   currentView,
   onSelectView,
   collapsed = false,
-  onToggleCollapse
+  onToggleCollapse,
+  currentUser
 }) => {
   const [openSections, setOpenSections] = useState<{ [key: string]: boolean }>({
     operacion: true,
@@ -43,8 +46,35 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
   });
 
   const toggleSection = (section: string) => {
-    setOpenSections((prev) => ({ ...prev, [section]: !prev[section] }));
+    setOpenSections((prev) => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
   };
+
+  // Verificaciones de permisos por módulo
+  const canMiDia = canAccessModule(currentUser, 'mi-dia');
+  const canProyectos = canAccessModule(currentUser, 'proyectos');
+  const canTareas = canAccessModule(currentUser, 'tareas');
+  const canTimesheets = canAccessModule(currentUser, 'timesheets');
+  const canCapacidad = canAccessModule(currentUser, 'capacidad');
+
+  const canNewBusiness = canAccessModule(currentUser, 'new-business');
+  const canClientes = canAccessModule(currentUser, 'clientes');
+  const canPlantillas = canAccessModule(currentUser, 'plantillas-producto');
+  const canFinanzas = canAccessModule(currentUser, 'administracion');
+
+  const canColonia = canAccessModule(currentUser, 'la-colonia');
+  const canMuro = canAccessModule(currentUser, 'la-colonia');
+
+  const canUsuarios = canAccessModule(currentUser, 'administracion');
+  const canConfigRoles = canAccessModule(currentUser, 'administracion');
+  const canPortalCliente = canAccessModule(currentUser, 'administracion');
+
+  const hasOperacion = canMiDia || canProyectos || canTareas || canTimesheets || canCapacidad;
+  const hasComercial = canNewBusiness || canClientes || canPlantillas || canFinanzas;
+  const hasExperiencia = canColonia || canMuro;
+  const hasSistema = canUsuarios || canConfigRoles || canPortalCliente;
 
   return (
     <aside
@@ -111,334 +141,370 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
         )}
 
         {/* 1. OPERACIÓN */}
-        <div className="space-y-1">
-          {!collapsed ? (
-            <button
-              onClick={() => toggleSection('operacion')}
-              className="w-full flex items-center justify-between px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-[#c9b7ff]/70 hover:text-white transition-colors"
-            >
-              <span>OPERACIÓN</span>
-              {openSections.operacion ? (
-                <ChevronDown className="w-3.5 h-3.5" />
-              ) : (
-                <ChevronRight className="w-3.5 h-3.5" />
-              )}
-            </button>
-          ) : (
-            <div className="h-px bg-[#261845] my-2" />
-          )}
-
-          {(openSections.operacion || collapsed) && (
-            <div className="space-y-0.5 pl-0.5">
-              {/* Mi Día · Home Contextual de Orbit */}
+        {hasOperacion && (
+          <div className="space-y-1">
+            {!collapsed ? (
               <button
-                onClick={() => onSelectView('mi-dia')}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                  currentView === 'mi-dia' || currentView === 'dashboard'
-                    ? 'bg-gradient-to-r from-[#2e1859] to-[#1e113a] text-white shadow-sm border-l-2 border-[#d4ff4a]'
-                    : 'text-[#c9b7ff] hover:bg-[#1a0f30] hover:text-white'
-                }`}
-                title="Mi Día · Home Contextual con perspectivas de rol"
+                onClick={() => toggleSection('operacion')}
+                className="w-full flex items-center justify-between px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-[#c9b7ff]/70 hover:text-white transition-colors"
               >
-                <div className="flex items-center gap-2.5">
-                  <span className="text-sm">🦫</span>
-                  {!collapsed && <span className="font-bold">Mi Día</span>}
-                </div>
-                {!collapsed && (
-                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#d4ff4a]/20 text-[#d4ff4a] border border-[#d4ff4a]/30">
-                    Home
-                  </span>
+                <span>OPERACIÓN</span>
+                {openSections.operacion ? (
+                  <ChevronDown className="w-3.5 h-3.5" />
+                ) : (
+                  <ChevronRight className="w-3.5 h-3.5" />
                 )}
               </button>
+            ) : (
+              <div className="h-px bg-[#261845] my-2" />
+            )}
 
-              <button
-                onClick={() => onSelectView('proyectos')}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                  currentView === 'proyectos'
-                    ? 'bg-[#1e113a] text-white font-semibold'
-                    : 'text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white'
-                }`}
-                title="Proyectos"
-              >
-                <div className="flex items-center gap-2.5">
-                  <Briefcase className="w-3.5 h-3.5 text-[#8a4dff]" />
-                  {!collapsed && <span>Proyectos</span>}
-                </div>
-                {!collapsed && (
-                  <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-[#ef4444]/20 text-[#fca5a5]">
-                    5 riesgo
-                  </span>
+            {(openSections.operacion || collapsed) && (
+              <div className="space-y-0.5 pl-0.5">
+                {/* Mi Día · Home Contextual de Orbit */}
+                {canMiDia && (
+                  <button
+                    onClick={() => onSelectView('mi-dia')}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                      currentView === 'mi-dia' || currentView === 'dashboard'
+                        ? 'bg-gradient-to-r from-[#2e1859] to-[#1e113a] text-white shadow-sm border-l-2 border-[#d4ff4a]'
+                        : 'text-[#c9b7ff] hover:bg-[#1a0f30] hover:text-white'
+                    }`}
+                    title="Mi Día · Home Contextual con perspectivas de rol"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-sm">🦫</span>
+                      {!collapsed && <span className="font-bold">Mi Día</span>}
+                    </div>
+                    {!collapsed && (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#d4ff4a]/20 text-[#d4ff4a] border border-[#d4ff4a]/30">
+                        Home
+                      </span>
+                    )}
+                  </button>
                 )}
-              </button>
 
-              <button
-                onClick={() => onSelectView('tareas')}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                  currentView === 'tareas'
-                    ? 'bg-[#1e113a] text-white font-semibold'
-                    : 'text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white'
-                }`}
-                title="Tareas y Entregas"
-              >
-                <div className="flex items-center gap-2.5">
-                  <Layers className="w-3.5 h-3.5 text-[#8a4dff]" />
-                  {!collapsed && <span>Tareas</span>}
-                </div>
-              </button>
-
-              <button
-                onClick={() => onSelectView('timesheets')}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                  currentView === 'timesheets'
-                    ? 'bg-[#1e113a] text-white font-semibold'
-                    : 'text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white'
-                }`}
-                title="Time-Tracking & Timesheets"
-              >
-                <div className="flex items-center gap-2.5">
-                  <Clock className="w-3.5 h-3.5 text-[#8a4dff]" />
-                  {!collapsed && <span>Horas</span>}
-                </div>
-              </button>
-
-              <button
-                onClick={() => onSelectView('capacidad')}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                  currentView === 'capacidad'
-                    ? 'bg-[#1e113a] text-white font-semibold'
-                    : 'text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white'
-                }`}
-                title="Capacidad de Equipo"
-              >
-                <div className="flex items-center gap-2.5">
-                  <Users2 className="w-3.5 h-3.5 text-[#8a4dff]" />
-                  {!collapsed && <span>Capacidad</span>}
-                </div>
-                {!collapsed && (
-                  <span className="text-[10px] font-semibold text-[#c9b7ff]/60">25 pers</span>
+                {canProyectos && (
+                  <button
+                    onClick={() => onSelectView('proyectos')}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                      currentView === 'proyectos'
+                        ? 'bg-[#1e113a] text-white font-semibold'
+                        : 'text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white'
+                    }`}
+                    title="Proyectos"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Briefcase className="w-3.5 h-3.5 text-[#8a4dff]" />
+                      {!collapsed && <span>Proyectos</span>}
+                    </div>
+                    {!collapsed && (
+                      <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-[#ef4444]/20 text-[#fca5a5]">
+                        5 riesgo
+                      </span>
+                    )}
+                  </button>
                 )}
-              </button>
-            </div>
-          )}
-        </div>
+
+                {canTareas && (
+                  <button
+                    onClick={() => onSelectView('tareas')}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                      currentView === 'tareas'
+                        ? 'bg-[#1e113a] text-white font-semibold'
+                        : 'text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white'
+                    }`}
+                    title="Tareas y Entregas"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Layers className="w-3.5 h-3.5 text-[#8a4dff]" />
+                      {!collapsed && <span>Tareas</span>}
+                    </div>
+                  </button>
+                )}
+
+                {canTimesheets && (
+                  <button
+                    onClick={() => onSelectView('timesheets')}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                      currentView === 'timesheets'
+                        ? 'bg-[#1e113a] text-white font-semibold'
+                        : 'text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white'
+                    }`}
+                    title="Time-Tracking & Timesheets"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Clock className="w-3.5 h-3.5 text-[#8a4dff]" />
+                      {!collapsed && <span>Horas</span>}
+                    </div>
+                  </button>
+                )}
+
+                {canCapacidad && (
+                  <button
+                    onClick={() => onSelectView('capacidad')}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                      currentView === 'capacidad'
+                        ? 'bg-[#1e113a] text-white font-semibold'
+                        : 'text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white'
+                    }`}
+                    title="Capacidad de Equipo"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Users2 className="w-3.5 h-3.5 text-[#8a4dff]" />
+                      {!collapsed && <span>Capacidad</span>}
+                    </div>
+                    {!collapsed && (
+                      <span className="text-[10px] font-semibold text-[#c9b7ff]/60">25 pers</span>
+                    )}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* 2. COMERCIAL */}
-        <div className="space-y-1 pt-1">
-          {!collapsed ? (
-            <button
-              onClick={() => toggleSection('comercial')}
-              className="w-full flex items-center justify-between px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-[#c9b7ff]/70 hover:text-white transition-colors"
-            >
-              <span>COMERCIAL</span>
-              {openSections.comercial ? (
-                <ChevronDown className="w-3.5 h-3.5" />
-              ) : (
-                <ChevronRight className="w-3.5 h-3.5" />
-              )}
-            </button>
-          ) : (
-            <div className="h-px bg-[#261845] my-2" />
-          )}
-
-          {(openSections.comercial || collapsed) && (
-            <div className="space-y-0.5 pl-0.5">
-              {/* New Business (Scoping, dimensionamiento, cotización y SOW) */}
+        {hasComercial && (
+          <div className="space-y-1 pt-1">
+            {!collapsed ? (
               <button
-                onClick={() => onSelectView('new-business')}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                  currentView === 'new-business'
-                    ? 'bg-[#1e113a] text-white font-semibold'
-                    : 'text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white'
-                }`}
-                title="New Business · Scoping, cotización y SOW"
+                onClick={() => toggleSection('comercial')}
+                className="w-full flex items-center justify-between px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-[#c9b7ff]/70 hover:text-white transition-colors"
               >
-                <div className="flex items-center gap-2.5">
-                  <Target className="w-3.5 h-3.5 text-[#4be5ff]" />
-                  {!collapsed && <span>New Business</span>}
-                </div>
-                {!collapsed && (
-                  <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-[#4be5ff]/15 text-[#4be5ff]">
-                    Brief
-                  </span>
+                <span>COMERCIAL</span>
+                {openSections.comercial ? (
+                  <ChevronDown className="w-3.5 h-3.5" />
+                ) : (
+                  <ChevronRight className="w-3.5 h-3.5" />
                 )}
               </button>
+            ) : (
+              <div className="h-px bg-[#261845] my-2" />
+            )}
 
-              {/* Clientes */}
-              <button
-                onClick={() => onSelectView('clientes')}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                  currentView === 'clientes'
-                    ? 'bg-[#1e113a] text-white font-semibold'
-                    : 'text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white'
-                }`}
-                title="Clientes de Uhura"
-              >
-                <div className="flex items-center gap-2.5">
-                  <Users className="w-3.5 h-3.5 text-[#8a4dff]" />
-                  {!collapsed && <span>Clientes</span>}
-                </div>
-              </button>
-
-              {/* Catálogo de Servicios (Plantillas estándar de la agencia) */}
-              <button
-                onClick={() => onSelectView('plantillas-producto')}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                  currentView === 'plantillas-producto'
-                    ? 'bg-[#1e113a] text-white font-semibold'
-                    : 'text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white'
-                }`}
-                title="Catálogo de Servicios de Uhura (Plantillas Maestras)"
-              >
-                <div className="flex items-center gap-2.5">
-                  <Briefcase className="w-3.5 h-3.5 text-[#8a4dff]" />
-                  {!collapsed && <span>Servicios</span>}
-                </div>
-                {!collapsed && (
-                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-[#8a4dff]/25 text-[#d4ff4a]">
-                    Catálogo
-                  </span>
+            {(openSections.comercial || collapsed) && (
+              <div className="space-y-0.5 pl-0.5">
+                {/* New Business */}
+                {canNewBusiness && (
+                  <button
+                    onClick={() => onSelectView('new-business')}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                      currentView === 'new-business'
+                        ? 'bg-[#1e113a] text-white font-semibold'
+                        : 'text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white'
+                    }`}
+                    title="New Business · Scoping, cotización y SOW"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Target className="w-3.5 h-3.5 text-[#4be5ff]" />
+                      {!collapsed && <span>New Business</span>}
+                    </div>
+                    {!collapsed && (
+                      <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-[#4be5ff]/15 text-[#4be5ff]">
+                        Brief
+                      </span>
+                    )}
+                  </button>
                 )}
-              </button>
 
-              {/* Finanzas Operativas (Sub-ítem secundario) */}
-              <button
-                onClick={() => onSelectView('finanzas')}
-                className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition-colors ${
-                  currentView === 'finanzas'
-                    ? 'bg-[#1e113a] text-white font-semibold'
-                    : 'text-[#c9b7ff]/60 hover:bg-[#160c2b] hover:text-[#c9b7ff]'
-                }`}
-                title="Finanzas Operativas (Fase posterior / En definición)"
-              >
-                <div className="flex items-center gap-2.5">
-                  <Wallet className="w-3.5 h-3.5 text-[#8a4dff]/70" />
-                  {!collapsed && <span className="text-[11px]">Finanzas</span>}
-                </div>
-                {!collapsed && (
-                  <span className="text-[9px] text-[#c9b7ff]/50 px-1 py-0.2 rounded bg-white/5 border border-white/10">
-                    Fase posterior
-                  </span>
+                {/* Clientes */}
+                {canClientes && (
+                  <button
+                    onClick={() => onSelectView('clientes')}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                      currentView === 'clientes'
+                        ? 'bg-[#1e113a] text-white font-semibold'
+                        : 'text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white'
+                    }`}
+                    title="Clientes de Uhura"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Users className="w-3.5 h-3.5 text-[#8a4dff]" />
+                      {!collapsed && <span>Clientes</span>}
+                    </div>
+                  </button>
                 )}
-              </button>
-            </div>
-          )}
-        </div>
+
+                {/* Catálogo de Servicios */}
+                {canPlantillas && (
+                  <button
+                    onClick={() => onSelectView('plantillas-producto')}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                      currentView === 'plantillas-producto'
+                        ? 'bg-[#1e113a] text-white font-semibold'
+                        : 'text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white'
+                    }`}
+                    title="Catálogo de Servicios de Uhura (Plantillas Maestras)"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Briefcase className="w-3.5 h-3.5 text-[#8a4dff]" />
+                      {!collapsed && <span>Servicios</span>}
+                    </div>
+                    {!collapsed && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-[#8a4dff]/25 text-[#d4ff4a]">
+                        Catálogo
+                      </span>
+                    )}
+                  </button>
+                )}
+
+                {/* Finanzas Operativas */}
+                {canFinanzas && (
+                  <button
+                    onClick={() => onSelectView('finanzas')}
+                    className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition-colors ${
+                      currentView === 'finanzas'
+                        ? 'bg-[#1e113a] text-white font-semibold'
+                        : 'text-[#c9b7ff]/60 hover:bg-[#160c2b] hover:text-[#c9b7ff]'
+                    }`}
+                    title="Finanzas Operativas (Fase posterior / En definición)"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Wallet className="w-3.5 h-3.5 text-[#8a4dff]/70" />
+                      {!collapsed && <span className="text-[11px]">Finanzas</span>}
+                    </div>
+                    {!collapsed && (
+                      <span className="text-[9px] text-[#c9b7ff]/50 px-1 py-0.2 rounded bg-white/5 border border-white/10">
+                        Fase posterior
+                      </span>
+                    )}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* 3. EXPERIENCIA */}
-        <div className="space-y-1 pt-1">
-          {!collapsed ? (
-            <button
-              onClick={() => toggleSection('experiencia')}
-              className="w-full flex items-center justify-between px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-[#c9b7ff]/70 hover:text-white transition-colors"
-            >
-              <span>EXPERIENCIA</span>
-              {openSections.experiencia ? (
-                <ChevronDown className="w-3.5 h-3.5" />
-              ) : (
-                <ChevronRight className="w-3.5 h-3.5" />
-              )}
-            </button>
-          ) : (
-            <div className="h-px bg-[#261845] my-2" />
-          )}
-
-          {(openSections.experiencia || collapsed) && (
-            <div className="space-y-0.5 pl-0.5">
-              {/* La Colonia · Hábitat lúdico y de descanso de Bucky */}
+        {hasExperiencia && (
+          <div className="space-y-1 pt-1">
+            {!collapsed ? (
               <button
-                onClick={() => onSelectView('la-colonia')}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                  currentView === 'la-colonia'
-                    ? 'bg-gradient-to-r from-[#2e1859] to-[#1e113a] text-white shadow-sm border-l-2 border-[#d4ff4a]'
-                    : 'text-[#c9b7ff] hover:bg-[#1a0f30] hover:text-white'
-                }`}
-                title="La Colonia · Hábitat de Bucky, logros y pasear libre"
+                onClick={() => toggleSection('experiencia')}
+                className="w-full flex items-center justify-between px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-[#c9b7ff]/70 hover:text-white transition-colors"
               >
-                <div className="flex items-center gap-2.5">
-                  <span className="text-sm">🪵</span>
-                  {!collapsed && <span>La Colonia</span>}
-                </div>
-                {!collapsed && (
-                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-[#501f92] text-[#d4ff4a] border border-[#8a4dff]/40">
-                    Nivel 1
-                  </span>
+                <span>EXPERIENCIA</span>
+                {openSections.experiencia ? (
+                  <ChevronDown className="w-3.5 h-3.5" />
+                ) : (
+                  <ChevronRight className="w-3.5 h-3.5" />
                 )}
               </button>
+            ) : (
+              <div className="h-px bg-[#261845] my-2" />
+            )}
 
-              {/* El Muro · Reconocimiento y Cultura */}
-              <button
-                onClick={() => onSelectView('el-muro')}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                  currentView === 'el-muro'
-                    ? 'bg-[#1e113a] text-white font-semibold'
-                    : 'text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white'
-                }`}
-                title="El Muro · Cultura y reconocimiento Uhura"
-              >
-                <div className="flex items-center gap-2.5">
-                  <TrendingUp className="w-3.5 h-3.5 text-[#4be5ff]" />
-                  {!collapsed && <span>El Muro</span>}
-                </div>
-              </button>
-            </div>
-          )}
-        </div>
+            {(openSections.experiencia || collapsed) && (
+              <div className="space-y-0.5 pl-0.5">
+                {/* La Colonia */}
+                {canColonia && (
+                  <button
+                    onClick={() => onSelectView('la-colonia')}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                      currentView === 'la-colonia'
+                        ? 'bg-gradient-to-r from-[#2e1859] to-[#1e113a] text-white shadow-sm border-l-2 border-[#d4ff4a]'
+                        : 'text-[#c9b7ff] hover:bg-[#1a0f30] hover:text-white'
+                    }`}
+                    title="La Colonia · Hábitat de Bucky, logros y pasear libre"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-sm">🪵</span>
+                      {!collapsed && <span>La Colonia</span>}
+                    </div>
+                    {!collapsed && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-[#501f92] text-[#d4ff4a] border border-[#8a4dff]/40">
+                        Nivel 1
+                      </span>
+                    )}
+                  </button>
+                )}
+
+                {/* El Muro */}
+                {canMuro && (
+                  <button
+                    onClick={() => onSelectView('el-muro')}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                      currentView === 'el-muro'
+                        ? 'bg-[#1e113a] text-white font-semibold'
+                        : 'text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white'
+                    }`}
+                    title="El Muro · Cultura y reconocimiento Uhura"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <TrendingUp className="w-3.5 h-3.5 text-[#4be5ff]" />
+                      {!collapsed && <span>El Muro</span>}
+                    </div>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* 4. SISTEMA & CONFIGURACIÓN */}
-        <div className="space-y-1 pt-1">
-          {!collapsed ? (
-            <button
-              onClick={() => toggleSection('sistema')}
-              className="w-full flex items-center justify-between px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-[#c9b7ff]/70 hover:text-white transition-colors"
-            >
-              <span>SISTEMA</span>
-              {openSections.sistema ? (
-                <ChevronDown className="w-3.5 h-3.5" />
-              ) : (
-                <ChevronRight className="w-3.5 h-3.5" />
-              )}
-            </button>
-          ) : (
-            <div className="h-px bg-[#261845] my-2" />
-          )}
-
-          {(openSections.sistema || collapsed) && (
-            <div className="space-y-0.5 pl-0.5">
+        {hasSistema && (
+          <div className="space-y-1 pt-1">
+            {!collapsed ? (
               <button
-                onClick={() => onSelectView('usuarios')}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                  currentView === 'usuarios'
-                    ? 'bg-[#1e113a] text-white font-semibold'
-                    : 'text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white'
-                }`}
-                title="Usuarios del sistema"
+                onClick={() => toggleSection('sistema')}
+                className="w-full flex items-center justify-between px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-[#c9b7ff]/70 hover:text-white transition-colors"
               >
-                <div className="flex items-center gap-2.5">
-                  <UserCheck className="w-3.5 h-3.5 text-[#8a4dff]" />
-                  {!collapsed && <span>Usuarios</span>}
-                </div>
+                <span>SISTEMA</span>
+                {openSections.sistema ? (
+                  <ChevronDown className="w-3.5 h-3.5" />
+                ) : (
+                  <ChevronRight className="w-3.5 h-3.5" />
+                )}
               </button>
+            ) : (
+              <div className="h-px bg-[#261845] my-2" />
+            )}
 
-              <button
-                onClick={() => onSelectView('config-roles')}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white"
-                title="Configuración de roles y permisos"
-              >
-                <Shield className="w-3.5 h-3.5 text-[#8a4dff]" />
-                {!collapsed && <span className="truncate">Roles & Permisos</span>}
-              </button>
+            {(openSections.sistema || collapsed) && (
+              <div className="space-y-0.5 pl-0.5">
+                {canUsuarios && (
+                  <button
+                    onClick={() => onSelectView('usuarios')}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                      currentView === 'usuarios'
+                        ? 'bg-[#1e113a] text-white font-semibold'
+                        : 'text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white'
+                    }`}
+                    title="Usuarios del sistema"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <UserCheck className="w-3.5 h-3.5 text-[#8a4dff]" />
+                      {!collapsed && <span>Usuarios</span>}
+                    </div>
+                  </button>
+                )}
 
-              <button
-                onClick={() => onSelectView('portal-cliente')}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white"
-                title="Vista previa del portal de cliente"
-              >
-                <Globe className="w-3.5 h-3.5 text-[#4be5ff]" />
-                {!collapsed && <span>Portal Cliente</span>}
-              </button>
-            </div>
-          )}
-        </div>
+                {canConfigRoles && (
+                  <button
+                    onClick={() => onSelectView('config-roles')}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white"
+                    title="Configuración de roles y permisos"
+                  >
+                    <Shield className="w-3.5 h-3.5 text-[#8a4dff]" />
+                    {!collapsed && <span className="truncate">Roles & Permisos</span>}
+                  </button>
+                )}
+
+                {canPortalCliente && (
+                  <button
+                    onClick={() => onSelectView('portal-cliente')}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white"
+                    title="Vista previa del portal de cliente"
+                  >
+                    <Globe className="w-3.5 h-3.5 text-[#4be5ff]" />
+                    {!collapsed && <span>Portal Cliente</span>}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Footer */}

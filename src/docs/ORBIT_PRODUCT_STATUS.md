@@ -37,6 +37,7 @@
 7. [Matriz Global de Portabilidad por Módulo](#7-matriz-global-de-portabilidad-por-módulo)
 8. [Auditoría de Inconsistencias entre Prototipo UI y Especificación](#8-auditoría-de-inconsistencias-entre-prototipo-ui-y-especificación)
 9. [Gaps de Portabilidad y Plan de Cierre](#9-gaps-de-portabilidad-y-plan-de-cierre)
+10. [Roles, Niveles de Acceso y Matriz de Permisos (RBAC)](#10-roles-niveles-de-acceso-y-matriz-de-permisos-rbac)
 
 ---
 
@@ -791,6 +792,145 @@ Durante la auditoría end-to-end se detectaron las siguientes inconsistencias qu
 2. **Creación automática de carpetas mediante Google Drive API.**
 3. **Generación binaria de PDFs en servidor (Puppeteer / ReportLab).**
 4. **Gamificación y telemetría de La Colonia.**
+
+---
+
+## 10. Roles, Niveles de Acceso y Matriz de Permisos (RBAC)
+
+### 10.1. Principio Arquitectónico Fundamental de Seguridad
+> **"Ocultar botones en React NO constituye seguridad."**  
+> Toda regla de visibilidad, creación, edición, aprobación o administración aquí definida es de cumplimiento obligatorio y vinculante para el backend de Indunova (Django REST Framework / PostgreSQL).  
+> La interfaz web de Orbit adapta dinámicamente sus menús, controles y vistas según el usuario activo, pero **cada endpoint de la API REST (`/api/...`) debe validar de manera estricta la identidad del usuario (`request.user`), su rol profesional, su nivel de acceso (`OrbitAccessLevel`) y el alcance territorial/operativo autorizado (`AccessScope`)** mediante `PermissionClasses` o decoradores a nivel de vista y filtrado estricto de QuerySets en el ORM.
+
+### 10.2. Taxonomía de Identidad: Roles Canónicos vs. Perfiles de Sistema
+
+Orbit separa tajantemente entre **rol profesional/cotizable** (el oficio operativo de la persona que factura o ejecuta horas en proyectos de clientes) y **perfil interno de sistema** (funciones de dirección o soporte que no se cotizan en proyectos de clientes).
+
+#### 1. Roles Profesionales Canónicos (`StandardUhuraRole`):
+Existen exactamente 12 roles oficiales en el catálogo de servicios de Uhura:
+1. `Client Relationship Strategist`
+2. `Front-End Dev`
+3. `Community Manager`
+4. `Digital Designer`
+5. `Digital Content Specialist`
+6. `Product Lead`
+7. `Trafficker Media`
+8. `Creative Strategy Lead`
+9. `Creative Designer`
+10. `Content Creator`
+11. `Directora Comercial`
+12. `Growth Manager`
+
+#### 2. Perfiles Internos de Sistema (`InternalSystemRole`):
+Roles operativos no cotizables para tareas operativas estándar:
+1. `CEO` (Dirección General y Visión Estratégica)
+2. `Administrativa` (Vivian: Datos fiscales, RUT, facturación en Alegra y cartera)
+3. `Admin de Sistema` (TI y gobernanza de plataforma)
+
+### 10.3. Niveles de Acceso Canónicos (`CanonicalOrbitAccessLevel`)
+La experiencia de usuario y la autorización relacional se rigen por **7 niveles de acceso funcionales canónicos**:
+- `collaborator`: Especialistas técnicos y creativos (Front-End, Diseñadores, Community Managers, etc.). Foco en ejecución personal y registro de tiempo. **Sin acceso al Catálogo de Servicios, New Business, Clientes ni Administración.**
+- `leader`: Líderes de área y proyectos (Product Lead, Creative Strategy Lead, Growth Manager). Foco en scoping técnico, asignaciones, revisiones de calidad (QA) y seguimiento de equipo.
+- `client_relationship`: Estrategas de relación con clientes (Account Leads). Foco en satisfacción, seguimiento de cuentas asignadas y enlace operativo.
+- `commercial`: Dirección Comercial. Foco exclusivo en New Business, pricing, condiciones contractuales y cotizaciones.
+- `administrative`: Administración y Finanzas operativas. Foco en información fiscal, RUT, sincronización con Alegra y cartera.
+- `executive`: Dirección Ejecutiva (CEO). Supervisión transversal, aprobación de cotizaciones y analítica de rentabilidad de alto nivel.
+- `system_admin`: Gobernanza integral de usuarios, roles y configuración de la plataforma.
+
+#### Estado Transitorio de Usuario: `pending`
+- **`pending` NO es un nivel funcional de la matriz canónica.**
+- Representa el estado provisional de un usuario recién invitado o incorporado que aún no cuenta con un nivel de acceso formal asignado.
+- **Política estricta `deny-by-default`:** Un usuario en estado `pending` tiene denegado el acceso a proyectos, tareas, clientes, cotizaciones, finanzas y catálogo. Únicamente se le permite acceso mínimo seguro a su vista personal de **Mi Día** en modo lectura (`view`), sin acciones sensibles ni exposición de datos operativos.
+
+### 10.4. Acciones y Alcances Normalizados
+
+#### Acciones Atómicas (`AppAction`):
+Solo existen 5 verbos canónicos:
+- `view`: Lectura y consulta de registros o módulos.
+- `create`: Creación e inserción de nuevas entidades.
+- `edit`: Modificación de campos permitidos en entidades existentes.
+- `approve`: Validación formal o cambio de estado de gobernanza (ej. aprobar cotización o validar entregable en QA).
+- `administer`: Control pleno (eliminación, archivo, reasignación maestra o configuración estructural).
+
+*Regla: Casos como "usar una plantilla", "interactuar con La Colonia" o "ejecutar una tarea" se resuelven mediante combinaciones de estos 5 verbos o reglas funcionales específicas.*
+
+#### Alcances de Acceso (`AccessScope`):
+Solo existen 5 alcances autorizados:
+- `own`: Solo entidades pertenecientes o registradas por el usuario actual (ej. sus propios logs de tiempo).
+- `assigned`: Entidades donde el usuario figura explícitamente como responsable o asignado (ej. tareas asignadas).
+- `team`: Entidades asociadas al equipo operativo o departamento bajo liderazgo del usuario.
+- `accounts`: Entidades asociadas a las cuentas o clientes que el usuario lidera o acompaña.
+- `all`: Acceso transversal a toda la organización (restringido a CEO, Comercial, Administrativa o Admin de Sistema).
+
+### 10.5. Matriz Canónica de Permisos por Módulo
+
+| Módulo / Vista | Collaborator | Leader | Client Relationship | Commercial | Administrative | Executive (CEO) | System Admin |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Mi Día (`mi-dia`)** | own (view/edit) | own + team (view/edit) | own (view/edit) | own (view/edit) | own (view/edit) | own + all (view/edit) | own (view/edit) |
+| **Proyectos (`proyectos`)** | assigned (view) | team (view/create/edit) | accounts (view/edit) | all (view) | all (view) | all (view/approve) | all (administer) |
+| **Tareas (`tareas`)** | assigned (view/edit/create) | team (view/create/edit/approve) | accounts (view/create) | all (view) | all (view) | all (view) | all (administer) |
+| **Timesheets (`timesheets`)** | own (view/create) | team (view/edit) | accounts (view) | all (view) | all (view) | all (view) | all (administer) |
+| **Clientes (`clientes`)** | Denegado | team (view) | accounts (view/edit) | all (view/create/edit) | all (view/edit) | all (view) | all (administer) |
+| **Catálogo (`plantillas-producto`)** | **Denegado** | all (view) | all (view) | all (view) | Denegado | all (view) | all (view/administer) |
+| **New Business (`new-business`)** | Denegado | team scoping (view/edit) | accounts (view) | all (view/create/edit/approve) | all (view/edit formalization) | all (view/approve) | all (administer) |
+| **Finanzas (`finanzas`)** | Denegado | Denegado | Denegado | own/quotes (view) | all (view/edit fiscal) | all (view/approve) | all (administer) |
+| **Usuarios & Roles (`usuarios`)** | Denegado | team (view) | Denegado | Denegado | all (view) | all (view) | all (administer) |
+| **La Colonia (`la-colonia`)** | all (view/edit) | all (view/edit) | all (view/edit) | all (view/edit) | all (view/edit) | all (view/edit) | all (administer) |
+
+### 10.6. Reglas de Negocio de Autorización Específica
+
+1. **Scoping Operativo en New Business:**  
+   - La Directora Comercial crea oportunidades y briefs.  
+   - El Product Lead (o Leader asignado) realiza el dimensionamiento técnico (Backlog, Entregables y Horas por Rol).  
+   - Los colaboradores técnicos no tienen acceso al módulo New Business para evitar filtración de propuestas comerciales tempranas.
+2. **Pricing y Márgenes:**  
+   - La edición de costos base, margen esperado (%) y valor final de la cotización es **exclusiva de la Directora Comercial** con visibilidad del CEO. Los líderes operativos proponen horas, no precios de venta.
+3. **Formalización y Datos Fiscales:**  
+   - La carga del RUT, verificación en Alegra y datos de facturación electrónica es potestad de la **Administrativa (Vivian)** y la Directora Comercial.
+4. **Time Tracking e Inmutabilidad de Horas:**  
+   - Un usuario solo puede registrar tiempo en su propio nombre (`own`).  
+   - Se prohíbe tener dos cronómetros activos concurrentes.  
+   - El tiempo en pausa (`PAUSED`) no suma horas computadas.  
+   - Ningún usuario puede eliminar logs históricos validados sin rol de administración.
+
+### 10.7. Requerimientos de Implementación en Backend (Django REST Framework)
+
+> **PRINCIPIO ARQUITECTÓNICO FUNDAMENTAL:**  
+> **Los controles de interfaz en React son UX, NO seguridad.**  
+> Ocultar botones o proteger rutas en el frontend solo sirve para ofrecer una experiencia fluida. El backend de Indunova en Django REST Framework **debe repetir y hacer cumplir de manera estricta e independiente todas las reglas de autorización**, sin confiar jamás en las peticiones del cliente:
+> 1. **Autorización estricta por cada request HTTP**: Comprobación obligatoria de la identidad del usuario (`request.user`) y su nivel de acceso (`user.access_level`) en cada vista y APIView mediante `permission_classes`.
+> 2. **Filtros de QuerySet según Scope en el ORM**: Todo ViewSet debe sobreescribir `get_queryset(self)` para restringir los registros recuperados según el `AccessScope` correspondiente (`own`, `assigned`, `team`, `accounts`, `all`).
+> 3. **Validación de permisos a nivel de objeto**: Implementar `check_object_permissions(request, obj)` en operaciones de detalle para garantizar que un usuario con acceso al módulo no pueda modificar ni ver objetos que no le correspondan.
+> 4. **Respuestas 403 Forbidden para acciones prohibidas**: Denegar inmediatamente cualquier intento de lectura, creación, edición, aprobación o eliminación fuera del alcance permitido con código HTTP 403.
+
+1. **Autenticación Basada en Token / JWT:**  
+   Inyección del usuario en `request.user` con claves foráneas a `Profile`, `RoleDefinition` y `AccessLevel`.
+2. **Clases de Permiso Reutilizables:**  
+   - `IsCollaboratorOrAbove`, `IsProjectLeader`, `IsCommercialLead`, `IsAdminOrCEO`.
+3. **Filtrado de Consultas en ORM (QuerySet Scoping):**  
+   Implementar `get_queryset(self)` en ViewSets de Django para aplicar el filtro de `AccessScope`:
+   ```python
+   def get_queryset(self):
+       user = self.request.user
+       if user.access_level in ['executive', 'system_admin']:
+           return Task.objects.all()
+       if user.access_level == 'leader':
+           return Task.objects.filter(project__lead=user) | Task.objects.filter(assignees=user)
+       if user.access_level == 'collaborator':
+           return Task.objects.filter(assignees=user)
+       # deny-by-default para pending o estados sin mapeo
+       return Task.objects.none()
+   ```
+4. **Respuestas de Error Uniformes (403 Forbidden):**  
+   Cuando un usuario intente acceder a un objeto o ejecutar una acción no autorizada, la API debe responder `403 Forbidden` con detalle estructurado:
+   ```json
+   {
+     "error": "permission_denied",
+     "message": "No tiene permisos para modificar los aspectos económicos de esta oportunidad.",
+     "required_action": "edit",
+     "module": "new-business"
+   }
+   ```
 
 ---
 

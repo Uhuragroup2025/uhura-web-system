@@ -435,6 +435,63 @@ export const STANDARD_UHURA_ROLES = [
 export type StandardUhuraRole = typeof STANDARD_UHURA_ROLES[number];
 
 /**
+ * Perfiles internos de sistema en Uhura (NO son roles comerciales cotizables).
+ * Separación estricta entre rol profesional/cotizable y perfil de sistema.
+ */
+export const INTERNAL_SYSTEM_ROLES = [
+  'CEO',
+  'Administrativa',
+  'Admin de Sistema'
+] as const;
+
+export type InternalSystemRole = typeof INTERNAL_SYSTEM_ROLES[number];
+
+/**
+ * Acciones canónicas del sistema (normalizadas a 5 verbos atómicos).
+ */
+export type AppAction = 'view' | 'create' | 'edit' | 'approve' | 'administer';
+
+/**
+ * Alcances de acceso canónicos del sistema.
+ */
+export type AccessScope = 'own' | 'assigned' | 'team' | 'accounts' | 'all';
+
+/**
+ * Niveles de acceso funcionales canónicos de Orbit (7 niveles).
+ */
+export type CanonicalOrbitAccessLevel =
+  | 'collaborator'
+  | 'leader'
+  | 'client_relationship'
+  | 'commercial'
+  | 'administrative'
+  | 'executive'
+  | 'system_admin';
+
+/**
+ * Niveles de acceso al sistema (Orbit Access Levels).
+ * Incluye los 7 niveles canónicos más el estado transitorio 'pending'.
+ * 'pending' NO es un nivel funcional: representa un usuario invitado/sin asignar
+ * bajo política deny-by-default y con acceso mínimo seguro (Mi Día propio).
+ */
+export type OrbitAccessLevel = CanonicalOrbitAccessLevel | 'pending';
+
+/**
+ * Módulos canónicos según ORBIT_PRODUCT_STATUS.md (navegación oficial).
+ */
+export type OrbitModule =
+  | 'mi-dia'
+  | 'proyectos'
+  | 'tareas'
+  | 'timesheets'
+  | 'capacidad'
+  | 'clientes'
+  | 'new-business'
+  | 'plantillas-producto'
+  | 'la-colonia'
+  | 'administracion';
+
+/**
  * Constante oficial para roles técnicos en plantillas o cotizaciones que aún no están asignados a un rol estándar.
  */
 export const ROLE_PENDING_DEFINITION = 'Pendiente de definición';
@@ -630,6 +687,8 @@ export interface UserItem {
   utilizedPercent?: number;
   jobTitle?: string;
   officialRole?: StandardUhuraRole;
+  professionalRole?: StandardUhuraRole | InternalSystemRole;
+  accessLevel?: OrbitAccessLevel;
   birthDate?: string;          // Formato ISO 'YYYY-MM-DD'
   birthDateFormatted?: string; // ej. '18 de Sep'
   anniversaryDate?: string;    // Formato ISO 'YYYY-MM-DD'

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Bell, Menu, X, LogOut, ShieldAlert, Sparkles, Check, ChevronDown, ExternalLink, Clock, Play, Pause, Square, Building2, Search, ArrowRight, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { orbitOperationalAlerts } from './mockData';
-import { ActiveTimerState, TaskItem } from './types';
+import { ActiveTimerState, TaskItem, UserItem } from './types';
 
 export function formatHeaderTime(totalSeconds: number): string {
   const mins = Math.floor(totalSeconds / 60);
@@ -24,6 +24,7 @@ interface TaskflowHeaderProps {
   onNavigateToDashboard?: () => void;
   sidebarCollapsed?: boolean;
   onToggleSidebarCollapse?: () => void;
+  currentUser?: UserItem;
 }
 
 export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
@@ -40,7 +41,8 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
   targetDayHours = 8.0,
   onNavigateToDashboard,
   sidebarCollapsed = false,
-  onToggleSidebarCollapse
+  onToggleSidebarCollapse,
+  currentUser
 }) => {
   const [alertsOpen, setAlertsOpen] = useState(false);
   const [dailyProgressOpen, setDailyProgressOpen] = useState(false);
@@ -439,14 +441,28 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
           )}
         </div>
 
-        {/* User Badge: Paola Lead PM */}
-        <div className="flex items-center gap-2 pl-2 sm:pl-3 border-l border-[#e5e7eb] shrink-0" title="Paola (Lead PM) · Uhura Group Admin">
-          <div className="w-8 h-8 rounded-full bg-[#501f92] text-white flex items-center justify-center text-xs font-bold ring-2 ring-[#8a4dff]/20 shrink-0">
-            PL
+        {/* User Identity Badge (Read-only, no identity switcher here) */}
+        <div
+          className="flex items-center gap-2 pl-2 sm:pl-3 border-l border-[#e5e7eb] shrink-0"
+          title={`${currentUser?.name || 'Paola (Lead PM)'} · ${currentUser?.professionalRole || currentUser?.jobTitle || 'Product Lead'} (${currentUser?.accessLevel || 'leader'})`}
+        >
+          <div
+            className={`w-8 h-8 rounded-full ${currentUser?.avatarBg || 'bg-[#501f92]'} text-white flex items-center justify-center text-xs font-bold ring-2 ring-[#8a4dff]/20 shrink-0`}
+          >
+            {currentUser?.initials || 'PL'}
           </div>
           <div className="hidden xl:block text-left">
-            <p className="text-xs font-bold text-[#111827] leading-tight whitespace-nowrap">Paola (Lead PM)</p>
-            <p className="text-[10px] text-[#6b7280] font-medium leading-tight whitespace-nowrap">Uhura Group Admin</p>
+            <p className="text-xs font-bold text-[#111827] leading-tight whitespace-nowrap">
+              {currentUser?.name || 'Paola (Lead PM)'}
+            </p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="text-[10px] text-[#6b7280] font-medium leading-tight whitespace-nowrap">
+                {currentUser?.professionalRole || currentUser?.jobTitle || 'Product Lead'}
+              </span>
+              <span className="text-[9px] px-1.5 py-0.2 rounded-full font-semibold uppercase tracking-wider bg-[#f3e8ff] text-[#6b21a8]">
+                {currentUser?.accessLevel || 'leader'}
+              </span>
+            </div>
           </div>
         </div>
       </div>

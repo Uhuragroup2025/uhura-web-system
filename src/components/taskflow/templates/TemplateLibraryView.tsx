@@ -6,8 +6,10 @@ import {
   QuoteProposal,
   NewBusinessOpportunity,
   STANDARD_UHURA_ROLES,
-  ROLE_PENDING_DEFINITION
+  ROLE_PENDING_DEFINITION,
+  UserItem
 } from '../types';
+import { can } from '../auth/permissions';
 import { TEMPLATE_CATEGORIES } from './templateData';
 import { TemplateEditorModal } from './TemplateEditorModal';
 import { CloneToQuoteModal } from './CloneToQuoteModal';
@@ -50,6 +52,7 @@ interface TemplateLibraryViewProps {
   ) => void;
   onQuoteCreated?: (quote: QuoteProposal) => void;
   quotes?: QuoteProposal[];
+  currentUser?: UserItem;
 }
 
 export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
@@ -59,8 +62,14 @@ export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
   onSaveToOpportunity,
   onCreateOpportunityWithQuote,
   onQuoteCreated,
-  quotes = []
+  quotes = [],
+  currentUser
 }) => {
+  // Permission checks
+  const canCreateTemplate = can(currentUser, 'create', 'plantillas-producto');
+  const canEditTemplate = can(currentUser, 'edit', 'plantillas-producto');
+  const canDeleteTemplate = can(currentUser, 'administer', 'plantillas-producto');
+
   // Estado de búsqueda y filtros
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -253,13 +262,15 @@ export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
             <Copy className="w-4 h-4" />
             <span>Usar en New Business</span>
           </button>
-          <button
-            onClick={handleOpenCreateModal}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#8a4dff] hover:bg-[#7839ee] text-xs font-bold text-white shadow-xs transition-colors cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Nueva Plantilla</span>
-          </button>
+          {canCreateTemplate && (
+            <button
+              onClick={handleOpenCreateModal}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#8a4dff] hover:bg-[#7839ee] text-xs font-bold text-white shadow-xs transition-colors cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Nueva Plantilla</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -603,23 +614,27 @@ export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
                       <Copy className="w-3.5 h-3.5" />
                       <span>Duplicar</span>
                     </button>
-                    <button
-                      onClick={() => handleRequestDelete(tmpl)}
-                      className="p-1.5 text-[#94a3b8] hover:text-[#ef4444] hover:bg-[#fee2e2]/40 rounded-lg transition-colors cursor-pointer"
-                      title="Eliminar plantilla"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    {canDeleteTemplate && (
+                      <button
+                        onClick={() => handleRequestDelete(tmpl)}
+                        className="p-1.5 text-[#94a3b8] hover:text-[#ef4444] hover:bg-[#fee2e2]/40 rounded-lg transition-colors cursor-pointer"
+                        title="Eliminar plantilla"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={() => handleOpenEditModal(tmpl)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#e2e8f0] bg-white hover:bg-[#f8fafc] text-[#475569] text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
-                    >
-                      <Edit3 className="w-3.5 h-3.5" />
-                      <span>Editar</span>
-                    </button>
+                    {canEditTemplate && (
+                      <button
+                        onClick={() => handleOpenEditModal(tmpl)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#e2e8f0] bg-white hover:bg-[#f8fafc] text-[#475569] text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        <span>Editar</span>
+                      </button>
+                    )}
                     <button
                       onClick={() => handleOpenCloneModal(tmpl.id)}
                       className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#501f92] hover:bg-[#30108b] text-white text-xs font-bold shadow-2xs transition-colors cursor-pointer"

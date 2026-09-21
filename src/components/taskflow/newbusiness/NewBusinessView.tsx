@@ -7,8 +7,10 @@ import {
   ProjectType,
   AdministrativeChecklist,
   StartConditionsConfig,
-  SowDocumentData
+  SowDocumentData,
+  UserItem
 } from '../types';
+import { can } from '../auth/permissions';
 import { BacklogScoper } from './BacklogScoper';
 import { NewOpportunityModal } from './NewOpportunityModal';
 import { ConvertOpportunityModal } from './ConvertOpportunityModal';
@@ -68,6 +70,7 @@ interface NewBusinessViewProps {
     initialFormalizationStatus?: 'pendiente_formalizacion' | 'activo';
     startConditionsConfig?: any;
   }) => void;
+  currentUser?: UserItem;
 }
 
 export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
@@ -77,8 +80,13 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
   onUpdateOpportunity,
   onCreateOpportunity,
   onNavigateToView,
-  onConvertOpportunityToProject
+  onConvertOpportunityToProject,
+  currentUser
 }) => {
+  const canCreateOpp = can(currentUser, 'create', 'new-business');
+  const canApproveOpp = can(currentUser, 'approve', 'new-business');
+  const canEditOpp = can(currentUser, 'edit', 'new-business');
+
   const [selectedOppId, setSelectedOppId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'resumen' | 'scoping' | 'cotizacion' | 'documentos' | 'historial'>('resumen');
   const [isNewOppModalOpen, setIsNewOppModalOpen] = useState<boolean>(false);
@@ -329,14 +337,16 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
           </div>
 
           <div className="flex items-center gap-2.5 shrink-0">
-            <button
-              type="button"
-              onClick={() => setIsNewOppModalOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#501f92] hover:bg-[#3d1572] text-xs font-bold text-white shadow-sm transition-colors cursor-pointer"
-            >
-              <Plus className="w-4 h-4 text-[#d4ff4a]" />
-              <span>+ Crear desde Brief</span>
-            </button>
+            {canCreateOpp && (
+              <button
+                type="button"
+                onClick={() => setIsNewOppModalOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#501f92] hover:bg-[#3d1572] text-xs font-bold text-white shadow-sm transition-colors cursor-pointer"
+              >
+                <Plus className="w-4 h-4 text-[#d4ff4a]" />
+                <span>+ Crear desde Brief</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -638,14 +648,24 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
         {/* Acciones principales del Workspace */}
         <div className="flex items-center gap-3 flex-wrap">
           {activeOpp.status !== 'won' ? (
-            <button
-              type="button"
-              onClick={() => setIsConvertModalOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#10b981] hover:bg-[#059669] text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
-            >
-              <CheckCircle2 className="w-4 h-4" />
-              <span>Convertir a Cliente & Proyecto</span>
-            </button>
+            canApproveOpp ? (
+              <button
+                type="button"
+                onClick={() => setIsConvertModalOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#10b981] hover:bg-[#059669] text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Convertir a Cliente & Proyecto</span>
+              </button>
+            ) : (
+              <div
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#f1f5f9] text-[#94a3b8] text-xs font-semibold"
+                title="Conversión a proyecto requiere nivel de aprobación (Product Lead / Directivos)"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5 text-[#cbd5e1]" />
+                <span>Conversión a Proyecto (Requiere Aprobación)</span>
+              </div>
+            )
           ) : (
             onNavigateToView && (
               <button

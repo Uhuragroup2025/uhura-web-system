@@ -59,6 +59,9 @@ import { MobileBottomNav } from '../components/taskflow/MobileBottomNav';
 import { MobileTimerMiniPlayer } from '../components/taskflow/MobileTimerMiniPlayer';
 import { NewBusinessView } from '../components/taskflow/newbusiness/NewBusinessView';
 import { INITIAL_NEW_BUSINESS_OPPORTUNITIES } from '../components/taskflow/newbusiness/mockOpportunities';
+import { canAccessModule, viewToModule } from '../components/taskflow/auth/permissions';
+import { AccessDeniedCard } from '../components/taskflow/auth/AccessDeniedCard';
+import { DevQaRoleSimulator } from '../components/taskflow/auth/DevQaRoleSimulator';
 import {
   Sparkles,
   Clock,
@@ -604,6 +607,10 @@ export const TaskFlowPrototype: React.FC = () => {
   const [saasFont, setSaasFont] = useState<'jakarta' | 'inter' | 'montserrat'>('jakarta');
   const [tasks, setTasks] = useState<TaskItem[]>(initialTasks);
   const [users, setUsers] = useState<UserItem[]>(initialUsers);
+  // Default session user: Paola Monsalve (Product Lead / Leader)
+  const [currentUser, setCurrentUser] = useState<UserItem>(
+    () => initialUsers.find((u) => u.id === 'u-2') || initialUsers[0]
+  );
   const [clients, setClients] = useState<ClientProfile[]>(orbitClientsData);
   const [projectsList, setProjectsList] = useState<ProjectSummaryItem[]>(INITIAL_PROJECTS_LIST);
   const [activities, setActivities] = useState(initialActivities);
@@ -1913,6 +1920,7 @@ export const TaskFlowPrototype: React.FC = () => {
                 onSelectView={handleSelectView}
                 collapsed={sidebarCollapsed}
                 onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+                currentUser={currentUser}
               />
             </div>
 
@@ -1926,6 +1934,7 @@ export const TaskFlowPrototype: React.FC = () => {
                       handleSelectView(v);
                       setMobileMenuOpen(false);
                     }}
+                    currentUser={currentUser}
                   />
                 </div>
                 <div
@@ -1952,14 +1961,23 @@ export const TaskFlowPrototype: React.FC = () => {
                 tasks={tasks}
                 loggedHoursToday={loggedHoursToday}
                 targetDayHours={8.0}
+                currentUser={currentUser}
                 onSelectTask={(task) => {
                   setSelectedTaskForDetail(task);
                   setIsTaskDetailModalOpen(true);
                 }}
               />
 
-              {/* View Content */}
+              {/* View Content with RBAC Protection */}
               <div className="p-4 sm:p-7 pb-28 md:pb-7 flex-1">
+                {!canAccessModule(currentUser, currentView) ? (
+                  <AccessDeniedCard
+                    currentUser={currentUser}
+                    targetModule={viewToModule(currentView)}
+                    onReturnHome={() => handleSelectView('mi-dia')}
+                  />
+                ) : (
+                  <>
                 {/* 0. MI DÍA & BUCKY EL CASTOR */}
                 {currentView === 'mi-dia' && (
                   <MiDiaView
@@ -2141,6 +2159,7 @@ export const TaskFlowPrototype: React.FC = () => {
                     templates={productTemplates}
                     onUpdateTemplates={setProductTemplates}
                     opportunities={opportunities}
+                    currentUser={currentUser}
                     onSaveToOpportunity={(oppId, quote) => {
                       handleSaveQuoteToOpportunity(oppId, quote);
                       setCurrentView('new-business');
@@ -2164,6 +2183,7 @@ export const TaskFlowPrototype: React.FC = () => {
                     opportunities={opportunities}
                     clients={clients}
                     templates={productTemplates}
+                    currentUser={currentUser}
                     onUpdateOpportunity={(updatedOpp) => {
                       setOpportunities((prev) =>
                         prev.map((o) => (o.id === updatedOpp.id ? updatedOpp : o))
@@ -2214,6 +2234,8 @@ export const TaskFlowPrototype: React.FC = () => {
                       Módulo integrado en Orbit para análisis predictivo de desvíos en entregas y rentabilidad.
                     </p>
                   </div>
+                )}
+                  </>
                 )}
               </div>
             </div>
@@ -2379,6 +2401,13 @@ export const TaskFlowPrototype: React.FC = () => {
         streakDays={6}
         tasks={tasks}
         activeTimer={activeTimer}
+      />
+
+      {/* Herramienta de QA / Simulación de Roles & Permisos (RBAC Bloque 3) */}
+      <DevQaRoleSimulator
+        currentUser={currentUser}
+        availableUsers={users}
+        onSelectUser={setCurrentUser}
       />
     </div>
   );
