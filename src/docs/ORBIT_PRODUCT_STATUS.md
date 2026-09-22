@@ -970,13 +970,12 @@ Solo existen 5 alcances autorizados:
 ### 11.4. Datos Personales vs. Google Calendar: Cumpleaños, Hobbies y Ausencias
 > **ACLARACIÓN ESTRUCTURAL ESTRICTA:**  
 > - **Cumpleaños y Aniversarios NO provienen de Google Calendar.** Viven como datos estructurados propios del perfil del colaborador en Orbit (`UserItem`):
->   - `birthDate`: Fecha de cumpleaños en formato `YYYY-MM-DD` o `MM-DD`.
->   - `anniversaryDate`: Fecha de ingreso a Uhura Group.
->   - `hobbies`: Array de gustos e intereses personales (ej. *"Fotografía analógica, café de especialidad"*).
->   - `petNames`: Nombre de mascotas (ej. *"Milo"*).
+>   - `birthDate`: Fecha de cumpleaños en formato `YYYY-MM-DD` (ej. `'1993-09-18'`).
+>   - `anniversaryDate`: Fecha de ingreso a Uhura Group (ej. `'2024-03-01'`).
+> - **Hobbies y Mascotas (`hobbies?: string`, `petNames?: string`):** Ambos son campos opcionales de experiencia/perfil en Orbit y **NO forman parte del contrato obligatorio de interoperabilidad de Bloque 4**.
 > - **Google Calendar se utiliza ÚNICAMENTE como fuente externa para:**
 >   - Vacaciones de ley (`type: 'vacation'`)
->   - Licencias o permisos aprobados (`type: 'personal_leave' | 'sick_leave' | 'bereavement' | 'unpaid_leave'`)
+>   - Licencias o incapacidades aprobadas (`type: 'sick_leave' | 'personal_leave' | 'other'`)
 > - Bucky y Mi Día consumen las fechas de cumpleaños y aniversario directamente desde `UserItem` en Orbit, garantizando privacidad y evitando llamadas innecesarias a Google Calendar API.
 
 ---
@@ -984,22 +983,36 @@ Solo existen 5 alcances autorizados:
 ### 11.5. Modelo de Dominio de Ausencias (`TeamAbsenceEvent`) y Flujo hacia Capacidad
 
 ```typescript
+export type TeamAbsenceType =
+  | 'vacation'
+  | 'sick_leave'
+  | 'personal_leave'
+  | 'other';
+
+export type TeamAbsenceStatus =
+  | 'active'
+  | 'cancelled';
+
+export type TeamAbsenceSource =
+  | 'google_calendar'
+  | 'manual';
+
 export interface TeamAbsenceEvent {
-  id: string;
-  userId: string;
-  userName: string;
-  type: 'vacation' | 'personal_leave' | 'sick_leave' | 'bereavement' | 'unpaid_leave';
-  title: string;
-  startDate: string; // ISO 'YYYY-MM-DD'
-  endDate: string;   // ISO 'YYYY-MM-DD'
-  allDay: boolean;
-  impactHoursPerDay: number; // Horas deducibles por día hábil (ej. 8.0 o 4.0)
-  status: 'active' | 'scheduled' | 'completed' | 'cancelled';
-  source: 'google_calendar' | 'orbit_manual';
-  externalCalendarEventId?: string;
-  externalCalendarId?: string;
-  lastSyncedAt?: string;
-  businessDaysImpact?: number;
+  id: string;                          // UUID único de Orbit
+  userId: string;                      // FK al colaborador (UserItem.id)
+  userName?: string;                   // Nombre para display rápido
+  type: TeamAbsenceType;
+  title: string;                       // e.g. "Vacaciones de Ley", "Incapacidad Médica"
+  startDate: string;                   // Fecha inicio ISO (YYYY-MM-DD)
+  endDate: string;                     // Fecha fin ISO (YYYY-MM-DD, inclusive)
+  allDay: boolean;                     // true = jornada completa
+  impactHoursPerDay: number;           // Horas hábiles a descontar por día (ej. 8.0 o 4.0)
+  status: TeamAbsenceStatus;           // 'active' | 'cancelled'
+  source: TeamAbsenceSource;           // 'google_calendar' | 'manual'
+  externalCalendarEventId?: string;    // ID único del evento en Google Calendar
+  externalCalendarId?: string;         // ID del calendario origen (ej. ausencias@uhuragroup.com)
+  lastSyncedAt?: string;               // Timestamp ISO del último sync
+  businessDaysImpact?: number;         // Días hábiles totales de impacto en el periodo
   notes?: string;
 }
 ```
@@ -1013,6 +1026,8 @@ export interface TeamAbsenceEvent {
    - En la tarjeta del colaborador y en el drawer lateral se muestra el banner informativo de la ausencia con indicador de sincronización externa (*Google Calendar*).
 4. **Protección en Asignación (Bucky):**
    - El motor de vida de equipo (`teamLifeEngine.ts`) evalúa `checkAssigneeAvailability`: si se intenta asignar o consultar a un colaborador con ausencia activa hoy, Bucky emite advertencia de bloqueo; si tiene una ausencia en los próximos 14 días, emite aviso preventivo para planificar entregables antes de su salida.
+5. **Deuda Técnica Identificada (Prototipo Capacidad):**
+   - La semana de cálculo simulada en `CapacityView` (del 15 al 19 de septiembre de 2026) se mantiene deliberadamente como deuda de prototipo visual. Será refactorizada para navegación de semanas dinámica y persistencia real en iteraciones posteriores (Navegación / Mi Día / Capacidad dinámica). No pertenece a este fix documental ni altera el contrato de interoperabilidad.
 
 ---
 
