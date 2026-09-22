@@ -13,7 +13,8 @@ import {
   TaskRework,
   ProductBacklogTemplate,
   QuoteProposal,
-  NewBusinessOpportunity
+  NewBusinessOpportunity,
+  TeamAbsenceEvent
 } from '../components/taskflow/types';
 import { INITIAL_PRODUCT_BACKLOG_TEMPLATES } from '../components/taskflow/templates/templateData';
 import { TemplateLibraryView } from '../components/taskflow/templates/TemplateLibraryView';
@@ -22,6 +23,7 @@ import {
   initialActivities,
   initialUsers,
   initialTimeLogs,
+  initialAbsenceEvents,
   orbitOperationalAlerts,
   orbitTopClients,
   orbitTrafficLightProjects,
@@ -617,6 +619,7 @@ export const TaskFlowPrototype: React.FC = () => {
   const [timeLogs, setTimeLogs] = useState<TimeLog[]>(initialTimeLogs);
   const [productTemplates, setProductTemplates] = useState<ProductBacklogTemplate[]>(INITIAL_PRODUCT_BACKLOG_TEMPLATES);
   const [opportunities, setOpportunities] = useState<NewBusinessOpportunity[]>(INITIAL_NEW_BUSINESS_OPPORTUNITIES);
+  const [absenceEvents, setAbsenceEvents] = useState<TeamAbsenceEvent[]>(initialAbsenceEvents);
 
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
@@ -1519,6 +1522,7 @@ export const TaskFlowPrototype: React.FC = () => {
     // 1. Resolver o registrar el Cliente en Orbit
     let resolvedClientId = opp.clientId;
     let resolvedClientName = opp.prospectAccountName || 'Cliente';
+    const effectiveTaxEntityId = opp.selectedTaxEntityId || null;
 
     if (!resolvedClientId) {
       resolvedClientId = `cli-${Date.now()}`;
@@ -1527,7 +1531,19 @@ export const TaskFlowPrototype: React.FC = () => {
         name: resolvedClientName,
         status: 'active',
         type: payload.projectType === 'fee_monthly' ? 'Fee mensual' : 'Proyecto único',
-        taxEntities: [],
+        hubspotCompanyId: opp.hubspotCompanyId || undefined,
+        taxEntities: effectiveTaxEntityId ? [
+          {
+            id: effectiveTaxEntityId,
+            businessName: resolvedClientName,
+            nit: '',
+            billingEmail: opp.administrativeChecklist?.billingEmail || opp.contactEmail || undefined,
+            alegraCreated: opp.administrativeChecklist?.alegraCreated || false,
+            alegraContactId: opp.administrativeChecklist?.alegraContactId || undefined,
+            alegraContactUrl: opp.administrativeChecklist?.alegraContactUrl || undefined,
+            isPrimary: true
+          }
+        ] : [],
         contacts: opp.contactName
           ? [
               {
@@ -1549,15 +1565,31 @@ export const TaskFlowPrototype: React.FC = () => {
       if (existing) {
         resolvedClientName = existing.name;
         setClients((prev) =>
-          prev.map((c) =>
-            c.id === resolvedClientId
-              ? {
-                  ...c,
-                  projectsCount: (c.projectsCount || 0) + 1,
-                  activeProjectsCount: (c.activeProjectsCount || 0) + 1
-                }
-              : c
-          )
+          prev.map((c) => {
+            if (c.id === resolvedClientId) {
+              const updatedTaxEntities = [...(c.taxEntities || [])];
+              if (effectiveTaxEntityId && !updatedTaxEntities.some(te => te.id === effectiveTaxEntityId)) {
+                updatedTaxEntities.push({
+                  id: effectiveTaxEntityId,
+                  businessName: c.name,
+                  nit: '',
+                  billingEmail: opp.administrativeChecklist?.billingEmail || opp.contactEmail || undefined,
+                  alegraCreated: opp.administrativeChecklist?.alegraCreated || false,
+                  alegraContactId: opp.administrativeChecklist?.alegraContactId || undefined,
+                  alegraContactUrl: opp.administrativeChecklist?.alegraContactUrl || undefined,
+                  isPrimary: updatedTaxEntities.length === 0
+                });
+              }
+              return {
+                ...c,
+                hubspotCompanyId: c.hubspotCompanyId || opp.hubspotCompanyId || undefined,
+                taxEntities: updatedTaxEntities,
+                projectsCount: (c.projectsCount || 0) + 1,
+                activeProjectsCount: (c.activeProjectsCount || 0) + 1
+              };
+            }
+            return c;
+          })
         );
       }
     }
@@ -1591,7 +1623,7 @@ export const TaskFlowPrototype: React.FC = () => {
       name: payload.projectName,
       clientId: resolvedClientId,
       clientName: resolvedClientName,
-      taxEntityId: null,
+      taxEntityId: effectiveTaxEntityId || (clients.find(c => c.id === resolvedClientId)?.taxEntities?.[0]?.id) || null,
       brand: resolvedClientName,
       leadName: payload.leadName || opp.leadUserName || 'Product Lead',
       leadAvatarBg: 'bg-[#501f92]',
@@ -1605,6 +1637,7 @@ export const TaskFlowPrototype: React.FC = () => {
       startDate: payload.startDate,
       endDate: payload.endDate,
       brief: opp.briefSummary || opp.discoveryNotes,
+      briefUrl: opp.briefUrl || null,
       deliverables: newProjectDeliverables,
       coreTeam: [
         {
@@ -1617,6 +1650,14 @@ export const TaskFlowPrototype: React.FC = () => {
           weeklyAllocatedHours: 4
         }
       ],
+      // Propagación de interoperabilidad canónica (HubSpot, Drive, Alegra)
+      originOpportunityId: opp.id,
+      originQuoteIds: [quote.id],
+      hubspotDealId: opp.hubspotDealId || null,
+      hubspotDealUrl: opp.hubspotDealUrl || null,
+      alegraContactId: opp.administrativeChecklist?.alegraContactId || null,
+      driveFolderId: opp.driveFolderId || null,
+      driveFolderUrl: opp.driveFolderUrl || null,
       status: 'Activo',
       healthStatus: 'verde',
       healthNote: 'Proyecto recién ganado y aprobado en New Business'
@@ -2116,6 +2157,8 @@ export const TaskFlowPrototype: React.FC = () => {
                   <CapacityView
                     tasks={tasks}
                     timeLogs={timeLogs}
+                    users={users}
+                    absenceEvents={absenceEvents}
                     activeTimer={activeTimer}
                     onStartTimer={handleStartTimer}
                     onPauseResumeTimer={handlePauseResumeTimer}
@@ -2400,6 +2443,8 @@ export const TaskFlowPrototype: React.FC = () => {
         onNavigateToView={handleSelectView}
         streakDays={6}
         tasks={tasks}
+        users={users}
+        absenceEvents={absenceEvents}
         activeTimer={activeTimer}
       />
 

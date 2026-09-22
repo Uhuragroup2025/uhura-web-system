@@ -11,7 +11,8 @@ import {
   TimeLog,
   ClientProjectNode,
   UpcomingMilestone,
-  ClientProfile
+  ClientProfile,
+  TeamAbsenceEvent
 } from './types';
 
 // PLANTILLAS DE ACTIVIDADES RECURRENTES PARA PROYECTOS TIPO FEE
@@ -1760,7 +1761,7 @@ export const orbitUpcomingMilestones: UpcomingMilestone[] = [
 export const initialUsers: UserItem[] = [
   {
     id: 'u-1',
-    name: 'Ana Giraldo',
+    name: 'Ana María Giraldo',
     email: 'ana@uhuragroup.com',
     initials: 'AG',
     avatarBg: 'bg-[#501f92]',
@@ -1774,10 +1775,11 @@ export const initialUsers: UserItem[] = [
     officialRole: undefined,
     professionalRole: 'CEO',
     accessLevel: 'executive',
-    birthDate: '1990-11-14',
-    birthDateFormatted: '14 de Nov',
+    birthDate: '1990-06-23',
+    birthDateFormatted: '23 de Jun',
     anniversaryDate: '2023-01-15',
-    anniversaryYears: 3
+    anniversaryYears: 3,
+    hobbies: 'Leer, tocar piano, cantar, Yoga, Pilates, cocinar, estar con mis hijos, crochet, viajar, comer y tomar vino'
   },
   {
     id: 'u-2',
@@ -1795,10 +1797,11 @@ export const initialUsers: UserItem[] = [
     officialRole: 'Product Lead',
     professionalRole: 'Product Lead',
     accessLevel: 'leader',
-    birthDate: '1992-09-18',
-    birthDateFormatted: '18 de Sep',
+    birthDate: '1992-01-09',
+    birthDateFormatted: '9 de Ene',
     anniversaryDate: '2024-01-10',
-    anniversaryYears: 2
+    anniversaryYears: 2,
+    hobbies: 'Gym, tennis, deportes (tops deportivos, barritas o suplementos proteicos) cocinar saludable (gadgets de cocina o de bar), ir a la playa, viajar (amo pulseras, collares o tobilleras o pañoletas muy playeras), aprender, conocer nuevos lugares con amig@s y familia.'
   },
   {
     id: 'u-3',
@@ -1816,10 +1819,11 @@ export const initialUsers: UserItem[] = [
     officialRole: 'Client Relationship Strategist',
     professionalRole: 'Client Relationship Strategist',
     accessLevel: 'client_relationship',
-    birthDate: '1995-10-04',
-    birthDateFormatted: '04 de Oct',
+    birthDate: '1995-02-02',
+    birthDateFormatted: '2 de Feb',
     anniversaryDate: '2024-02-01',
-    anniversaryYears: 2
+    anniversaryYears: 2,
+    hobbies: 'viajar, leer, Kdramas, Recargas en Pluxee'
   },
   {
     id: 'u-4',
@@ -1837,10 +1841,11 @@ export const initialUsers: UserItem[] = [
     officialRole: 'Creative Strategy Lead',
     professionalRole: 'Creative Strategy Lead',
     accessLevel: 'leader',
-    birthDate: '1991-12-08',
-    birthDateFormatted: '08 de Dic',
+    birthDate: '1991-02-26',
+    birthDateFormatted: '26 de Feb',
     anniversaryDate: '2024-02-15',
-    anniversaryYears: 2
+    anniversaryYears: 2,
+    hobbies: 'Los videojuegos y las series. El fútbol, Viajar, leer. La ilustración. Comer en la calle. Las camisetas básicas (negras como las de Don Ramón - Papá de Cristian Castro) Las cervezas raras pero no artesanales.'
   },
   {
     id: 'u-5',
@@ -1858,10 +1863,12 @@ export const initialUsers: UserItem[] = [
     officialRole: 'Content Creator',
     professionalRole: 'Digital Content Specialist',
     accessLevel: 'collaborator',
-    birthDate: '1997-04-20',
-    birthDateFormatted: '20 de Abr',
+    birthDate: '1997-08-11',
+    birthDateFormatted: '11 de Ago',
     anniversaryDate: '2024-02-10',
-    anniversaryYears: 2
+    anniversaryYears: 2,
+    hobbies: 'Ver memes, compartir tiempo en familia, viajar, comer tortas con café, cuidar mis plantas, conocer lugares nuevos, ver series, juegos de mesa, "maricaditas" de colección o curiosas, apoyar causas nobles, acariciar animales y escuchar podcasts.',
+    petNames: 'Zeus, Kaiser, Nezuko, Cóndor y Cocoa'
   },
   {
     id: 'u-6',
@@ -1879,10 +1886,11 @@ export const initialUsers: UserItem[] = [
     officialRole: 'Digital Content Specialist',
     professionalRole: 'Digital Content Specialist',
     accessLevel: 'collaborator',
-    birthDate: '1998-07-12',
-    birthDateFormatted: '12 de Jul',
+    birthDate: '1998-07-14',
+    birthDateFormatted: '14 de Jul',
     anniversaryDate: '2024-05-02',
-    anniversaryYears: 2
+    anniversaryYears: 2,
+    hobbies: 'Viajar, leer, repetir series, caminar en el Malecón, conocer nuevos cafés, ir a la playa, compartir con amigos y familia'
   },
   {
     id: 'u-7',
@@ -1900,10 +1908,11 @@ export const initialUsers: UserItem[] = [
     officialRole: 'Digital Designer',
     professionalRole: 'Digital Designer',
     accessLevel: 'collaborator',
-    birthDate: '1996-09-17',
-    birthDateFormatted: '17 de Sep',
+    birthDate: '1996-03-14',
+    birthDateFormatted: '14 de Mar',
     anniversaryDate: '2024-04-15',
-    anniversaryYears: 2
+    anniversaryYears: 2,
+    hobbies: 'Leer, compartir con mi familia y amigos, ver series, ir a cine, jugar e ir al parque con mis perros, probar nueva gastronomía, conocer nuevos lugares para tomar una cerveza o un café, armar rompecabezas'
   },
   {
     id: 'u-8',
@@ -1921,10 +1930,11 @@ export const initialUsers: UserItem[] = [
     officialRole: 'Directora Comercial',
     professionalRole: 'Directora Comercial',
     accessLevel: 'commercial',
-    birthDate: '1993-05-25',
-    birthDateFormatted: '25 de May',
+    birthDate: '1993-05-10',
+    birthDateFormatted: '10 de May',
     anniversaryDate: '2024-02-05',
-    anniversaryYears: 2
+    anniversaryYears: 2,
+    hobbies: 'Deporte, comer, cine, escuchar musica. Leer, puebliar, viajar, compartir en familia'
   },
   {
     id: 'u-9',
@@ -1942,8 +1952,8 @@ export const initialUsers: UserItem[] = [
     officialRole: 'Trafficker Media',
     professionalRole: 'Trafficker Media',
     accessLevel: 'collaborator',
-    birthDate: '1996-03-14',
-    birthDateFormatted: '14 de Mar',
+    birthDate: '1996-05-17',
+    birthDateFormatted: '17 de May',
     anniversaryDate: '2024-07-01',
     anniversaryYears: 2
   },
@@ -1963,10 +1973,11 @@ export const initialUsers: UserItem[] = [
     officialRole: 'Front-End Dev',
     professionalRole: 'Front-End Dev',
     accessLevel: 'collaborator',
-    birthDate: '1994-09-16',
-    birthDateFormatted: '16 de Sep',
+    birthDate: '1994-06-14',
+    birthDateFormatted: '14 de Jun',
     anniversaryDate: '2024-09-16',
-    anniversaryYears: 2
+    anniversaryYears: 2,
+    hobbies: 'Videojuegos, restaurantes, Peliculas, senderismo, rodadas, Anime, música'
   },
   {
     id: 'u-11',
@@ -1984,10 +1995,11 @@ export const initialUsers: UserItem[] = [
     officialRole: 'Community Manager',
     professionalRole: 'Community Manager',
     accessLevel: 'collaborator',
-    birthDate: '1997-08-30',
-    birthDateFormatted: '30 de Ago',
+    birthDate: '1997-10-16',
+    birthDateFormatted: '16 de Oct',
     anniversaryDate: '2024-03-12',
     anniversaryYears: 2,
+    hobbies: 'Me gusta mucho Comer, leer, el yoga, la meditación, todo lo que sea energía mística ver fútbol, viajar, rescatar peludos y compartir mis dones y capacidades con el mundo.',
     vacationStatus: {
       onVacation: true,
       startDate: '2026-09-15',
@@ -2011,10 +2023,11 @@ export const initialUsers: UserItem[] = [
     officialRole: 'Trafficker Media',
     professionalRole: 'Trafficker Media',
     accessLevel: 'collaborator',
-    birthDate: '1995-12-19',
-    birthDateFormatted: '19 de Dic',
+    birthDate: '1995-06-21',
+    birthDateFormatted: '21 de Jun',
     anniversaryDate: '2024-06-03',
-    anniversaryYears: 2
+    anniversaryYears: 2,
+    hobbies: 'Comer, futbol, videos juegos, la música, los animales, el deporte en general, fin de semanas sociales'
   },
   {
     id: 'u-13',
@@ -2032,10 +2045,11 @@ export const initialUsers: UserItem[] = [
     officialRole: 'Creative Designer',
     professionalRole: 'Digital Designer',
     accessLevel: 'collaborator',
-    birthDate: '1998-02-14',
-    birthDateFormatted: '14 de Feb',
+    birthDate: '1998-04-22',
+    birthDateFormatted: '22 de Abr',
     anniversaryDate: '2024-01-20',
-    anniversaryYears: 2
+    anniversaryYears: 2,
+    hobbies: 'Conocer restaurantes y comer rico, ir a cine, ver series ,viajar a la playa, ir a bosques, pueblos...la naturaleza en general, caminar, leer y coleccionar libros ilustrados, las ferias, los tenis, la moda, compartir con mi familia, cuidar a mis perrhijos.'
   },
   {
     id: 'u-14',
@@ -2053,10 +2067,11 @@ export const initialUsers: UserItem[] = [
     officialRole: 'Growth Manager',
     professionalRole: 'Growth Manager',
     accessLevel: 'leader',
-    birthDate: '1993-01-28',
-    birthDateFormatted: '28 de Ene',
+    birthDate: '1993-10-26',
+    birthDateFormatted: '26 de Oct',
     anniversaryDate: '2024-03-01',
-    anniversaryYears: 2
+    anniversaryYears: 2,
+    hobbies: 'Videojuegos, la playa, viajar, comer,deporte muy enfocado en triatlon. Regalos que me ayuden o lleven a mejorar mi rendimiento deportivo'
   },
   {
     id: 'u-15',
@@ -2074,10 +2089,11 @@ export const initialUsers: UserItem[] = [
     officialRole: 'Creative Designer',
     professionalRole: 'Digital Designer',
     accessLevel: 'collaborator',
-    birthDate: '1996-06-11',
-    birthDateFormatted: '11 de Jun',
+    birthDate: '1996-10-18',
+    birthDateFormatted: '18 de Oct',
     anniversaryDate: '2024-03-15',
-    anniversaryYears: 2
+    anniversaryYears: 2,
+    hobbies: 'El fútbol, leer, salir a charcos, patinar, el DIM, probar comidas, ir a cine y la ilustración'
   },
   {
     id: 'u-16',
@@ -2095,10 +2111,11 @@ export const initialUsers: UserItem[] = [
     officialRole: 'Creative Designer',
     professionalRole: 'Digital Designer',
     accessLevel: 'collaborator',
-    birthDate: '1995-10-30',
-    birthDateFormatted: '30 de Oct',
+    birthDate: '1995-08-16',
+    birthDateFormatted: '16 de Ago',
     anniversaryDate: '2024-04-01',
-    anniversaryYears: 2
+    anniversaryYears: 2,
+    hobbies: 'Pintar, ilustrar, leer, viajar, ver peliculas, hacer deporte, los animales, la pasta y un buen vino, pero el más importante es estar con la familia.'
   },
   {
     id: 'u-17',
@@ -2116,10 +2133,11 @@ export const initialUsers: UserItem[] = [
     officialRole: 'Creative Designer',
     professionalRole: 'Digital Designer',
     accessLevel: 'collaborator',
-    birthDate: '1997-03-05',
-    birthDateFormatted: '05 de Mar',
+    birthDate: '1997-09-22',
+    birthDateFormatted: '22 de Sep',
     anniversaryDate: '2024-02-20',
-    anniversaryYears: 2
+    anniversaryYears: 2,
+    hobbies: 'Pausar la mente, ir a la montaña o lugares con naturaleza, salir a montar bici, aprender a patinar, ir a eventos culturales, hacer música, ir a conciertos de músicos locales, comer en lugares lindos. Muy importante para mi es ayudar en fundaciones y voluntariados con causas sociales, también viajar, y estar con mi familia y amigos.'
   },
   {
     id: 'u-18',
@@ -2137,10 +2155,54 @@ export const initialUsers: UserItem[] = [
     officialRole: undefined,
     professionalRole: 'Administrativa',
     accessLevel: 'administrative',
-    birthDate: '1994-08-22',
-    birthDateFormatted: '22 de Ago',
+    birthDate: '1994-01-30',
+    birthDateFormatted: '30 de Ene',
     anniversaryDate: '2024-01-08',
-    anniversaryYears: 2
+    anniversaryYears: 2,
+    hobbies: 'La playa el sol el mar es mi lugar favorito en el MUNDOOOO amo leer, hacer ejercicio, ahora corro estoy iniciando en el mundo running, me gusta el pilates, Amo los animalitos CON TODO EL CORAZON, me gusta pasar tiempo con mi familia y amigos, me gusta el arte los museos y el teatro y toda la musica, aprender cosas diferentes , aprender de los que me rodean y tambien transmitir mis conocimientos , me gusta conversar de todos los temas, y me encanta la moda y la fotografia y comer rico.',
+    petNames: 'Dulce'
+  }
+];
+
+/**
+ * Eventos iniciales de ausencia estructurada en Orbit.
+ * Google Calendar es el Source of Truth externo para vacaciones y licencias.
+ * Bucky y el motor de Capacidad de Orbit consumen estos datos sin acoplarse a Google Calendar API.
+ */
+export const initialAbsenceEvents: TeamAbsenceEvent[] = [
+  {
+    id: 'abs-sr-vac-1',
+    userId: 'u-11',
+    userName: 'Sara Rivera',
+    type: 'vacation',
+    title: 'Vacaciones de Ley — Sara Rivera',
+    startDate: '2026-09-15',
+    endDate: '2026-09-22',
+    allDay: true,
+    impactHoursPerDay: 8.0,
+    status: 'active',
+    source: 'google_calendar',
+    externalCalendarEventId: 'gcal-evt-sr-vac-2026-09',
+    externalCalendarId: 'ausencias@uhuragroup.com',
+    lastSyncedAt: '2026-09-15T08:00:00Z',
+    notes: 'Aprobadas por Administración. Período anual de descanso.'
+  },
+  {
+    id: 'abs-lg-perm-1',
+    userId: 'u-7',
+    userName: 'Laura Isabel Gómez',
+    type: 'personal_leave',
+    title: 'Permiso Personal / Estudio',
+    startDate: '2026-09-28',
+    endDate: '2026-09-28',
+    allDay: false,
+    impactHoursPerDay: 4.0,
+    status: 'active',
+    source: 'google_calendar',
+    externalCalendarEventId: 'gcal-evt-lg-perm-2026-09',
+    externalCalendarId: 'ausencias@uhuragroup.com',
+    lastSyncedAt: '2026-09-20T09:30:00Z',
+    notes: 'Media jornada por trámite personal.'
   }
 ];
 

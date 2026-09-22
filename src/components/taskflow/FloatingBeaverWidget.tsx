@@ -38,13 +38,13 @@ import {
   Shirt,
   AlertOctagon
 } from 'lucide-react';
-import { OrbitView, TaskItem, ActiveTimerState } from './types';
+import { OrbitView, TaskItem, ActiveTimerState, UserItem, TeamAbsenceEvent } from './types';
 import { resolveBuckyState } from './buckyEngine';
 import { BuckyLabModal } from './BuckyLabModal';
 import { UhuraLogo } from '../ui/UhuraLogo';
 import { processTeamLifeEvents, resolveBuckyTeamLifeSpeech } from './copilot/teamLifeEngine';
 import { TeamLifeEventsModal } from './copilot/TeamLifeEventsModal';
-import { initialUsers } from './mockData';
+import { initialUsers, initialAbsenceEvents } from './mockData';
 
 interface FloatingBeaverWidgetProps {
   loggedHoursToday: number;
@@ -53,6 +53,8 @@ interface FloatingBeaverWidgetProps {
   onNavigateToView: (view: OrbitView) => void;
   streakDays?: number;
   tasks?: TaskItem[];
+  users?: UserItem[];
+  absenceEvents?: TeamAbsenceEvent[];
   activeTimer?: ActiveTimerState | null;
   currentView?: OrbitView;
   onPauseResumeTimer?: () => void;
@@ -330,6 +332,8 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
   onNavigateToView,
   streakDays = 6,
   tasks = [],
+  users,
+  absenceEvents,
   activeTimer = null,
   currentView,
   onPauseResumeTimer,
@@ -348,7 +352,9 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
   const [isTeamLifeModalOpen, setIsTeamLifeModalOpen] = useState(false);
 
   // Procesar eventos de equipo para el copiloto humano/operativo
-  const teamLifeResult = processTeamLifeEvents(initialUsers);
+  const effectiveUsers = users && users.length > 0 ? users : initialUsers;
+  const effectiveAbsences = absenceEvents && absenceEvents.length > 0 ? absenceEvents : initialAbsenceEvents;
+  const teamLifeResult = processTeamLifeEvents(effectiveUsers, new Date(2026, 8, 16), effectiveAbsences);
 
   // Live timer seconds tracking
   const [liveTimerSeconds, setLiveTimerSeconds] = useState(activeTimer?.elapsedSeconds || 0);

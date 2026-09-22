@@ -195,7 +195,6 @@ export interface ProjectSummaryItem {
   name: string;
   clientId?: string;          // ID estricto a ClientProfile
   clientName: string;
-  taxEntityId?: string | null; // 100% opcional, vínculo a ClientTaxEntity
   brand?: string;
   leadName: string;
   leadAvatarBg: string;
@@ -233,16 +232,17 @@ export interface ProjectSummaryItem {
   };
   
   // Metadatos de interoperabilidad externa (Portabilidad Base)
-  alegraContractId?: string | null;
   alegraContactId?: string | null;
-  selectedTaxEntityId?: string | null; // Razón social / NIT facturable en este proyecto
-  hubspotDealId?: string | null;
+  taxEntityId?: string | null; // FK canónica de operación hacia ClientTaxEntity para facturación
+  hubspotDealId?: string | null; // Referencia externa canónica hacia HubSpot
+  hubspotDealUrl?: string | null; // Conveniencia de navegación UX únicamente (no representa relación adicional de dominio)
   commercialQuoteId?: string | null;
   originOpportunityId?: string | null;
   originQuoteIds?: string[];
   approvedQuoteSnapshots?: QuoteProposalSnapshot[];
   driveFolderId?: string | null;
   driveFolderUrl?: string | null;
+  briefUrl?: string | null;
 
   teamMembers?: { name: string; role?: string; avatarBg: string; initials?: string }[];
   status: 'Activo' | 'En Pausa' | 'Cerrado' | 'Planificación' | 'Archivado' | 'draft' | 'active' | 'on_hold' | 'completed' | 'cancelled';
@@ -693,12 +693,45 @@ export interface UserItem {
   birthDateFormatted?: string; // ej. '18 de Sep'
   anniversaryDate?: string;    // Formato ISO 'YYYY-MM-DD'
   anniversaryYears?: number;   // ej. 2
+  hobbies?: string;            // Intereses, hobbies y pasiones del colaborador
+  petNames?: string;           // Nombre de mascotas
   vacationStatus?: {
     onVacation: boolean;
     startDate?: string;
     returnDate?: string;
     note?: string;
   };
+}
+
+/**
+ * Tipos de ausencia para el bloqueo de capacidad y sincronización con Google Calendar
+ */
+export type TeamAbsenceType = 'vacation' | 'sick_leave' | 'personal_leave' | 'other';
+export type TeamAbsenceStatus = 'active' | 'cancelled';
+export type TeamAbsenceSource = 'google_calendar' | 'manual';
+
+/**
+ * Entidad canónica de ausencia/bloqueo de disponibilidad del equipo en Orbit.
+ * Google Calendar es la fuente externa para vacaciones y licencias.
+ * Bucky y Capacidad consumen esta entidad internamente desde Orbit.
+ */
+export interface TeamAbsenceEvent {
+  id: string;                          // UUID único de Orbit
+  userId: string;                      // FK al colaborador (UserItem.id)
+  userName?: string;                   // Nombre para display rápido
+  type: TeamAbsenceType;
+  title: string;                       // e.g. "Vacaciones de Ley", "Incapacidad Médica"
+  startDate: string;                   // Fecha inicio ISO (YYYY-MM-DD)
+  endDate: string;                     // Fecha fin ISO (YYYY-MM-DD, inclusive)
+  allDay: boolean;                     // true = jornada completa
+  impactHoursPerDay: number;           // Horas hábiles a descontar por día (ej. 8.0 o 4.0)
+  status: TeamAbsenceStatus;           // 'active' | 'cancelled'
+  source: TeamAbsenceSource;           // 'google_calendar' | 'manual'
+  externalCalendarEventId?: string;    // ID único del evento en Google Calendar
+  externalCalendarId?: string;         // ID del calendario origen (ej. ausencias@uhuragroup.com)
+  lastSyncedAt?: string;               // Timestamp ISO del último sync
+  businessDaysImpact?: number;         // Días hábiles totales de impacto en el periodo
+  notes?: string;
 }
 
 /**
@@ -1247,7 +1280,7 @@ export interface NewBusinessOpportunity {
   driveStandardFolders?: DriveFolderReferences;
 
   // Selección fiscal explícita de facturación (1..N razones sociales)
-  selectedTaxEntityId?: string | null; // FK -> ClientTaxEntity elegida para este negocio/facturación
+  selectedTaxEntityId?: string | null; // Entidad fiscal seleccionada durante New Business / formalización (FK -> ClientTaxEntity)
 
   // Checklist de Vivian / Alegra
   administrativeChecklist?: AdministrativeChecklist;

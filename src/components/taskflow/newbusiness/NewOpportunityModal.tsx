@@ -109,11 +109,8 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
       }
     }
 
-    const defaultDriveFolder =
-      driveFolderUrl.trim() ||
-      `https://drive.google.com/drive/folders/uhura-prospectos-${encodeURIComponent(
-        resolvedAccountName.toLowerCase().replace(/\s+/g, '-')
-      )}`;
+    const userEnteredDriveFolder = driveFolderUrl.trim();
+    const resolvedDriveFolder = userEnteredDriveFolder || undefined;
 
     const newOpp: NewBusinessOpportunity = {
       id: oppId,
@@ -128,19 +125,20 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
       leadUserName: leadUserName.trim() || 'Product Lead',
       hubspotDealId: hubspotDealId.trim() || null,
       hubspotDealUrl: hubspotDealUrl.trim() || null,
+      hubspotCompanyId: isExistingClient ? (existingClients.find(c => c.id === selectedClientId)?.hubspotCompanyId || null) : null,
       briefSummary: briefSummary.trim() || undefined,
       briefUrl: briefUrl.trim() || undefined,
       discoveryNotes: discoveryNotes.trim() || undefined,
       targetKickoffDate: targetKickoffDate || undefined,
       status: 'quoting',
-      driveFolderUrl: defaultDriveFolder,
-      driveStandardFolders: {
-        rootFolderUrl: defaultDriveFolder,
-        briefFolderUrl: `${defaultDriveFolder}/00-brief`,
-        proposalsFolderUrl: `${defaultDriveFolder}/01-propuestas`,
-        adminDocsFolderUrl: `${defaultDriveFolder}/02-documentos-administrativos`,
-        inputsFolderUrl: `${defaultDriveFolder}/03-insumos`
-      },
+      driveFolderUrl: resolvedDriveFolder,
+      driveStandardFolders: resolvedDriveFolder ? {
+        rootFolderUrl: resolvedDriveFolder,
+        briefFolderUrl: `${resolvedDriveFolder}/00-brief`,
+        proposalsFolderUrl: `${resolvedDriveFolder}/01-propuestas`,
+        adminDocsFolderUrl: `${resolvedDriveFolder}/02-documentos-administrativos`,
+        inputsFolderUrl: `${resolvedDriveFolder}/03-insumos`
+      } : undefined,
       administrativeChecklist: {
         rutStatus: 'pending',
         idCardStatus: 'pending',

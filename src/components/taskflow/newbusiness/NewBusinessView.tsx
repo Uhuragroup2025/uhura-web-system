@@ -1104,14 +1104,19 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                       Repositorio de Documentos (Google Drive)
                     </h3>
                     <p className="text-xs text-[#64748b]">
-                      Carpeta raíz: <code>{activeOpp.driveFolderUrl || `PROSPECTOS / ${activeOpp.prospectAccountName}`}</code>
+                      Carpeta raíz:{' '}
+                      {activeOpp.driveFolderUrl ? (
+                        <code className="text-[#0f172a] font-mono">{activeOpp.driveFolderUrl}</code>
+                      ) : (
+                        <span className="text-[#94a3b8] italic">No vinculada</span>
+                      )}
                     </p>
                   </div>
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
-                {activeOpp.driveFolderUrl && (
+                {activeOpp.driveFolderUrl ? (
                   <a
                     href={activeOpp.driveFolderUrl}
                     target="_blank"
@@ -1121,6 +1126,10 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                     <ExternalLink className="w-4 h-4" />
                     <span>Abrir Carpeta en Drive</span>
                   </a>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#f1f5f9] text-xs font-semibold text-[#64748b] border border-[#e2e8f0]">
+                    Sin carpeta vinculada
+                  </span>
                 )}
               </div>
             </div>

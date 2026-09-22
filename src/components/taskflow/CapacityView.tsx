@@ -26,8 +26,8 @@ import {
   SlidersHorizontal,
   ChevronDown
 } from 'lucide-react';
-import { TaskItem, TimeLog, ActiveTimerState } from './types';
-import { initialUsers } from './mockData';
+import { TaskItem, TimeLog, ActiveTimerState, UserItem, TeamAbsenceEvent } from './types';
+import { initialUsers, initialAbsenceEvents } from './mockData';
 
 export type CapacityTimeframe = 'today' | 'week' | 'month';
 export type CapacityPerspective = 'personal' | 'team' | 'org';
@@ -35,6 +35,8 @@ export type CapacityPerspective = 'personal' | 'team' | 'org';
 interface CapacityViewProps {
   tasks: TaskItem[];
   timeLogs: TimeLog[];
+  users?: UserItem[];
+  absenceEvents?: TeamAbsenceEvent[];
   activeTimer?: ActiveTimerState | null;
   onStartTimer?: (task: TaskItem) => void;
   onPauseResumeTimer?: () => void;
@@ -76,6 +78,8 @@ const DEFAULT_FALLBACK_WEEKLY_HOURS = 40.0;
 export const CapacityView: React.FC<CapacityViewProps> = ({
   tasks,
   timeLogs,
+  users,
+  absenceEvents,
   activeTimer,
   onStartTimer,
   onPauseResumeTimer,
@@ -95,13 +99,13 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
   const currentUserName = 'Paola (Lead PM)';
   const currentUserRole = 'Lead Project Manager';
 
-  // Semana laboral simulada (Lunes 24 de Agosto a Viernes 28 de Agosto de 2026)
+  // Semana laboral simulada (Lunes 15 de Septiembre a Viernes 19 de Septiembre de 2026)
   const weekDays = [
-    { dayName: 'Lunes', date: '24 Ago', fullDate: '2026-08-24', isHoliday: false, holidayName: '' },
-    { dayName: 'Martes', date: '25 Ago', fullDate: '2026-08-25', isHoliday: false, holidayName: '' },
-    { dayName: 'Miércoles', date: '26 Ago', fullDate: '2026-08-26', isHoliday: false, holidayName: '' },
-    { dayName: 'Jueves', date: '27 Ago', fullDate: '2026-08-27', isHoliday: false, holidayName: '' },
-    { dayName: 'Viernes', date: '28 Ago', fullDate: '2026-08-28', isHoliday: false, holidayName: '' },
+    { dayName: 'Lunes', date: '15 Sep', fullDate: '2026-09-15', isHoliday: false, holidayName: '' },
+    { dayName: 'Martes', date: '16 Sep', fullDate: '2026-09-16', isHoliday: false, holidayName: '' },
+    { dayName: 'Miércoles', date: '17 Sep', fullDate: '2026-09-17', isHoliday: false, holidayName: '' },
+    { dayName: 'Jueves', date: '18 Sep', fullDate: '2026-09-18', isHoliday: false, holidayName: '' },
+    { dayName: 'Viernes', date: '19 Sep', fullDate: '2026-09-19', isHoliday: false, holidayName: '' },
   ];
 
   // Helper para calcular disponibilidad de un usuario según periodo
@@ -170,85 +174,136 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
   const isOverloaded = myCurrentAssigned > periodLegalCapacity;
   const isOptimal = myUtilizationPercent >= 70 && myUtilizationPercent <= 100;
 
-  // Distribución del equipo completo con cálculo de horas reales
+  // Helper para asignar departamento organizacional según rol o especialidad
+  const resolveUserDept = (u: UserItem): string => {
+    const role = (u.officialRole || u.jobTitle || '').toLowerCase();
+    const name = u.name.toLowerCase();
+    if (role.includes('ceo') || name.includes('ana maría')) return 'C-Level';
+    if (role.includes('web') || role.includes('front-end') || role.includes('product') || role.includes('trafficker media') || name.includes('oscar') || name.includes('laura isabel') || name.includes('simón')) return 'Área Producto';
+    if (role.includes('creative') || role.includes('community') || role.includes('content') || name.includes('diego') || name.includes('sara') || name.includes('camilo torres') || name.includes('melisa') || name.includes('alejandro') || name.includes('esmeralda')) return 'Área Creatividad';
+    if (role.includes('growth') || name.includes('camilo vélez') || name.includes('nayeliz') || name.includes('sebastian')) return 'Área Growth';
+    if (role.includes('comercial') || role.includes('client relationship') || name.includes('catalina') || name.includes('luisa')) return 'Área Comercial';
+    if (role.includes('administra') || name.includes('salazar')) return 'Área Administrativa';
+    return 'Área Producto';
+  };
+
+  // Distribución del equipo completo conectado con UserItem y TeamAbsenceEvent (Google Calendar / Orbit)
   const teamMembersData = useMemo(() => {
-    // Lista completa de colaboradores con sus áreas, roles y disponibilidad semanal pactada
-    // (ej. full-time 40h, media jornada 20-30h, vacaciones o permisos temporales)
-    const teamList = [
-      // ÁREA DIRECCIÓN / C-LEVEL
-      { id: 'u-am', name: 'Ana María Giraldo', role: 'CEO (C-Level)', initials: 'AM', avatarBg: 'bg-[#501f92]', assigned: 38.0, executed: 34.0, dept: 'C-Level', weeklyHours: 40.0 },
+    const effectiveUsers = users && users.length > 0 ? users : initialUsers;
+    const effectiveAbsences = absenceEvents && absenceEvents.length > 0 ? absenceEvents : initialAbsenceEvents;
 
-      // ÁREA PRODUCTO
-      { id: 'u-pm', name: 'Paola Monsalve', role: 'Product Lead / Digital Designer', initials: 'PM', avatarBg: 'bg-[#501f92]', assigned: 39.5, executed: 35.0, dept: 'Área Producto', weeklyHours: 40.0 },
-      { id: 'u-lg', name: 'Laura Gómez', role: 'Desarrollador Web Front-End', initials: 'LG', avatarBg: 'bg-[#0284c7]', assigned: 40.0, executed: 36.5, dept: 'Área Producto', weeklyHours: 40.0 },
-      { id: 'u-oc', name: 'Oscar Cerpa', role: 'Desarrollador Web Front-End', initials: 'OC', avatarBg: 'bg-[#f59e0b]', assigned: 26.0, executed: 20.0, dept: 'Área Producto', weeklyHours: 32.0 }, // Jornada flexible/parcial
-      { id: 'u-dd', name: 'Digital Designer', role: 'Digital Designer', initials: 'DD', avatarBg: 'bg-[#8b5cf6]', assigned: 36.0, executed: 30.5, dept: 'Área Producto', weeklyHours: 40.0 },
-      { id: 'u-sv', name: 'Simón Vélez', role: 'Digiops / Trafficker Media', initials: 'SV', avatarBg: 'bg-[#10b981]', assigned: 38.5, executed: 33.0, dept: 'Área Producto', weeklyHours: 40.0 },
+    return effectiveUsers.map(user => {
+      const dept = resolveUserDept(user);
+      const memberWeeklyHours = user.capacityHours || DEFAULT_FALLBACK_WEEKLY_HOURS;
+      const baseCap = getUserConfiguredCapacity(memberWeeklyHours, timeframe);
 
-      // ÁREA CREATIVIDAD
-      { id: 'u-dc', name: 'Diego Cadavid', role: 'Creative Strategy Lead', initials: 'DC', avatarBg: 'bg-[#dc2626]', assigned: 41.0, executed: 38.0, dept: 'Área Creatividad', weeklyHours: 40.0 },
-      { id: 'u-sr', name: 'Sara Rivera', role: 'Community Manager', initials: 'SR', avatarBg: 'bg-[#ec4899]', assigned: 32.0, executed: 26.0, dept: 'Área Creatividad', weeklyHours: 40.0 },
-      { id: 'u-sl', name: 'Sara Mar Lagos', role: 'Creative Designer', initials: 'SL', avatarBg: 'bg-[#f43f5e]', assigned: 39.0, executed: 34.5, dept: 'Área Creatividad', weeklyHours: 40.0 },
-      { id: 'u-ct-c', name: 'Camilo Torres', role: 'Creative Designer', initials: 'CT', avatarBg: 'bg-[#6366f1]', assigned: 35.0, executed: 29.0, dept: 'Área Creatividad', weeklyHours: 40.0 },
-      { id: 'u-mg', name: 'Melisa Gil', role: 'Creative Designer', initials: 'MG', avatarBg: 'bg-[#d946ef]', assigned: 40.5, executed: 36.0, dept: 'Área Creatividad', weeklyHours: 40.0 },
-      { id: 'u-af', name: 'Alejandro Florez', role: 'Creative Designer', initials: 'AF', avatarBg: 'bg-[#06b6d4]', assigned: 36.5, executed: 31.0, dept: 'Área Creatividad', weeklyHours: 40.0 },
-      { id: 'u-ed', name: 'Esmeralda Duque', role: 'Content Creator', initials: 'ED', avatarBg: 'bg-[#8b5cf6]', assigned: 38.0, executed: 32.5, dept: 'Área Creatividad', weeklyHours: 40.0 },
+      // Calcular deducción por ausencias estructuradas (vacaciones, licencias)
+      // Regla canónica Orbit: Por cada día hábil de ausencia: availableCapacity -= impactHoursPerDay (excluyendo fines de semana y festivos)
+      let absenceDeduction = 0;
+      let activeAbsence: TeamAbsenceEvent | undefined;
 
-      // ÁREA GROWTH
-      { id: 'u-cv', name: 'Camilo Vélez', role: 'Growth Manager', initials: 'CV', avatarBg: 'bg-[#059669]', assigned: 39.0, executed: 33.5, dept: 'Área Growth', weeklyHours: 40.0 },
-      { id: 'u-nb', name: 'Nayeliz Brunal', role: 'Digital Content Specialist', initials: 'NB', avatarBg: 'bg-[#14b8a6]', assigned: 31.0, executed: 25.0, dept: 'Área Growth', weeklyHours: 35.0 },
-      { id: 'u-sc', name: 'Sebastián Caicedo', role: 'Trafficker Media', initials: 'SC', avatarBg: 'bg-[#10b981]', assigned: 41.5, executed: 37.0, dept: 'Área Growth', weeklyHours: 40.0 },
+      const userAbsences = effectiveAbsences.filter(
+        a => a.userId === user.id && a.status === 'active'
+      );
 
-      // ÁREA COMERCIAL
-      { id: 'u-ct-d', name: 'Catalina Tejada', role: 'Directora Comercial', initials: 'CT', avatarBg: 'bg-[#7c3aed]', assigned: 38.0, executed: 32.0, dept: 'Área Comercial', weeklyHours: 40.0 },
-      { id: 'u-lu', name: 'Luisa Urazán', role: 'Client Relationship Strategist', initials: 'LU', avatarBg: 'bg-[#0284c7]', assigned: 33.5, executed: 27.5, dept: 'Área Comercial', weeklyHours: 40.0 },
+      userAbsences.forEach(abs => {
+        const dailyImpact = abs.impactHoursPerDay || (memberWeeklyHours / 5);
 
-      // ÁREA ADMINISTRATIVA
-      { id: 'u-ls', name: 'Laura Salazar', role: 'Administración', initials: 'LS', avatarBg: 'bg-[#64748b]', assigned: 28.0, executed: 22.0, dept: 'Área Administrativa', weeklyHours: 30.0 } // Media jornada pactada
-    ];
+        if (timeframe === 'today') {
+          const todayIso = '2026-09-16'; // Fecha simulada de trabajo (Miércoles)
+          const isHoliday = COLOMBIA_HOLIDAYS_2026.some(h => h.date === todayIso);
+          if (!isHoliday && todayIso >= abs.startDate && todayIso <= abs.endDate) {
+            absenceDeduction += dailyImpact;
+            activeAbsence = abs;
+          }
+        } else if (timeframe === 'week') {
+          weekDays.forEach(day => {
+            // Regla: No contar fines de semana (weekDays solo tiene L-V) ni festivos
+            if (!day.isHoliday) {
+              if (day.fullDate >= abs.startDate && day.fullDate <= abs.endDate) {
+                absenceDeduction += dailyImpact;
+                activeAbsence = abs;
+              }
+            }
+          });
+        } else if (timeframe === 'month') {
+          // Mes: usar impacto en días hábiles (businessDaysImpact o cálculo)
+          const businessDays = abs.businessDaysImpact || 5;
+          absenceDeduction += businessDays * dailyImpact;
+          activeAbsence = abs;
+        }
+      });
 
-    return teamList.map(member => {
-      const memberWeeklyHours = member.weeklyHours || DEFAULT_FALLBACK_WEEKLY_HOURS;
-      const cap = getUserConfiguredCapacity(memberWeeklyHours, timeframe);
-      let assigned = member.assigned;
-      let executed = member.executed;
-
-      if (timeframe === 'today') {
-        assigned = Number((member.assigned / 5).toFixed(1));
-        executed = Number((member.executed / 5).toFixed(1));
-      } else if (timeframe === 'month') {
-        assigned = Number((member.assigned * 4.2).toFixed(1));
-        executed = Number((member.executed * 4.2).toFixed(1));
+      // Compatibilidad con vacationStatus preexistente en perfil
+      if (absenceDeduction === 0 && user.vacationStatus?.onVacation) {
+        absenceDeduction = baseCap;
       }
 
-      const utilPercent = cap > 0 ? Math.round((assigned / cap) * 100) : 0;
-      const diffHours = Number((cap - assigned).toFixed(1));
-      
-      // Lógica canónica de Capacidad Orbit:
-      // availableCapacity = configuredAvailability - plannedLoad
-      // Quien tiene menos horas planificadas cuenta con capacidad disponible para absorber proyectos.
-      let status: 'optimal' | 'available' | 'overloaded' | 'tight' = 'optimal';
+      // Capacidad neta disponible tras deducir ausencias
+      const netCapacity = Math.max(0, Number((baseCap - absenceDeduction).toFixed(1)));
 
-      if (assigned > cap) {
-        status = 'overloaded'; // Sobreasignación real respecto a su disponibilidad configurada
-      } else if (assigned < cap * 0.75) {
-        status = 'available'; // Capacidad libre disponible para absorber proyectos
+      // Carga planificada/asignada desde tareas o baseline calibrado
+      const userTasks = tasks.filter(t => 
+        t.assignee?.id === user.id ||
+        t.assignee?.name?.toLowerCase().includes(user.name.toLowerCase()) ||
+        t.collaborators?.some(c => c.name?.toLowerCase().includes(user.name.toLowerCase()))
+      );
+      const tasksBudgeted = userTasks.reduce((sum, t) => sum + (t.budgetedHours || t.estimatedHours || 0), 0);
+
+      let assigned = tasksBudgeted > 0 
+        ? tasksBudgeted 
+        : Number(((memberWeeklyHours * (user.utilizedPercent || 80)) / 100).toFixed(1));
+      let executed = Number((assigned * 0.85).toFixed(1));
+
+      // Si está en período de vacaciones completo, su carga planificada activa es 0h
+      if (netCapacity === 0 && absenceDeduction > 0) {
+        assigned = 0;
+        executed = 0;
+      }
+
+      if (timeframe === 'today') {
+        assigned = Number((assigned / 5).toFixed(1));
+        executed = Number((executed / 5).toFixed(1));
+      } else if (timeframe === 'month') {
+        assigned = Number((assigned * 4.2).toFixed(1));
+        executed = Number((executed * 4.2).toFixed(1));
+      }
+
+      const utilPercent = netCapacity > 0 ? Math.round((assigned / netCapacity) * 100) : 0;
+      const diffHours = Number((netCapacity - assigned).toFixed(1));
+
+      // Estado de capacidad
+      let status: 'optimal' | 'available' | 'overloaded' | 'tight' = 'optimal';
+      if (netCapacity === 0 && absenceDeduction > 0) {
+        status = 'available'; // En descanso aprobado
+      } else if (assigned > netCapacity) {
+        status = 'overloaded';
+      } else if (assigned < netCapacity * 0.75) {
+        status = 'available';
       } else {
-        status = 'optimal'; // Carga equilibrada
+        status = 'optimal';
       }
 
       return {
-        ...member,
+        id: user.id,
+        name: user.name,
+        role: user.jobTitle || user.officialRole || 'Equipo Uhura',
+        initials: user.initials,
+        avatarBg: user.avatarBg,
+        dept,
+        weeklyHours: memberWeeklyHours,
         assigned,
         executed,
-        capacity: cap,
+        capacity: netCapacity,
         configuredWeeklyHours: memberWeeklyHours,
+        absenceDeduction: Number(absenceDeduction.toFixed(1)),
+        activeAbsence,
         utilPercent,
         diffHours,
         status
       };
     });
-  }, [timeframe]);
+  }, [users, absenceEvents, tasks, timeframe]);
 
   // Filtrado de equipo por departamento
   const filteredTeam = useMemo(() => {
@@ -778,13 +833,19 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
                 ? 'bg-[#3b82f6]' // Azul capacidad disponible
                 : 'bg-[#10b981]'; // Verde equilibrado
 
-              const statusBadgeBg = isOver
+              const isAbsent = member.absenceDeduction > 0 && member.capacity === 0;
+
+              const statusBadgeBg = isAbsent
+                ? 'bg-[#fef3c7] text-[#92400e] border-[#fde68a]'
+                : isOver
                 ? 'bg-[#fee2e2] text-[#b91c1c] border-[#fca5a5]'
                 : isAvailable
                 ? 'bg-[#eff6ff] text-[#1d4ed8] border-[#bfdbfe]'
                 : 'bg-[#ecfdf5] text-[#047857] border-[#a7f3d0]';
 
-              const statusLabel = isOver
+              const statusLabel = isAbsent
+                ? (member.activeAbsence?.type === 'vacation' ? '🌴 En Vacaciones' : 'Ausencia Aprobada')
+                : isOver
                 ? `⚠️ Sobreasignado (+${Math.abs(member.diffHours)}h)`
                 : isAvailable
                 ? `+${member.diffHours}h disponibles`
@@ -795,7 +856,9 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
                   key={member.id}
                   onClick={() => setSelectedUserDetail(member.id)}
                   className={`p-4 rounded-xl border transition-all cursor-pointer hover:shadow-xs ${
-                    isOver
+                    isAbsent
+                      ? 'bg-[#fffdf7] border-[#fef3c7] hover:border-[#fde68a]'
+                      : isOver
                       ? 'bg-[#fffbfa] border-[#fecdd3] hover:border-[#fda4af]'
                       : isAvailable
                       ? 'bg-[#fcfdff] border-[#e2e8f0] hover:border-[#bfdbfe]'
@@ -818,6 +881,21 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
                       {statusLabel}
                     </span>
                   </div>
+
+                  {/* Banner de Ausencia Estructurada (Google Calendar / Orbit) */}
+                  {member.absenceDeduction > 0 && (
+                    <div className="mt-2.5 flex items-center justify-between text-[11px] px-2.5 py-1 rounded-lg bg-[#fffbeb] border border-[#fef3c7] text-[#92400e]">
+                      <span className="flex items-center gap-1.5 font-medium truncate">
+                        <Calendar className="w-3.5 h-3.5 text-[#d97706] shrink-0" />
+                        {member.activeAbsence?.title || 'Ausencia'} (-{member.absenceDeduction}h)
+                      </span>
+                      {member.activeAbsence?.source === 'google_calendar' && (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-white border border-[#fde68a] font-semibold text-[#b45309] shrink-0">
+                          Google Calendar
+                        </span>
+                      )}
+                    </div>
+                  )}
 
                   {/* Barra de Capacidad del Colaborador */}
                   <div className="mt-3 space-y-1.5">
@@ -875,6 +953,22 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
                 <X className="w-5 h-5" />
               </button>
             </div>
+
+            {/* Banner de Ausencia en Drawer */}
+            {selectedMemberObj.absenceDeduction > 0 && (
+              <div className="p-3 bg-[#fffbeb] border border-[#fde68a] rounded-xl text-xs text-[#92400e] flex items-start gap-2.5">
+                <Calendar className="w-4 h-4 text-[#d97706] mt-0.5 shrink-0" />
+                <div className="space-y-0.5">
+                  <p className="font-bold text-[#78350f]">
+                    {selectedMemberObj.activeAbsence?.title || 'Ausencia Aprobada'} (-{selectedMemberObj.absenceDeduction}h)
+                  </p>
+                  <p className="text-[11px] text-[#92400e]">
+                    Período: {selectedMemberObj.activeAbsence?.startDate} al {selectedMemberObj.activeAbsence?.endDate}
+                    {selectedMemberObj.activeAbsence?.source === 'google_calendar' && ' · Sincronizado vía Google Calendar'}
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Resumen Numérico */}
             <div className="grid grid-cols-3 gap-2.5 text-center">

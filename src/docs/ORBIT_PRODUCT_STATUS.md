@@ -934,4 +934,106 @@ Solo existen 5 alcances autorizados:
 
 ---
 
+## 11. Arquitectura de Interoperabilidad Estructural (Bloque 4)
+
+### 11.1. Principio Rector: Integraciones Silenciosas e Invisibles
+> **PRINCIPIO ARQUITECTÓNICO DE UHURA:**  
+> **"Las integraciones deben sentirse casi invisibles."**  
+> En Orbit no existen botones de "Sincronizar ahora", pantallas de configuración de tokens para usuarios finales, ni paneles que emulen dashboards de APIs externas. Orbit es un sistema de gestión operativa enfocado en la claridad del trabajo. La interoperabilidad ocurre a nivel de modelo de dominio y claves foráneas canónicas, permitiendo que la capa de backend (Indunova) orqueste workers y webhooks sin obligar al frontend a rediseñar sus pantallas ni sus entidades principales.
+
+---
+
+### 11.2. Frontera Canónica de Sistemas (Sources of Truth)
+
+| Sistema Externo | Rol en el Ecosistema | Source of Truth Canónico | Entidades Vinculadas en Orbit | Claves Foráneas & Hooks en Orbit |
+| :--- | :--- | :--- | :--- | :--- |
+| **HubSpot** | Comercial & CRM | Prospectos, empresas, contactos, deals, pipeline y actividad comercial | `NewBusinessOpportunity`, `ProjectSummaryItem` | `hubspotDealId`, `hubspotDealUrl`, `hubspotCompanyId`, `hubspotContactId` |
+| **Orbit** | Operativo & Capacidad | Alcance técnico, dimensionamiento, cotizaciones, proyectos, entregables, tareas, staffing, capacidad y horas | Todo el Core de Orbit | Entidades maestras de Orbit (`ProjectSummaryItem`, `TaskItem`, `UserItem`, etc.) |
+| **Alegra** | Fiscal & Contable | Terceros fiscales (Razón Social / NIT), facturación electrónica, impuestos, cartera y recaudo | `ClientTaxEntity`, `ClientProfile`, `ProjectSummaryItem` | `taxEntityId` (FK canónica a `ClientTaxEntity`), `alegraContactId` |
+| **Google Drive** | Repositorio Documental | Almacenamiento seguro de archivos, briefs, contratos firmados, entregables y propuestas | `NewBusinessOpportunity`, `ProjectSummaryItem` | `driveFolderId`, `driveFolderUrl`, `briefUrl`, `briefFileId` |
+| **Google Calendar** | Calendario de Disponibilidad | Vacaciones y licencias/permisos laborales aprobados del equipo | `TeamAbsenceEvent`, `CapacityView`, `BuckyEngine` | `TeamAbsenceEvent` (`externalCalendarEventId`, `externalCalendarId`, `source: 'google_calendar'`) |
+
+---
+
+### 11.3. Regla Canónica de Disparo: Cuándo se Activa New Business
+> **CORRECCIÓN CRÍTICA DE GOBERNANZA:**  
+> **New Business NO se activa con "Deal Won" en HubSpot.**  
+> - **El Disparador Real:** New Business se activa en Orbit tan pronto como existe un **Brief Comercial Calificado** que requiere **Dimensionamiento Técnico Operativo (Scoping)**.
+> - **Razón:** Para poder cotizar y ganar el Deal en HubSpot, la Directora Comercial necesita que el Product Lead / Líder de Área desglose el alcance en entregables, actividades y horas por rol en Orbit.
+> - **Ciclo de Vida:**
+>   1. Oportunidad creada en HubSpot (`hubspotDealId`).
+>   2. Se activa en Orbit para scoping técnico y generación de propuestas (`QuoteProposal`).
+>   3. Una vez el cliente aprueba la propuesta económica y se formaliza el acuerdo, la oportunidad se convierte en Proyecto Activo (`handleConvertOpportunityToProject`), propagando las referencias canónicas (`hubspotDealId`, `driveFolderUrl`, `taxEntityId`).
+
+---
+
+### 11.4. Datos Personales vs. Google Calendar: Cumpleaños, Hobbies y Ausencias
+> **ACLARACIÓN ESTRUCTURAL ESTRICTA:**  
+> - **Cumpleaños y Aniversarios NO provienen de Google Calendar.** Viven como datos estructurados propios del perfil del colaborador en Orbit (`UserItem`):
+>   - `birthDate`: Fecha de cumpleaños en formato `YYYY-MM-DD` o `MM-DD`.
+>   - `anniversaryDate`: Fecha de ingreso a Uhura Group.
+>   - `hobbies`: Array de gustos e intereses personales (ej. *"Fotografía analógica, café de especialidad"*).
+>   - `petNames`: Nombre de mascotas (ej. *"Milo"*).
+> - **Google Calendar se utiliza ÚNICAMENTE como fuente externa para:**
+>   - Vacaciones de ley (`type: 'vacation'`)
+>   - Licencias o permisos aprobados (`type: 'personal_leave' | 'sick_leave' | 'bereavement' | 'unpaid_leave'`)
+> - Bucky y Mi Día consumen las fechas de cumpleaños y aniversario directamente desde `UserItem` en Orbit, garantizando privacidad y evitando llamadas innecesarias a Google Calendar API.
+
+---
+
+### 11.5. Modelo de Dominio de Ausencias (`TeamAbsenceEvent`) y Flujo hacia Capacidad
+
+```typescript
+export interface TeamAbsenceEvent {
+  id: string;
+  userId: string;
+  userName: string;
+  type: 'vacation' | 'personal_leave' | 'sick_leave' | 'bereavement' | 'unpaid_leave';
+  title: string;
+  startDate: string; // ISO 'YYYY-MM-DD'
+  endDate: string;   // ISO 'YYYY-MM-DD'
+  allDay: boolean;
+  impactHoursPerDay: number; // Horas deducibles por día hábil (ej. 8.0 o 4.0)
+  status: 'active' | 'scheduled' | 'completed' | 'cancelled';
+  source: 'google_calendar' | 'orbit_manual';
+  externalCalendarEventId?: string;
+  externalCalendarId?: string;
+  lastSyncedAt?: string;
+  businessDaysImpact?: number;
+  notes?: string;
+}
+```
+
+#### Regla Matemática de Deducción de Capacidad en Orbit:
+1. **Deducción de Días Hábiles:** Por cada día hábil (Lunes a Viernes) comprendido entre `startDate` y `endDate`, se descuentan `impactHoursPerDay` de la disponibilidad del colaborador:
+   $$\text{Capacidad Neta} = \max(0, \text{Capacidad Base Configurada} - \sum \text{Deducción Ausencias})$$
+2. **Exclusión de Fines de Semana y Festivos:** Si una ausencia coincide con un fin de semana o un día festivo oficial (calendario colombiano), ese día NO resta horas laborales, porque su disponibilidad legal ya es 0h.
+3. **Impacto en Asignación y Salud:**
+   - Si la capacidad neta es 0h (vacaciones completas en la semana), el estado se marca con badge de descanso (`🌴 En Vacaciones`), y la carga asignada activa no computa como sobrecarga ni penaliza el score.
+   - En la tarjeta del colaborador y en el drawer lateral se muestra el banner informativo de la ausencia con indicador de sincronización externa (*Google Calendar*).
+4. **Protección en Asignación (Bucky):**
+   - El motor de vida de equipo (`teamLifeEngine.ts`) evalúa `checkAssigneeAvailability`: si se intenta asignar o consultar a un colaborador con ausencia activa hoy, Bucky emite advertencia de bloqueo; si tiene una ausencia en los próximos 14 días, emite aviso preventivo para planificar entregables antes de su salida.
+
+---
+
+### 11.6. Resumen de Propagación de Entidades (New Business → Proyecto / Cliente)
+
+Al ejecutarse la conversión de una Oportunidad a Proyecto (`handleConvertOpportunityToProject`):
+1. **HubSpot:**
+   - `opp.hubspotDealId` → `Project.hubspotDealId` (referencia externa canónica hacia HubSpot).
+   - `opp.hubspotDealUrl` → `Project.hubspotDealUrl` (conveniencia de navegación UX únicamente; **NO representa una relación adicional de dominio** y no debe utilizarse como identificador canónico).
+   - `opp.hubspotCompanyId` → `ClientProfile.hubspotCompanyId` (registrado en nuevo cliente o actualizado en cliente existente).
+   - `opp.hubspotContactId` no se replica en `Project` (pertenece al directorio de contactos comerciales del cliente).
+2. **Google Drive:**
+   - `driveFolderUrl` y `driveFolderId` se transfieren al `ProjectSummaryItem`. Si no existen en la oportunidad, quedan como `null` / no vinculados (sin inventar URLs sintéticas).
+3. **Alegra / Entidad Fiscal:**
+   - **`NewBusinessOpportunity.selectedTaxEntityId`**: Entidad fiscal seleccionada durante New Business / formalización de propuesta. No compite con otros aliases dentro de la oportunidad.
+   - **`ClientTaxEntity.id`**: Identificador real de la entidad fiscal (fuente canónica de verdad para `businessName`, `nit`, `billingEmail`, `alegraContactId`, `alegraContactUrl`, `alegraCreated`).
+   - **`opp.selectedTaxEntityId` → `Project.taxEntityId`**: Al convertir la oportunidad, `Project` almacena únicamente `taxEntityId` como FK canónica de operación hacia `ClientTaxEntity`.
+   - Se removió `alegraContractId` por inexistencia en API de Alegra y se eliminó la duplicidad de `selectedTaxEntityId` en `ProjectSummaryItem`.
+   - Si la oportunidad contenía checklist administrativo (`administrativeChecklist`), sus datos (`billingEmail`, `alegraContactId`, `alegraContactUrl`) enriquecen la `ClientTaxEntity` en `ClientProfile`.
+
+---
+
 *Fin del Documento Maestro — Uhura Orbit 2026*
+

@@ -1,4 +1,4 @@
-import { UserItem, TeamLifeEvent } from '../types';
+import { UserItem, TeamLifeEvent, TeamAbsenceEvent } from '../types';
 
 export interface OperationalMilestone {
   id: string;
@@ -117,7 +117,8 @@ export function getAnniversaryRecognitionMessage(userName: string, years: number
  */
 export function processTeamLifeEvents(
   users: UserItem[],
-  referenceDate: Date = new Date(2026, 8, 16) // 16 de Septiembre 2026 por defecto de mock
+  referenceDate: Date = new Date(2026, 8, 16), // 16 de Septiembre 2026 por defecto de mock
+  absenceEvents: TeamAbsenceEvent[] = []
 ): ProcessedTeamLifeResult {
   const todayEvents: TeamLifeEvent[] = [];
   const upcomingEvents: TeamLifeEvent[] = [];
@@ -271,6 +272,58 @@ export function processTeamLifeEvents(
     }
   });
 
+  // 4. AUSENCIAS ESTRUCTURADAS (Google Calendar -> Orbit TeamAbsenceEvent)
+  const refIso = referenceDate.toISOString().slice(0, 10);
+  absenceEvents.forEach((abs) => {
+    if (abs.status !== 'active') return;
+    const targetUser = users.find((u) => u.id === abs.userId);
+    const userName = targetUser?.name || abs.userName || 'Colaborador';
+    const isCurrentlyActive = refIso >= abs.startDate && refIso <= abs.endDate;
+
+    if (isCurrentlyActive) {
+      const alreadyIn = activeAbsences.some((a) => a.userId === abs.userId);
+      if (!alreadyIn) {
+        peopleOnVacation++;
+        const event: TeamLifeEvent = {
+          id: `evt-abs-active-${abs.id}`,
+          userId: abs.userId,
+          userName,
+          userRole: targetUser?.jobTitle || targetUser?.officialRole || 'Equipo Uhura',
+          userAvatarBg: targetUser?.avatarBg,
+          userInitials: targetUser?.initials,
+          type: abs.type === 'vacation' ? 'vacation' : 'absence',
+          date: abs.startDate,
+          headline: `${userName.split(' ')[0]} en ausencia programada`,
+          message: `${userName} tiene registrada ausencia (${abs.title}) hasta el ${abs.endDate}.`,
+          returnDate: abs.endDate,
+          isActiveNow: true
+        };
+        activeAbsences.push(event);
+        allEvents.push(event);
+      }
+    } else if (abs.startDate > refIso) {
+      const diffDays = Math.ceil((new Date(abs.startDate).getTime() - referenceDate.getTime()) / (1000 * 60 * 60 * 24));
+      if (diffDays > 0 && diffDays <= 7) {
+        const event: TeamLifeEvent = {
+          id: `evt-abs-soon-${abs.id}`,
+          userId: abs.userId,
+          userName,
+          userRole: targetUser?.jobTitle || targetUser?.officialRole || 'Equipo Uhura',
+          userAvatarBg: targetUser?.avatarBg,
+          userInitials: targetUser?.initials,
+          type: abs.type === 'vacation' ? 'vacation' : 'absence',
+          date: abs.startDate,
+          headline: `En ${diffDays} día${diffDays > 1 ? 's' : ''}: ausencia de ${userName.split(' ')[0]}`,
+          message: `${userName} iniciará ${abs.title} del ${abs.startDate} al ${abs.endDate}. ${abs.source === 'google_calendar' ? '(Sincronizado vía Google Calendar)' : ''}`,
+          daysRemaining: diffDays,
+          isActiveNow: false
+        };
+        upcomingEvents.push(event);
+        allEvents.push(event);
+      }
+    }
+  });
+
   const featuredEvent = todayEvents.length > 0
     ? todayEvents[0]
     : upcomingEvents.length > 0
@@ -297,14 +350,18 @@ export function processTeamLifeEvents(
 
 /**
  * Validador operativo para asignaciones de tareas.
- * Bucky avisa si el colaborador está de vacaciones o ausencia programada.
+ * Bucky avisa si el colaborador está de vacaciones o ausencia programada (consumiendo TeamAbsenceEvent).
  */
 export function checkAssigneeAvailability(
   userNameOrId: string,
-  users: UserItem[]
+  users: UserItem[],
+  absenceEvents: TeamAbsenceEvent[] = [],
+  referenceDateStr: string = '2026-09-16'
 ): {
   isAvailable: boolean;
   isOnVacation: boolean;
+  hasFutureAbsence?: boolean;
+  futureAbsenceText?: string;
   reason?: string;
   alertTitle?: string;
   alertMessage?: string;
@@ -323,6 +380,29 @@ export function checkAssigneeAvailability(
     };
   }
 
+  // 1. Verificar ausencia activa hoy (TeamAbsenceEvent de Orbit / Google Calendar)
+  const activeAbsence = absenceEvents.find(
+    (abs) =>
+      abs.userId === user.id &&
+      abs.status === 'active' &&
+      referenceDateStr >= abs.startDate &&
+      referenceDateStr <= abs.endDate
+  );
+
+  if (activeAbsence) {
+    const sourceLabel = activeAbsence.source === 'google_calendar' ? ' (Google Calendar)' : '';
+    return {
+      isAvailable: false,
+      isOnVacation: true,
+      reason: 'absence_active',
+      alertTitle: `🦫 Bucky Copiloto: ${user.name.split(' ')[0]} tiene ausencia registrada`,
+      alertMessage: `${user.name} tiene ${activeAbsence.title} aprobada hasta el ${activeAbsence.endDate}${sourceLabel}. Bucky te recomienda no sobrecargar su retorno y considerar un respaldo operativo.`,
+      returnDate: activeAbsence.endDate,
+      warningLevel: 'warning'
+    };
+  }
+
+  // 2. Verificar vacationStatus en el perfil de usuario (compatibilidad previa)
   if (user.vacationStatus?.onVacation) {
     const returnDate = user.vacationStatus.returnDate || 'pronto';
     return {
@@ -333,6 +413,28 @@ export function checkAssigneeAvailability(
       alertMessage: `${user.name} se encuentra en período de descanso aprobado hasta el ${returnDate}. Bucky te recomienda no sobrecargar su retorno y considerar un respaldo operativo.`,
       returnDate,
       warningLevel: 'warning'
+    };
+  }
+
+  // 3. Verificar ausencia futura en los próximos 14 días (impacto en staffing / cronograma)
+  const futureAbsence = absenceEvents.find(
+    (abs) =>
+      abs.userId === user.id &&
+      abs.status === 'active' &&
+      abs.startDate > referenceDateStr
+  );
+
+  if (futureAbsence) {
+    const sourceLabel = futureAbsence.source === 'google_calendar' ? ' (Google Calendar)' : '';
+    return {
+      isAvailable: true,
+      isOnVacation: false,
+      hasFutureAbsence: true,
+      futureAbsenceText: `${futureAbsence.title} (${futureAbsence.startDate})`,
+      alertTitle: `🦫 Bucky Copiloto: Ausencia próxima para ${user.name.split(' ')[0]}`,
+      alertMessage: `${user.name} tiene ${futureAbsence.title} programada del ${futureAbsence.startDate} al ${futureAbsence.endDate}${sourceLabel}. Tenlo en cuenta al definir entregables.`,
+      returnDate: futureAbsence.endDate,
+      warningLevel: 'info'
     };
   }
 
