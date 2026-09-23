@@ -1050,5 +1050,46 @@ Al ejecutarse la conversión de una Oportunidad a Proyecto (`handleConvertOpport
 
 ---
 
+### 11.7. Bloque 5: Simplificación de Navegación, Mi Día y Equipo & Accesos
+
+#### 1. Consolidación de Navegación Lateral (4 Grupos Canónicos)
+Se eliminaron cards decorativas y accesos secundarios redundantes de la barra de navegación principal, consolidándola en 4 grupos estrictos:
+1. **Operación:**
+   - Mi Día (Home contextual del usuario).
+   - Proyectos (Portafolio y entregables).
+   - Tareas (Tableros operativos Kanban y Lista).
+   - Capacidad (Disponibilidad, asignación y carga; se respeta el scope RBAC: `own` para colaboradores, `team` para líderes/CRS y `all` para administración/ejecutivo).
+   - *Nota:* Se retiró `Horas` de la navegación primaria; Mi Día absorbió el timer, la carga manual y rápida, el progreso de jornada y los registros de hoy. El acceso a la auditoría histórica de timesheets se mantiene de forma contextual secundaria.
+2. **Comercial:**
+   - New Business (Embudo de ventas y cotizaciones).
+   - Clientes (Cartera, perfiles y entidades fiscales).
+   - Plantillas (Catálogo de servicios y producto).
+   - *Nota:* Se retiró `Finanzas` del sidebar hasta su definición funcional en fase posterior.
+3. **Experiencia:**
+   - La Colonia (Hábitat vivencial de Bucky).
+   - *Nota:* Se retiró `El Muro` del sidebar.
+4. **Sistema:**
+   - **Equipo & Accesos:** Centraliza en una sola experiencia con pestañas el directorio de colaboradores, invitaciones y la matriz de roles y permisos RBAC. Se eliminaron accesos independientes redundantes de Usuarios, Roles & Permisos y Portal Cliente.
+
+#### 2. Mi Día: Los 3 Niveles Estructurales
+Mi Día deja de ser un dashboard de métricas decorativas para convertirse en el home contextual operativo del usuario, respondiendo con rigor:
+1. **¿Qué requiere mi atención?**
+   - Se evalúa de manera dinámica con base en la matriz de perspectiva por rol (retrabajos urgentes, revisiones de calidad pendientes, bloqueos operativos, desvíos presupuestales `ejecutado > presupuestado`, cotizaciones comerciales en validación y formalizaciones fiscales de clientes ganados).
+   - **Regla Invariante:** Si el conteo de acciones requeridas es 0, la sección desaparece por completo (0px de altura).
+2. **¿Qué tengo que hacer hoy? (Protagonista)**
+   - Lista clara de tareas asignadas al usuario activo con fecha límite hoy o activas en curso.
+   - Integración directa del Timer (iniciar/detener por tarea), botón de alerta de desvío en chat para PM/Lead, checkbox de completado y modal de detalle.
+   - En perfiles ejecutivos (`executive`) sin tareas de producción asignadas, muestra un estado limpio libre de ruido basado en excepciones.
+3. **¿Cómo voy?**
+   - Balance compacto de jornada con barra de progreso contra la disponibilidad configurada.
+   - Carga rápida de tiempo (+30m, +1h, +2h y bolsas internas Uhura como Daily Standup o Sync Operativo).
+   - Acordeón colapsable con los registros de tiempo de hoy (permite eliminar registros erróneos).
+   - Acceso secundario textual hacia la vista de consulta histórica de Timesheets.
+4. **Frontera de Bucky y Experiencia:**
+   - Bucky se mantiene como acompañante contextual en la columna lateral resolviendo su estado emocional según desvíos y progreso del día, con acceso directo a La Colonia.
+   - Se eliminaron el grid de 4 KPIs estáticos, el calendario semanal L-V y los widgets de ausencias globales permanentes.
+
+---
+
 *Fin del Documento Maestro — Uhura Orbit 2026*
 

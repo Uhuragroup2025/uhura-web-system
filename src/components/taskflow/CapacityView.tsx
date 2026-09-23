@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { TaskItem, TimeLog, ActiveTimerState, UserItem, TeamAbsenceEvent } from './types';
 import { initialUsers, initialAbsenceEvents } from './mockData';
+import { getUserAccessLevel, ROLE_PERMISSIONS_MATRIX } from './auth/permissions';
 
 export type CapacityTimeframe = 'today' | 'week' | 'month';
 export type CapacityPerspective = 'personal' | 'team' | 'org';
@@ -36,6 +37,7 @@ interface CapacityViewProps {
   tasks: TaskItem[];
   timeLogs: TimeLog[];
   users?: UserItem[];
+  currentUser?: UserItem;
   absenceEvents?: TeamAbsenceEvent[];
   activeTimer?: ActiveTimerState | null;
   onStartTimer?: (task: TaskItem) => void;
@@ -79,6 +81,7 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
   tasks,
   timeLogs,
   users,
+  currentUser,
   absenceEvents,
   activeTimer,
   onStartTimer,
@@ -89,6 +92,15 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
   onNavigateToTasks,
   onNavigateToProjects
 }) => {
+  // RBAC para determinar perspectivas de capacidad permitidas
+  const userAccessLevel = currentUser ? getUserAccessLevel(currentUser) : 'leader';
+  const capacityScope = ROLE_PERMISSIONS_MATRIX[userAccessLevel]?.['capacidad']?.scope || 'team';
+  
+  // Can view team?
+  const canViewTeam = capacityScope === 'team' || capacityScope === 'accounts' || capacityScope === 'all';
+  // Can view org?
+  const canViewOrg = capacityScope === 'all';
+
   const [timeframe, setTimeframe] = useState<CapacityTimeframe>('week');
   const [perspective, setPerspective] = useState<CapacityPerspective>('personal');
   const [selectedDepartment, setSelectedDepartment] = useState<string>('all');
@@ -96,8 +108,8 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
   const [selectedDayDetail, setSelectedDayDetail] = useState<string | null>(null);
 
   // Usuario actual en sesión
-  const currentUserName = 'Paola (Lead PM)';
-  const currentUserRole = 'Lead Project Manager';
+  const currentUserName = currentUser ? currentUser.name : 'Paola (Lead PM)';
+  const currentUserRole = currentUser ? currentUser.role : 'Lead Project Manager';
 
   // Semana laboral simulada (Lunes 15 de Septiembre a Viernes 19 de Septiembre de 2026)
   const weekDays = [
@@ -127,20 +139,37 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
   const periodLegalCapacity = getUserConfiguredCapacity(myConfiguredWeeklyHours, timeframe);
   const myDailyCapacity = Number((myConfiguredWeeklyHours / 5).toFixed(1));
 
-  // Datos calculados para el usuario actual (Paola / Personal)
+  // Datos calculados para el usuario actual
   const myTasks = useMemo(() => {
+    if (!currentUser) {
+      return tasks.filter(t => 
+        t.assignee?.name?.toLowerCase().includes('paola') ||
+        t.collaborators?.some(c => c.name?.toLowerCase().includes('paola'))
+      );
+    }
+    const cName = currentUser.name.toLowerCase();
+    const cId = currentUser.id.toLowerCase();
     return tasks.filter(t => 
-      t.assignee?.name?.toLowerCase().includes('paola') ||
-      t.collaborators?.some(c => c.name?.toLowerCase().includes('paola'))
+      t.assignee?.id?.toLowerCase() === cId ||
+      t.assignee?.name?.toLowerCase().includes(cName) ||
+      t.collaborators?.some(c => c.name?.toLowerCase().includes(cName))
     );
-  }, [tasks]);
+  }, [tasks, currentUser]);
 
   const myTimeLogs = useMemo(() => {
+    if (!currentUser) {
+      return timeLogs.filter(l => 
+        l.userName?.toLowerCase().includes('paola') || 
+        l.userInitials === 'PL' || l.userId === 'u-pao'
+      );
+    }
+    const cName = currentUser.name.toLowerCase();
+    const cId = currentUser.id.toLowerCase();
     return timeLogs.filter(l => 
-      l.userName?.toLowerCase().includes('paola') || 
-      l.userInitials === 'PL'
+      l.userId?.toLowerCase() === cId ||
+      l.userName?.toLowerCase().includes(cName)
     );
-  }, [timeLogs]);
+  }, [timeLogs, currentUser]);
 
   // Horas asignadas (presupuestadas de tareas activas/pendientes)
   const myAssignedHours = useMemo(() => {
@@ -370,30 +399,34 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
               <User className="w-3.5 h-3.5 shrink-0" />
               <span>Mi Capacidad</span>
             </button>
-            <button
-              onClick={() => setPerspective('team')}
-              className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap text-center ${
-                perspective === 'team'
-                  ? 'bg-white text-[#0f172a] shadow-xs'
-                  : 'text-[#64748b] hover:text-[#0f172a]'
-              }`}
-            >
-              <Users className="w-3.5 h-3.5 shrink-0" />
-              <span className="hidden sm:inline">Mi Equipo (PM / Lead)</span>
-              <span className="sm:hidden">Equipo</span>
-            </button>
-            <button
-              onClick={() => setPerspective('org')}
-              className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap text-center ${
-                perspective === 'org'
-                  ? 'bg-white text-[#0f172a] shadow-xs'
-                  : 'text-[#64748b] hover:text-[#0f172a]'
-              }`}
-            >
-              <Building2 className="w-3.5 h-3.5 shrink-0" />
-              <span className="hidden sm:inline">Organización</span>
-              <span className="sm:hidden">Org</span>
-            </button>
+            {canViewTeam && (
+              <button
+                onClick={() => setPerspective('team')}
+                className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap text-center ${
+                  perspective === 'team'
+                    ? 'bg-white text-[#0f172a] shadow-xs'
+                    : 'text-[#64748b] hover:text-[#0f172a]'
+                }`}
+              >
+                <Users className="w-3.5 h-3.5 shrink-0" />
+                <span className="hidden sm:inline">Mi Equipo</span>
+                <span className="sm:hidden">Equipo</span>
+              </button>
+            )}
+            {canViewOrg && (
+              <button
+                onClick={() => setPerspective('org')}
+                className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap text-center ${
+                  perspective === 'org'
+                    ? 'bg-white text-[#0f172a] shadow-xs'
+                    : 'text-[#64748b] hover:text-[#0f172a]'
+                }`}
+              >
+                <Building2 className="w-3.5 h-3.5 shrink-0" />
+                <span className="hidden sm:inline">Organización</span>
+                <span className="sm:hidden">Org</span>
+              </button>
+            )}
           </div>
         </div>
 

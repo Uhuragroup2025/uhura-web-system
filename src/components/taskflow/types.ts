@@ -417,6 +417,34 @@ export interface TaskComment {
   editedAt?: string;
 }
 
+/**
+ * Tipos canónicos de actividad e historial de auditoría de tareas
+ */
+export type TaskActivityType =
+  | 'created'
+  | 'status_change'
+  | 'assignee_change'
+  | 'reviewer_change'
+  | 'deliverable_change'
+  | 'priority_change'
+  | 'due_date_change'
+  | 'comment_added'
+  | 'time_logged'
+  | 'rework_added'
+  | 'blocker_change';
+
+export interface TaskActivityLogEntry {
+  id: string;
+  type: TaskActivityType;
+  actorName: string;
+  actorInitials?: string;
+  actorAvatarBg?: string;
+  timestamp: string; // ISO string
+  description: string;
+  previousValue?: string;
+  newValue?: string;
+}
+
 export const STANDARD_UHURA_ROLES = [
   'Client Relationship Strategist',
   'Front-End Dev',
@@ -640,6 +668,8 @@ export interface TaskItem {
   baselineDueDate?: string;
   dependencyTaskId?: string;
   dependencyTaskTitle?: string;
+  // Historial de auditoría y eventos de actividad
+  activityLog?: TaskActivityLogEntry[];
 }
 
 export interface ActiveTimerState {

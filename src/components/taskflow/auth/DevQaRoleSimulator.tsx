@@ -74,7 +74,7 @@ export const DevQaRoleSimulator: React.FC<DevQaRoleSimulatorProps> = ({
   return (
     <aside
       aria-label="Simulador de Permisos y Roles de Desarrollo"
-      className="fixed bottom-3 right-3 z-50 max-w-sm rounded-xl border border-[#8a4dff]/40 bg-[#0d0718]/95 text-white shadow-2xl backdrop-blur-md transition-all text-xs"
+      className="fixed bottom-3 right-28 z-50 max-w-sm rounded-xl border border-[#8a4dff]/40 bg-[#0d0718]/95 text-white shadow-2xl backdrop-blur-md transition-all text-xs"
     >
       {/* Header bar del simulador */}
       <div

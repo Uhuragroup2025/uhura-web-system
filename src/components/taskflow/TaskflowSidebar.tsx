@@ -71,18 +71,18 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
   const canConfigRoles = canAccessModule(currentUser, 'administracion');
   const canPortalCliente = canAccessModule(currentUser, 'administracion');
 
-  const hasOperacion = canMiDia || canProyectos || canTareas || canTimesheets || canCapacidad;
-  const hasComercial = canNewBusiness || canClientes || canPlantillas || canFinanzas;
-  const hasExperiencia = canColonia || canMuro;
-  const hasSistema = canUsuarios || canConfigRoles || canPortalCliente;
+  const hasOperacion = canMiDia || canProyectos || canTareas || canCapacidad;
+  const hasComercial = canNewBusiness || canClientes || canPlantillas;
+  const hasExperiencia = canColonia;
+  const hasSistema = canUsuarios;
 
   return (
     <aside
-      className={`bg-[#0d0718] border-r border-[#261845] text-white flex flex-col justify-between transition-all duration-200 h-full ${
+      className={`bg-[#0d0718] border-r border-[#261845] text-white flex flex-col justify-between transition-all duration-200 h-full min-h-full flex-1 ${
         collapsed ? 'w-16 p-2' : 'w-64 p-3.5'
       }`}
     >
-      <div className="space-y-4 overflow-y-auto pr-1 custom-scrollbar">
+      <div className="space-y-4 overflow-y-auto pr-1 custom-scrollbar flex-1 min-h-0">
         {/* Brand Header: Orbit UHURA GROUP */}
         {collapsed ? (
           <div className="flex flex-col items-center gap-2 py-1.5 mb-2 border-b border-[#261845]/70">
@@ -223,22 +223,6 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
                   </button>
                 )}
 
-                {canTimesheets && (
-                  <button
-                    onClick={() => onSelectView('timesheets')}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                      currentView === 'timesheets'
-                        ? 'bg-[#1e113a] text-white font-semibold'
-                        : 'text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white'
-                    }`}
-                    title="Time-Tracking & Timesheets"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Clock className="w-3.5 h-3.5 text-[#8a4dff]" />
-                      {!collapsed && <span>Horas</span>}
-                    </div>
-                  </button>
-                )}
 
                 {canCapacidad && (
                   <button
@@ -349,28 +333,7 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
                   </button>
                 )}
 
-                {/* Finanzas Operativas */}
-                {canFinanzas && (
-                  <button
-                    onClick={() => onSelectView('finanzas')}
-                    className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition-colors ${
-                      currentView === 'finanzas'
-                        ? 'bg-[#1e113a] text-white font-semibold'
-                        : 'text-[#c9b7ff]/60 hover:bg-[#160c2b] hover:text-[#c9b7ff]'
-                    }`}
-                    title="Finanzas Operativas (Fase posterior / En definición)"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Wallet className="w-3.5 h-3.5 text-[#8a4dff]/70" />
-                      {!collapsed && <span className="text-[11px]">Finanzas</span>}
-                    </div>
-                    {!collapsed && (
-                      <span className="text-[9px] text-[#c9b7ff]/50 px-1 py-0.2 rounded bg-white/5 border border-white/10">
-                        Fase posterior
-                      </span>
-                    )}
-                  </button>
-                )}
+
               </div>
             )}
           </div>
@@ -420,29 +383,12 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
                   </button>
                 )}
 
-                {/* El Muro */}
-                {canMuro && (
-                  <button
-                    onClick={() => onSelectView('el-muro')}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                      currentView === 'el-muro'
-                        ? 'bg-[#1e113a] text-white font-semibold'
-                        : 'text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white'
-                    }`}
-                    title="El Muro · Cultura y reconocimiento Uhura"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <TrendingUp className="w-3.5 h-3.5 text-[#4be5ff]" />
-                      {!collapsed && <span>El Muro</span>}
-                    </div>
-                  </button>
-                )}
               </div>
             )}
           </div>
         )}
 
-        {/* 4. SISTEMA & CONFIGURACIÓN */}
+        {/* 4. SISTEMA */}
         {hasSistema && (
           <div className="space-y-1 pt-1">
             {!collapsed ? (
@@ -467,38 +413,16 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
                   <button
                     onClick={() => onSelectView('usuarios')}
                     className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                      currentView === 'usuarios'
+                      currentView === 'usuarios' || currentView === 'config-roles' || currentView === 'config-permisos'
                         ? 'bg-[#1e113a] text-white font-semibold'
                         : 'text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white'
                     }`}
-                    title="Usuarios del sistema"
+                    title="Equipo & Accesos · Directorio de colaboradores, roles y permisos"
                   >
                     <div className="flex items-center gap-2.5">
                       <UserCheck className="w-3.5 h-3.5 text-[#8a4dff]" />
-                      {!collapsed && <span>Usuarios</span>}
+                      {!collapsed && <span>Equipo & Accesos</span>}
                     </div>
-                  </button>
-                )}
-
-                {canConfigRoles && (
-                  <button
-                    onClick={() => onSelectView('config-roles')}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white"
-                    title="Configuración de roles y permisos"
-                  >
-                    <Shield className="w-3.5 h-3.5 text-[#8a4dff]" />
-                    {!collapsed && <span className="truncate">Roles & Permisos</span>}
-                  </button>
-                )}
-
-                {canPortalCliente && (
-                  <button
-                    onClick={() => onSelectView('portal-cliente')}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white"
-                    title="Vista previa del portal de cliente"
-                  >
-                    <Globe className="w-3.5 h-3.5 text-[#4be5ff]" />
-                    {!collapsed && <span>Portal Cliente</span>}
                   </button>
                 )}
               </div>

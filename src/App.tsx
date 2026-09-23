@@ -110,9 +110,9 @@ export function App() {
         tabIndex={-1}
         role="region"
         aria-label="Contenido de la sección seleccionada"
-        className={`flex-1 w-full mx-auto focus:outline-none transition-all duration-300 ${
+        className={`flex-1 w-full mx-auto focus:outline-none transition-all duration-300 flex flex-col ${
           activeSection === 'taskflow-prototype'
-            ? 'max-w-[1920px] px-2 sm:px-4 lg:px-6 pt-2 pb-10'
+            ? 'max-w-[1920px] px-2 sm:px-4 lg:px-6 pt-2 pb-10 flex-1'
             : 'max-w-7xl px-4 sm:px-6 lg:px-8 pt-8 pb-16'
         }`}
       >

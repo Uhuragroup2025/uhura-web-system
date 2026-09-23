@@ -115,7 +115,7 @@ export const ProjectDeliverablesTab: React.FC<ProjectDeliverablesTabProps> = ({
   };
 
   const handleDeleteDeliverable = (delId: string) => {
-    if (confirm('¿Estás seguro de eliminar este frente? Las tareas existentes conservarán su registro de tiempo.')) {
+    if (confirm('¿Estás seguro de eliminar este servicio? Las tareas existentes conservarán su registro de tiempo.')) {
       onUpdateDeliverables(deliverables.filter((d) => d.id !== delId));
     }
   };
@@ -128,11 +128,11 @@ export const ProjectDeliverablesTab: React.FC<ProjectDeliverablesTabProps> = ({
           <div className="flex items-center gap-2">
             <Layers className="w-4 h-4 text-[#501f92]" />
             <h3 className="font-extrabold text-base text-[#0f172a]">
-              Frentes de Trabajo & Presupuestos por Rol
+              Servicios & Presupuestos por Rol
             </h3>
           </div>
           <p className="text-xs text-[#64748b] mt-0.5">
-            Cada frente agrupa entregables y define la bolsa de horas cotizadas por especialidad. Las horas de rol se ejecutan mediante las tareas.
+            Cada servicio agrupa entregables y define la bolsa de horas cotizadas por especialidad. Las horas de rol se ejecutan mediante las tareas.
           </p>
         </div>
 
@@ -141,7 +141,7 @@ export const ProjectDeliverablesTab: React.FC<ProjectDeliverablesTabProps> = ({
           className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold shadow-xs cursor-pointer self-start sm:self-auto transition-all"
         >
           <Plus className="w-3.5 h-3.5" />
-          <span>Añadir Frente</span>
+          <span>Añadir Servicio</span>
         </button>
       </div>
 
@@ -150,13 +150,13 @@ export const ProjectDeliverablesTab: React.FC<ProjectDeliverablesTabProps> = ({
         {deliverables.length === 0 ? (
           <div className="bg-white p-12 text-center rounded-3xl border border-[#e2e8f0] text-[#94a3b8] space-y-3">
             <Layers className="w-8 h-8 mx-auto text-[#cbd5e1]" />
-            <p className="text-sm font-semibold">No hay frentes ni entregables configurados aún.</p>
+            <p className="text-sm font-semibold">No hay servicios configurados aún.</p>
             <button
               onClick={openCreateModal}
               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#501f92] text-white text-xs font-bold cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Crear el primer frente</span>
+              <span>Crear el primer servicio</span>
             </button>
           </div>
         ) : (
@@ -199,14 +199,14 @@ export const ProjectDeliverablesTab: React.FC<ProjectDeliverablesTabProps> = ({
                     <button
                       onClick={() => openEditModal(del)}
                       className="p-1.5 rounded-lg text-[#64748b] hover:text-[#501f92] hover:bg-[#f1f5f9] transition-colors cursor-pointer"
-                      title="Editar frente y roles"
+                      title="Editar servicio y roles"
                     >
                       <Edit2 className="w-3.5 h-3.5" />
                     </button>
                     <button
                       onClick={() => handleDeleteDeliverable(del.id)}
                       className="p-1.5 rounded-lg text-[#64748b] hover:text-[#ef4444] hover:bg-[#fee2e2]/40 transition-colors cursor-pointer"
-                      title="Eliminar frente"
+                      title="Eliminar servicio"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -246,7 +246,7 @@ export const ProjectDeliverablesTab: React.FC<ProjectDeliverablesTabProps> = ({
                 {/* Roles Budget Table */}
                 <div>
                   <h5 className="text-xs font-extrabold text-[#334155] uppercase tracking-wider mb-2">
-                    Presupuesto por Rol en este Frente:
+                    Presupuesto por Rol en este Servicio:
                   </h5>
                   <div className="overflow-x-auto custom-scrollbar">
                     <table className="w-full text-left text-xs border-collapse">
@@ -279,7 +279,7 @@ export const ProjectDeliverablesTab: React.FC<ProjectDeliverablesTabProps> = ({
                                   {rb.roleName}
                                   {rb.quotedHours === 0 && (
                                     <span className="text-[9px] text-[#64748b] ml-1.5 font-normal">
-                                      (0h válido · Frente organizativo)
+                                      (0h válido · Servicio organizativo)
                                     </span>
                                   )}
                                 </td>
@@ -329,13 +329,13 @@ export const ProjectDeliverablesTab: React.FC<ProjectDeliverablesTabProps> = ({
         )}
       </div>
 
-      {/* MODAL: Crear o Editar Frente */}
+      {/* MODAL: Crear o Editar Servicio */}
       {isCreateModalOpen && (
         <div className="fixed inset-0 z-50 bg-[#0f172a]/40 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-lg w-full border border-[#e2e8f0] shadow-2xl p-6 space-y-5 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-3">
               <h3 className="font-extrabold text-base text-[#0f172a]">
-                {editingDeliverable ? 'Editar Frente y Presupuestos' : 'Nuevo Frente de Trabajo'}
+                {editingDeliverable ? 'Editar Servicio y Presupuestos' : 'Nuevo Servicio'}
               </h3>
               <button
                 onClick={() => setIsCreateModalOpen(false)}
@@ -347,7 +347,7 @@ export const ProjectDeliverablesTab: React.FC<ProjectDeliverablesTabProps> = ({
 
             <div className="space-y-3 text-xs">
               <div>
-                <label className="block text-[#475569] font-bold mb-1">Nombre del Frente / Entregable *</label>
+                <label className="block text-[#475569] font-bold mb-1">Nombre del Servicio / Entregable *</label>
                 <input
                   type="text"
                   value={delName}
@@ -363,7 +363,7 @@ export const ProjectDeliverablesTab: React.FC<ProjectDeliverablesTabProps> = ({
                   value={delDescription}
                   onChange={(e) => setDelDescription(e.target.value)}
                   rows={2}
-                  placeholder="Qué incluye este frente..."
+                  placeholder="Qué incluye este servicio..."
                   className="w-full px-3 py-2 border border-[#cbd5e1] rounded-xl text-xs focus:ring-2 focus:ring-[#501f92]"
                 />
               </div>
@@ -440,7 +440,7 @@ export const ProjectDeliverablesTab: React.FC<ProjectDeliverablesTabProps> = ({
                 disabled={!delName.trim()}
                 className="px-4 py-2 rounded-xl bg-[#501f92] text-white text-xs font-bold hover:bg-[#381566] disabled:opacity-50 cursor-pointer shadow-xs"
               >
-                {editingDeliverable ? 'Guardar Cambios' : 'Crear Frente'}
+                {editingDeliverable ? 'Guardar Cambios' : 'Crear Servicio'}
               </button>
             </div>
           </div>

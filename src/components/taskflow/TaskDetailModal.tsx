@@ -55,7 +55,8 @@ import {
   MoreVertical,
   RotateCcw,
   ShieldCheck,
-  ArrowRight
+  ArrowRight,
+  AlertCircle
 } from 'lucide-react';
 import {
   TaskItem,
@@ -69,7 +70,8 @@ import {
   ReworkOrigin,
   TaskCommentAttachment,
   TaskCommentReaction,
-  STANDARD_UHURA_ROLES
+  STANDARD_UHURA_ROLES,
+  TaskActivityLogEntry
 } from './types';
 import { DropdownMenu, DropdownOption } from '../ui/DropdownMenu';
 import { initialUsers } from './mockData';
@@ -223,8 +225,9 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   onNavigateToProject,
   onOpenManualLog
 }) => {
-  // Tabs: 'mensajes' | 'entregables' | 'info' (info used on mobile)
-  const [activeTab, setActiveTab] = useState<'mensajes' | 'entregables' | 'info'>('mensajes');
+  // Tabs: 'mensajes' | 'entregables' | 'actividad' | 'info' (info used on mobile)
+  const [activeTab, setActiveTab] = useState<'mensajes' | 'entregables' | 'actividad' | 'info'>('mensajes');
+  const [localActivities, setLocalActivities] = useState<TaskActivityLogEntry[]>([]);
 
   // Menu and Toast
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -394,6 +397,124 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
   };
+
+  const logActivity = (
+    type: TaskActivityType,
+    description: string,
+    previousValue?: string,
+    newValue?: string
+  ) => {
+    const entry: TaskActivityLogEntry = {
+      id: `act-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      type,
+      actorName: 'Paola (Lead PM)',
+      actorInitials: 'PL',
+      actorAvatarBg: '#501f92',
+      timestamp: new Date().toISOString(),
+      description,
+      previousValue,
+      newValue
+    };
+    setLocalActivities((prev) => [entry, ...prev]);
+  };
+
+  // Historial consolidado de actividad y trazabilidad de auditoría
+  const allActivities: TaskActivityLogEntry[] = useMemo(() => {
+    if (!task) return [];
+    const entries: TaskActivityLogEntry[] = [
+      ...localActivities,
+      ...(task.activityLog || [])
+    ];
+
+    // Sincronizar registros de tiempo existentes
+    if (task.timeLogs && task.timeLogs.length > 0) {
+      task.timeLogs.forEach((tl) => {
+        const hours = (tl.durationSeconds / 3600).toFixed(1);
+        const exists = entries.some(
+          (e) => e.type === 'time_logged' && (e.id === `tl-${tl.id}` || e.timestamp === tl.date)
+        );
+        if (!exists) {
+          entries.push({
+            id: `tl-${tl.id}`,
+            type: 'time_logged',
+            actorName: tl.userName || task.assignee?.name || 'Colaborador',
+            actorInitials: tl.userName ? tl.userName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase() : 'CO',
+            actorAvatarBg: '#501f92',
+            timestamp: tl.date || '2026-08-22',
+            description: `Registró ${hours}h de ejecución${tl.note ? `: "${tl.note}"` : ''}`
+          });
+        }
+      });
+    }
+
+    // Sincronizar retrabajos
+    if (task.reworks && task.reworks.length > 0) {
+      task.reworks.forEach((rw) => {
+        const exists = entries.some((e) => e.id === `rw-${rw.id}`);
+        if (!exists) {
+          entries.push({
+            id: `rw-${rw.id}`,
+            type: 'rework_added',
+            actorName: rw.requestedBy || 'Cliente / Revisor',
+            actorInitials: 'RW',
+            actorAvatarBg: '#ea580c',
+            timestamp: rw.date || '2026-08-21',
+            description: `Retrabajo registrado (+${rw.hours}h): ${rw.reason}`
+          });
+        }
+      });
+    }
+
+    // Sincronizar entregables
+    if (task.deliverables && task.deliverables.length > 0) {
+      task.deliverables.forEach((del) => {
+        const exists = entries.some((e) => e.id === `del-${del.id}`);
+        if (!exists) {
+          entries.push({
+            id: `del-${del.id}`,
+            type: 'deliverable_change',
+            actorName: del.submittedBy || task.assignee?.name || 'Colaborador',
+            actorInitials: del.submittedBy ? del.submittedBy.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase() : 'DL',
+            actorAvatarBg: '#10b981',
+            timestamp: del.submittedAt || '2026-08-21',
+            description: `Entregable subido: "${del.title}"${del.isApproved ? ' (Aprobado)' : ''}`
+          });
+        }
+      });
+    }
+
+    // Evento base de creación de la tarea
+    const createExists = entries.some((e) => e.type === 'created');
+    if (!createExists) {
+      entries.push({
+        id: `create-${task.id}`,
+        type: 'created',
+        actorName: task.requestedBy || task.projectLead?.name || 'Project Lead',
+        actorInitials: 'PL',
+        actorAvatarBg: '#501f92',
+        timestamp: task.startDate || task.date || '2026-08-20',
+        description: `Tarea creada y asignada inicialmente a ${task.assignee?.name || 'Colaborador'}`
+      });
+    }
+
+    // Desduplicar por id
+    const seen = new Set<string>();
+    const uniqueEntries: TaskActivityLogEntry[] = [];
+    for (const item of entries) {
+      if (!seen.has(item.id)) {
+        seen.add(item.id);
+        uniqueEntries.push(item);
+      }
+    }
+
+    // Ordenar cronológicamente descendente
+    return uniqueEntries.sort((a, b) => {
+      const timeA = new Date(a.timestamp).getTime();
+      const timeB = new Date(b.timestamp).getTime();
+      if (isNaN(timeA) || isNaN(timeB)) return 0;
+      return timeB - timeA;
+    });
+  }, [task, localActivities]);
 
   const isRunning = activeTimer?.taskId === task.id;
   const consumedHours = (task.consumedSeconds || 0) / 3600;
@@ -1035,6 +1156,23 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     newProjectLead?: TaskItem['projectLead'],
     newFollowers?: NonNullable<TaskItem['followers']>
   ) => {
+    if (newAssignee.name !== assignee?.name) {
+      logActivity(
+        'assignee_change',
+        `Responsable reasignado: ${assignee?.name || 'Sin asignar'} → ${newAssignee.name}`,
+        assignee?.name,
+        newAssignee.name
+      );
+    }
+    if (newReviewer?.name !== reviewer?.name) {
+      logActivity(
+        'reviewer_change',
+        `Revisor actualizado: ${newReviewer?.name || 'Ninguno'}`,
+        reviewer?.name,
+        newReviewer?.name
+      );
+    }
+
     setAssignee(newAssignee);
     setCollaborators(newCollabs);
     setReviewer(newReviewer);
@@ -1064,15 +1202,19 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     if (!onUpdateTaskStatus || !task) return;
 
     if (task.status === 'To Do') {
+      logActivity('status_change', 'Estado cambiado de "To Do" a "In Progress"', 'To Do', 'In Progress');
       onUpdateTaskStatus(task.id, 'In Progress');
       showToast('Tarea iniciada (En proceso)');
     } else if (task.status === 'In Progress') {
+      logActivity('status_change', 'Estado cambiado de "In Progress" a "Review"', 'In Progress', 'Review');
       onUpdateTaskStatus(task.id, 'Review');
       showToast('Tarea enviada a Revisión');
     } else if (task.status === 'Review') {
+      logActivity('status_change', 'Estado cambiado de "Review" a "Done" (Completada)', 'Review', 'Done');
       onUpdateTaskStatus(task.id, 'Done');
       showToast('Tarea aprobada y marcada como Completada');
     } else if (task.status === 'Done') {
+      logActivity('status_change', 'Tarea reabierta de "Done" a "In Progress"', 'Done', 'In Progress');
       onUpdateTaskStatus(task.id, 'In Progress');
       showToast('Tarea reabierta (En proceso)');
     }
@@ -1081,6 +1223,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   // Reject / return from Review to In Progress for adjustments
   const handleRejectToInProgress = () => {
     if (!onUpdateTaskStatus || !task) return;
+    logActivity('status_change', 'Tarea devuelta de "Review" a "In Progress" para ajustes', 'Review', 'In Progress');
     onUpdateTaskStatus(task.id, 'In Progress');
     showToast('Tarea devuelta a En proceso para ajustes');
   };
@@ -1151,7 +1294,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               {task.frente && (
                 <>
                   <span className="text-[#cbd5e1]">›</span>
-                  <span className="font-semibold text-[#64748b]" title={`Frente de trabajo: ${task.frente}`}>
+                  <span className="font-semibold text-[#64748b]" title={`Servicio: ${task.frente}`}>
                     {task.frente}
                   </span>
                 </>
@@ -1379,15 +1522,10 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
             )}
 
             {task.status === 'Review' && (
-              <>
-                <span className="font-bold px-2 py-0.5 rounded-md bg-[#ede9fe] text-[#501f92] border border-[#c4b5fd] text-[11px] flex items-center gap-1 shrink-0">
-                  <Eye className="w-3 h-3 text-[#501f92]" />
-                  <span>🔍 EN REVISIÓN</span>
-                </span>
-                <span className="text-[11px] text-[#381566] font-medium truncate sm:whitespace-normal">
-                  Control de Calidad · Esperando visto bueno de <strong className="font-semibold text-[#501f92]">{reviewer?.name || 'Revisor asignado'}</strong> antes de completar.
-                </span>
-              </>
+              <span className="font-bold px-2 py-0.5 rounded-md bg-[#ede9fe] text-[#501f92] border border-[#c4b5fd] text-[11px] flex items-center gap-1 shrink-0">
+                <Eye className="w-3 h-3 text-[#501f92]" />
+                <span>🔍 EN REVISIÓN</span>
+              </span>
             )}
 
             {task.status === 'Done' && (
@@ -1511,6 +1649,28 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                 >
                   <span>Entregables</span>
                   {activeTab === 'entregables' && (
+                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#501f92] rounded-full" />
+                  )}
+                </button>
+
+                <button
+                  id="tab-actividad-btn"
+                  onClick={() => setActiveTab('actividad')}
+                  className={`pb-2.5 text-xs sm:text-sm font-bold transition-all cursor-pointer relative ${
+                    activeTab === 'actividad'
+                      ? 'text-[#501f92] font-extrabold'
+                      : 'text-[#64748b] hover:text-[#0f172a]'
+                  }`}
+                >
+                  <span className="flex items-center gap-1.5">
+                    <span>Actividad</span>
+                    {allActivities.length > 0 && (
+                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-[#f1f5f9] text-[#475569] font-mono">
+                        {allActivities.length}
+                      </span>
+                    )}
+                  </span>
+                  {activeTab === 'actividad' && (
                     <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#501f92] rounded-full" />
                   )}
                 </button>
@@ -2131,6 +2291,132 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                   </div>
                 </div>
               )}
+
+              {/* --------------------------------------------------- */}
+              {/* TAB 3: ACTIVIDAD & HISTORIAL DE AUDITORÍA */}
+              {/* --------------------------------------------------- */}
+              {activeTab === 'actividad' && (
+                <div id="tab-actividad-content" className="space-y-4 animate-in fade-in duration-150">
+                  <div className="flex items-center justify-between pb-3 border-b border-[#f1f5f9]">
+                    <div>
+                      <h4 className="text-xs font-extrabold text-[#0f172a] uppercase tracking-wider flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-[#501f92]" />
+                        <span>Historial y Trazabilidad de la Tarea</span>
+                      </h4>
+                      <p className="text-[11px] text-[#64748b] mt-0.5">
+                        Registro cronológico de cambios de estado, colaboradores, entregables y eventos clave.
+                      </p>
+                    </div>
+                    <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-[#f1f5f9] text-[#475569]">
+                      {allActivities.length} {allActivities.length === 1 ? 'evento' : 'eventos'}
+                    </span>
+                  </div>
+
+                  {allActivities.length === 0 ? (
+                    <div className="text-center py-12 text-xs text-[#94a3b8] bg-[#f8fafc] rounded-2xl border border-[#e2e8f0] space-y-2">
+                      <Clock className="w-8 h-8 text-[#cbd5e1] mx-auto" />
+                      <p className="font-semibold">Sin actividad registrada aún en esta tarea.</p>
+                    </div>
+                  ) : (
+                    <div className="relative pl-6 space-y-4 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-[#e2e8f0]">
+                      {allActivities.map((act) => {
+                        let icon = <Clock className="w-3.5 h-3.5 text-[#501f92]" />;
+                        let badgeBg = 'bg-[#f1f5f9] text-[#475569]';
+                        let badgeLabel = 'Evento';
+
+                        if (act.type === 'status_change') {
+                          icon = <CheckCircle2 className="w-3.5 h-3.5 text-[#10b981]" />;
+                          badgeBg = 'bg-emerald-50 text-emerald-800 border border-emerald-200';
+                          badgeLabel = 'Estado';
+                        } else if (act.type === 'assignee_change') {
+                          icon = <Users className="w-3.5 h-3.5 text-[#8a4dff]" />;
+                          badgeBg = 'bg-purple-50 text-purple-800 border border-purple-200';
+                          badgeLabel = 'Colaborador';
+                        } else if (act.type === 'reviewer_change') {
+                          icon = <Eye className="w-3.5 h-3.5 text-[#8a4dff]" />;
+                          badgeBg = 'bg-purple-50 text-purple-800 border border-purple-200';
+                          badgeLabel = 'Revisor';
+                        } else if (act.type === 'deliverable_change') {
+                          icon = <Layers className="w-3.5 h-3.5 text-[#0284c7]" />;
+                          badgeBg = 'bg-sky-50 text-sky-800 border border-sky-200';
+                          badgeLabel = 'Entregable';
+                        } else if (act.type === 'time_logged') {
+                          icon = <Clock className="w-3.5 h-3.5 text-[#059669]" />;
+                          badgeBg = 'bg-teal-50 text-teal-800 border border-teal-200';
+                          badgeLabel = 'Tiempo';
+                        } else if (act.type === 'rework_added') {
+                          icon = <RotateCcw className="w-3.5 h-3.5 text-[#ea580c]" />;
+                          badgeBg = 'bg-orange-50 text-orange-800 border border-orange-200';
+                          badgeLabel = 'Retrabajo';
+                        } else if (act.type === 'priority_change') {
+                          icon = <AlertCircle className="w-3.5 h-3.5 text-[#d97706]" />;
+                          badgeBg = 'bg-amber-50 text-amber-800 border border-amber-200';
+                          badgeLabel = 'Prioridad';
+                        } else if (act.type === 'comment_added') {
+                          icon = <MessageSquare className="w-3.5 h-3.5 text-[#501f92]" />;
+                          badgeBg = 'bg-[#f5f3ff] text-[#501f92] border border-[#ddd6fe]';
+                          badgeLabel = 'Comentario';
+                        } else if (act.type === 'created') {
+                          icon = <Sparkles className="w-3.5 h-3.5 text-[#501f92]" />;
+                          badgeBg = 'bg-[#f5f3ff] text-[#501f92] border border-[#c4b5fd]';
+                          badgeLabel = 'Creación';
+                        }
+
+                        return (
+                          <div key={act.id} className="relative group">
+                            {/* Node icon circle */}
+                            <div className="absolute -left-6 top-1 w-5 h-5 rounded-full border border-[#cbd5e1] bg-white flex items-center justify-center shadow-2xs group-hover:border-[#501f92] transition-colors">
+                              {icon}
+                            </div>
+
+                            {/* Card bubble */}
+                            <div className="p-3.5 rounded-2xl bg-white border border-[#e2e8f0] shadow-2xs space-y-1.5 hover:border-[#cbd5e1] transition-all">
+                              <div className="flex items-center justify-between gap-2 flex-wrap text-xs">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <div className="w-5 h-5 rounded-full bg-[#501f92] text-white flex items-center justify-center text-[9px] font-bold shrink-0">
+                                    {act.actorInitials || act.actorName.slice(0, 2).toUpperCase()}
+                                  </div>
+                                  <span className="font-extrabold text-[#0f172a] truncate">{act.actorName}</span>
+                                  <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-md ${badgeBg}`}>
+                                    {badgeLabel}
+                                  </span>
+                                </div>
+                                <span className="text-[10px] font-mono text-[#94a3b8] shrink-0">
+                                  {act.timestamp.includes('T')
+                                    ? new Date(act.timestamp).toLocaleDateString('es-ES', {
+                                        day: '2-digit',
+                                        month: 'short',
+                                        year: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                      })
+                                    : act.timestamp}
+                                </span>
+                              </div>
+
+                              <p className="text-xs text-[#334155] leading-relaxed">
+                                {act.description}
+                              </p>
+
+                              {act.previousValue && act.newValue && (
+                                <div className="flex items-center gap-2 text-[11px] pt-1">
+                                  <span className="px-2 py-0.5 rounded-md bg-[#f1f5f9] text-[#64748b] font-medium border border-[#e2e8f0]">
+                                    {act.previousValue}
+                                  </span>
+                                  <span className="text-[#94a3b8] font-bold">➔</span>
+                                  <span className="px-2 py-0.5 rounded-md bg-[#f5f3ff] text-[#501f92] font-bold border border-[#ddd6fe]">
+                                    {act.newValue}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* --------------------------------------------------------- */}
@@ -2541,8 +2827,10 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                       id="task-status-select"
                       value={task.status}
                       onChange={(e) => {
-                        if (onUpdateTaskStatus) onUpdateTaskStatus(task.id, e.target.value as TaskStatus);
-                        showToast(`Estado cambiado a ${e.target.value === 'Done' ? 'Completada' : e.target.value === 'Review' ? 'En revisión' : e.target.value === 'In Progress' ? 'En proceso' : 'Por hacer'}`);
+                        const newStatus = e.target.value as TaskStatus;
+                        logActivity('status_change', `Estado cambiado de "${task.status}" a "${newStatus}"`, task.status, newStatus);
+                        if (onUpdateTaskStatus) onUpdateTaskStatus(task.id, newStatus);
+                        showToast(`Estado cambiado a ${newStatus === 'Done' ? 'Completada' : newStatus === 'Review' ? 'En revisión' : newStatus === 'In Progress' ? 'En proceso' : 'Por hacer'}`);
                       }}
                       className="w-full px-3 py-2 rounded-xl border border-[#e2e8f0] bg-white font-bold text-[#0f172a] text-xs focus:outline-none focus:border-[#501f92] cursor-pointer shadow-2xs appearance-none pr-8"
                     >
@@ -2562,7 +2850,9 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                       id="task-priority-select"
                       value={task.priority}
                       onChange={(e) => {
-                        if (onUpdateTaskPriority) onUpdateTaskPriority(task.id, e.target.value as TaskPriority);
+                        const newPriority = e.target.value as TaskPriority;
+                        logActivity('priority_change', `Prioridad actualizada de "${task.priority}" a "${newPriority}"`, task.priority, newPriority);
+                        if (onUpdateTaskPriority) onUpdateTaskPriority(task.id, newPriority);
                       }}
                       className="w-full px-3 py-2 rounded-xl border border-[#e2e8f0] bg-white font-bold text-[#0f172a] text-xs focus:outline-none focus:border-[#501f92] cursor-pointer shadow-2xs appearance-none pr-8"
                     >

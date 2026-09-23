@@ -13,6 +13,7 @@ import {
   TaskRework,
   ProductBacklogTemplate,
   QuoteProposal,
+  TaskActivityLogEntry,
   NewBusinessOpportunity,
   TeamAbsenceEvent
 } from '../components/taskflow/types';
@@ -945,21 +946,101 @@ export const TaskFlowPrototype: React.FC = () => {
 
   // Update Task Status from Modal
   const handleUpdateTaskStatus = (taskId: string, newStatus: TaskStatus) => {
+    const timestamp = new Date().toISOString();
     setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, status: newStatus, completed: newStatus === 'Done' } : t))
+      prev.map((t) => {
+        if (t.id === taskId) {
+          const newEntry: TaskActivityLogEntry = {
+            id: `act-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            type: 'status_change',
+            actorName: 'Paola (Lead PM)',
+            actorInitials: 'PL',
+            actorAvatarBg: '#501f92',
+            timestamp,
+            description: `Estado actualizado a "${newStatus}"`,
+            previousValue: t.status,
+            newValue: newStatus
+          };
+          return {
+            ...t,
+            status: newStatus,
+            completed: newStatus === 'Done',
+            activityLog: [newEntry, ...(t.activityLog || [])]
+          };
+        }
+        return t;
+      })
     );
     if (selectedTaskForDetail && selectedTaskForDetail.id === taskId) {
-      setSelectedTaskForDetail((prev) => prev ? { ...prev, status: newStatus, completed: newStatus === 'Done' } : null);
+      setSelectedTaskForDetail((prev) => {
+        if (!prev) return null;
+        const newEntry: TaskActivityLogEntry = {
+          id: `act-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+          type: 'status_change',
+          actorName: 'Paola (Lead PM)',
+          actorInitials: 'PL',
+          actorAvatarBg: '#501f92',
+          timestamp,
+          description: `Estado actualizado a "${newStatus}"`,
+          previousValue: prev.status,
+          newValue: newStatus
+        };
+        return {
+          ...prev,
+          status: newStatus,
+          completed: newStatus === 'Done',
+          activityLog: [newEntry, ...(prev.activityLog || [])]
+        };
+      });
     }
   };
 
   // Update Task Priority from Modal
   const handleUpdateTaskPriority = (taskId: string, newPriority: TaskPriority) => {
+    const timestamp = new Date().toISOString();
     setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, priority: newPriority } : t))
+      prev.map((t) => {
+        if (t.id === taskId) {
+          const newEntry: TaskActivityLogEntry = {
+            id: `act-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            type: 'priority_change',
+            actorName: 'Paola (Lead PM)',
+            actorInitials: 'PL',
+            actorAvatarBg: '#501f92',
+            timestamp,
+            description: `Prioridad actualizada a "${newPriority}"`,
+            previousValue: t.priority,
+            newValue: newPriority
+          };
+          return {
+            ...t,
+            priority: newPriority,
+            activityLog: [newEntry, ...(t.activityLog || [])]
+          };
+        }
+        return t;
+      })
     );
     if (selectedTaskForDetail && selectedTaskForDetail.id === taskId) {
-      setSelectedTaskForDetail((prev) => prev ? { ...prev, priority: newPriority } : null);
+      setSelectedTaskForDetail((prev) => {
+        if (!prev) return null;
+        const newEntry: TaskActivityLogEntry = {
+          id: `act-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+          type: 'priority_change',
+          actorName: 'Paola (Lead PM)',
+          actorInitials: 'PL',
+          actorAvatarBg: '#501f92',
+          timestamp,
+          description: `Prioridad actualizada a "${newPriority}"`,
+          previousValue: prev.priority,
+          newValue: newPriority
+        };
+        return {
+          ...prev,
+          priority: newPriority,
+          activityLog: [newEntry, ...(prev.activityLog || [])]
+        };
+      });
     }
   };
 
@@ -1054,39 +1135,83 @@ export const TaskFlowPrototype: React.FC = () => {
     projectLead?: TaskItem['projectLead'],
     followers?: TaskItem['followers']
   ) => {
+    const timestamp = new Date().toISOString();
     setTasks((prev) =>
-      prev.map((t) =>
-        t.id === taskId
-          ? {
-              ...t,
-              assignee,
-              collaborators,
-              reviewer,
-              requestedBy: requestedBy || t.requestedBy,
-              budgetedRole: budgetedRole !== undefined ? budgetedRole : t.budgetedRole,
-              requiresValidation: requiresValidation !== undefined ? requiresValidation : t.requiresValidation,
-              projectLead: projectLead !== undefined ? projectLead : t.projectLead,
-              followers: followers !== undefined ? followers : t.followers
-            }
-          : t
-      )
+      prev.map((t) => {
+        if (t.id === taskId) {
+          const newLogs: TaskActivityLogEntry[] = [...(t.activityLog || [])];
+          if (assignee && assignee.name !== t.assignee?.name) {
+            newLogs.unshift({
+              id: `act-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+              type: 'assignee_change',
+              actorName: 'Paola (Lead PM)',
+              actorInitials: 'PL',
+              actorAvatarBg: '#501f92',
+              timestamp,
+              description: `Responsable reasignado: ${t.assignee?.name || 'Sin asignar'} → ${assignee.name}`,
+              previousValue: t.assignee?.name,
+              newValue: assignee.name
+            });
+          }
+          if (reviewer && reviewer.name !== t.reviewer?.name) {
+            newLogs.unshift({
+              id: `act-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+              type: 'reviewer_change',
+              actorName: 'Paola (Lead PM)',
+              actorInitials: 'PL',
+              actorAvatarBg: '#501f92',
+              timestamp,
+              description: `Revisor asignado: ${reviewer.name}`,
+              previousValue: t.reviewer?.name,
+              newValue: reviewer.name
+            });
+          }
+          return {
+            ...t,
+            assignee,
+            collaborators,
+            reviewer,
+            requestedBy: requestedBy || t.requestedBy,
+            budgetedRole: budgetedRole !== undefined ? budgetedRole : t.budgetedRole,
+            requiresValidation: requiresValidation !== undefined ? requiresValidation : t.requiresValidation,
+            projectLead: projectLead !== undefined ? projectLead : t.projectLead,
+            followers: followers !== undefined ? followers : t.followers,
+            activityLog: newLogs
+          };
+        }
+        return t;
+      })
     );
     if (selectedTaskForDetail && selectedTaskForDetail.id === taskId) {
-      setSelectedTaskForDetail((prev) =>
-        prev
-          ? {
-              ...prev,
-              assignee,
-              collaborators,
-              reviewer,
-              requestedBy: requestedBy || prev.requestedBy,
-              budgetedRole: budgetedRole !== undefined ? budgetedRole : prev.budgetedRole,
-              requiresValidation: requiresValidation !== undefined ? requiresValidation : prev.requiresValidation,
-              projectLead: projectLead !== undefined ? projectLead : prev.projectLead,
-              followers: followers !== undefined ? followers : prev.followers
-            }
-          : null
-      );
+      setSelectedTaskForDetail((prev) => {
+        if (!prev) return null;
+        const newLogs: TaskActivityLogEntry[] = [...(prev.activityLog || [])];
+        if (assignee && assignee.name !== prev.assignee?.name) {
+          newLogs.unshift({
+            id: `act-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            type: 'assignee_change',
+            actorName: 'Paola (Lead PM)',
+            actorInitials: 'PL',
+            actorAvatarBg: '#501f92',
+            timestamp,
+            description: `Responsable reasignado: ${prev.assignee?.name || 'Sin asignar'} → ${assignee.name}`,
+            previousValue: prev.assignee?.name,
+            newValue: assignee.name
+          });
+        }
+        return {
+          ...prev,
+          assignee,
+          collaborators,
+          reviewer,
+          requestedBy: requestedBy || prev.requestedBy,
+          budgetedRole: budgetedRole !== undefined ? budgetedRole : prev.budgetedRole,
+          requiresValidation: requiresValidation !== undefined ? requiresValidation : prev.requiresValidation,
+          projectLead: projectLead !== undefined ? projectLead : prev.projectLead,
+          followers: followers !== undefined ? followers : prev.followers,
+          activityLog: newLogs
+        };
+      });
     }
   };
 
@@ -1868,7 +1993,7 @@ export const TaskFlowPrototype: React.FC = () => {
   };
 
   return (
-    <div className="orbit-saas-root min-h-screen bg-[#0d0718] text-white selection:bg-[#ddd6fe] selection:text-[#0f172a]">
+    <div className="orbit-saas-root min-h-screen bg-[#0d0718] text-white selection:bg-[#ddd6fe] selection:text-[#0f172a] flex flex-col flex-1">
       {/* SaaS Live Demo Utility Bar (Compact single header) */}
       <section className="bg-gradient-to-r from-[#1b0d33] to-[#0d0718] py-2.5 px-4 sm:px-6 lg:px-8 border-b border-[#261845]/60">
         <div className="max-w-[1880px] w-full mx-auto flex items-center justify-between gap-4">
@@ -1925,8 +2050,8 @@ export const TaskFlowPrototype: React.FC = () => {
       </section>
 
       {/* Main SaaS Canvas Box */}
-      <main className="max-w-[1880px] w-full mx-auto px-2 sm:px-4 lg:px-6 mt-3 pb-8">
-        <div className={`bg-[#f9fafb] rounded-3xl border border-[#261845] shadow-2xl overflow-hidden flex flex-col min-h-[840px] ${
+      <main className="max-w-[1880px] w-full mx-auto px-2 sm:px-4 lg:px-6 mt-3 pb-8 flex-1 flex flex-col min-h-0">
+        <div className={`bg-[#f9fafb] rounded-3xl border border-[#261845] shadow-2xl overflow-hidden flex flex-col flex-1 min-h-[calc(100vh-140px)] ${
           saasFont === 'jakarta' ? 'font-saas' : saasFont === 'inter' ? 'font-inter' : 'font-montserrat'
         }`}>
           {/* Top Prototype Navigation Chrome */}
@@ -1953,9 +2078,9 @@ export const TaskFlowPrototype: React.FC = () => {
           </div>
 
           {/* Prototype App Body */}
-          <div className="flex-1 flex overflow-hidden relative">
+          <div className="flex-1 flex overflow-hidden relative min-h-0">
             {/* Sidebar Desktop */}
-            <div className="hidden md:block shrink-0 h-full">
+            <div className="hidden md:flex flex-col shrink-0 self-stretch min-h-full">
               <TaskflowSidebar
                 currentView={currentView}
                 onSelectView={handleSelectView}
@@ -2023,6 +2148,9 @@ export const TaskFlowPrototype: React.FC = () => {
                 {currentView === 'mi-dia' && (
                   <MiDiaView
                     tasks={tasks}
+                    currentUser={currentUser}
+                    timeLogs={timeLogs}
+                    onDeleteTimeLog={handleDeleteTimeLog}
                     activeTimer={activeTimer}
                     onStartTimer={handleStartTimer}
                     onPauseResumeTimer={handlePauseResumeTimer}
@@ -2034,6 +2162,9 @@ export const TaskFlowPrototype: React.FC = () => {
                     loggedHoursToday={loggedHoursToday}
                     targetDayHours={8.0}
                     onNavigateToView={handleSelectView}
+                    opportunities={opportunities}
+                    projects={projectsList}
+                    clients={clients}
                   />
                 )}
 
@@ -2158,6 +2289,7 @@ export const TaskFlowPrototype: React.FC = () => {
                     tasks={tasks}
                     timeLogs={timeLogs}
                     users={users}
+                    currentUser={currentUser}
                     absenceEvents={absenceEvents}
                     activeTimer={activeTimer}
                     onStartTimer={handleStartTimer}
