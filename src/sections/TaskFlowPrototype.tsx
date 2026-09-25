@@ -2306,6 +2306,7 @@ export const TaskFlowPrototype: React.FC = () => {
                 {currentView === 'clientes' && (
                   <ClientsView
                     clients={clients}
+                    currentUser={currentUser}
                     selectedClientId={selectedClientId}
                     onSelectClient={(id) => setSelectedClientId(id)}
                     onNavigateToDashboard={() => {
@@ -2359,13 +2360,78 @@ export const TaskFlowPrototype: React.FC = () => {
                     clients={clients}
                     templates={productTemplates}
                     currentUser={currentUser}
+                    users={users}
+                    tasks={tasks}
+                    timeLogs={timeLogs}
+                    activeTimer={activeTimer}
+                    onStartTimer={handleStartTimer}
+                    onStopTimer={handleStopTimer}
                     onUpdateOpportunity={(updatedOpp) => {
                       setOpportunities((prev) =>
                         prev.map((o) => (o.id === updatedOpp.id ? updatedOpp : o))
                       );
                     }}
                     onCreateOpportunity={(newOpp) => {
-                      setOpportunities((prev) => [newOpp, ...prev]);
+                      const scopingTaskId = `task-scoping-${newOpp.id}`;
+                      const slaHours = newOpp.handoffHours || 36;
+                      const deadlineDate = new Date(Date.now() + slaHours * 3600 * 1000).toISOString().slice(0, 10);
+                      const oppWithTask: NewBusinessOpportunity = {
+                        ...newOpp,
+                        preventaTimeLogTaskId: scopingTaskId,
+                        handoffHours: slaHours
+                      };
+
+                      // Dynamic Leader resolution from users
+                      const assignedUser = users.find(
+                        (u) =>
+                          u.id === newOpp.leadUserId ||
+                          (newOpp.leadUserName && u.name.toLowerCase().includes(newOpp.leadUserName.split('·')[0].trim().toLowerCase()))
+                      ) || users.find((u) => u.id === 'u-2') || users[0];
+
+                      // Resolución dinámica del proyecto interno de preventa (UHURA Group -> Comercial & Prospección New Business)
+                      const matchedProject = projectsList.find(
+                        (p) =>
+                          (p.brand === 'UHURA Group' || p.clientName === 'UHURA Group' || p.clientId === 'cli-uhu-internal') &&
+                          (p.name.toLowerCase().includes('comercial') ||
+                            p.name.toLowerCase().includes('new business') ||
+                            p.name.toLowerCase().includes('prospección'))
+                      ) || {
+                        id: 'prj-uhu-3',
+                        name: 'Comercial & Prospección New Business',
+                        clientName: 'UHURA Group'
+                      };
+
+                      // Crear tarea interna en UHURA Group -> Comercial & Prospección New Business
+                      const newScopingTask: TaskItem = {
+                        id: scopingTaskId,
+                        title: `Scoping · ${newOpp.prospectAccountName || 'Cliente'} · ${newOpp.title}`,
+                        status: 'todo',
+                        priority: 'High',
+                        projectId: matchedProject.id,
+                        projectName: matchedProject.name,
+                        clientName: matchedProject.clientName || 'UHURA Group',
+                        department: 'Operaciones',
+                        frente: 'Preventa & Scoping',
+                        board: 'New Business',
+                        date: new Date().toISOString().slice(0, 10),
+                        dueDate: deadlineDate,
+                        dueStatus: 'normal',
+                        dueText: `SLA ~${slaHours}h handoff`,
+                        budgetedHours: 4,
+                        consumedSeconds: 0,
+                        completed: false,
+                        budgetedRole: assignedUser.officialRole || assignedUser.jobTitle || assignedUser.professionalRole || 'Product Lead',
+                        assignee: {
+                          id: assignedUser.id,
+                          name: assignedUser.name,
+                          role: assignedUser.jobTitle || assignedUser.officialRole || assignedUser.role || 'Leader',
+                          avatarBg: assignedUser.avatarBg || 'bg-[#501f92]',
+                          initials: assignedUser.initials || assignedUser.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
+                        }
+                      };
+
+                      setTasks((prev) => [newScopingTask, ...prev]);
+                      setOpportunities((prev) => [oppWithTask, ...prev]);
                     }}
                     onNavigateToView={handleSelectView}
                     onConvertOpportunityToProject={handleConvertOpportunityToProject}

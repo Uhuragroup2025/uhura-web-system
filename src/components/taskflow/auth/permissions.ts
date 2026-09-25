@@ -38,7 +38,7 @@ export const ROLE_PERMISSIONS_MATRIX: Record<
     // Sin acceso a Clientes, New Business, Catálogo ni Administración
   },
 
-  // B. LÍDERES DE ÁREA (Técnico / Creativo / Growth)
+  // B. LÍDERES DE ÁREA (Técnico / Creativo / Growth - e.g. Paola)
   leader: {
     'mi-dia': { allowedActions: ['view', 'edit'], scope: 'team' },
     'proyectos': { allowedActions: ['view', 'create', 'edit'], scope: 'team' },
@@ -46,8 +46,8 @@ export const ROLE_PERMISSIONS_MATRIX: Record<
     'timesheets': { allowedActions: ['view', 'create', 'edit'], scope: 'team' },
     'capacidad': { allowedActions: ['view'], scope: 'team' },
     'clientes': { allowedActions: ['view'], scope: 'team' },
-    'new-business': { allowedActions: ['view', 'edit'], scope: 'team' },
-    'plantillas-producto': { allowedActions: ['view'], scope: 'all' },
+    'new-business': { allowedActions: ['view', 'create', 'edit'], scope: 'team' },
+    'plantillas-producto': { allowedActions: ['view', 'create', 'edit'], scope: 'all' },
     'la-colonia': { allowedActions: ['view', 'edit'], scope: 'own' }
     // Sin acceso a Administración ni Finanzas globales
   },
@@ -60,8 +60,8 @@ export const ROLE_PERMISSIONS_MATRIX: Record<
     'timesheets': { allowedActions: ['view', 'create', 'edit'], scope: 'own' },
     'capacidad': { allowedActions: ['view'], scope: 'accounts' },
     'clientes': { allowedActions: ['view', 'create', 'edit'], scope: 'accounts' },
-    'new-business': { allowedActions: ['view', 'create'], scope: 'accounts' },
-    'plantillas-producto': { allowedActions: ['view'], scope: 'all' },
+    'new-business': { allowedActions: ['view', 'create', 'edit'], scope: 'accounts' },
+    'plantillas-producto': { allowedActions: ['view', 'create', 'edit'], scope: 'all' },
     'la-colonia': { allowedActions: ['view', 'edit'], scope: 'own' }
   },
 
@@ -73,7 +73,7 @@ export const ROLE_PERMISSIONS_MATRIX: Record<
     'timesheets': { allowedActions: ['view', 'create', 'edit'], scope: 'own' },
     'clientes': { allowedActions: ['view', 'create', 'edit'], scope: 'all' },
     'new-business': { allowedActions: ['view', 'create', 'edit', 'approve'], scope: 'all' },
-    'plantillas-producto': { allowedActions: ['view'], scope: 'all' },
+    'plantillas-producto': { allowedActions: ['view', 'create', 'edit'], scope: 'all' },
     'la-colonia': { allowedActions: ['view', 'edit'], scope: 'own' }
     // Sin acceso a Matriz de Capacidad interna ni Administración
   },
@@ -98,8 +98,8 @@ export const ROLE_PERMISSIONS_MATRIX: Record<
     'timesheets': { allowedActions: ['view'], scope: 'all' },
     'capacidad': { allowedActions: ['view'], scope: 'all' },
     'clientes': { allowedActions: ['view'], scope: 'all' },
-    'new-business': { allowedActions: ['view'], scope: 'all' },
-    'plantillas-producto': { allowedActions: ['view'], scope: 'all' },
+    'new-business': { allowedActions: ['view', 'create', 'edit'], scope: 'all' },
+    'plantillas-producto': { allowedActions: ['view', 'create', 'edit'], scope: 'all' },
     'la-colonia': { allowedActions: ['view', 'edit'], scope: 'own' },
     'administracion': { allowedActions: ['view'], scope: 'all' }
   },
@@ -112,8 +112,8 @@ export const ROLE_PERMISSIONS_MATRIX: Record<
     'timesheets': { allowedActions: ['view', 'administer'], scope: 'all' },
     'capacidad': { allowedActions: ['view', 'administer'], scope: 'all' },
     'clientes': { allowedActions: ['view', 'create', 'edit', 'administer'], scope: 'all' },
-    'new-business': { allowedActions: ['view', 'administer'], scope: 'all' },
-    'plantillas-producto': { allowedActions: ['view'], scope: 'all' },
+    'new-business': { allowedActions: ['view', 'create', 'edit', 'administer'], scope: 'all' },
+    'plantillas-producto': { allowedActions: ['view', 'create', 'edit', 'administer'], scope: 'all' },
     'la-colonia': { allowedActions: ['view', 'edit'], scope: 'own' },
     'administracion': { allowedActions: ['view', 'create', 'edit', 'administer'], scope: 'all' }
   },

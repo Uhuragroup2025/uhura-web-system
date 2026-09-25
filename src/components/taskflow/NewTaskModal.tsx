@@ -612,13 +612,13 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
             )}
           </div>
 
-          {/* PASO 2: FRENTE / ENTREGABLE */}
+          {/* PASO 2: SERVICIO / ENTREGABLE */}
           <div className="p-3.5 rounded-2xl bg-[#f5f3ff]/60 border border-[#e9d5ff] space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
                 <FolderKanban className="w-3.5 h-3.5 text-[#501f92]" />
                 <label className="font-bold text-[#0f172a] text-xs">
-                  Frente / Entregable del Proyecto *
+                  Servicio / Entregable del Proyecto *
                 </label>
               </div>
               <button
@@ -626,7 +626,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
                 onClick={() => setIsCustomFrente(!isCustomFrente)}
                 className="text-[10px] font-bold text-[#501f92] hover:underline cursor-pointer"
               >
-                {isCustomFrente ? '← Seleccionar existente' : '+ Nuevo frente personalizado'}
+                {isCustomFrente ? '← Seleccionar existente' : '+ Nuevo servicio personalizado'}
               </button>
             </div>
 

@@ -1265,6 +1265,12 @@ export interface SowDocumentData {
   googleDocUrl?: string;
   signedDocUrl?: string;
   lastUpdatedAt?: string;
+  // Representación Legal y Firma Contractual (Álvaro Gómez / Adobe Acrobat Sign)
+  sowSigner?: string;               // 'Álvaro Gómez' (Representante Legal de UHURA)
+  sowSignerRole?: string;           // 'Representante Legal · UHURA GROUP S.A.S.'
+  signatureProvider?: string;       // 'Adobe Acrobat Sign'
+  signatureReferenceUrl?: string;   // Link o referencia del documento en Adobe Acrobat Sign
+  signedAt?: string;
 }
 
 export type FormalizationGateStatus =
@@ -1290,6 +1296,9 @@ export interface NewBusinessOpportunity {
 
   leadUserId: string;             // Responsable de preventa / comercial en Uhura
   leadUserName?: string;
+  commercialOwner?: string;       // Owner comercial que asigna y lidera la negociación
+  handoffHours?: number;          // SLA de handoff comercial -> líder (default 36h, editable)
+  handoffDeadline?: string;       // Deadline ISO calculado a partir de handoffHours
 
   // Hooks de integración externa (desacoplados - Portabilidad Base)
   hubspotDealId?: string | null;      // Hook externo con CRM HubSpot (Source of Truth Comercial)

@@ -56,7 +56,8 @@ import {
   RotateCcw,
   ShieldCheck,
   ArrowRight,
-  AlertCircle
+  AlertCircle,
+  Layers
 } from 'lucide-react';
 import {
   TaskItem,
@@ -71,7 +72,8 @@ import {
   TaskCommentAttachment,
   TaskCommentReaction,
   STANDARD_UHURA_ROLES,
-  TaskActivityLogEntry
+  TaskActivityLogEntry,
+  TaskActivityType
 } from './types';
 import { DropdownMenu, DropdownOption } from '../ui/DropdownMenu';
 import { initialUsers } from './mockData';
@@ -459,7 +461,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
             actorInitials: 'RW',
             actorAvatarBg: '#ea580c',
             timestamp: rw.date || '2026-08-21',
-            description: `Retrabajo registrado (+${rw.hours}h): ${rw.reason}`
+            description: `Retrabajo registrado (+${rw.hoursSpent || 0}h): ${rw.reason}`
           });
         }
       });
@@ -477,7 +479,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
             actorInitials: del.submittedBy ? del.submittedBy.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase() : 'DL',
             actorAvatarBg: '#10b981',
             timestamp: del.submittedAt || '2026-08-21',
-            description: `Entregable subido: "${del.title}"${del.isApproved ? ' (Aprobado)' : ''}`
+            description: `Entregable subido: "${del.title || 'Entregable'}"${del.status === 'approved' ? ' (Aprobado)' : ''}`
           });
         }
       });

@@ -171,13 +171,27 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
     });
   }, [accessLevel, activeUserTasks, tasks]);
 
-  // New Business que requiere acción (cotizaciones pendientes de aprobación o cierre)
+  // New Business que requiere acción (cotizaciones pendientes de aprobación o briefs por dimensionar)
   const newBusinessActions = useMemo(() => {
-    if (!['leader', 'commercial', 'executive'].includes(accessLevel)) {
+    if (!['leader', 'commercial', 'executive', 'system_admin'].includes(accessLevel)) {
       return [];
     }
-    return opportunities.filter((o) => o.status === 'quoting' || o.status === 'contracting');
-  }, [accessLevel, opportunities]);
+    return opportunities.filter((o) => {
+      const isActionableStatus =
+        o.status === 'discovery' || o.status === 'quoting' || o.status === 'internal_review';
+      if (!isActionableStatus) return false;
+
+      // Si es rol líder, filtrar dinámicamente según su leadUserId o nombre de usuario
+      if (accessLevel === 'leader') {
+        const matchesId = o.leadUserId === currentUserId;
+        const matchesName =
+          o.leadUserName &&
+          o.leadUserName.toLowerCase().includes(currentUserName.toLowerCase());
+        return matchesId || matchesName;
+      }
+      return true;
+    });
+  }, [accessLevel, opportunities, currentUserId, currentUserName]);
 
   // Formalizaciones administrativas pendientes (proyectos ganados sin NIT o datos de facturación)
   const fiscalPendingActions = useMemo(() => {
@@ -396,32 +410,78 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                   );
                 })}
 
-                {/* 5. New business pendiente de aprobación */}
-                {newBusinessActions.map((opp) => (
-                  <div
-                    key={`nb-${opp.id}`}
-                    className="p-3 rounded-2xl bg-white border border-[#fde68a] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
-                  >
-                    <div className="flex items-start gap-2.5">
-                      <Briefcase className="w-4 h-4 text-[#4be5ff] shrink-0 mt-0.5" />
-                      <div>
-                        <span className="font-bold text-[#0f172a]">{opp.title}</span>
-                        <span className="text-[11px] text-[#64748b] block mt-0.5">
-                          {opp.clientName} • Cotización lista para validación de margen o firma de SOW
-                        </span>
+                {/* 5. New business: Brief asignado / Scoping pendiente */}
+                {newBusinessActions.map((opp) => {
+                  const scopingTask = tasks.find(
+                    (t) =>
+                      t.id === opp.preventaTimeLogTaskId ||
+                      (opp.title && t.title.includes(opp.title) && (t.clientName === 'UHURA Group' || t.board === 'New Business' || t.projectId === 'prj-uhu-3'))
+                  );
+                  const isTimerRunningOnScoping = activeTimer?.taskId === scopingTask?.id;
+                  const isAssignedToCurrentUser =
+                    opp.leadUserId === currentUserId ||
+                    (opp.leadUserName && opp.leadUserName.toLowerCase().includes(currentUserName.toLowerCase()));
+                  const assignedLeadDisplay = opp.leadUserName?.split('·')[0]?.trim() || 'Líder Asignado';
+                  const oppHandoffSla = opp.handoffHours || 36;
+
+                  return (
+                    <div
+                      key={`nb-${opp.id}`}
+                      className="p-3.5 rounded-2xl bg-white border border-[#c084fc] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-2xs"
+                    >
+                      <div className="flex items-start gap-2.5">
+                        <div className="w-7 h-7 rounded-xl bg-[#501f92]/10 text-[#501f92] flex items-center justify-center shrink-0 mt-0.5">
+                          <Sparkles className="w-4 h-4 text-[#8a4dff]" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-extrabold text-[#0f172a]">
+                              {opp.prospectAccountName || opp.clientName || 'Nuevo Prospecto'} · {opp.title}
+                            </span>
+                            <span className="px-2 py-0.2 rounded-full text-[10px] font-bold bg-[#501f92]/10 text-[#501f92]">
+                              🟣 Nuevo brief asignado
+                            </span>
+                            <span className="text-[10px] text-[#0284c7] font-mono">
+                              SLA ~{oppHandoffSla}h handoff
+                            </span>
+                          </div>
+                          <span className="text-[11px] text-[#64748b] block mt-0.5">
+                            {isAssignedToCurrentUser
+                              ? 'Comercial te asignó el scoping'
+                              : `Asignado a: ${assignedLeadDisplay}`}{' '}
+                            • Imputación de horas a: <strong>UHURA Group → New Business</strong>
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                        {scopingTask && (
+                          <button
+                            type="button"
+                            onClick={() => onStartTimer(scopingTask)}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                              isTimerRunningOnScoping
+                                ? 'bg-[#ef4444] text-white animate-pulse'
+                                : 'bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[#0f172a]'
+                            }`}
+                            title="Iniciar timer para imputar horas de preventa a UHURA Group / New Business"
+                          >
+                            <Play className="w-3.5 h-3.5 text-[#501f92]" />
+                            <span>{isTimerRunningOnScoping ? 'Grabando...' : 'Timer Preventa'}</span>
+                          </button>
+                        )}
+                        {onNavigateToView && (
+                          <button
+                            onClick={() => onNavigateToView('new-business')}
+                            className="px-3.5 py-1.5 rounded-xl bg-[#501f92] text-white font-bold hover:bg-[#3d1572] transition-colors cursor-pointer shadow-2xs"
+                          >
+                            Abrir oportunidad →
+                          </button>
+                        )}
                       </div>
                     </div>
-
-                    {onNavigateToView && (
-                      <button
-                        onClick={() => onNavigateToView('new-business')}
-                        className="px-3 py-1.5 rounded-xl bg-[#1e113a] text-white font-bold hover:bg-[#2e1859] transition-colors self-start sm:self-auto cursor-pointer"
-                      >
-                        Revisar cotización
-                      </button>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
 
                 {/* 6. Formalizaciones fiscales */}
                 {fiscalPendingActions.slice(0, 2).map((c) => (

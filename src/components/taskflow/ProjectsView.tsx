@@ -727,7 +727,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             }`}
           >
             <Layers className="w-3.5 h-3.5 text-current" />
-            <span>Frentes & Roles ({currentProject.deliverables?.length || 0})</span>
+            <span>Servicios & Roles ({currentProject.deliverables?.length || 0})</span>
           </button>
 
           <button
@@ -1022,13 +1022,13 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                   ))}
                 </select>
 
-                {/* Filter Frente */}
+                {/* Filter Frente / Servicio */}
                 <select
                   value={selectedFrenteFilter}
                   onChange={(e) => setSelectedFrenteFilter(e.target.value)}
                   className="px-3 py-1.5 text-xs bg-[#f8fafc] border border-[#e2e8f0] rounded-xl focus:outline-none focus:border-[#501f92] font-semibold text-[#0f172a]"
                 >
-                  <option value="all">Todos los frentes ({frentesBreakdown.length})</option>
+                  <option value="all">Todos los servicios ({frentesBreakdown.length})</option>
                   {frentesBreakdown.map((f) => (
                     <option key={f.name} value={f.name}>
                       {f.name} ({f.tasks.length})
@@ -1099,7 +1099,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-extrabold text-[#1e293b] block mb-1">Frente</label>
+                    <label className="text-[11px] font-extrabold text-[#1e293b] block mb-1">Servicio / Entregable</label>
                     <select
                       value={quickFrente}
                       onChange={(e) => setQuickFrente(e.target.value)}
@@ -1185,7 +1185,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                     <tr className="border-b border-[#f1f5f9] text-[10px] font-bold text-[#64748b] uppercase tracking-wider bg-white">
                       <th className="py-3 px-4 min-w-[200px]">TAREA / DEPENDENCIAS</th>
                       <th className="py-3 px-3 min-w-[90px]">FASE</th>
-                      <th className="py-3 px-3 min-w-[90px]">FRENTE</th>
+                      <th className="py-3 px-3 min-w-[90px]">SERVICIO</th>
                       <th className="py-3 px-3 min-w-[100px]">ROL COTIZADO</th>
                       <th className="py-3 px-3 min-w-[110px]">RESPONSABLE</th>
                       <th className="py-3 px-3 min-w-[70px]">HORAS</th>
@@ -1440,7 +1440,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
               <div className="p-4 border-b border-[#f1f5f9] flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <FolderKanban className="w-4 h-4 text-[#501f92]" />
-                  <h3 className="font-extrabold text-sm text-[#0f172a]">Consolidado de Horas por Frente de Trabajo</h3>
+                  <h3 className="font-extrabold text-sm text-[#0f172a]">Consolidado de Horas por Servicio</h3>
                 </div>
               </div>
 
@@ -1448,7 +1448,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                 <table className="w-full text-left text-xs min-w-[650px]">
                   <thead>
                     <tr className="border-b border-[#f1f5f9] text-[10px] font-bold text-[#64748b] uppercase tracking-wider bg-[#f8fafc]">
-                      <th className="py-3 px-5 min-w-[150px]">FRENTE / ENTREGABLE</th>
+                      <th className="py-3 px-5 min-w-[150px]">SERVICIO / ENTREGABLE</th>
                       <th className="py-3 px-4 text-right min-w-[100px]">HORAS COTIZADAS</th>
                       <th className="py-3 px-4 text-right min-w-[100px]">HORAS EJECUTADAS</th>
                       <th className="py-3 px-4 text-right min-w-[100px]">DESVIACIÓN</th>

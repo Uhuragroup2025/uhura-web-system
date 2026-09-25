@@ -2,6 +2,10 @@ import React, { useState } from 'react';
 import { NewBusinessOpportunity, QuoteProposal } from '../types';
 import { formatFinancialCurrency } from '../financial/financialEngine';
 import {
+  CompanyLegalSignerConfig,
+  DEFAULT_UHURA_LEGAL_SIGNER
+} from './slaEngine';
+import {
   FileText,
   X,
   Copy,
@@ -21,6 +25,7 @@ interface SOWModalProps {
   quote: QuoteProposal;
   onClose: () => void;
   onSaveSOWData?: (updatedSowData: any) => void;
+  companyLegalConfig?: CompanyLegalSignerConfig;
 }
 
 export const SOWModal: React.FC<SOWModalProps> = ({
@@ -28,7 +33,8 @@ export const SOWModal: React.FC<SOWModalProps> = ({
   opportunity,
   quote,
   onClose,
-  onSaveSOWData
+  onSaveSOWData,
+  companyLegalConfig = DEFAULT_UHURA_LEGAL_SIGNER
 }) => {
   const clientName = opportunity.prospectAccountName || 'Cliente';
   const serviceTitle = opportunity.title || 'Servicio de Desarrollo & Producto Digital';
@@ -39,6 +45,11 @@ export const SOWModal: React.FC<SOWModalProps> = ({
     0;
   const formattedPrice = formatFinancialCurrency(totalCOP, 'COP');
   const estimatedWeeks = quote.financialConfig?.projectDurationWeeks || 8;
+
+  // Snapshot de configuración legal: preserva el guardado en el SOW si ya existía o toma la config de la compañía
+  const signerName = opportunity.sowData?.sowSigner || companyLegalConfig.name;
+  const signerRole = opportunity.sowData?.sowSignerRole || companyLegalConfig.role;
+  const signatureProvider = opportunity.sowData?.signatureProvider || companyLegalConfig.signatureProvider;
 
   // Estado del SOW editable
   const [objective, setObjective] = useState<string>(
@@ -114,13 +125,17 @@ Términos de Pago:
 ${paymentTerms}
 
 -----------------------------------------------------
-6. APROBACIÓN Y FIRMAS
+6. APROBACIÓN Y FIRMAS CONTRACTUALES
 -----------------------------------------------------
+Firma legal mediante ${signatureProvider}.
+
 Por UHURA GROUP S.A.S.              Por ${clientName}
 Firma: ________________________     Firma: ________________________
-Nombre: Paola (Lead)                Nombre: ${opportunity.contactName || 'Representante Legal'}
-Cargo: Dirección de Operaciones     Cargo: Cliente
+Nombre: ${signerName}               Nombre: ${opportunity.contactName || 'Representante Legal'}
+Cargo: ${signerRole}                Cargo: Cliente / Representante Autorizado
 Fecha: ____ / ____ / ________       Fecha: ____ / ____ / ________
+
+Nota: El líder responsable de scoping (${opportunity.leadUserName || 'Líder de Scoping'}) coordina la solución y dimensionamiento técnico. La representación legal contractual corresponde a ${signerName} (${signerRole}).
 `;
 
     navigator.clipboard.writeText(fullSowText);
@@ -144,7 +159,12 @@ Fecha: ____ / ____ / ________       Fecha: ____ / ____ / ________
         exclusions,
         commercialValueFormatted: formattedPrice,
         paymentTerms,
-        status: 'ready_for_review',
+        status: opportunity.sowData?.status || 'ready_for_review',
+        sowSigner: signerName,
+        sowSignerRole: signerRole,
+        signatureProvider: signatureProvider,
+        signatureReferenceUrl: opportunity.sowData?.signatureReferenceUrl,
+        signedDocUrl: opportunity.sowData?.signedDocUrl,
         lastUpdatedAt: new Date().toISOString()
       });
     }
@@ -373,24 +393,41 @@ Fecha: ____ / ____ / ________       Fecha: ____ / ____ / ________
             </div>
 
             {/* 6. Espacio para Firmas */}
-            <div className="border-t border-[#e2e8f0] pt-8 grid grid-cols-1 sm:grid-cols-2 gap-8">
-              <div className="space-y-4">
-                <div className="h-16 border-b border-dashed border-[#94a3b8]" />
-                <div>
-                  <p className="font-bold text-[#0f172a]">Por UHURA GROUP S.A.S.</p>
-                  <p className="text-[11px] text-[#64748b]">Líder de Dirección de Operaciones</p>
-                  <p className="text-[10px] text-[#94a3b8]">Medellín, Colombia</p>
-                </div>
+            <div className="border-t border-[#e2e8f0] pt-6 space-y-4">
+              <div className="flex items-center justify-between text-[11px] text-[#64748b] bg-[#f8fafc] p-2.5 rounded-xl border border-[#e2e8f0]">
+                <span>
+                  🔐 <strong>Firma Contractual Legal:</strong> Proveedor electrónico <strong>{signatureProvider}</strong>.
+                </span>
+                <span>
+                  Líder de Scoping: <strong className="text-[#0f172a]">{opportunity.leadUserName || 'Líder Asignado'}</strong>
+                </span>
               </div>
 
-              <div className="space-y-4">
-                <div className="h-16 border-b border-dashed border-[#94a3b8]" />
-                <div>
-                  <p className="font-bold text-[#0f172a]">Por {clientName}</p>
-                  <p className="text-[11px] text-[#64748b]">
-                    {opportunity.contactName || 'Representante Legal / Autorizado'}
-                  </p>
-                  <p className="text-[10px] text-[#94a3b8]">Aceptación de Términos</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 pt-2">
+                <div className="space-y-4">
+                  <div className="h-16 border-b border-dashed border-[#94a3b8] flex items-end pb-1">
+                    <span className="text-[10px] text-[#94a3b8] font-mono">{signatureProvider} (UHURA)</span>
+                  </div>
+                  <div>
+                    <p className="font-bold text-[#0f172a]">Por UHURA GROUP S.A.S.</p>
+                    <p className="text-xs font-semibold text-[#501f92]">{signerName}</p>
+                    <p className="text-[11px] text-[#64748b]">{signerRole}</p>
+                    <p className="text-[10px] text-[#94a3b8]">Medellín / Bogotá, Colombia</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="h-16 border-b border-dashed border-[#94a3b8] flex items-end pb-1">
+                    <span className="text-[10px] text-[#94a3b8] font-mono">{signatureProvider} (Cliente)</span>
+                  </div>
+                  <div>
+                    <p className="font-bold text-[#0f172a]">Por {clientName}</p>
+                    <p className="text-xs font-semibold text-[#0f172a]">
+                      {opportunity.contactName || 'Representante Legal / Autorizado'}
+                    </p>
+                    <p className="text-[11px] text-[#64748b]">Aceptación Contractual</p>
+                    <p className="text-[10px] text-[#94a3b8]">Firma Electrónica</p>
+                  </div>
                 </div>
               </div>
             </div>

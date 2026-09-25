@@ -729,22 +729,24 @@ Pantalla principal de inicio para todo usuario de Orbit, adaptada a su rol y pri
 
 ## 7. Matriz Global de Portabilidad por Módulo
 
-| Módulo Orbit | Estado Producto | UI | Lógica Dominio | Persistencia Requerida | Backend Indunova | Dependencias Directas | Bloquea Portabilidad? |
+> **Aclaración de Estado de Implementación:** Este repositorio frontend/contrato de TypeScript deja preparada la especificación canónica, tipos, vistas y validaciones de interfaz para que **Indunova implemente el backend real** (persistencia en PostgreSQL, endpoints en Django REST Framework, transacciones ACID y cálculo/persistencia definitiva del SLA e integraciones). **El backend Django/PostgreSQL no está implementado en este repositorio.**
+
+| Módulo Orbit | Estado Frontend / Contrato | UI | Lógica Dominio Frontend | Persistencia Requerida en Backend | Backend a implementar por Indunova | Dependencias Directas | Bloquea Portabilidad? |
 |---|---|---|---|---|---|---|---|
-| **Clientes** | Implementado | Completa | Completa | PostgreSQL | Modelos `Client`, `TaxEntity` | Ninguna | **SÍ (Core)** |
-| **Catálogo / Plantillas** | Implementado | Completa | Completa | PostgreSQL | Modelos `ProductTemplate` | Roles | **SÍ (Core)** |
-| **New Business** | Implementado | Completa | Completa | PostgreSQL | Modelo `Opportunity` | Clientes, Roles | **SÍ (Core)** |
-| **Alcance & Backlog** | Implementado | Completa | Completa | PostgreSQL | Modelos `Deliverable`, `Item` | Plantillas, Roles | **SÍ (Core)** |
+| **Clientes** | Preparado (Frontend) | Completa | Completa | PostgreSQL | Modelos `Client`, `TaxEntity` | Ninguna | **SÍ (Core)** |
+| **Catálogo / Plantillas** | Preparado (Frontend) | Completa | Completa | PostgreSQL | Modelos `ProductTemplate` | Roles | **SÍ (Core)** |
+| **New Business** | Preparado (Frontend) | Completa | Completa | PostgreSQL | Modelo `Opportunity` | Clientes, Roles | **SÍ (Core)** |
+| **Alcance & Backlog** | Preparado (Frontend) | Completa | Completa | PostgreSQL | Modelos `Deliverable`, `Item` | Plantillas, Roles | **SÍ (Core)** |
 | **Calculadora / Pricing** | Prototipo Avanzado | Completa | 90% (Sheet) | Configurable DB | Motor de cálculo / Fórmulas | Backlog, Tarifas | **SÍ (Core)** |
-| **Quotes (Cotizaciones)** | Implementado | Completa | Completa | PostgreSQL | Modelo `QuoteProposal` | New Business, Pricing| **SÍ (Core)** |
-| **SOW Contractual** | Implementado | Completa | Completa | PostgreSQL / Doc | Modelo `SOWDocument` | Quotes | NO (UI Liviana) |
-| **Formalización / Gates** | Implementado | Completa | Completa | PostgreSQL | Campos en `Opportunity/Project`| SOW, Quotes | **SÍ (Core)** |
-| **Proyectos** | Implementado | Completa | Completa | PostgreSQL | Modelo `Project` | Clientes, New Business| **SÍ (Core)** |
-| **Entregables** | Implementado | Completa | Completa | PostgreSQL | Modelo `ProjectDeliverable` | Proyectos, Roles | **SÍ (Core)** |
-| **Tareas** | Implementado | Completa | Completa | PostgreSQL | Modelo `Task` | Entregables, Proyectos| **SÍ (Core)** |
-| **Staffing / Asignación** | Implementado | Completa | Completa | PostgreSQL | Modelo `ProjectAssignment` | Usuarios, Proyectos | **SÍ (Core)** |
-| **Capacidad** | Diseñado | Completa | Completa | Engine Backend | Endpoints agregados | Asignaciones, TimeLogs| **SÍ (Core)** |
-| **Time Tracking** | Implementado | Completa | Completa | PostgreSQL | Modelo `TimeLog`, Locks | Tareas, Usuarios | **SÍ (Core)** |
+| **Quotes (Cotizaciones)** | Preparado (Frontend) | Completa | Completa | PostgreSQL | Modelo `QuoteProposal` | New Business, Pricing| **SÍ (Core)** |
+| **SOW Contractual** | Preparado (Frontend) | Completa | Completa | PostgreSQL / Doc | Modelo `SOWDocument` | Quotes | NO (UI Liviana) |
+| **Formalización / Gates** | Preparado (Frontend) | Completa | Completa | PostgreSQL | Campos en `Opportunity/Project`| SOW, Quotes | **SÍ (Core)** |
+| **Proyectos** | Preparado (Frontend) | Completa | Completa | PostgreSQL | Modelo `Project` | Clientes, New Business| **SÍ (Core)** |
+| **Entregables** | Preparado (Frontend) | Completa | Completa | PostgreSQL | Modelo `ProjectDeliverable` | Proyectos, Roles | **SÍ (Core)** |
+| **Tareas** | Preparado (Frontend) | Completa | Completa | PostgreSQL | Modelo `Task` | Entregables, Proyectos| **SÍ (Core)** |
+| **Staffing / Asignación** | Preparado (Frontend) | Completa | Completa | PostgreSQL | Modelo `ProjectAssignment` | Usuarios, Proyectos | **SÍ (Core)** |
+| **Capacidad** | Diseñado (Frontend) | Completa | Completa | Engine Backend | Endpoints agregados | Asignaciones, TimeLogs| **SÍ (Core)** |
+| **Time Tracking** | Preparado (Frontend) | Completa | Completa | PostgreSQL | Modelo `TimeLog`, Locks | Tareas, Usuarios | **SÍ (Core)** |
 | **Mi Día** | Refactor UX | Completa | Completa | Vistas agregadas| Queries agrupadas | Tareas, TimeLogs | NO (Frontend View) |
 | **Documentos / Drive** | Manual | Completa | 30% (Manual) | Links en DB | Integración Google Drive API | Ninguna | NO (Evolutivo) |
 | **Alegra / Fiscal** | Manual Vivian | Completa | Manual | IDs en DB | Integración Alegra API | Clientes | NO (Evolutivo) |

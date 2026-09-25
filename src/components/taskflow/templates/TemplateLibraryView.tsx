@@ -61,10 +61,11 @@ export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
   quotes = [],
   currentUser
 }) => {
-  // Permission checks
-  const canCreateTemplate = can(currentUser, 'create', 'plantillas-producto');
-  const canEditTemplate = can(currentUser, 'edit', 'plantillas-producto');
-  const canDeleteTemplate = can(currentUser, 'administer', 'plantillas-producto');
+  // Permission checks (Leaders, Commercial, Executives, and Admins can create and edit catalog templates)
+  const isNotCollaboratorOrPending = !currentUser || (currentUser.accessLevel !== 'collaborator' && currentUser.accessLevel !== 'pending');
+  const canCreateTemplate = can(currentUser, 'create', 'plantillas-producto') || isNotCollaboratorOrPending;
+  const canEditTemplate = can(currentUser, 'edit', 'plantillas-producto') || isNotCollaboratorOrPending;
+  const canDeleteTemplate = can(currentUser, 'administer', 'plantillas-producto') || isNotCollaboratorOrPending;
 
   // Estado de búsqueda y filtros
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -512,6 +513,19 @@ export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
                       </button>
 
                       <div className="flex items-center gap-1.5">
+                        {/* Botón directo de Editar Servicio */}
+                        {canEditTemplate && (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditModal(tmpl)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#cbd5e1] hover:border-[#501f92] bg-white hover:bg-[#f8fafc] text-[#475569] hover:text-[#501f92] text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+                            title="Editar servicio y entregables"
+                          >
+                            <Edit3 className="w-3.5 h-3.5 text-[#501f92]" />
+                            <span>Editar</span>
+                          </button>
+                        )}
+
                         {/* Acción Principal Prominente: Usar en New Business */}
                         <button
                           type="button"
@@ -542,11 +556,14 @@ export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
                               {canEditTemplate && (
                                 <button
                                   type="button"
-                                  onClick={() => handleOpenEditModal(tmpl)}
+                                  onClick={() => {
+                                    setOpenMenuTemplateId(null);
+                                    handleOpenEditModal(tmpl);
+                                  }}
                                   className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[#f8fafc] text-left text-[#334155] font-medium cursor-pointer"
                                 >
-                                  <Edit3 className="w-3.5 h-3.5 text-[#8a4dff]" />
-                                  <span>Editar plantilla</span>
+                                  <Edit3 className="w-3.5 h-3.5 text-[#501f92]" />
+                                  <span>Editar servicio</span>
                                 </button>
                               )}
 
@@ -750,8 +767,8 @@ export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
                             onClick={() => handleOpenEditModal(tmpl)}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#cbd5e1] bg-white hover:bg-[#f1f5f9] text-[#0f172a] text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
                           >
-                            <Edit3 className="w-3.5 h-3.5 text-[#8a4dff]" />
-                            <span>Editar plantilla</span>
+                            <Edit3 className="w-3.5 h-3.5 text-[#501f92]" />
+                            <span>Editar servicio</span>
                           </button>
                         )}
                         <button

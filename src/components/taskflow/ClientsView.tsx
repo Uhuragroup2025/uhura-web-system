@@ -1,35 +1,25 @@
-import React, { useState } from 'react';
-import { ClientProfile, ClientStatus, ClientType } from './types';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { ClientProfile, ClientStatus, UserItem } from './types';
 import { ClientDetailView } from './ClientDetailView';
 import { EditClientModal } from './EditClientModal';
 import { CreateClientModal } from './CreateClientModal';
 import {
-  Users,
   Search,
   Plus,
-  ArrowRight,
-  TrendingUp,
-  DollarSign,
-  Briefcase,
   Building2,
-  Filter,
-  CheckCircle2,
-  AlertTriangle,
   ChevronRight,
-  Sparkles,
   Edit3,
-  Globe,
+  MoreVertical,
   Archive,
-  RotateCcw,
-  FileText,
-  User,
+  FolderPlus,
+  ExternalLink,
   ShieldCheck,
-  PauseCircle,
-  PlayCircle
+  FileText
 } from 'lucide-react';
 
 interface ClientsViewProps {
   clients: ClientProfile[];
+  currentUser?: UserItem;
   selectedClientId?: string | null;
   onSelectClient?: (clientId: string | null) => void;
   onNavigateToDashboard?: () => void;
@@ -41,6 +31,7 @@ interface ClientsViewProps {
 
 export const ClientsView: React.FC<ClientsViewProps> = ({
   clients,
+  currentUser,
   selectedClientId: initialSelectedClientId = null,
   onSelectClient,
   onNavigateToDashboard,
@@ -55,12 +46,49 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   const [filterHealth, setFilterHealth] = useState<'all' | 'Saludable' | 'En Riesgo'>('all');
   const [showArchivedList, setShowArchivedList] = useState(false);
 
+  // Card action menu state
+  const [activeMenuClientId, setActiveMenuClientId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
   // Edit modal state
   const [editingClient, setEditingClient] = useState<ClientProfile | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   // Create modal state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  // Close card menu on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setActiveMenuClientId(null);
+      }
+    };
+    if (activeMenuClientId) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [activeMenuClientId]);
+
+  // Determine whether current user is administrative / commercial
+  const isCommercialOrAdmin = useMemo(() => {
+    if (!currentUser) return true;
+    const level = currentUser.accessLevel;
+    const role = (currentUser.role || '').toLowerCase();
+    const officialRole = (currentUser.officialRole || '').toLowerCase();
+    return (
+      level === 'executive' ||
+      level === 'system_admin' ||
+      role === 'commercial' ||
+      role === 'admin' ||
+      role.includes('comercial') ||
+      officialRole.includes('comercial') ||
+      officialRole.includes('directora') ||
+      officialRole.includes('admin')
+    );
+  }, [currentUser]);
 
   // Handle client selection
   const handleClientClick = (clientId: string) => {
@@ -75,6 +103,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
 
   const handleEditClick = (e: React.MouseEvent, client: ClientProfile) => {
     e.stopPropagation();
+    setActiveMenuClientId(null);
     setEditingClient(client);
     setIsEditModalOpen(true);
   };
@@ -93,7 +122,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
     }
   };
 
-  // If a client is selected, show ClientDetailView!
+  // If a client is selected, show ClientDetailView
   if (selectedClientId) {
     const selectedClient = clients.find((c) => c.id === selectedClientId) || clients[0];
     return (
@@ -122,10 +151,12 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
     );
   }
 
-  // Active clients, paused clients, archived clients
+  // Active, paused, and archived counts
   const activeClients = clients.filter((c) => (c.status || 'active') === 'active');
   const pausedClients = clients.filter((c) => c.status === 'paused');
   const archivedClients = clients.filter((c) => c.status === 'archived');
+  const totalProjects = clients.reduce((acc, c) => acc + (c.projectsCount || 0), 0);
+  const atRiskCount = clients.filter((c) => c.healthStatus === 'En Riesgo').length;
 
   // Filter clients
   const filterClientsList = (list: ClientProfile[]) =>
@@ -139,8 +170,6 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
         (c.nit && c.nit.includes(searchQuery)) ||
         (primaryContact?.name && primaryContact.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (c.commercialInfo?.contactName && c.commercialInfo.contactName.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        c.taxEntities?.some((t) => t.businessName.toLowerCase().includes(searchQuery.toLowerCase()) || t.nit.includes(searchQuery)) ||
-        c.contacts?.some((con) => con.name.toLowerCase().includes(searchQuery.toLowerCase()) || con.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
         c.commercialInfo?.brands?.some((b) => b.toLowerCase().includes(searchQuery.toLowerCase()));
 
       const matchesStatus = filterStatus === 'all' || (c.status || 'active') === filterStatus;
@@ -153,421 +182,368 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   const filteredPausedClients = filterClientsList(pausedClients);
   const filteredArchivedClients = filterClientsList(archivedClients);
 
-  // Calculate totals
-  const totalProjects = clients.reduce((acc, c) => acc + (c.projectsCount || 0), 0);
+  // Combined active and paused when displaying directory
+  const displayClients = filterStatus === 'archived'
+    ? filteredArchivedClients
+    : filterStatus === 'paused'
+    ? filteredPausedClients
+    : filterStatus === 'active'
+    ? filteredActiveClients
+    : [...filteredActiveClients, ...filteredPausedClients];
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200">
-      {/* Top Banner & Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-4 animate-in fade-in duration-200">
+      {/* 1. TOP HEADER & RESUMEN EN UNA SOLA LÍNEA */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
         <div>
-          <div className="flex items-center gap-2 text-xs text-[#64748b]">
-            <span className="w-2 h-2 rounded-full bg-[#501f92]" />
-            <span>Cuentas Sombrilla Operativas, Multi-NIT y Directorio de Contactos</span>
-          </div>
-          <h2 className="text-xl sm:text-2xl font-extrabold text-[#0f172a] mt-1">
-            Cartera de Clientes ({clients.length})
+          <h2 className="text-xl sm:text-2xl font-extrabold text-[#0f172a] tracking-tight">
+            Cartera de Clientes
           </h2>
+          {/* Resumen ejecutivo en una sola línea */}
+          <div className="flex items-center flex-wrap gap-2 text-xs text-[#64748b] mt-1 font-medium">
+            <span className="font-bold text-[#0f172a]">{clients.length} cuentas</span>
+            <span className="text-[#cbd5e1]">·</span>
+            <span className="text-emerald-700 font-semibold">{activeClients.length} activas</span>
+            {pausedClients.length > 0 && (
+              <>
+                <span className="text-[#cbd5e1]">·</span>
+                <span className="text-amber-700 font-semibold">{pausedClients.length} pausadas</span>
+              </>
+            )}
+            <span className="text-[#cbd5e1]">·</span>
+            <span>{totalProjects} proyectos</span>
+            <span className="text-[#cbd5e1]">·</span>
+            <span className={atRiskCount > 0 ? 'text-amber-600 font-bold' : 'text-[#64748b]'}>
+              {atRiskCount} en riesgo
+            </span>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold shadow-xs transition-all cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold shadow-2xs transition-all cursor-pointer shrink-0"
           >
             <Plus className="w-4 h-4" />
             <span>+ Nueva Cuenta</span>
           </button>
-          <span className="text-xs font-bold text-[#501f92] bg-[#f2ecfb] px-3 py-1.5 rounded-xl border border-[#8a4dff]/20">
-            {clients.filter((c) => c.portalActive).length} Portales Habilitados
-          </span>
         </div>
       </div>
 
-      {/* Overview Stats Bar */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
-        <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-[#e2e8f0] shadow-xs flex items-center gap-3.5 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-[#ecfdf5] text-[#059669] flex items-center justify-center font-bold shrink-0">
-            <Building2 className="w-5 h-5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <span className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider block truncate">Clientes en Operación</span>
-            <div className="text-base sm:text-lg lg:text-xl font-extrabold text-[#0f172a] truncate">
-              {activeClients.length} activos {pausedClients.length > 0 && `• ${pausedClients.length} pausados`}
-            </div>
-          </div>
-        </div>
-
-        <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-[#e2e8f0] shadow-xs flex items-center gap-3.5 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-[#eff6ff] text-[#2563eb] flex items-center justify-center font-bold shrink-0">
-            <Briefcase className="w-5 h-5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <span className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider block truncate">Total Proyectos</span>
-            <div className="text-base sm:text-lg lg:text-xl font-extrabold text-[#0f172a] truncate">{totalProjects} en cartera</div>
-          </div>
-        </div>
-
-        <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-[#e2e8f0] shadow-xs flex items-center gap-3.5 min-w-0 sm:col-span-2 xl:col-span-1">
-          <div className="w-10 h-10 rounded-xl bg-[#f2ecfb] text-[#501f92] flex items-center justify-center font-bold shrink-0">
-            <TrendingUp className="w-5 h-5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <span className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider block truncate">Salud Operativa</span>
-            <div className="text-base sm:text-lg lg:text-xl font-extrabold text-[#0f172a] truncate">
-              {clients.length > 0 ? Math.round((clients.filter((c) => c.healthStatus === 'Saludable').length / clients.length) * 100) : 100}% Saludable
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Search & Filter Toolbar */}
-      <div className="bg-white p-4 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
+      {/* 2. BARRA ÚNICA DE FILTROS LIMPIA: [Buscar cliente...] [Estado ▾] [Salud ▾] */}
+      <div className="bg-white p-2.5 sm:p-3 rounded-2xl border border-[#e2e8f0] shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         {/* Search input */}
-        <div className="relative flex-1 max-w-md">
+        <div className="relative flex-1">
           <Search className="w-4 h-4 text-[#94a3b8] absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Buscar por marca, razón social, NIT o contacto..."
+            placeholder="Buscar cliente, marca o contacto..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] text-xs font-medium text-[#0f172a] placeholder-[#94a3b8] focus:outline-none focus:border-[#501f92] focus:bg-white transition-all"
+            className="w-full pl-9 pr-4 py-1.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] text-xs font-medium text-[#0f172a] placeholder-[#94a3b8] focus:outline-none focus:border-[#501f92] focus:bg-white transition-all"
           />
         </div>
 
-        {/* Filter Pills */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Status filter */}
-          <div className="flex items-center gap-1 bg-[#f8fafc] p-1 rounded-xl border border-[#e2e8f0] text-xs">
-            <button
-              onClick={() => setFilterStatus('all')}
-              className={`px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer ${
-                filterStatus === 'all'
-                  ? 'bg-[#501f92] text-white shadow-2xs'
-                  : 'text-[#64748b] hover:text-[#0f172a]'
-              }`}
-            >
-              Todos
-            </button>
-            <button
-              onClick={() => setFilterStatus('active')}
-              className={`px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer ${
-                filterStatus === 'active'
-                  ? 'bg-[#501f92] text-white shadow-2xs'
-                  : 'text-[#64748b] hover:text-[#0f172a]'
-              }`}
-            >
-              Activos
-            </button>
-            <button
-              onClick={() => setFilterStatus('paused')}
-              className={`px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer ${
-                filterStatus === 'paused'
-                  ? 'bg-[#501f92] text-white shadow-2xs'
-                  : 'text-[#64748b] hover:text-[#0f172a]'
-              }`}
-            >
-              Pausados
-            </button>
-          </div>
+        {/* Dropdowns de Estado y Salud */}
+        <div className="flex items-center gap-2 shrink-0">
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value as any)}
+            className="px-3 py-1.5 text-xs bg-[#f8fafc] border border-[#e2e8f0] rounded-xl font-semibold text-[#0f172a] focus:outline-none focus:border-[#501f92] cursor-pointer"
+          >
+            <option value="all">Estado: Todos</option>
+            <option value="active">Activos ({activeClients.length})</option>
+            <option value="paused">Pausados ({pausedClients.length})</option>
+            <option value="archived">Archivados ({archivedClients.length})</option>
+          </select>
 
-          {/* Health filter */}
-          <div className="flex items-center gap-1 bg-[#f8fafc] p-1 rounded-xl border border-[#e2e8f0] text-xs">
+          <select
+            value={filterHealth}
+            onChange={(e) => setFilterHealth(e.target.value as any)}
+            className="px-3 py-1.5 text-xs bg-[#f8fafc] border border-[#e2e8f0] rounded-xl font-semibold text-[#0f172a] focus:outline-none focus:border-[#501f92] cursor-pointer"
+          >
+            <option value="all">Salud: Todas</option>
+            <option value="Saludable">Saludables</option>
+            <option value="En Riesgo">En riesgo</option>
+          </select>
+
+          {(searchQuery || filterStatus !== 'all' || filterHealth !== 'all') && (
             <button
-              onClick={() => setFilterHealth('all')}
-              className={`px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer ${
-                filterHealth === 'all'
-                  ? 'bg-[#0f172a] text-white'
-                  : 'text-[#64748b] hover:text-[#0f172a]'
-              }`}
+              onClick={() => {
+                setSearchQuery('');
+                setFilterStatus('all');
+                setFilterHealth('all');
+              }}
+              className="text-xs font-bold text-[#501f92] hover:underline px-1.5 cursor-pointer shrink-0"
             >
-              Todas
+              Limpiar
             </button>
-            <button
-              onClick={() => setFilterHealth('Saludable')}
-              className={`px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer ${
-                filterHealth === 'Saludable'
-                  ? 'bg-[#10b981] text-white'
-                  : 'text-[#64748b] hover:text-[#0f172a]'
-              }`}
-            >
-              Saludables
-            </button>
-            <button
-              onClick={() => setFilterHealth('En Riesgo')}
-              className={`px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer ${
-                filterHealth === 'En Riesgo'
-                  ? 'bg-[#f59e0b] text-white'
-                  : 'text-[#64748b] hover:text-[#0f172a]'
-              }`}
-            >
-              En Riesgo
-            </button>
-          </div>
+          )}
         </div>
       </div>
 
-      {/* SECTION 1: CLIENTES ACTIVOS (CARDS FORMAT) */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-extrabold text-[#0f172a] flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#10b981]" />
-            <span>Cuentas Activas ({filteredActiveClients.length})</span>
-          </h3>
-          <span className="text-xs text-[#64748b]">Operación vigente en Orbit</span>
+      {/* 3. CARDS DE CLIENTE: MÁS BAJAS, ESCANEABLES (3 COLUMNAS EN DESKTOP) */}
+      {displayClients.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-[#e2e8f0] p-12 text-center text-[#94a3b8] space-y-2">
+          <Building2 className="w-8 h-8 mx-auto text-[#cbd5e1]" />
+          <p className="text-xs font-semibold">No se encontraron clientes con los filtros aplicados.</p>
+          <button
+            onClick={() => {
+              setSearchQuery('');
+              setFilterStatus('all');
+              setFilterHealth('all');
+            }}
+            className="text-xs font-bold text-[#501f92] hover:underline"
+          >
+            Restablecer filtros
+          </button>
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredActiveClients.map((cli) => {
-            const primaryTax = cli.taxEntities?.find((t) => t.isPrimary) || cli.taxEntities?.[0];
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+          {displayClients.map((cli) => {
             const primaryContact = cli.contacts?.find((con) => con.isPrimary) || cli.contacts?.[0];
+            const isMenuOpen = activeMenuClientId === cli.id;
 
             return (
               <div
                 key={cli.id}
                 onClick={() => handleClientClick(cli.id)}
-                className="p-5 rounded-2xl bg-white border border-[#e2e8f0] hover:border-[#8a4dff] hover:shadow-md transition-all cursor-pointer space-y-3.5 group relative"
+                className="p-4 rounded-2xl bg-white border border-[#e2e8f0] hover:border-[#8a4dff] hover:shadow-2xs transition-all cursor-pointer space-y-2.5 group relative flex flex-col justify-between"
               >
-                {/* Top row */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    {cli.isInternal ? (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#f2ecfb] text-[#501f92] border border-[#8a4dff]/30">
-                        Uhura Interno
-                      </span>
-                    ) : (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#ecfdf5] text-[#065f46] border border-[#a7f3d0]">
-                        Activo
-                      </span>
-                    )}
-                    {cli.taxEntities && cli.taxEntities.length > 1 && (
-                      <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded-md bg-[#f1f5f9] text-[#64748b]">
-                        {cli.taxEntities.length} NITs
-                      </span>
-                    )}
-                  </div>
+                <div className="space-y-2">
+                  {/* Fila 1: Nombre + Estado / Salud + Menú ⋯ */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-extrabold text-sm text-[#0f172a] group-hover:text-[#501f92] transition-colors truncate">
+                        {cli.name}
+                      </h3>
 
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={(e) => handleEditClick(e, cli)}
-                      title="Editar cuenta"
-                      className="p-1 rounded-lg text-[#94a3b8] hover:text-[#501f92] hover:bg-[#f2ecfb] transition-colors cursor-pointer"
+                      {/* Estado · Salud en una sola línea */}
+                      <div className="flex items-center gap-1 text-[11px] font-semibold mt-0.5">
+                        <span className={cli.status === 'paused' ? 'text-amber-700' : 'text-emerald-700'}>
+                          {cli.status === 'paused' ? 'Pausado' : 'Activo'}
+                        </span>
+                        <span className="text-[#cbd5e1]">·</span>
+                        <span className="flex items-center gap-1">
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              cli.healthStatus === 'Saludable' ? 'bg-[#10b981]' : 'bg-[#f59e0b]'
+                            }`}
+                          />
+                          <span
+                            className={
+                              cli.healthStatus === 'Saludable' ? 'text-[#16a34a]' : 'text-[#d97706]'
+                            }
+                          >
+                            {cli.healthStatus}
+                          </span>
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Menú ⋯ secundario */}
+                    <div
+                      className="relative shrink-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                      }}
                     >
-                      <Edit3 className="w-3.5 h-3.5" />
-                    </button>
-
-                    <div className="flex items-center gap-1.5 text-xs font-semibold">
-                      <span
-                        className={`w-2 h-2 rounded-full ${
-                          cli.healthStatus === 'Saludable' ? 'bg-[#10b981]' : 'bg-[#f59e0b]'
-                        }`}
-                      />
-                      <span
-                        className={
-                          cli.healthStatus === 'Saludable' ? 'text-[#16a34a]' : 'text-[#d97706]'
-                        }
+                      <button
+                        type="button"
+                        onClick={() => setActiveMenuClientId(isMenuOpen ? null : cli.id)}
+                        className="p-1 rounded-lg text-[#94a3b8] hover:text-[#0f172a] hover:bg-[#f1f5f9] transition-colors cursor-pointer"
+                        title="Opciones de cuenta"
                       >
-                        {cli.healthStatus}
-                      </span>
+                        <MoreVertical className="w-3.5 h-3.5" />
+                      </button>
+
+                      {/* Popover desplegable */}
+                      {isMenuOpen && (
+                        <div
+                          ref={menuRef}
+                          className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl border border-[#e2e8f0] shadow-lg py-1.5 z-30 text-xs animate-in fade-in zoom-in-95 duration-100"
+                        >
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveMenuClientId(null);
+                              handleClientClick(cli.id);
+                            }}
+                            className="w-full text-left px-3 py-1.5 hover:bg-[#f8fafc] text-[#0f172a] font-medium flex items-center gap-2 cursor-pointer"
+                          >
+                            <ChevronRight className="w-3.5 h-3.5 text-[#64748b]" />
+                            <span>Ver detalle de cuenta</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={(e) => handleEditClick(e, cli)}
+                            className="w-full text-left px-3 py-1.5 hover:bg-[#f8fafc] text-[#0f172a] font-medium flex items-center gap-2 cursor-pointer"
+                          >
+                            <Edit3 className="w-3.5 h-3.5 text-[#64748b]" />
+                            <span>Editar cuenta</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveMenuClientId(null);
+                              handleClientClick(cli.id);
+                            }}
+                            className="w-full text-left px-3 py-1.5 hover:bg-[#f8fafc] text-[#0f172a] font-medium flex items-center gap-2 cursor-pointer"
+                          >
+                            <FileText className="w-3.5 h-3.5 text-[#64748b]" />
+                            <span>Gestionar razón social / NIT</span>
+                          </button>
+
+                          {onOpenNewProjectForClient && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveMenuClientId(null);
+                                onOpenNewProjectForClient(cli.id);
+                              }}
+                              className="w-full text-left px-3 py-1.5 hover:bg-[#f8fafc] text-[#501f92] font-semibold flex items-center gap-2 border-t border-[#f1f5f9] cursor-pointer"
+                            >
+                              <FolderPlus className="w-3.5 h-3.5 text-[#501f92]" />
+                              <span>Crear nuevo proyecto</span>
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
-                </div>
 
-                {/* Client Name & Primary NIT */}
-                <div>
-                  <h3 className="font-extrabold text-base text-[#0f172a] group-hover:text-[#501f92] transition-colors flex items-center justify-between">
-                    <span>{cli.name}</span>
-                    <ChevronRight className="w-4 h-4 text-[#94a3b8] group-hover:text-[#501f92] group-hover:translate-x-0.5 transition-all" />
-                  </h3>
-                  <p className="text-[11px] font-mono text-[#64748b]">
-                    {primaryTax ? `NIT: ${primaryTax.nit}` : (cli.nit || 'Sin NIT asignado')}
-                  </p>
-                </div>
-
-                {/* Primary Contact snippet & Projects count */}
-                <div className="text-xs text-[#475569] pt-2 border-t border-[#f1f5f9] flex justify-between items-center">
-                  <span className="truncate max-w-[170px]">
-                    • {primaryContact ? primaryContact.name : (cli.commercialInfo?.contactName || 'Sin contacto')}
-                  </span>
-                  <span className="text-[11px] text-[#64748b] font-medium">
-                    {cli.projectsCount || 0} proyectos
-                  </span>
-                </div>
-
-                {/* Account Manager / Brands tags */}
-                {cli.commercialInfo?.brands && cli.commercialInfo.brands.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {cli.commercialInfo.brands.slice(0, 3).map((b, idx) => (
-                      <span
-                        key={idx}
-                        className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-[#f8fafc] text-[#475569] border border-[#e2e8f0]"
-                      >
-                        {b}
-                      </span>
-                    ))}
-                    {cli.commercialInfo.brands.length > 3 && (
-                      <span className="text-[10px] text-[#64748b] px-1 py-0.5">
-                        +{cli.commercialInfo.brands.length - 3}
-                      </span>
-                    )}
-                  </div>
-                )}
-
-                {/* Billing & Margin Footer */}
-                <div className="pt-2 border-t border-[#f1f5f9] flex items-center justify-between">
-                  <div>
-                    <span className="text-[10px] uppercase font-bold text-[#64748b] block">Facturado</span>
-                    <span className="text-sm font-bold text-[#501f92]">{cli.billedCOP || '$0'}</span>
-                  </div>
-
-                  <div className="text-right">
-                    <span className="text-[10px] uppercase font-bold text-[#64748b] block">Margen</span>
-                    <span className="text-sm font-bold text-[#0f172a]">
-                      {cli.averageMarginPercent !== null && cli.averageMarginPercent !== undefined ? `${cli.averageMarginPercent}%` : '—'}
+                  {/* Fila 2: Contacto principal · Proyectos */}
+                  <div className="text-xs text-[#475569] flex items-center justify-between gap-2">
+                    <span className="truncate font-medium">
+                      {primaryContact ? primaryContact.name : (cli.commercialInfo?.contactName || 'Sin contacto')}
+                    </span>
+                    <span className="text-[11px] text-[#64748b] font-semibold shrink-0">
+                      {cli.projectsCount || 0} {cli.projectsCount === 1 ? 'proyecto' : 'proyectos'}
                     </span>
                   </div>
+
+                  {/* Fila 3: Marcas (tags compactos) */}
+                  {cli.commercialInfo?.brands && cli.commercialInfo.brands.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1 pt-0.5">
+                      {cli.commercialInfo.brands.slice(0, 3).map((b, idx) => (
+                        <span
+                          key={idx}
+                          className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-[#f8fafc] text-[#475569] border border-[#e2e8f0]"
+                        >
+                          {b}
+                        </span>
+                      ))}
+                      {cli.commercialInfo.brands.length > 3 && (
+                        <span className="text-[10px] text-[#94a3b8] font-mono px-1">
+                          +{cli.commercialInfo.brands.length - 3}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Fila 4: Métrica Principal según Rol (RBAC) */}
+                <div className="pt-2 border-t border-[#f1f5f9] flex items-center justify-between text-xs mt-1">
+                  {isCommercialOrAdmin ? (
+                    <>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] text-[#64748b] uppercase font-bold">Facturado</span>
+                        <span className="font-bold text-[#501f92]">{cli.billedCOP || '$0'}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] text-[#64748b] uppercase font-bold">Margen</span>
+                        <span className="font-bold text-[#0f172a]">
+                          {cli.averageMarginPercent !== null && cli.averageMarginPercent !== undefined
+                            ? `${cli.averageMarginPercent}%`
+                            : '—'}
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-[11px] text-[#475569] font-medium">
+                        {cli.projectsCount || 0} proyectos en cartera
+                      </span>
+                      <span
+                        className={`text-[11px] font-bold ${
+                          cli.healthStatus === 'Saludable' ? 'text-emerald-700' : 'text-amber-700'
+                        }`}
+                      >
+                        {cli.healthStatus === 'Saludable' ? 'Al día' : '1 en riesgo'}
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
             );
           })}
         </div>
-      </div>
-
-      {/* SECTION 2: CLIENTES PAUSADOS (SI EXISTEN) */}
-      {filteredPausedClients.length > 0 && (
-        <div className="pt-4 border-t border-[#f1f5f9] space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-extrabold text-[#92400e] flex items-center gap-2">
-              <PauseCircle className="w-4 h-4 text-[#f59e0b]" />
-              <span>Clientes Pausados ({filteredPausedClients.length})</span>
-            </h3>
-            <span className="text-xs text-[#64748b]">Relación detenida temporalmente · Conserva histórico</span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredPausedClients.map((cli) => {
-              const primaryTax = cli.taxEntities?.find((t) => t.isPrimary) || cli.taxEntities?.[0];
-              const primaryContact = cli.contacts?.find((con) => con.isPrimary) || cli.contacts?.[0];
-
-              return (
-                <div
-                  key={cli.id}
-                  onClick={() => handleClientClick(cli.id)}
-                  className="p-5 rounded-2xl bg-[#fffdfa] border border-[#fef08a] hover:border-[#f59e0b] hover:shadow-md transition-all cursor-pointer space-y-3 group"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#fffbeb] text-[#92400e] border border-[#fef08a]">
-                      Pausado
-                    </span>
-                    <button
-                      onClick={(e) => handleEditClick(e, cli)}
-                      className="p-1 rounded-lg text-[#94a3b8] hover:text-[#501f92] hover:bg-[#f2ecfb] transition-colors cursor-pointer"
-                    >
-                      <Edit3 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-
-                  <div>
-                    <h3 className="font-extrabold text-base text-[#0f172a] group-hover:text-[#92400e] transition-colors">
-                      {cli.name}
-                    </h3>
-                    <p className="text-[11px] font-mono text-[#64748b]">
-                      {primaryTax ? `NIT: ${primaryTax.nit}` : (cli.nit || 'Sin NIT')}
-                    </p>
-                  </div>
-
-                  <div className="text-xs text-[#64748b] pt-2 border-t border-[#f1f5f9] flex justify-between">
-                    <span>• {primaryContact?.name || cli.commercialInfo?.contactName || 'Sin contacto'}</span>
-                    <span>{cli.closedProjectsCount || 0} cerrados</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
       )}
 
-      {/* SECTION 3: ARCHIVED CLIENTS (CLEAN TABLE FORMAT) */}
-      {archivedClients.length > 0 && (
-        <div className="pt-4 border-t border-[#f1f5f9] space-y-3">
+      {/* 4. SECCIÓN SECUNDARIA: ARCHIVADOS (OPCIONAL O CUANDO HAY FILTRO) */}
+      {filterStatus === 'all' && archivedClients.length > 0 && (
+        <div className="pt-2 border-t border-[#f1f5f9]">
           <div className="flex items-center justify-between">
             <button
               onClick={() => setShowArchivedList(!showArchivedList)}
-              className="text-sm font-extrabold text-[#64748b] hover:text-[#0f172a] flex items-center gap-2 cursor-pointer"
+              className="text-xs font-bold text-[#64748b] hover:text-[#0f172a] flex items-center gap-1.5 cursor-pointer py-1"
             >
-              <Archive className="w-4 h-4 text-[#94a3b8]" />
-              <span>Clientes Archivados ({archivedClients.length})</span>
-              <span className="text-xs font-normal text-[#94a3b8]">
-                {showArchivedList ? '(Ocultar lista)' : '(Mostrar lista)'}
+              <Archive className="w-3.5 h-3.5 text-[#94a3b8]" />
+              <span>Cuentas Archivadas ({archivedClients.length})</span>
+              <span className="text-[10px] font-normal text-[#94a3b8]">
+                {showArchivedList ? '— ocultar' : '— ver'}
               </span>
             </button>
-            <span className="text-xs text-[#94a3b8]">Cuentas históricas no disponibles para nueva operación</span>
+            <span className="text-[11px] text-[#94a3b8]">Histórico conservado</span>
           </div>
 
           {showArchivedList && (
-            <div className="bg-white rounded-2xl border border-[#e2e8f0] shadow-xs overflow-hidden">
+            <div className="mt-2 bg-white rounded-2xl border border-[#e2e8f0] shadow-2xs overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead>
-                    <tr className="border-b border-[#f1f5f9] text-[11px] font-bold text-[#64748b] uppercase tracking-wider bg-[#f8fafc]">
-                      <th className="py-3 px-4">CLIENTE / NIT</th>
-                      <th className="py-3 px-4">ESTADO</th>
-                      <th className="py-3 px-4">CONTACTO</th>
-                      <th className="py-3 px-4">PROYECTOS HISTÓRICOS</th>
-                      <th className="py-3 px-4 text-right">FACTURADO TOTAL</th>
-                      <th className="py-3 px-4 text-right pr-6">ACCIONES</th>
+                    <tr className="border-b border-[#f1f5f9] text-[10px] font-bold text-[#64748b] uppercase tracking-wider bg-[#f8fafc]">
+                      <th className="py-2.5 px-4">CLIENTE</th>
+                      <th className="py-2.5 px-4">ESTADO</th>
+                      <th className="py-2.5 px-4">CONTACTO</th>
+                      <th className="py-2.5 px-4">PROYECTOS</th>
+                      <th className="py-2.5 px-4 text-right pr-4">ACCIÓN</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#f1f5f9]">
-                    {filteredArchivedClients.map((cli) => {
-                      const primaryTax = cli.taxEntities?.find((t) => t.isPrimary) || cli.taxEntities?.[0];
-                      const primaryContact = cli.contacts?.find((con) => con.isPrimary) || cli.contacts?.[0];
-
-                      return (
-                        <tr
-                          key={cli.id}
-                          onClick={() => handleClientClick(cli.id)}
-                          className="hover:bg-[#f8fafc] cursor-pointer transition-colors"
-                        >
-                          <td className="py-3.5 px-4">
-                            <div>
-                              <span className="font-bold text-[#0f172a] block">{cli.name}</span>
-                              <span className="text-[11px] font-mono text-[#64748b]">
-                                NIT: {primaryTax?.nit || cli.nit || '—'}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="py-3.5 px-4">
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#f1f5f9] text-[#475569]">
-                              Archivado
-                            </span>
-                          </td>
-                          <td className="py-3.5 px-4">
-                            <span className="text-[#0f172a] font-medium">
-                              {primaryContact?.name || cli.commercialInfo?.contactName || '—'}
-                            </span>
-                            <span className="text-[11px] text-[#64748b] block">
-                              {primaryContact?.roleTitle || cli.commercialInfo?.contactRole || ''}
-                            </span>
-                          </td>
-                          <td className="py-3.5 px-4 font-mono font-bold text-[#64748b]">
-                            {cli.closedProjectsCount || 0} cerrados
-                          </td>
-                          <td className="py-3.5 px-4 text-right font-mono font-bold text-[#0f172a]">
-                            {cli.billedCOP || '$0'}
-                          </td>
-                          <td className="py-3.5 px-4 text-right pr-6" onClick={(e) => e.stopPropagation()}>
-                            <button
-                              onClick={(e) => handleEditClick(e, cli)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#f8fafc] hover:bg-[#501f92] text-[#475569] hover:text-white border border-[#e2e8f0] text-xs font-semibold transition-colors cursor-pointer"
-                            >
-                              <Edit3 className="w-3 h-3" />
-                              <span>Editar</span>
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    {archivedClients.map((cli) => (
+                      <tr
+                        key={cli.id}
+                        onClick={() => handleClientClick(cli.id)}
+                        className="hover:bg-[#f8fafc] cursor-pointer transition-colors"
+                      >
+                        <td className="py-2.5 px-4 font-bold text-[#0f172a]">{cli.name}</td>
+                        <td className="py-2.5 px-4">
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-[#f1f5f9] text-[#64748b]">
+                            Archivado
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-4 text-[#475569]">
+                          {cli.contacts?.[0]?.name || cli.commercialInfo?.contactName || '—'}
+                        </td>
+                        <td className="py-2.5 px-4 text-[#64748b] font-mono">
+                          {cli.closedProjectsCount || 0} cerrados
+                        </td>
+                        <td className="py-2.5 px-4 text-right pr-4" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={(e) => handleEditClick(e, cli)}
+                            className="text-xs font-bold text-[#501f92] hover:underline"
+                          >
+                            Editar
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
