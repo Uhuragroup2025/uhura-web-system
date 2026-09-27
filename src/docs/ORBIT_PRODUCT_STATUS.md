@@ -38,6 +38,7 @@
 8. [Auditoría de Inconsistencias entre Prototipo UI y Especificación](#8-auditoría-de-inconsistencias-entre-prototipo-ui-y-especificación)
 9. [Gaps de Portabilidad y Plan de Cierre](#9-gaps-de-portabilidad-y-plan-de-cierre)
 10. [Roles, Niveles de Acceso y Matriz de Permisos (RBAC)](#10-roles-niveles-de-acceso-y-matriz-de-permisos-rbac)
+11. [Arquitectura de Interoperabilidad Estructural y Reglas de Dominio](#11-arquitectura-de-interoperabilidad-estructural-bloque-4)
 
 ---
 
@@ -334,6 +335,15 @@ Motor de pricing y rentabilidad que traduce las horas técnicas estructuradas en
 > **ADVERTENCIA CRÍTICA PARA BACKEND (INDUNOVA):**  
 > **La fuente de verdad financiera hoy sigue siendo el Google Sheet oficial de la "Calculadora Comercial UHURA 2026".**  
 > El código actual de Orbit (`financialEngine.ts`) representa un prototipo funcional avanzado de esa lógica. Mientras Finanzas y Dirección General de Uhura no firmen la validación final de fórmulas y constantes, **las reglas financieras no deben considerarse pétreas y deben exponerse como parámetros configurables en backend**, nunca como constantes `const` fijas en código.
+
+##### Referencia y Criterio de Aceptación Funcional:
+- **Referencia Oficial:** *Calculadora Comercial UHURA 2026 (Google Sheet oficial gobernado por Finanzas y Dirección General)*.
+- **Criterio Funcional de Paridad:**  
+  La Calculadora Comercial 2026 es la referencia vigente para validar los cálculos comerciales de Orbit. Ante los mismos inputs relevantes —por ejemplo roles, horas, duración en semanas y demás variables utilizadas por la calculadora— Orbit debe reproducir exactamente los mismos resultados y reglas de redondeo.
+- **Regla ante Ambigüedad o Gaps:**  
+  Si alguna fórmula, excepción o criterio no puede inferirse de manera inequívoca desde la calculadora o la documentación disponible, **NO debe asumirse libremente**: se debe registrar el gap formalmente para validación directa con Finanzas y Dirección General antes de codificar la regla definitiva en backend.
+- **Delimitación de Alcance:**  
+  No se implementa código adicional de esta calculadora en esta etapa; se fija la referencia y el criterio de aceptación funcional vinculante para el backend de Indunova.
 
 #### 4.3 Clasificación de Reglas Financieras
 
@@ -647,7 +657,10 @@ Visibilidad matemática de la disponibilidad real del equipo para asumir nuevos 
 1. **No a la Asunción Universal de 8 Horas Diarias:** Cada colaborador tiene una capacidad contractual y operativa configurada (ej. contratos de 40h semanales tienen típicamente 32h productivas y 8h de ceremonias/gestión interna).
 2. **Ecuación Canónica de Capacidad:**
    $$\text{Capacidad Libre} = \text{Disponibilidad Neta} - \text{Carga Semanal Planificada (ProjectAssignments)}$$
-3. **Fines de Semana:** No se consideran en la planificación de capacidad. Si alguien registra horas en sábado o domingo, se computa como ejecución real, pero nunca como disponibilidad proyectada.
+3. **Fines de Semana y Festivos:** No se consideran en la planificación de capacidad. Si alguien registra horas en sábado o domingo, se computa como ejecución real, pero nunca como disponibilidad proyectada.
+4. **Impacto Directo de Ausencias y Vacaciones (`TeamAbsenceEvent`):** Las ausencias aprobadas y programadas provenientes del modelo canónico `TeamAbsenceEvent` descuentan disponibilidad/capacidad del colaborador durante el periodo hábil correspondiente:
+   $$\text{Disponibilidad Neta} = \max(0, \text{Capacidad Base Configurada} - \sum \text{Deducción Ausencias Aprobadas})$$
+   Solo ausencias aprobadas/programadas deben afectar la capacidad operativa; festivos y fines de semana no descuentan horas porque su disponibilidad legal ya es 0h.
 
 ---
 
@@ -684,6 +697,13 @@ Pantalla principal de inicio para todo usuario de Orbit, adaptada a su rol y pri
 - **Comercial / New Business:** Prospectos en cotización, propuestas por enviar, status de formalización.
 - **Dirección (CEO / Operaciones):** Horas globales de la semana, proyectos en riesgo, capacidad disponible del equipo.
 
+#### 17.3 Eventos de Equipo en Mi Día (Cumpleaños, Aniversarios y Ausencias)
+Mi Día puede mostrar de forma discreta y no invasiva:
+- **Cumpleaños de hoy y próximos:** Calculados en tiempo de ejecución a partir de `birthDate` persistido en el perfil (`UserItem`).
+- **Aniversarios en Uhura:** Calculados a partir de `fecha_ingreso` persistido en el perfil (derivando la fecha anual del año en curso y los años cumplidos).
+- **Ausencias y vacaciones próximas relevantes:** Obtenidas del modelo canónico `TeamAbsenceEvent` (eventos aprobados y programados).
+- *Criterio UI:* Información visible de manera sobria y secundaria, sin competir con la lista de tareas operativas ni saturar el home con widgets pesados.
+
 ---
 
 ### Módulo 18: Bucky y La Colonia (Copiloto y Gamificación)
@@ -696,10 +716,22 @@ Pantalla principal de inicio para todo usuario de Orbit, adaptada a su rol y pri
   - **Leaderboard La Colonia:** [`src/components/taskflow/colony/ColonyLeaderboardView.tsx`](../components/taskflow/colony/ColonyLeaderboardView.tsx)
   - **Assets de Bucky:** [`/public/bucky_*.png`](../../public/)
 
-#### 18.2 Directrices Técnicas para Backend
+#### 18.2 Directrices Técnicas para Backend y Consumo Contextual
 - Bucky y La Colonia son componentes **Evolutivos / No Bloqueantes**.
 - **No deben frenar la portabilidad ni la construcción del backend transaccional de Indunova.**
 - Bucky consume eventos emitidos por el core (ej. `EVENT_TIMER_EXCEEDED_4H`, `EVENT_PROJECT_OVER_BUDGET`), no debe inventar lógica de negocio aislada.
+- **Consumo Contextual de Datos de Equipo:**  
+  Bucky puede consumir:
+  - `birthDate` (dato persistido del perfil)
+  - `fecha_ingreso` (dato persistido del perfil)
+  - `TeamAbsenceEvent` (ausencias y vacaciones aprobadas)
+  - Opcionalmente `hobbies` e intereses ya existentes en el perfil (`UserItem.hobbies`)  
+  para generar mensajes contextuales oportunos y cercanos.
+  - *Ejemplos conceptuales:*
+    - Felicitación de cumpleaños ("¡Hoy está de cumpleaños [Nombre]! 🎉").
+    - Celebración de aniversario en Uhura ("Hoy [Nombre] cumple [X] años en la Colonia Uhura 🚀").
+    - Aviso preventivo de ausencia próxima ("Recuerda coordinar entregables con [Nombre], estará en vacaciones a partir del jueves 🌴").
+  - *Regla Estricta:* **No crear lógica avanzada de bienestar, workflows de aprobación de vacaciones ni automatizaciones complejas adicionales.**
 
 ---
 
@@ -794,6 +826,39 @@ Durante la auditoría end-to-end se detectaron las siguientes inconsistencias qu
 2. **Creación automática de carpetas mediante Google Drive API.**
 3. **Generación binaria de PDFs en servidor (Puppeteer / ReportLab).**
 4. **Gamificación y telemetría de La Colonia.**
+5. **Evolución a Progressive Web App (PWA):** Orbit deberá poder evolucionar a una Progressive Web App (PWA) instalable en dispositivos móviles, sin requerir inicialmente distribución vía App Store/Play Store. No hace parte del alcance actual ni bloquea el backend. La arquitectura de API y autenticación/sesiones no debería introducir dependencias que dificulten esta evolución posteriormente.
+
+### 9.3 Delimitación de Responsabilidades: Comportamiento Funcional vs. Decisiones Técnicas de Indunova
+
+Para asegurar una frontera limpia de trabajo entre Producto (Uhura) y la Fábrica de Software (Indunova), se establece la siguiente separación explícita:
+
+#### A. Comportamiento Funcional Esperado (Definido por Producto - No Negociable):
+1. **Reflejo Oportuno de Ausencias en Capacidad:**  
+   Las ausencias y vacaciones programadas y aprobadas en Google Calendar deben reflejarse oportunamente en la disponibilidad del módulo de Capacidad, impidiendo la sobreasignación de colaboradores en periodos no hábiles.
+2. **Integridad de Fechas Calendario:**  
+   Fechas como `fecha_ingreso`, `birthDate` y los rangos de vacaciones (`startDate`, `endDate`) deben mantenerse íntegras en el día calendario civil correspondiente, sin desplazamientos o corrimientos de fecha provocados por conversiones de huso horario entre cliente y servidor.
+3. **Paridad Financiera Vinculante:**  
+   Toda cotización generada en Orbit debe arrojar los mismos resultados y reglas de redondeo que la *Calculadora Comercial UHURA 2026* (Google Sheet) ante los mismos parámetros de entrada (roles, horas, semanas, márgenes).
+4. **Atomicidad en la Conversión de Oportunidades:**  
+   La creación de cliente, proyecto, entregables y tareas a partir de una oportunidad ganada debe ser atómica (todo o nada), garantizando que jamás existan estados a medias o proyectos sin entregables por fallos en la operación.
+5. **Exclusividad del Cronómetro:**  
+   Un colaborador nunca debe tener más de un cronómetro de trabajo en ejecución activa simultáneamente.
+
+#### B. Decisiones Técnicas de Arquitectura (Autonomía y Responsabilidad de Indunova):
+1. **Estrategia de Sincronización con Google Calendar API:**  
+   Indunova definirá libremente el mecanismo técnico que considere más robusto, escalable y mantenible (ej. push notifications/webhooks, tareas asíncronas periódicas o sincronización bajo demanda al consultar la vista).
+2. **Modelado Físico y Tipos de Datos en Base de Datos:**  
+   Indunova definirá los tipos de columnas SQL en PostgreSQL, la precisión decimal numérica, las claves primarias/foráneas, los índices y las restricciones de integridad relacional.
+3. **Mecanismos de Transaccionalidad y Concurrencia:**  
+   Indunova seleccionará e implementará las herramientas de control transaccional (ej. transacciones atómicas del ORM, bloqueos a nivel de fila o restricciones de base de datos) para cumplir con el comportamiento esperado.
+4. **Serialización y Manejo Técnico de Zonas Horarias:**  
+   Indunova implementará el parseo, serialización y almacenamiento de fechas/horas en Django REST Framework para garantizar la fidelidad del día calendario sin prescripciones tecnológicas desde Producto.
+
+#### C. Coordinación y Gestión de Dependencias entre Uhura e Indunova:
+1. **Parámetros Financieros:**  
+   Indunova deberá validar la implementación contra la *Calculadora Comercial 2026*. Si alguna fórmula, parámetro o regla no puede determinarse inequívocamente desde la fuente entregada, deberá levantar el gap con Uhura antes de asumir valores o estructuras.
+2. **Acceso a Google Calendar:**  
+   Cuando Indunova defina el mecanismo técnico de integración, deberá indicar a Uhura qué calendario, permisos y credenciales necesita para staging/producción. Uhura facilitará el acceso correspondiente al calendario corporativo gestionado por Administrativa.
 
 ---
 
@@ -969,20 +1034,87 @@ Solo existen 5 alcances autorizados:
 
 ---
 
-### 11.4. Datos Personales vs. Google Calendar: Cumpleaños, Hobbies y Ausencias
-> **ACLARACIÓN ESTRUCTURAL ESTRICTA:**  
-> - **Cumpleaños y Aniversarios NO provienen de Google Calendar.** Viven como datos estructurados propios del perfil del colaborador en Orbit (`UserItem`):
->   - `birthDate`: Fecha de cumpleaños en formato `YYYY-MM-DD` (ej. `'1993-09-18'`).
->   - `anniversaryDate`: Fecha de ingreso a Uhura Group (ej. `'2024-03-01'`).
-> - **Hobbies y Mascotas (`hobbies?: string`, `petNames?: string`):** Ambos son campos opcionales de experiencia/perfil en Orbit y **NO forman parte del contrato obligatorio de interoperabilidad de Bloque 4**.
-> - **Google Calendar se utiliza ÚNICAMENTE como fuente externa para:**
->   - Vacaciones de ley (`type: 'vacation'`)
->   - Licencias o incapacidades aprobadas (`type: 'sick_leave' | 'personal_leave' | 'other'`)
-> - Bucky y Mi Día consumen las fechas de cumpleaños y aniversario directamente desde `UserItem` en Orbit, garantizando privacidad y evitando llamadas innecesarias a Google Calendar API.
+### 11.4. Perfil de Usuario: Ingreso, Cumpleaños, Aniversario y Datos Personales
+
+> **REGLAS CANÓNICAS DE IDENTIDAD Y PERFIL:**  
+> 1. **`fecha_ingreso` / Hire Date (`joinedDate` en `UserItem`):**  
+>    - Es un **dato persistido canónico del perfil del colaborador** en base de datos.
+>    - Constituye la fecha fundacional del vínculo laboral del colaborador con Uhura Group.
+> 2. **`birthDate` (Fecha de Cumpleaños):**  
+>    - Es un **dato persistido canónico del perfil del colaborador** en formato ISO `YYYY-MM-DD` (ej. `'1993-09-18'`).
+>    - Debe poder visualizarse y administrarse de manera centralizada desde el módulo **Equipo & Accesos** (Directorio de Colaboradores).
+> 3. **El Aniversario NO se Almacena como un Evento Independiente (No Duplicidad):**  
+>    - El aniversario **no requiere persistirse en una tabla o campo redundante**: se deriva matemáticamente en tiempo de ejecución o consumo directamente a partir de `fecha_ingreso`:
+>      - Se calcula la fecha anual correspondiente proyectando el mes y día de `fecha_ingreso` al año corriente.
+>      - Se calculan los años de antigüedad cumplidos en Uhura Group ($\text{Años Cumplidos} = \text{Año Actual} - \text{Año de Ingreso}$, ponderado según la fecha del año).
+> 4. **Consumo por Mi Día y Bucky:**  
+>    - **Cumpleaños próximos:** Se calculan evaluando la proximidad de `birthDate` contra la fecha del sistema.
+>    - **Aniversarios próximos:** Se calculan evaluando la proximidad de la fecha anual derivada de `fecha_ingreso`.
+>    - Mi Día y Bucky consumen directamente estos campos estructurados del perfil para visibilidad de equipo y avisos contextuales, sin requerir llamadas externas a servicios terceros.
+> 5. **Hobbies y Mascotas (`hobbies?: string`, `petNames?: string`):**  
+>    - Campos opcionales del perfil en Orbit para enriquecimiento de experiencia y contexto de Bucky. **No forman parte del contrato obligatorio de interoperabilidad técnica**.
+> 6. **Google Calendar NO es la Fuente de Cumpleaños ni Aniversarios:**  
+>    - La privacidad de fechas de nacimiento y datos contractuales reside exclusivamente en la base de datos interna de Orbit (`UserItem`). Google Calendar se reserva de forma estricta para la programación operacional de ausencias y licencias.
+
+#### Estructura y Reglas Canónicas del Perfil del Colaborador
+El perfil del colaborador en Orbit define la identidad funcional, contractual y de seguridad del usuario en el sistema. Los campos se estructuran bajo las siguientes reglas:
+
+1. **Campos Canónicos Persistidos (Almacenados en Base de Datos):**
+   - **`name` / `fullName`:** Nombre completo del colaborador (string, obligatorio).
+   - **`firstName` / `lastName`:** Nombres y apellidos por separado (strings, obligatorios para búsquedas y comunicaciones).
+   - **`email`:** Correo electrónico corporativo oficial (`@uhuragroup.com`) (string, obligatorio, identificador único de cuenta y acceso).
+   - **`fecha_ingreso` / `joinedDate`:** Fecha fundacional de vinculación laboral en formato ISO `YYYY-MM-DD` (Date, obligatorio; base inmutable de antigüedad y cálculo de aniversarios).
+   - **`birthDate`:** Fecha de nacimiento en formato ISO `YYYY-MM-DD` (Date, obligatorio para colaboradores activos; administrable y visualizable en *Equipo & Accesos*).
+   - **`jobTitle`:** Cargo operativo o denominación funcional contractual (string, obligatorio).
+   - **`officialRole` (`StandardUhuraRole`):** Uno de los 12 roles oficiales del Catálogo de Servicios (obligatorio para todo perfil que cotice o ejecute horas en proyectos).
+   - **`role` (`UserRole`):** Rol del sistema en Orbit (`admin` | `member` | `viewer`, obligatorio).
+   - **`accessLevel` (`OrbitAccessLevel`):** Nivel de autorización en la matriz RBAC (`DIRECTOR` | `LIDER` | `OPERATIVO` | `ADMINISTRATIVO`, obligatorio).
+   - **`leaderId` / `reportsTo`:** Identificador del líder directo del área para cadenas de aprobación y gestión de capacidad (opcional/obligatorio para perfiles con reporte jerárquico).
+   - **`hobbies` / `petNames`:** Intereses personales, pasiones o mascotas (strings libres opcionales para contextualización de Bucky; no requeridos para interoperabilidad core).
+
+2. **Campos Derivados en Tiempo de Ejecución (No Duplicidad en Almacenamiento):**
+   - **Aniversario en Uhura:** NO se almacena como fecha ni evento independiente. Se proyecta anualmente combinando el mes y día de `fecha_ingreso` con el año en curso.
+   - **Años de Antigüedad Cumplidos:** Se calcula restando el año de `fecha_ingreso` al año de la fecha evaluada.
+   - **Cumpleaños Próximos:** Se calculan evaluando la proximidad temporal del mes y día de `birthDate` respecto a la fecha actual del sistema.
+
+3. **Visibilidad, Privacidad y Gobernanza de Datos:**
+   - La administración de estos campos se realiza desde el módulo **Equipo & Accesos** exclusivamente por usuarios con permisos autorizados (Dirección / RRHH).
+   - Mi Día y Bucky consumen estos datos para avisos discretos y contextuales, preservando la sobriedad visual del sistema.
+
+4. **Política de Seeding y Carga Inicial Separada:**
+   > **REGLA DE GOBERNANZA:**  
+   > **La carga inicial de colaboradores se realizará a partir de la fuente administrativa vigente suministrada por Uhura. Los datos concretos de seeding se mantienen separados de la especificación funcional.**  
+   > Esta separación garantiza que `ORBIT_PRODUCT_STATUS.md` permanezca estable como fuente funcional maestra frente a cambios o rotaciones del equipo, y protege la privacidad de datos sensibles (documentos de identidad, salarios, contratos, direcciones, etc.), los cuales **NO** deben versionarse en la especificación funcional pública, sino canalizarse mediante fixtures o mecanismos controlados de migración por Indunova y RRHH.  
+   > Para la estructura de inicialización y el dataset base de perfiles operativos, consultar el documento complementario: [`src/docs/INITIAL_TEAM_SEED.md`](./INITIAL_TEAM_SEED.md).
 
 ---
 
-### 11.5. Modelo de Dominio de Ausencias (`TeamAbsenceEvent`) y Flujo hacia Capacidad
+### 11.5. Ausencias / Vacaciones y Google Calendar: Proceso Operacional y Modelo `TeamAbsenceEvent`
+
+#### Proceso Funcional Actual de Aprobación de Ausencias en Uhura:
+El flujo corporativo vigente para la solicitud y programación de vacaciones o ausencias opera por fuera de la capa transaccional de Orbit a través de los siguientes 5 pasos estrictos:
+1. **Solicitud Inicial:** El colaborador solicita formalmente la ausencia o periodo de vacaciones a su líder directo de área.
+2. **Aprobación del Líder:** El líder de área evalúa la disponibilidad del equipo y aprueba la solicitud.
+3. **Escalamiento por Rol:** Si quien solicita la ausencia es un **líder de área**, la aprobación corresponde de manera exclusiva a **Ana María Giraldo (Dirección General)**.
+4. **Formalización Administrativa:** Una vez obtenida la aprobación del líder (o de Ana María), la novedad se formaliza mediante correo electrónico remitido a **Laura Viviana Salazar (Administrativa & RRHH)**, con copia obligatoria al líder de área correspondiente.
+5. **Programación en Calendario Corporativo:** Laura Viviana registra y programa formalmente la ausencia en el Google Calendar corporativo oficial de Uhura Group (ej. `ausencias@uhuragroup.com`).
+
+#### Decisiones de Producto y Arquitectura Orbit:
+- **Orbit NO Requiere Crear un Workflow Interno de Aprobación:**  
+  En esta fase, Orbit no implementa un motor transaccional de solicitudes ni bandejas de aprobación burocrática de vacaciones. El proceso operativo existente por canales corporativos (Líder / Ana María ➔ Correo Laura Viviana ➔ Google Calendar) funciona eficientemente.
+- **Google Calendar como Fuente Operacional Externa:**  
+  El Google Calendar corporativo administrado por Laura Viviana actúa como la **fuente de verdad operacional de las ausencias ya aprobadas y programadas**.
+- **Consumo Unificado vía `TeamAbsenceEvent`:**  
+  Orbit sincroniza y consume estas ausencias a través de la entidad canónica `TeamAbsenceEvent`. Se prohíbe taxativamente crear modelos paralelos de ausencias en el backend de Indunova.
+- **Afectación Estricta a Capacidad:**  
+  **Únicamente las ausencias aprobadas y programadas en `TeamAbsenceEvent` descuentan capacidad/disponibilidad operativa.** Ausencias en borrador, tentativas no formalizadas o eventos de otra índole jamás descuentan horas.
+- **Frontera de Google Calendar:**  
+  Google Calendar se utiliza **exclusivamente** para:
+  - Vacaciones de ley (`type: 'vacation'`).
+  - Licencias médicas, incapacidades o ausencias personales aprobadas (`type: 'sick_leave' | 'personal_leave' | 'other'`).
+  - Google Calendar **bajo ninguna circunstancia es fuente de cumpleaños ni de aniversarios**.
+
+#### Modelo de Dominio Canónico (`TeamAbsenceEvent`):
 
 ```typescript
 export type TeamAbsenceType =
@@ -1090,6 +1222,12 @@ Mi Día deja de ser un dashboard de métricas decorativas para convertirse en el
 4. **Frontera de Bucky y Experiencia:**
    - Bucky se mantiene como acompañante contextual en la columna lateral resolviendo su estado emocional según desvíos y progreso del día, con acceso directo a La Colonia.
    - Se eliminaron el grid de 4 KPIs estáticos, el calendario semanal L-V y los widgets de ausencias globales permanentes.
+5. **Eventos y Clima de Equipo (Discretos y No Invasivos):**
+   - Mi Día puede mostrar de forma discreta y contextual:
+     - Cumpleaños de hoy o próximos (derivados de `birthDate` en `UserItem`).
+     - Aniversarios de hoy o próximos en Uhura (derivados de `fecha_ingreso`).
+     - Ausencias y vacaciones próximas relevantes del equipo (provenientes del modelo canónico `TeamAbsenceEvent`).
+   - Esta información se visualiza de forma sobria y complementaria, reforzando la cercanía del equipo sin desviar el protagonismo de las tareas del día.
 
 ---
 
