@@ -1001,6 +1001,66 @@ Solo existen 5 alcances autorizados:
 
 ---
 
+### 10.8. Definición Funcional y Gobernanza: Perfil del Colaborador (Equipo & Accesos)
+
+> **CIERRE DE DEFINICIÓN FUNCIONAL (EQUIPO & ACCESOS → PERFIL DEL COLABORADOR):**  
+> Se formaliza la separación estricta entre **identidad profesional**, **nivel RBAC funcional** y **compatibilidad técnica secundaria**, garantizando que la matriz RBAC permanezca cerrada y con una única fuente de verdad.
+
+#### 1. Separación Conceptual de Atributos:
+1. **`jobTitle` / `officialRole` → Identidad Profesional:**
+   - **`jobTitle`**: Denominación funcional y operativa visible del cargo en la organización (ej. *Product Lead*, *Front-End Dev*, *Senior Growth Strategist*).
+   - **`officialRole`**: Vinculación formal con uno de los **12 Roles Canónicos de Uhura** del Catálogo de Servicios (`StandardUhuraRole`). Es obligatorio para todo colaborador que ejecute o cotice horas en proyectos y propuestas de New Business.
+2. **`accessLevel` → Nivel RBAC Funcional:**
+   - Nivel de autorización gobernado **exclusivamente por la Matriz Canónica RBAC** (`CanonicalOrbitAccessLevel`: `collaborator`, `leader`, `client_relationship`, `commercial`, `administrative`, `executive`, `system_admin`).
+   - Gobierna de manera exhaustiva el acceso a módulos, vistas y alcances (`AccessScope`).
+3. **`UserRole` (`Admin` | `Member` | `Viewer`) → Compatibilidad Técnica Secundaria:**
+   - Atributo técnico heredado de plataforma mantenido para interoperabilidad con código base previo.
+   - **NO gobierna permisos funcionales** y está terminantemente prohibido que compita con la matriz RBAC. En el frontend se mantiene oculto de la gestión regular y solo accesible en modo avanzado para administradores de sistema.
+
+#### 2. Reglas de Inmutabilidad de la Matriz y Editabilidad de la Asignación:
+- **Matriz RBAC Cerrada e Inmutable:** Los 7 niveles canónicos y sus permisos por módulo son cerrados. La pantalla de colaboradores no permite crear nuevos roles ni alterar la matriz de permisos.
+- **Asignación Editable y Persistente:** La asignación de un colaborador a un nivel RBAC y a un rol profesional es **editable y persistente**.
+- **Principio de No Alteración:** Cambiar la asignación de un colaborador (ej. ascenso de `collaborator` a `leader`) **NO crea un nuevo rol** ni altera la estructura del sistema; únicamente actualiza las relaciones del colaborador.
+- **Única Fuente de Verdad:** Toda evaluación de autorización en el sistema (frontend y backend) consulta de forma unívoca `accessLevel` y la matriz canónica.
+
+#### 3. Requerimientos de Persistencia Mínima en Backend (Indunova):
+El backend debe persistir en base de datos como mínimo los siguientes campos del colaborador:
+1. **`jobTitle`** (string) / **`officialRole`** (`StandardUhuraRole`, cuando corresponda al catálogo)
+2. **`accessLevel`** (`OrbitAccessLevel`: 7 niveles canónicos + transitorio `pending`)
+3. **`department`** (string: área operativa o departamento)
+4. **`leaderId` / `reportsTo`** (UUID/FK al colaborador líder directo)
+5. **`city`** (string: ciudad de residencia)
+6. **`birthDate`** (Date / ISO `YYYY-MM-DD`: fecha de cumpleaños)
+7. **`fecha_ingreso`** (Date / ISO `YYYY-MM-DD`: Hire Date / `joinedDate`; dato canónico de edición restringida a perfiles autorizados [Administrativa / RRHH / Dirección General]. Antigüedad y aniversario se derivan directamente de él; no debe documentarse como inmutable)
+8. **`status`** (`Active` | `Inactive` | `Invited`)
+
+#### 4. Auditoría de Cambios Sensibles en Backend:
+> **REGLA DE GOBERNANZA DE AUDITORÍA:**  
+> `UserProfileAuditEntry` en frontend es **únicamente representación / previsualización en interfaz**. La auditoría autoritativa **debe generarse y persistirse en backend (Indunova) al guardar el cambio transaccional**. El frontend **no debe ser fuente de verdad del historial**.
+
+Para modificaciones sobre campos sensibles que impactan la seguridad, jerarquía o nómina, el backend deberá registrar un historial de auditoría bajo la siguiente estructura canónica:
+$$\text{Auditoría: } \text{valor anterior} \longrightarrow \text{valor nuevo} \longrightarrow \text{fecha (timestamp ISO)} \longrightarrow \text{usuario que realizó el cambio}$$
+
+**Contrato Mínimo de Auditoría:**
+- **`userId`** (string): Identificador único del colaborador afectado.
+- **`field`** (string): Campo modificado (`accessLevel`, `officialRole`, `leaderId`, `status`, `fecha_ingreso`, etc.).
+- **`previousValue`** (string | null): Valor anterior del campo antes de la modificación.
+- **`newValue`** (string | null): Nuevo valor asignado al campo tras la edición.
+- **`changedAt`** (string): Timestamp ISO UTC registrado por el servidor en el momento exacto del guardado.
+- **`changedByUserId`** (string): Identificador del usuario que realizó la modificación.
+- **`reason`** (string, opcional): Justificación o motivo opcional del cambio sensible.
+
+Campos sujetos a auditoría obligatoria en backend:
+- **`accessLevel`** (Nivel de Acceso RBAC)
+- **`officialRole`** (Rol Profesional del Catálogo)
+- **`leaderId` / `reportsTo`** (Líder Directo de reporte)
+- **`status`** (Estado de Cuenta)
+- **`fecha_ingreso`** (Fecha Contractual de Ingreso, restringida a perfiles administrativos autorizados)
+
+*El frontend de Orbit ya se encuentra totalmente preparado para emitir y previsualizar esta estructura bajo el contrato acordado sin asumir persistencia autoritativa local.*
+
+---
+
 ## 11. Arquitectura de Interoperabilidad Estructural (Bloque 4)
 
 ### 11.1. Principio Rector: Integraciones Silenciosas e Invisibles
@@ -1040,6 +1100,7 @@ Solo existen 5 alcances autorizados:
 > 1. **`fecha_ingreso` / Hire Date (`joinedDate` en `UserItem`):**  
 >    - Es un **dato persistido canónico del perfil del colaborador** en base de datos.
 >    - Constituye la fecha fundacional del vínculo laboral del colaborador con Uhura Group.
+>    - **Regla de Gobernanza:** **NO debe documentarse como inmutable**. Es un dato canónico de **edición restringida a perfiles administrativos autorizados** (`administrative`, `system_admin`, `executive`). La antigüedad y el aniversario se derivan de él; no se crean campos independientes.
 > 2. **`birthDate` (Fecha de Cumpleaños):**  
 >    - Es un **dato persistido canónico del perfil del colaborador** en formato ISO `YYYY-MM-DD` (ej. `'1993-09-18'`).
 >    - Debe poder visualizarse y administrarse de manera centralizada desde el módulo **Equipo & Accesos** (Directorio de Colaboradores).
@@ -1063,13 +1124,16 @@ El perfil del colaborador en Orbit define la identidad funcional, contractual y 
    - **`name` / `fullName`:** Nombre completo del colaborador (string, obligatorio).
    - **`firstName` / `lastName`:** Nombres y apellidos por separado (strings, obligatorios para búsquedas y comunicaciones).
    - **`email`:** Correo electrónico corporativo oficial (`@uhuragroup.com`) (string, obligatorio, identificador único de cuenta y acceso).
-   - **`fecha_ingreso` / `joinedDate`:** Fecha fundacional de vinculación laboral en formato ISO `YYYY-MM-DD` (Date, obligatorio; base inmutable de antigüedad y cálculo de aniversarios).
+   - **`fecha_ingreso` / `joinedDate`:** Fecha fundacional de vinculación laboral en formato ISO `YYYY-MM-DD` (Date, obligatorio; dato canónico de edición restringida a perfiles autorizados [Administrativa / RRHH / Dirección General]. Antigüedad y aniversario se derivan directamente de él; no debe documentarse como inmutable).
    - **`birthDate`:** Fecha de nacimiento en formato ISO `YYYY-MM-DD` (Date, obligatorio para colaboradores activos; administrable y visualizable en *Equipo & Accesos*).
-   - **`jobTitle`:** Cargo operativo o denominación funcional contractual (string, obligatorio).
+   - **`jobTitle`:** Cargo operativo o denominación funcional visible (string, obligatorio).
    - **`officialRole` (`StandardUhuraRole`):** Uno de los 12 roles oficiales del Catálogo de Servicios (obligatorio para todo perfil que cotice o ejecute horas en proyectos).
-   - **`role` (`UserRole`):** Rol del sistema en Orbit (`admin` | `member` | `viewer`, obligatorio).
-   - **`accessLevel` (`OrbitAccessLevel`):** Nivel de autorización en la matriz RBAC (`DIRECTOR` | `LIDER` | `OPERATIVO` | `ADMINISTRATIVO`, obligatorio).
-   - **`leaderId` / `reportsTo`:** Identificador del líder directo del área para cadenas de aprobación y gestión de capacidad (opcional/obligatorio para perfiles con reporte jerárquico).
+   - **`accessLevel` (`OrbitAccessLevel`):** Nivel de autorización gobernado exclusivamente por la matriz canónica RBAC (`collaborator`, `leader`, `client_relationship`, `commercial`, `administrative`, `executive`, `system_admin`, más estado transitorio `pending`).
+   - **`role` (`UserRole`):** Atributo técnico secundario de compatibilidad heredada (`Admin` | `Member` | `Viewer`). **NO** gobierna permisos funcionales.
+   - **`department`:** Área o departamento operativo (string, obligatorio para colaboradores activos).
+   - **`leaderId` / `reportsTo`:** Identificador del líder directo del área para cadenas de reporte y jerarquía operativa.
+   - **`city`:** Ciudad de residencia del colaborador (string, obligatorio para gestión de equipo distribuido).
+   - **`status` (`UserStatus`):** Estado de la cuenta en plataforma (`Active` | `Inactive` | `Invited`).
    - **`hobbies` / `petNames`:** Intereses personales, pasiones o mascotas (strings libres opcionales para contextualización de Bucky; no requeridos para interoperabilidad core).
 
 2. **Campos Derivados en Tiempo de Ejecución (No Duplicidad en Almacenamiento):**

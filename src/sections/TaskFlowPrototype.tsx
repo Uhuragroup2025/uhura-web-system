@@ -1917,6 +1917,11 @@ export const TaskFlowPrototype: React.FC = () => {
     setUsers((prev) => prev.filter((u) => u.id !== userId));
   };
 
+  // Update user profile and permissions
+  const handleUpdateUser = (updatedUser: UserItem) => {
+    setUsers((prev) => prev.map((u) => (u.id === updatedUser.id ? updatedUser : u)));
+  };
+
   // Calculate live logged hours today from timesheets
   const loggedHoursToday = timeLogs.reduce((acc, log) => acc + (log.durationSeconds || 0) / 3600, 0);
 
@@ -2459,8 +2464,10 @@ export const TaskFlowPrototype: React.FC = () => {
                 {(currentView === 'usuarios' || currentView === 'config-roles' || currentView === 'config-permisos') && (
                   <UsersView
                     users={users}
+                    currentUser={currentUser}
                     onInviteUser={() => setIsInviteModalOpen(true)}
                     onDeleteUser={handleDeleteUser}
+                    onUpdateUser={handleUpdateUser}
                   />
                 )}
 

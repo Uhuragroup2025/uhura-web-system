@@ -731,6 +731,58 @@ export interface UserItem {
     returnDate?: string;
     note?: string;
   };
+  department?: string;         // Área o departamento (ej. 'Dirección de Producto', 'Creatividad')
+  leaderId?: string;           // ID del líder directo
+  reportsTo?: string;          // Alias canónico de leaderId para backend (Indunova)
+  leaderName?: string;         // Nombre del líder directo (ej. 'Ana María Giraldo')
+  city?: string;               // Ciudad de residencia (ej. 'Cali', 'Medellín', 'Bogotá')
+  avatarUrl?: string;          // Fotografía / Avatar personalizado
+}
+
+/**
+ * Contrato canónico de auditoría para cambios sensibles en el perfil del colaborador.
+ * 
+ * REGLA CRÍTICA DE GOBERNANZA:
+ * UserProfileAuditEntry en frontend es ÚNICAMENTE representación / previsualización en UI.
+ * La auditoría autoritativa DEBE generarse y persistirse en backend (Indunova) al guardar el cambio transaccional.
+ * El frontend NO debe ser fuente de verdad del historial de auditoría.
+ * 
+ * Contrato mínimo de auditoría:
+ * - userId: ID del usuario afectado
+ * - field: Campo modificado ('accessLevel' | 'officialRole' | 'leaderId' | 'status' | 'fecha_ingreso' | string)
+ * - previousValue: Valor anterior (string o null)
+ * - newValue: Nuevo valor (string o null)
+ * - changedAt: Timestamp ISO UTC del momento del cambio
+ * - changedByUserId: ID del usuario que realizó la modificación
+ * - reason: Motivo opcional del cambio
+ */
+export interface UserProfileAuditEntry {
+  id?: string;
+  userId: string;                   // ID del colaborador afectado
+  field: string;                    // Campo modificado
+  previousValue: string | null;     // Valor previo (o null si no existía)
+  newValue: string | null;          // Nuevo valor asignado
+  changedAt: string;                // ISO timestamp UTC
+  changedByUserId: string;          // ID del usuario autor que ejecutó la modificación
+  reason?: string;                  // Motivo opcional (ej. "Ascenso a líder de área", "Corrección administrativa")
+  fieldChanged?: string;            // Alias técnico de compatibilidad
+  changedByUserName?: string;       // Nombre para previsualización en UI
+}
+
+/**
+ * Estructura de historial de compensación para implementación futura en backend (Indunova).
+ * Regla Canónica: La compensación NO es un campo plano editable en UserItem, sino un historial
+ * de vigencias temporales (effectiveFrom, effectiveTo, valor, motivo).
+ */
+export interface UserCompensationHistoryEntry {
+  id: string;
+  userId: string;
+  effectiveFrom: string;           // Fecha inicio vigencia (YYYY-MM-DD)
+  effectiveTo?: string | null;     // Fecha fin (null = vigente actual)
+  baseSalaryCop: number;           // Salario base mensual en COP
+  benefitFactor: number;           // Factor prestacional (ej. 1.54)
+  changeReason?: string;           // ej. 'Ajuste anual', 'Ascenso', 'Ingreso inicial'
+  approvedByUserId?: string;
 }
 
 /**
