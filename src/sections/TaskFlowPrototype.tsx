@@ -2116,7 +2116,7 @@ export const TaskFlowPrototype: React.FC = () => {
             )}
 
             {/* Main Content Area */}
-            <div className="flex-1 flex flex-col bg-[#f8fafc] min-w-0 overflow-y-auto">
+            <div className={`flex-1 flex flex-col ${currentView === 'la-colonia' ? 'bg-[#0a0418]' : 'bg-[#f8fafc]'} min-w-0 overflow-y-auto`}>
               {/* Header with live timer capsule & global task search */}
               <TaskflowHeader
                 currentViewTitle={getHeaderTitle()}
@@ -2133,6 +2133,7 @@ export const TaskFlowPrototype: React.FC = () => {
                 loggedHoursToday={loggedHoursToday}
                 targetDayHours={8.0}
                 currentUser={currentUser}
+                isDarkTheme={currentView === 'la-colonia'}
                 onSelectTask={(task) => {
                   setSelectedTaskForDetail(task);
                   setIsTaskDetailModalOpen(true);
@@ -2140,7 +2141,7 @@ export const TaskFlowPrototype: React.FC = () => {
               />
 
               {/* View Content with RBAC Protection */}
-              <div className="p-4 sm:p-7 pb-28 md:pb-7 flex-1">
+              <div className={currentView === 'la-colonia' ? 'p-0 flex-1 flex flex-col min-h-0' : 'p-4 sm:p-7 pb-28 md:pb-7 flex-1'}>
                 {!canAccessModule(currentUser, currentView) ? (
                   <AccessDeniedCard
                     currentUser={currentUser}
@@ -2180,6 +2181,8 @@ export const TaskFlowPrototype: React.FC = () => {
                     loggedHoursToday={loggedHoursToday}
                     targetDayHours={8.0}
                     plannedHoursToday={4.0}
+                    currentUser={currentUser}
+                    teamUsers={users}
                     onNavigateToView={handleSelectView}
                   />
                 )}

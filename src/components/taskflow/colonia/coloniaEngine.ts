@@ -11,7 +11,17 @@
  * 5. La capacidad libre es información positiva para líderes/directores.
  */
 
-import { ColonyState, ColonyStructure, BuckyAccessory, ColonyHabitEvent, ColonyResources } from './types';
+import {
+  ColonyState,
+  ColonyStructure,
+  BuckyAccessory,
+  ColonyHabitEvent,
+  ColonyResources,
+  ColonyChallenge,
+  ColonyGameId,
+  WeeklyLeaderboardEntry,
+  GameResult
+} from './types';
 import { TaskItem } from '../types';
 
 const STORAGE_KEY = 'orbit_colonia_state_v1';
@@ -512,4 +522,259 @@ export function rewardMinigameCompletion(
 
   saveColonyState(newState);
   return newState;
+}
+
+/**
+ * ============================================================================
+ * NATIVE ORBIT CHALLENGES & WEEKLY LEADERBOARDS (PROTOTYPE PERSISTENCE)
+ * ============================================================================
+ * 
+ * 1. Persistencia de Prototipo:
+ *    La persistencia en localStorage de retos (ColonyChallenge) y rankings semanales
+ *    (WeeklyLeaderboardEntry) es una simulación exclusiva de prototipo.
+ *    En producción, el backend será la fuente autoritativa que permitirá gestionar
+ *    retos asíncronos entre usuarios de la organización y consolidar el ranking compartido.
+ * 
+ * 2. Contratos Mínimos de Backend:
+ *    - GameResult: Registro de puntuación individual de 15 segundos.
+ *    - ColonyChallenge: Desafío asíncrono 1-a-1 entre dos colaboradores.
+ *      Estados estrictos: 'pending' (emitido/esperando que el rival juegue) y 'completed'.
+ *      winnerUserId se deriva de la comparación de puntuaciones (no requiere persistencia obligatoria).
+ * 
+ * 3. WeeklyLeaderboardEntry como Read Model:
+ *    El ranking semanal funciona como una vista proyectada / derivada (read model)
+ *    generada a partir de los GameResult de la semana corriente. No asume una tabla
+ *    con persistencia relacional propia.
+ * 
+ * 4. Notificaciones de Orbit:
+ *    El sistema central de notificaciones de Orbit (in-app / campana) es el requisito
+ *    funcional indispensable para conectar los retos enviados y resueltos en cuanto
+ *    el backend esté disponible. Las notificaciones push quedan como capacidad
+ *    evolutiva futura, no como dependencia actual.
+ */
+
+const CHALLENGES_STORAGE_KEY = 'orbit_colonia_challenges_v2';
+const LEADERBOARD_STORAGE_KEY = 'orbit_colonia_leaderboards_v2';
+
+export const INITIAL_COLONY_CHALLENGES: ColonyChallenge[] = [
+  {
+    id: 'ch-1',
+    gameId: 'torre',
+    challengerUserId: 'u-10',
+    challengerName: 'Oscar Cerpa',
+    challengerInitials: 'OC',
+    challengerRole: 'Desarrollador Web Front-End',
+    challengerAvatarBg: 'bg-[#f59e0b]',
+    challengerScore: 85,
+    challengedUserId: 'u-2',
+    challengedName: 'Paola Monsalve',
+    challengedInitials: 'PM',
+    challengedRole: 'Product Lead',
+    challengedAvatarBg: 'bg-[#501f92]',
+    status: 'pending',
+    createdAt: 'Hoy, hace 2h'
+  },
+  {
+    id: 'ch-2',
+    gameId: 'nenufar',
+    challengerUserId: 'u-2',
+    challengerName: 'Paola Monsalve',
+    challengerInitials: 'PM',
+    challengerRole: 'Product Lead',
+    challengerAvatarBg: 'bg-[#501f92]',
+    challengerScore: 15,
+    challengedUserId: 'u-5',
+    challengedName: 'Laura Isabel Gómez',
+    challengedInitials: 'LG',
+    challengedRole: 'Digital Designer',
+    challengedAvatarBg: 'bg-[#0284c7]',
+    status: 'pending',
+    createdAt: 'Ayer'
+  },
+  {
+    id: 'ch-3',
+    gameId: 'torre',
+    challengerUserId: 'u-6',
+    challengerName: 'Catalina Tejada',
+    challengerInitials: 'CT',
+    challengerRole: 'Directora Comercial',
+    challengerAvatarBg: 'bg-[#7c3aed]',
+    challengerScore: 95,
+    challengedUserId: 'u-2',
+    challengedName: 'Paola Monsalve',
+    challengedInitials: 'PM',
+    challengedRole: 'Product Lead',
+    challengedAvatarBg: 'bg-[#501f92]',
+    challengedScore: 100,
+    status: 'completed',
+    winnerUserId: 'u-2',
+    createdAt: 'Hace 3 días',
+    completedAt: 'Hace 3 días'
+  }
+];
+
+export const INITIAL_WEEKLY_LEADERBOARDS: Record<ColonyGameId, WeeklyLeaderboardEntry[]> = {
+  torre: [
+    { id: 'lb-1', userId: 'u-2-diego', name: 'Diego Cadavid', role: 'Creative Lead', initials: 'DC', avatarBg: 'bg-[#dc2626]', score: 120 },
+    { id: 'lb-2', userId: 'u-2', name: 'Paola Monsalve (Tú)', role: 'Product Lead', initials: 'PM', avatarBg: 'bg-[#501f92]', score: 100, highlight: true },
+    { id: 'lb-3', userId: 'u-6', name: 'Catalina Tejada', role: 'Directora Comercial', initials: 'CT', avatarBg: 'bg-[#7c3aed]', score: 95 },
+    { id: 'lb-4', userId: 'u-10', name: 'Oscar Cerpa', role: 'Desarrollador Web Front-End', initials: 'OC', avatarBg: 'bg-[#f59e0b]', score: 85 },
+    { id: 'lb-5', userId: 'u-11', name: 'Sara Rivera', role: 'Community Manager', initials: 'SR', avatarBg: 'bg-[#ec4899]', score: 75 }
+  ],
+  nenufar: [
+    { id: 'lb-6', userId: 'u-5', name: 'Laura Isabel Gómez', role: 'Digital Designer', initials: 'LG', avatarBg: 'bg-[#0284c7]', score: 22 },
+    { id: 'lb-7', userId: 'u-10', name: 'Oscar Cerpa', role: 'Desarrollador Web Front-End', initials: 'OC', avatarBg: 'bg-[#f59e0b]', score: 18 },
+    { id: 'lb-8', userId: 'u-2', name: 'Paola Monsalve (Tú)', role: 'Product Lead', initials: 'PM', avatarBg: 'bg-[#501f92]', score: 15, highlight: true },
+    { id: 'lb-9', userId: 'u-6', name: 'Catalina Tejada', role: 'Directora Comercial', initials: 'CT', avatarBg: 'bg-[#7c3aed]', score: 13 },
+    { id: 'lb-10', userId: 'u-14', name: 'Camilo Velez', role: 'Growth Manager', initials: 'CV', avatarBg: 'bg-[#059669]', score: 11 }
+  ]
+};
+
+export function loadColonyChallenges(): ColonyChallenge[] {
+  if (typeof window === 'undefined') return INITIAL_COLONY_CHALLENGES;
+  try {
+    const raw = localStorage.getItem(CHALLENGES_STORAGE_KEY);
+    if (!raw) {
+      localStorage.setItem(CHALLENGES_STORAGE_KEY, JSON.stringify(INITIAL_COLONY_CHALLENGES));
+      return INITIAL_COLONY_CHALLENGES;
+    }
+    return JSON.parse(raw);
+  } catch {
+    return INITIAL_COLONY_CHALLENGES;
+  }
+}
+
+export function saveColonyChallenges(challenges: ColonyChallenge[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(CHALLENGES_STORAGE_KEY, JSON.stringify(challenges));
+  } catch (err) {
+    console.error('Error saving challenges', err);
+  }
+}
+
+export function createColonyChallenge(
+  gameId: ColonyGameId,
+  challenger: { id: string; name: string; initials: string; role: string; avatarBg: string },
+  challengerScore: number,
+  challenged: { id: string; name: string; initials: string; role: string; avatarBg: string }
+): { challenges: ColonyChallenge[]; newChallenge: ColonyChallenge } {
+  const current = loadColonyChallenges();
+  const newChallenge: ColonyChallenge = {
+    id: 'ch-' + Date.now(),
+    gameId,
+    challengerUserId: challenger.id,
+    challengerName: challenger.name,
+    challengerInitials: challenger.initials,
+    challengerRole: challenger.role,
+    challengerAvatarBg: challenger.avatarBg,
+    challengerScore,
+    challengedUserId: challenged.id,
+    challengedName: challenged.name,
+    challengedInitials: challenged.initials,
+    challengedRole: challenged.role,
+    challengedAvatarBg: challenged.avatarBg,
+    status: 'pending',
+    createdAt: 'Hoy, hace un momento'
+  };
+
+  const updated = [newChallenge, ...current];
+  saveColonyChallenges(updated);
+  return { challenges: updated, newChallenge };
+}
+
+export function resolveColonyChallenge(
+  challengeId: string,
+  challengedScore: number
+): { challenges: ColonyChallenge[]; resolved: ColonyChallenge | null; won: boolean; tie: boolean } {
+  const current = loadColonyChallenges();
+  const target = current.find(c => c.id === challengeId);
+  if (!target) return { challenges: current, resolved: null, won: false, tie: false };
+
+  const won = challengedScore > target.challengerScore;
+  const tie = challengedScore === target.challengerScore;
+  const winnerUserId = won
+    ? target.challengedUserId
+    : tie
+    ? undefined
+    : target.challengerUserId;
+
+  const resolved: ColonyChallenge = {
+    ...target,
+    challengedScore,
+    status: 'completed',
+    winnerUserId,
+    completedAt: 'Hoy, recién jugado'
+  };
+
+  const updated = current.map(c => (c.id === challengeId ? resolved : c));
+  saveColonyChallenges(updated);
+  return { challenges: updated, resolved, won, tie };
+}
+
+export function loadWeeklyLeaderboards(): Record<ColonyGameId, WeeklyLeaderboardEntry[]> {
+  if (typeof window === 'undefined') return INITIAL_WEEKLY_LEADERBOARDS;
+  try {
+    const raw = localStorage.getItem(LEADERBOARD_STORAGE_KEY);
+    if (!raw) {
+      localStorage.setItem(LEADERBOARD_STORAGE_KEY, JSON.stringify(INITIAL_WEEKLY_LEADERBOARDS));
+      return INITIAL_WEEKLY_LEADERBOARDS;
+    }
+    return JSON.parse(raw);
+  } catch {
+    return INITIAL_WEEKLY_LEADERBOARDS;
+  }
+}
+
+export function recordWeeklyScore(
+  gameId: ColonyGameId,
+  score: number,
+  userId: string = 'u-2',
+  userName: string = 'Paola Monsalve (Tú)',
+  userRole: string = 'Product Lead',
+  initials: string = 'PM',
+  avatarBg: string = 'bg-[#501f92]'
+): { leaderboards: Record<ColonyGameId, WeeklyLeaderboardEntry[]>; rank: number; isBest: boolean } {
+  const boards = loadWeeklyLeaderboards();
+  const board = [...(boards[gameId] || [])];
+
+  const userEntryIndex = board.findIndex(e => e.userId === userId || e.highlight);
+  let isBest = false;
+
+  if (userEntryIndex >= 0) {
+    if (score > board[userEntryIndex].score) {
+      board[userEntryIndex].score = score;
+      isBest = true;
+    }
+  } else {
+    board.push({
+      id: 'lb-' + Date.now(),
+      userId,
+      name: userName,
+      role: userRole,
+      initials,
+      avatarBg,
+      score,
+      highlight: true
+    });
+    isBest = true;
+  }
+
+  board.sort((a, b) => b.score - a.score);
+  const rank = board.findIndex(e => e.userId === userId || e.highlight) + 1;
+
+  const updatedBoards = {
+    ...boards,
+    [gameId]: board
+  };
+
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(LEADERBOARD_STORAGE_KEY, JSON.stringify(updatedBoards));
+    } catch (e) {
+      console.error('Error saving leaderboards', e);
+    }
+  }
+
+  return { leaderboards: updatedBoards, rank, isBest };
 }

@@ -706,18 +706,49 @@ Mi Día puede mostrar de forma discreta y no invasiva:
 
 ---
 
-### Módulo 18: Bucky y La Colonia (Copiloto y Gamificación)
+### Módulo 18: Bucky y La Colonia (Espacio Social & Lúdico)
 
-#### 18.1 Propósito
-- **Bucky:** Asistente contextual de Orbit que acompaña la jornada laboral, alerta sobre timers olvidados, tareas bloqueadas y deadlines.
-- **La Colonia:** Espacio visual optativo de gamificación donde la consistencia en el registro de horas y los hábitos saludables construyen un entorno virtual en equipo.
+#### 18.1 Propósito y Definición Funcional Cerrada
+- **Bucky:** Asistente contextual de Orbit que acompaña la jornada laboral, alerta sobre timers olvidados, tareas bloqueadas y deadlines. En la vista global de Orbit actúa como widget flotante; al ingresar a La Colonia, el widget flotante global desaparece para dar paso al Bucky protagonista dentro de su hábitat.
+- **La Colonia:** *"La Colonia es el espacio social y lúdico de Orbit para desconectarse unos minutos y compartir pequeños retos con el equipo."*
+- **Alcance Funcional Simplificado & Presentación Inmersiva (Videojuego):**
+  1. **Pantalla Principal Inmersiva (Hábitat Completo):** En lugar de un dashboard corporativo con tarjetas fragmentadas, el Diorama Ribereño es el escenario interactivo completo. Las estructuras funcionan como portales visuales de navegación directa:
+     - 🏡 **Taller de Cedro (Izquierda):** Portal directo a La Torre de Cedro (15s).
+     - 🌸 **Jardín de Nenúfares (Derecha):** Portal directo a Reflejos de Nenúfar (15s).
+     - 🔭 **Observatorio Orbital (Arriba):** Portal directo al Ranking semanal (#2 esta semana).
+  2. **Bucky como Host Activo & Narrador Emocional:** Bucky guía emocionalmente convirtiendo los datos fríos en narrativa viva:
+     - Si hay un reto recibido: *"Oscar te dejó 85 puntos en Torre de Cedro 👀"* -> Botón primario: `[ SUPERAR A OSCAR · 15s ]`.
+     - Si no hay retos: *"Diego sigue arriba con 120. ¿Probamos una?"* -> Botón primario: `[ JUGAR TORRE DE CEDRO · 15s ]`.
+     - Si acaba de jugar: *"106 👀 Te faltaron 14 para alcanzar a Diego."* -> `[ RETAR A ALGUIEN ]` / `[ OTRA RONDA ]`.
+  3. **Una Sola Acción Primaria por Estado:** La interfaz detecta la acción más relevante y la sitúa en el centro del hábitat con máxima jerarquía, reduciendo la fatiga de decisiones.
+  4. **Retos como Inbox Social (No Tabla):** Bandeja directa tipo mensajes de juego (retos recibidos con botón `[ Jugar ]`, esperando respuesta de compañeros, e historial de revanchas).
+  5. **Ranking Visual, Aspiracional y Humano:** Podio con Top 3 y pin de posición del usuario sin tablas densas corporativas.
+  6. **Ambientación Emocional Sutil:** Selector de ambiente (Noche / Atardecer / Día) controlado con un botón sutil `☾` y guardado como preferencia local.
+  7. **Momento de Recompensa Cuidado:** Pantalla final de minijuego con Bucky celebrando, micro-confetti, audio chimes opcionales y narrativa de superación.
 - **Referencias de Código:**
-  - **Modal Copiloto Bucky:** [`src/components/taskflow/bucky/BuckyCopilotModal.tsx`](../components/taskflow/bucky/BuckyCopilotModal.tsx)
-  - **Leaderboard La Colonia:** [`src/components/taskflow/colony/ColonyLeaderboardView.tsx`](../components/taskflow/colony/ColonyLeaderboardView.tsx)
-  - **Assets de Bucky:** [`/public/bucky_*.png`](../../public/)
+  - **Vista Principal:** [`src/components/taskflow/colonia/LaColoniaView.tsx`](../components/taskflow/colonia/LaColoniaView.tsx)
+  - **Diorama Experiencial:** [`src/components/taskflow/colonia/ColoniaDiorama.tsx`](../components/taskflow/colonia/ColoniaDiorama.tsx)
+  - **Microjuegos & Retos:** [`src/components/taskflow/colonia/ColoniaMinigames.tsx`](../components/taskflow/colonia/ColoniaMinigames.tsx)
+  - **Motor de Retos & Rankings:** [`src/components/taskflow/colonia/coloniaEngine.ts`](../components/taskflow/colonia/coloniaEngine.ts)
+  - **Tipos de Datos:** [`src/components/taskflow/colonia/types.ts`](../components/taskflow/colonia/types.ts)
 
-#### 18.2 Directrices Técnicas para Backend y Consumo Contextual
+#### 18.2 Directrices Técnicas para Backend y Consumo Contextual (Cierre de Checkpoint)
 - Bucky y La Colonia son componentes **Evolutivos / No Bloqueantes**.
+- **1. Persistencia de Prototipo vs. Backend Autoritativo (Retos Asíncronos):**  
+  La persistencia local actual en `localStorage` (`GameResult`, `ColonyChallenge` y `WeeklyLeaderboardEntry`) es **exclusivamente de prototipo frontend** para validar la experiencia lúdica y social. En producción, el backend (Django REST Framework / PostgreSQL) será la **fuente de verdad autoritativa** que permitirá orquestar retos asíncronos entre usuarios físicos de la organización y generar un ranking semanal compartido unificado.
+- **2. Fuente Canónica para "Retar a Alguien":**  
+  El selector de rivales en los retos consume directamente los colaboradores activos desde la fuente canónica de **Equipo & Accesos** (`users: UserItem[]`), excluyendo de forma estricta al usuario activo en sesión (`currentUser.id`) y a colaboradores en estado inactivo. **Queda terminantemente prohibido hardcodear listas de compañeros o mantener un segundo directorio de personas en La Colonia.**
+- **3. Historial Mínimo Estricto (Sin Competitividad Compleja):**  
+  El historial de retos se mantiene única y exclusivamente como una **vista mínima de retos recientes y completados con opción de revancha inmediata**. No se crearán estadísticas históricas acumulativas, ligas, temporadas, rankings históricos ni perfiles competitivos de jugadores.
+- **4. Contratos Mínimos de Backend y Read Model Derivado:**  
+  - **`GameResult` (Tabla canónica de eventos de juego):**  
+    `id` (UUID), `userId` (FK a User), `userName` (String), `gameId` (`'torre'` | `'nenufar'`), `score` (Integer), `createdAt` (Timestamp).
+  - **`ColonyChallenge` (Tabla canónica de retos asíncronos 1-a-1):**  
+    `id` (UUID), `gameId` (`'torre'` | `'nenufar'`), `challengerUserId` (FK a User), `challengerScore` (Integer), `challengedUserId` (FK a User), `challengedScore` (Integer, opcional hasta resolución), `status` (`'pending'` | `'completed'`), `winnerUserId` (FK a User, opcional / derivado a partir de la comparación de puntuaciones; no debe introducir persistencia redundante obligatoria en base de datos), `createdAt` (Timestamp), `completedAt` (Timestamp, opcional).
+  - **`WeeklyLeaderboardEntry` (Read Model Proyectado / No Requiere Tabla Propia):**  
+    Funciona como una estructura derivada / consulta agregada sobre `GameResult` filtrada por la semana civil en curso (`weekStartDate` a `weekEndDate`) calculando `MAX(score)` agrupado por `userId`. **Indunova no debe asumir que requiere una tabla física con persistencia propia en PostgreSQL.**
+- **5. Conexión con Sistema de Notificaciones de Orbit:**  
+  Los avisos de reto ("Te han retado en La Torre de Cedro / Reflejos de Nenúfar", "Han superado tu marca", "Reto completado") deberán conectarse al **sistema central de notificaciones de Orbit** (in-app / campana) como requisito funcional una vez el backend esté disponible. Las notificaciones push quedan como capacidad evolutiva futura, no como dependencia actual.
 - **No deben frenar la portabilidad ni la construcción del backend transaccional de Indunova.**
 - Bucky consume eventos emitidos por el core (ej. `EVENT_TIMER_EXCEEDED_4H`, `EVENT_PROJECT_OVER_BUDGET`), no debe inventar lógica de negocio aislada.
 - **Consumo Contextual de Datos de Equipo:**  
@@ -782,7 +813,7 @@ Mi Día puede mostrar de forma discreta y no invasiva:
 | **Mi Día** | Refactor UX | Completa | Completa | Vistas agregadas| Queries agrupadas | Tareas, TimeLogs | NO (Frontend View) |
 | **Documentos / Drive** | Manual | Completa | 30% (Manual) | Links en DB | Integración Google Drive API | Ninguna | NO (Evolutivo) |
 | **Alegra / Fiscal** | Manual Vivian | Completa | Manual | IDs en DB | Integración Alegra API | Clientes | NO (Evolutivo) |
-| **Bucky / La Colonia** | Prototipo | Completa | Frontend | State opcional | WebSocket / Telemetría | Ninguna | NO (Evolutivo) |
+| **Bucky / La Colonia** | Prototipo | Completa | Frontend | State opcional | Modelos GameResult / Challenge (Asíncronos) | Ninguna | NO (Evolutivo) |
 
 ---
 
@@ -825,7 +856,7 @@ Durante la auditoría end-to-end se detectaron las siguientes inconsistencias qu
 1. **Webhooks automáticos con HubSpot y Alegra.**
 2. **Creación automática de carpetas mediante Google Drive API.**
 3. **Generación binaria de PDFs en servidor (Puppeteer / ReportLab).**
-4. **Gamificación y telemetría de La Colonia.**
+4. **Retos asíncronos y ranking semanal de La Colonia (modelos mínimos de backend `GameResult` y `ColonyChallenge`).**
 5. **Evolución a Progressive Web App (PWA):** Orbit deberá poder evolucionar a una Progressive Web App (PWA) instalable en dispositivos móviles, sin requerir inicialmente distribución vía App Store/Play Store. No hace parte del alcance actual ni bloquea el backend. La arquitectura de API y autenticación/sesiones no debería introducir dependencias que dificulten esta evolución posteriormente.
 
 ### 9.3 Delimitación de Responsabilidades: Comportamiento Funcional vs. Decisiones Técnicas de Indunova

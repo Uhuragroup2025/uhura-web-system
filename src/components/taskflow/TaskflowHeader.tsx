@@ -25,6 +25,7 @@ interface TaskflowHeaderProps {
   sidebarCollapsed?: boolean;
   onToggleSidebarCollapse?: () => void;
   currentUser?: UserItem;
+  isDarkTheme?: boolean;
 }
 
 export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
@@ -42,7 +43,8 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
   onNavigateToDashboard,
   sidebarCollapsed = false,
   onToggleSidebarCollapse,
-  currentUser
+  currentUser,
+  isDarkTheme = false
 }) => {
   const [alertsOpen, setAlertsOpen] = useState(false);
   const [dailyProgressOpen, setDailyProgressOpen] = useState(false);
@@ -132,13 +134,13 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
   const remainingHours = Math.max(0, targetDayHours - loggedHoursToday);
 
   return (
-    <header className="bg-white border-b border-[#e5e7eb] px-3 sm:px-5 py-2.5 flex items-center justify-between sticky top-0 z-30 shadow-2xs gap-2 sm:gap-3">
+    <header className={`${isDarkTheme ? 'bg-[#0a0418]/90 backdrop-blur-md border-b border-[#8a4dff]/20 text-white' : 'bg-white border-b border-[#e5e7eb] text-[#0f172a]'} px-3 sm:px-5 py-2.5 flex items-center justify-between sticky top-0 z-30 shadow-2xs gap-2 sm:gap-3 transition-colors duration-300`}>
       {/* Left: Mobile Menu Trigger + View Title (on XL) */}
       <div className="flex items-center gap-2 shrink-0">
         {onToggleMobileMenu && (
           <button
             onClick={onToggleMobileMenu}
-            className="md:hidden p-1.5 rounded-xl text-[#6b7280] hover:bg-[#f3f4f6] hover:text-[#111827] transition-colors cursor-pointer"
+            className={`md:hidden p-1.5 rounded-xl transition-colors cursor-pointer ${isDarkTheme ? 'text-white/70 hover:bg-white/10 hover:text-white' : 'text-[#6b7280] hover:bg-[#f3f4f6] hover:text-[#111827]'}`}
             aria-label="Abrir menú de navegación"
           >
             <Menu className="w-5 h-5" />
@@ -146,7 +148,7 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
         )}
 
         {/* View Title: Displayed on XL screens to prevent visual redundancy with page headers on tablet */}
-        <h1 className="hidden xl:block text-base font-bold tracking-tight text-[#0f172a] whitespace-nowrap">
+        <h1 className={`hidden xl:block text-base font-bold tracking-tight whitespace-nowrap ${isDarkTheme ? 'text-white' : 'text-[#0f172a]'}`}>
           {currentViewTitle}
         </h1>
       </div>
@@ -154,7 +156,7 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
       {/* Center: Global Task Search Bar */}
       <div ref={searchContainerRef} className="relative flex-1 min-w-[120px] max-w-xs md:max-w-sm lg:max-w-md mx-1">
         <div className="relative">
-          <Search className="w-3.5 h-3.5 text-[#94a3b8] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <Search className={`w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none ${isDarkTheme ? 'text-white/40' : 'text-[#94a3b8]'}`} />
           <input
             ref={searchInputRef}
             type="text"
@@ -165,9 +167,9 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
               setIsSearchOpen(true);
             }}
             onFocus={() => setIsSearchOpen(true)}
-            className="w-full bg-[#f8fafc] hover:bg-[#f1f5f9] focus:bg-white border border-[#e2e8f0] focus:border-[#501f92] pl-8 pr-9 sm:pr-14 py-1.5 rounded-xl text-xs text-[#0f172a] placeholder-[#94a3b8] focus:outline-none transition-all"
+            className={`w-full ${isDarkTheme ? 'bg-white/5 hover:bg-white/10 focus:bg-white/15 border border-white/10 focus:border-[#d4ff4a] text-white placeholder-white/40' : 'bg-[#f8fafc] hover:bg-[#f1f5f9] focus:bg-white border border-[#e2e8f0] focus:border-[#501f92] text-[#0f172a] placeholder-[#94a3b8]'} pl-8 pr-9 sm:pr-14 py-1.5 rounded-xl text-xs focus:outline-none transition-all`}
           />
-          <kbd className="hidden sm:inline-block absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-mono text-[#94a3b8] bg-white border border-[#e2e8f0] px-1.5 py-0.5 rounded shadow-2xs pointer-events-none">
+          <kbd className={`hidden sm:inline-block absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-mono px-1.5 py-0.5 rounded shadow-2xs pointer-events-none ${isDarkTheme ? 'text-white/40 bg-white/5 border border-white/10' : 'text-[#94a3b8] bg-white border border-[#e2e8f0]'}`}>
             ⌘K
           </kbd>
         </div>
