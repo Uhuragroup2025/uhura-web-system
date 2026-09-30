@@ -31,7 +31,8 @@ import {
   Layers,
   History,
   Lock,
-  UserPlus
+  UserPlus,
+  ChevronRight
 } from 'lucide-react';
 
 interface UserProfileViewProps {
@@ -315,33 +316,16 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-12 animate-in fade-in duration-150">
-      {/* 1. Header con Breadcrumb y Navegación */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#e2e8f0] pb-4">
-        <div className="flex items-center gap-2 text-xs text-[#64748b]">
-          <button
-            onClick={onBack}
-            className="hover:text-[#0f172a] font-medium transition-colors cursor-pointer"
-          >
-            Equipo & Accesos
-          </button>
-          <span>/</span>
-          <button
-            onClick={onBack}
-            className="hover:text-[#0f172a] transition-colors cursor-pointer"
-          >
-            Colaboradores
-          </button>
-          <span>/</span>
-          <span className="font-semibold text-[#0f172a]">{user.name}</span>
-        </div>
-
+      {/* 1. Header con Breadcrumb Estandarizado */}
+      <div className="flex items-center gap-2 text-xs text-[#64748b] border-b border-[#e2e8f0] pb-4">
         <button
           onClick={onBack}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#e2e8f0] bg-white text-xs font-semibold text-[#334155] hover:bg-[#f8fafc] hover:text-[#0f172a] transition-all self-start sm:self-auto cursor-pointer"
+          className="font-semibold text-[#64748b] hover:text-[#0f172a] transition-colors cursor-pointer"
         >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Volver al Directorio</span>
+          Equipo & Accesos
         </button>
+        <ChevronRight className="w-3.5 h-3.5 text-[#94a3b8]" />
+        <span className="font-bold text-[#0f172a] truncate max-w-xs sm:max-w-md">{user.name}</span>
       </div>
 
       {/* Alerta de guardado exitoso */}

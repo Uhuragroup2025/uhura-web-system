@@ -141,23 +141,16 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
         </div>
       )}
 
-      {/* Top Breadcrumb Header */}
-      <div className="flex flex-wrap items-center gap-2 text-xs text-[#64748b]">
-        <button
-          onClick={onNavigateToDashboard}
-          className="hover:text-[#0f172a] hover:underline transition-colors cursor-pointer"
-        >
-          Dashboard
-        </button>
-        <span className="text-[#94a3b8]">›</span>
+      {/* Top Breadcrumb Estandarizado */}
+      <div className="flex items-center gap-2 text-xs text-[#64748b]">
         <button
           onClick={onBack}
-          className="hover:text-[#0f172a] hover:underline transition-colors cursor-pointer"
+          className="font-semibold text-[#64748b] hover:text-[#0f172a] transition-colors cursor-pointer"
         >
           Clientes
         </button>
-        <span className="text-[#94a3b8]">›</span>
-        <span className="font-bold text-[#0f172a]">{client.name}</span>
+        <ChevronRight className="w-3.5 h-3.5 text-[#94a3b8]" />
+        <span className="font-bold text-[#0f172a] truncate max-w-xs sm:max-w-md">{client.name}</span>
       </div>
 
       {/* Main Header Title Row with Actions */}

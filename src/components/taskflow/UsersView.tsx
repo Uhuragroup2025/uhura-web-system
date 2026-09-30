@@ -132,100 +132,69 @@ export const UsersView: React.FC<UsersViewProps> = ({
 
   return (
     <div className="space-y-6 animate-in fade-in duration-150">
-      {/* Title & Tabs */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* 1. Header Estandarizado (Benchmark Clientes) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-[#111827] tracking-tight">
+          <h1 className="text-xl sm:text-2xl font-bold text-[#0f172a] tracking-tight">
             Equipo & Accesos
           </h1>
-          <p className="text-sm text-[#6b7280] mt-1">
-            Directorio de colaboradores, gestión de accesos y matriz de permisos RBAC
-          </p>
+          {/* Resumen ejecutivo en una sola línea */}
+          <div className="flex items-center flex-wrap gap-2 text-xs text-[#64748b] mt-1 font-medium">
+            <span className="font-bold text-[#0f172a]">{totalUsers} colaboradores</span>
+            <span className="text-[#cbd5e1]">·</span>
+            <span className="text-emerald-700 font-semibold">{activeUsers} activos</span>
+            <span className="text-[#cbd5e1]">·</span>
+            <span>{adminUsers} administradores</span>
+            {invitedUsers > 0 && (
+              <>
+                <span className="text-[#cbd5e1]">·</span>
+                <span className="text-amber-700 font-semibold">{invitedUsers} invitados</span>
+              </>
+            )}
+          </div>
         </div>
 
-        {/* Tab Switcher */}
-        <div className="flex items-center bg-[#f1f5f9] p-1 rounded-xl text-xs font-bold shrink-0 self-start sm:self-auto">
-          <button
-            onClick={() => setActiveTab('directory')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-              activeTab === 'directory'
-                ? 'bg-white text-[#0f172a] shadow-xs'
-                : 'text-[#64748b] hover:text-[#0f172a]'
-            }`}
-          >
-            <UsersIcon className="w-3.5 h-3.5" />
-            <span>Directorio ({totalUsers})</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('roles')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-              activeTab === 'roles'
-                ? 'bg-white text-[#0f172a] shadow-xs'
-                : 'text-[#64748b] hover:text-[#0f172a]'
-            }`}
-          >
-            <Key className="w-3.5 h-3.5" />
-            <span>Matriz de Roles (RBAC)</span>
-          </button>
+        <div className="flex items-center gap-2.5 flex-wrap shrink-0 self-start sm:self-auto">
+          {/* Tab Switcher */}
+          <div className="flex items-center bg-[#f1f5f9] p-1 rounded-xl text-xs font-bold shrink-0">
+            <button
+              onClick={() => setActiveTab('directory')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                activeTab === 'directory'
+                  ? 'bg-white text-[#0f172a] shadow-xs'
+                  : 'text-[#64748b] hover:text-[#0f172a]'
+              }`}
+            >
+              <UsersIcon className="w-3.5 h-3.5" />
+              <span>Directorio</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('roles')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                activeTab === 'roles'
+                  ? 'bg-white text-[#0f172a] shadow-xs'
+                  : 'text-[#64748b] hover:text-[#0f172a]'
+              }`}
+            >
+              <Key className="w-3.5 h-3.5" />
+              <span>Matriz RBAC</span>
+            </button>
+          </div>
+
+          {activeTab === 'directory' && (
+            <button
+              onClick={onInviteUser}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#501f92] text-white text-xs font-bold hover:bg-[#381566] shadow-2xs transition-all cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Invitar Colaborador</span>
+            </button>
+          )}
         </div>
       </div>
 
       {activeTab === 'directory' ? (
         <>
-          {/* Invite User & Metrics Header */}
-          <div className="flex justify-end">
-            <button
-              onClick={onInviteUser}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#501f92] text-white text-xs font-semibold hover:bg-[#381566] shadow-xs transition-all cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Invitar Colaborador</span>
-            </button>
-          </div>
-
-          {/* 4 Metric Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white p-4 rounded-2xl border border-[#e5e7eb] shadow-xs">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-[#eff6ff] text-[#2563eb] flex items-center justify-center">
-                  <User className="w-4 h-4" />
-                </div>
-                <span className="text-xs font-medium text-[#6b7280]">Total Colaboradores</span>
-              </div>
-              <p className="text-2xl font-bold text-[#111827] tracking-tight mt-2">{totalUsers}</p>
-            </div>
-
-            <div className="bg-white p-4 rounded-2xl border border-[#e5e7eb] shadow-xs">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-[#f0fdf4] text-[#16a34a] flex items-center justify-center">
-                  <UserCheck className="w-4 h-4" />
-                </div>
-                <span className="text-xs font-medium text-[#6b7280]">Activos</span>
-              </div>
-              <p className="text-2xl font-bold text-[#111827] tracking-tight mt-2">{activeUsers}</p>
-            </div>
-
-            <div className="bg-white p-4 rounded-2xl border border-[#e5e7eb] shadow-xs">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-[#faf5ff] text-[#9333ea] flex items-center justify-center">
-                  <Shield className="w-4 h-4" />
-                </div>
-                <span className="text-xs font-medium text-[#6b7280]">Admin de Sistema</span>
-              </div>
-              <p className="text-2xl font-bold text-[#111827] tracking-tight mt-2">{adminUsers}</p>
-            </div>
-
-            <div className="bg-white p-4 rounded-2xl border border-[#e5e7eb] shadow-xs">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-[#fff7ed] text-[#ea580c] flex items-center justify-center">
-                  <Mail className="w-4 h-4" />
-                </div>
-                <span className="text-xs font-medium text-[#6b7280]">Invitaciones Pendientes</span>
-              </div>
-              <p className="text-2xl font-bold text-[#111827] tracking-tight mt-2">{invitedUsers}</p>
-            </div>
-          </div>
-
           {/* Filter Row */}
           <div className="bg-white p-4 rounded-2xl border border-[#e5e7eb] shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="relative w-full sm:max-w-md">
@@ -282,7 +251,7 @@ export const UsersView: React.FC<UsersViewProps> = ({
                     <th className="py-3.5 px-6 font-semibold">COLABORADOR</th>
                     <th className="py-3.5 px-6 font-semibold">NIVEL RBAC / ROL</th>
                     <th className="py-3.5 px-6 font-semibold">ESTADO</th>
-                    <th className="py-3.5 px-6 font-semibold">TAREAS ACTIVAS</th>
+                    <th className="py-3.5 px-6 font-semibold">LÍDER DIRECTO</th>
                     <th className="py-3.5 px-6 font-semibold">FECHA DE INGRESO</th>
                     <th className="py-3.5 px-6 font-semibold text-right">ACCIONES</th>
                   </tr>
@@ -353,7 +322,26 @@ export const UsersView: React.FC<UsersViewProps> = ({
                         </td>
 
                         <td className="py-4 px-6 text-xs text-[#374151]">
-                          <span className="font-bold text-[#111827]">{user.tasksCount}</span> tareas
+                          {(() => {
+                            const leaderObj = users.find(u => u.id === (user.leaderId || user.reportsTo));
+                            if (leaderObj) {
+                              return (
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-6 h-6 rounded-full ${leaderObj.avatarBg} text-white flex items-center justify-center font-bold text-[10px] shrink-0`}>
+                                    {leaderObj.initials}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="font-semibold text-xs text-[#111827] truncate">{leaderObj.name}</p>
+                                    <p className="text-[10px] text-[#6b7280] truncate">{leaderObj.jobTitle || leaderObj.role}</p>
+                                  </div>
+                                </div>
+                              );
+                            }
+                            if (user.leaderName && user.leaderName !== 'Dirección General (N/A)') {
+                              return <span className="font-medium text-[#374151]">{user.leaderName}</span>;
+                            }
+                            return <span className="text-[#9ca3af] italic text-[11px]">Dirección General</span>;
+                          })()}
                         </td>
 
                         <td className="py-4 px-6 text-xs text-[#6b7280]">

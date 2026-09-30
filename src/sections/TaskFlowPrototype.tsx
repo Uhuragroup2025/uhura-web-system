@@ -2141,7 +2141,7 @@ export const TaskFlowPrototype: React.FC = () => {
               />
 
               {/* View Content with RBAC Protection */}
-              <div className={currentView === 'la-colonia' ? 'p-0 flex-1 flex flex-col min-h-0' : 'p-4 sm:p-7 pb-28 md:pb-7 flex-1'}>
+              <div className={currentView === 'la-colonia' ? 'p-0 flex-1 flex flex-col min-h-0' : 'p-4 sm:p-6 lg:p-8 pb-28 md:pb-8 flex-1'}>
                 {!canAccessModule(currentUser, currentView) ? (
                   <AccessDeniedCard
                     currentUser={currentUser}
@@ -2448,17 +2448,23 @@ export const TaskFlowPrototype: React.FC = () => {
 
                 {/* 7.5. FINANZAS */}
                 {currentView === 'finanzas' && (
-                  <div className="bg-white p-6 rounded-2xl border border-[#e2e8f0] shadow-xs space-y-4 animate-in fade-in duration-200">
-                    <div className="flex items-center justify-between pb-3 border-b border-[#f1f5f9]">
-                      <div className="text-xs text-[#64748b]">
-                        <span>Presupuestación de proyectos por horas hombre y control de cartera</span>
-                      </div>
-                    </div>
-                    <div className="p-4 rounded-xl bg-[#f8fafc] text-xs text-[#334155] border border-[#e2e8f0]">
-                      <p className="font-bold text-[#0f172a]">Valores en firme de la operación:</p>
-                      <p className="text-[11px] mt-1 text-[#64748b]">
-                        Cartera por cobrar: <strong className="text-[#0f172a]">$577.7M COP</strong> · Cartera vencida: <strong className="text-[#dc2626]">$501.9M COP</strong> (86.8% en mora).
+                  <div className="bg-white p-5 rounded-2xl border border-[#e2e8f0] shadow-xs space-y-3 animate-in fade-in duration-200">
+                    <div>
+                      <h2 className="text-base font-bold text-[#0f172a]">Finanzas & Control de Cartera</h2>
+                      <p className="text-xs text-[#64748b] mt-0.5">
+                        Presupuestación de proyectos por horas hombre y balance de cartera
                       </p>
+                    </div>
+                    <div className="pt-3 border-t border-[#f1f5f9] flex flex-wrap items-center gap-4 text-xs">
+                      <div>
+                        <span className="text-[#64748b] block text-[11px]">Cartera por cobrar</span>
+                        <strong className="text-sm font-bold text-[#0f172a]">$577.7M COP</strong>
+                      </div>
+                      <span className="text-[#cbd5e1]">·</span>
+                      <div>
+                        <span className="text-[#64748b] block text-[11px]">Cartera vencida</span>
+                        <strong className="text-sm font-bold text-[#dc2626]">$501.9M COP <span className="text-xs font-normal text-[#64748b]">(86.8% en mora)</span></strong>
+                      </div>
                     </div>
                   </div>
                 )}

@@ -413,27 +413,18 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
           </div>
         )}
 
-        {/* Top Header */}
-        <div className="bg-white p-6 rounded-2xl border border-[#e2e8f0] shadow-2xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#501f92]/10 text-[#501f92] uppercase tracking-wider">
-                Preventa & Scoping
-              </span>
-              <span className="text-[11px] text-[#64748b]">
-                Antes de ser cliente operativo en Orbit
-              </span>
-            </div>
-            <h2 className="text-2xl font-extrabold text-[#0f172a] tracking-tight flex items-center gap-2">
-              <Target className="w-6 h-6 text-[#501f92]" />
-              <span>New Business</span>
-            </h2>
-            <p className="text-xs text-[#64748b]">
-              Dimensionamiento técnico, cotizaciones, SOW y transición a proyectos.
+        {/* 1. Header Plano Estandarizado (Benchmark Clientes) */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-[#0f172a] tracking-tight">
+              New Business
+            </h1>
+            <p className="text-xs sm:text-sm text-[#64748b] mt-1">
+              Dimensionamiento técnico, cotizaciones, SOW y transición a proyectos
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
             {/* Popover / Tooltip: ¿Cómo funciona New Business? ⓘ */}
             <div className="relative" ref={flowInfoRef}>
               <button
@@ -442,12 +433,11 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                   e.stopPropagation();
                   setShowFlowInfo((prev) => !prev);
                 }}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#64748b] hover:text-[#501f92] hover:bg-[#f1f5f9] border border-[#e2e8f0] transition-colors cursor-pointer bg-white shadow-2xs"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#64748b] hover:text-[#501f92] hover:bg-black/5 transition-colors cursor-pointer"
                 title="Explicación del flujo de New Business"
               >
                 <HelpCircle className="w-3.5 h-3.5 text-[#8a4dff]" />
-                <span className="hidden sm:inline">¿Cómo funciona New Business?</span>
-                <span className="sm:hidden">Cómo funciona</span>
+                <span className="hidden sm:inline">¿Cómo funciona?</span>
               </button>
 
               {showFlowInfo && (
@@ -514,7 +504,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                     setOppModalMode('hubspot');
                     setIsNewOppModalOpen(true);
                   }}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#fff7ed] hover:bg-[#ffedd5] border border-[#fed7aa] text-[#c2410c] text-xs font-bold transition-colors cursor-pointer shadow-2xs"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#fff7ed] hover:bg-[#ffedd5] border border-[#fed7aa] text-[#c2410c] text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
                   title="Pegar URL o ID de Deal de HubSpot para autocompletar la oportunidad"
                 >
                   <span className="w-2 h-2 rounded-full bg-[#ff5c35]" />
@@ -527,10 +517,10 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                     setOppModalMode('manual');
                     setIsNewOppModalOpen(true);
                   }}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#501f92] hover:bg-[#3d1572] text-xs font-bold text-white shadow-sm transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] text-xs font-bold text-white shadow-2xs transition-colors cursor-pointer"
                 >
-                  <Plus className="w-4 h-4 text-[#d4ff4a]" />
-                  <span>+ Crear manualmente</span>
+                  <Plus className="w-4 h-4" />
+                  <span>Nueva Oportunidad</span>
                 </button>
               </div>
             )}
@@ -938,7 +928,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
   // VIEW 2: ACTIVE OPPORTUNITY WORKSPACE (With Breadcrumbs & Convert to Project)
   // =========================================================================
   return (
-    <div className="space-y-5 animate-in fade-in duration-200">
+    <div className="space-y-6 animate-in fade-in duration-200">
       {/* Banner de Notificación de Éxito de Conversión */}
       {conversionSuccessMessage && (
         <div className="p-4 rounded-2xl bg-[#ecfdf5] border border-[#a7f3d0] text-[#065f46] flex items-center justify-between gap-3 shadow-xs animate-in slide-in-from-top-2">
@@ -958,16 +948,15 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
         </div>
       )}
 
-      {/* Breadcrumbs (Migas de Pan) */}
+      {/* Breadcrumbs (Migas de Pan Estandarizadas) */}
       <div className="flex items-center justify-between gap-3 text-xs bg-white px-4 py-2.5 rounded-2xl border border-[#e2e8f0] shadow-2xs">
         <div className="flex items-center gap-2 flex-wrap">
           <button
             type="button"
             onClick={() => setSelectedOppId(null)}
-            className="font-bold text-[#501f92] hover:underline flex items-center gap-1 cursor-pointer"
+            className="font-semibold text-[#64748b] hover:text-[#0f172a] transition-colors cursor-pointer"
           >
-            <Target className="w-3.5 h-3.5" />
-            <span>New Business</span>
+            New Business
           </button>
           <ChevronRight className="w-3.5 h-3.5 text-[#94a3b8]" />
           <span className="font-semibold text-[#475569]">{activeOpp.prospectAccountName}</span>
@@ -980,22 +969,13 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
             <button
               type="button"
               onClick={() => setIsNewOppModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#501f92] hover:bg-[#3d1572] text-white text-xs font-bold shadow-2xs transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold shadow-2xs transition-colors cursor-pointer"
               title="Crear otra oportunidad de New Business"
             >
-              <Plus className="w-3.5 h-3.5 text-[#d4ff4a]" />
+              <Plus className="w-3.5 h-3.5" />
               <span>+ Nueva Oportunidad</span>
             </button>
           )}
-
-          <button
-            type="button"
-            onClick={() => setSelectedOppId(null)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-[#475569] hover:text-[#0f172a] hover:bg-[#f1f5f9] transition-colors cursor-pointer"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Volver a Prospectos</span>
-          </button>
         </div>
       </div>
 

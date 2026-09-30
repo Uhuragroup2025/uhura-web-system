@@ -201,50 +201,48 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
   };
 
   return (
-    <div className="space-y-5 animate-in fade-in duration-200">
-      {/* Top Header Controls: Mode Toggle & Action Buttons in a Clean Single Line */}
-      <div className="bg-white p-3 sm:p-3.5 rounded-2xl border border-[#e2e8f0] shadow-xs flex items-center justify-between gap-3">
-        {/* Left: View Mode Toggle (Mis Tareas vs Equipo) */}
-        <div className="flex items-center bg-[#f1f5f9] p-1 rounded-xl text-xs font-bold shrink-0">
-          <button
-            onClick={() => setViewMode('my')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
-              viewMode === 'my'
-                ? 'bg-white text-[#0f172a] shadow-xs'
-                : 'text-[#64748b] hover:text-[#0f172a]'
-            }`}
-          >
-            <User className="w-3.5 h-3.5 shrink-0" />
-            <span>Mis Tareas</span>
-          </button>
-          <button
-            onClick={() => setViewMode('team')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
-              viewMode === 'team'
-                ? 'bg-white text-[#0f172a] shadow-xs'
-                : 'text-[#64748b] hover:text-[#0f172a]'
-            }`}
-          >
-            <Users className="w-3.5 h-3.5 shrink-0" />
-            <span>Equipo</span>
-          </button>
+    <div className="space-y-6 animate-in fade-in duration-200">
+      {/* Barra de Control Unificada: Modo, Acciones y Filtros en una sola tarjeta cohesiva */}
+      <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-[#e2e8f0] shadow-xs space-y-3">
+        {/* Fila 1: Selector de Modo (Mis Tareas vs Equipo) + Botón Nueva Tarea */}
+        <div className="flex items-center justify-between gap-3 pb-3 border-b border-[#f1f5f9]">
+          <div className="flex items-center bg-[#f1f5f9] p-1 rounded-xl text-xs font-bold shrink-0">
+            <button
+              onClick={() => setViewMode('my')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+                viewMode === 'my'
+                  ? 'bg-white text-[#0f172a] shadow-xs'
+                  : 'text-[#64748b] hover:text-[#0f172a]'
+              }`}
+            >
+              <User className="w-3.5 h-3.5 shrink-0" />
+              <span>Mis Tareas</span>
+            </button>
+            <button
+              onClick={() => setViewMode('team')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+                viewMode === 'team'
+                  ? 'bg-white text-[#0f172a] shadow-xs'
+                  : 'text-[#64748b] hover:text-[#0f172a]'
+              }`}
+            >
+              <Users className="w-3.5 h-3.5 shrink-0" />
+              <span>Equipo</span>
+            </button>
+          </div>
+
+          {onOpenNewTaskModal && (
+            <button
+              onClick={onOpenNewTaskModal}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 sm:py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold shadow-2xs transition-all cursor-pointer shrink-0 whitespace-nowrap"
+            >
+              <Plus className="w-3.5 h-3.5 shrink-0" />
+              <span>Nueva Tarea</span>
+            </button>
+          )}
         </div>
 
-        {/* Right: Primary CTA */}
-        {onOpenNewTaskModal && (
-          <button
-            onClick={onOpenNewTaskModal}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 sm:py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold shadow-xs transition-all cursor-pointer shrink-0 whitespace-nowrap"
-          >
-            <Plus className="w-3.5 h-3.5 shrink-0" />
-            <span>Nueva Tarea</span>
-          </button>
-        )}
-      </div>
-
-      {/* Filter Toolbar - Search full width, chips and dropdowns on the second line */}
-      <div className="bg-white p-3 sm:p-3.5 rounded-2xl border border-[#e2e8f0] shadow-xs space-y-2.5">
-        {/* Search - Full Width */}
+        {/* Fila 2: Búsqueda Ancho Completo */}
         <div className="relative w-full">
           <Search className="w-4 h-4 text-[#94a3b8] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
@@ -260,7 +258,7 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
           />
         </div>
 
-        {/* Second Line: Status Tabs + Selectors */}
+        {/* Fila 3: Tabs de Estado + Selectores de Proyecto y Asignado */}
         <div className="flex flex-wrap items-center justify-between gap-2.5 pt-0.5">
           {/* Status Tabs */}
           <div className="flex items-center bg-[#f1f5f9] p-1 rounded-xl shrink-0 overflow-x-auto max-w-full">

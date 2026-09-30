@@ -23,23 +23,23 @@ La siguiente tabla consolida los perfiles operativos del equipo Uhura Group al c
 | Nombre Completo | Nombres | Apellidos | Correo Corporativo | Cargo Operativo (`jobTitle`) | Rol Canónico (`StandardUhuraRole`) | Nivel RBAC (`accessLevel`) | Rol Sistema (`role`) | Fecha Ingreso (`fecha_ingreso`) | Líder Directo (`reportsTo`) |
 |---|---|---|---|---|---|---|---|---|---|
 | **Ana María Giraldo Restrepo** | Ana María | Giraldo Restrepo | `ana.giraldo@uhuragroup.com` | Dirección General / CEO | Perfil Interno Dirección | `DIRECTOR` | `admin` | `2020-06-01` | Dirección General (N/A) |
-| **Nayeliz Paola Brunal Correa** | Nayeliz Paola | Brunal Correa | `nayeliz.brunal@uhuragroup.com` | Client Relationship Strategist | `Client Relationship Strategist` | `LIDER` | `admin` | `2022-02-14` | Ana María Giraldo |
+| **Nayeliz Paola Brunal Correa** | Nayeliz Paola | Brunal Correa | `nayeliz.brunal@uhuragroup.com` | Digital Content Specialist | `Digital Content Specialist` | `OPERATIVO` | `member` | `2022-02-14` | Camilo Vélez Henao |
 | **Luisa Fernanda Urazan Prieto** | Luisa Fernanda | Urazan Prieto | `luisa.urazan@uhuragroup.com` | Operaciones & Cuentas | `Project / Operations Manager` | `LIDER` | `admin` | `2022-04-04` | Ana María Giraldo |
 | **Laura Viviana Salazar Perez** | Laura Viviana | Salazar Perez | `laura.salazar@uhuragroup.com` | Administrativa & RRHH | Perfil Interno Soporte | `ADMINISTRATIVO` | `admin` | `2022-03-19` | Ana María Giraldo |
 | **Paola Andrea Monsalve Giron** | Paola Andrea | Monsalve Giron | `paola.monsalve@uhuragroup.com` | Product Lead / Dirección Producto | `Digital Product Strategist` | `DIRECTOR` | `admin` | `2022-07-05` | Ana María Giraldo |
 | **Juan Sebastian Caicedo Correa** | Juan Sebastian | Caicedo Correa | `sebastian.caicedo@uhuragroup.com` | Traffic & Performance Specialist | `Traffic Specialist` | `OPERATIVO` | `member` | `2023-04-12` | Camilo Vélez Henao |
 | **Jenny Esmeralda Duque Ramírez** | Jenny Esmeralda | Duque Ramírez | `jenny.duque@uhuragroup.com` | Digital Designer | `Digital Designer` | `OPERATIVO` | `member` | `2023-06-05` | Diego Cadavid Díaz |
-| **Laura Isabel Gomez Agudelo** | Laura Isabel | Gomez Agudelo | `laura.gomez@uhuragroup.com` | Digital Designer | `Digital Designer` | `OPERATIVO` | `member` | `2023-06-05` | Diego Cadavid Díaz |
+| **Laura Isabel Gomez Agudelo** | Laura Isabel | Gomez Agudelo | `laura.gomez@uhuragroup.com` | Digital Designer | `Digital Designer` | `OPERATIVO` | `member` | `2023-06-05` | Paola Andrea Monsalve Giron |
 | **Diego Cadavid Díaz** | Diego | Cadavid Díaz | `diego.cadavid@uhuragroup.com` | Creative & Copy Lead | `Creative Strategist` | `LIDER` | `member` | `2023-11-16` | Ana María Giraldo |
 | **Álvaro Antonio Gómez Machuca** | Álvaro Antonio | Gómez Machuca | `alvaro.gomez@uhuragroup.com` | Representante Legal / Dirección | Perfil Interno Dirección | `DIRECTOR` | `admin` | `2024-01-26` | Dirección General (N/A) |
 | **Juan Camilo Torres Ocampo** | Juan Camilo | Torres Ocampo | `camilo.torres@uhuragroup.com` | Creative Strategist | `Creative Strategist` | `OPERATIVO` | `member` | `2024-02-01` | Diego Cadavid Díaz |
 | **Catalina Tejada Castaño** | Catalina | Tejada Castaño | `catalina.tejada@uhuragroup.com` | Dirección Comercial | Perfil Interno Comercial | `LIDER` | `admin` | `2024-04-18` | Ana María Giraldo |
 | **Camilo Vélez Henao** | Camilo | Vélez Henao | `camilo.velez@uhuragroup.com` | Growth Lead / Tech | `Tech / Solutions Lead` | `LIDER` | `admin` | `2024-07-01` | Ana María Giraldo |
-| **Oscar Iván Cerpa Peñates** | Oscar Iván | Cerpa Peñates | `oscar.cerpa@uhuragroup.com` | Front-End Dev / Fullstack | `Front-End Dev` | `OPERATIVO` | `member` | `2024-09-01` | Camilo Vélez Henao |
-| **Sara Rivera Echeverry** | Sara | Rivera Echeverry | `sara.rivera@uhuragroup.com` | Operations & Process | `Project / Operations Manager` | `OPERATIVO` | `member` | `2025-01-20` | Luisa Fernanda Urazan |
+| **Oscar Iván Cerpa Peñates** | Oscar Iván | Cerpa Peñates | `oscar.cerpa@uhuragroup.com` | Front-End Dev / Fullstack | `Front-End Dev` | `OPERATIVO` | `member` | `2024-09-01` | Paola Andrea Monsalve Giron |
+| **Sara Rivera Echeverry** | Sara | Rivera Echeverry | `sara.rivera@uhuragroup.com` | Operations & Process | `Project / Operations Manager` | `OPERATIVO` | `member` | `2025-01-20` | Diego Cadavid Díaz |
 | **Simón Vélez Henao** | Simón | Vélez Henao | `simon.velez@uhuragroup.com` | Traffic Specialist | `Traffic Specialist` | `OPERATIVO` | `member` | `2025-05-15` | Camilo Vélez Henao |
 | **Melisa Gil Gómez** | Melisa | Gil Gómez | `melisa.gil@uhuragroup.com` | Community & Content | `Community Manager` | `OPERATIVO` | `member` | `2025-08-04` | Diego Cadavid Díaz |
-| **Sara María Lagos Obando** | Sara María | Lagos Obando | `sara.lagos@uhuragroup.com` | Creative Specialist | `Digital Content Specialist` | `OPERATIVO` | `member` | `2026-02-12` | Diego Cadavid Díaz |
+| **Sara María Lagos Obando** *(Sarimar)* | Sara María | Lagos Obando | `sara.lagos@uhuragroup.com` | Creative Specialist | `Digital Content Specialist` | `OPERATIVO` | `member` | `2026-02-12` | Diego Cadavid Díaz |
 | **Diego Alejandro Flores Vargas** | Diego Alejandro | Flores Vargas | `diego.flores@uhuragroup.com` | Media & Design | `Motion / Multimedia Designer` | `OPERATIVO` | `member` | `2026-01-26` | Diego Cadavid Díaz |
 
 *\*Nota: Las fechas de nacimiento (`birthDate`) oficiales se inyectarán desde el formulario de Equipo & Accesos o mediante el fixture seguro de RRHH al momento de la siembra en producción.*

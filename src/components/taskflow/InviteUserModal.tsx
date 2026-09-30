@@ -59,16 +59,14 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-100"
     >
       <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-[#e5e7eb] animate-in zoom-in-95 duration-100">
-        <div className="flex items-center justify-between pb-4 border-b border-[#f3f4f6]">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[#eef2ff] text-[#4f46e5] flex items-center justify-center">
-              <Mail className="w-4 h-4" />
-            </div>
-            <h3 className="text-base font-bold text-[#111827]">Invite Team Member</h3>
+        <div className="flex items-center justify-between pb-4 border-b border-[#f1f5f9]">
+          <div>
+            <h3 className="text-base font-bold text-[#0f172a]">Invitar Colaborador</h3>
+            <p className="text-xs text-[#64748b] mt-0.5">Agrega un nuevo miembro al equipo de Orbit</p>
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-[#9ca3af] hover:text-[#111827] hover:bg-[#f3f4f6]"
+            className="p-1.5 rounded-lg text-[#94a3b8] hover:text-[#0f172a] hover:bg-[#f1f5f9] transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -76,36 +74,36 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
 
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-[#374151] mb-1">
-              Full Name
+            <label className="block text-xs font-semibold text-[#334155] mb-1">
+              Nombre Completo
             </label>
             <input
               type="text"
               required
-              placeholder="e.g. Carlos Rivera"
+              placeholder="Ej. Carlos Rivera"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-[#f9fafb] border border-[#e5e7eb] rounded-xl text-sm text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/30 focus:border-[#4f46e5]"
+              className="w-full px-3.5 py-2.5 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl text-xs text-[#0f172a] focus:outline-none focus:border-[#501f92] focus:bg-white transition-all"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#374151] mb-1">
-              Email Address
+            <label className="block text-xs font-semibold text-[#334155] mb-1">
+              Correo Electrónico
             </label>
             <input
               type="email"
               required
-              placeholder="carlos@company.com"
+              placeholder="carlos@empresa.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-[#f9fafb] border border-[#e5e7eb] rounded-xl text-sm text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/30 focus:border-[#4f46e5]"
+              className="w-full px-3.5 py-2.5 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl text-xs text-[#0f172a] focus:outline-none focus:border-[#501f92] focus:bg-white transition-all"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#374151] mb-1">
-              Workspace Role
+            <label className="block text-xs font-semibold text-[#334155] mb-1">
+              Rol Inicial en el Espacio
             </label>
             <div className="grid grid-cols-3 gap-2">
               {(['Member', 'Admin', 'Viewer'] as UserRole[]).map((r) => (
@@ -113,31 +111,31 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
                   type="button"
                   key={r}
                   onClick={() => setRole(r)}
-                  className={`py-2 px-3 rounded-xl text-xs font-semibold border transition-all text-center ${
+                  className={`py-2 px-3 rounded-xl text-xs font-semibold border transition-all text-center cursor-pointer ${
                     role === r
-                      ? 'bg-[#eef2ff] border-[#4f46e5] text-[#4f46e5]'
-                      : 'bg-white border-[#e5e7eb] text-[#6b7280] hover:bg-[#f9fafb]'
+                      ? 'bg-[#f5f3ff] border-[#8a4dff] text-[#501f92]'
+                      : 'bg-white border-[#e2e8f0] text-[#64748b] hover:bg-[#f8fafc]'
                   }`}
                 >
-                  {r}
+                  {r === 'Member' ? 'Colaborador' : r === 'Admin' ? 'Admin' : 'Observador'}
                 </button>
               ))}
             </div>
           </div>
 
-          <div className="pt-4 flex items-center justify-end gap-3 border-t border-[#f3f4f6]">
+          <div className="pt-4 flex items-center justify-end gap-3 border-t border-[#f1f5f9]">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-[#6b7280] hover:text-[#111827] hover:bg-[#f3f4f6] rounded-xl transition-colors"
+              className="px-4 py-2 text-xs font-semibold text-[#64748b] hover:text-[#0f172a] hover:bg-[#f1f5f9] rounded-xl transition-colors cursor-pointer"
             >
-              Cancel
+              Cancelar
             </button>
             <button
               type="submit"
-              className="px-5 py-2 text-xs font-semibold text-white bg-[#4f46e5] hover:bg-[#4338ca] rounded-xl shadow-xs transition-colors"
+              className="px-5 py-2 text-xs font-bold text-white bg-[#501f92] hover:bg-[#381566] rounded-xl shadow-2xs transition-colors cursor-pointer"
             >
-              Send Invitation
+              Enviar Invitación
             </button>
           </div>
         </form>

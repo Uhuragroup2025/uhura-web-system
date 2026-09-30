@@ -44,7 +44,7 @@ export const ROLE_PERMISSIONS_MATRIX: Record<
     'proyectos': { allowedActions: ['view', 'create', 'edit'], scope: 'team' },
     'tareas': { allowedActions: ['view', 'create', 'edit'], scope: 'team' },
     'timesheets': { allowedActions: ['view', 'create', 'edit'], scope: 'team' },
-    'capacidad': { allowedActions: ['view'], scope: 'team' },
+    'capacidad': { allowedActions: ['view'], scope: 'all' },
     'clientes': { allowedActions: ['view'], scope: 'team' },
     'new-business': { allowedActions: ['view', 'create', 'edit'], scope: 'team' },
     'plantillas-producto': { allowedActions: ['view', 'create', 'edit'], scope: 'all' },
@@ -58,7 +58,7 @@ export const ROLE_PERMISSIONS_MATRIX: Record<
     'proyectos': { allowedActions: ['view', 'edit'], scope: 'accounts' },
     'tareas': { allowedActions: ['view', 'create', 'edit'], scope: 'accounts' },
     'timesheets': { allowedActions: ['view', 'create', 'edit'], scope: 'own' },
-    'capacidad': { allowedActions: ['view'], scope: 'accounts' },
+    'capacidad': { allowedActions: ['view'], scope: 'all' },
     'clientes': { allowedActions: ['view', 'create', 'edit'], scope: 'accounts' },
     'new-business': { allowedActions: ['view', 'create', 'edit'], scope: 'accounts' },
     'plantillas-producto': { allowedActions: ['view', 'create', 'edit'], scope: 'all' },
@@ -71,11 +71,11 @@ export const ROLE_PERMISSIONS_MATRIX: Record<
     'proyectos': { allowedActions: ['view'], scope: 'all' },
     'tareas': { allowedActions: ['view'], scope: 'assigned' },
     'timesheets': { allowedActions: ['view', 'create', 'edit'], scope: 'own' },
+    'capacidad': { allowedActions: ['view'], scope: 'all' },
     'clientes': { allowedActions: ['view', 'create', 'edit'], scope: 'all' },
     'new-business': { allowedActions: ['view', 'create', 'edit', 'approve'], scope: 'all' },
     'plantillas-producto': { allowedActions: ['view', 'create', 'edit'], scope: 'all' },
     'la-colonia': { allowedActions: ['view', 'edit'], scope: 'own' }
-    // Sin acceso a Matriz de Capacidad interna ni Administración
   },
 
   // E. ADMINISTRATIVA (Vivian / Fiscal / Facturación)
@@ -84,10 +84,10 @@ export const ROLE_PERMISSIONS_MATRIX: Record<
     'proyectos': { allowedActions: ['view'], scope: 'all' },
     'tareas': { allowedActions: ['view'], scope: 'assigned' },
     'timesheets': { allowedActions: ['view', 'create', 'edit'], scope: 'all' },
+    'capacidad': { allowedActions: ['view'], scope: 'all' },
     'clientes': { allowedActions: ['view', 'edit'], scope: 'all' },
     'new-business': { allowedActions: ['view', 'edit'], scope: 'all' },
     'la-colonia': { allowedActions: ['view', 'edit'], scope: 'own' }
-    // Sin acceso a Catálogo de Servicios, Capacidad ni Administración de sistema
   },
 
   // F. CEO / DIRECCIÓN (Lectura transversal - No superusuario operativo)

@@ -520,17 +520,22 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
       : 0;
 
     return (
-      <div className="space-y-5 animate-in fade-in duration-200">
+      <div className="space-y-6 animate-in fade-in duration-200">
         {/* Navigation Breadcrumb & Project Actions */}
         <div className="flex items-center justify-between gap-2">
-          <button
-            onClick={handleBackToPortfolio}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#64748b] hover:text-[#0f172a] cursor-pointer py-1 px-1.5 -ml-1 rounded-lg hover:bg-black/5 transition-colors"
-            title="Volver a la lista de proyectos"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Volver</span>
-          </button>
+          {/* Breadcrumbs Estandarizadas */}
+          <div className="flex items-center gap-2 text-xs text-[#64748b]">
+            <button
+              onClick={handleBackToPortfolio}
+              className="font-semibold text-[#64748b] hover:text-[#0f172a] transition-colors cursor-pointer"
+            >
+              Proyectos
+            </button>
+            <ChevronRight className="w-3.5 h-3.5 text-[#94a3b8]" />
+            <span className="font-bold text-[#0f172a] truncate max-w-xs sm:max-w-md">
+              {currentProject.name}
+            </span>
+          </div>
 
           <div className="flex items-center gap-2 relative">
             {onOpenNewTaskModalWithProject && (
@@ -1631,21 +1636,20 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   // --- PORTFOLIO VIEW (List of all Projects) ---
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
-      {/* Top Banner & Action */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Top Header Estandarizado (Benchmark Clientes) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
         <div>
-          <div className="flex items-center gap-2 text-xs text-[#64748b]">
-            <span className="w-2 h-2 rounded-full bg-[#501f92]" />
-            <span>Portafolio de Proyectos · Frentes, Horas por Rol y Trazabilidad</span>
-          </div>
-          <h2 className="text-xl sm:text-2xl font-extrabold text-[#0f172a] mt-1 tracking-tight">
-            Proyectos en Ejecución ({projectsList.length})
-          </h2>
+          <h1 className="text-xl sm:text-2xl font-bold text-[#0f172a] tracking-tight">
+            Proyectos ({projectsList.length})
+          </h1>
+          <p className="text-xs sm:text-sm text-[#64748b] mt-1">
+            Portafolio en ejecución, frentes operativos, horas por rol y trazabilidad
+          </p>
         </div>
 
         <button
           onClick={onOpenNewProjectModal}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold shadow-xs cursor-pointer self-start sm:self-auto transition-all"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold shadow-2xs cursor-pointer self-start sm:self-auto transition-all"
         >
           <Plus className="w-3.5 h-3.5" />
           <span>Nuevo Proyecto</span>

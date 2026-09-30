@@ -230,7 +230,7 @@ export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
   };
 
   return (
-    <div className="space-y-4 animate-in fade-in duration-200">
+    <div className="space-y-6 animate-in fade-in duration-200">
       {/* Feedback Toast */}
       {feedbackMessage && (
         <div
@@ -253,24 +253,23 @@ export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
         </div>
       )}
 
-      {/* Header Simplificado: Título limpio, badge de activas y ayuda compacta */}
-      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="space-y-0.5">
+      {/* 1. Header Plano Estandarizado (Benchmark Clientes) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
+        <div>
           <div className="flex items-center gap-2.5 flex-wrap">
-            <h1 className="text-lg sm:text-xl font-extrabold text-[#0f172a] tracking-tight flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-[#8a4dff]" />
-              <span>Catálogo de Plantillas</span>
+            <h1 className="text-xl sm:text-2xl font-bold text-[#0f172a] tracking-tight">
+              Catálogo de Plantillas
             </h1>
-            <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#8a4dff]/10 text-[#501f92] border border-[#8a4dff]/20">
+            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#f5f3ff] text-[#6d28d9]">
               {activeCount} activas
             </span>
           </div>
-          <p className="text-xs text-[#64748b]">
-            Estructuras reutilizables para cotizar y ejecutar servicios.
+          <p className="text-xs sm:text-sm text-[#64748b] mt-1">
+            Estructuras maestras reutilizables para cotizar y ejecutar servicios
           </p>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
           {/* Popover / Tooltip: ¿Cómo funciona el catálogo? ⓘ */}
           <div className="relative" ref={flowInfoRef}>
             <button
@@ -279,12 +278,11 @@ export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
                 e.stopPropagation();
                 setShowFlowInfo((prev) => !prev);
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#64748b] hover:text-[#501f92] hover:bg-[#f1f5f9] border border-transparent hover:border-[#e2e8f0] transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#64748b] hover:text-[#501f92] hover:bg-black/5 transition-colors cursor-pointer"
               title="Explicación del flujo de trabajo"
             >
               <HelpCircle className="w-3.5 h-3.5 text-[#8a4dff]" />
-              <span className="hidden sm:inline">¿Cómo funciona el catálogo?</span>
-              <span className="sm:hidden">Cómo funciona</span>
+              <span className="hidden sm:inline">¿Cómo funciona?</span>
             </button>
 
             {showFlowInfo && (
@@ -337,7 +335,7 @@ export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
             <button
               type="button"
               onClick={handleOpenCreateModal}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#8a4dff] hover:bg-[#7839ee] text-xs font-bold text-white shadow-xs transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] text-xs font-bold text-white shadow-2xs transition-colors cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>Nueva Plantilla</span>

@@ -81,10 +81,6 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
 }) => {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isLogsAccordionOpen, setIsLogsAccordionOpen] = useState(false);
-  const [chatModalTask, setChatModalTask] = useState<TaskItem | null>(null);
-  const [selectedReason, setSelectedReason] = useState<string>('Complejidad técnica superior a la prevista');
-  const [extraHoursEstimate, setExtraHoursEstimate] = useState<number>(1.5);
-  const [notifiedTasks, setNotifiedTasks] = useState<Record<string, { extraHours: number; reason: string; timestamp: string }>>({});
 
   // 1. RBAC & Identity Resolution
   const accessLevel = currentUser ? getUserAccessLevel(currentUser) : 'leader';
@@ -235,20 +231,6 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
   const availableCapacityHours = Math.max(0, configuredCapacityHours - assignedHoursToday);
   const isOverCapacity = assignedHoursToday > configuredCapacityHours;
 
-  const handleSendChatNotification = () => {
-    if (!chatModalTask) return;
-    setNotifiedTasks((prev) => ({
-      ...prev,
-      [chatModalTask.id]: {
-        extraHours: extraHoursEstimate,
-        reason: selectedReason,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      }
-    }));
-    showToast(`Alerta de desvío (+${extraHoursEstimate}h) enviada al canal del proyecto.`);
-    setChatModalTask(null);
-  };
-
   const isExecutive = accessLevel === 'executive';
 
   return (
@@ -372,18 +354,18 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                 {/* 4. Desvíos presupuestales activos */}
                 {overtimeRisks.map((t) => {
                   const consumedHrs = ((t.consumedSeconds || 0) / 3600).toFixed(1);
-                  const isNotified = Boolean(notifiedTasks[t.id]);
                   return (
                     <div
                       key={`overtime-${t.id}`}
-                      className="p-3 rounded-2xl bg-white border border-[#fed7aa] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                      onClick={() => onOpenTaskDetail(t.id)}
+                      className="p-3 rounded-2xl bg-white border border-[#fed7aa] hover:border-[#ea580c] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs cursor-pointer transition-colors group shadow-2xs"
                     >
                       <div className="flex items-start gap-2.5">
                         <Flame className="w-4 h-4 text-[#ea580c] shrink-0 mt-0.5" />
                         <div>
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-bold text-[#0f172a]">{t.title}</span>
-                            <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-[#fff7ed] text-[#c2410c] border border-[#fed7aa]">
+                            <span className="font-bold text-[#0f172a] group-hover:text-[#ea580c] transition-colors">{t.title}</span>
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#fff7ed] text-[#c2410c] border border-[#fed7aa]">
                               {consumedHrs}h / {t.budgetedHours}h cotizadas
                             </span>
                           </div>
@@ -393,19 +375,15 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                         </div>
                       </div>
 
-                      {isNotified ? (
-                        <span className="px-2.5 py-1 rounded-xl bg-[#ecfdf5] text-[#059669] font-bold border border-[#a7f3d0] text-[11px]">
-                          ✓ Desvío Notificado
+                      <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+                        <span className="px-2.5 py-1 rounded-xl bg-[#fff7ed] text-[#c2410c] font-bold border border-[#fed7aa] text-[11px] flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3" />
+                          <span>Desvío presupuestal</span>
                         </span>
-                      ) : (
-                        <button
-                          onClick={() => setChatModalTask(t)}
-                          className="px-3 py-1.5 rounded-xl bg-[#ea580c] text-white font-bold hover:bg-[#c2410c] transition-colors self-start sm:self-auto cursor-pointer flex items-center gap-1.5"
-                        >
-                          <MessageSquare className="w-3.5 h-3.5" />
-                          <span>Avisar en chat</span>
-                        </button>
-                      )}
+                        <span className="text-[#ea580c] text-xs font-semibold group-hover:underline">
+                          Ajustar tarea →
+                        </span>
+                      </div>
                     </div>
                   );
                 })}
@@ -857,89 +835,6 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
             </div>
           )}
       </div>
-
-      {/* Modal de Alerta de Desvío en Chat */}
-      {chatModalTask && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-[#e2e8f0]">
-            <div className="flex items-center justify-between pb-3 border-b border-[#f1f5f9]">
-              <div className="flex items-center gap-2 text-[#ea580c]">
-                <Flame className="w-5 h-5" />
-                <h3 className="font-bold text-sm text-[#0f172a]">
-                  Notificar Desvío Presupuestal
-                </h3>
-              </div>
-              <button
-                onClick={() => setChatModalTask(null)}
-                className="p-1 rounded-lg text-[#94a3b8] hover:text-[#0f172a] hover:bg-[#f1f5f9] transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              <p className="text-[#64748b]">
-                Se enviará una alerta automática al Lead PM y al canal del proyecto para documentar la causa del sobrecosto o re-estimar entregables:
-              </p>
-
-              <div>
-                <label className="font-bold text-[#0f172a] block mb-1">
-                  Motivo principal del desvío:
-                </label>
-                <select
-                  value={selectedReason}
-                  onChange={(e) => setSelectedReason(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs font-medium text-[#0f172a] bg-white focus:outline-none focus:ring-2 focus:ring-[#8a4dff]"
-                >
-                  <option value="Complejidad técnica superior a la prevista">
-                    Complejidad técnica superior a la prevista
-                  </option>
-                  <option value="Insumos incompletos o cambios de alcance del cliente">
-                    Insumos incompletos o cambios de alcance del cliente
-                  </option>
-                  <option value="Retrabajo / Feedback en mesa de control">
-                    Retrabajo / Feedback en mesa de control
-                  </option>
-                  <option value="Ajustes de infraestructura o despliegue">
-                    Ajustes de infraestructura o despliegue
-                  </option>
-                </select>
-              </div>
-
-              <div>
-                <label className="font-bold text-[#0f172a] block mb-1">
-                  Horas adicionales estimadas para terminar (+horas):
-                </label>
-                <input
-                  type="number"
-                  step="0.5"
-                  min="0.5"
-                  max="20"
-                  value={extraHoursEstimate}
-                  onChange={(e) => setExtraHoursEstimate(parseFloat(e.target.value) || 1)}
-                  className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs font-mono font-bold text-[#0f172a] focus:outline-none focus:ring-2 focus:ring-[#8a4dff]"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#f1f5f9]">
-              <button
-                onClick={() => setChatModalTask(null)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-[#64748b] hover:bg-[#f1f5f9] transition-colors cursor-pointer"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleSendChatNotification}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-[#ea580c] hover:bg-[#c2410c] text-white flex items-center gap-1.5 transition-colors cursor-pointer"
-              >
-                <Send className="w-3.5 h-3.5" />
-                <span>Enviar alerta al canal</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

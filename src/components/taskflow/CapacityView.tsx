@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Clock,
   User,
@@ -92,24 +92,49 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
   onNavigateToTasks,
   onNavigateToProjects
 }) => {
-  // RBAC para determinar perspectivas de capacidad permitidas
+  // RBAC estricto gobernado exclusivamente por accessLevel (nunca por nombres propios)
   const userAccessLevel = currentUser ? getUserAccessLevel(currentUser) : 'leader';
-  const capacityScope = ROLE_PERMISSIONS_MATRIX[userAccessLevel]?.['capacidad']?.scope || 'team';
-  
-  // Can view team?
-  const canViewTeam = capacityScope === 'team' || capacityScope === 'accounts' || capacityScope === 'all';
-  // Can view org?
-  const canViewOrg = capacityScope === 'all';
+
+  // Identificación de roles canónicos según matriz de permisos:
+  // - collaborator: únicamente "Mi Capacidad"
+  // - leader: "Mi Capacidad" | "Mi Equipo" | "Organización"
+  // - executive: únicamente "Organización" como vista principal y necesaria (sin balance personal)
+  // - client_relationship / commercial / administrative / system_admin: "Mi Capacidad" | "Organización"
+  const isCollaborator = userAccessLevel === 'collaborator';
+  const isLeader = userAccessLevel === 'leader';
+  const isExecutive = userAccessLevel === 'executive';
+
+  // Visibilidad de pestañas de perspectiva
+  const showPersonalTab = !isExecutive; // CEO / executive solo consulta Organización
+  const showTeamTab = isLeader;         // "Mi Equipo" exclusivo de líder jerárquico
+  const showOrgTab = !isCollaborator;   // Organización disponible para todos excepto collaborator operativo
+
+  // Perspectiva inicial según rol
+  const getInitialPerspective = (): CapacityPerspective => {
+    if (isExecutive) return 'org';
+    return 'personal';
+  };
 
   const [timeframe, setTimeframe] = useState<CapacityTimeframe>('week');
-  const [perspective, setPerspective] = useState<CapacityPerspective>('personal');
+  const [perspective, setPerspective] = useState<CapacityPerspective>(getInitialPerspective);
   const [selectedDepartment, setSelectedDepartment] = useState<string>('all');
   const [selectedUserDetail, setSelectedUserDetail] = useState<string | null>(null);
   const [selectedDayDetail, setSelectedDayDetail] = useState<string | null>(null);
 
+  // Sincronizar perspectiva si cambia el usuario en sesión (ej. DevQaRoleSimulator)
+  useEffect(() => {
+    if (isExecutive) {
+      setPerspective('org');
+    } else if (isCollaborator) {
+      setPerspective('personal');
+    } else if (!isLeader && perspective === 'team') {
+      setPerspective('org');
+    }
+  }, [userAccessLevel, isExecutive, isCollaborator, isLeader, perspective]);
+
   // Usuario actual en sesión
-  const currentUserName = currentUser ? currentUser.name : 'Paola (Lead PM)';
-  const currentUserRole = currentUser ? currentUser.role : 'Lead Project Manager';
+  const currentUserName = currentUser ? currentUser.name : 'Paola Monsalve';
+  const currentUserRole = currentUser ? (currentUser.jobTitle || currentUser.role) : 'Product Lead';
 
   // Semana laboral simulada (Lunes 15 de Septiembre a Viernes 19 de Septiembre de 2026)
   const weekDays = [
@@ -334,23 +359,54 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
     });
   }, [users, absenceEvents, tasks, timeframe]);
 
-  // Filtrado de equipo por departamento
-  const filteredTeam = useMemo(() => {
+  const effectiveUsers = useMemo(() => {
+    return users && users.length > 0 ? users : initialUsers;
+  }, [users]);
+
+  // 1. Perspectiva LEADER: "Mi Equipo"
+  // Regla canónica: Solo usuarios activos donde:
+  // user.reportsTo === currentUser.id o user.leaderId === currentUser.id
+  // NO filtrar por departamento. No hardcodear personas: resolver estrictamente desde leaderId/reportsTo.
+  const myTeamMembers = useMemo(() => {
+    const currentId = currentUser?.id;
+    if (!currentId) return [];
+
+    return teamMembersData.filter(member => {
+      const u = effectiveUsers.find(user => user.id === member.id);
+      if (!u) return false;
+      if (u.id === currentId) return false;
+      if (u.status && u.status.toLowerCase() !== 'active') return false;
+
+      return Boolean((u.leaderId && u.leaderId === currentId) || (u.reportsTo && u.reportsTo === currentId));
+    });
+  }, [teamMembersData, effectiveUsers, currentUser]);
+
+  // 2. Perspectiva ORGANIZACIÓN: "Organización"
+  // Muestra todos los colaboradores activos de Orbit.
+  // Departamento es filtro secundario dentro de Organización.
+  const organizationMembers = useMemo(() => {
     if (selectedDepartment === 'all') return teamMembersData;
     return teamMembersData.filter(m => m.dept === selectedDepartment);
   }, [teamMembersData, selectedDepartment]);
 
-  // Resumen Organizacional
-  const orgSummary = useMemo(() => {
-    const totalMembers = teamMembersData.length;
-    const totalCapacity = Number((totalMembers * periodLegalCapacity).toFixed(0));
-    const totalAssigned = Number(teamMembersData.reduce((acc, m) => acc + m.assigned, 0).toFixed(0));
-    const totalExecuted = Number(teamMembersData.reduce((acc, m) => acc + m.executed, 0).toFixed(0));
+  // Miembros visualizados según la perspectiva activa
+  const displayedMembers = useMemo(() => {
+    if (perspective === 'team') return myTeamMembers;
+    return organizationMembers;
+  }, [perspective, myTeamMembers, organizationMembers]);
+
+  // Resumen cuantitativo para los KPIs según la perspectiva activa
+  const currentSummary = useMemo(() => {
+    const list = displayedMembers;
+    const totalMembers = list.length;
+    const totalCapacity = Number(list.reduce((acc, m) => acc + m.capacity, 0).toFixed(0));
+    const totalAssigned = Number(list.reduce((acc, m) => acc + m.assigned, 0).toFixed(0));
+    const totalExecuted = Number(list.reduce((acc, m) => acc + m.executed, 0).toFixed(0));
     const totalAvailable = Number((totalCapacity - totalAssigned).toFixed(0));
-    const avgUtilization = Math.round((totalAssigned / totalCapacity) * 100);
-    const overloadedCount = teamMembersData.filter(m => m.status === 'overloaded').length;
-    const availableCount = teamMembersData.filter(m => m.status === 'available').length;
-    const optimalCount = teamMembersData.filter(m => m.status === 'optimal').length;
+    const avgUtilization = totalCapacity > 0 ? Math.round((totalAssigned / totalCapacity) * 100) : 0;
+    const overloadedCount = list.filter(m => m.status === 'overloaded').length;
+    const availableCount = list.filter(m => m.status === 'available').length;
+    const optimalCount = list.filter(m => m.status === 'optimal').length;
 
     return {
       totalMembers,
@@ -363,7 +419,7 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
       availableCount,
       optimalCount
     };
-  }, [teamMembersData, periodLegalCapacity]);
+  }, [displayedMembers]);
 
   // Desglose por proyecto / concentración de carga personal
   const projectConcentration = useMemo(() => {
@@ -387,19 +443,24 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
       <div className="bg-white p-3 sm:p-4 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
         {/* Izquierda: Selector de Perspectiva (Mi Capacidad vs Equipo vs Organización) */}
         <div className="flex items-center overflow-x-auto pb-1 md:pb-0 scrollbar-none w-full md:w-auto">
-          <div className="flex items-center bg-[#f1f5f9] p-1 rounded-xl text-xs font-bold shrink-0 w-full sm:w-auto justify-between sm:justify-start">
-            <button
-              onClick={() => setPerspective('personal')}
-              className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap text-center ${
-                perspective === 'personal'
-                  ? 'bg-white text-[#0f172a] shadow-xs'
-                  : 'text-[#64748b] hover:text-[#0f172a]'
-              }`}
-            >
-              <User className="w-3.5 h-3.5 shrink-0" />
-              <span>Mi Capacidad</span>
-            </button>
-            {canViewTeam && (
+          <div className="flex items-center bg-[#f1f5f9] p-1 rounded-xl text-xs font-bold shrink-0 w-full sm:w-auto justify-between sm:justify-start gap-1">
+            {/* Pestaña 1: Mi Capacidad (Oculto para Executive, que tiene Organización como vista única) */}
+            {showPersonalTab && (
+              <button
+                onClick={() => setPerspective('personal')}
+                className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap text-center ${
+                  perspective === 'personal'
+                    ? 'bg-white text-[#0f172a] shadow-xs'
+                    : 'text-[#64748b] hover:text-[#0f172a]'
+                }`}
+              >
+                <User className="w-3.5 h-3.5 shrink-0" />
+                <span>Mi Capacidad</span>
+              </button>
+            )}
+
+            {/* Pestaña 2: Mi Equipo (Exclusivo Líderes según reportsTo/leaderId) */}
+            {showTeamTab && (
               <button
                 onClick={() => setPerspective('team')}
                 className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap text-center ${
@@ -411,9 +472,14 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
                 <Users className="w-3.5 h-3.5 shrink-0" />
                 <span className="hidden sm:inline">Mi Equipo</span>
                 <span className="sm:hidden">Equipo</span>
+                <span className="ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] bg-[#e2e8f0] text-[#334155] font-semibold">
+                  {myTeamMembers.length}
+                </span>
               </button>
             )}
-            {canViewOrg && (
+
+            {/* Pestaña 3: Organización (Disponible para Líderes, Client Relationship, Commercial, Executive y Admins) */}
+            {showOrgTab && (
               <button
                 onClick={() => setPerspective('org')}
                 className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap text-center ${
@@ -479,7 +545,11 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] shadow-xs space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-[#64748b] uppercase tracking-wider">
-              {perspective === 'personal' ? 'Mi Balance de Horas' : perspective === 'team' ? 'Horas Totales del Equipo' : 'Capacidad Global Orbit'}
+              {perspective === 'personal'
+                ? 'Mi Balance de Horas'
+                : perspective === 'team'
+                ? 'Horas de Mi Equipo'
+                : 'Capacidad Global Orbit'}
             </span>
             <div className="w-8 h-8 rounded-xl bg-[#f2ecfb] text-[#501f92] flex items-center justify-center">
               <Clock className="w-4 h-4" />
@@ -489,14 +559,14 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
           <div>
             <div className="flex items-baseline gap-1.5">
               <span className="text-2xl font-extrabold text-[#0f172a] font-mono">
-                {perspective === 'personal' ? myCurrentAssigned.toFixed(1) : perspective === 'team' ? orgSummary.totalAssigned : orgSummary.totalAssigned}h
+                {perspective === 'personal' ? myCurrentAssigned.toFixed(1) : currentSummary.totalAssigned}h
               </span>
               <span className="text-xs text-[#64748b] font-medium">
-                asignadas de <strong className="text-[#0f172a] font-mono">{perspective === 'personal' ? periodLegalCapacity.toFixed(1) : (perspective === 'team' ? (teamMembersData.length * periodLegalCapacity).toFixed(0) : orgSummary.totalCapacity)}h</strong> disponibles
+                asignadas de <strong className="text-[#0f172a] font-mono">{perspective === 'personal' ? periodLegalCapacity.toFixed(1) : currentSummary.totalCapacity}h</strong> disponibles
               </span>
             </div>
             <p className="text-xs text-[#64748b] mt-0.5">
-              <strong className="text-[#501f92] font-mono">{perspective === 'personal' ? myCurrentExecuted.toFixed(1) : orgSummary.totalExecuted}h</strong> ya ejecutadas/cargadas ({perspective === 'personal' ? myExecutedPercent : Math.round((orgSummary.totalExecuted / orgSummary.totalCapacity) * 100)}%)
+              <strong className="text-[#501f92] font-mono">{perspective === 'personal' ? myCurrentExecuted.toFixed(1) : currentSummary.totalExecuted}h</strong> ya ejecutadas/cargadas ({perspective === 'personal' ? myExecutedPercent : currentSummary.avgUtilization}%)
             </p>
           </div>
 
@@ -505,14 +575,14 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
             <div className="h-3 w-full bg-[#f1f5f9] rounded-full overflow-hidden flex relative">
               {/* Segmento 1: Ejecutado (Morado Sólido) */}
               <div
-                style={{ width: `${Math.min(100, perspective === 'personal' ? myExecutedPercent : Math.round((orgSummary.totalExecuted / orgSummary.totalCapacity) * 100))}%` }}
+                style={{ width: `${Math.min(100, perspective === 'personal' ? myExecutedPercent : Math.round((currentSummary.totalExecuted / (currentSummary.totalCapacity || 1)) * 100))}%` }}
                 className="bg-[#501f92] h-full transition-all duration-300 relative"
-                title={`Ejecutado: ${perspective === 'personal' ? myCurrentExecuted : orgSummary.totalExecuted}h`}
+                title={`Ejecutado: ${perspective === 'personal' ? myCurrentExecuted : currentSummary.totalExecuted}h`}
               />
               {/* Segmento 2: Asignado Pendiente (Lila) */}
               <div
                 style={{
-                  width: `${Math.max(0, Math.min(100 - (perspective === 'personal' ? myExecutedPercent : Math.round((orgSummary.totalExecuted / orgSummary.totalCapacity) * 100)), (perspective === 'personal' ? myUtilizationPercent - myExecutedPercent : orgSummary.avgUtilization - Math.round((orgSummary.totalExecuted / orgSummary.totalCapacity) * 100))))}%`
+                  width: `${Math.max(0, Math.min(100 - (perspective === 'personal' ? myExecutedPercent : Math.round((currentSummary.totalExecuted / (currentSummary.totalCapacity || 1)) * 100)), (perspective === 'personal' ? myUtilizationPercent - myExecutedPercent : currentSummary.avgUtilization - Math.round((currentSummary.totalExecuted / (currentSummary.totalCapacity || 1)) * 100))))}%`
                 }}
                 className="bg-[#c9b7ff] h-full transition-all duration-300"
                 title="Asignado pendiente por ejecutar"
@@ -536,14 +606,18 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] shadow-xs space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-[#64748b] uppercase tracking-wider">
-              {perspective === 'personal' ? 'Disponibilidad Neta' : 'Estado de Carga del Equipo'}
+              {perspective === 'personal'
+                ? 'Disponibilidad Neta'
+                : perspective === 'team'
+                ? 'Estado de Carga de Mi Equipo'
+                : 'Estado de Carga de la Organización'}
             </span>
             <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
-              (perspective === 'personal' ? isOverloaded : orgSummary.overloadedCount > 0)
+              (perspective === 'personal' ? isOverloaded : currentSummary.overloadedCount > 0)
                 ? 'bg-[#fef2f2] text-[#dc2626]'
                 : 'bg-[#ecfdf5] text-[#10b981]'
             }`}>
-              {(perspective === 'personal' ? isOverloaded : orgSummary.overloadedCount > 0) ? (
+              {(perspective === 'personal' ? isOverloaded : currentSummary.overloadedCount > 0) ? (
                 <AlertTriangle className="w-4 h-4" />
               ) : (
                 <BatteryCharging className="w-4 h-4" />
@@ -576,16 +650,20 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
               <div>
                 <div className="flex items-baseline gap-2">
                   <span className="text-2xl font-extrabold text-[#0f172a] font-mono">
-                    {orgSummary.avgUtilization}%
+                    {currentSummary.avgUtilization}%
                   </span>
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-[#ecfdf5] text-[#059669] border border-[#a7f3d0]">
-                    Capacidad General Saludable
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-md border ${
+                    currentSummary.overloadedCount > 0
+                      ? 'bg-[#fef2f2] text-[#dc2626] border-[#fecdd3]'
+                      : 'bg-[#ecfdf5] text-[#059669] border-[#a7f3d0]'
+                  }`}>
+                    {currentSummary.overloadedCount > 0 ? 'Sobrecarga Detectada' : 'Capacidad Saludable'}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 mt-2 text-xs">
-                  <span className="text-[#dc2626] font-bold">⚠️ {orgSummary.overloadedCount} sobrecargados</span>
+                  <span className="text-[#dc2626] font-bold">⚠️ {currentSummary.overloadedCount} sobrecargados</span>
                   <span className="text-[#64748b]">·</span>
-                  <span className="text-[#059669] font-semibold">{orgSummary.availableCount} con disponibilidad</span>
+                  <span className="text-[#059669] font-semibold">{currentSummary.availableCount} con disponibilidad</span>
                 </div>
               </div>
             )}
@@ -820,154 +898,181 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
         </div>
       )}
 
-      {/* PERSPECTIVA B: MI EQUIPO (LÍDER PM / MONITOREO Y BALANCE DE CARGAS) */}
+      {/* PERSPECTIVA B: MI EQUIPO / ORGANIZACIÓN */}
       {(perspective === 'team' || perspective === 'org') && (
         <div className="bg-white p-5 rounded-2xl border border-[#e2e8f0] shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#f1f5f9]">
             <div>
               <h3 className="text-sm font-bold text-[#0f172a]">
-                {perspective === 'team' ? 'Monitoreo de Capacidad del Equipo' : 'Mapa General de Capacidad de la Organización'}
+                {perspective === 'team'
+                  ? `Mi Equipo (${myTeamMembers.length} colaboradores directos)`
+                  : `Mapa General de la Organización (${displayedMembers.length} colaboradores)`}
               </h3>
               <p className="text-xs text-[#64748b]">
                 {perspective === 'team'
-                  ? 'Detecta sobrecargas y balancea asignaciones entre colaboradores'
-                  : 'Visión agregada de talento por especialidades y áreas'}
+                  ? `Monitoreo de colaboradores que te reportan directamente como líder (${currentUser?.name || currentUserName})`
+                  : 'Visión agregada de talento por especialidades y áreas de toda la organización'}
               </p>
             </div>
 
-            {/* Filtro por Especialidad/Área */}
-            <div className="flex items-center gap-2">
-              <Filter className="w-3.5 h-3.5 text-[#64748b]" />
-              <select
-                value={selectedDepartment}
-                onChange={(e) => setSelectedDepartment(e.target.value)}
-                className="bg-[#f8fafc] border border-[#e2e8f0] px-3 py-1.5 rounded-xl text-xs font-semibold text-[#0f172a] focus:outline-none focus:border-[#501f92]"
-              >
-                <option value="all">Todas las áreas ({teamMembersData.length})</option>
-                <option value="Área Creatividad">Área Creatividad (7)</option>
-                <option value="Área Producto">Área Producto (5)</option>
-                <option value="Área Growth">Área Growth (3)</option>
-                <option value="Área Comercial">Área Comercial (2)</option>
-                <option value="Área Administrativa">Área Administrativa (1)</option>
-                <option value="C-Level">C-Level / Dirección (1)</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Grid / Lista de Miembros con Barras de Capacidad */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-3.5">
-            {filteredTeam.map((member) => {
-              const isOver = member.status === 'overloaded';
-              const isAvailable = member.status === 'available';
-
-              const barColor = isOver
-                ? 'bg-[#dc2626]'
-                : isAvailable
-                ? 'bg-[#3b82f6]' // Azul capacidad disponible
-                : 'bg-[#10b981]'; // Verde equilibrado
-
-              const isAbsent = member.absenceDeduction > 0 && member.capacity === 0;
-
-              const statusBadgeBg = isAbsent
-                ? 'bg-[#fef3c7] text-[#92400e] border-[#fde68a]'
-                : isOver
-                ? 'bg-[#fee2e2] text-[#b91c1c] border-[#fca5a5]'
-                : isAvailable
-                ? 'bg-[#eff6ff] text-[#1d4ed8] border-[#bfdbfe]'
-                : 'bg-[#ecfdf5] text-[#047857] border-[#a7f3d0]';
-
-              const statusLabel = isAbsent
-                ? (member.activeAbsence?.type === 'vacation' ? '🌴 En Vacaciones' : 'Ausencia Aprobada')
-                : isOver
-                ? `⚠️ Sobreasignado (+${Math.abs(member.diffHours)}h)`
-                : isAvailable
-                ? `+${member.diffHours}h disponibles`
-                : `Equilibrado (${member.assigned}h)`;
-
-              return (
-                <div
-                  key={member.id}
-                  onClick={() => setSelectedUserDetail(member.id)}
-                  className={`p-4 rounded-xl border transition-all cursor-pointer hover:shadow-xs ${
-                    isAbsent
-                      ? 'bg-[#fffdf7] border-[#fef3c7] hover:border-[#fde68a]'
-                      : isOver
-                      ? 'bg-[#fffbfa] border-[#fecdd3] hover:border-[#fda4af]'
-                      : isAvailable
-                      ? 'bg-[#fcfdff] border-[#e2e8f0] hover:border-[#bfdbfe]'
-                      : 'bg-white border-[#e2e8f0] hover:border-[#a7f3d0]'
-                  }`}
+            {/* Filtro por Especialidad/Área (Exclusivo en perspectiva Organización) */}
+            {perspective === 'org' && (
+              <div className="flex items-center gap-2">
+                <Filter className="w-3.5 h-3.5 text-[#64748b]" />
+                <select
+                  value={selectedDepartment}
+                  onChange={(e) => setSelectedDepartment(e.target.value)}
+                  className="bg-[#f8fafc] border border-[#e2e8f0] px-3 py-1.5 rounded-xl text-xs font-semibold text-[#0f172a] focus:outline-none focus:border-[#501f92]"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className={`w-9 h-9 rounded-xl ${member.avatarBg} text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs`}>
-                        {member.initials}
-                      </div>
-                      <div className="min-w-0">
-                        <h4 className="font-bold text-sm text-[#0f172a] truncate">{member.name}</h4>
-                        <p className="text-xs text-[#64748b] truncate">{member.role}</p>
-                      </div>
-                    </div>
-
-                    {/* Chip de Estado */}
-                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md whitespace-nowrap shrink-0 border ${statusBadgeBg}`}>
-                      {statusLabel}
-                    </span>
-                  </div>
-
-                  {/* Banner de Ausencia Estructurada (Google Calendar / Orbit) */}
-                  {member.absenceDeduction > 0 && (
-                    <div className="mt-2.5 flex items-center justify-between text-[11px] px-2.5 py-1 rounded-lg bg-[#fffbeb] border border-[#fef3c7] text-[#92400e]">
-                      <span className="flex items-center gap-1.5 font-medium truncate">
-                        <Calendar className="w-3.5 h-3.5 text-[#d97706] shrink-0" />
-                        {member.activeAbsence?.title || 'Ausencia'} (-{member.absenceDeduction}h)
-                      </span>
-                      {member.activeAbsence?.source === 'google_calendar' && (
-                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-white border border-[#fde68a] font-semibold text-[#b45309] shrink-0">
-                          Google Calendar
-                        </span>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Barra de Capacidad del Colaborador */}
-                  <div className="mt-3 space-y-1.5">
-                    <div className="flex justify-between text-xs font-mono">
-                      <span className="text-[#64748b]">
-                        Asignado: <strong className="text-[#0f172a]">{member.assigned}h</strong> / {member.capacity}h
-                      </span>
-                      <span className={`font-bold ${
-                        isOver ? 'text-[#dc2626]' : isAvailable ? 'text-[#1d4ed8]' : 'text-[#059669]'
-                      }`}>
-                        {member.utilPercent}%
-                      </span>
-                    </div>
-
-                    {/* Barra de Progreso de Capacidad con Reglas Semafóricas */}
-                    <div className="h-2 w-full bg-[#f1f5f9] rounded-full overflow-hidden flex">
-                      <div
-                        style={{ width: `${Math.min(100, member.utilPercent)}%` }}
-                        className={`h-full transition-all duration-300 ${barColor}`}
-                        title={`Utilización: ${member.utilPercent}% (${member.assigned}h / ${member.capacity}h)`}
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between text-[10px] text-[#64748b] pt-0.5">
-                      <span>Ejecutado: <strong>{member.executed}h</strong> · Disp: <strong>{member.diffHours > 0 ? `+${member.diffHours}h` : `${member.diffHours}h`}</strong></span>
-                      <span className="text-[#501f92] font-medium hover:underline">Ver tareas →</span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+                  <option value="all">Todas las áreas ({teamMembersData.length})</option>
+                  <option value="Área Creatividad">Área Creatividad</option>
+                  <option value="Área Producto">Área Producto</option>
+                  <option value="Área Growth">Área Growth</option>
+                  <option value="Área Comercial">Área Comercial</option>
+                  <option value="Área Administrativa">Área Administrativa</option>
+                  <option value="C-Level">C-Level / Dirección</option>
+                </select>
+              </div>
+            )}
           </div>
+
+          {/* Estado vacío si no hay colaboradores en la perspectiva */}
+          {displayedMembers.length === 0 ? (
+            <div className="p-8 text-center bg-[#f8fafc] rounded-xl border border-dashed border-[#cbd5e1] space-y-2">
+              <Users className="w-8 h-8 text-[#94a3b8] mx-auto" />
+              <h4 className="text-sm font-bold text-[#0f172a]">
+                {perspective === 'team'
+                  ? 'No tienes colaboradores que te reporten directamente'
+                  : 'No se encontraron colaboradores'}
+              </h4>
+              <p className="text-xs text-[#64748b] max-w-sm mx-auto">
+                {perspective === 'team'
+                  ? 'Los colaboradores cuyo líder directo seas tú en Equipo & Accesos (campo leaderId / reportsTo) aparecerán automáticamente aquí.'
+                  : 'Prueba cambiando los filtros seleccionados para ver más resultados.'}
+              </p>
+            </div>
+          ) : (
+            /* Grid / Lista de Miembros con Barras de Capacidad */
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-3.5">
+              {displayedMembers.map((member) => {
+                const isOver = member.status === 'overloaded';
+                const isAvailable = member.status === 'available';
+
+                const barColor = isOver
+                  ? 'bg-[#dc2626]'
+                  : isAvailable
+                  ? 'bg-[#3b82f6]' // Azul capacidad disponible
+                  : 'bg-[#10b981]'; // Verde equilibrado
+
+                const isAbsent = member.absenceDeduction > 0 && member.capacity === 0;
+
+                const statusBadgeBg = isAbsent
+                  ? 'bg-[#fef3c7] text-[#92400e] border-[#fde68a]'
+                  : isOver
+                  ? 'bg-[#fee2e2] text-[#b91c1c] border-[#fca5a5]'
+                  : isAvailable
+                  ? 'bg-[#eff6ff] text-[#1d4ed8] border-[#bfdbfe]'
+                  : 'bg-[#ecfdf5] text-[#047857] border-[#a7f3d0]';
+
+                const statusLabel = isAbsent
+                  ? (member.activeAbsence?.type === 'vacation' ? '🌴 En Vacaciones' : 'Ausencia Aprobada')
+                  : isOver
+                  ? `⚠️ Sobreasignado (+${Math.abs(member.diffHours)}h)`
+                  : isAvailable
+                  ? `+${member.diffHours}h disponibles`
+                  : `Equilibrado (${member.assigned}h)`;
+
+                return (
+                  <div
+                    key={member.id}
+                    onClick={() => setSelectedUserDetail(member.id)}
+                    className={`p-4 rounded-xl border transition-all cursor-pointer hover:shadow-xs ${
+                      isAbsent
+                        ? 'bg-[#fffdf7] border-[#fef3c7] hover:border-[#fde68a]'
+                        : isOver
+                        ? 'bg-[#fffbfa] border-[#fecdd3] hover:border-[#fda4af]'
+                        : isAvailable
+                        ? 'bg-[#fcfdff] border-[#e2e8f0] hover:border-[#bfdbfe]'
+                        : 'bg-white border-[#e2e8f0] hover:border-[#a7f3d0]'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={`w-9 h-9 rounded-xl ${member.avatarBg} text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs`}>
+                          {member.initials}
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="font-bold text-sm text-[#0f172a] truncate">{member.name}</h4>
+                          <p className="text-xs text-[#64748b] truncate">{member.role}</p>
+                        </div>
+                      </div>
+
+                      {/* Chip de Estado */}
+                      <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md whitespace-nowrap shrink-0 border ${statusBadgeBg}`}>
+                        {statusLabel}
+                      </span>
+                    </div>
+
+                    {/* Banner de Ausencia Estructurada (Google Calendar / Orbit) */}
+                    {member.absenceDeduction > 0 && (
+                      <div className="mt-2.5 flex items-center justify-between text-[11px] px-2.5 py-1 rounded-lg bg-[#fffbeb] border border-[#fef3c7] text-[#92400e]">
+                        <span className="flex items-center gap-1.5 font-medium truncate">
+                          <Calendar className="w-3.5 h-3.5 text-[#d97706] shrink-0" />
+                          {member.activeAbsence?.title || 'Ausencia'} (-{member.absenceDeduction}h)
+                        </span>
+                        {member.activeAbsence?.source === 'google_calendar' && (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-white border border-[#fde68a] font-semibold text-[#b45309] shrink-0">
+                            Google Calendar
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Barra de Capacidad del Colaborador */}
+                    <div className="mt-3 space-y-1.5">
+                      <div className="flex justify-between text-xs font-mono">
+                        <span className="text-[#64748b]">
+                          Asignado: <strong className="text-[#0f172a]">{member.assigned}h</strong> / {member.capacity}h
+                        </span>
+                        <span className={`font-bold ${
+                          isOver ? 'text-[#dc2626]' : isAvailable ? 'text-[#1d4ed8]' : 'text-[#059669]'
+                        }`}>
+                          {member.utilPercent}%
+                        </span>
+                      </div>
+
+                      {/* Barra de Progreso de Capacidad con Reglas Semafóricas */}
+                      <div className="h-2 w-full bg-[#f1f5f9] rounded-full overflow-hidden flex">
+                        <div
+                          style={{ width: `${Math.min(100, member.utilPercent)}%` }}
+                          className={`h-full transition-all duration-300 ${barColor}`}
+                          title={`Utilización: ${member.utilPercent}% (${member.assigned}h / ${member.capacity}h)`}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between text-[10px] text-[#64748b] pt-0.5">
+                        <span>Ejecutado: <strong>{member.executed}h</strong> · Disp: <strong>{member.diffHours > 0 ? `+${member.diffHours}h` : `${member.diffHours}h`}</strong></span>
+                        <span className="text-[#501f92] font-medium hover:underline">Ver tareas →</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
       {/* 4. DRAWER LATERAL DE DETALLE (SLIDE-OVER AL HACER CLIC EN UN COLABORADOR) */}
       {selectedMemberObj && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="w-full max-w-md bg-white h-full shadow-2xl p-6 overflow-y-auto space-y-5 animate-in slide-in-from-right duration-200">
+        <div
+          onClick={() => setSelectedUserDetail(null)}
+          className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-xs animate-in fade-in duration-150 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md bg-white h-full shadow-2xl p-6 overflow-y-auto space-y-5 animate-in slide-in-from-right duration-200 cursor-default"
+          >
             {/* Header del Drawer */}
             <div className="flex items-start justify-between pb-4 border-b border-[#e2e8f0]">
               <div className="flex items-center gap-3">
@@ -982,6 +1087,7 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
               <button
                 onClick={() => setSelectedUserDetail(null)}
                 className="p-1.5 rounded-lg text-[#64748b] hover:bg-[#f1f5f9] cursor-pointer"
+                aria-label="Cerrar detalle"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1024,31 +1130,38 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h4 className="text-xs font-bold text-[#0f172a] uppercase tracking-wider">
-                  Tareas Asignadas ({tasks.filter(t => t.assignee?.name === selectedMemberObj.name).length || 3})
+                  Tareas Asignadas
                 </h4>
                 <span className="text-[11px] text-[#501f92] font-semibold">Semana en curso</span>
               </div>
 
               <div className="space-y-2">
                 {tasks
-                  .filter(t => t.assignee?.name === selectedMemberObj.name || t.assignee?.initials === selectedMemberObj.initials)
-                  .concat(tasks.slice(0, 2))
-                  .slice(0, 4)
-                  .map((task, idx) => (
+                  .filter(t =>
+                    t.assignee?.id === selectedMemberObj.id ||
+                    t.assignee?.name?.toLowerCase().includes(selectedMemberObj.name.toLowerCase()) ||
+                    t.collaborators?.some(c => c.name?.toLowerCase().includes(selectedMemberObj.name.toLowerCase()))
+                  )
+                  .concat(
+                    tasks.filter(t => t.assignee?.initials === selectedMemberObj.initials)
+                  )
+                  .filter((v, i, a) => a.findIndex(t => t.id === v.id) === i)
+                  .slice(0, 5)
+                  .map((task) => (
                     <div
-                      key={`${task.id}-${idx}`}
+                      key={task.id}
                       onClick={() => {
                         setSelectedUserDetail(null);
                         onOpenTaskDetail && onOpenTaskDetail(task);
                       }}
-                      className="p-3 rounded-xl bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] space-y-1.5 transition-colors cursor-pointer"
+                      className="p-3 rounded-xl bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] space-y-1.5 transition-colors cursor-pointer group"
                     >
                       <div className="flex items-center justify-between text-xs">
-                        <span className="font-bold text-[#0f172a] truncate">{task.title}</span>
-                        <span className="font-mono text-[11px] font-bold text-[#501f92]">{task.budgetedHours}h</span>
+                        <span className="font-bold text-[#0f172a] group-hover:text-[#501f92] truncate">{task.title}</span>
+                        <span className="font-mono text-[11px] font-bold text-[#501f92]">{task.budgetedHours || task.estimatedHours || 0}h</span>
                       </div>
                       <div className="flex items-center justify-between text-[10px] text-[#64748b]">
-                        <span>{task.projectName}</span>
+                        <span>{task.projectName || task.clientName || 'Proyecto'}</span>
                         <span className="px-1.5 py-0.5 rounded bg-white border border-[#e2e8f0] font-medium">
                           {task.status}
                         </span>
@@ -1058,19 +1171,14 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
               </div>
             </div>
 
-            {/* Acción de Balanceo Rápido */}
-            <div className="pt-3 border-t border-[#e2e8f0] space-y-2">
-              <p className="text-xs text-[#64748b]">¿Necesitas balancear la carga de este colaborador?</p>
-              <button
-                onClick={() => {
-                  setSelectedUserDetail(null);
-                  onNavigateToTasks && onNavigateToTasks();
-                }}
-                className="w-full py-2.5 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
-              >
-                <SlidersHorizontal className="w-3.5 h-3.5" />
-                <span>Reasignar Tareas en Vista de Tareas</span>
-              </button>
+            {/* Guía de reasignación directa (sin el botón roto) */}
+            <div className="pt-3 border-t border-[#e2e8f0] bg-[#f8fafc] p-3 rounded-xl border border-[#e2e8f0] space-y-1">
+              <p className="text-xs font-bold text-[#0f172a] flex items-center gap-1.5">
+                <span>🔄</span> Reasignar tareas o ajustar carga
+              </p>
+              <p className="text-[11px] text-[#64748b] leading-relaxed">
+                Haz clic directamente en cualquiera de las tareas asignadas arriba para abrir su modal de edición y cambiar el colaborador. La capacidad se actualizará automáticamente en tiempo real.
+              </p>
             </div>
           </div>
         </div>
