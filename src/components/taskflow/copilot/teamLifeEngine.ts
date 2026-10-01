@@ -150,7 +150,11 @@ export function processTeamLifeEvents(
             headline: `¡Hoy cumple años ${user.name.split(' ')[0]}! 🎉🎂`,
             message: `¡Pásate a felicitar a ${user.name}! Hoy celebra su cumpleaños en la colonia Uhura.`,
             daysRemaining: 0,
-            isActiveNow: true
+            isActiveNow: true,
+            userHobbies: user.hobbies,
+            userPersonalDream: user.personalDream,
+            userPetNames: user.petNames,
+            userJoinedDate: user.joinedDate
           };
           todayEvents.push(event);
           allEvents.push(event);
@@ -167,7 +171,11 @@ export function processTeamLifeEvents(
             headline: `Cumpleaños en ${days} día${days > 1 ? 's' : ''} 🎈`,
             message: `El ${user.birthDateFormatted || 'próximos días'} cumple años ${user.name}. ¡Prepara tu saludo!`,
             daysRemaining: days,
-            isActiveNow: false
+            isActiveNow: false,
+            userHobbies: user.hobbies,
+            userPersonalDream: user.personalDream,
+            userPetNames: user.petNames,
+            userJoinedDate: user.joinedDate
           };
           upcomingEvents.push(event);
           allEvents.push(event);
@@ -197,7 +205,11 @@ export function processTeamLifeEvents(
             message,
             daysRemaining: 0,
             yearsCount: years,
-            isActiveNow: true
+            isActiveNow: true,
+            userHobbies: user.hobbies,
+            userPersonalDream: user.personalDream,
+            userPetNames: user.petNames,
+            userJoinedDate: user.joinedDate
           };
           todayEvents.push(event);
           allEvents.push(event);
@@ -215,7 +227,11 @@ export function processTeamLifeEvents(
             message: `${user.name} cumplirá ${years} año${years > 1 ? 's' : ''} en Uhura Group muy pronto.`,
             daysRemaining: days,
             yearsCount: years,
-            isActiveNow: false
+            isActiveNow: false,
+            userHobbies: user.hobbies,
+            userPersonalDream: user.personalDream,
+            userPetNames: user.petNames,
+            userJoinedDate: user.joinedDate
           };
           upcomingEvents.push(event);
           allEvents.push(event);
@@ -240,7 +256,11 @@ export function processTeamLifeEvents(
           returnDate: v.returnDate,
           headline: `${user.name.split(' ')[0]} en Vacaciones 🏖️`,
           message: `${user.name} está en período de vacaciones aprobado hasta el ${v.returnDate || 'próxima semana'}. Bucky avisará si se le intenta asignar trabajo operativo.`,
-          isActiveNow: true
+          isActiveNow: true,
+          userHobbies: user.hobbies,
+          userPersonalDream: user.personalDream,
+          userPetNames: user.petNames,
+          userJoinedDate: user.joinedDate
         };
         activeAbsences.push(event);
         allEvents.push(event);

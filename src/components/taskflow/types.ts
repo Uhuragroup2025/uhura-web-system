@@ -723,8 +723,9 @@ export interface UserItem {
   birthDateFormatted?: string; // ej. '18 de Sep'
   anniversaryDate?: string;    // Formato ISO 'YYYY-MM-DD'
   anniversaryYears?: number;   // ej. 2
-  hobbies?: string;            // Intereses, hobbies y pasiones del colaborador
-  petNames?: string;           // Nombre de mascotas
+  hobbies?: string;            // Intereses y pasiones declarados del colaborador
+  personalDream?: string;      // Meta o sueño personal (si está registrado)
+  petNames?: string;           // Nombre de mascotas (cuando existan)
   vacationStatus?: {
     onVacation: boolean;
     startDate?: string;
@@ -834,6 +835,10 @@ export interface TeamLifeEvent {
   yearsCount?: number;
   returnDate?: string;
   isActiveNow: boolean;
+  userHobbies?: string;
+  userPersonalDream?: string;
+  userPetNames?: string;
+  userJoinedDate?: string;
 }
 
 export interface MonthlyBillingData {

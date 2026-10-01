@@ -220,37 +220,7 @@ export const playBuckySound = (
 // *sad existe en el sistema pero NO como castigo por productividad o errores*
 
 export function resolveBuckyState(ctx: BuckyContext): BuckyResolvedState {
-  const critical = ctx.criticalOvertimeTasks && ctx.criticalOvertimeTasks.length > 0
-    ? ctx.criticalOvertimeTasks[0]
-    : null;
-
-  // 1. CRITICAL_OVERTIME (Máxima prioridad: riesgo de sobrecarga / desvío en horas)
-  if (critical) {
-    const consumedHrs = ((critical.consumedSeconds || 0) / 3600).toFixed(1);
-    const budgetedHrs = (critical.budgetedHours || 1).toFixed(1);
-    const diff = (parseFloat(consumedHrs) - parseFloat(budgetedHrs)).toFixed(1);
-
-    return {
-      internalKey: 'CRITICAL_OVERTIME',
-      pose: 'alert',
-      image: buckyAlertImg,
-      humanBadge: 'Demasiado peso',
-      badgeText: 'Demasiado peso',
-      badgeColor: 'bg-[#fef2f2] text-[#dc2626] border-[#fecaca]',
-      headline: 'Alerta de Carga / Desvío 👀',
-      speech: 'Hay un desvío presupuestal en curso. Avisa al equipo para evaluar redistribución de carga o ajuste de alcance.',
-      description: `En "${critical.title.slice(0, 30)}..." llevas ${consumedHrs}h de ${budgetedHrs}h (+${diff}h). La alerta permite visibilidad de gestión para decidir reasignación o revisión con el cliente.`,
-      isAlert: true,
-      cta: {
-        label: 'Avisar desvío al equipo',
-        actionType: 'notify_overtime',
-        task: critical
-      },
-      soundType: 'alert'
-    };
-  }
-
-  // 2. ACTIVE_TIMER (Foco profundo: cronómetro activo corriendo en una tarea)
+  // 1. ACTIVE_TIMER (Foco profundo: cronómetro activo corriendo en una tarea)
   if (ctx.activeTimer && !ctx.activeTimer.isPaused) {
     const taskName = ctx.activeTimer.taskTitle.slice(0, 28);
     return {
@@ -327,18 +297,18 @@ export function resolveBuckyState(ctx: BuckyContext): BuckyResolvedState {
     };
   }
 
-  // 6. FIRST_VISIT_TODAY (Saludo cordial la primera vez que entra en la sesión)
+  // 6. FIRST_VISIT_TODAY (Saludo cordial y positivo de bienvenida)
   if (ctx.isFirstVisitToday) {
     return {
       internalKey: 'FIRST_VISIT_TODAY',
       pose: 'wave',
       image: buckyWavingImg,
-      humanBadge: '¡Hola!',
+      humanBadge: 'Saludo',
       badgeText: '¡Hola!',
       badgeColor: 'bg-[#f5f3ff] text-[#501f92] border-[#ddd6fe]',
-      headline: '¡Hola de nuevo! 👋',
-      speech: '¡Hola! Aquí Bucky. Cuidando que construyamos con calma y sin sobrecarga 🚀🪵',
-      description: 'Listo para coordinar y medir el avance de tus proyectos hoy.',
+      headline: '¡Hola! 👋',
+      speech: '¡Hola! Todo tranquilo por aquí 🦫. Buen día, revisemos qué requiere atención.',
+      description: 'Listo para acompañarte durante la jornada.',
       isAlert: false,
       soundType: 'wave'
     };
@@ -361,7 +331,7 @@ export function resolveBuckyState(ctx: BuckyContext): BuckyResolvedState {
     };
   }
 
-  // 8. NORMAL_EQUILIBRIUM (Estado base por defecto: buzo oficial morado Uhura, sereno y en guardia)
+  // 8. NORMAL_EQUILIBRIUM (Estado base por defecto: positivo, sereno, buzo oficial Uhura)
   const logged = ctx.loggedHoursToday.toFixed(1);
   const assigned = (ctx.assignedHoursToday ?? 4.0).toFixed(1);
   const configured = ctx.configuredCapacityHours ?? 8.0;
@@ -371,13 +341,11 @@ export function resolveBuckyState(ctx: BuckyContext): BuckyResolvedState {
     internalKey: 'NORMAL_EQUILIBRIUM',
     pose: 'happy',
     image: buckyHoodieHappyImg, // Buzo Uhura oficial como identidad visual permanente
-    humanBadge: 'En equilibrio',
-    badgeText: 'En equilibrio',
+    humanBadge: 'Todo tranquilo',
+    badgeText: 'Todo tranquilo',
     badgeColor: 'bg-[#f5f3ff] text-[#501f92] border-[#ddd6fe]',
-    headline: 'Tu día está sincronizado 💜',
-    speech: ctx.hasNotifiedOvertime
-      ? 'Avisaste a tiempo. Tómate un respiro, el proyecto está protegido y el equipo coordinado 🛡️☕'
-      : '¡Hola! Tu día está sincronizado. Con el buzo morado Uhura construyendo la colonia en armonía 🚀🪵',
+    headline: 'Todo tranquilo por aquí 🦫',
+    speech: '¡Hola! Todo en orden. Buen día, revisemos qué requiere atención.',
     description: `Llevas ${logged}h ejecutadas de ${assigned}h asignadas. Capacidad disponible: ${available}h.`,
     isAlert: false,
     soundType: 'happy'

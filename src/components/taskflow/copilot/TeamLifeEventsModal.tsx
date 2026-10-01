@@ -12,15 +12,11 @@ import {
   Send,
   Users,
   CheckCircle2,
-  CalendarDays,
-  ShieldAlert,
-  Copy,
-  Check
+  CalendarDays
 } from 'lucide-react';
 import { UserItem, TeamLifeEvent } from '../types';
 import {
-  processTeamLifeEvents,
-  OperationalMilestone
+  processTeamLifeEvents
 } from './teamLifeEngine';
 
 interface TeamLifeEventsModalProps {
@@ -36,18 +32,11 @@ export const TeamLifeEventsModal: React.FC<TeamLifeEventsModalProps> = ({
   users,
   currentUserName = 'Paola Monsalve'
 }) => {
-  const [activeTab, setActiveTab] = useState<'today' | 'upcoming' | 'vacations' | 'operational'>('today');
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'today' | 'upcoming' | 'vacations'>('today');
 
   if (!isOpen) return null;
 
   const result = processTeamLifeEvents(users);
-
-  const handleCopyWish = (id: string, text: string) => {
-    navigator.clipboard?.writeText(text);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2500);
-  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
@@ -87,7 +76,7 @@ export const TeamLifeEventsModal: React.FC<TeamLifeEventsModalProps> = ({
         </div>
 
         {/* METRICS STRIP */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-4 bg-[#f8fafc] border-b border-[#e2e8f0] shrink-0">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 p-4 bg-[#f8fafc] border-b border-[#e2e8f0] shrink-0">
           <div className="bg-white p-3 rounded-2xl border border-[#e2e8f0] flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-[#fdf2f8] text-[#db2777] flex items-center justify-center shrink-0">
               <Gift className="w-4 h-4" />
@@ -121,18 +110,6 @@ export const TeamLifeEventsModal: React.FC<TeamLifeEventsModalProps> = ({
                 {result.copilotSummary.peopleOnVacation}
               </div>
               <div className="text-[11px] font-medium text-[#64748b] mt-0.5">En vacaciones</div>
-            </div>
-          </div>
-
-          <div className="bg-white p-3 rounded-2xl border border-[#e2e8f0] flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#fff7ed] text-[#ea580c] flex items-center justify-center shrink-0">
-              <ShieldAlert className="w-4 h-4" />
-            </div>
-            <div>
-              <div className="text-lg font-black text-[#0f172a] leading-none">
-                {result.operationalMilestones.length}
-              </div>
-              <div className="text-[11px] font-medium text-[#64748b] mt-0.5">Hitos operativos</div>
             </div>
           </div>
         </div>
@@ -173,18 +150,6 @@ export const TeamLifeEventsModal: React.FC<TeamLifeEventsModalProps> = ({
           >
             <Palmtree className="w-4 h-4" />
             <span>Vacaciones & Ausencias ({result.activeAbsences.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('operational')}
-            className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
-              activeTab === 'operational'
-                ? 'border-[#501f92] text-[#501f92]'
-                : 'border-transparent text-[#64748b] hover:text-[#0f172a]'
-            }`}
-          >
-            <AlertTriangle className="w-4 h-4" />
-            <span>Hitos & Bloqueos ({result.operationalMilestones.length})</span>
           </button>
         </div>
 
@@ -235,28 +200,8 @@ export const TeamLifeEventsModal: React.FC<TeamLifeEventsModalProps> = ({
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
-                      <button
-                        onClick={() => handleCopyWish(
-                          event.id,
-                          event.type === 'birthday'
-                            ? `¡Feliz cumpleaños ${event.userName}! 🎉🎂 Que tengas un día increíble de parte de toda la colonia Uhura.`
-                            : `¡Feliz aniversario en Uhura ${event.userName}! 🦫💜 Gracias por estos ${event.yearsCount || 2} años de dedicación y talento.`
-                        )}
-                        className="flex-1 sm:flex-initial px-3.5 py-2 rounded-xl bg-white border border-[#cbd5e1] hover:bg-[#f8fafc] text-xs font-bold text-[#501f92] flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-                      >
-                        {copiedId === event.id ? (
-                          <>
-                            <Check className="w-3.5 h-3.5 text-[#059669]" />
-                            <span className="text-[#059669]">¡Copiado!</span>
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-3.5 h-3.5" />
-                            <span>Copiar saludo Bucky</span>
-                          </>
-                        )}
-                      </button>
+                    <div className="text-right text-xs text-[#6d28d9] font-medium italic sm:max-w-[200px] shrink-0">
+                      Hoy puede ser un buen momento para felicitar a {event.userName.split(' ')[0]} 💜
                     </div>
                   </div>
                 ))
@@ -364,57 +309,6 @@ export const TeamLifeEventsModal: React.FC<TeamLifeEventsModalProps> = ({
             </div>
           )}
 
-          {/* TAB 4: HITOS OPERATIVOS */}
-          {activeTab === 'operational' && (
-            <div className="space-y-3">
-              <div className="p-3.5 rounded-2xl bg-[#fff7ed] border border-[#ffedd5] flex items-start gap-3">
-                <AlertTriangle className="w-5 h-5 text-[#ea580c] shrink-0 mt-0.5" />
-                <div className="text-xs text-[#9a3412]">
-                  <span className="font-bold">Bloqueos & Congelamientos Operativos:</span> Fechas de corte institucional donde Bucky sincroniza alertas de no-despliegue o cierres contables mensuales.
-                </div>
-              </div>
-
-              {result.operationalMilestones.map((m) => (
-                <div
-                  key={m.id}
-                  className="p-4 rounded-2xl border border-[#e2e8f0] bg-white flex items-start justify-between gap-3 hover:border-[#cbd5e1] transition-all"
-                >
-                  <div className="flex items-start gap-3.5">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                      m.impactLevel === 'critico'
-                        ? 'bg-[#fef2f2] text-[#dc2626]'
-                        : 'bg-[#fff7ed] text-[#ea580c]'
-                    }`}>
-                      {m.type === 'deployment_freeze' ? (
-                        <ShieldAlert className="w-5 h-5" />
-                      ) : (
-                        <Calendar className="w-5 h-5" />
-                      )}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-[#0f172a]">
-                          {m.title}
-                        </span>
-                        <span className="text-[10px] font-bold bg-[#f1f5f9] text-[#475569] px-2 py-0.5 rounded">
-                          {m.clientOrDepartment}
-                        </span>
-                      </div>
-                      <p className="text-xs text-[#64748b] mt-1 max-w-lg">
-                        {m.description}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="text-right shrink-0">
-                    <div className="text-xs font-black text-[#0f172a] bg-[#f8fafc] px-3 py-1.5 rounded-xl border border-[#e2e8f0]">
-                      {m.formattedDate}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
 
         {/* FOOTER */}

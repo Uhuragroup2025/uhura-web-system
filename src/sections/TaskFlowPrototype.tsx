@@ -2155,6 +2155,7 @@ export const TaskFlowPrototype: React.FC = () => {
                   <MiDiaView
                     tasks={tasks}
                     currentUser={currentUser}
+                    users={users}
                     timeLogs={timeLogs}
                     onDeleteTimeLog={handleDeleteTimeLog}
                     activeTimer={activeTimer}
@@ -2171,6 +2172,7 @@ export const TaskFlowPrototype: React.FC = () => {
                     opportunities={opportunities}
                     projects={projectsList}
                     clients={clients}
+                    onUpdateUser={handleUpdateUser}
                   />
                 )}
 
@@ -2660,6 +2662,7 @@ export const TaskFlowPrototype: React.FC = () => {
         users={users}
         absenceEvents={absenceEvents}
         activeTimer={activeTimer}
+        onUpdateUser={handleUpdateUser}
       />
 
       {/* Herramienta de QA / Simulación de Roles & Permisos (RBAC Bloque 3) */}

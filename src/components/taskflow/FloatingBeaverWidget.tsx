@@ -36,7 +36,10 @@ import {
   AlertTriangle,
   Home,
   Shirt,
-  AlertOctagon
+  AlertOctagon,
+  EyeOff,
+  Eye,
+  Power
 } from 'lucide-react';
 import { OrbitView, TaskItem, ActiveTimerState, UserItem, TeamAbsenceEvent } from './types';
 import { resolveBuckyState } from './buckyEngine';
@@ -44,6 +47,8 @@ import { BuckyLabModal } from './BuckyLabModal';
 import { UhuraLogo } from '../ui/UhuraLogo';
 import { processTeamLifeEvents, resolveBuckyTeamLifeSpeech } from './copilot/teamLifeEngine';
 import { TeamLifeEventsModal } from './copilot/TeamLifeEventsModal';
+import { ActiveBreakModal } from './copilot/ActiveBreakModal';
+import { TeamHumanProfileModal } from './copilot/TeamHumanProfileModal';
 import { initialUsers, initialAbsenceEvents } from './mockData';
 
 interface FloatingBeaverWidgetProps {
@@ -59,6 +64,7 @@ interface FloatingBeaverWidgetProps {
   currentView?: OrbitView;
   onPauseResumeTimer?: () => void;
   onStopTimer?: () => void;
+  onUpdateUser?: (updatedUser: UserItem) => void;
 }
 
 export type BuckyAction =
@@ -337,7 +343,8 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
   activeTimer = null,
   currentView,
   onPauseResumeTimer,
-  onStopTimer
+  onStopTimer,
+  onUpdateUser
 }) => {
   // Bucky se oculta dentro de La Colonia
   if (currentView === 'la-colonia') {
@@ -350,6 +357,51 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
   const [speechBubbleText, setSpeechBubbleText] = useState<string | null>(null);
   const [isBuckyLabOpen, setIsBuckyLabOpen] = useState(false);
   const [isTeamLifeModalOpen, setIsTeamLifeModalOpen] = useState(false);
+  const [isBreakModalOpen, setIsBreakModalOpen] = useState(false);
+  const [isHumanProfileModalOpen, setIsHumanProfileModalOpen] = useState(false);
+
+  // Switch de apagar / activar mascota Bucky
+  const [isBuckyDisabled, setIsBuckyDisabled] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('orbit_bucky_disabled') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const handleToggleBuckyPower = () => {
+    const next = !isBuckyDisabled;
+    setIsBuckyDisabled(next);
+    try {
+      localStorage.setItem('orbit_bucky_disabled', String(next));
+    } catch {}
+    if (!next) {
+      // Al activarlo: salir con mood saludando, feliz y amigable
+      setIsOpen(false);
+      setCurrentAction('wave');
+      setSpeechBubbleText('¡Hola! 👋 ¡Qué gusto volver a verte! Todo tranquilo por aquí 🦫');
+      if (soundEnabled) playChime('wave');
+      setTimeout(() => {
+        setSpeechBubbleText(null);
+        setCurrentAction('idle');
+      }, 4000);
+    }
+  };
+
+  // Si Bucky está apagado por switch de usuario, renderizar únicamente la pildorita discreta para restaurarlo
+  if (isBuckyDisabled) {
+    return (
+      <button
+        type="button"
+        onClick={handleToggleBuckyPower}
+        className="fixed bottom-4 right-4 z-40 flex items-center gap-2 px-3 py-2 rounded-2xl bg-[#140b24]/90 hover:bg-[#261845] text-white border border-[#8a4dff]/40 shadow-xl backdrop-blur-md text-xs font-bold transition-all cursor-pointer hover:scale-105"
+        title="Haz clic para activar a Bucky"
+      >
+        <span className="text-base">🦫</span>
+        <span className="text-xs">Activar Bucky</span>
+      </button>
+    );
+  }
 
   // Procesar eventos de equipo para el copiloto humano/operativo
   const effectiveUsers = users && users.length > 0 ? users : initialUsers;
@@ -453,12 +505,7 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
     }
   }, [coreRiskTask?.id]);
 
-  const isWarningActive = Boolean(
-    coreRiskTask ||
-    buckyState.isAlert ||
-    buckyState.pose === 'alert' ||
-    criticalOvertimeTasks.length > 0
-  );
+  const isWarningActive = Boolean(buckyState.isAlert);
 
   // Single contextual layer discipline:
   // When detailed HUD (isOpen) is visible, NO speech bubble or alert bubble is shown.
@@ -909,15 +956,20 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
     setIsDragging(false);
 
     if (wasMoved && coords) {
-      // Finished dragging: save position for the session and trigger landing cheer
+      // Finished dragging: save position for the session quietly (no jump, no annoying text)
       sessionStorage.setItem('orbit_bucky_session_pos', JSON.stringify(coords));
-      triggerLivingAction('jump', '¡Nuevo rincón en la pantalla! 🐾✨');
+      setCurrentAction('idle');
     } else {
-      // Normal click: toggle popover cleanly
+      // Normal click: toggle popover cleanly + adopt dynamic focused mood
       const nextOpen = !isOpen;
       setIsOpen(nextOpen);
-      if (nextOpen) setSpeechBubbleText(null);
-      handleTickle();
+      if (nextOpen) {
+        setSpeechBubbleText(null);
+        setCurrentAction('focus'); // Cara de concentrado / pensativo
+        if (soundEnabled) playChime('focus');
+      } else {
+        setCurrentAction('idle');
+      }
     }
   };
 
@@ -1047,9 +1099,8 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
 
   // Animation class based on current lifelike action
   const getActionAnimationClass = () => {
-    if (isDragging) return 'scale-110';
+    if (isDragging) return 'scale-105';
     if (isWalking) return 'animate-beaver-walk';
-    if (isWiggling) return 'animate-bounce';
 
     if (currentAction !== 'idle') {
       switch (currentAction) {
@@ -1061,27 +1112,15 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
         case 'celebrate':
         case 'clap':
           return 'animate-beaver-jump';
-        case 'alert':
-        case 'sad':
-          return 'animate-beaver-alert';
-        case 'point':
-          return 'animate-beaver-point';
-        case 'yawn':
-        case 'tired':
-        case 'sleep':
-          return 'animate-beaver-yawn';
-        case 'stretch':
-          return 'animate-beaver-stretch';
         case 'exercise':
           return 'animate-beaver-exercise';
         default:
-          return 'animate-float';
+          return '';
       }
     }
 
-    // Contextual animation when returning to idle
-    if (isWarningActive) return 'animate-beaver-alert';
-    return 'animate-float';
+    // Default: quietico! (calm, steady, without disruptive jumping or bouncing)
+    return '';
   };
 
   // Status emoji badge floating beside his ear during actions
@@ -1178,14 +1217,14 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
                   }}
                   className="text-[#d4ff4a] hover:underline font-bold cursor-pointer"
                 >
-                  Ver tarea →
+                  Ver tareas afectadas →
                 </button>
                 <button
                   type="button"
                   onClick={() => setIsAlertDismissed(true)}
-                  className="text-[#c9b7ff] hover:text-white cursor-pointer"
+                  className="text-white/50 hover:text-white cursor-pointer"
                 >
-                  Avisar al equipo
+                  Entendido
                 </button>
               </div>
             </div>
@@ -1324,8 +1363,22 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
             </div>
 
             <div className="flex items-center gap-1">
+              {/* Pausa Activa Quick Trigger */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsBreakModalOpen(true);
+                  setIsOpen(false);
+                }}
+                className="p-1.5 rounded-lg hover:bg-white/10 text-white/70 hover:text-[#d4ff4a] cursor-pointer transition-colors"
+                title="Iniciar Pausa Activa (3 min)"
+              >
+                <Coffee className="w-3.5 h-3.5" />
+              </button>
+
               {/* Sound Toggle */}
               <button
+                type="button"
                 onClick={() => setSoundEnabled(!soundEnabled)}
                 className="p-1.5 rounded-lg hover:bg-white/10 text-white/70 hover:text-white cursor-pointer transition-colors"
                 title={soundEnabled ? 'Silenciar efectos' : 'Activar efectos'}
@@ -1337,8 +1390,19 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
                 )}
               </button>
 
+              {/* Power Switch (Apagar mascota) */}
+              <button
+                type="button"
+                onClick={handleToggleBuckyPower}
+                className="p-1.5 rounded-lg hover:bg-white/10 text-white/50 hover:text-[#f87171] cursor-pointer transition-colors"
+                title="Apagar o dormir mascota Bucky"
+              >
+                <Power className="w-3.5 h-3.5" />
+              </button>
+
               {/* Close */}
               <button
+                type="button"
                 onClick={() => setIsOpen(false)}
                 className="p-1.5 rounded-lg hover:bg-white/10 text-white/70 hover:text-white cursor-pointer transition-colors"
                 title="Cerrar"
@@ -1348,120 +1412,114 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
             </div>
           </div>
 
-          {/* Human status badge + Headline */}
-          <div className="space-y-1">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] uppercase font-bold text-white/50 tracking-wider">
-                Estado actual
-              </span>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#501f92] text-[#d4ff4a] border border-[#8a4dff]/50">
-                {buckyState.humanBadge}
-              </span>
-            </div>
-            <h5 className="text-xs font-bold text-white leading-tight">
-              {buckyState.headline}
-            </h5>
-          </div>
-
-          {/* Contextual speech */}
+          {/* Mensaje principal de Bucky */}
           <div className="bg-white/5 p-3 rounded-2xl border border-white/10 text-xs text-white/90 leading-relaxed font-medium">
-            "{buckyState.speech}"
+            <p className="font-semibold text-white">
+              {buckyState.speech}
+            </p>
           </div>
 
-          {/* Active Break section (when in progress or starting) */}
-          {activeBreakActive ? (
-            <div className="p-3 bg-[#501f92]/40 rounded-2xl border border-[#d4ff4a]/50 text-center space-y-1">
-              <div className="text-xs font-bold text-[#d4ff4a] flex items-center justify-center gap-1.5">
-                <Coffee className="w-3.5 h-3.5" />
-                <span>Pausa Activa en curso ({breakTimer}s)</span>
-              </div>
-              <p className="text-[11px] text-white/80 leading-tight">
-                Paso {breakStep}:{' '}
-                {breakStep === 1
-                  ? 'Mueve los hombros en círculos 🙆‍♀️'
-                  : breakStep === 2
-                  ? 'Gira el cuello suavemente 🧘'
-                  : 'Descansa la vista 20s en un punto lejano 👀'}
-              </p>
-            </div>
-          ) : (
+          {/* Acciones de bienestar y equipo */}
+          <div className="grid grid-cols-2 gap-2">
             <button
-              onClick={startActiveBreak}
-              className="w-full py-2 px-3 rounded-xl bg-white/10 hover:bg-[#8a4dff]/30 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-white/10 hover:border-[#8a4dff]/50"
+              type="button"
+              onClick={() => {
+                setIsBreakModalOpen(true);
+                setIsOpen(false);
+              }}
+              className="py-2 px-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] font-bold text-white flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
             >
               <Coffee className="w-3.5 h-3.5 text-[#d4ff4a]" />
-              <span>Pausa activa (30s)</span>
+              <span>Pausa Activa (3m)</span>
             </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsHumanProfileModalOpen(true);
+                setIsOpen(false);
+              }}
+              className="py-2 px-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] font-bold text-[#c9b7ff] hover:text-white flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <span>💜 Ficha Humana</span>
+            </button>
+          </div>
+
+          {/* Si hay algo relevante: 1 cosa para revisar */}
+          {criticalOvertimeTasks.length > 0 && (
+            <div className="p-3.5 rounded-2xl bg-[#ea580c]/15 border border-[#ea580c]/40 space-y-1.5">
+              <div className="flex items-center gap-1.5 text-[#fed7aa] text-[11px] font-bold">
+                <AlertTriangle className="w-3.5 h-3.5 text-[#fb923c]" />
+                <span>1 cosa para revisar</span>
+              </div>
+              <p className="text-xs text-white/90 leading-tight">
+                <strong>{criticalOvertimeTasks[0].projectName || criticalOvertimeTasks[0].title}</strong> está consumiendo horas más rápido que su avance.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  onNavigateToView('proyectos');
+                  setIsOpen(false);
+                }}
+                className="text-xs font-bold text-[#d4ff4a] hover:underline cursor-pointer flex items-center gap-1 pt-0.5"
+              >
+                <span>Ver proyecto →</span>
+              </button>
+            </div>
           )}
 
-          {/* Contextual action CTA if applicable */}
-          {buckyState.cta && (
+          {/* Si hay evento humano hoy */}
+          {teamLifeResult.todayEvents.length > 0 && (
+            <div className="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-1">
+              {teamLifeResult.todayEvents.map((evt) => (
+                <div key={evt.id} className="text-xs text-white/90 flex items-center gap-2">
+                  <span>{evt.type === 'birthday' ? '🎂' : '🎉'}</span>
+                  <span>{evt.headline}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Enlace único y principal al pie: Ver Mi Día → */}
+          <div className="pt-1 border-t border-white/10">
             <button
+              type="button"
               onClick={() => {
                 onNavigateToView('mi-dia');
                 setIsOpen(false);
               }}
-              className={`w-full py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs ${
-                buckyState.cta.actionType === 'notify_overtime'
-                  ? 'bg-[#dc2626] hover:bg-[#b91c1c] text-white'
-                  : 'bg-[#d4ff4a] hover:bg-[#b5e035] text-[#140b24]'
-              }`}
+              className="w-full py-2 px-3 rounded-xl bg-[#501f92]/40 hover:bg-[#501f92]/70 text-[#d4ff4a] hover:text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-[#8a4dff]/40"
             >
-              {buckyState.cta.actionType === 'notify_overtime' ? (
-                <AlertOctagon className="w-3.5 h-3.5" />
-              ) : (
-                <CheckCircle2 className="w-3.5 h-3.5" />
-              )}
-              <span>{buckyState.cta.label}</span>
+              <span>Ver Mi Día →</span>
             </button>
-          )}
-
-          {/* Copiloto Humano & Operativo de Equipo */}
-          <button
-            onClick={() => {
-              setIsTeamLifeModalOpen(true);
-              setIsOpen(false);
-            }}
-            className="w-full p-2.5 rounded-2xl bg-linear-to-r from-[#501f92]/30 to-[#8a4dff]/20 hover:from-[#501f92]/40 hover:to-[#8a4dff]/30 text-white text-xs font-semibold flex items-center justify-between transition-all cursor-pointer border border-[#8a4dff]/40 shadow-xs"
-          >
-            <div className="flex items-center gap-2">
-              <span className="text-sm">🦫</span>
-              <div className="text-left">
-                <div className="text-[11px] font-bold text-white flex items-center gap-1.5">
-                  <span>Copiloto de Equipo</span>
-                  {teamLifeResult.todayEvents.length > 0 && (
-                    <span className="text-[9px] bg-[#d4ff4a] text-[#140b24] font-black px-1.5 py-0.5 rounded-full">
-                      {teamLifeResult.todayEvents.length} hoy 🎉
-                    </span>
-                  )}
-                </div>
-                <div className="text-[10px] text-white/70">
-                  Cumpleaños, aniversarios y ausencias
-                </div>
-              </div>
-            </div>
-            <ArrowRight className="w-3.5 h-3.5 text-[#d4ff4a] shrink-0" />
-          </button>
-
-          {/* Navigation link to Mi Día */}
-          <button
-            onClick={() => {
-              onNavigateToView('mi-dia');
-              setIsOpen(false);
-            }}
-            className="w-full py-1.5 px-3 rounded-xl text-white/60 hover:text-white text-[11px] font-medium flex items-center justify-center gap-1 transition-colors cursor-pointer hover:bg-white/5"
-          >
-            <span>Ver Hábitat en Mi Día</span>
-            <ArrowRight className="w-3 h-3 text-[#d4ff4a]" />
-          </button>
+          </div>
         </div>
       )}
+
+      {/* MODAL DE PAUSA ACTIVA HUMANA */}
+      <ActiveBreakModal
+        isOpen={isBreakModalOpen}
+        onClose={() => setIsBreakModalOpen(false)}
+        onComplete={() => {
+          setCurrentAction('celebrate');
+          setSpeechBubbleText('¡Excelente pausa activa! 🧘 Mente despejada y ritmo renovado.');
+          if (soundEnabled) playChime('celebrate');
+        }}
+      />
+
+      {/* MODAL DE FICHA HUMANA & GUSTOS DEL EQUIPO UHURA */}
+      <TeamHumanProfileModal
+        isOpen={isHumanProfileModalOpen}
+        onClose={() => setIsHumanProfileModalOpen(false)}
+        users={effectiveUsers}
+        onUpdateUser={onUpdateUser}
+      />
 
       {/* MODAL DE EVENTOS & RECORDATORIOS DE EQUIPO (COPILOTO BUCKY) */}
       <TeamLifeEventsModal
         isOpen={isTeamLifeModalOpen}
         onClose={() => setIsTeamLifeModalOpen(false)}
-        users={initialUsers}
+        users={effectiveUsers}
       />
 
       {/* PROTECTED BUCKY LAB MODAL (Accessible via Shift+Alt+B or ?buckyLab=true) */}

@@ -198,11 +198,6 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
                       <Briefcase className="w-3.5 h-3.5 text-[#8a4dff]" />
                       {!collapsed && <span>Proyectos</span>}
                     </div>
-                    {!collapsed && (
-                      <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-[#ef4444]/20 text-[#fca5a5]">
-                        5 riesgo
-                      </span>
-                    )}
                   </button>
                 )}
 
