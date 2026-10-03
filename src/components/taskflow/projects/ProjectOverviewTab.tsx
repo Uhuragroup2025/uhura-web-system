@@ -22,6 +22,7 @@ import {
   TaskItem,
   FeeRolloverPolicy
 } from '../types';
+import { UserAvatar } from '../UserAvatar';
 
 interface ProjectOverviewTabProps {
   project: ProjectSummaryItem & {
@@ -459,9 +460,13 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
                   className="flex items-center justify-between p-2.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] text-xs"
                 >
                   <div className="flex items-center gap-2 min-w-0">
-                    <div className={`w-6 h-6 rounded-full ${member.avatarBg} text-white font-bold text-[9px] flex items-center justify-center shrink-0`}>
-                      {member.initials}
-                    </div>
+                    <UserAvatar
+                      name={member.name}
+                      initials={member.initials}
+                      avatarBg={member.avatarBg}
+                      size="xs"
+                      className="w-6 h-6 rounded-full font-bold text-[9px] shrink-0"
+                    />
                     <div className="min-w-0">
                       <span className="font-bold text-[#0f172a] block truncate">
                         {member.name} {member.isLead ? '(Lead)' : ''}

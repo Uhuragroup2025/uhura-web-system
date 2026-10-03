@@ -78,12 +78,14 @@ import {
 import { DropdownMenu, DropdownOption } from '../ui/DropdownMenu';
 import { initialUsers } from './mockData';
 import { checkAssigneeAvailability } from './copilot/teamLifeEngine';
+import { UserAvatar } from './UserAvatar';
 
 export interface TeamMemberProfile {
   name: string;
   initials: string;
   avatarBg: string;
   role: string;
+  avatarUrl?: string | null;
 }
 
 const TEAM_MEMBERS_POOL: TeamMemberProfile[] = [
@@ -2451,9 +2453,14 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                               className="w-full px-3 py-1.5 text-left hover:bg-[#f8fafc] flex items-center justify-between gap-2 cursor-pointer transition-colors"
                             >
                               <div className="flex items-center gap-2 min-w-0">
-                                <span className={`w-5 h-5 rounded-full ${m.avatarBg} text-white flex items-center justify-center text-[9px] font-bold shrink-0`}>
-                                  {m.initials}
-                                </span>
+                                <UserAvatar
+                                  name={m.name}
+                                  initials={m.initials}
+                                  avatarBg={m.avatarBg}
+                                  avatarUrl={m.avatarUrl}
+                                  size="custom"
+                                  className="w-5 h-5 rounded-full text-[9px]"
+                                />
                                 <span className="font-bold text-[#0f172a] truncate">{m.name}</span>
                               </div>
                               <span className="text-[10px] text-[#64748b] shrink-0 font-medium">{m.role}</span>
@@ -2652,9 +2659,14 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                                 className="w-full px-3 py-1.5 text-left hover:bg-[#f8fafc] text-[#0f172a] flex items-center justify-between gap-2 cursor-pointer"
                               >
                                 <div className="flex items-center gap-2 min-w-0">
-                                  <span className={`w-4 h-4 rounded-full ${m.avatarBg} text-white flex items-center justify-center text-[8px] font-bold shrink-0`}>
-                                    {m.initials}
-                                  </span>
+                                  <UserAvatar
+                                    name={m.name}
+                                    initials={m.initials}
+                                    avatarBg={m.avatarBg}
+                                    avatarUrl={m.avatarUrl}
+                                    size="custom"
+                                    className="w-4 h-4 rounded-full text-[8px]"
+                                  />
                                   <span className="truncate">{m.name}</span>
                                 </div>
                                 <span className="text-[9px] text-[#94a3b8]">{m.role}</span>
@@ -3101,17 +3113,27 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                       label: m.name,
                       sublabel: m.role,
                       icon: (
-                        <div className={`w-5 h-5 rounded-full ${m.avatarBg} text-white flex items-center justify-center text-[9px] font-bold shrink-0`}>
-                          {m.initials}
-                        </div>
+                        <UserAvatar
+                          name={m.name}
+                          initials={m.initials}
+                          avatarBg={m.avatarBg}
+                          avatarUrl={m.avatarUrl}
+                          size="custom"
+                          className="w-5 h-5 rounded-full text-[9px]"
+                        />
                       )
                     }))}
                     trigger={
                       <div className="w-full flex items-center justify-between p-2 rounded-xl bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] transition-colors text-left cursor-pointer group">
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <div className={`w-7 h-7 rounded-full ${projectLead?.avatarBg || 'bg-[#501f92]'} text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs`}>
-                            {projectLead?.initials || 'PL'}
-                          </div>
+                          <UserAvatar
+                            name={projectLead?.name}
+                            initials={projectLead?.initials || 'PL'}
+                            avatarBg={projectLead?.avatarBg || 'bg-[#501f92]'}
+                            avatarUrl={projectLead?.avatarUrl}
+                            size="sm"
+                            className="w-7 h-7 rounded-full text-xs shadow-2xs"
+                          />
                           <div className="min-w-0">
                             <span className="text-xs font-bold text-[#0f172a] truncate block">
                               {projectLead?.name || 'Sin Project Lead'}
@@ -3185,9 +3207,14 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                         label: m.name,
                         sublabel: onVac ? `${m.role} • 🏖️ De vacaciones` : m.role,
                         icon: (
-                          <div className={`w-5 h-5 rounded-full ${m.avatarBg} text-white flex items-center justify-center text-[9px] font-bold shrink-0`}>
-                            {m.initials}
-                          </div>
+                          <UserAvatar
+                            name={m.name}
+                            initials={m.initials}
+                            avatarBg={m.avatarBg}
+                            avatarUrl={m.avatarUrl}
+                            size="custom"
+                            className="w-5 h-5 rounded-full text-[9px]"
+                          />
                         )
                       };
                     })}
@@ -3215,13 +3242,15 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                             return (
                               <div className="flex items-center gap-1.5 overflow-hidden flex-wrap">
                                 {allCollabs.slice(0, 3).map((c, i) => (
-                                  <div
+                                  <UserAvatar
                                     key={i}
-                                    className={`w-6 h-6 rounded-full ${c.avatarBg || 'bg-[#501f92]'} text-white flex items-center justify-center text-[10px] font-bold shadow-2xs`}
-                                    title={c.name}
-                                  >
-                                    {c.initials || 'CT'}
-                                  </div>
+                                    name={c.name}
+                                    initials={c.initials || 'CT'}
+                                    avatarBg={c.avatarBg || 'bg-[#501f92]'}
+                                    avatarUrl={c.avatarUrl}
+                                    size="xs"
+                                    className="w-6 h-6 rounded-full text-[10px] shadow-2xs"
+                                  />
                                 ))}
                                 {allCollabs.length > 3 && (
                                   <span className="text-[10px] font-bold text-[#64748b]">
@@ -3292,9 +3321,14 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                       label: m.name,
                       sublabel: m.role,
                       icon: (
-                        <div className={`w-5 h-5 rounded-full ${m.avatarBg} text-white flex items-center justify-center text-[9px] font-bold shrink-0`}>
-                          {m.initials}
-                        </div>
+                        <UserAvatar
+                          name={m.name}
+                          initials={m.initials}
+                          avatarBg={m.avatarBg}
+                          avatarUrl={m.avatarUrl}
+                          size="custom"
+                          className="w-5 h-5 rounded-full text-[9px]"
+                        />
                       )
                     }))}
                     trigger={
@@ -3305,13 +3339,15 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                           ) : (
                             <div className="flex items-center gap-1.5 overflow-hidden flex-wrap">
                               {followers.slice(0, 3).map((f, i) => (
-                                <div
+                                <UserAvatar
                                   key={i}
-                                  className={`w-6 h-6 rounded-full ${f.avatarBg || 'bg-[#6366f1]'} text-white flex items-center justify-center text-[10px] font-bold shadow-2xs`}
-                                  title={f.name}
-                                >
-                                  {f.initials || 'U'}
-                                </div>
+                                  name={f.name}
+                                  initials={f.initials || 'U'}
+                                  avatarBg={f.avatarBg || 'bg-[#6366f1]'}
+                                  avatarUrl={f.avatarUrl}
+                                  size="xs"
+                                  className="w-6 h-6 rounded-full text-[10px] shadow-2xs"
+                                />
                               ))}
                               {followers.length > 3 && (
                                 <span className="text-[10px] font-bold text-[#64748b]">

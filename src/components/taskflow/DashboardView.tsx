@@ -15,6 +15,7 @@ import {
   TaskItem,
   ActiveTimerState
 } from './types';
+import { UserAvatar } from './UserAvatar';
 import {
   TrendingUp,
   AlertTriangle,
@@ -1447,11 +1448,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               {orbitTeamCapacity.map((member) => (
                 <div key={member.id} className="flex items-center justify-between gap-3 text-xs">
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <div
-                      className={`w-6 h-6 rounded-lg ${member.avatarBg} text-white flex items-center justify-center text-[10px] font-bold shrink-0 shadow-2xs`}
-                    >
-                      {member.initials}
-                    </div>
+                    <UserAvatar
+                      name={member.name}
+                      initials={member.initials}
+                      avatarBg={member.avatarBg}
+                      avatarUrl={member.avatarUrl}
+                      size="xs"
+                      className="w-6 h-6 rounded-lg text-[10px] font-bold shrink-0 shadow-2xs"
+                    />
                     <span className="font-semibold text-[#0f172a] truncate">
                       {member.name}
                     </span>

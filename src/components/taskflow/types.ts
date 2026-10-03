@@ -46,6 +46,7 @@ export interface TaskAssigneeAllocation {
   userName?: string;
   userAvatarBg?: string;
   userInitials?: string;
+  userAvatarUrl?: string | null;
   estimatedHours: number; // Esfuerzo planificado correspondiente a esta persona
 }
 
@@ -578,6 +579,7 @@ export interface TaskItem {
     initials: string;
     avatarBg: string;
     role?: string;
+    avatarUrl?: string | null;
   };
   requiresReview?: boolean; // Decisión 1: Si es true requiere QA/Lead; si es false el ejecutor la completa directamente
   requiresValidation?: boolean; // Deprecated - replaced by requiresReview
@@ -586,6 +588,7 @@ export interface TaskItem {
     initials: string;
     avatarBg: string;
     role?: string;
+    avatarUrl?: string | null;
   };
   assignee: {
     id?: string;
@@ -593,6 +596,7 @@ export interface TaskItem {
     initials: string;
     avatarBg: string;
     role?: string;
+    avatarUrl?: string | null;
   };
   assigneeIds?: string[]; // IDs de colaboradores asignados
   assigneeAllocations?: TaskAssigneeAllocation[]; // Decisión 3: Distribución de esfuerzo por colaborador
@@ -600,18 +604,22 @@ export interface TaskItem {
     name: string;
     initials: string;
     avatarBg: string;
+    avatarUrl?: string | null;
   };
   collaborators?: {
+    id?: string;
     name: string;
     initials: string;
     avatarBg: string;
     role?: string;
+    avatarUrl?: string | null;
   }[];
   followers?: {
     name: string;
     initials: string;
     avatarBg: string;
     role?: string;
+    avatarUrl?: string | null;
   }[];
   date: string;
   startDate?: string;
@@ -737,7 +745,7 @@ export interface UserItem {
   reportsTo?: string;          // Alias canónico de leaderId para backend (Indunova)
   leaderName?: string;         // Nombre del líder directo (ej. 'Ana María Giraldo')
   city?: string;               // Ciudad de residencia (ej. 'Cali', 'Medellín', 'Bogotá')
-  avatarUrl?: string;          // Fotografía / Avatar personalizado
+  avatarUrl?: string | null;   // Fotografía / Avatar personalizado (URL provista por backend o null)
 }
 
 /**
@@ -900,6 +908,7 @@ export interface TeamMemberCapacity {
   name: string;
   initials: string;
   avatarBg: string;
+  avatarUrl?: string | null;
   role: string;
   utilizationPercent: number;
   hoursLogged: number;

@@ -345,6 +345,7 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
         role: user.jobTitle || user.officialRole || 'Equipo Uhura',
         initials: user.initials,
         avatarBg: user.avatarBg,
+        avatarUrl: user.avatarUrl,
         dept,
         weeklyHours: memberWeeklyHours,
         assigned,
@@ -999,9 +1000,14 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className={`w-9 h-9 rounded-xl ${member.avatarBg} text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs`}>
-                          {member.initials}
-                        </div>
+                        <UserAvatar
+                          name={member.name}
+                          initials={member.initials}
+                          avatarBg={member.avatarBg}
+                          avatarUrl={member.avatarUrl}
+                          size="lg"
+                          className="w-9 h-9 rounded-xl text-xs font-bold shrink-0 shadow-2xs"
+                        />
                         <div className="min-w-0">
                           <h4 className="font-bold text-sm text-[#0f172a] truncate">{member.name}</h4>
                           <p className="text-xs text-[#64748b] truncate">{member.role}</p>
@@ -1077,9 +1083,14 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
             {/* Header del Drawer */}
             <div className="flex items-start justify-between pb-4 border-b border-[#e2e8f0]">
               <div className="flex items-center gap-3">
-                <div className={`w-11 h-11 rounded-2xl ${selectedMemberObj.avatarBg} text-white flex items-center justify-center font-bold text-sm shadow-sm`}>
-                  {selectedMemberObj.initials}
-                </div>
+                <UserAvatar
+                  name={selectedMemberObj.name}
+                  initials={selectedMemberObj.initials}
+                  avatarBg={selectedMemberObj.avatarBg}
+                  avatarUrl={selectedMemberObj.avatarUrl}
+                  size="xl"
+                  className="w-11 h-11 rounded-2xl text-sm font-bold shadow-sm"
+                />
                 <div>
                   <h3 className="font-bold text-base text-[#0f172a]">{selectedMemberObj.name}</h3>
                   <p className="text-xs text-[#64748b]">{selectedMemberObj.role} · {selectedMemberObj.dept}</p>

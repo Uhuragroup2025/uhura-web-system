@@ -99,6 +99,7 @@ export interface TeammateOption {
   role: string;
   initials: string;
   avatarBg: string;
+  avatarUrl?: string | null;
   score?: number;
 }
 

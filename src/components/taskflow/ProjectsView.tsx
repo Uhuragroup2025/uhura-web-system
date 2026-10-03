@@ -10,6 +10,7 @@ import { ProjectSettingsTab } from './projects/ProjectSettingsTab';
 import { ProjectTeamTab } from './projects/ProjectTeamTab';
 import { ProjectTasksTab } from './projects/ProjectTasksTab';
 import { initialUsers } from './mockData';
+import { UserAvatar } from './UserAvatar';
 import {
   Button,
   Badge,
@@ -1270,9 +1271,11 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                             {/* Responsable */}
                             <td className="py-3.5 px-3">
                               <div className="flex items-center gap-1.5">
-                                <div className={`w-5 h-5 rounded-full ${task.assignee.avatarBg} text-white flex items-center justify-center text-[8px] font-bold`}>
-                                  {task.assignee.initials}
-                                </div>
+                                <UserAvatar
+                                  user={task.assignee}
+                                  size="custom"
+                                  className="w-5 h-5 rounded-full text-[8px]"
+                                />
                                 <span className="text-xs text-[#334155] font-medium">{task.assignee.name}</span>
                               </div>
                             </td>

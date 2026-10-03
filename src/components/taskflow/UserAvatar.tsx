@@ -2,7 +2,11 @@ import React, { useState } from 'react';
 import { UserItem } from './types';
 
 export interface UserAvatarProps {
-  user?: Pick<UserItem, 'name' | 'initials' | 'avatarBg' | 'avatarUrl'> | null;
+  user?: (Pick<UserItem, 'name' | 'initials' | 'avatarBg'> & { avatarUrl?: string | null }) | null;
+  name?: string;
+  initials?: string;
+  avatarBg?: string;
+  avatarUrl?: string | null;
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'custom';
   className?: string;
   imageClassName?: string;
@@ -27,12 +31,17 @@ const sizeConfig: Record<
  * Componente unificado y transversal de Avatar para colaboradores de Uhura Group (Orbit).
  * 
  * Reglas de resolución canónicas:
- * 1. Si `user.avatarUrl` existe y carga sin errores → muestra la fotografía con object-cover.
- * 2. Si `user.avatarUrl` no existe o falla la carga → fallback automático de iniciales + `avatarBg`.
+ * 1. Si `avatarUrl` (o `user.avatarUrl`) existe y carga sin errores → muestra la fotografía con object-cover.
+ * 2. Si `avatarUrl` no existe o falla la carga (error 404, red, etc.) → fallback automático de iniciales + `avatarBg`.
  * 3. Admite insignia/badge contextual (emojis de hitos, estados de conexión, etc.).
+ * 4. Tratamiento visual: object-cover, relación 1:1, centrado, sin deformar el ratio original.
  */
 export const UserAvatar: React.FC<UserAvatarProps> = ({
   user,
+  name,
+  initials,
+  avatarBg,
+  avatarUrl,
   size = 'md',
   className = '',
   imageClassName = '',
@@ -49,19 +58,32 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
   const radiusClass = currentConfig ? currentConfig.radius : 'rounded-xl';
   const textClass = currentConfig ? currentConfig.text : 'text-xs';
 
-  const initials = user?.initials || (user?.name ? user.name.slice(0, 2).toUpperCase() : 'U');
-  const bgClass = user?.avatarBg || 'bg-[#501f92]';
+  const effectiveName = user?.name || name || '';
+  const effectiveInitials =
+    user?.initials ||
+    initials ||
+    (effectiveName
+      ? effectiveName
+          .split(' ')
+          .filter(Boolean)
+          .map((n) => n[0])
+          .slice(0, 2)
+          .join('')
+          .toUpperCase()
+      : 'U');
+  const bgClass = user?.avatarBg || avatarBg || 'bg-[#501f92]';
+  const effectiveUrl = user?.avatarUrl ?? avatarUrl;
 
-  const shouldRenderImage = Boolean(user?.avatarUrl) && !hasImageError;
+  const shouldRenderImage = Boolean(effectiveUrl && effectiveUrl.trim()) && !hasImageError;
 
   return (
     <div
-      className={`relative inline-flex items-center justify-center shrink-0 select-none ${containerSizeClasses} ${className}`}
+      className={`relative inline-flex items-center justify-center shrink-0 select-none overflow-hidden ${radiusClass} ${containerSizeClasses} ${className}`}
     >
       {shouldRenderImage ? (
         <img
-          src={user?.avatarUrl}
-          alt={alt || user?.name || 'Avatar de colaborador'}
+          src={effectiveUrl!}
+          alt={alt || effectiveName || 'Avatar de colaborador'}
           onError={() => setHasImageError(true)}
           className={`w-full h-full object-cover ${radiusClass} shadow-2xs ${imageClassName}`}
           loading="lazy"
@@ -69,9 +91,9 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
       ) : (
         <div
           className={`w-full h-full ${bgClass} text-white font-bold flex items-center justify-center ${radiusClass} ${textClass} shadow-2xs ${fallbackClassName}`}
-          aria-label={user?.name || initials}
+          aria-label={effectiveName || effectiveInitials}
         >
-          {initials}
+          {effectiveInitials}
         </div>
       )}
 

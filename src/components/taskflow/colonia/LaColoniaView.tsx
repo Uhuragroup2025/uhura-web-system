@@ -28,6 +28,7 @@ import {
 import { ColoniaMinigames } from './ColoniaMinigames';
 import { ColoniaSocialInbox } from './ColoniaSocialInbox';
 import { ColoniaRankingView } from './ColoniaRankingView';
+import { UserAvatar } from '../UserAvatar';
 import {
   isSoundEnabled,
   setSoundEnabled,
@@ -110,7 +111,8 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
       name: u.name,
       role: u.officialRole || u.jobTitle || u.role || 'Colaborador',
       initials: u.initials || u.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase(),
-      avatarBg: u.avatarBg || 'bg-[#501f92]'
+      avatarBg: u.avatarBg || 'bg-[#501f92]',
+      avatarUrl: u.avatarUrl
     }));
 
   const refreshColonyData = () => {
@@ -770,9 +772,11 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
                       onClick={() => handleCreateDirectChallenge(teammate)}
                       className="p-2 rounded-xl bg-white/5 hover:bg-[#501f92]/40 border border-white/10 hover:border-[#d4ff4a] text-left transition-all cursor-pointer group flex items-center gap-2"
                     >
-                      <div className={`w-7 h-7 rounded-lg ${teammate.avatarBg} flex items-center justify-center text-[10px] font-bold text-white shrink-0`}>
-                        {teammate.initials}
-                      </div>
+                      <UserAvatar
+                        user={teammate}
+                        size="sm"
+                        className="w-7 h-7 rounded-lg text-[10px]"
+                      />
                       <div className="truncate">
                         <div className="text-xs font-bold text-white group-hover:text-[#d4ff4a] truncate">
                           {teammate.name.split(' ')[0]}

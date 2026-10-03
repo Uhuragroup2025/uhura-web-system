@@ -1064,8 +1064,16 @@ El backend debe persistir en base de datos como mínimo los siguientes campos de
 6. **`birthDate`** (Date / ISO `YYYY-MM-DD`: fecha de cumpleaños)
 7. **`fecha_ingreso`** (Date / ISO `YYYY-MM-DD`: Hire Date / `joinedDate`; dato canónico de edición restringida a perfiles autorizados [Administrativa / RRHH / Dirección General]. Antigüedad y aniversario se derivan directamente de él; no debe documentarse como inmutable)
 8. **`status`** (`Active` | `Inactive` | `Invited`)
+9. **`avatar_url`** (URLField / string | null: URL pública de la fotografía de perfil del colaborador)
 
-#### 4. Auditoría de Cambios Sensibles en Backend:
+#### 4. Gestión Canónica de Fotografía de Perfil (`avatar_url`) y Fallback Visual:
+- **Soporte Canónico:** La entidad `UserProfile` en backend y `UserItem` en frontend soportan el campo `avatar_url` / `avatarUrl` (URL nullable).
+- **Desacople de Almacenamiento Físico:** El backend de Indunova define la infraestructura y proveedor de almacenamiento de medios físicos (e.g. Google Cloud Storage, Amazon S3, MinIO o CDN dedicada) y expone en la API únicamente la URL resultante (`avatar_url`). El frontend nunca asume dependencias locales de almacenamiento.
+- **Consumo Unificado en Frontend:** Toda la interfaz de Orbit consume las imágenes de perfil a través del componente centralizado `UserAvatar`.
+- **Tratamiento Visual Estricto:** Relación de aspecto 1:1, centrado, `object-cover`, sin deformación ni alteración de la composición de tarjetas, headers o tablas.
+- **Fallback Automático Resiliente:** Si el campo es `null`, vacío o si la imagen falla al cargar (`onError`), el componente automáticamente muestra las iniciales del colaborador sobre el color temático asignado (`avatarBg`).
+
+#### 5. Auditoría de Cambios Sensibles en Backend:
 > **REGLA DE GOBERNANZA DE AUDITORÍA:**  
 > `UserProfileAuditEntry` en frontend es **únicamente representación / previsualización en interfaz**. La auditoría autoritativa **debe generarse y persistirse en backend (Indunova) al guardar el cambio transaccional**. El frontend **no debe ser fuente de verdad del historial**.
 

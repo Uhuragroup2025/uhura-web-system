@@ -10,6 +10,7 @@ import {
   AssignmentChangeReason
 } from '../types';
 import { adaptCoreTeamToAssignments, getActiveWeeklyHoursForAssignment } from './assignmentAdapter';
+import { UserAvatar } from '../UserAvatar';
 import {
   Users,
   UserPlus,
@@ -617,9 +618,11 @@ export const ProjectTeamTab: React.FC<ProjectTeamTabProps> = ({
                     {/* Persona */}
                     <td className="py-3.5 px-5">
                       <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-full ${item.user.avatarBg} text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs`}>
-                          {item.user.initials}
-                        </div>
+                        <UserAvatar
+                          user={item.user}
+                          size="md"
+                          className="w-8 h-8 rounded-full text-xs shrink-0 shadow-2xs"
+                        />
                         <div>
                           <div className="flex items-center gap-1.5">
                             <span className="font-bold text-[#0f172a] text-xs">{item.user.name}</span>
@@ -774,9 +777,11 @@ export const ProjectTeamTab: React.FC<ProjectTeamTabProps> = ({
                   key={s.id}
                   className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] text-xs"
                 >
-                  <div className={`w-5 h-5 rounded-full ${u.avatarBg} text-white flex items-center justify-center font-bold text-[10px]`}>
-                    {u.initials}
-                  </div>
+                  <UserAvatar
+                    user={u}
+                    size="custom"
+                    className="w-5 h-5 rounded-full text-[10px]"
+                  />
                   <span className="font-bold text-[#0f172a]">{u.name}</span>
                   {s.titleOrDepartment && (
                     <span className="text-[10px] text-[#64748b]">· {s.titleOrDepartment}</span>
@@ -1085,9 +1090,11 @@ export const ProjectTeamTab: React.FC<ProjectTeamTabProps> = ({
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className={`w-6 h-6 rounded-full ${affectedUser.avatarBg} text-white flex items-center justify-center font-bold text-[10px]`}>
-                          {affectedUser.initials}
-                        </div>
+                        <UserAvatar
+                          user={affectedUser}
+                          size="xs"
+                          className="w-6 h-6 rounded-full text-[10px]"
+                        />
                         <span className="font-bold text-[#0f172a]">{affectedUser.name}</span>
                       </div>
                       <span className="text-[10px] text-[#94a3b8]">

@@ -19,6 +19,7 @@ import {
   getTaskRiskAnalysis,
   createTaskBuckyEvent
 } from '../tasks/taskEngine';
+import { UserAvatar } from '../UserAvatar';
 import {
   CheckSquare,
   Plus,
@@ -766,13 +767,13 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
                               </div>
                             ) : (
                               <div className="flex items-center gap-1.5">
-                                <div
-                                  className={`w-6 h-6 rounded-full ${
-                                    task.assignee?.avatarBg || 'bg-[#501f92]'
-                                  } text-white flex items-center justify-center text-[9px] font-bold`}
-                                >
-                                  {task.assignee?.initials || 'CO'}
-                                </div>
+                                <UserAvatar
+                                  name={task.assignee?.name}
+                                  initials={task.assignee?.initials || 'CO'}
+                                  avatarBg={task.assignee?.avatarBg || 'bg-[#501f92]'}
+                                  size="xs"
+                                  className="w-6 h-6 rounded-full text-[9px]"
+                                />
                                 <span className="text-[11px] text-[#475569]">{task.assignee?.name}</span>
                               </div>
                             )}
@@ -924,9 +925,13 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
 
                         <div className="flex items-center justify-between pt-1 border-t border-[#f1f5f9] text-[10px]">
                           <div className="flex items-center gap-1">
-                            <div className={`w-4 h-4 rounded-full ${task.assignee?.avatarBg || 'bg-[#501f92]'} text-white flex items-center justify-center text-[7px] font-bold`}>
-                              {task.assignee?.initials || 'CO'}
-                            </div>
+                            <UserAvatar
+                              name={task.assignee?.name}
+                              initials={task.assignee?.initials || 'CO'}
+                              avatarBg={task.assignee?.avatarBg || 'bg-[#501f92]'}
+                              size="custom"
+                              className="w-4 h-4 rounded-full text-[7px]"
+                            />
                             <span className="text-[#64748b] truncate max-w-[80px]">{task.assignee?.name}</span>
                           </div>
 
@@ -982,9 +987,13 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
                       </td>
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-1">
-                          <div className={`w-5 h-5 rounded-full ${task.assignee?.avatarBg || 'bg-[#501f92]'} text-white flex items-center justify-center text-[8px] font-bold`}>
-                            {task.assignee?.initials || 'CO'}
-                          </div>
+                          <UserAvatar
+                            name={task.assignee?.name}
+                            initials={task.assignee?.initials || 'CO'}
+                            avatarBg={task.assignee?.avatarBg || 'bg-[#501f92]'}
+                            size="custom"
+                            className="w-5 h-5 rounded-full text-[8px]"
+                          />
                           <span className="text-xs text-[#334155]">{task.assignee?.name}</span>
                         </div>
                       </td>

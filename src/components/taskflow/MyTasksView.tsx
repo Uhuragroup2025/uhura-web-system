@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { TaskItem, ActiveTimerState, TaskStatus, TaskPriority } from './types';
+import { UserAvatar } from './UserAvatar';
 import {
   Button,
   Badge,
@@ -448,12 +449,12 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
                       )}
 
                       {viewMode === 'team' && task.assignee && (
-                        <div className="flex items-center gap-1 text-[11px] font-medium text-[#475569]">
-                          <div
-                            className={`w-4 h-4 rounded-full ${task.assignee.avatarBg} text-white flex items-center justify-center text-[7px] font-bold`}
-                          >
-                            {task.assignee.initials}
-                          </div>
+                        <div className="flex items-center gap-1.5 text-[11px] font-medium text-[#475569]">
+                          <UserAvatar
+                            user={task.assignee}
+                            size="custom"
+                            className="w-4 h-4 rounded-full text-[7px]"
+                          />
                           <span className="truncate">{task.assignee.name}</span>
                         </div>
                       )}
@@ -700,11 +701,11 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
                       {viewMode === 'team' && (
                         <td className="py-2.5 px-3">
                           <div className="flex items-center gap-1.5 min-w-0">
-                            <div
-                              className={`w-4 h-4 rounded-full ${task.assignee.avatarBg} text-white flex items-center justify-center text-[7px] font-bold shrink-0`}
-                            >
-                              {task.assignee.initials}
-                            </div>
+                            <UserAvatar
+                              user={task.assignee}
+                              size="custom"
+                              className="w-4 h-4 rounded-full text-[7px]"
+                            />
                             <span className="text-xs font-medium text-[#334155] truncate">
                               {task.assignee.name}
                             </span>

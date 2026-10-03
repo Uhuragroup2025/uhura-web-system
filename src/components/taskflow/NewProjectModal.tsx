@@ -35,6 +35,7 @@ import {
 } from './types';
 import { initialUsers } from './mockData';
 import { checkAssigneeAvailability } from './copilot/teamLifeEngine';
+import { UserAvatar } from './UserAvatar';
 
 export interface NewProjectPayload {
   name: string;
@@ -1094,11 +1095,13 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                                             key={member.id}
                                             className="inline-flex items-center gap-1.5 bg-white border border-[#cbd5e1] rounded-lg pl-1.5 pr-2 py-1 text-xs shadow-2xs"
                                           >
-                                            <div
-                                              className={`w-4 h-4 rounded-full ${member.avatarBg} text-white font-bold text-[9px] flex items-center justify-center shrink-0`}
-                                            >
-                                              {member.initials}
-                                            </div>
+                                            <UserAvatar
+                                              name={member.name}
+                                              initials={member.initials}
+                                              avatarBg={member.avatarBg}
+                                              size="custom"
+                                              className="w-4 h-4 rounded-full font-bold text-[9px]"
+                                            />
                                             <span className="font-semibold text-[#0f172a] text-[11px]">
                                               {member.name}
                                             </span>
@@ -1214,11 +1217,13 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                         >
                           <div className="flex items-center justify-between gap-3">
                             <div className="flex items-center gap-2.5">
-                              <div
-                                className={`w-8 h-8 rounded-full ${member.avatarBg} text-white text-xs font-bold flex items-center justify-center shrink-0`}
-                              >
-                                {member.initials}
-                              </div>
+                              <UserAvatar
+                                name={member.name}
+                                initials={member.initials}
+                                avatarBg={member.avatarBg}
+                                size="md"
+                                className="w-8 h-8 rounded-full text-xs shrink-0"
+                              />
                               <div>
                                 <div className="text-xs font-bold text-[#0f172a]">{member.name}</div>
                                 <div className="text-[10px] text-[#64748b]">{member.role}</div>
@@ -1398,11 +1403,13 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                         key={item.memberId}
                         className="flex items-center gap-2 bg-[#f8fafc] border border-[#e2e8f0] px-3 py-1.5 rounded-xl text-xs"
                       >
-                        <div
-                          className={`w-6 h-6 rounded-full ${member.avatarBg} text-white font-bold text-[10px] flex items-center justify-center`}
-                        >
-                          {member.initials}
-                        </div>
+                        <UserAvatar
+                          name={member.name}
+                          initials={member.initials}
+                          avatarBg={member.avatarBg}
+                          size="xs"
+                          className="w-6 h-6 rounded-full font-bold text-[10px]"
+                        />
                         <div>
                           <span className="font-bold text-[#0f172a]">{member.name}</span>
                           <span className="text-[10px] text-[#64748b] ml-1.5 font-medium">
@@ -1565,11 +1572,13 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <div
-                          className={`w-9 h-9 rounded-full ${member.avatarBg} text-white text-xs font-bold flex items-center justify-center shrink-0 shadow-2xs`}
-                        >
-                          {member.initials}
-                        </div>
+                        <UserAvatar
+                          name={member.name}
+                          initials={member.initials}
+                          avatarBg={member.avatarBg}
+                          size="lg"
+                          className="w-9 h-9 rounded-full text-xs font-bold shrink-0 shadow-2xs"
+                        />
                         <div>
                           <div className="text-xs font-bold text-[#0f172a] flex items-center gap-1.5">
                             <span>{member.name}</span>

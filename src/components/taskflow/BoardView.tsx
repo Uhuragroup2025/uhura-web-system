@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { TaskItem, TaskStatus, ActiveTimerState, ProjectType } from './types';
+import { UserAvatar } from './UserAvatar';
 import {
   Plus,
   CheckCircle2,
@@ -449,11 +450,11 @@ export const BoardView: React.FC<BoardViewProps> = ({
                         {/* Card Footer: Assignee & Single Play Button */}
                         <div className="flex items-center justify-between pt-2 border-t border-[#f1f5f9]">
                           <div className="flex items-center gap-1.5">
-                            <div
-                              className={`w-6 h-6 rounded-lg ${task.assignee.avatarBg} text-white flex items-center justify-center font-bold text-[10px]`}
-                            >
-                              {task.assignee.initials}
-                            </div>
+                            <UserAvatar
+                              user={task.assignee}
+                              size="xs"
+                              className="w-6 h-6 rounded-lg text-[10px]"
+                            />
                             <span className="text-[11px] text-[#64748b] font-medium truncate max-w-[85px]">
                               {task.assignee.name.split(' ')[0]}
                             </span>

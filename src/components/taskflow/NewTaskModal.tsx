@@ -38,6 +38,7 @@ import {
 } from './mockData';
 import { ProjectSummaryItem } from './ProjectsView';
 import { checkAssigneeAvailability } from './copilot/teamLifeEngine';
+import { UserAvatar } from './UserAvatar';
 
 export interface NewTaskModalProps {
   isOpen: boolean;
@@ -740,17 +741,25 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
                     label: m.name,
                     sublabel: m.defaultRole,
                     icon: (
-                      <div className={`w-5 h-5 rounded-full ${m.avatarBg} text-white flex items-center justify-center text-[9px] font-bold shrink-0`}>
-                        {m.initials}
-                      </div>
+                      <UserAvatar
+                        name={m.name}
+                        initials={m.initials}
+                        avatarBg={m.avatarBg}
+                        size="custom"
+                        className="w-5 h-5 rounded-full text-[9px]"
+                      />
                     )
                   }))}
                   trigger={
                     <div className="w-full bg-white border border-[#cbd5e1] px-3 py-2 rounded-xl text-xs font-semibold text-[#0f172a] flex items-center justify-between cursor-pointer">
                       <div className="flex items-center gap-2 truncate">
-                        <div className={`w-5 h-5 rounded-full ${TEAM_MEMBERS.find((m) => m.name === projectLeadName)?.avatarBg || 'bg-[#501f92]'} text-white flex items-center justify-center text-[9px] font-bold shrink-0`}>
-                          {TEAM_MEMBERS.find((m) => m.name === projectLeadName)?.initials || 'PL'}
-                        </div>
+                        <UserAvatar
+                          name={projectLeadName}
+                          initials={TEAM_MEMBERS.find((m) => m.name === projectLeadName)?.initials || 'PL'}
+                          avatarBg={TEAM_MEMBERS.find((m) => m.name === projectLeadName)?.avatarBg || 'bg-[#501f92]'}
+                          size="custom"
+                          className="w-5 h-5 rounded-full text-[9px]"
+                        />
                         <span className="truncate">{projectLeadName}</span>
                       </div>
                       <ChevronDown className="w-3.5 h-3.5 text-[#64748b] shrink-0" />
@@ -815,9 +824,13 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
                       label: m.name,
                       sublabel: onVac ? `${m.defaultRole} • 🏖️ De vacaciones` : m.defaultRole,
                       icon: (
-                        <div className={`w-5 h-5 rounded-full ${m.avatarBg} text-white flex items-center justify-center text-[9px] font-bold shrink-0`}>
-                          {m.initials}
-                        </div>
+                        <UserAvatar
+                          name={m.name}
+                          initials={m.initials}
+                          avatarBg={m.avatarBg}
+                          size="custom"
+                          className="w-5 h-5 rounded-full text-[9px]"
+                        />
                       )
                     };
                   })}
@@ -858,9 +871,13 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
                     label: m.name,
                     sublabel: m.defaultRole,
                     icon: (
-                      <div className={`w-5 h-5 rounded-full ${m.avatarBg} text-white flex items-center justify-center text-[9px] font-bold shrink-0`}>
-                        {m.initials}
-                      </div>
+                      <UserAvatar
+                        name={m.name}
+                        initials={m.initials}
+                        avatarBg={m.avatarBg}
+                        size="custom"
+                        className="w-5 h-5 rounded-full text-[9px]"
+                      />
                     )
                   }))}
                   trigger={
