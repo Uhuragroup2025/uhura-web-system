@@ -303,7 +303,7 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
       {
         id: 'stk-yam-1',
         projectId: 'prj-yam-navidad',
-        userId: 'u-18', // Luisa Urazán
+        userId: 'u-3', // Luisa Urazán
         titleOrDepartment: 'Client Relationship Strategist',
         notes: 'Seguimiento de relación con Incolmotos Yamaha'
       },
