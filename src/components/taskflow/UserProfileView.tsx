@@ -8,6 +8,7 @@ import {
   StandardUhuraRole
 } from './types';
 import { ROLE_PERMISSIONS_MATRIX } from './auth/permissions';
+import { UserAvatar } from './UserAvatar';
 import {
   ArrowLeft,
   Mail,
@@ -344,29 +345,19 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
           <div className="flex items-start sm:items-center gap-4">
             {/* Foto / Avatar */}
-            <div className="relative shrink-0">
-              {user.avatarUrl ? (
-                <img
-                  src={user.avatarUrl}
-                  alt={user.name}
-                  referrerPolicy="no-referrer"
-                  className="w-18 h-18 sm:w-20 sm:h-20 rounded-2xl object-cover border border-[#e2e8f0] shadow-xs"
-                />
-              ) : (
+            <UserAvatar
+              user={user}
+              size="2xl"
+              className="w-18 h-18 sm:w-20 sm:h-20"
+              badge={
                 <div
-                  className={`w-18 h-18 sm:w-20 sm:h-20 rounded-2xl ${user.avatarBg || 'bg-[#501f92]'} text-white flex items-center justify-center font-bold text-xl sm:text-2xl shadow-xs`}
-                >
-                  {user.initials}
-                </div>
-              )}
-              {/* Indicador de estado */}
-              <div
-                className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${
-                  status === 'Active' ? 'bg-[#16a34a]' : 'bg-[#94a3b8]'
-                }`}
-                title={status === 'Active' ? 'Colaborador Activo' : 'Colaborador Inactivo'}
-              />
-            </div>
+                  className={`w-4 h-4 rounded-full border-2 border-white ${
+                    status === 'Active' ? 'bg-[#16a34a]' : 'bg-[#94a3b8]'
+                  }`}
+                  title={status === 'Active' ? 'Colaborador Activo' : 'Colaborador Inactivo'}
+                />
+              }
+            />
 
             {/* Datos Principales */}
             <div className="space-y-1">

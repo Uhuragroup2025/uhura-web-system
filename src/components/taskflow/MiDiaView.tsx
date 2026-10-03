@@ -39,6 +39,7 @@ import { getUserAccessLevel, can } from './auth/permissions';
 import { initialUsers, initialAbsenceEvents } from './mockData';
 import { processTeamLifeEvents } from './copilot/teamLifeEngine';
 import { TeamHumanProfileModal } from './copilot/TeamHumanProfileModal';
+import { UserAvatar } from './UserAvatar';
 
 export interface MiDiaViewProps {
   tasks: TaskItem[];
@@ -259,6 +260,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
       avatarBg: string;
       initials: string;
       badgeColor: string;
+      user?: UserItem;
     }[] = [];
 
     // Aniversarios hoy (ej. Óscar cumple 2 años)
@@ -274,7 +276,8 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
           userName: e.userName,
           avatarBg: e.userAvatarBg || 'bg-[#7c3aed]',
           initials: e.userInitials || 'UH',
-          badgeColor: 'border-[#ddd6fe] bg-[#f5f3ff] text-[#7c3aed]'
+          badgeColor: 'border-[#ddd6fe] bg-[#f5f3ff] text-[#7c3aed]',
+          user: u
         });
       });
 
@@ -291,12 +294,14 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
           userName: e.userName,
           avatarBg: e.userAvatarBg || 'bg-[#db2777]',
           initials: e.userInitials || 'UH',
-          badgeColor: 'border-[#fbcfe8] bg-[#fdf2f8] text-[#db2777]'
+          badgeColor: 'border-[#fbcfe8] bg-[#fdf2f8] text-[#db2777]',
+          user: u
         });
       });
 
     // Vacaciones activas
     data.activeAbsences.forEach((e) => {
+      const u = effectiveUsers.find((user) => user.id === e.userId);
       list.push({
         icon: '🏖',
         text: `${e.userName.split(' ')[0]} de vacaciones`,
@@ -305,13 +310,15 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
         userName: e.userName,
         avatarBg: e.userAvatarBg || 'bg-[#0284c7]',
         initials: e.userInitials || 'UH',
-        badgeColor: 'border-[#bae6fd] bg-[#f0f9ff] text-[#0284c7]'
+        badgeColor: 'border-[#bae6fd] bg-[#f0f9ff] text-[#0284c7]',
+        user: u
       });
     });
 
     // Próximo evento de equipo relevante si no hay suficientes
     if (list.length < 3) {
       data.upcomingEvents.slice(0, 1).forEach((e) => {
+        const u = effectiveUsers.find((user) => user.id === e.userId);
         list.push({
           icon: '🎈',
           text: `${e.userName.split(' ')[0]}: ${e.headline}`,
@@ -320,7 +327,8 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
           userName: e.userName,
           avatarBg: e.userAvatarBg || 'bg-[#501f92]',
           initials: e.userInitials || 'UH',
-          badgeColor: 'border-[#ede9fe] bg-[#faf5ff] text-[#501f92]'
+          badgeColor: 'border-[#ede9fe] bg-[#faf5ff] text-[#501f92]',
+          user: u
         });
       });
     }
@@ -340,109 +348,138 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
 
       {/* 3 NIVELES ESTRUCTURALES DE MI DÍA (LIMPIO, SIN COLUMNA LATERAL) */}
       <div className="space-y-6 max-w-6xl mx-auto">
-          {/* HOY EN EL EQUIPO (DISEÑO AMIGABLE, ATRACTIVO Y LIGERO) */}
-          <div className="bg-gradient-to-r from-[#ffffff] via-[#fcfaff] to-[#f8f5ff] rounded-3xl p-3.5 sm:p-4 border border-[#ede9fe] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
-            {/* Izquierda: Identidad de colonia y eventos de hoy */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-1 min-w-0">
-              <div className="flex items-center gap-2.5 shrink-0">
-                <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-[#f5f3ff] to-[#ede9fe] border border-[#ddd6fe] flex items-center justify-center text-base shadow-2xs">
+          {/* HOY EN EL EQUIPO & FICHA HUMANA (PROPUESTA AMIGABLE, ATRACTIVA Y LIGERA) */}
+          <section className="bg-white rounded-3xl p-4 sm:p-5 border border-[#ede9fe] shadow-xs space-y-3.5 transition-all">
+            {/* Fila Superior: Encabezado cultural + Accesos Rápidos */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#faf5ff] border border-[#ddd6fe] flex items-center justify-center text-lg shadow-2xs shrink-0">
                   🦫
                 </div>
                 <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-bold text-[#501f92] text-xs">Hoy en el equipo</span>
-                    {teamHumanHighlights.length > 0 && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#10b981]" />
-                    )}
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-[#2e1859] text-sm tracking-tight">
+                      Hoy en la colonia
+                    </h3>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#7c3aed] bg-[#f5f3ff] px-2 py-0.5 rounded-full">
+                      Cultura Uhura
+                    </span>
                   </div>
-                  <span className="text-[10px] text-[#64748b] block font-medium">
-                    Cultura & Vida de Colonia
-                  </span>
+                  <p className="text-xs text-[#64748b] mt-0.5">
+                    {teamHumanHighlights.length > 0
+                      ? 'Celebraciones, aniversarios y momentos especiales del equipo hoy.'
+                      : 'La colonia avanza con ritmo sereno · Conoce pasatiempos y fechas de tus compañeros.'}
+                  </p>
                 </div>
               </div>
 
-              {/* Separador sutil en desktop */}
-              <div className="hidden sm:block h-7 w-px bg-[#e2e8f0]" />
-
-              {/* Tarjetas interactivas de eventos del día */}
-              <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
-                {teamHumanHighlights.map((item, idx) => (
+              {/* Botones de acción: Mi Ficha + Explorar Fichas */}
+              <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                {currentUser && (
                   <button
-                    key={idx}
                     type="button"
                     onClick={() => {
-                      setSelectedTeamUserId(item.userId);
+                      setSelectedTeamUserId(currentUser.id);
                       setIsHumanProfileModalOpen(true);
                     }}
-                    className="group inline-flex items-center gap-2 px-2.5 py-1.5 rounded-2xl bg-white hover:bg-[#faf5ff] border border-[#ede9fe] hover:border-[#8a4dff] shadow-2xs hover:shadow-xs transition-all cursor-pointer text-left"
-                    title={`Ver ficha humana de ${item.userName}`}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#faf5ff] hover:bg-[#ede9fe] border border-[#ddd6fe] text-[#501f92] text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                    title="Ver o editar mis pasatiempos y datos personales"
                   >
-                    <div className="relative shrink-0">
-                      <div
-                        className={`w-6 h-6 rounded-lg ${item.avatarBg} text-white flex items-center justify-center text-[9px] font-bold shadow-2xs`}
-                      >
-                        {item.initials}
-                      </div>
-                      <span className="absolute -bottom-1 -right-1 text-[10px]">
-                        {item.icon}
-                      </span>
-                    </div>
-
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-[#0f172a] group-hover:text-[#501f92] transition-colors truncate">
-                        {item.text}
-                      </p>
-                      {item.subtext && (
-                        <span className="text-[10px] text-[#64748b] block truncate leading-tight">
-                          {item.subtext}
-                        </span>
-                      )}
-                    </div>
+                    <UserAvatar user={currentUser} size="xs" />
+                    <span>Mi ficha</span>
                   </button>
-                ))}
-
-                {teamHumanHighlights.length === 0 && (
-                  <span className="text-[#64748b] text-[11px] py-1">
-                    🌿 Colonia en armonía · Todo el equipo enfocado hoy.
-                  </span>
                 )}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedTeamUserId(undefined);
+                    setIsHumanProfileModalOpen(true);
+                  }}
+                  className="group inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                  title="Explorar fichas humanas, pasatiempos y fechas de todo el equipo"
+                >
+                  <div className="flex items-center -space-x-1.5 shrink-0">
+                    {effectiveUsers.slice(0, 3).map((u) => (
+                      <UserAvatar
+                        key={u.id}
+                        user={u}
+                        size="xs"
+                        className="ring-1 ring-white rounded-full"
+                        imageClassName="rounded-full"
+                        fallbackClassName="rounded-full"
+                      />
+                    ))}
+                  </div>
+                  <span>Fichas Humanas ({effectiveUsers.length})</span>
+                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                </button>
               </div>
             </div>
 
-            {/* Derecha: Botón Ficha Humana con stack de avatares del equipo */}
-            <div className="flex items-center justify-end shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-[#f1f5f9]">
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedTeamUserId(undefined);
-                  setIsHumanProfileModalOpen(true);
-                }}
-                className="group inline-flex items-center gap-2.5 px-3 py-1.5 rounded-2xl bg-white hover:bg-[#501f92] border border-[#ddd6fe] hover:border-[#501f92] text-[#501f92] hover:text-white shadow-2xs hover:shadow-xs transition-all cursor-pointer"
-                title="Explorar fichas humanas, pasatiempos y sueños del equipo"
-              >
-                <div className="flex items-center -space-x-1.5 shrink-0">
-                  {effectiveUsers.slice(0, 3).map((u) => (
-                    <div
-                      key={u.id}
-                      className={`w-5 h-5 rounded-full ${u.avatarBg || 'bg-[#501f92]'} text-white text-[8px] font-bold flex items-center justify-center border border-white`}
-                    >
-                      {u.initials}
+            {/* Fila Inferior: Tarjetas amigables y limpias de colaboradores */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-1">
+              {teamHumanHighlights.map((item, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => {
+                    setSelectedTeamUserId(item.userId);
+                    setIsHumanProfileModalOpen(true);
+                  }}
+                  className="group p-3 rounded-2xl bg-[#fcfaff] hover:bg-[#f5f3ff] border border-[#f1edfa] hover:border-[#8a4dff] flex items-center justify-between gap-3 text-left transition-all cursor-pointer shadow-2xs hover:shadow-xs"
+                  title={`Abrir ficha humana de ${item.userName}`}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <UserAvatar
+                      user={item.user || { name: item.userName, initials: item.initials, avatarBg: item.avatarBg }}
+                      size="md"
+                      badge={<span className="text-xs">{item.icon}</span>}
+                    />
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-[#0f172a] group-hover:text-[#501f92] truncate">
+                        {item.userName}
+                      </p>
+                      <p className="text-[11px] text-[#64748b] truncate leading-tight mt-0.5">
+                        {item.text}
+                      </p>
                     </div>
-                  ))}
-                </div>
-
-                <div className="text-left">
-                  <div className="flex items-center gap-1">
-                    <span className="text-xs font-bold">Ficha humana</span>
-                    <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
                   </div>
-                  <span className="text-[10px] text-[#64748b] group-hover:text-white/80 block">
-                    {effectiveUsers.length} compañeros
+
+                  <span className="text-[11px] font-semibold text-[#8a4dff] opacity-0 group-hover:opacity-100 transition-opacity shrink-0 flex items-center gap-0.5">
+                    <span>Ver</span>
+                    <ArrowRight className="w-3 h-3" />
                   </span>
-                </div>
-              </button>
+                </button>
+              ))}
+
+              {/* Tarjeta de descubrimiento de compañeros cuando hay pocos eventos hoy */}
+              {teamHumanHighlights.length < 3 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedTeamUserId(undefined);
+                    setIsHumanProfileModalOpen(true);
+                  }}
+                  className="group p-3 rounded-2xl bg-[#f8fafc] hover:bg-[#f5f3ff] border border-dashed border-[#cbd5e1] hover:border-[#8a4dff] flex items-center gap-3 text-left transition-all cursor-pointer"
+                  title="Conoce pasatiempos, fechas y aspiraciones del equipo"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-white border border-[#e2e8f0] flex items-center justify-center text-sm shrink-0 text-[#7c3aed]">
+                    ✨
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-[#334155] group-hover:text-[#501f92] truncate">
+                      Conoce a la colonia
+                    </p>
+                    <p className="text-[11px] text-[#64748b] truncate leading-tight mt-0.5">
+                      Explora gustos, pasatiempos y mascotas del equipo
+                    </p>
+                  </div>
+                  <ArrowRight className="w-3.5 h-3.5 text-[#94a3b8] group-hover:text-[#7c3aed] group-hover:translate-x-0.5 transition-all shrink-0" />
+                </button>
+              )}
             </div>
-          </div>
+          </section>
 
           {/* NIVEL 1: ¿QUÉ REQUIERE MI ATENCIÓN? (CONDICIONAL ESTRICTO: 0 SI NO HAY ACCIONES) */}
           {hasAttentionItems && (
@@ -1041,6 +1078,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
         users={users && users.length > 0 ? users : initialUsers}
         selectedUserId={selectedTeamUserId}
         onUpdateUser={onUpdateUser}
+        currentUser={currentUser}
       />
     </div>
   );

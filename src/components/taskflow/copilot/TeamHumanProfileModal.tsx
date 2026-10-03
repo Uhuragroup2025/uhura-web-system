@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   X,
   Search,
@@ -13,9 +13,13 @@ import {
   Check,
   MapPin,
   Heart,
-  ChevronRight
+  ChevronRight,
+  User,
+  PartyPopper,
+  Filter
 } from 'lucide-react';
 import { UserItem } from '../types';
+import { UserAvatar } from '../UserAvatar';
 
 interface TeamHumanProfileModalProps {
   isOpen: boolean;
@@ -23,11 +27,12 @@ interface TeamHumanProfileModalProps {
   users: UserItem[];
   selectedUserId?: string;
   onUpdateUser?: (updatedUser: UserItem) => void;
+  currentUser?: UserItem;
 }
 
 /**
  * Calcula la edad en años en runtime a partir de la fecha de nacimiento (ISO 'YYYY-MM-DD').
- * Regla de Gobernanza: La edad NO se persiste como dato estático.
+ * Regla de Gobernanza de Orbit: La edad NO se persiste como dato estático.
  */
 function calculateAgeFromBirthDate(birthDate?: string): number | null {
   if (!birthDate) return null;
@@ -49,7 +54,7 @@ function calculateAgeFromBirthDate(birthDate?: string): number | null {
 }
 
 /**
- * Formatea una fecha ISO 'YYYY-MM-DD' a formato legible '16 de Sep'
+ * Formatea una fecha ISO 'YYYY-MM-DD' a formato legible '10 de May'
  */
 function formatBirthDateHuman(dateStr: string): string {
   const parts = dateStr.split('-');
@@ -64,29 +69,59 @@ function formatBirthDateHuman(dateStr: string): string {
 }
 
 /**
- * Calcula días restantes hasta el próximo aniversario o cumpleaños anual relativo a fecha de referencia
+ * Extrae mes y día numérico de una fecha ISO 'YYYY-MM-DD'
  */
-function getDaysUntilAnnualEvent(
-  dateStr?: string,
-  refDate: Date = new Date(2026, 8, 16)
-): { days: number; isToday: boolean; badgeText: string; isThisMonth: boolean } | null {
+function parseMonthAndDay(dateStr?: string): { month: number; day: number } | null {
   if (!dateStr) return null;
   const parts = dateStr.split('-');
   if (parts.length < 3) return null;
   const month = parseInt(parts[1], 10);
   const day = parseInt(parts[2], 10);
   if (isNaN(month) || isNaN(day)) return null;
+  return { month, day };
+}
 
+/**
+ * Calcula días restantes hasta el próximo aniversario o cumpleaños anual relativo a fecha de referencia.
+ * Permite ordenar cronológicamente de forma precisa los eventos anuales del equipo.
+ */
+function getAnnualEventInfo(
+  dateStr?: string,
+  refDate: Date = new Date(2026, 8, 16) // Fecha base simulada canónica de Orbit (16 Sep 2026)
+): {
+  days: number;
+  isToday: boolean;
+  badgeText: string;
+  isThisMonth: boolean;
+  month: number;
+  day: number;
+  formattedDate: string;
+} | null {
+  const md = parseMonthAndDay(dateStr);
+  if (!md) return null;
+
+  const { month, day } = md;
   const currentYear = refDate.getFullYear();
   const currentMonth = refDate.getMonth() + 1; // 1-12
   const currentDay = refDate.getDate();
 
+  const formattedDate = formatBirthDateHuman(dateStr!);
+
   if (month === currentMonth && day === currentDay) {
-    return { days: 0, isToday: true, badgeText: '¡Hoy!', isThisMonth: true };
+    return {
+      days: 0,
+      isToday: true,
+      badgeText: '¡Hoy!',
+      isThisMonth: true,
+      month,
+      day,
+      formattedDate
+    };
   }
 
   let nextDate = new Date(currentYear, month - 1, day);
-  if (nextDate.getTime() < refDate.getTime() && nextDate.toDateString() !== refDate.toDateString()) {
+  if (nextDate.getTime() < refDate.getTime() && (nextDate.getDate() !== currentDay || nextDate.getMonth() + 1 !== currentMonth)) {
+    // Ya ocurrió este año, calcular para el siguiente año
     nextDate = new Date(currentYear + 1, month - 1, day);
   }
 
@@ -99,7 +134,15 @@ function getDaysUntilAnnualEvent(
   else if (diffDays <= 7) badgeText = `En ${diffDays} días`;
   else if (isThisMonth) badgeText = 'Este mes';
 
-  return { days: diffDays, isToday: false, badgeText, isThisMonth };
+  return {
+    days: diffDays,
+    isToday: false,
+    badgeText,
+    isThisMonth,
+    month,
+    day,
+    formattedDate
+  };
 }
 
 export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
@@ -107,13 +150,14 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
   onClose,
   users,
   selectedUserId,
-  onUpdateUser
+  onUpdateUser,
+  currentUser
 }) => {
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState<'all' | 'birthdays' | 'anniversaries'>('all');
-  const [filterScope, setFilterScope] = useState<'upcoming' | 'all_year'>('upcoming');
-  const [activeUserId, setActiveUserId] = useState<string>(selectedUserId || users[0]?.id || 'u-8');
-  
+  const [timeScope, setTimeScope] = useState<'all' | 'upcoming' | 'this_month'>('all');
+  const [activeUserId, setActiveUserId] = useState<string>(selectedUserId || currentUser?.id || users[0]?.id || 'u-8');
+
   // Modo edición de perfil
   const [isEditing, setIsEditing] = useState(false);
   const [editHobbies, setEditHobbies] = useState('');
@@ -121,10 +165,11 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
   const [editPetNames, setEditPetNames] = useState('');
   const [editCity, setEditCity] = useState('');
   const [editBirthDate, setEditBirthDate] = useState('');
-  const [saveSuccessNotice, setSaveSuccessNotice] = useState(false);
+  const [editAnniversaryDate, setEditAnniversaryDate] = useState('');
+  const [saveSuccessNotice, setSaveSuccessNotice] = useState<string | null>(null);
 
-  // Si cambia selectedUserId externamente, actualizar selección
-  React.useEffect(() => {
+  // Sincronizar selección cuando cambia externamente
+  useEffect(() => {
     if (selectedUserId) {
       setActiveUserId(selectedUserId);
       setIsEditing(false);
@@ -139,7 +184,7 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
     return calculateAgeFromBirthDate(activeUser?.birthDate);
   }, [activeUser?.birthDate]);
 
-  // Al iniciar edición, precargar datos canónicos
+  // Al iniciar edición, precargar datos de la persona seleccionada
   const handleStartEdit = () => {
     if (!activeUser) return;
     setEditHobbies(activeUser.hobbies || '');
@@ -147,8 +192,9 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
     setEditPetNames(activeUser.petNames || '');
     setEditCity(activeUser.city || '');
     setEditBirthDate(activeUser.birthDate || '');
+    setEditAnniversaryDate(activeUser.anniversaryDate || activeUser.joinedDate || '');
     setIsEditing(true);
-    setSaveSuccessNotice(false);
+    setSaveSuccessNotice(null);
   };
 
   // Guardar cambios en el perfil (actualiza la fuente canónica de la app)
@@ -158,6 +204,7 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
 
     const trimmedBirthDate = editBirthDate.trim();
     const formattedBday = trimmedBirthDate ? formatBirthDateHuman(trimmedBirthDate) : activeUser.birthDateFormatted;
+    const trimmedAnniversary = editAnniversaryDate.trim();
 
     const updatedUser: UserItem = {
       ...activeUser,
@@ -166,7 +213,9 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
       petNames: editPetNames.trim() || undefined,
       city: editCity.trim() || undefined,
       birthDate: trimmedBirthDate || activeUser.birthDate,
-      birthDateFormatted: formattedBday
+      birthDateFormatted: formattedBday || activeUser.birthDateFormatted,
+      anniversaryDate: trimmedAnniversary || activeUser.anniversaryDate,
+      joinedDate: trimmedAnniversary || activeUser.joinedDate
     };
 
     if (onUpdateUser) {
@@ -174,17 +223,17 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
     }
 
     setIsEditing(false);
-    setSaveSuccessNotice(true);
+    setSaveSuccessNotice(`¡Ficha de ${activeUser.name.split(' ')[0]} actualizada con éxito!`);
     setTimeout(() => {
-      setSaveSuccessNotice(false);
+      setSaveSuccessNotice(null);
     }, 4000);
   };
 
-  // Enriquecer usuarios con proximidad de fechas para filtros inteligentes
+  // Enriquecer usuarios con proximidad de fechas anuales
   const usersWithMetrics = useMemo(() => {
     return users.map((u) => {
-      const bdayInfo = getDaysUntilAnnualEvent(u.birthDate);
-      const anniInfo = getDaysUntilAnnualEvent(u.anniversaryDate);
+      const bdayInfo = getAnnualEventInfo(u.birthDate);
+      const anniInfo = getAnnualEventInfo(u.anniversaryDate);
       return {
         ...u,
         bdayInfo,
@@ -193,19 +242,19 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
     });
   }, [users]);
 
-  // Contadores para pestañas
+  // Contadores para pestañas (todos los 19 colaboradores tienen fechas de cumple y aniversario)
   const counts = useMemo(() => {
-    const upcomingBdays = usersWithMetrics.filter(
-      (u) => u.bdayInfo && (u.bdayInfo.isToday || u.bdayInfo.days <= 45)
-    ).length;
-    const upcomingAnnis = usersWithMetrics.filter(
-      (u) => u.anniInfo && (u.anniInfo.isToday || u.anniInfo.days <= 60)
-    ).length;
+    const totalBirthdays = usersWithMetrics.filter((u) => !!u.bdayInfo).length;
+    const totalAnniversaries = usersWithMetrics.filter((u) => !!u.anniInfo).length;
+    const upcomingBdays = usersWithMetrics.filter((u) => u.bdayInfo && (u.bdayInfo.isToday || u.bdayInfo.days <= 60)).length;
+    const upcomingAnnis = usersWithMetrics.filter((u) => u.anniInfo && (u.anniInfo.isToday || u.anniInfo.days <= 60)).length;
 
     return {
       all: users.length,
-      birthdaysUpcoming: upcomingBdays,
-      anniversariesUpcoming: upcomingAnnis
+      birthdays: totalBirthdays,
+      anniversaries: totalAnniversaries,
+      upcomingBdays,
+      upcomingAnnis
     };
   }, [usersWithMetrics, users.length]);
 
@@ -213,7 +262,7 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
   const filteredUsers = useMemo(() => {
     let list = [...usersWithMetrics];
 
-    // 1. Filtrado por texto
+    // 1. Filtrado por texto de búsqueda
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(
@@ -221,29 +270,53 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
           u.name.toLowerCase().includes(q) ||
           (u.jobTitle && u.jobTitle.toLowerCase().includes(q)) ||
           (u.department && u.department.toLowerCase().includes(q)) ||
-          (u.city && u.city.toLowerCase().includes(q))
+          (u.city && u.city.toLowerCase().includes(q)) ||
+          (u.hobbies && u.hobbies.toLowerCase().includes(q))
       );
     }
 
-    // 2. Filtro por categoría y orden inteligente
+    // 2. Filtro por categoría principal
     if (activeFilter === 'birthdays') {
-      if (filterScope === 'upcoming') {
-        // Muestra próximos 45 días o del mes
-        list = list.filter((u) => u.bdayInfo && (u.bdayInfo.isToday || u.bdayInfo.days <= 45));
+      // Filtrar a quienes tienen fecha de cumpleaños registrada
+      list = list.filter((u) => !!u.bdayInfo);
+
+      // Sub-filtro temporal si se selecciona ventana específica
+      if (timeScope === 'upcoming') {
+        list = list.filter((u) => u.bdayInfo && (u.bdayInfo.isToday || u.bdayInfo.days <= 60));
+      } else if (timeScope === 'this_month') {
+        list = list.filter((u) => u.bdayInfo && u.bdayInfo.isThisMonth);
       }
+
       // Ordenar por cercanía cronológica del próximo cumpleaños
       list.sort((a, b) => (a.bdayInfo?.days ?? 999) - (b.bdayInfo?.days ?? 999));
     } else if (activeFilter === 'anniversaries') {
-      if (filterScope === 'upcoming') {
-        // Muestra hoy y próximos 60 días
+      // Filtrar a quienes tienen fecha de aniversario registrada
+      list = list.filter((u) => !!u.anniInfo);
+
+      // Sub-filtro temporal si se selecciona ventana específica
+      if (timeScope === 'upcoming') {
         list = list.filter((u) => u.anniInfo && (u.anniInfo.isToday || u.anniInfo.days <= 60));
+      } else if (timeScope === 'this_month') {
+        list = list.filter((u) => u.anniInfo && u.anniInfo.isThisMonth);
       }
-      // Ordenar por cercanía cronológica del aniversario
+
+      // Ordenar por cercanía cronológica del próximo aniversario
       list.sort((a, b) => (a.anniInfo?.days ?? 999) - (b.anniInfo?.days ?? 999));
     }
 
     return list;
-  }, [usersWithMetrics, search, activeFilter, filterScope]);
+  }, [usersWithMetrics, search, activeFilter, timeScope]);
+
+  // Sincronizar usuario activo cuando la lista filtrada cambia y el seleccionado ya no está
+  useEffect(() => {
+    if (filteredUsers.length > 0) {
+      const exists = filteredUsers.some((u) => u.id === activeUserId);
+      if (!exists) {
+        setActiveUserId(filteredUsers[0].id);
+        setIsEditing(false);
+      }
+    }
+  }, [filteredUsers, activeUserId]);
 
   if (!isOpen) return null;
 
@@ -270,18 +343,41 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
                 </span>
               </div>
               <p className="text-xs text-white/80 mt-0.5">
-                Conoce, conecta y mantén actualizada la dimensión humana de la colonia.
+                Conoce y mantén actualizada la dimensión humana de la colonia: pasatiempos, fechas y aspiraciones.
               </p>
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer z-10"
-            title="Cerrar modal"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2 z-10">
+            {/* Atajo directo para ver/editar mi propio perfil */}
+            {currentUser && (
+              <button
+                onClick={() => {
+                  setActiveUserId(currentUser.id);
+                  setActiveFilter('all');
+                  setSearch('');
+                  setIsEditing(false);
+                }}
+                className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors cursor-pointer ${
+                  activeUserId === currentUser.id
+                    ? 'bg-[#d4ff4a] text-[#0f172a] border-[#d4ff4a]'
+                    : 'bg-white/10 text-white border-white/20 hover:bg-white/20'
+                }`}
+                title="Ir a mi ficha personal"
+              >
+                <User className="w-3.5 h-3.5" />
+                <span>Mi Ficha</span>
+              </button>
+            )}
+
+            <button
+              onClick={onClose}
+              className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
+              title="Cerrar modal"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
 
           {/* Decorative background glow */}
           <div className="absolute -top-12 -right-12 w-48 h-48 bg-[#d4ff4a]/10 rounded-full blur-2xl pointer-events-none" />
@@ -292,11 +388,11 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
           <div className="bg-[#ecfdf5] border-b border-[#a7f3d0] px-5 py-2.5 flex items-center justify-between text-xs text-[#065f46] animate-in fade-in duration-200">
             <div className="flex items-center gap-2">
               <Check className="w-4 h-4 text-[#10b981]" />
-              <span className="font-semibold">¡Ficha humana actualizada! Los cambios se sincronizaron en Orbit.</span>
+              <span className="font-semibold">{saveSuccessNotice}</span>
             </div>
             <button
-              onClick={() => setSaveSuccessNotice(false)}
-              className="text-[#059669] hover:text-[#047857] text-[11px] font-bold"
+              onClick={() => setSaveSuccessNotice(null)}
+              className="text-[#059669] hover:text-[#047857] text-[11px] font-bold cursor-pointer"
             >
               Cerrar
             </button>
@@ -305,24 +401,33 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
 
         {/* BODY (TWO COLUMNS) */}
         <div className="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden bg-[#fafafa]">
-          {/* LEFT COLUMN: TEAM MEMBERS LIST */}
-          <div className="w-full md:w-80 border-r border-[#e2e8f0] bg-white flex flex-col shrink-0">
+          {/* LEFT COLUMN: TEAM MEMBERS LIST & FILTERS */}
+          <div className="w-full md:w-84 border-r border-[#e2e8f0] bg-white flex flex-col shrink-0">
             {/* Search & Main Filter Tabs */}
             <div className="p-3.5 border-b border-[#f1f5f9] space-y-2.5">
               <div className="relative">
                 <Search className="w-4 h-4 text-[#94a3b8] absolute left-3 top-2.5" />
                 <input
                   type="text"
-                  placeholder="Buscar por nombre, cargo o ciudad..."
+                  placeholder="Buscar compañero, cargo o gustos..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="w-full pl-9 pr-3 py-2 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl text-xs text-[#0f172a] placeholder-[#94a3b8] focus:outline-[#7c3aed]"
                 />
+                {search && (
+                  <button
+                    onClick={() => setSearch('')}
+                    className="absolute right-2.5 top-2.5 text-[#94a3b8] hover:text-[#0f172a] text-xs cursor-pointer"
+                  >
+                    ×
+                  </button>
+                )}
               </div>
 
-              {/* Main Category Tabs */}
+              {/* Main Category Tabs: Todos (19) | Cumpleaños (19) | Aniversarios (19) */}
               <div className="grid grid-cols-3 gap-1 bg-[#f1f5f9] p-1 rounded-xl text-[11px]">
                 <button
+                  type="button"
                   onClick={() => {
                     setActiveFilter('all');
                     setIsEditing(false);
@@ -337,6 +442,7 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => {
                     setActiveFilter('birthdays');
                     setIsEditing(false);
@@ -346,15 +452,16 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
                       ? 'bg-white text-[#db2777] shadow-2xs'
                       : 'text-[#64748b] hover:text-[#0f172a]'
                   }`}
-                  title="Ver colaboradores con próximos cumpleaños"
+                  title="Ver fechas de cumpleaños de todos los colaboradores"
                 >
                   <span>🎂 Cumples</span>
                   <span className="text-[10px] bg-[#fdf2f8] text-[#db2777] px-1 rounded-full font-black">
-                    {counts.birthdaysUpcoming}
+                    {counts.birthdays}
                   </span>
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => {
                     setActiveFilter('anniversaries');
                     setIsEditing(false);
@@ -364,39 +471,44 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
                       ? 'bg-white text-[#7c3aed] shadow-2xs'
                       : 'text-[#64748b] hover:text-[#0f172a]'
                   }`}
-                  title="Ver aniversarios de la colonia"
+                  title="Ver aniversarios de trabajo en Uhura"
                 >
                   <span>🎉 Aniversarios</span>
                   <span className="text-[10px] bg-[#f5f3ff] text-[#7c3aed] px-1 rounded-full font-black">
-                    {counts.anniversariesUpcoming}
+                    {counts.anniversaries}
                   </span>
                 </button>
               </div>
 
-              {/* Scope Selector when filtering by Birthdays or Anniversaries */}
+              {/* Sub-filtro temporal explicativo cuando está en Cumpleaños o Aniversarios */}
               {activeFilter !== 'all' && (
-                <div className="flex items-center justify-between pt-1 text-[11px] text-[#64748b]">
-                  <span className="text-[10px] font-medium">Ventana de tiempo:</span>
+                <div className="flex items-center justify-between pt-1 text-[11px] text-[#64748b] border-t border-[#f8fafc]">
+                  <span className="text-[10px] font-semibold text-[#64748b] flex items-center gap-1">
+                    <Filter className="w-3 h-3 text-[#7c3aed]" />
+                    Mostrar:
+                  </span>
                   <div className="flex items-center gap-1">
                     <button
-                      onClick={() => setFilterScope('upcoming')}
+                      type="button"
+                      onClick={() => setTimeScope('all')}
                       className={`px-2 py-0.5 rounded-md font-semibold text-[10px] cursor-pointer transition-colors ${
-                        filterScope === 'upcoming'
-                          ? 'bg-[#501f92] text-white'
+                        timeScope === 'all'
+                          ? 'bg-[#501f92] text-white shadow-2xs'
                           : 'bg-[#f8fafc] text-[#64748b] hover:bg-[#e2e8f0]'
                       }`}
                     >
-                      Próximos
+                      Todo el año ({activeFilter === 'birthdays' ? counts.birthdays : counts.anniversaries})
                     </button>
                     <button
-                      onClick={() => setFilterScope('all_year')}
+                      type="button"
+                      onClick={() => setTimeScope('upcoming')}
                       className={`px-2 py-0.5 rounded-md font-semibold text-[10px] cursor-pointer transition-colors ${
-                        filterScope === 'all_year'
-                          ? 'bg-[#501f92] text-white'
+                        timeScope === 'upcoming'
+                          ? 'bg-[#501f92] text-white shadow-2xs'
                           : 'bg-[#f8fafc] text-[#64748b] hover:bg-[#e2e8f0]'
                       }`}
                     >
-                      Todo el año ({users.length})
+                      Próximos 60d ({activeFilter === 'birthdays' ? counts.upcomingBdays : counts.upcomingAnnis})
                     </button>
                   </div>
                 </div>
@@ -414,38 +526,42 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
                   const bday = user.bdayInfo;
                   if (bday) {
                     dynamicBadge = (
-                      <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 flex items-center gap-1 ${
-                          bday.isToday
-                            ? 'bg-[#fdf2f8] text-[#db2777] border border-[#fbcfe8] animate-pulse'
-                            : 'bg-[#fdf2f8] text-[#db2777]'
-                        }`}
-                      >
-                        <span>🎂 {user.birthDateFormatted}</span>
-                        <span className="opacity-75">· {bday.badgeText}</span>
-                      </span>
+                      <div className="text-right shrink-0">
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1 ${
+                            bday.isToday
+                              ? 'bg-[#fdf2f8] text-[#db2777] border border-[#fbcfe8] animate-pulse'
+                              : 'bg-[#fdf2f8] text-[#db2777]'
+                          }`}
+                        >
+                          <span>🎂 {user.birthDateFormatted}</span>
+                          <span className="opacity-75">· {bday.badgeText}</span>
+                        </span>
+                      </div>
                     );
                   }
                 } else if (activeFilter === 'anniversaries') {
                   const anni = user.anniInfo;
                   if (anni) {
                     dynamicBadge = (
-                      <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 flex items-center gap-1 ${
-                          anni.isToday
-                            ? 'bg-[#f5f3ff] text-[#7c3aed] border border-[#ddd6fe] animate-pulse'
-                            : 'bg-[#f5f3ff] text-[#7c3aed]'
-                        }`}
-                      >
-                        <span>🎉 {user.anniversaryYears ? `${user.anniversaryYears}a` : 'Ingreso'}</span>
-                        <span className="opacity-75">· {anni.badgeText}</span>
-                      </span>
+                      <div className="text-right shrink-0">
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1 ${
+                            anni.isToday
+                              ? 'bg-[#f5f3ff] text-[#7c3aed] border border-[#ddd6fe] animate-pulse'
+                              : 'bg-[#f5f3ff] text-[#7c3aed]'
+                          }`}
+                        >
+                          <span>🎉 {user.anniversaryYears ? `${user.anniversaryYears}a` : 'Ingreso'}</span>
+                          <span className="opacity-75">· {anni.badgeText}</span>
+                        </span>
+                      </div>
                     );
                   }
-                } else if (user.birthDateFormatted) {
+                } else if (user.city) {
                   dynamicBadge = (
-                    <span className="text-[10px] font-medium text-[#7c3aed] bg-[#f5f3ff] px-2 py-0.5 rounded-full shrink-0">
-                      {user.birthDateFormatted}
+                    <span className="text-[10px] font-medium text-[#64748b] bg-[#f8fafc] px-2 py-0.5 rounded-md shrink-0">
+                      {user.city}
                     </span>
                   );
                 }
@@ -464,17 +580,18 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div
-                        className={`w-8 h-8 rounded-xl ${
-                          user.avatarBg || 'bg-[#501f92]'
-                        } text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-xs`}
-                      >
-                        {user.initials}
-                      </div>
+                      <UserAvatar user={user} size="md" />
                       <div className="min-w-0">
-                        <p className="text-xs font-bold text-[#0f172a] truncate">
-                          {user.name}
-                        </p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-xs font-bold text-[#0f172a] truncate">
+                            {user.name}
+                          </p>
+                          {currentUser?.id === user.id && (
+                            <span className="text-[9px] bg-[#d4ff4a] text-[#0f172a] px-1 rounded-sm font-black">
+                              Tú
+                            </span>
+                          )}
+                        </div>
                         <p className="text-[11px] text-[#64748b] truncate">
                           {user.jobTitle || user.role}
                         </p>
@@ -488,11 +605,11 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
 
               {filteredUsers.length === 0 && (
                 <div className="p-6 text-center text-[#64748b] text-xs space-y-2">
-                  <p>No se encontraron colaboradores en este criterio.</p>
-                  {activeFilter !== 'all' && filterScope === 'upcoming' && (
+                  <p>No se encontraron colaboradores con este criterio.</p>
+                  {timeScope !== 'all' && (
                     <button
-                      onClick={() => setFilterScope('all_year')}
-                      className="text-[11px] font-bold text-[#7c3aed] hover:underline"
+                      onClick={() => setTimeScope('all')}
+                      className="text-[11px] font-bold text-[#7c3aed] hover:underline cursor-pointer"
                     >
                       Ver todo el año ({users.length})
                     </button>
@@ -509,20 +626,21 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
                 {/* Profile Card Header */}
                 <div className="bg-white p-5 rounded-3xl border border-[#e2e8f0] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-4">
-                    <div
-                      className={`w-16 h-16 rounded-3xl ${
-                        activeUser.avatarBg || 'bg-[#501f92]'
-                      } text-white flex items-center justify-center text-xl font-black shadow-md shrink-0`}
-                    >
-                      {activeUser.initials}
-                    </div>
+                    <UserAvatar user={activeUser} size="2xl" />
                     <div>
-                      <h2 className="text-lg font-black text-[#0f172a]">
-                        {activeUser.name}
-                      </h2>
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-lg font-black text-[#0f172a]">
+                          {activeUser.name}
+                        </h2>
+                        {currentUser?.id === activeUser.id && (
+                          <span className="text-[10px] font-bold bg-[#f5f3ff] text-[#501f92] border border-[#ddd6fe] px-2 py-0.5 rounded-full">
+                            Tu Perfil
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs font-medium text-[#64748b] mt-0.5">
                         {activeUser.jobTitle || activeUser.role} • {activeUser.department || 'Uhura Group'}
-                        {activeUser.city ? ` • ${activeUser.city}` : ''}
+                        {activeUser.city ? ` • 📍 ${activeUser.city}` : ''}
                       </p>
                     </div>
                   </div>
@@ -532,8 +650,8 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
                     <button
                       type="button"
                       onClick={handleStartEdit}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-[#501f92] hover:text-white bg-[#f5f3ff] hover:bg-[#501f92] border border-[#ddd6fe] hover:border-[#501f92] transition-all cursor-pointer self-start sm:self-auto shadow-2xs"
-                      title="Actualizar datos humanos y pasatiempos"
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-[#501f92] hover:text-white bg-[#f5f3ff] hover:bg-[#501f92] border border-[#ddd6fe] hover:border-[#501f92] transition-all cursor-pointer self-start sm:self-auto shadow-2xs"
+                      title={`Actualizar ficha humana de ${activeUser.name}`}
                     >
                       <Edit3 className="w-3.5 h-3.5" />
                       <span>Editar ficha</span>
@@ -554,29 +672,29 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
                 {isEditing ? (
                   <form
                     onSubmit={handleSaveProfile}
-                    className="bg-white p-5 rounded-3xl border border-[#cbd5e1] shadow-sm space-y-4 animate-in fade-in duration-150"
+                    className="bg-white p-5 sm:p-6 rounded-3xl border border-[#cbd5e1] shadow-sm space-y-4 animate-in fade-in duration-150"
                   >
                     <div className="flex items-center justify-between pb-3 border-b border-[#f1f5f9]">
                       <div className="flex items-center gap-2">
                         <Sparkles className="w-4 h-4 text-[#7c3aed]" />
                         <h4 className="text-xs font-bold text-[#0f172a] uppercase tracking-wider">
-                          Actualizar Ficha Humana de {activeUser.name.split(' ')[0]}
+                          Editando Ficha de {activeUser.name}
                         </h4>
                       </div>
                       <span className="text-[11px] text-[#64748b]">
-                        Actualiza tu perfil y comparte tus pasiones
+                        Actualiza datos reales y pasatiempos
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                       {/* Ciudad de residencia */}
                       <div>
                         <label className="font-bold text-[#334155] block mb-1">
-                          Ciudad de residencia
+                          📍 Ciudad de residencia
                         </label>
                         <input
                           type="text"
-                          placeholder="ej. Medellín, Cali, Bogotá, Barranquilla..."
+                          placeholder="ej. Medellín, Cali, Bogotá..."
                           value={editCity}
                           onChange={(e) => setEditCity(e.target.value)}
                           className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs focus:outline-[#7c3aed] bg-[#f8fafc]"
@@ -586,7 +704,7 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
                       {/* Fecha de nacimiento */}
                       <div>
                         <label className="font-bold text-[#334155] block mb-1">
-                          Fecha de nacimiento
+                          🎂 Fecha de nacimiento
                         </label>
                         <input
                           type="date"
@@ -594,6 +712,25 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
                           onChange={(e) => setEditBirthDate(e.target.value)}
                           className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs focus:outline-[#7c3aed] bg-[#f8fafc]"
                         />
+                        <span className="text-[10px] text-[#94a3b8] mt-0.5 block">
+                          La edad se calcula en runtime.
+                        </span>
+                      </div>
+
+                      {/* Fecha de ingreso / Aniversario */}
+                      <div>
+                        <label className="font-bold text-[#334155] block mb-1">
+                          🎉 Fecha de ingreso (Aniversario)
+                        </label>
+                        <input
+                          type="date"
+                          value={editAnniversaryDate}
+                          onChange={(e) => setEditAnniversaryDate(e.target.value)}
+                          className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs focus:outline-[#7c3aed] bg-[#f8fafc]"
+                        />
+                        <span className="text-[10px] text-[#94a3b8] mt-0.5 block">
+                          Calcula aniversarios en Uhura.
+                        </span>
                       </div>
                     </div>
 
@@ -604,7 +741,7 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
                       </label>
                       <textarea
                         rows={3}
-                        placeholder="Comparte qué te gusta hacer en tu tiempo libre (música, deportes, lectura, arte, cocinar...)"
+                        placeholder="Comparte qué te gusta hacer en tu tiempo libre (música, cine, deportes, gastronomía, naturaleza, hobbies...)"
                         value={editHobbies}
                         onChange={(e) => setEditHobbies(e.target.value)}
                         className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs focus:outline-[#7c3aed] bg-[#f8fafc] leading-relaxed"
@@ -632,7 +769,7 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
                       </label>
                       <input
                         type="text"
-                        placeholder="ej. Zeus, Kaiser, Cocoa (o dejar vacío si no tienes)"
+                        placeholder="ej. Zeus (perro), Cocoa (gata) — o dejar vacío si no tienes"
                         value={editPetNames}
                         onChange={(e) => setEditPetNames(e.target.value)}
                         className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs focus:outline-[#7c3aed] bg-[#f8fafc]"
@@ -663,7 +800,13 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
                     {/* KEY DATES STRIP */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {/* Birthday Card */}
-                      <div className="p-4 rounded-2xl bg-white border border-[#fbcfe8] shadow-xs flex items-center gap-3.5">
+                      <div
+                        className={`p-4 rounded-2xl bg-white border transition-all ${
+                          activeFilter === 'birthdays'
+                            ? 'border-[#db2777] ring-2 ring-[#fbcfe8] bg-[#fdf2f8]/40 shadow-xs'
+                            : 'border-[#fbcfe8] shadow-xs'
+                        } flex items-center gap-3.5`}
+                      >
                         <div className="w-11 h-11 rounded-2xl bg-[#fdf2f8] text-[#db2777] flex items-center justify-center shrink-0">
                           <Gift className="w-5 h-5" />
                         </div>
@@ -676,13 +819,19 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
                             {activeUserAge ? ` · ${activeUserAge} años` : ''}
                           </p>
                           <span className="text-[11px] text-[#64748b] block">
-                            {activeUser.birthDate ? `Fecha de nacimiento: ${activeUser.birthDate}` : 'Fecha no configurada'}
+                            {activeUser.birthDate ? `Fecha: ${activeUser.birthDate}` : 'Fecha no configurada'}
                           </span>
                         </div>
                       </div>
 
                       {/* Work Anniversary Card */}
-                      <div className="p-4 rounded-2xl bg-white border border-[#ddd6fe] shadow-xs flex items-center gap-3.5">
+                      <div
+                        className={`p-4 rounded-2xl bg-white border transition-all ${
+                          activeFilter === 'anniversaries'
+                            ? 'border-[#7c3aed] ring-2 ring-[#ddd6fe] bg-[#f5f3ff]/40 shadow-xs'
+                            : 'border-[#ddd6fe] shadow-xs'
+                        } flex items-center gap-3.5`}
+                      >
                         <div className="w-11 h-11 rounded-2xl bg-[#f5f3ff] text-[#7c3aed] flex items-center justify-center shrink-0">
                           <Award className="w-5 h-5" />
                         </div>
@@ -768,28 +917,12 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
                         </>
                       )}
                     </div>
-
-                    {/* Human connection card */}
-                    <div className="p-3.5 rounded-2xl bg-[#faf5ff] border border-[#ddd6fe] text-xs text-[#6d28d9] flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2">
-                        <Sparkles className="w-4 h-4 text-[#7c3aed] shrink-0" />
-                        <span>
-                          Cada persona suma su calidez a Uhura Group. ¡Mantén tu ficha al día para celebrar juntos cada logro!
-                        </span>
-                      </div>
-                      <button
-                        onClick={handleStartEdit}
-                        className="text-xs font-bold text-[#501f92] hover:underline shrink-0 cursor-pointer"
-                      >
-                        Actualizar mi ficha →
-                      </button>
-                    </div>
                   </div>
                 )}
               </>
             ) : (
               <div className="p-8 text-center text-[#64748b]">
-                Selecciona un compañero para ver su ficha humana.
+                Selecciona un colaborador para consultar su ficha.
               </div>
             )}
           </div>

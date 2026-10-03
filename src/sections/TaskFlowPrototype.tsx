@@ -2663,6 +2663,7 @@ export const TaskFlowPrototype: React.FC = () => {
         absenceEvents={absenceEvents}
         activeTimer={activeTimer}
         onUpdateUser={handleUpdateUser}
+        currentUser={currentUser}
       />
 
       {/* Herramienta de QA / Simulación de Roles & Permisos (RBAC Bloque 3) */}

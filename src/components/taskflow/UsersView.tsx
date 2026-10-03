@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UserItem, UserRole, UserStatus, OrbitAccessLevel } from './types';
 import { UserProfileView } from './UserProfileView';
+import { UserAvatar } from './UserAvatar';
 import {
   User,
   UserCheck,
@@ -272,11 +273,13 @@ export const UsersView: React.FC<UsersViewProps> = ({
                       >
                         <td className="py-4 px-6">
                           <div className="flex items-center gap-3">
-                            <div
-                              className={`w-10 h-10 rounded-full ${user.avatarBg} text-white flex items-center justify-center font-bold text-xs shadow-xs shrink-0`}
-                            >
-                              {user.initials}
-                            </div>
+                            <UserAvatar
+                              user={user}
+                              size="lg"
+                              className="rounded-full"
+                              imageClassName="rounded-full"
+                              fallbackClassName="rounded-full"
+                            />
                             <div>
                               <p className="font-semibold text-sm text-[#111827] group-hover:text-[#501f92] transition-colors">{user.name}</p>
                               <p className="text-xs text-[#6b7280]">

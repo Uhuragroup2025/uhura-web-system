@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Bell, Menu, X, LogOut, ShieldAlert, Sparkles, Check, ChevronDown, ExternalLink, Clock, Play, Pause, Square, Building2, Search, ArrowRight, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { orbitOperationalAlerts } from './mockData';
 import { ActiveTimerState, TaskItem, UserItem } from './types';
+import { UserAvatar } from './UserAvatar';
 
 export function formatHeaderTime(totalSeconds: number): string {
   const mins = Math.floor(totalSeconds / 60);
@@ -448,11 +449,13 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
           className="flex items-center gap-2 pl-2 sm:pl-3 border-l border-[#e5e7eb] shrink-0"
           title={`${currentUser?.name || 'Paola (Lead PM)'} · ${currentUser?.professionalRole || currentUser?.jobTitle || 'Product Lead'} (${currentUser?.accessLevel || 'leader'})`}
         >
-          <div
-            className={`w-8 h-8 rounded-full ${currentUser?.avatarBg || 'bg-[#501f92]'} text-white flex items-center justify-center text-xs font-bold ring-2 ring-[#8a4dff]/20 shrink-0`}
-          >
-            {currentUser?.initials || 'PL'}
-          </div>
+          <UserAvatar
+            user={currentUser}
+            size="md"
+            className="ring-2 ring-[#8a4dff]/20 rounded-full"
+            imageClassName="rounded-full"
+            fallbackClassName="rounded-full"
+          />
           <div className="hidden xl:block text-left">
             <p className="text-xs font-bold text-[#111827] leading-tight whitespace-nowrap">
               {currentUser?.name || 'Paola (Lead PM)'}

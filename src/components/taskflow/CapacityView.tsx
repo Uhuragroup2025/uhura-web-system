@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { TaskItem, TimeLog, ActiveTimerState, UserItem, TeamAbsenceEvent } from './types';
 import { initialUsers, initialAbsenceEvents } from './mockData';
+import { UserAvatar } from './UserAvatar';
 import { getUserAccessLevel, ROLE_PERMISSIONS_MATRIX } from './auth/permissions';
 
 export type CapacityTimeframe = 'today' | 'week' | 'month';

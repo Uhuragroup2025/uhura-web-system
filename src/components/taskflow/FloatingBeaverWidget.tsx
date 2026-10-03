@@ -65,6 +65,7 @@ interface FloatingBeaverWidgetProps {
   onPauseResumeTimer?: () => void;
   onStopTimer?: () => void;
   onUpdateUser?: (updatedUser: UserItem) => void;
+  currentUser?: UserItem;
 }
 
 export type BuckyAction =
@@ -344,7 +345,8 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
   currentView,
   onPauseResumeTimer,
   onStopTimer,
-  onUpdateUser
+  onUpdateUser,
+  currentUser
 }) => {
   // Bucky se oculta dentro de La Colonia
   if (currentView === 'la-colonia') {
@@ -1513,6 +1515,7 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
         onClose={() => setIsHumanProfileModalOpen(false)}
         users={effectiveUsers}
         onUpdateUser={onUpdateUser}
+        currentUser={currentUser}
       />
 
       {/* MODAL DE EVENTOS & RECORDATORIOS DE EQUIPO (COPILOTO BUCKY) */}
