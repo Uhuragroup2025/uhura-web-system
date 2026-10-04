@@ -1170,6 +1170,9 @@ Campos sujetos a auditoría obligatoria en backend:
 - **`status`** (Estado de Cuenta)
 - **`fecha_ingreso`** (Fecha Contractual de Ingreso, restringida a perfiles administrativos autorizados)
 
+#### 6. Frontera Arquitectónica con el Futuro People Master:
+Para la separación estricta entre la identidad operativa actual de `UserProfile` y la futura evolución administrativa de personas (contratos, salarios, dotación, SST), consultar la subsección [11.4.1. Frontera Arquitectónica: Perfil Operativo (UserProfile) vs. Evolución People Master](#1141-frontera-arquitectónica-perfil-operativo-userprofile-vs-evolución-people-master) y la guía técnica de referencia [`src/docs/PEOPLE_MASTER_EVOLUTION.md`](./PEOPLE_MASTER_EVOLUTION.md).
+
 *El frontend de Orbit ya se encuentra totalmente preparado para emitir y previsualizar esta estructura bajo el contrato acordado sin asumir persistencia autoritativa local.*
 
 ---
@@ -1263,6 +1266,90 @@ El perfil del colaborador en Orbit define la identidad funcional, contractual y 
    > **La carga inicial de colaboradores se realizará a partir de la fuente administrativa vigente suministrada por Uhura. Los datos concretos de seeding se mantienen separados de la especificación funcional.**  
    > Esta separación garantiza que `ORBIT_PRODUCT_STATUS.md` permanezca estable como fuente funcional maestra frente a cambios o rotaciones del equipo, y protege la privacidad de datos sensibles (documentos de identidad, salarios, contratos, direcciones, etc.), los cuales **NO** deben versionarse en la especificación funcional pública, sino canalizarse mediante fixtures o mecanismos controlados de migración por Indunova y RRHH.  
    > Para la estructura de inicialización y el dataset base de perfiles operativos, consultar el documento complementario: [`src/docs/INITIAL_TEAM_SEED.md`](./INITIAL_TEAM_SEED.md).
+
+---
+
+### 11.4.1. Frontera Arquitectónica: Perfil Operativo (`UserProfile`) vs. Evolución People Master
+
+> **DECISIÓN ARQUITECTÓNICA Y DE PRODUCTO (FRONTERA DE GESTIÓN DE PERSONAS):**  
+> Se formaliza la frontera estricta entre la **identidad operativa y de acceso actual (`UserProfile` / `UserItem`)** y la futura evolución hacia un **People Master administrativo integral**.  
+> **Esta definición NO amplía el alcance actual ni bloquea la integración frontend ↔ backend con Indunova.**
+
+#### 1. Alcance Actual: `UserProfile` como Identidad Operativa y de Acceso
+El modelo actual de colaborador en Orbit (`UserProfile` en backend Django / `UserItem` en frontend React) representa de manera suficiente y exhaustiva la **identidad operativa, jerárquica y de autorización** requerida para el flujo de trabajo core de la agencia:
+- **Campos Core Actuales Persistidos:**
+  - `id` (Identificador único UUID)
+  - `name` / `fullName` (Nombre completo)
+  - `email` (Correo electrónico corporativo único `@uhuragroup.com`)
+  - `jobTitle` (Cargo funcional visible)
+  - `officialRole` / `professionalRole` (`StandardUhuraRole`: uno de los 12 roles oficiales del catálogo)
+  - `accessLevel` (`CanonicalOrbitAccessLevel`: uno de los 7 niveles canónicos RBAC)
+  - `department` (Área o departamento operativo)
+  - `leaderId` / `reportsTo` (Identificador del líder directo)
+  - `city` (Ciudad de residencia)
+  - `birthDate` (Fecha de nacimiento ISO `YYYY-MM-DD`)
+  - `fecha_ingreso` / `joinedDate` (Fecha contractual de ingreso ISO `YYYY-MM-DD`)
+  - `capacityHours` (Capacidad semanal contractual en horas)
+  - `status` (`Active` | `Inactive` | `Invited`)
+  - `avatar_url` / `avatarUrl` (URL pública o storage de la fotografía de perfil)
+- **Subsistemas que alimenta en el Core:**
+  1. *Equipo & Accesos:* Directorio operativo, jerarquía, asignación de líderes y matriz de permisos RBAC.
+  2. *Mi Día:* Saludo contextual, clima, bandeja diaria y eventos de personas (cumpleaños y aniversarios derivados).
+  3. *Capacidad y Staffing:* Horas semanales disponibles para asignación en proyectos y tareas.
+  4. *Bucky:* Contexto de equipo, reconocimientos y aniversarios en la agencia.
+  5. *Seguridad & RBAC:* Control de acceso estricto y alcance de vistas según los 7 niveles canónicos.
+
+#### 2. Principio Rector: Prohibición de la "Mega-Tabla" de RRHH
+`UserProfile` **NO debe convertirse en una tabla monolítica** que absorba indiscriminadamente atributos administrativos, laborales, médicos o fiscales.  
+A futuro, los dominios administrativos de personas deberán residir en entidades satélite desacopladas y relacionadas conceptualmente con el colaborador:
+
+```text
+User / Employee (Core Operativo)
+├── EmployeeProfile (Identidad administrativa ampliada)
+├── EmploymentRecord (Contrato, tipo de vinculación, jornada formal)
+├── CompensationRecord (Historial salarial, ajustes, bonificaciones)
+├── EmergencyContact (Contactos de emergencia y parentesco)
+├── AssetAssignment (Equipos de cómputo, dotación, licencias asignadas)
+├── LeaveRecord / LeaveLedger (Libro mayor de vacaciones causadas y disfrutadas)
+└── SSTRecord (Información ocupacional y seguridad en el trabajo)
+```
+*(Nota: Estos nombres representan conceptos de dominio referenciales para modelado futuro, no contratos técnicos inmediatos).*
+
+#### 3. Ficha Humana: Experiencia de Cercanía, No Ficha de RRHH
+La **Ficha Humana** (`TeamHumanProfileModal`) es una experiencia visual de cercanía y cultura del equipo Uhura, no una ficha administrativa de personal:
+- **Única Fuente de Verdad:** Consume directamente el mismo objeto del colaborador (`UserItem`). **No almacena ni sincroniza una base de datos paralela**.
+- **Campos Apropiados Visibles:** Fotografía (`avatar_url`), nombre, cargo, ciudad, cumpleaños, aniversario en la agencia, y datos personales de aportación voluntaria (`hobbies`, `petNames`, `personalDream`).
+- **Gobernanza:** Queda terminantemente prohibido incorporar datos contractuales, salariales, de dotación o confidenciales dentro de la Ficha Humana. La fuente sigue siendo el perfil y la Ficha Humana es únicamente otra experiencia de presentación.
+
+#### 4. Evolución de Equipo & Accesos (Visión 360 No Inmediata)
+A futuro, el módulo de **Equipo & Accesos** podrá evolucionar para permitir la administración 360 del colaborador mediante pestañas organizadas (*Perfil*, *Trabajo*, *Accesos*, *Administración*, *Activos*, *Vacaciones*).  
+**Regla de alcance:** Esta estructura tabulada extendida **NO se implementa en la fase actual** y queda diferida para iteraciones posteriores a la estabilización del core operativo.
+
+#### 5. Privacidad y Gobernanza de Datos Sensibles de RRHH
+- **Datos Clasificados como Restringidos:** Documento de identidad (cédula/pasaporte), salario base, esquemas de compensación, tipo de contrato legal, dirección domiciliaria, afiliaciones a EPS/ARL/Pensión, contactos de emergencia y registros de SST.
+- **Reglas de Seguridad Indiscutibles:**
+  1. **Nunca versionarse:** Prohibido commitear datos personales o de nómina reales en repositorios Git ni dejarlos en mocks de frontend.
+  2. **No visibilidad por defecto:** Estos datos no son visibles para el equipo general ni para perfiles de liderazgo operativo.
+  3. **No crear `hr_admin` como nivel RBAC:** Se mantienen estrictamente intactos los 7 niveles canónicos de Orbit (`collaborator`, `leader`, `client_relationship`, `commercial`, `administrative`, `executive`, `system_admin`). La visibilidad futura de datos sensibles de RRHH se gobernará mediante permisos/capacidades específicas independientes del `accessLevel` (ej. `people.hr.read`, `people.compensation.read`, `people.sst.read`, referenciales).
+  4. **Aislamiento de permisos técnicos:** `system_admin` **NO** obtiene por defecto acceso a información salarial, contractual, médica o sensible por el mero hecho de tener permisos técnicos de administración sobre la plataforma.
+  5. **Controles de protección y auditoría:** Los datos sensibles deberán contar con controles reforzados de acceso, auditoría y protección en reposo. La estrategia técnica definitiva de persistencia y cifrado se definirá con backend e infraestructura antes de implementar People Master.
+  6. **Criterio de necesidad para datos SST/médicos:** No debe asumirse que todo dato administrativo existente en las bases actuales deba migrarse a Orbit; su incorporación futura dependerá de necesidad funcional real, privacidad y gobernanza.
+
+#### 6. Matriz de Alcance: Core Actual vs. People Master Evolutivo
+
+| Dimensión | Ahora (Core Personas en Orbit) | Evolutivo (Futuro People Master) |
+| :--- | :--- | :--- |
+| **Identidad** | Nombre, email, avatar, ciudad | Documento legal, tipo de identificación, nacionalidad, dirección |
+| **Puesto & Rol** | `jobTitle`, `officialRole` (Catálogo), `department`, `leaderId` | Centro de costos, banda salarial, organigrama formal corporativo |
+| **Acceso & Permisos** | Matriz Canónica RBAC (7 niveles intactos) | Capacidades/permisos granulares específicos de RRHH y compensación |
+| **Capacidad & Horas** | Capacidad semanal operativa (`capacityHours`), balance de ausencias | Historial de variaciones de jornada, cálculo de prestaciones |
+| **Fechas Clave** | `fecha_ingreso` (Hire Date), `birthDate` (Cumpleaños) | Fechas de renovación de contrato, vencimiento de períodos de prueba |
+| **Cultura & Equipo** | Ficha Humana (pasatiempos, mascotas, sueños) | Evaluaciones de desempeño formal, planes de carrera |
+| **Compensación** | *Fuera de alcance* | Historial de salarios, comisiones, pagos variables |
+| **Dotación & Activos** | *Fuera de alcance* | Seriales de laptops, actas de entrega, licencias individuales |
+| **SST & Salud** | *Fuera de alcance* | Exámenes ocupacionales, registros restringidos bajo necesidad |
+
+*Para la guía técnica de modelado y arquitectura de datos complementaria, consultar:* [`src/docs/PEOPLE_MASTER_EVOLUTION.md`](./PEOPLE_MASTER_EVOLUTION.md).
 
 ---
 
