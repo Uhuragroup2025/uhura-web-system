@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Clock,
   Calendar,
@@ -12,7 +12,18 @@ import {
   RotateCw,
   Users,
   ChevronRight,
-  Info
+  Info,
+  Lock,
+  Plus,
+  Check,
+  MessageSquare,
+  ArrowRight,
+  AlertCircle,
+  Repeat,
+  FileText,
+  X,
+  Hourglass,
+  Tag
 } from 'lucide-react';
 import {
   ProjectSummaryItem,
@@ -20,9 +31,18 @@ import {
   ProjectTeamMember,
   ProjectMonthlyCycle,
   TaskItem,
-  FeeRolloverPolicy
+  FeeRolloverPolicy,
+  ProjectDependency,
+  ProjectDependencyType,
+  ProjectScheduleChange,
+  ProjectReworkRound,
+  ReworkRoundCause,
+  ScheduleChangeCause,
+  UserItem,
+  normalizeProjectType
 } from '../types';
 import { UserAvatar } from '../UserAvatar';
+import { evaluateProjectHealth, calculateBusinessDays, addBusinessDays } from '../health/projectHealthEngine';
 
 interface ProjectOverviewTabProps {
   project: ProjectSummaryItem & {
@@ -31,23 +51,64 @@ interface ProjectOverviewTabProps {
   };
   deliverables: ProjectDeliverable[];
   coreTeam: ProjectTeamMember[];
+  currentUser?: UserItem;
+  allUsers?: UserItem[];
   onNavigateToDeliverables: () => void;
   onNavigateToTasks: (frenteName?: string) => void;
   onNavigateToTeam: () => void;
   onSelectClient?: (clientName: string) => void;
+  onUpdateProject?: (updatedProject: ProjectSummaryItem) => void;
 }
 
 export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
   project,
   deliverables,
   coreTeam,
+  currentUser,
+  allUsers = [],
   onNavigateToDeliverables,
   onNavigateToTasks,
   onNavigateToTeam,
-  onSelectClient
+  onSelectClient,
+  onUpdateProject
 }) => {
-  const isFee = project.projectType === 'fee_monthly';
-  const isInternal = project.projectType === 'internal_non_billable' || project.projectType === 'internal';
+  const normalizedType = normalizeProjectType(project.projectType);
+  const isFixed = normalizedType === 'fixed_project';
+  const isFee = normalizedType === 'fee_monthly';
+  const isInternal = normalizedType === 'internal_non_billable';
+
+  // Modal states
+  const [isReforecastModalOpen, setIsReforecastModalOpen] = useState(false);
+  const [isNewDependencyModalOpen, setIsNewDependencyModalOpen] = useState(false);
+  const [isFollowUpModalOpen, setIsFollowUpModalOpen] = useState(false);
+  const [selectedDependencyForFollowUp, setSelectedDependencyForFollowUp] = useState<ProjectDependency | null>(null);
+  const [isNewReworkRoundModalOpen, setIsNewReworkRoundModalOpen] = useState(false);
+
+  // Filter for dependencies list
+  const [depFilter, setDepFilter] = useState<'all' | 'blocking' | 'pending' | 'received'>('all');
+
+  // Reforecast form state
+  const [reforecastDeltaDays, setReforecastDeltaDays] = useState<number>(3);
+  const [reforecastCause, setReforecastCause] = useState<ScheduleChangeCause>('client_approval_delay');
+  const [reforecastNote, setReforecastNote] = useState<string>('');
+
+  // New Dependency form state
+  const [newDepTitle, setNewDepTitle] = useState('');
+  const [newDepType, setNewDepType] = useState<ProjectDependencyType>('approval');
+  const [newDepOwnerType, setNewDepOwnerType] = useState<'client' | 'uhura'>('client');
+  const [newDepExpectedDate, setNewDepExpectedDate] = useState('');
+  const [newDepBlocking, setNewDepBlocking] = useState(true);
+  const [newDepFollowUpOwnerId, setNewDepFollowUpOwnerId] = useState(currentUser?.id || 'u-3');
+  const [newDepDeliverableId, setNewDepDeliverableId] = useState<string>('');
+
+  // Follow-up form state
+  const [followUpNoteText, setFollowUpNoteText] = useState('');
+
+  // New Rework Round form state
+  const [reworkCause, setReworkCause] = useState<ReworkRoundCause>('client_adjustment');
+  const [reworkNote, setReworkNote] = useState('');
+  const [reworkEstHours, setReworkEstHours] = useState(4);
+  const [reworkDeliverableId, setReworkDeliverableId] = useState('');
 
   // Active Monthly Cycle for Fee
   const monthlyCycles = project.monthlyCycles || [
@@ -67,40 +128,293 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
 
   const currentCycle = monthlyCycles.find((c) => c.monthKey === selectedCycleKey) || monthlyCycles[0];
 
+  // RBAC Permission Check
+  // Leader and Executive can execute and confirm Reforecast
+  const canConfirmReforecast = useMemo(() => {
+    if (!currentUser) return true; // Default fallback in prototype
+    const level = currentUser.accessLevel || 'collaborator';
+    return level === 'leader' || level === 'executive' || currentUser.role === 'Admin';
+  }, [currentUser]);
+
+  // Client Relationship and Commercial can manage dependencies
+  const canManageDependencies = useMemo(() => {
+    if (!currentUser) return true;
+    const level = currentUser.accessLevel || 'collaborator';
+    return ['client_relationship', 'commercial', 'leader', 'executive'].includes(level) || currentUser.role === 'Admin';
+  }, [currentUser]);
+
+  // 1. EVALUAR MOTOR DE SALUD DEL PROYECTO (PROJECT HEALTH)
+  const healthResult = useMemo(() => {
+    return evaluateProjectHealth({
+      project,
+      customTasks: project.tasks
+    });
+  }, [project]);
+
   // Rollups & Metrics
   const totalQuotedHours = isFee && currentCycle
     ? currentCycle.quotedHours
-    : project.budgetedHours || deliverables.reduce((sum, d) => sum + (d.roleBudgets?.reduce((rSum, r) => rSum + (r.quotedHours || 0), 0) || 0), 0);
+    : (project.soldHours && project.soldHours > 0 ? project.soldHours : project.budgetedHours || 0);
 
   const totalExecutedHours = project.consumedHours || 0;
   const executionPercentage = totalQuotedHours > 0 ? Math.round((totalExecutedHours / totalQuotedHours) * 100) : 0;
 
   const totalTasks = project.tasks.length;
   const completedTasks = project.tasks.filter((t) => t.completed || t.status === 'Done').length;
-  const progressPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-  const overdueTasksCount = project.tasks.filter((t) => t.dueStatus === 'overdue').length;
-  const highPriorityTasksCount = project.tasks.filter((t) => t.priority === 'High' && !t.completed).length;
+  const progressPercent = healthResult.vectors.burn.progressPct;
 
-  // Indunova Risk Vectors (Exposed transparently, not simulated)
-  const burnProgressVariance = totalQuotedHours > 0
-    ? (totalExecutedHours / totalQuotedHours) - (totalTasks > 0 ? completedTasks / totalTasks : 0)
-    : 0;
+  // Dependencies list
+  const dependencies: ProjectDependency[] = project.dependencies || [];
+  const reworkRounds: ProjectReworkRound[] = project.reworkRounds || [];
+  const scheduleHistory: ProjectScheduleChange[] = project.scheduleHistory || [];
 
-  const rolloverPolicyLabel: Record<FeeRolloverPolicy, string> = {
-    none: 'Sin acumulación (Horas vencen a fin de mes)',
-    carry_over: 'Rollover acumulable (Horas pasan al siguiente ciclo)',
-    contractual_cap: 'Tope contractual acordado'
+  // Filtered dependencies
+  const filteredDependencies = useMemo(() => {
+    return dependencies.filter((dep) => {
+      if (depFilter === 'blocking') return dep.blocking;
+      if (depFilter === 'pending') return dep.status === 'pending';
+      if (depFilter === 'received') return dep.status === 'received';
+      return true;
+    });
+  }, [dependencies, depFilter]);
+
+  // Suggestion of delay
+  const pendingBlockingOverdueDeps = useMemo(() => {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    return dependencies.filter(
+      (d) => d.blocking && d.status === 'pending' && d.expectedDate && todayStr > d.expectedDate
+    );
+  }, [dependencies]);
+
+  // Calculate suggested forecast
+  const suggestedShiftDays = useMemo(() => {
+    if (pendingBlockingOverdueDeps.length === 0) return 0;
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const maxDelay = pendingBlockingOverdueDeps.reduce((max, d) => {
+      const delay = calculateBusinessDays(d.expectedDate, todayStr);
+      return Math.max(max, delay);
+    }, 0);
+    return Math.max(1, maxDelay);
+  }, [pendingBlockingOverdueDeps]);
+
+  // Handlers
+  const handleMarkReceived = (depId: string) => {
+    if (!onUpdateProject) return;
+    const updated = dependencies.map((d) => {
+      if (d.id === depId) {
+        return {
+          ...d,
+          status: 'received' as const,
+          receivedAt: new Date().toISOString(),
+          completedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+      }
+      return d;
+    });
+    onUpdateProject({
+      ...project,
+      dependencies: updated
+    });
+  };
+
+  const handleSaveFollowUp = () => {
+    if (!onUpdateProject || !selectedDependencyForFollowUp) return;
+    const updated = dependencies.map((d) => {
+      if (d.id === selectedDependencyForFollowUp.id) {
+        return {
+          ...d,
+          lastFollowUpAt: new Date().toISOString(),
+          followUpNotes: followUpNoteText.trim() || 'Seguimiento registrado con el cliente',
+          updatedAt: new Date().toISOString()
+        };
+      }
+      return d;
+    });
+    onUpdateProject({
+      ...project,
+      dependencies: updated
+    });
+    setIsFollowUpModalOpen(false);
+    setSelectedDependencyForFollowUp(null);
+    setFollowUpNoteText('');
+  };
+
+  const handleCreateDependency = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!onUpdateProject || !newDepTitle.trim() || !newDepExpectedDate) return;
+
+    const assignedUser = allUsers.find((u) => u.id === newDepFollowUpOwnerId) || currentUser;
+    const newDep: ProjectDependency = {
+      id: `dep-${Date.now()}`,
+      projectId: project.id,
+      deliverableId: newDepDeliverableId || null,
+      title: newDepTitle.trim(),
+      type: newDepType,
+      ownerType: newDepOwnerType,
+      followUpOwnerUserId: newDepFollowUpOwnerId,
+      followUpOwnerName: assignedUser?.name || 'Client Relationship',
+      requestedAt: new Date().toISOString(),
+      expectedDate: newDepExpectedDate,
+      status: 'pending',
+      blocking: newDepBlocking,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    onUpdateProject({
+      ...project,
+      dependencies: [newDep, ...dependencies]
+    });
+
+    setIsNewDependencyModalOpen(false);
+    setNewDepTitle('');
+    setNewDepExpectedDate('');
+  };
+
+  const handleConfirmReforecast = () => {
+    if (!onUpdateProject || !canConfirmReforecast) return;
+
+    const currentForecast = project.forecastEndDate || project.baselineEndDate || project.endDate || new Date().toISOString().slice(0, 10);
+    const newForecastEndDate = addBusinessDays(currentForecast, reforecastDeltaDays);
+
+    const newChangeRecord: ProjectScheduleChange = {
+      id: `sch-${Date.now()}`,
+      projectId: project.id,
+      previousForecastEndDate: currentForecast,
+      newForecastEndDate,
+      deltaBusinessDays: reforecastDeltaDays,
+      cause: reforecastCause,
+      confirmedByUserId: currentUser?.id || 'u-2',
+      confirmedByName: currentUser?.name || 'Paola Monsalve',
+      note: reforecastNote.trim() || 'Reforecast aprobado por líder de proyecto',
+      createdAt: new Date().toISOString()
+    };
+
+    // Desplazar tareas pendientes en días hábiles (preservando completadas y baseline)
+    const updatedTasks = project.tasks.map((task) => {
+      if (task.completed || task.status === 'Done') {
+        return task; // Completadas permanecen intactas
+      }
+      const newDueDate = task.dueDate ? addBusinessDays(task.dueDate, reforecastDeltaDays) : task.dueDate;
+      const newScheduledDate = task.scheduledDate ? addBusinessDays(task.scheduledDate, reforecastDeltaDays) : task.scheduledDate;
+      return {
+        ...task,
+        dueDate: newDueDate,
+        scheduledDate: newScheduledDate,
+        isRecalibrated: true,
+        recalibrationDays: (task.recalibrationDays || 0) + reforecastDeltaDays,
+        recalibrationReason: reforecastNote || 'Desplazamiento por reforecast confirmado de proyecto'
+      };
+    });
+
+    onUpdateProject({
+      ...project,
+      forecastEndDate: newForecastEndDate,
+      scheduleHistory: [newChangeRecord, ...scheduleHistory],
+      tasks: updatedTasks
+    });
+
+    setIsReforecastModalOpen(false);
+    setReforecastNote('');
+  };
+
+  const handleCreateReworkRound = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!onUpdateProject) return;
+
+    const nextRoundNumber = reworkRounds.length + 1;
+    const includedLimit = project.scheduleConfig?.includedReworkRounds ?? 2;
+    const isAdditional = nextRoundNumber > includedLimit;
+
+    const newRound: ProjectReworkRound = {
+      id: `rw-${Date.now()}`,
+      projectId: project.id,
+      deliverableId: reworkDeliverableId || null,
+      roundNumber: nextRoundNumber,
+      cause: reworkCause,
+      requestedAt: new Date().toISOString(),
+      estimatedHours: reworkEstHours,
+      actualHours: 0,
+      note: reworkNote.trim(),
+      createdByUserId: currentUser?.id || 'u-2',
+      createdByName: currentUser?.name || 'Equipo Uhura',
+      isAdditionalIteration: isAdditional
+    };
+
+    onUpdateProject({
+      ...project,
+      reworkRounds: [...reworkRounds, newRound]
+    });
+
+    setIsNewReworkRoundModalOpen(false);
+    setReworkNote('');
   };
 
   return (
     <div className="space-y-6">
-      {/* 1. TOP ROLLUP KPI CARDS */}
+      {/* BANNER DE SUGERENCIA DE REFORECAST (SI HAY ATRASO CRÍTICO DE CLIENTE) */}
+      {isFixed && pendingBlockingOverdueDeps.length > 0 && (
+        <div className="bg-[#fffbeb] border border-[#fde68a] rounded-3xl p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4 animate-in fade-in duration-200">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-[#f59e0b]/20 text-[#b45309] flex items-center justify-center shrink-0 mt-0.5">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-extrabold text-sm text-[#92400e]">
+                  Atraso Detectado en Insumo Crítico del Cliente
+                </span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#fef3c7] text-[#b45309] border border-[#fde68a]">
+                  +{suggestedShiftDays} días hábiles
+                </span>
+              </div>
+              <p className="text-xs text-[#78350f] mt-1 leading-relaxed">
+                El insumo <strong className="text-[#92400e] font-bold">"{pendingBlockingOverdueDeps[0].title}"</strong> presenta{' '}
+                {suggestedShiftDays} días de demora. El cronograma original proyectaba entrega el{' '}
+                <strong className="underline decoration-[#d97706]">
+                  {project.baselineEndDate || project.endDate || 'fin de mes'}
+                </strong>
+                . El forecast calculado sugiere actualizar al{' '}
+                <strong className="underline decoration-[#d97706]">
+                  {addBusinessDays(project.forecastEndDate || project.baselineEndDate || '2026-10-30', suggestedShiftDays)}
+                </strong>.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 shrink-0 self-end md:self-center">
+            {canConfirmReforecast ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setReforecastDeltaDays(suggestedShiftDays);
+                  setReforecastCause('client_approval_delay');
+                  setReforecastNote(`Atraso por espera en insumo de cliente: ${pendingBlockingOverdueDeps[0].title}`);
+                  setIsReforecastModalOpen(true);
+                }}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+              >
+                <RotateCw className="w-3.5 h-3.5" />
+                <span>Recalcular cronograma</span>
+              </button>
+            ) : (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#f1f5f9] text-[#64748b] text-xs font-medium border border-[#cbd5e1]" title="Solo un Líder o Dirección Ejecutiva puede confirmar reforecasts oficiales">
+                <Lock className="w-3.5 h-3.5 text-[#94a3b8]" />
+                <span>Aprobación de líder requerida</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 1. TOP ROLLUP KPI CARDS CON PROJECT HEALTH MULTIVECTORIAL */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Horas Cotizadas vs Ejecutadas */}
         <div className="bg-white p-4 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748b]">
-              {isFee ? 'Presupuesto Mes' : 'Horas Cotizadas'}
+              {isFee ? 'Presupuesto Mes' : 'Horas Vendidas / Cotizadas'}
             </span>
             <span className="p-1 rounded-lg bg-[#501f92]/10 text-[#501f92]">
               <Clock className="w-3.5 h-3.5" />
@@ -126,15 +440,15 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
           </div>
           <span className="text-[10px] text-[#64748b] mt-2 block">
             {totalQuotedHours > 0
-              ? `${executionPercentage}% consumido (${(totalQuotedHours - totalExecutedHours).toFixed(1)}h disponibles)`
+              ? `${executionPercentage}% consumido (${(totalQuotedHours - totalExecutedHours).toFixed(1)}h margen restante)`
               : 'Sin techo comercial rígido'}
           </span>
         </div>
 
-        {/* Avance Operativo */}
+        {/* Avance Operativo Ponderado */}
         <div className="bg-white p-4 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748b]">Avance Operativo</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748b]">Avance Ponderado</span>
             <span className="p-1 rounded-lg bg-[#10b981]/10 text-[#10b981]">
               <TrendingUp className="w-3.5 h-3.5" />
             </span>
@@ -154,45 +468,49 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
             </div>
           </div>
           <span className="text-[10px] text-[#64748b] mt-2 block">
-            {totalTasks - completedTasks} tareas pendientes de entrega
+            Ponderado por horas de tareas y entregables completados
           </span>
         </div>
 
-        {/* Frentes / Entregables */}
+        {/* Cronograma: Baseline vs Forecast */}
         <div className="bg-white p-4 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748b]">Frentes de Trabajo</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748b]">Cronograma de Entrega</span>
             <span className="p-1 rounded-lg bg-[#3b82f6]/10 text-[#3b82f6]">
-              <Layers className="w-3.5 h-3.5" />
+              <Calendar className="w-3.5 h-3.5" />
             </span>
           </div>
-          <div className="mt-2">
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-extrabold text-[#0f172a]">{deliverables.length}</span>
-              <span className="text-xs text-[#64748b] font-medium">entregables activos</span>
+          <div className="mt-2 space-y-1">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-[#64748b] flex items-center gap-1">
+                <Lock className="w-3 h-3 text-[#94a3b8]" /> Baseline fin:
+              </span>
+              <span className="font-bold text-[#334155]">{project.baselineEndDate || project.endDate || 'No fijada'}</span>
             </div>
-            <p className="text-[11px] text-[#64748b] mt-2 line-clamp-1">
-              {deliverables.map((d) => d.name).slice(0, 3).join(' · ')}
-            </p>
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-[#64748b]">Forecast vigente:</span>
+              <span className={`font-extrabold ${healthResult.vectors.schedule.deltaDays > 0 ? 'text-[#d97706]' : 'text-[#10b981]'}`}>
+                {project.forecastEndDate || project.baselineEndDate || project.endDate || 'Al día'}
+                {healthResult.vectors.schedule.deltaDays > 0 && ` (+${healthResult.vectors.schedule.deltaDays}d)`}
+              </span>
+            </div>
           </div>
-          <button
-            onClick={onNavigateToDeliverables}
-            className="text-[11px] font-bold text-[#501f92] hover:underline flex items-center gap-1 mt-2 text-left cursor-pointer"
-          >
-            <span>Ver presupuestos por rol</span>
-            <ChevronRight className="w-3 h-3" />
-          </button>
+          <span className="text-[10px] text-[#64748b] mt-2 block">
+            {healthResult.vectors.schedule.deltaDays === 0
+              ? 'Sincronizado con el plan original'
+              : `Desvío de ${healthResult.vectors.schedule.deltaDays} días hábiles vs plan original`}
+          </span>
         </div>
 
-        {/* Semáforo & Estado */}
+        {/* Semáforo & Estado Explicable de Salud */}
         <div className="bg-white p-4 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748b]">Salud del Proyecto</span>
             <span
               className={`w-2.5 h-2.5 rounded-full ${
-                project.healthStatus === 'verde'
+                healthResult.status === 'healthy'
                   ? 'bg-[#10b981]'
-                  : project.healthStatus === 'amarillo'
+                  : healthResult.status === 'attention'
                   ? 'bg-[#f59e0b]'
                   : 'bg-[#ef4444]'
               }`}
@@ -200,293 +518,713 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
           </div>
           <div className="mt-2">
             <span
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold ${
-                project.healthStatus === 'verde'
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-extrabold tracking-wide uppercase ${
+                healthResult.status === 'healthy'
                   ? 'bg-[#ecfdf5] text-[#065f46] border border-[#a7f3d0]'
-                  : project.healthStatus === 'amarillo'
+                  : healthResult.status === 'attention'
                   ? 'bg-[#fffbeb] text-[#92400e] border border-[#fde68a]'
                   : 'bg-[#fef2f2] text-[#991b1b] border border-[#fecaca]'
               }`}
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>
-                {project.healthStatus === 'verde'
-                  ? 'En Presupuesto'
-                  : project.healthStatus === 'amarillo'
-                  ? 'Atención Requerida'
-                  : 'Desvío Crítico'}
-              </span>
+              <span>{healthResult.badge}</span>
             </span>
-            <p className="text-[11px] text-[#64748b] mt-1.5 line-clamp-2">
-              {project.healthNote || 'Sin desviaciones operativas registradas.'}
+            <p className="text-[11px] text-[#475569] mt-2 font-medium line-clamp-2 leading-tight">
+              {healthResult.primaryReason}
             </p>
+            {healthResult.secondaryReason && (
+              <p className="text-[10px] text-[#059669] mt-1 font-semibold line-clamp-1 italic">
+                {healthResult.secondaryReason}
+              </p>
+            )}
           </div>
-          <div className="text-[10px] text-[#94a3b8] mt-2">
-            Lead: <strong className="text-[#475569]">{project.leadName}</strong>
+          <div className="text-[10px] text-[#94a3b8] mt-2 flex items-center justify-between">
+            <span>Lead: <strong className="text-[#475569]">{project.leadName}</strong></span>
+            {canConfirmReforecast && isFixed && (
+              <button
+                type="button"
+                onClick={() => setIsReforecastModalOpen(true)}
+                className="text-[10px] font-bold text-[#501f92] hover:underline cursor-pointer"
+              >
+                Ajustar forecast
+              </button>
+            )}
           </div>
         </div>
       </div>
 
-      {/* 2. CICLOS MENSUALES (FEE MENSUAL) - Sin reset destructivo */}
-      {isFee && (
+      {/* 2. GOBERNANZA DE CRONOGRAMA & VENTANAS DE CLIENTE (FIXED PROJECT) */}
+      {isFixed && (
         <div className="bg-white rounded-3xl border border-[#e2e8f0] p-5 shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#f1f5f9] pb-4">
-            <div className="space-y-0.5">
+            <div>
               <div className="flex items-center gap-2">
-                <RotateCw className="w-4 h-4 text-[#501f92]" />
+                <ShieldCheck className="w-4 h-4 text-[#501f92]" />
                 <h3 className="font-extrabold text-sm text-[#0f172a]">
-                  Ciclos Mensuales Recurrentes (Histórico Preservado)
+                  Gobernanza de Cronograma & Tiempos de Espera del Cliente
                 </h3>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#f3e8ff] text-[#501f92]">
-                  Fee Mensual
+                  Baseline Inmutable
                 </span>
               </div>
-              <p className="text-xs text-[#64748b]">
-                El proyecto no se resetea destructivamente a fin de mes. Cada ciclo evalúa su presupuesto y conserva su histórico inmutable.
+              <p className="text-xs text-[#64748b] mt-0.5">
+                Las ventanas de espera por cliente no consumen capacidad de los colaboradores y excluyen fines de semana y festivos.
               </p>
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-[11px] text-[#64748b] font-medium">Política Rollover:</span>
-              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-lg bg-[#f8fafc] text-[#334155] border border-[#e2e8f0]">
-                {rolloverPolicyLabel[project.rolloverPolicy || 'none']}
-              </span>
+              {canConfirmReforecast && (
+                <button
+                  type="button"
+                  onClick={() => setIsReforecastModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#faf5ff] hover:bg-[#ede9fe] text-[#501f92] border border-[#ddd6fe] text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                >
+                  <RotateCw className="w-3.5 h-3.5" />
+                  <span>Reforecast controlado</span>
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Stepper de Ciclos */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {monthlyCycles.map((cycle) => {
-              const isSelected = cycle.monthKey === selectedCycleKey;
-              const cycleBurnPercent = cycle.quotedHours > 0
-                ? Math.round((cycle.executedHours / cycle.quotedHours) * 100)
-                : 0;
-
-              return (
-                <div
-                  key={cycle.monthKey}
-                  onClick={() => setSelectedCycleKey(cycle.monthKey)}
-                  className={`p-3.5 rounded-2xl border transition-all cursor-pointer ${
-                    isSelected
-                      ? 'bg-[#f5f3ff] border-[#501f92] ring-2 ring-[#501f92]/20 shadow-xs'
-                      : cycle.status === 'closed'
-                      ? 'bg-[#f8fafc] border-[#e2e8f0] hover:border-[#cbd5e1]'
-                      : 'bg-white border-[#e2e8f0] hover:border-[#501f92]'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-extrabold text-xs text-[#0f172a]">{cycle.monthLabel}</span>
-                    <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                        cycle.status === 'closed'
-                          ? 'bg-[#ecfdf5] text-[#065f46]'
-                          : cycle.status === 'active'
-                          ? 'bg-[#501f92] text-white'
-                          : 'bg-[#e2e8f0] text-[#64748b]'
-                      }`}
-                    >
-                      {cycle.status === 'closed' ? 'Cerrado' : cycle.status === 'active' ? 'Ciclo Activo' : 'Próximo'}
-                    </span>
-                  </div>
-
-                  <div className="mt-3 flex items-baseline justify-between text-xs">
-                    <span className="text-[#64748b] font-medium text-[11px]">Consumo:</span>
-                    <span className="font-mono font-bold text-[#0f172a]">
-                      {cycle.executedHours.toFixed(1)}h / {cycle.quotedHours}h ({cycleBurnPercent}%)
-                    </span>
-                  </div>
-
-                  <div className="w-full bg-[#e2e8f0] h-1.5 rounded-full overflow-hidden mt-1.5">
-                    <div
-                      style={{ width: `${Math.min(cycleBurnPercent, 100)}%` }}
-                      className={`h-full rounded-full ${
-                        cycleBurnPercent > 100 ? 'bg-[#ef4444]' : 'bg-[#501f92]'
-                      }`}
-                    />
-                  </div>
-
-                  {cycle.notes && (
-                    <span className="text-[10px] text-[#64748b] block mt-2 truncate">
-                      {cycle.notes}
-                    </span>
-                  )}
-                </div>
-              );
-            })}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="p-3 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0]">
+              <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Devolución de Kickoff</span>
+              <p className="text-sm font-extrabold text-[#0f172a] mt-1">3 días hábiles (default)</p>
+              <span className="text-[11px] text-[#64748b] mt-0.5 block">0h capacidad consumida</span>
+            </div>
+            <div className="p-3 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0]">
+              <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Gates de Aprobación</span>
+              <p className="text-sm font-extrabold text-[#0f172a] mt-1">2 gates configurados</p>
+              <span className="text-[11px] text-[#64748b] mt-0.5 block">5 días hábiles por gate (0h capacidad)</span>
+            </div>
+            <div className="p-3 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0]">
+              <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Historial de Reforecasts</span>
+              <p className="text-sm font-extrabold text-[#0f172a] mt-1">{scheduleHistory.length} ajustes confirmados</p>
+              <span className="text-[11px] text-[#64748b] mt-0.5 block">Trazabilidad inmutable de causa raíz</span>
+            </div>
           </div>
         </div>
       )}
 
-      {/* 3. VECTORES DE INDUNOVA (EXPOSICIÓN TRANSPARENTE DE RIESGO OPERATIVO) */}
-      <div className="bg-[#f8fafc] rounded-3xl border border-[#e2e8f0] p-5 shadow-xs space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Activity className="w-4 h-4 text-[#501f92]" />
-            <h3 className="font-extrabold text-sm text-[#0f172a]">
-              Vectores Operativos de Riesgo & Alerta (Indunova)
-            </h3>
-          </div>
-          <span className="text-[10px] text-[#64748b] bg-white px-2 py-0.5 rounded-md border border-[#e2e8f0]">
-            Métricas puras · Sin heurísticas inventadas
-          </span>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1 text-xs">
-          <div className="bg-white p-3 rounded-xl border border-[#e2e8f0]">
-            <span className="text-[10px] text-[#64748b] font-bold block uppercase">Burn vs Avance</span>
-            <span className={`text-base font-extrabold font-mono mt-0.5 block ${
-              burnProgressVariance > 0.2 ? 'text-[#ef4444]' : 'text-[#0f172a]'
-            }`}>
-              {burnProgressVariance > 0 ? `+${(burnProgressVariance * 100).toFixed(0)}%` : `${(burnProgressVariance * 100).toFixed(0)}%`}
-            </span>
-            <span className="text-[10px] text-[#64748b] mt-0.5 block">
-              {burnProgressVariance > 0.2 ? 'Horas van más rápido que entregas' : 'Ritmo saludable'}
-            </span>
-          </div>
-
-          <div className="bg-white p-3 rounded-xl border border-[#e2e8f0]">
-            <span className="text-[10px] text-[#64748b] font-bold block uppercase">Tareas Atrasadas</span>
-            <span className={`text-base font-extrabold font-mono mt-0.5 block ${
-              overdueTasksCount > 0 ? 'text-[#ef4444]' : 'text-[#10b981]'
-            }`}>
-              {overdueTasksCount}
-            </span>
-            <span className="text-[10px] text-[#64748b] mt-0.5 block">
-              {overdueTasksCount > 0 ? 'Requiere renegociación con cliente' : 'Al día con cronograma'}
-            </span>
-          </div>
-
-          <div className="bg-white p-3 rounded-xl border border-[#e2e8f0]">
-            <span className="text-[10px] text-[#64748b] font-bold block uppercase">Prioridad Alta Activas</span>
-            <span className="text-base font-extrabold font-mono text-[#0f172a] mt-0.5 block">
-              {highPriorityTasksCount}
-            </span>
-            <span className="text-[10px] text-[#64748b] mt-0.5 block">
-              En cola o en progreso inmediato
-            </span>
-          </div>
-
-          <div className="bg-white p-3 rounded-xl border border-[#e2e8f0]">
-            <span className="text-[10px] text-[#64748b] font-bold block uppercase">Fuente de Verdad</span>
-            <span className="text-xs font-bold text-[#501f92] mt-0.5 block">
-              TimeLogs + Roles
-            </span>
-            <span className="text-[10px] text-[#64748b] mt-0.5 block">
-              Rollup matemático sin estimaciones manuales
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* 4. ENTREGABLES SINTÉTICOS Y EQUIPO ASIGNADO */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Entregables */}
-        <div className="bg-white rounded-3xl border border-[#e2e8f0] p-5 shadow-xs space-y-3">
-          <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-3">
+      {/* 3. SECCIÓN DEPENDENCIAS E INSUMOS DE CLIENTE */}
+      <div className="bg-white rounded-3xl border border-[#e2e8f0] p-5 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#f1f5f9] pb-4">
+          <div>
             <div className="flex items-center gap-2">
-              <Layers className="w-4 h-4 text-[#501f92]" />
-              <h4 className="font-extrabold text-sm text-[#0f172a]">Frentes y Entregables ({deliverables.length})</h4>
+              <Hourglass className="w-4 h-4 text-[#501f92]" />
+              <h3 className="font-extrabold text-sm text-[#0f172a]">
+                Dependencias, Insumos & Aprobaciones de Cliente
+              </h3>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#e0f2fe] text-[#0369a1]">
+                {dependencies.length} registradas
+              </span>
             </div>
-            <button
-              onClick={onNavigateToDeliverables}
-              className="text-xs font-bold text-[#501f92] hover:underline cursor-pointer"
-            >
-              Ver detalle →
-            </button>
+            <p className="text-xs text-[#64748b] mt-0.5">
+              Control de entregables bloqueados por accesos, manuales de marca o feedback del cliente.
+            </p>
           </div>
 
-          <div className="space-y-2.5">
-            {deliverables.length === 0 ? (
-              <p className="text-xs text-[#94a3b8] py-4 text-center">No hay frentes definidos aún.</p>
-            ) : (
-              deliverables.map((del) => {
-                const delQuoted = del.roleBudgets?.reduce((s, r) => s + (r.quotedHours || 0), 0) || 0;
-                // Executed from tasks with this deliverableId or frente name
-                const delTasks = project.tasks.filter((t) => t.deliverableId === del.id || t.frente === del.name);
-                const delExecuted = delTasks.reduce((s, t) => s + ((t.consumedSeconds || 0) / 3600), 0);
-                const delPercent = delQuoted > 0 ? Math.round((delExecuted / delQuoted) * 100) : 0;
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Filtros de dependencias */}
+            <div className="flex items-center bg-[#f1f5f9] p-0.5 rounded-xl text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => setDepFilter('all')}
+                className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${depFilter === 'all' ? 'bg-white text-[#501f92] shadow-2xs font-bold' : 'text-[#64748b]'}`}
+              >
+                Todas ({dependencies.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setDepFilter('blocking')}
+                className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${depFilter === 'blocking' ? 'bg-white text-[#501f92] shadow-2xs font-bold' : 'text-[#64748b]'}`}
+              >
+                Bloqueantes
+              </button>
+              <button
+                type="button"
+                onClick={() => setDepFilter('pending')}
+                className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${depFilter === 'pending' ? 'bg-white text-[#501f92] shadow-2xs font-bold' : 'text-[#64748b]'}`}
+              >
+                Pendientes
+              </button>
+            </div>
 
-                return (
-                  <div
-                    key={del.id}
-                    onClick={() => onNavigateToTasks(del.name)}
-                    className="p-3 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] hover:border-[#501f92] hover:bg-white transition-colors cursor-pointer"
-                  >
-                    <div className="flex items-center justify-between">
-                      <strong className="text-xs text-[#0f172a]">{del.name}</strong>
-                      <span className="font-mono text-xs font-bold text-[#501f92]">
-                        {delExecuted.toFixed(1)}h / {delQuoted > 0 ? `${delQuoted}h` : '0h'}
-                      </span>
-                    </div>
-                    <div className="w-full bg-[#e2e8f0] h-1.5 rounded-full overflow-hidden mt-2">
-                      <div
-                        style={{ width: `${Math.min(delPercent, 100)}%` }}
-                        className={`h-full rounded-full ${delPercent > 100 ? 'bg-[#ef4444]' : 'bg-[#501f92]'}`}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between text-[10px] text-[#64748b] mt-1.5">
-                      <span>{del.roleBudgets?.length || 0} roles presupuestados</span>
-                      <span>{delTasks.length} tareas</span>
-                    </div>
-                  </div>
-                );
-              })
+            {canManageDependencies && (
+              <button
+                type="button"
+                onClick={() => setIsNewDependencyModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold transition-all cursor-pointer shadow-2xs"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Nuevo Insumo / Gate</span>
+              </button>
             )}
           </div>
         </div>
 
-        {/* Equipo Asignado */}
-        <div className="bg-white rounded-3xl border border-[#e2e8f0] p-5 shadow-xs space-y-3">
-          <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-3">
-            <div className="flex items-center gap-2">
-              <Users className="w-4 h-4 text-[#501f92]" />
-              <h4 className="font-extrabold text-sm text-[#0f172a]">Equipo & Carga Planificada ({coreTeam.length})</h4>
-            </div>
-            <button
-              onClick={onNavigateToTeam}
-              className="text-xs font-bold text-[#501f92] hover:underline cursor-pointer"
-            >
-              Ver equipo →
-            </button>
+        {/* Lista de dependencias */}
+        {filteredDependencies.length === 0 ? (
+          <div className="text-center py-8 bg-[#f8fafc] rounded-2xl border border-dashed border-[#cbd5e1]">
+            <Hourglass className="w-8 h-8 text-[#94a3b8] mx-auto mb-2 opacity-50" />
+            <p className="text-xs font-bold text-[#475569]">No hay dependencias registradas en este filtro</p>
+            <p className="text-[11px] text-[#64748b] mt-0.5">
+              Registra insumos pendientes de cliente como manuales de marca, accesos o aprobaciones de gates.
+            </p>
           </div>
+        ) : (
+          <div className="space-y-2.5">
+            {filteredDependencies.map((dep) => {
+              const todayStr = new Date().toISOString().slice(0, 10);
+              const isOverdue = dep.status === 'pending' && dep.expectedDate && todayStr > dep.expectedDate;
+              const delayDays = isOverdue ? calculateBusinessDays(dep.expectedDate, todayStr) : 0;
 
-          <div className="space-y-2">
-            {coreTeam.length === 0 ? (
-              <p className="text-xs text-[#94a3b8] py-4 text-center">No hay miembros configurados en el equipo base.</p>
-            ) : (
-              coreTeam.map((member) => (
+              return (
                 <div
-                  key={member.id || member.name}
-                  className="flex items-center justify-between p-2.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] text-xs"
+                  key={dep.id}
+                  className={`p-3.5 rounded-2xl border transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs ${
+                    dep.status === 'received'
+                      ? 'bg-[#f8fafc] border-[#e2e8f0] opacity-80'
+                      : isOverdue
+                      ? 'bg-[#fffbeb] border-[#fde68a]'
+                      : 'bg-white border-[#e2e8f0]'
+                  }`}
                 >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <UserAvatar
-                      name={member.name}
-                      initials={member.initials}
-                      avatarBg={member.avatarBg}
-                      size="xs"
-                      className="w-6 h-6 rounded-full font-bold text-[9px] shrink-0"
-                    />
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div
+                      className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+                        dep.status === 'received'
+                          ? 'bg-[#ecfdf5] text-[#059669]'
+                          : isOverdue
+                          ? 'bg-[#fef2f2] text-[#dc2626]'
+                          : 'bg-[#eff6ff] text-[#2563eb]'
+                      }`}
+                    >
+                      {dep.status === 'received' ? (
+                        <Check className="w-4 h-4" />
+                      ) : (
+                        <Hourglass className="w-4 h-4" />
+                      )}
+                    </div>
+
                     <div className="min-w-0">
-                      <span className="font-bold text-[#0f172a] block truncate">
-                        {member.name} {member.isLead ? '(Lead)' : ''}
-                      </span>
-                      <span className="text-[10px] text-[#64748b] block truncate">{member.role}</span>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-[#0f172a]">{dep.title}</span>
+                        {dep.blocking && (
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-[#fee2e2] text-[#991b1b]">
+                            Bloqueante
+                          </span>
+                        )}
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#f1f5f9] text-[#475569]">
+                          {dep.type === 'approval' ? 'Aprobación Gate' : dep.type === 'client_input' ? 'Insumo Cliente' : dep.type === 'access' ? 'Accesos' : 'Kickoff'}
+                        </span>
+                        {isOverdue && (
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-[#fef2f2] text-[#b91c1c] border border-[#fecaca]">
+                            Vencido: +{delayDays} días hábiles
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-3 text-[11px] text-[#64748b] mt-1 flex-wrap">
+                        <span>Esperado: <strong className="text-[#334155]">{dep.expectedDate}</strong></span>
+                        <span>Seguimiento: <strong className="text-[#334155]">{dep.followUpOwnerName || 'Client Relationship'}</strong></span>
+                        {dep.lastFollowUpAt && (
+                          <span className="text-[#059669] font-medium">
+                            Última gestión: {new Date(dep.lastFollowUpAt).toLocaleDateString('es-CO')}
+                          </span>
+                        )}
+                      </div>
+
+                      {dep.followUpNotes && (
+                        <p className="text-[11px] text-[#475569] mt-1 italic bg-black/5 px-2 py-0.5 rounded-md">
+                          "{dep.followUpNotes}"
+                        </p>
+                      )}
                     </div>
                   </div>
 
-                  <div className="text-right shrink-0">
-                    <span className="font-mono font-bold text-[#0f172a] text-xs">
-                      {member.weeklyAllocatedHours || 0}h / sem
-                    </span>
-                    <span className="text-[9px] text-[#64748b] block">Carga planificada</span>
+                  {/* Acciones */}
+                  <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
+                    {dep.status === 'pending' && canManageDependencies && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedDependencyForFollowUp(dep);
+                            setFollowUpNoteText(dep.followUpNotes || '');
+                            setIsFollowUpModalOpen(true);
+                          }}
+                          className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-[#f8fafc] border border-[#cbd5e1] text-[#475569] text-xs font-semibold cursor-pointer shadow-2xs flex items-center gap-1.5"
+                          title="Registrar nota de seguimiento o contacto con cliente"
+                        >
+                          <MessageSquare className="w-3.5 h-3.5 text-[#501f92]" />
+                          <span>Gestionar</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleMarkReceived(dep.id)}
+                          className="px-3 py-1.5 rounded-xl bg-[#10b981] hover:bg-[#059669] text-white text-xs font-bold cursor-pointer shadow-2xs flex items-center gap-1.5"
+                          title="Marcar como recibido del cliente"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          <span>Marcar recibido</span>
+                        </button>
+                      </>
+                    )}
+
+                    {dep.status === 'received' && (
+                      <span className="text-[11px] font-bold text-[#059669] flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Recibido
+                      </span>
+                    )}
                   </div>
                 </div>
-              ))
-            )}
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* 4. SECCIÓN RONDAS DE AJUSTES & RETRABAJO (PROYECTOS FIXED) */}
+      <div className="bg-white rounded-3xl border border-[#e2e8f0] p-5 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#f1f5f9] pb-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <Repeat className="w-4 h-4 text-[#501f92]" />
+              <h3 className="font-extrabold text-sm text-[#0f172a]">
+                Rondas de Ajuste & Retrabajos ({reworkRounds.length})
+              </h3>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#ede9fe] text-[#501f92]">
+                2 rondas estándar incluidas
+              </span>
+            </div>
+            <p className="text-xs text-[#64748b] mt-0.5">
+              Trazabilidad de iteraciones originadas por feedback de cliente, QA interno o cambios de alcance.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsNewReworkRoundModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold transition-all cursor-pointer shadow-2xs"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Registrar ronda de ajustes</span>
+            </button>
           </div>
         </div>
+
+        {reworkRounds.length === 0 ? (
+          <div className="text-center py-6 bg-[#f8fafc] rounded-2xl border border-dashed border-[#cbd5e1]">
+            <Repeat className="w-6 h-6 text-[#94a3b8] mx-auto mb-1 opacity-50" />
+            <p className="text-xs font-bold text-[#475569]">Sin rondas de ajustes registradas</p>
+            <p className="text-[11px] text-[#64748b]">El proyecto avanza en su primera entrega ordinaria sin reprocesos.</p>
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            {reworkRounds.map((rw) => {
+              const isAdditional = rw.roundNumber > (project.scheduleConfig?.includedReworkRounds ?? 2) || rw.isAdditionalIteration;
+
+              return (
+                <div
+                  key={rw.id}
+                  className={`p-3.5 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs ${
+                    isAdditional ? 'bg-[#fffbeb] border-[#fde68a]' : 'bg-white border-[#e2e8f0]'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div
+                      className={`w-7 h-7 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${
+                        isAdditional ? 'bg-[#f59e0b] text-white' : 'bg-[#501f92] text-white'
+                      }`}
+                    >
+                      R{rw.roundNumber}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-[#0f172a]">Ronda {rw.roundNumber}</span>
+                        {isAdditional && (
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-[#fef3c7] text-[#92400e] border border-[#fde68a]">
+                            Iteración adicional
+                          </span>
+                        )}
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#f1f5f9] text-[#475569]">
+                          {rw.cause === 'client_adjustment'
+                            ? 'Feedback de Cliente'
+                            : rw.cause === 'scope_redefinition'
+                            ? 'Redefinición de Alcance'
+                            : 'QA / Error Interno'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[#475569] mt-1">
+                        {rw.note || 'Ajustes solicitados sobre la versión entregada'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="text-[11px] text-[#64748b] text-right shrink-0">
+                    <span>{rw.estimatedHours || 0}h estimadas</span>
+                    <span className="block text-[10px] text-[#94a3b8]">{rw.createdByName || 'Equipo Uhura'}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
+
+      {/* MODAL 1: RECALCULAR CRONOGRAMA (REFORECAST CONFIRMADO POR LÍDER) */}
+      {isReforecastModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-[#e2e8f0] space-y-5 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-[#501f92]/10 text-[#501f92] flex items-center justify-center">
+                  <RotateCw className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-[#0f172a]">Recalcular Cronograma Oficial</h3>
+                  <p className="text-xs text-[#64748b]">Aprobación exclusiva de Líder o Dirección Ejecutiva</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsReforecastModalOpen(false)}
+                className="p-1 rounded-lg hover:bg-[#f1f5f9] text-[#94a3b8] hover:text-[#0f172a] cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div className="p-3 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-[#64748b]">Baseline inmutable:</span>
+                  <span className="font-bold text-[#0f172a]">{project.baselineEndDate || project.endDate || 'No fijada'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[#64748b]">Forecast vigente:</span>
+                  <span className="font-bold text-[#0f172a]">{project.forecastEndDate || project.baselineEndDate || 'No fijada'}</span>
+                </div>
+                <div className="flex justify-between border-t border-[#e2e8f0] pt-1 mt-1 text-[#501f92]">
+                  <span className="font-bold">Nuevo forecast proyectado:</span>
+                  <span className="font-extrabold">
+                    {addBusinessDays(project.forecastEndDate || project.baselineEndDate || '2026-10-30', reforecastDeltaDays)}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#334155] mb-1">
+                  Desplazamiento en Días Hábiles:
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="30"
+                  value={reforecastDeltaDays}
+                  onChange={(e) => setReforecastDeltaDays(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] text-xs font-bold focus:outline-hidden focus:border-[#501f92]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#334155] mb-1">
+                  Causa Raíz Principal del Desvío:
+                </label>
+                <select
+                  value={reforecastCause}
+                  onChange={(e) => setReforecastCause(e.target.value as ScheduleChangeCause)}
+                  className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] text-xs font-bold focus:outline-hidden focus:border-[#501f92]"
+                >
+                  <option value="client_approval_delay">Aprobación / Feedback tardío de cliente (Gate)</option>
+                  <option value="client_input_delay">Insumo o accesos pendientes del cliente</option>
+                  <option value="internal_rework">Retrabajo interno / QA de Uhura</option>
+                  <option value="internal_execution_delay">Desvío operativo interno por complejidad</option>
+                  <option value="scope_change">Cambio de alcance acordado</option>
+                  <option value="other">Otro motivo</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#334155] mb-1">
+                  Justificación / Nota de Auditoría:
+                </label>
+                <textarea
+                  rows={3}
+                  value={reforecastNote}
+                  onChange={(e) => setReforecastNote(e.target.value)}
+                  placeholder="Detalla la razón del recalculo para constancia en el cierre del proyecto..."
+                  className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] text-xs focus:outline-hidden focus:border-[#501f92]"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#f1f5f9]">
+              <button
+                type="button"
+                onClick={() => setIsReforecastModalOpen(false)}
+                className="px-4 py-2 rounded-xl bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[#475569] text-xs font-bold cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmReforecast}
+                className="px-4 py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold cursor-pointer shadow-xs"
+              >
+                Confirmar y Desplazar Tareas
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2: NUEVA DEPENDENCIA / INSUMO DE CLIENTE */}
+      {isNewDependencyModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-[#e2e8f0] space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-3">
+              <div className="flex items-center gap-2">
+                <Hourglass className="w-4 h-4 text-[#501f92]" />
+                <h3 className="text-base font-extrabold text-[#0f172a]">Registrar Insumo o Gate</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsNewDependencyModalOpen(false)}
+                className="p-1 rounded-lg hover:bg-[#f1f5f9] text-[#94a3b8] hover:text-[#0f172a] cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateDependency} className="space-y-3.5 text-xs">
+              <div>
+                <label className="block text-xs font-bold text-[#334155] mb-1">Título del Insumo / Gate:</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="ej. Manual de Marca, Aprobación Gate 1, Credenciales hosting"
+                  value={newDepTitle}
+                  onChange={(e) => setNewDepTitle(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] text-xs focus:outline-hidden focus:border-[#501f92]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-[#334155] mb-1">Tipo:</label>
+                  <select
+                    value={newDepType}
+                    onChange={(e) => setNewDepType(e.target.value as ProjectDependencyType)}
+                    className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] text-xs focus:outline-hidden focus:border-[#501f92]"
+                  >
+                    <option value="approval">Aprobación / Gate</option>
+                    <option value="client_input">Insumo del Cliente</option>
+                    <option value="access">Accesos / Credenciales</option>
+                    <option value="kickoff_input">Respuestas Kickoff</option>
+                    <option value="internal_dependency">Dependencia Interna</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#334155] mb-1">Fecha Acordada:</label>
+                  <input
+                    type="date"
+                    required
+                    value={newDepExpectedDate}
+                    onChange={(e) => setNewDepExpectedDate(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] text-xs focus:outline-hidden focus:border-[#501f92]"
+                  >
+                  </input>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#334155] mb-1">Responsable de Seguimiento:</label>
+                <select
+                  value={newDepFollowUpOwnerId}
+                  onChange={(e) => setNewDepFollowUpOwnerId(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] text-xs focus:outline-hidden focus:border-[#501f92]"
+                >
+                  {allUsers.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name} ({u.jobTitle || u.role})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="dep-blocking-check"
+                  checked={newDepBlocking}
+                  onChange={(e) => setNewDepBlocking(e.target.checked)}
+                  className="w-4 h-4 rounded text-[#501f92] focus:ring-[#501f92]"
+                />
+                <label htmlFor="dep-blocking-check" className="text-xs font-bold text-[#334155] cursor-pointer">
+                  Es un insumo bloqueante (afecta la ruta crítica del proyecto)
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#f1f5f9]">
+                <button
+                  type="button"
+                  onClick={() => setIsNewDependencyModalOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[#475569] text-xs font-bold cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold cursor-pointer shadow-xs"
+                >
+                  Guardar Insumo
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: REGISTRAR GESTIÓN / SEGUIMIENTO AUDITABLE */}
+      {isFollowUpModalOpen && selectedDependencyForFollowUp && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-[#e2e8f0] space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-3">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-[#501f92]" />
+                <h3 className="text-base font-extrabold text-[#0f172a]">Registrar Gestión con Cliente</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsFollowUpModalOpen(false)}
+                className="p-1 rounded-lg hover:bg-[#f1f5f9] text-[#94a3b8] hover:text-[#0f172a] cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <p className="text-xs text-[#64748b]">
+                Insumo: <strong className="text-[#0f172a]">{selectedDependencyForFollowUp.title}</strong>
+              </p>
+
+              <div>
+                <label className="block text-xs font-bold text-[#334155] mb-1">
+                  Nota de Seguimiento / Respuesta del Cliente:
+                </label>
+                <textarea
+                  rows={4}
+                  required
+                  value={followUpNoteText}
+                  onChange={(e) => setFollowUpNoteText(e.target.value)}
+                  placeholder="ej. Se contactó a contacto del cliente por correo/WhatsApp; confirmaron que revisan en comité mañana..."
+                  className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] text-xs focus:outline-hidden focus:border-[#501f92]"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#f1f5f9]">
+              <button
+                type="button"
+                onClick={() => setIsFollowUpModalOpen(false)}
+                className="px-4 py-2 rounded-xl bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[#475569] text-xs font-bold cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveFollowUp}
+                className="px-4 py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold cursor-pointer shadow-xs"
+              >
+                Registrar Seguimiento Activo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 4: REGISTRAR RONDA DE AJUSTES */}
+      {isNewReworkRoundModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-[#e2e8f0] space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-3">
+              <div className="flex items-center gap-2">
+                <Repeat className="w-4 h-4 text-[#501f92]" />
+                <h3 className="text-base font-extrabold text-[#0f172a]">
+                  Registrar Ronda {reworkRounds.length + 1} de Ajustes
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsNewReworkRoundModalOpen(false)}
+                className="p-1 rounded-lg hover:bg-[#f1f5f9] text-[#94a3b8] hover:text-[#0f172a] cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateReworkRound} className="space-y-3.5 text-xs">
+              <div>
+                <label className="block text-xs font-bold text-[#334155] mb-1">Causa del Ajuste:</label>
+                <select
+                  value={reworkCause}
+                  onChange={(e) => setReworkCause(e.target.value as ReworkRoundCause)}
+                  className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] text-xs focus:outline-hidden focus:border-[#501f92]"
+                >
+                  <option value="client_adjustment">Feedback ordinario de cliente (dentro de lo previsto)</option>
+                  <option value="internal_adjustment">QA / Corrección de error interno de Uhura</option>
+                  <option value="scope_redefinition">Redefinición de alcance / Nuevo requerimiento</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#334155] mb-1">Horas Estimadas de Ejecución:</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={reworkEstHours}
+                  onChange={(e) => setReworkEstHours(parseInt(e.target.value) || 0)}
+                  className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] text-xs focus:outline-hidden focus:border-[#501f92]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#334155] mb-1">Descripción de los Ajustes:</label>
+                <textarea
+                  rows={3}
+                  required
+                  value={reworkNote}
+                  onChange={(e) => setReworkNote(e.target.value)}
+                  placeholder="Detalla el feedback entregado por el cliente o las correcciones técnicas requeridas..."
+                  className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] text-xs focus:outline-hidden focus:border-[#501f92]"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#f1f5f9]">
+                <button
+                  type="button"
+                  onClick={() => setIsNewReworkRoundModalOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[#475569] text-xs font-bold cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold cursor-pointer shadow-xs"
+                >
+                  Guardar Ronda
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

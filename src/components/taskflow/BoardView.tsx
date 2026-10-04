@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TaskItem, TaskStatus, ActiveTimerState, ProjectType } from './types';
+import { TaskItem, TaskStatus, ActiveTimerState, ProjectType, normalizeProjectType } from './types';
 import { UserAvatar } from './UserAvatar';
 import {
   Plus,
@@ -45,7 +45,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
 }) => {
   // Status filter inside project detail vs global type filter
   const [detailStatusFilter, setDetailStatusFilter] = useState<'all' | TaskStatus>('all');
-  const [filterType, setFilterType] = useState<'all' | 'fee_monthly' | 'fixed_milestones' | 'internal' | 'blocked' | 'archived'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'fee_monthly' | 'fixed_project' | 'internal_non_billable' | 'blocked' | 'archived'>('all');
   const [selectedProject, setSelectedProject] = useState<string>('all');
 
   // Extract unique project list
@@ -69,9 +69,10 @@ export const BoardView: React.FC<BoardViewProps> = ({
       if (t.isArchived) return false;
     }
 
-    if (filterType === 'fee_monthly' && t.projectType !== 'fee_monthly') return false;
-    if (filterType === 'fixed_milestones' && t.projectType !== 'fixed_milestones') return false;
-    if (filterType === 'internal' && t.categoryType !== 'internal' && t.projectType !== 'internal') return false;
+    const normalizedTaskType = normalizeProjectType(t.projectType);
+    if (filterType === 'fee_monthly' && normalizedTaskType !== 'fee_monthly') return false;
+    if (filterType === 'fixed_project' && normalizedTaskType !== 'fixed_project') return false;
+    if (filterType === 'internal_non_billable' && t.categoryType !== 'internal' && normalizedTaskType !== 'internal_non_billable') return false;
     if (filterType === 'blocked' && !t.blockerInfo?.isBlocked) return false;
     if (selectedProject !== 'all' && (t.projectName !== selectedProject && t.board !== selectedProject)) return false;
     return true;
@@ -90,7 +91,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
 
   const blockedCount = tasks.filter((t) => t.blockerInfo?.isBlocked).length;
   const feesCount = tasks.filter((t) => t.projectType === 'fee_monthly').length;
-  const devCount = tasks.filter((t) => t.projectType === 'fixed_milestones').length;
+  const devCount = tasks.filter((t) => t.projectType === 'fixed_project').length;
 
   return (
     <div className="space-y-4 animate-in fade-in duration-150">
@@ -198,9 +199,9 @@ export const BoardView: React.FC<BoardViewProps> = ({
             </button>
 
             <button
-              onClick={() => setFilterType('fixed_milestones')}
+              onClick={() => setFilterType('fixed_project')}
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-                filterType === 'fixed_milestones'
+                filterType === 'fixed_project'
                   ? 'bg-[#f1f5f9] text-[#0f172a] border border-[#cbd5e1] shadow-2xs'
                   : 'text-[#64748b] hover:bg-[#f8fafc] hover:text-[#0f172a]'
               }`}
@@ -208,7 +209,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
               <Layers className="w-3 h-3 text-[#2563eb]" />
               <span>Proyecto único</span>
               <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
-                filterType === 'fixed_milestones' ? 'bg-[#e2e8f0] text-[#0f172a]' : 'bg-[#f1f5f9] text-[#64748b]'
+                filterType === 'fixed_project' ? 'bg-[#e2e8f0] text-[#0f172a]' : 'bg-[#f1f5f9] text-[#64748b]'
               }`}>
                 {devCount}
               </span>

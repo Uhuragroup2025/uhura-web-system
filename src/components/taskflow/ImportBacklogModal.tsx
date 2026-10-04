@@ -114,7 +114,7 @@ export const ImportBacklogModal: React.FC<ImportBacklogModalProps> = ({
       department: r.frente,
       budgetedRole: r.budgetedRole,
       executedRoleSnapshot: r.budgetedRole,
-      projectType: 'fixed_milestones',
+      projectType: 'fixed_project',
       categoryType: 'client',
       assignee: {
         name: r.assigneeName,

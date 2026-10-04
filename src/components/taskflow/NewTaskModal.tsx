@@ -419,7 +419,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
     const primaryAssignee = collaboratorObjects[0];
     const secondaryCollaborators = collaboratorObjects.slice(1);
 
-    const isInternal = activeProject.projectType === 'internal';
+    const isInternal = activeProject.projectType === 'internal_non_billable';
     const hoursNum = parseFloat(budgetedHours) || 4.0;
 
     const finalFrente = isCustomFrente ? customFrenteText.trim() || 'General' : frente || availableFrentes[0] || 'General';
@@ -558,14 +558,14 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
                     className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
                       activeProject.projectType === 'fee_monthly'
                         ? 'bg-[#d4ff4a]/20 text-[#2e5e04]'
-                        : activeProject.projectType === 'fixed_milestones'
+                        : activeProject.projectType === 'fixed_project'
                         ? 'bg-[#eff6ff] text-[#2563eb]'
                         : 'bg-[#ecfdf5] text-[#047857]'
                     }`}
                   >
                     {activeProject.projectType === 'fee_monthly'
                       ? 'Fee mensual'
-                      : activeProject.projectType === 'fixed_milestones'
+                      : activeProject.projectType === 'fixed_project'
                       ? 'Proyecto único'
                       : 'Interno'}
                   </span>
@@ -604,7 +604,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
                   >
                     {projectsForSelectedClient.map((p) => (
                       <option key={p.id} value={p.id}>
-                        {p.name} ({p.projectType === 'fee_monthly' ? 'Fee' : p.projectType === 'fixed_milestones' ? 'Único' : 'Interno'})
+                        {p.name} ({p.projectType === 'fee_monthly' ? 'Fee' : p.projectType === 'fixed_project' ? 'Único' : 'Interno'})
                       </option>
                     ))}
                   </select>

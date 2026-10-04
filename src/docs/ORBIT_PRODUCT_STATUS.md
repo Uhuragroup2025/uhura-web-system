@@ -549,26 +549,100 @@ Contenedor principal de la ejecución operativa, control de presupuesto de horas
   - **Tipos de Dominio:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`ProjectProfile`, `ProjectType`, `ProjectStatus`)
 
 #### 11.2 Tipos de Proyecto
-1. `fixed_project`: Proyecto de alcance cerrado (fecha inicio, fecha fin, entregables fijos, bolsa de horas cerrada).
+1. `fixed_project`: Proyecto de alcance cerrado (fecha inicio, fecha fin, entregables fijos, bolsa de horas cerrada). Rige el trinomio Baseline / Forecast / Real.
 2. `fee_monthly`: Servicio recurrente mensual (ciclos de facturación mensual, asignaciones estables de capacidad).
 3. `internal_non_billable`: Proyectos internos de Uhura (preventa, diseño de marca propia, automatización).
 
 #### 11.3 Entidades y Campos Principales
-- **`ProjectProfile`:**
+- **`ProjectProfile` (`ProjectSummaryItem`):**
   - `id`: UUID.
   - `code`: String (Código corto de proyecto, ej. `ECO-42`, `ZAP-01`).
   - `name`: String.
   - `clientId`: UUID (FK a `ClientProfile`).
-  - `type`: `ProjectType`.
+  - `type`: `ProjectType` (`fixed_project` | `fee_monthly` | `internal_non_billable`).
   - `status`: Enum (`discovery` | `planning` | `in_progress` | `in_review` | `completed` | `paused` | `cancelled`).
   - `formalizationStatus`: Enum (`pendiente_formalizacion` | `listo_para_onboarding` | `activo`).
-  - `startDate`, `endDate`: Date.
+  - **Cronograma Oficial (`fixed_project`):**
+    - `baselineStartDate`, `baselineEndDate`: Date (Plan original acordado. Inmutable una vez iniciado).
+    - `forecastEndDate`: Date (Fecha actualmente proyectada según dependencias y reforecasts confirmados).
+    - `actualEndDate`: Date | null (Fecha real de cierre al culminar la ejecución).
+  - `scheduleConfig`:
+    - `clientKickoffWaitDays`: Integer (Default: 3 días hábiles. No consume capacidad).
+    - `gateApprovalWaitDays`: Integer (Default: 5 días hábiles por gate. No consume capacidad).
+    - `gateCount`: Integer (Default: 2 gates).
+    - `includedReworkRounds`: Integer (Default: 2 rondas incluidas).
   - `leadUserId`: UUID (Líder del proyecto).
-  - `soldHours`: Decimal (Total de horas vendidas según cotización aprobada).
+  - `soldHours`: Decimal (Total de horas vendidas según cotización aprobada — Fuente de verdad presupuestal canónica).
   - `soldValueCOP`: Decimal (Valor económico del contrato).
-  - `convertedFromOpportunityId`: UUID (Opcional, trazabilidad con New Business).
-  - `deliverables`: Array de `ProjectDeliverable`.
-  - `quoteSnapshots`: Array de `QuoteProposal` aprobadas que dieron origen al proyecto.
+  - `dependencies`: Array de `ProjectDependency` (Insumos, accesos y aprobaciones del cliente).
+  - `scheduleHistory`: Array de `ProjectScheduleChange` (Auditoría inmutable de reforecasts).
+  - `reworkRounds`: Array de `ProjectReworkRound` (Historial de iteraciones de feedback y ajustes).
+  - `projectHealth`: Objeto `ProjectHealthResult` calculado por el motor multivectorial.
+
+#### 11.4 Dependencias de Cliente (`ProjectDependency`)
+Entidad persistente para insumos, accesos o gates que condicionan la ruta crítica:
+- `id`: UUID.
+- `projectId`: FK a `ProjectProfile`.
+- `deliverableId`: FK opcional a `ProjectDeliverable`.
+- `title`: String (ej. *Manual de Marca*, *Aprobación Gate 1*, *Credenciales Hosting*).
+- `type`: Enum (`kickoff_input` | `client_input` | `approval` | `access` | `internal_dependency`).
+- `ownerType`: Enum (`client` | `uhura`).
+- `followUpOwnerUserId`: FK a User (Client Relationship o Líder responsable).
+- `requestedAt`: Date.
+- `expectedDate`: Date.
+- `completedAt` / `receivedAt`: Date | null.
+- `status`: Enum (`pending` | `received` | `overdue` | `waived`).
+- `blocking`: Boolean (Indica si detiene la ruta crítica de entrega).
+- `lastFollowUpAt`: DateTime | null (Fecha de la última gestión con el cliente).
+- `followUpNotes`: String | null (Bitácora de seguimiento).
+
+#### 11.5 Rondas de Ajuste & Retrabajo (`ProjectReworkRound`)
+- `id`: UUID.
+- `projectId`: FK a `ProjectProfile`.
+- `deliverableId`: FK opcional a `ProjectDeliverable`.
+- `roundNumber`: Integer (Ronda 1, 2, 3...).
+- `cause`: Enum (`client_adjustment` | `internal_adjustment` | `scope_redefinition`).
+- `requestedAt`: DateTime.
+- `completedAt`: DateTime | null.
+- `estimatedHours`: Decimal.
+- `actualHours`: Decimal.
+- `note`: String.
+- `createdByUserId`: FK a User.
+- `isAdditionalIteration`: Boolean derivado (`roundNumber > includedReworkRounds`). Señaliza que supera las 2 rondas estándar sin implicar cobro automático.
+
+#### 11.6 Historial de Reforecast y Atribución (`ProjectScheduleChange`)
+- `id`: UUID.
+- `projectId`: FK a `ProjectProfile`.
+- `previousForecastEndDate`: Date.
+- `newForecastEndDate`: Date.
+- `deltaBusinessDays`: Integer.
+- `cause`: Enum (`client_input_delay` | `client_approval_delay` | `internal_rework` | `internal_execution_delay` | `scope_change` | `other`).
+- `dependencyId`: FK opcional a `ProjectDependency`.
+- `confirmedByUserId`: FK a User (Exclusivo Líder o Dirección Ejecutiva).
+- `note`: String (Justificación obligatoria).
+- `createdAt`: DateTime inmutable.
+
+#### 11.7 Motor Multivectorial de Salud del Proyecto (`ProjectHealth`)
+El estado de salud no se basa en una sola métrica. Evalúa 4 vectores cuantitativos ($S_{\text{burn}}$, $S_{\text{sched}}$, $S_{\text{dep}}$, $S_{\text{fric}}$) con guardrails determinísticos:
+1. **Presupuesto Contractual:** `Presupuesto_Contractual = project.soldHours ?? project.budgetedHours`.
+2. **Avance Ponderado:** Calculado por avance explícito (`progressPercent`) y tareas/entregables completados sobre `Presupuesto_Contractual` (topado a 100%).
+3. **Tiempo Productivo:** Descuenta ventanas de kickoff y gates dentro de SLA ($W$).
+4. **Guardrails de Riesgo (`risk` / Rojo):**
+   - **G-R1:** Horas $\ge 85\%$ y Avance $< 50\%$.
+   - **G-R2:** Desvío de calendario $> 5$ días hábiles en `fixed_project`.
+   - **G-R3:** $\ge 1$ dependencia bloqueante desatendida ($D_{\text{unf}} \ge 1$, atraso $> 5$d o sin gestión en $\le 2$d).
+   - **G-R4:** Horas $> 105\%$ con Avance $< 100\%$.
+   - **G-R5:** Avance $= 100\%$ con Horas $> 115\%$ (sobrecosto severo al cierre).
+5. **Guardrails de Atención (`attention` / Amarillo):**
+   - **G-A1:** Desbalance de quema ($H_{\text{pct}} - P_{\text{pct}} \ge 15\%$ y $< 40\%$).
+   - **G-A2:** Desvío de calendario entre $+2$ y $+5$ días hábiles.
+   - **G-A3:** Dependencias bloqueantes vencidas con seguimiento activo reciente ($D_{\text{act}} \ge 1, D_{\text{unf}} = 0$).
+   - **G-A4:** Retrabajo interno activo $\ge 2$ o tareas vencidas $\ge 3$.
+   - **G-A5:** Horas entre $80\%$ y $100\%$ con Avance $< 80\%$.
+   - **G-A6:** Avance $= 100\%$ con Horas entre $100\%$ y $115\%$ (desviación presupuestal moderada al cierre).
+   - **G-A7:** Rondas adicionales de cliente ($\text{roundNumber} \ge 3$).
+   - **G-A8:** Redefinición de alcance registrada (`scope_redefinition`).
+6. **UI Explicable:** Todo badge muestra estado, métricas y razón textual humana (ej. *Atención — Horas 60% · Avance 52% · Gate 1 +3 días*).
 
 ---
 

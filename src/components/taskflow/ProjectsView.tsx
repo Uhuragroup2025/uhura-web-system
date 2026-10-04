@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { TaskItem, ActiveTimerState, ClientProfile, ProjectType, ProjectPhaseItem, ProjectSummaryItem, TaskPriority } from './types';
+import { TaskItem, ActiveTimerState, ClientProfile, ProjectType, ProjectPhaseItem, ProjectSummaryItem, TaskPriority, UserItem, normalizeProjectType } from './types';
 export type { ProjectSummaryItem };
 import { BoardView } from './BoardView';
 import { ManagePhasesModal } from './ManagePhasesModal';
@@ -84,6 +84,8 @@ interface ProjectsViewProps {
   onImportTasksToProject?: (importedTasks: Partial<TaskItem>[]) => void;
   onArchiveProject?: (projectId: string) => void;
   onDeleteProject?: (projectId: string) => void;
+  currentUser?: UserItem;
+  users?: UserItem[];
 }
 
 type ProjectDetailTab = 'overview' | 'deliverables' | 'tasks' | 'team' | 'settings' | 'backlog' | 'budget' | 'activity';
@@ -108,13 +110,15 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   onAddTaskToProject,
   onImportTasksToProject,
   onArchiveProject,
-  onDeleteProject
+  onDeleteProject,
+  currentUser,
+  users
 }) => {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(initialSelectedProjectId);
   const [activeProjectMenu, setActiveProjectMenu] = useState<string | null>(null);
   const [projectPendingDelete, setProjectPendingDelete] = useState<ProjectSummaryItem | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterType, setFilterType] = useState<'all' | 'fee_monthly' | 'fixed_milestones' | 'internal_non_billable' | 'risk'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'fee_monthly' | 'fixed_project' | 'internal_non_billable' | 'risk'>('all');
   const [filterClient, setFilterClient] = useState<string>('all');
   
   // Sync selected project ID if prop changes from outside (e.g. breadcrumb navigation)
@@ -258,9 +262,10 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
       const matchClient = filterClient === 'all' || p.clientName === filterClient;
 
       let matchType = true;
-      if (filterType === 'fee_monthly') matchType = p.projectType === 'fee_monthly';
-      else if (filterType === 'fixed_milestones') matchType = p.projectType === 'fixed_milestones' || p.projectType === 'fixed_project';
-      else if (filterType === 'internal_non_billable') matchType = p.projectType === 'internal_non_billable' || p.projectType === 'internal';
+      const normalizedProjectType = normalizeProjectType(p.projectType);
+      if (filterType === 'fee_monthly') matchType = normalizedProjectType === 'fee_monthly';
+      else if (filterType === 'fixed_project') matchType = normalizedProjectType === 'fixed_project';
+      else if (filterType === 'internal_non_billable') matchType = normalizedProjectType === 'internal_non_billable';
       else if (filterType === 'risk') matchType = p.healthStatus === 'rojo' || p.healthStatus === 'amarillo' || p.consumedHours > p.budgetedHours;
 
       return matchSearch && matchClient && matchType;
@@ -275,7 +280,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
   // Selected project details
   const currentProject = enrichedProjects.find((p) => p.id === selectedProjectId);
-  const isFeeProject = currentProject?.projectType === 'fee_monthly';
+  const isFeeProject = normalizeProjectType(currentProject?.projectType) === 'fee_monthly';
 
   // If switching to a fee project while on backlog or phase group, reset to valid views
   useEffect(() => {
@@ -607,14 +612,14 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                   className={`text-[11px] font-bold px-2 py-0.5 rounded-lg ${
                     currentProject.projectType === 'fee_monthly'
                       ? 'bg-[#d4ff4a]/20 text-[#2e5e04] border border-[#d4ff4a]/40'
-                      : currentProject.projectType === 'fixed_milestones'
+                      : currentProject.projectType === 'fixed_project'
                       ? 'bg-[#eff6ff] text-[#2563eb] border border-[#dbeafe]'
                       : 'bg-[#ecfdf5] text-[#047857] border border-[#a7f3d0]'
                   }`}
                 >
                   {currentProject.projectType === 'fee_monthly'
                     ? 'Fee mensual'
-                    : currentProject.projectType === 'fixed_milestones'
+                    : currentProject.projectType === 'fixed_project'
                     ? 'Proyecto único'
                     : 'Interno / No facturable'}
                 </span>
@@ -826,6 +831,9 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             project={currentProject}
             deliverables={currentProject.deliverables || []}
             coreTeam={currentProject.coreTeam || []}
+            currentUser={currentUser}
+            allUsers={users || initialUsers}
+            onUpdateProject={onUpdateProject}
             onNavigateToDeliverables={() => setActiveTab('deliverables')}
             onNavigateToTasks={(frenteName) => {
               setActiveTab('tasks');
@@ -1718,7 +1726,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
           >
             <option value="all">Todos los tipos</option>
             <option value="fee_monthly">Fees mensuales</option>
-            <option value="fixed_milestones">Proyectos únicos</option>
+            <option value="fixed_project">Proyectos únicos</option>
             <option value="internal_non_billable">Proyectos internos</option>
             <option value="risk">En riesgo / atención</option>
           </select>

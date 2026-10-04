@@ -71,7 +71,7 @@ export const clientProjectHierarchy: ClientProjectNode[] = [
         id: 'prj-pris-2',
         name: 'E-commerce & Landing STEM (Proyecto Web)',
         budgetedHours: 85.0,
-        projectType: 'fixed_milestones',
+        projectType: 'fixed_project',
         startDate: '10 Ago 2026',
         endDate: '30 Sep 2026',
         phases: [
@@ -100,7 +100,7 @@ export const clientProjectHierarchy: ClientProjectNode[] = [
         id: 'prj-dan-2',
         name: 'Campaña Navidad 2026 (Flujo Creativos → Pauta)',
         budgetedHours: 65.0,
-        projectType: 'fixed_milestones',
+        projectType: 'fixed_project',
         startDate: '15 Ago 2026',
         endDate: '15 Nov 2026',
         phases: [
@@ -143,7 +143,7 @@ export const clientProjectHierarchy: ClientProjectNode[] = [
         id: 'prj-yam-1',
         name: 'Yamaha R15 · Campaña Social & Web',
         budgetedHours: 80.0,
-        projectType: 'fixed_milestones',
+        projectType: 'fixed_project',
         startDate: '01 Ago 2026',
         endDate: '15 Oct 2026',
         phases: [
@@ -158,7 +158,7 @@ export const clientProjectHierarchy: ClientProjectNode[] = [
         id: 'prj-yam-2',
         name: 'Yamaha MT-03 · Lanzamiento',
         budgetedHours: 50.0,
-        projectType: 'fixed_milestones',
+        projectType: 'fixed_project',
         startDate: '15 Ago 2026',
         endDate: '20 Nov 2026',
         phases: [
@@ -180,7 +180,7 @@ export const clientProjectHierarchy: ClientProjectNode[] = [
         id: 'prj-battsaver-1',
         name: 'Tienda Online BattSaver',
         budgetedHours: 110.0,
-        projectType: 'fixed_milestones',
+        projectType: 'fixed_project',
         startDate: '15 Ago 2026',
         endDate: '15 Nov 2026',
         phases: [
@@ -202,7 +202,7 @@ export const clientProjectHierarchy: ClientProjectNode[] = [
         id: 'prj-uhu-1',
         name: 'Innovación & Orbit OS Labs',
         budgetedHours: 25.0,
-        projectType: 'fixed_milestones',
+        projectType: 'fixed_project',
         startDate: '01 Jul 2026',
         endDate: '31 Dic 2026',
         phases: [
@@ -416,7 +416,7 @@ export const initialTasks: TaskItem[] = [
     fase: 'Discovery & Estrategia',
     budgetedRole: 'Content Strategist',
     executedRoleSnapshot: 'Content Strategist',
-    projectType: 'fixed_milestones',
+    projectType: 'fixed_project',
     categoryType: 'client',
     assignee: {
       name: 'Camilo Vélez',
@@ -462,7 +462,7 @@ export const initialTasks: TaskItem[] = [
     fase: 'UI/UX & Prototipado',
     budgetedRole: 'Diseñador Gráfico',
     executedRoleSnapshot: 'Diseñador Gráfico',
-    projectType: 'fixed_milestones',
+    projectType: 'fixed_project',
     categoryType: 'client',
     assignee: {
       name: 'Diego Cadavid',
@@ -510,7 +510,7 @@ export const initialTasks: TaskItem[] = [
     fase: 'Implementación Frontend & Backend',
     budgetedRole: 'Community Manager',
     executedRoleSnapshot: 'Community Manager',
-    projectType: 'fixed_milestones',
+    projectType: 'fixed_project',
     categoryType: 'client',
     assignee: {
       name: 'Mateo Ruiz',
@@ -550,7 +550,7 @@ export const initialTasks: TaskItem[] = [
     fase: 'Discovery & Estrategia',
     budgetedRole: 'Product Lead',
     executedRoleSnapshot: 'Product Lead',
-    projectType: 'fixed_milestones',
+    projectType: 'fixed_project',
     categoryType: 'client',
     assignee: {
       name: 'Paola Monsalve',
@@ -589,7 +589,7 @@ export const initialTasks: TaskItem[] = [
     fase: 'Discovery & Estrategia',
     budgetedRole: 'Copywriter',
     executedRoleSnapshot: 'Copywriter',
-    projectType: 'fixed_milestones',
+    projectType: 'fixed_project',
     categoryType: 'client',
     assignee: {
       name: 'Mariana Toro',
@@ -627,7 +627,7 @@ export const initialTasks: TaskItem[] = [
     fase: 'UI/UX & Prototipado',
     budgetedRole: 'Web Designer',
     executedRoleSnapshot: 'Web Designer',
-    projectType: 'fixed_milestones',
+    projectType: 'fixed_project',
     categoryType: 'client',
     assignee: {
       name: 'Catalina Tejada',
@@ -675,7 +675,7 @@ export const initialTasks: TaskItem[] = [
     fase: 'Implementación Frontend & Backend',
     budgetedRole: 'Front End',
     executedRoleSnapshot: 'Front End',
-    projectType: 'fixed_milestones',
+    projectType: 'fixed_project',
     categoryType: 'client',
     assignee: {
       name: 'Laura Gómez',
@@ -725,7 +725,7 @@ export const initialTasks: TaskItem[] = [
     fase: 'QA & Testing',
     budgetedRole: 'Trafficker',
     executedRoleSnapshot: 'Trafficker',
-    projectType: 'fixed_milestones',
+    projectType: 'fixed_project',
     categoryType: 'client',
     assignee: {
       name: 'Sebas (Trafficker)',
@@ -767,7 +767,7 @@ export const initialTasks: TaskItem[] = [
     fase: 'Despliegue & Cierre',
     budgetedRole: 'Trafficker',
     executedRoleSnapshot: 'Trafficker',
-    projectType: 'fixed_milestones',
+    projectType: 'fixed_project',
     categoryType: 'client',
     assignee: {
       name: 'Sebas (Trafficker)',
@@ -813,7 +813,7 @@ export const initialTasks: TaskItem[] = [
     phase: 'Discovery',
     budgetedRole: 'Growth Manager',
     executedRoleSnapshot: 'Growth Manager',
-    projectType: 'fixed_milestones',
+    projectType: 'fixed_project',
     categoryType: 'client',
     assignee: {
       name: 'Camilo Velez',
@@ -853,7 +853,7 @@ export const initialTasks: TaskItem[] = [
     phase: 'Discovery',
     budgetedRole: 'Tech Lead',
     executedRoleSnapshot: 'Tech Lead',
-    projectType: 'fixed_milestones',
+    projectType: 'fixed_project',
     categoryType: 'client',
     assignee: {
       name: 'Paola (Lead PM)',
@@ -893,7 +893,7 @@ export const initialTasks: TaskItem[] = [
     phase: 'UX/UI',
     budgetedRole: 'UI/UX Designer',
     executedRoleSnapshot: 'UI/UX Designer',
-    projectType: 'fixed_milestones',
+    projectType: 'fixed_project',
     categoryType: 'client',
     assignee: {
       name: 'Catalina Tejada',
@@ -929,7 +929,7 @@ export const initialTasks: TaskItem[] = [
     phase: 'UX/UI',
     budgetedRole: 'UI/UX Designer',
     executedRoleSnapshot: 'UI/UX Designer',
-    projectType: 'fixed_milestones',
+    projectType: 'fixed_project',
     categoryType: 'client',
     assignee: {
       name: 'Catalina Tejada',
@@ -967,7 +967,7 @@ export const initialTasks: TaskItem[] = [
     phase: 'UX/UI',
     budgetedRole: 'UI/UX Designer',
     executedRoleSnapshot: 'UI/UX Designer',
-    projectType: 'fixed_milestones',
+    projectType: 'fixed_project',
     categoryType: 'client',
     assignee: {
       name: 'Catalina Tejada',
@@ -1007,7 +1007,7 @@ export const initialTasks: TaskItem[] = [
     phase: 'Implementación',
     budgetedRole: 'Front End',
     executedRoleSnapshot: 'Front End',
-    projectType: 'fixed_milestones',
+    projectType: 'fixed_project',
     categoryType: 'client',
     assignee: {
       name: 'Laura Gómez',
@@ -1045,7 +1045,7 @@ export const initialTasks: TaskItem[] = [
     phase: 'Implementación',
     budgetedRole: 'Back End',
     executedRoleSnapshot: 'Back End',
-    projectType: 'fixed_milestones',
+    projectType: 'fixed_project',
     categoryType: 'client',
     assignee: {
       name: 'Laura Gómez',
@@ -1083,7 +1083,7 @@ export const initialTasks: TaskItem[] = [
     phase: 'Implementación',
     budgetedRole: 'Front End',
     executedRoleSnapshot: 'Front End',
-    projectType: 'fixed_milestones',
+    projectType: 'fixed_project',
     categoryType: 'client',
     assignee: {
       name: 'Mateo Ruiz',
@@ -1119,7 +1119,7 @@ export const initialTasks: TaskItem[] = [
     phase: 'Implementación',
     budgetedRole: 'Growth Specialist',
     executedRoleSnapshot: 'Growth Specialist',
-    projectType: 'fixed_milestones',
+    projectType: 'fixed_project',
     categoryType: 'client',
     assignee: {
       name: 'Sebas (Trafficker)',
@@ -1157,7 +1157,7 @@ export const initialTasks: TaskItem[] = [
     phase: 'QA',
     budgetedRole: 'QA Tester',
     executedRoleSnapshot: 'QA Tester',
-    projectType: 'fixed_milestones',
+    projectType: 'fixed_project',
     categoryType: 'client',
     assignee: {
       name: 'Paola (Lead PM)',
@@ -1195,7 +1195,7 @@ export const initialTasks: TaskItem[] = [
     phase: 'QA',
     budgetedRole: 'QA Tester',
     executedRoleSnapshot: 'QA Tester',
-    projectType: 'fixed_milestones',
+    projectType: 'fixed_project',
     categoryType: 'client',
     assignee: {
       name: 'Catalina Tejada',
@@ -1233,7 +1233,7 @@ export const initialTasks: TaskItem[] = [
     phase: 'Cierre',
     budgetedRole: 'Tech Lead',
     executedRoleSnapshot: 'Tech Lead',
-    projectType: 'fixed_milestones',
+    projectType: 'fixed_project',
     categoryType: 'client',
     assignee: {
       name: 'Oscar Cerpa',
@@ -1271,7 +1271,7 @@ export const initialTasks: TaskItem[] = [
     phase: 'Cierre',
     budgetedRole: 'Product Lead',
     executedRoleSnapshot: 'Product Lead',
-    projectType: 'fixed_milestones',
+    projectType: 'fixed_project',
     categoryType: 'client',
     assignee: {
       name: 'Paola (Lead PM)',
@@ -1447,7 +1447,7 @@ export const initialTasks: TaskItem[] = [
     board: 'E-commerce STEM',
     clientName: 'Prisma Kiddos',
     projectName: 'E-commerce & Landing STEM (Proyecto Web)',
-    projectType: 'fixed_milestones',
+    projectType: 'fixed_project',
     phase: 'Discovery & Arquitectura',
     categoryType: 'client',
     assignee: {
@@ -1496,7 +1496,7 @@ export const initialTasks: TaskItem[] = [
     board: 'E-commerce STEM',
     clientName: 'Prisma Kiddos',
     projectName: 'E-commerce & Landing STEM (Proyecto Web)',
-    projectType: 'fixed_milestones',
+    projectType: 'fixed_project',
     phase: 'UI/UX & Prototipado',
     categoryType: 'client',
     assignee: {
@@ -1529,7 +1529,7 @@ export const initialTasks: TaskItem[] = [
     board: 'E-commerce STEM',
     clientName: 'Prisma Kiddos',
     projectName: 'E-commerce & Landing STEM (Proyecto Web)',
-    projectType: 'fixed_milestones',
+    projectType: 'fixed_project',
     phase: 'Implementación / Dev',
     categoryType: 'client',
     assignee: {
@@ -1575,7 +1575,7 @@ export const initialTasks: TaskItem[] = [
     board: 'Campaña Navidad',
     clientName: 'Danone S.A.',
     projectName: 'Campaña Navidad 2026 (Flujo Creativos → Pauta)',
-    projectType: 'fixed_milestones',
+    projectType: 'fixed_project',
     phase: 'UI/UX & Prototipado',
     categoryType: 'client',
     assignee: {
@@ -1624,7 +1624,7 @@ export const initialTasks: TaskItem[] = [
     board: 'Campaña Navidad',
     clientName: 'Danone S.A.',
     projectName: 'Campaña Navidad 2026 (Flujo Creativos → Pauta)',
-    projectType: 'fixed_milestones',
+    projectType: 'fixed_project',
     phase: 'Implementación / Dev',
     categoryType: 'client',
     assignee: {
@@ -1692,7 +1692,7 @@ export const initialTasks: TaskItem[] = [
     board: 'Labs',
     clientName: '🏢 Uhura Interno / No Facturable',
     projectName: 'Innovación & Orbit OS Labs',
-    projectType: 'fixed_milestones',
+    projectType: 'fixed_project',
     phase: 'Implementación / Dev',
     categoryType: 'internal',
     assignee: {

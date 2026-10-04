@@ -51,3 +51,6 @@ wp-config.php
 *.tsbuildinfo
 tsconfig.tsbuildinfo
 bun.lock
+node_modules/
+dist/
+.DS_Store

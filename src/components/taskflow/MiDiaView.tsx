@@ -26,18 +26,22 @@ import {
   UserCheck,
   ExternalLink,
   Info,
-  Users
+  Users,
+  Hourglass
 } from 'lucide-react';
 import {
   TaskItem,
   ActiveTimerState,
   OrbitView,
   UserItem,
-  TimeLog
+  TimeLog,
+  ProjectSummaryItem,
+  ProjectDependency
 } from './types';
 import { getUserAccessLevel, can } from './auth/permissions';
 import { initialUsers, initialAbsenceEvents } from './mockData';
 import { processTeamLifeEvents } from './copilot/teamLifeEngine';
+import { calculateBusinessDays } from './health/projectHealthEngine';
 import { TeamHumanProfileModal } from './copilot/TeamHumanProfileModal';
 import { UserAvatar } from './UserAvatar';
 
@@ -208,10 +212,38 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
     return clients.filter((c) => !c.nit || c.nit.includes('Por definir'));
   }, [accessLevel, clients]);
 
+  // Pendientes de Cliente (Insumos, Accesos, Aprobaciones de Gates)
+  const clientDependencies = useMemo(() => {
+    if (!['client_relationship', 'commercial', 'leader', 'executive', 'system_admin'].includes(accessLevel)) {
+      return [];
+    }
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const allDeps: Array<ProjectDependency & { projectName: string; clientName: string; delayDays: number }> = [];
+
+    projects.forEach((proj: ProjectSummaryItem) => {
+      (proj.dependencies || []).forEach((dep) => {
+        if (dep.ownerType === 'client' && dep.status === 'pending') {
+          const delayDays = dep.expectedDate && todayStr > dep.expectedDate
+            ? calculateBusinessDays(dep.expectedDate, todayStr)
+            : 0;
+          allDeps.push({
+            ...dep,
+            projectName: proj.name,
+            clientName: proj.clientName,
+            delayDays
+          });
+        }
+      });
+    });
+
+    return allDeps.sort((a, b) => b.delayDays - a.delayDays);
+  }, [accessLevel, projects]);
+
   // Total de elementos accionables de atención
   const totalAttentionCount =
     reworkTasks.length +
     reviewTasks.length +
+    clientDependencies.length +
     ownBlockedTasks.length +
     (accessLevel !== 'collaborator' ? teamBlockedTasks.length : 0) +
     overtimeRisks.length +
@@ -558,6 +590,61 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                     >
                       Revisar pieza
                     </button>
+                  </div>
+                ))}
+
+                {/* 2.5 Pendientes de Cliente (Insumos, Accesos, Aprobaciones de Gates) */}
+                {clientDependencies.map((dep) => (
+                  <div
+                    key={`client-dep-${dep.id}`}
+                    className={`p-3.5 rounded-2xl bg-white border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs ${
+                      dep.delayDays > 0 ? 'border-[#fca5a5] bg-[#fff5f5]' : 'border-[#fde68a]'
+                    }`}
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <Hourglass className={`w-4 h-4 shrink-0 mt-0.5 ${dep.delayDays > 0 ? 'text-[#dc2626]' : 'text-[#f59e0b]'}`} />
+                      <div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-[#0f172a]">{dep.title}</span>
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#eff6ff] text-[#1d4ed8]">
+                            {dep.clientName}
+                          </span>
+                          {dep.blocking && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-[#fee2e2] text-[#991b1b]">
+                              Bloqueante
+                            </span>
+                          )}
+                          {dep.delayDays > 0 ? (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-[#fef2f2] text-[#b91c1c] border border-[#fecaca]">
+                              Vencido: +{dep.delayDays} días
+                            </span>
+                          ) : (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#ecfdf5] text-[#059669]">
+                              Esperado: {dep.expectedDate}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-[#64748b] mt-0.5 flex items-center gap-2 flex-wrap">
+                          <span>Proyecto: <strong className="text-[#334155]">{dep.projectName}</strong></span>
+                          {dep.blocking && (
+                            <span className="text-[#dc2626] font-semibold">
+                              • Bloquea avance operativo
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+                      <button
+                        onClick={() => {
+                          if (onNavigateToView) onNavigateToView('proyectos');
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-[#501f92] text-white font-bold hover:bg-[#381566] transition-colors cursor-pointer"
+                      >
+                        Ver en proyecto
+                      </button>
+                    </div>
                   </div>
                 ))}
 

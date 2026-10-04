@@ -160,10 +160,38 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
     return Number((configuredWeeklyHours * 4.2).toFixed(1));
   };
 
-  // Disponibilidad configurada para el usuario actual (Paola: 40h semanales configuradas)
-  const myConfiguredWeeklyHours = 40.0;
+  // Disponibilidad configurada para el usuario actual desde su perfil
+  const myConfiguredWeeklyHours = currentUser?.capacityHours || DEFAULT_FALLBACK_WEEKLY_HOURS;
   const periodLegalCapacity = getUserConfiguredCapacity(myConfiguredWeeklyHours, timeframe);
   const myDailyCapacity = Number((myConfiguredWeeklyHours / 5).toFixed(1));
+
+  // Deducción de ausencias para el usuario actual
+  const myAbsenceDeduction = useMemo(() => {
+    if (!currentUser) return 0;
+    const effectiveAbsences = absenceEvents && absenceEvents.length > 0 ? absenceEvents : initialAbsenceEvents;
+    const userAbsences = effectiveAbsences.filter(
+      (a) => a.userId === currentUser.id && a.status === 'active'
+    );
+    let deduction = 0;
+    userAbsences.forEach((abs) => {
+      const dailyImpact = abs.impactHoursPerDay || (myConfiguredWeeklyHours / 5);
+      if (timeframe === 'today') {
+        const todayIso = '2026-09-16';
+        if (todayIso >= abs.startDate && todayIso <= abs.endDate) deduction += dailyImpact;
+      } else if (timeframe === 'week') {
+        weekDays.forEach((day) => {
+          if (!day.isHoliday && day.fullDate >= abs.startDate && day.fullDate <= abs.endDate) {
+            deduction += dailyImpact;
+          }
+        });
+      } else if (timeframe === 'month') {
+        deduction += (abs.businessDaysImpact || 5) * dailyImpact;
+      }
+    });
+    return deduction;
+  }, [currentUser, absenceEvents, myConfiguredWeeklyHours, timeframe, weekDays]);
+
+  const myNetCapacity = Math.max(0, periodLegalCapacity - myAbsenceDeduction);
 
   // Datos calculados para el usuario actual
   const myTasks = useMemo(() => {
@@ -205,28 +233,24 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
   // Horas ejecutadas (horas reales consumidas/trackeadas)
   const myExecutedHours = useMemo(() => {
     const fromLogs = myTimeLogs.reduce((acc, l) => acc + (l.durationSeconds / 3600), 0);
-    const fromTasks = myTasks.reduce((acc, t) => acc + (t.consumedSeconds / 3600), 0);
-    return Math.max(fromLogs, fromTasks, 31.5); // 31.5h ejecutadas esta semana
+    const fromTasks = myTasks.reduce((acc, t) => acc + ((t.consumedSeconds || 0) / 3600), 0);
+    return Number(Math.max(fromLogs, fromTasks).toFixed(1));
   }, [myTimeLogs, myTasks]);
 
-  // Ajuste según timeframe
+  // Carga ejecutada y asignada real
   const myCurrentExecuted = useMemo(() => {
-    if (timeframe === 'today') return 3.5;
-    if (timeframe === 'week') return myExecutedHours;
-    return 142.0; // Mes
-  }, [timeframe, myExecutedHours]);
+    return myExecutedHours;
+  }, [myExecutedHours]);
 
   const myCurrentAssigned = useMemo(() => {
-    if (timeframe === 'today') return 7.5;
-    if (timeframe === 'week') return Math.max(myAssignedHours, 38.0);
-    return 168.0; // Mes
-  }, [timeframe, myAssignedHours]);
+    return Number(myAssignedHours.toFixed(1));
+  }, [myAssignedHours]);
 
   // Cálculos de salud de capacidad
-  const myUtilizationPercent = Math.round((myCurrentAssigned / periodLegalCapacity) * 100);
-  const myExecutedPercent = Math.round((myCurrentExecuted / periodLegalCapacity) * 100);
-  const myAvailableHours = Number((periodLegalCapacity - myCurrentAssigned).toFixed(1));
-  const isOverloaded = myCurrentAssigned > periodLegalCapacity;
+  const myUtilizationPercent = myNetCapacity > 0 ? Math.round((myCurrentAssigned / myNetCapacity) * 100) : 0;
+  const myExecutedPercent = myNetCapacity > 0 ? Math.round((myCurrentExecuted / myNetCapacity) * 100) : 0;
+  const myAvailableHours = Number((myNetCapacity - myCurrentAssigned).toFixed(1));
+  const isOverloaded = myCurrentAssigned > myNetCapacity;
   const isOptimal = myUtilizationPercent >= 70 && myUtilizationPercent <= 100;
 
   // Helper para asignar departamento organizacional según rol o especialidad
@@ -297,18 +321,23 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
       // Capacidad neta disponible tras deducir ausencias
       const netCapacity = Math.max(0, Number((baseCap - absenceDeduction).toFixed(1)));
 
-      // Carga planificada/asignada desde tareas o baseline calibrado
+      // Carga planificada/asignada desde tareas reales (Staffing)
       const userTasks = tasks.filter(t => 
         t.assignee?.id === user.id ||
         t.assignee?.name?.toLowerCase().includes(user.name.toLowerCase()) ||
         t.collaborators?.some(c => c.name?.toLowerCase().includes(user.name.toLowerCase()))
       );
       const tasksBudgeted = userTasks.reduce((sum, t) => sum + (t.budgetedHours || t.estimatedHours || 0), 0);
+      let assigned = Number(tasksBudgeted.toFixed(1));
 
-      let assigned = tasksBudgeted > 0 
-        ? tasksBudgeted 
-        : Number(((memberWeeklyHours * (user.utilizedPercent || 80)) / 100).toFixed(1));
-      let executed = Number((assigned * 0.85).toFixed(1));
+      // Horas ejecutadas reales (TimeLogs del usuario o consumedSeconds de sus tareas)
+      const userTimeLogs = (timeLogs || []).filter(l =>
+        l.userId === user.id ||
+        l.userName?.toLowerCase().includes(user.name.toLowerCase())
+      );
+      const fromLogs = userTimeLogs.reduce((acc, l) => acc + (l.durationSeconds / 3600), 0);
+      const fromTasks = userTasks.reduce((acc, t) => acc + ((t.consumedSeconds || 0) / 3600), 0);
+      let executed = Number(Math.max(fromLogs, fromTasks).toFixed(1));
 
       // Si está en período de vacaciones completo, su carga planificada activa es 0h
       if (netCapacity === 0 && absenceDeduction > 0) {
@@ -319,9 +348,6 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
       if (timeframe === 'today') {
         assigned = Number((assigned / 5).toFixed(1));
         executed = Number((executed / 5).toFixed(1));
-      } else if (timeframe === 'month') {
-        assigned = Number((assigned * 4.2).toFixed(1));
-        executed = Number((executed * 4.2).toFixed(1));
       }
 
       const utilPercent = netCapacity > 0 ? Math.round((assigned / netCapacity) * 100) : 0;

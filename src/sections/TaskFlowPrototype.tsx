@@ -11,6 +11,7 @@ import {
   ClientProfile,
   ProjectType,
   TaskRework,
+  ProjectReworkRound,
   ProductBacklogTemplate,
   QuoteProposal,
   TaskActivityLogEntry,
@@ -368,8 +369,92 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
     soldHours: 110,
     startDate: '2026-08-15',
     endDate: '2026-11-15',
+    baselineStartDate: '2026-08-15',
+    baselineEndDate: '2026-11-15',
+    forecastEndDate: '2026-11-20',
+    scheduleConfig: {
+      clientKickoffWaitDays: 3,
+      gateApprovalWaitDays: 5,
+      gateCount: 2,
+      includedReworkRounds: 2
+    },
+    dependencies: [
+      {
+        id: 'dep-batt-1',
+        projectId: 'prj-battsaver-1',
+        title: 'Manual de Identidad y Paleta Gráfica',
+        type: 'client_input',
+        ownerType: 'client',
+        followUpOwnerUserId: 'u-3',
+        followUpOwnerName: 'Luisa Urazán',
+        requestedAt: '2026-08-16',
+        expectedDate: '2026-08-20',
+        completedAt: '2026-08-19',
+        receivedAt: '2026-08-19',
+        status: 'received',
+        blocking: true
+      },
+      {
+        id: 'dep-batt-2',
+        projectId: 'prj-battsaver-1',
+        title: 'Aprobación Gate 1 (UI Figma Prototipo)',
+        type: 'approval',
+        ownerType: 'client',
+        followUpOwnerUserId: 'u-3',
+        followUpOwnerName: 'Luisa Urazán',
+        requestedAt: '2026-09-20',
+        expectedDate: '2026-09-26',
+        status: 'pending',
+        blocking: true,
+        lastFollowUpAt: '2026-09-29T11:00:00Z',
+        followUpNotes: 'Seguimiento registrado ayer por Luisa: el cliente revisa con gerencia general'
+      },
+      {
+        id: 'dep-batt-3',
+        projectId: 'prj-battsaver-1',
+        title: 'Credenciales pasarela Wompi / Shopify',
+        type: 'access',
+        ownerType: 'client',
+        followUpOwnerUserId: 'u-8',
+        followUpOwnerName: 'Catalina Tejada',
+        requestedAt: '2026-09-28',
+        expectedDate: '2026-10-08',
+        status: 'pending',
+        blocking: true
+      }
+    ],
+    reworkRounds: [
+      {
+        id: 'rw-batt-1',
+        projectId: 'prj-battsaver-1',
+        roundNumber: 1,
+        cause: 'client_adjustment',
+        requestedAt: '2026-09-22',
+        completedAt: '2026-09-24',
+        estimatedHours: 4,
+        actualHours: 4.5,
+        note: 'Ajuste en paleta de botones de checkout y tipografía de banners',
+        createdByUserId: 'u-3',
+        createdByName: 'Luisa Urazán'
+      }
+    ],
+    scheduleHistory: [
+      {
+        id: 'sch-batt-1',
+        projectId: 'prj-battsaver-1',
+        previousForecastEndDate: '2026-11-15',
+        newForecastEndDate: '2026-11-20',
+        deltaBusinessDays: 3,
+        cause: 'client_approval_delay',
+        dependencyId: 'dep-batt-2',
+        confirmedByUserId: 'u-2',
+        confirmedByName: 'Paola Monsalve',
+        note: 'Espera de validación directiva en Gate 1',
+        createdAt: '2026-09-26T16:00:00Z'
+      }
+    ],
     status: 'Activo',
-    healthStatus: 'verde',
+    healthStatus: 'amarillo',
     healthNote: 'Backlog habilitado: Discovery (14h), UX/UI (36h), Implementación (48h), QA (12h)',
     deliverables: [
       {
@@ -1345,10 +1430,48 @@ export const TaskFlowPrototype: React.FC = () => {
     taskId: string,
     reworkData: Omit<TaskRework, 'id' | 'taskId' | 'date'>
   ) => {
+    // Unificar con ProjectReworkRound canónico del proyecto
+    const targetTask = tasks.find((t) => t.id === taskId);
+    const parentProject = targetTask
+      ? projectsList.find((p) => p.name === targetTask.projectName || p.id === targetTask.board)
+      : null;
+
+    let roundId = `rw-${Date.now()}`;
+    if (parentProject) {
+      const existingRound = (parentProject.reworkRounds || []).find(
+        (r) => r.roundNumber === reworkData.roundNumber
+      );
+      if (existingRound) {
+        roundId = existingRound.id;
+      } else {
+        const newProjectRound: ProjectReworkRound = {
+          id: roundId,
+          projectId: parentProject.id,
+          roundNumber: reworkData.roundNumber,
+          cause: reworkData.origin === 'client' ? 'client_adjustment' : 'internal_adjustment',
+          requestedAt: new Date().toISOString(),
+          estimatedHours: reworkData.estimatedHours || 2,
+          actualHours: 0,
+          note: reworkData.reason,
+          createdByUserId: currentUser.id,
+          createdByName: currentUser.name,
+          isAdditionalIteration: reworkData.roundNumber > (parentProject.scheduleConfig?.includedReworkRounds ?? 2)
+        };
+        setProjectsList((prevProjects) =>
+          prevProjects.map((p) =>
+            p.id === parentProject.id
+              ? { ...p, reworkRounds: [...(p.reworkRounds || []), newProjectRound] }
+              : p
+          )
+        );
+      }
+    }
+
     const newRework: TaskRework = {
       ...reworkData,
       id: `rwk-${Date.now()}`,
       taskId,
+      reworkRoundId: roundId,
       date: 'Hoy, ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' hs'
     };
 
@@ -1367,6 +1490,10 @@ export const TaskFlowPrototype: React.FC = () => {
           const currentReworks = t.reworks || [];
           return {
             ...t,
+            isRework: true,
+            reworkRound: reworkData.roundNumber,
+            reworkRoundId: roundId,
+            reworkReason: reworkData.reason,
             reworks: [...currentReworks, newRework],
             messages: [...(t.messages || []), reworkAuditMessage]
           };
@@ -1381,6 +1508,10 @@ export const TaskFlowPrototype: React.FC = () => {
         const currentReworks = prev.reworks || [];
         return {
           ...prev,
+          isRework: true,
+          reworkRound: reworkData.roundNumber,
+          reworkRoundId: roundId,
+          reworkReason: reworkData.reason,
           reworks: [...currentReworks, newRework],
           messages: [...(prev.messages || []), reworkAuditMessage]
         };
@@ -2225,6 +2356,8 @@ export const TaskFlowPrototype: React.FC = () => {
                     tasks={tasks}
                     clients={clients}
                     projectsList={projectsList}
+                    currentUser={currentUser}
+                    users={users}
                     selectedProjectId={selectedProjectIdForView}
                     onSelectProject={(id) => setSelectedProjectIdForView(id)}
                     onOpenNewProjectModal={() => {

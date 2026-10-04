@@ -55,9 +55,34 @@ export type TaskCategoryType = 'client' | 'internal';
 export type ProjectType =
   | 'fee_monthly'
   | 'fixed_project'
-  | 'internal_non_billable'
-  | 'fixed_milestones' // compatibilidad
-  | 'internal';        // compatibilidad
+  | 'internal_non_billable';
+
+export type LegacyProjectType = ProjectType | 'fixed_milestones' | 'internal';
+
+/**
+ * Normaliza tipos de proyecto legados a la especificación canónica:
+ * - 'internal' | 'internal_non_billable' -> 'internal_non_billable'
+ * - 'fixed_milestones' | 'fixed_project' -> 'fixed_project'
+ * - 'fee_monthly' -> 'fee_monthly'
+ * 
+ * Si el tipo es null, vacío o desconocido, devuelve undefined.
+ * NUNCA asume 'fixed_project' silenciosamente para evitar activar
+ * reglas de baseline/cronograma erróneas.
+ */
+export function normalizeProjectType(type?: string | null): ProjectType | undefined {
+  if (!type) return undefined;
+  const clean = type.trim().toLowerCase();
+  if (clean === 'internal' || clean === 'internal_non_billable') {
+    return 'internal_non_billable';
+  }
+  if (clean === 'fixed_milestones' || clean === 'fixed_project') {
+    return 'fixed_project';
+  }
+  if (clean === 'fee_monthly') {
+    return 'fee_monthly';
+  }
+  return undefined;
+}
 
 export type FeeRolloverPolicy = 'none' | 'carry_over' | 'contractual_cap';
 
@@ -78,10 +103,11 @@ export interface ProjectDeliverable {
   startDate?: string;
   dueDate?: string;
   roleBudgets: DeliverableRoleBudget[];
-  // Rollups calculados (no campos editables directos):
+  // Rollups calculados y avance explícito:
   totalQuotedHours?: number;   // rollup: suma de roleBudgets[].quotedHours
   totalExecutedHours?: number; // rollup: suma de logs de tareas con deliverableId
-  progressPercentage?: number; // avance en %
+  progressPercentage?: number; // avance en % (compatibilidad)
+  progressPercent?: number;    // avance real declarado 0-100 (fuente de verdad explícita de avance)
 }
 
 export interface ProjectMonthlyCycle {
@@ -190,6 +216,114 @@ export interface ProjectPhaseItem {
   color?: string;
 }
 
+export type ProjectDependencyType =
+  | 'kickoff_input'
+  | 'client_input'
+  | 'approval'
+  | 'access'
+  | 'internal_dependency';
+
+export type DependencyOwnerType = 'client' | 'uhura';
+
+export type DependencyStatus = 'pending' | 'received' | 'overdue' | 'waived';
+
+export interface ProjectDependency {
+  id: string;
+  projectId: string;
+  deliverableId?: string | null;
+  taskIds?: string[];
+  title: string;
+  description?: string;
+  type: ProjectDependencyType;
+  ownerType: DependencyOwnerType;
+  followUpOwnerUserId: string;
+  followUpOwnerName?: string;
+  requestedAt: string;
+  expectedDate: string;
+  completedAt?: string | null;
+  receivedAt?: string | null;
+  status: DependencyStatus;
+  blocking: boolean;
+  // Campos de seguimiento auditable objetivo
+  lastFollowUpAt?: string | null;
+  nextFollowUpDate?: string | null;
+  followUpNotes?: string | null;
+  delayBusinessDays?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type ScheduleChangeCause =
+  | 'client_input_delay'
+  | 'client_approval_delay'
+  | 'internal_rework'
+  | 'internal_execution_delay'
+  | 'scope_change'
+  | 'other';
+
+export interface ProjectScheduleChange {
+  id: string;
+  projectId: string;
+  previousForecastEndDate: string;
+  newForecastEndDate: string;
+  deltaBusinessDays: number;
+  cause: ScheduleChangeCause;
+  dependencyId?: string | null;
+  taskId?: string | null;
+  reworkRoundId?: string | null;
+  confirmedByUserId: string;
+  confirmedByName?: string;
+  note?: string;
+  createdAt: string;
+}
+
+export type ReworkRoundCause =
+  | 'client_adjustment'
+  | 'internal_adjustment'
+  | 'scope_redefinition';
+
+export interface ProjectReworkRound {
+  id: string;
+  projectId: string;
+  deliverableId?: string | null;
+  taskIds?: string[];
+  roundNumber: number;
+  cause: ReworkRoundCause;
+  requestedAt: string;
+  completedAt?: string | null;
+  estimatedHours?: number;
+  actualHours?: number;
+  note?: string;
+  createdByUserId: string;
+  createdByName?: string;
+  isAdditionalIteration?: boolean; // roundNumber > includedReworkRounds (típicamente Ronda 3+)
+}
+
+export interface ProjectScheduleConfig {
+  clientKickoffWaitDays: number;  // Default: 3 días hábiles
+  gateApprovalWaitDays: number;   // Default: 5 días hábiles
+  gateCount: number;              // Default: 2 gates
+  includedReworkRounds: number;   // Default: 2 rondas
+}
+
+export type ProjectHealthStatus = 'healthy' | 'attention' | 'risk';
+
+export interface ProjectHealthResult {
+  status: ProjectHealthStatus;
+  score: number; // 0-100 interno
+  badge: 'Saludable' | 'Atención' | 'Riesgo';
+  primaryReason: string;
+  secondaryReason?: string;
+  vectors: {
+    burn: { score: number; deltaBurn: number; hoursPct: number; progressPct: number; consumedHours: number; totalBudget: number };
+    schedule: { score: number; deltaDays: number; baselineEnd?: string; forecastEnd?: string };
+    dependencies: { score: number; dAct: number; dUnf: number; dWarn: number };
+    friction: { score: number; rAct: number; tOverdue: number; additionalIterationsCount: number; scopeRedefinitionsCount: number };
+  };
+  triggeredGuardrail?: string; // ej. 'G-R1', 'G-A3', etc.
+  evaluatedAt: string;
+}
+
 export interface ProjectSummaryItem {
   id: string;
   code?: string;
@@ -210,6 +344,19 @@ export interface ProjectSummaryItem {
   startDate?: string;
   endDate?: string;
   brief?: string;
+  
+  // Cronograma Oficial: Baseline vs Forecast vs Real
+  baselineStartDate?: string;
+  baselineEndDate?: string;
+  forecastEndDate?: string;
+  actualEndDate?: string | null;
+  scheduleConfig?: ProjectScheduleConfig;
+
+  // Colecciones de Gestión de Cronograma, Insumos y Rondas
+  dependencies?: ProjectDependency[];
+  scheduleHistory?: ProjectScheduleChange[];
+  reworkRounds?: ProjectReworkRound[];
+  projectHealth?: ProjectHealthResult;
   
   // Entregables y Equipo Formal
   deliverables?: ProjectDeliverable[];
@@ -294,12 +441,14 @@ export type ReworkOrigin = 'client' | 'internal';
 export interface TaskRework {
   id: string;
   taskId: string;
+  reworkRoundId?: string; // FK hacia ProjectReworkRound (fuente de verdad canónica)
   origin: ReworkOrigin; // 'client' (ajustes solicitados por el cliente) | 'internal' (calidad / QA interno de Uhura)
   roundNumber: number; // Ronda 1, Ronda 2, etc.
   reason: string;
   requestedBy: string;
   date: string;
   hoursSpent?: number;
+  estimatedHours?: number;
   resolved?: boolean;
 }
 
@@ -633,6 +782,7 @@ export interface TaskItem {
   priority: TaskPriority;
   completed: boolean;
   completedAt?: string;
+  progressPercent?: number; // Avance real declarado 0-100 (si no está completada)
   isArchived?: boolean;
   // Bloqueo como flag y no como estado (Decisión 5)
   isBlocked?: boolean;
@@ -641,6 +791,7 @@ export interface TaskItem {
   // Retrabajos y ajustes trazables
   isRework?: boolean;
   reworkRound?: number;
+  reworkRoundId?: string; // FK hacia ProjectReworkRound canónico
   originalTaskId?: string | null;
   reworkReason?: 'client_feedback' | 'internal_qa' | 'brief_change' | string | null;
   // Rentabilidad y tiempos
