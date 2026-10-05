@@ -728,13 +728,16 @@ Visibilidad matemática de la disponibilidad real del equipo para asumir nuevos 
   - **Tipos de Capacidad:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`TeamMemberCapacity`)
 
 #### 15.2 Reglas Fundamentales de Capacidad
-1. **No a la Asunción Universal de 8 Horas Diarias:** Cada colaborador tiene una capacidad contractual y operativa configurada (ej. contratos de 40h semanales tienen típicamente 32h productivas y 8h de ceremonias/gestión interna).
-2. **Ecuación Canónica de Capacidad:**
-   $$\text{Capacidad Libre} = \text{Disponibilidad Neta} - \text{Carga Semanal Planificada (ProjectAssignments)}$$
-3. **Fines de Semana y Festivos:** No se consideran en la planificación de capacidad. Si alguien registra horas en sábado o domingo, se computa como ejecución real, pero nunca como disponibilidad proyectada.
-4. **Impacto Directo de Ausencias y Vacaciones (`TeamAbsenceEvent`):** Las ausencias aprobadas y programadas provenientes del modelo canónico `TeamAbsenceEvent` descuentan disponibilidad/capacidad del colaborador durante el periodo hábil correspondiente:
-   $$\text{Disponibilidad Neta} = \max(0, \text{Capacidad Base Configurada} - \sum \text{Deducción Ausencias Aprobadas})$$
-   Solo ausencias aprobadas/programadas deben afectar la capacidad operativa; festivos y fines de semana no descuentan horas porque su disponibilidad legal ya es 0h.
+1. **Capacidad Semanal Configurable por Perfil:** La capacidad base de un colaborador es una cantidad semanal pura definida en su perfil (`UserProfile.capacityHours`, ej. 40h semanales según jornada contractual legal). No se aplican deducciones fijas artificiales, fórmulas de `h/mes ÷ 4` ni reservas universales de horas internas (ej. prohibida la equivalencia automática `40h contractuales = 32h productivas + 8h internas`).
+2. **Imputación Real de Trabajos Internos y de Cliente:** Los rituales, ceremonias, capacitaciones y gestiones internas reales se registran cuando ocurren contra proyectos y tareas de tipo `internal_non_billable`. Los seguimientos, reuniones y actividades atribuibles a un cliente se imputan al proyecto correspondiente del cliente.
+3. **Ecuación Canónica de Capacidad:**
+   $$\text{Capacidad Libre} = \text{Capacidad Semanal Configurada} - \text{Festivos Aplicables} - \text{Ausencias Aprobadas} - \text{Carga Planificada de Staffing}$$
+   - **Base Diaria de Cálculo:** Para una semana estándar laboral de lunes a viernes, la capacidad diaria para efectos de festivos o ausencias se deriva estrictamente como:
+     $$\text{Capacidad Diaria} = \frac{\text{capacityHours}}{5}$$
+4. **Fines de Semana y Festivos:** No se consideran en la disponibilidad proyectada. Cada festivo oficial colombiano en día hábil resta su equivalente diario (`capacityHours / 5`) a la capacidad base de esa semana. Si alguien registra horas en sábado o domingo, se computa como ejecución real, pero nunca como disponibilidad planificada.
+5. **Impacto Directo de Ausencias y Vacaciones (`TeamAbsenceEvent`):** Las ausencias activas/aprobadas descuentan horas de los días hábiles coincidentes:
+   $$\text{Disponibilidad Neta} = \max(0, (\text{Capacidad Semanal Configurada} - \text{Festivos}) - \sum \text{Deducción Ausencias Aprobadas})$$
+   Si un colaborador tiene vacaciones aprobadas durante toda la semana hábil, su capacidad neta disponible es 0h y la carga planificada no computa como sobrecarga ni penaliza la salud operativa.
 
 ---
 
@@ -1192,7 +1195,7 @@ Para la separación estricta entre la identidad operativa actual de `UserProfile
 | :--- | :--- | :--- | :--- | :--- |
 | **HubSpot** | Comercial & CRM | Prospectos, empresas, contactos, deals, pipeline y actividad comercial | `NewBusinessOpportunity`, `ProjectSummaryItem` | `hubspotDealId`, `hubspotDealUrl`, `hubspotCompanyId`, `hubspotContactId` |
 | **Orbit** | Operativo & Capacidad | Alcance técnico, dimensionamiento, cotizaciones, proyectos, entregables, tareas, staffing, capacidad y horas | Todo el Core de Orbit | Entidades maestras de Orbit (`ProjectSummaryItem`, `TaskItem`, `UserItem`, etc.) |
-| **Alegra** | Fiscal & Contable | Terceros fiscales (Razón Social / NIT), facturación electrónica, impuestos, cartera y recaudo | `ClientTaxEntity`, `ClientProfile`, `ProjectSummaryItem` | `taxEntityId` (FK canónica a `ClientTaxEntity`), `alegraContactId` |
+| **Alegra** | Fiscal & Contable | Terceros fiscales (Razón Social / NIT), facturación electrónica, impuestos, cartera y recaudo | `ClientTaxEntity`, `ClientProfile`, `ProjectSummaryItem` | `taxEntityId` (selección fiscal operativa inicial hacia `ClientTaxEntity`), `alegraContactId` |
 | **Google Drive** | Repositorio Documental | Almacenamiento seguro de archivos, briefs, contratos firmados, entregables y propuestas | `NewBusinessOpportunity`, `ProjectSummaryItem` | `driveFolderId`, `driveFolderUrl`, `briefUrl`, `briefFileId` |
 | **Google Calendar** | Calendario de Disponibilidad | Vacaciones y licencias/permisos laborales aprobados del equipo | `TeamAbsenceEvent`, `CapacityView`, `BuckyEngine` | `TeamAbsenceEvent` (`externalCalendarEventId`, `externalCalendarId`, `source: 'google_calendar'`) |
 
@@ -1206,7 +1209,7 @@ Para la separación estricta entre la identidad operativa actual de `UserProfile
 > - **Ciclo de Vida:**
 >   1. Oportunidad creada en HubSpot (`hubspotDealId`).
 >   2. Se activa en Orbit para scoping técnico y generación de propuestas (`QuoteProposal`).
->   3. Una vez el cliente aprueba la propuesta económica y se formaliza el acuerdo, la oportunidad se convierte en Proyecto Activo (`handleConvertOpportunityToProject`), propagando las referencias canónicas (`hubspotDealId`, `driveFolderUrl`, `taxEntityId`).
+>   3. Una vez el cliente aprueba la propuesta económica y se formaliza el acuerdo, la oportunidad se convierte en Proyecto Activo (`handleConvertOpportunityToProject`), propagando las referencias comerciales y de repositorio (`hubspotDealId`, `driveFolderUrl`) y la entidad fiscal inicial seleccionada (`taxEntityId`) como punto de partida administrativo (sin restringir que el proyecto definitivo pueda facturarse a múltiples NITs).
 
 ---
 
@@ -1416,9 +1419,9 @@ export interface TeamAbsenceEvent {
 ```
 
 #### Regla Matemática de Deducción de Capacidad en Orbit:
-1. **Deducción de Días Hábiles:** Por cada día hábil (Lunes a Viernes) comprendido entre `startDate` y `endDate`, se descuentan `impactHoursPerDay` de la disponibilidad del colaborador:
-   $$\text{Capacidad Neta} = \max(0, \text{Capacidad Base Configurada} - \sum \text{Deducción Ausencias})$$
-2. **Exclusión de Fines de Semana y Festivos:** Si una ausencia coincide con un fin de semana o un día festivo oficial (calendario colombiano), ese día NO resta horas laborales, porque su disponibilidad legal ya es 0h.
+1. **Deducción de Días Hábiles:** Por cada día hábil (lunes a viernes) comprendido entre `startDate` y `endDate`, se descuentan `impactHoursPerDay` (o la cuota diaria `capacityHours / 5`) de la disponibilidad del colaborador:
+   $$\text{Capacidad Neta} = \max(0, (\text{Capacidad Semanal Configurada} - \text{Festivos}) - \sum \text{Deducción Ausencias Aprobadas})$$
+2. **Exclusión de Fines de Semana y Festivos:** Si una ausencia coincide con un fin de semana o un día festivo oficial (calendario colombiano), ese día NO resta horas adicionales, porque los festivos ya descuentan su cuota diaria (`capacityHours / 5`) de la semana laboral y los fines de semana tienen disponibilidad proyectada 0h.
 3. **Impacto en Asignación y Salud:**
    - Si la capacidad neta es 0h (vacaciones completas en la semana), el estado se marca con badge de descanso (`🌴 En Vacaciones`), y la carga asignada activa no computa como sobrecarga ni penaliza el score.
    - En la tarjeta del colaborador y en el drawer lateral se muestra el banner informativo de la ausencia con indicador de sincronización externa (*Google Calendar*).
@@ -1439,10 +1442,16 @@ Al ejecutarse la conversión de una Oportunidad a Proyecto (`handleConvertOpport
    - `opp.hubspotContactId` no se replica en `Project` (pertenece al directorio de contactos comerciales del cliente).
 2. **Google Drive:**
    - `driveFolderUrl` y `driveFolderId` se transfieren al `ProjectSummaryItem`. Si no existen en la oportunidad, quedan como `null` / no vinculados (sin inventar URLs sintéticas).
-3. **Alegra / Entidad Fiscal:**
-   - **`NewBusinessOpportunity.selectedTaxEntityId`**: Entidad fiscal seleccionada durante New Business / formalización de propuesta. No compite con otros aliases dentro de la oportunidad.
+3. **Alegra / Entidad Fiscal y Frontera Multi-NIT:**
+   - **`ClientProfile` y `ClientTaxEntity`:** `ClientProfile` representa la cuenta o marca comercial del cliente (ej. *Danone*, *Bancolombia*), y contiene `hubspotCompanyId`. Cada cliente puede asociar múltiples razones sociales / NITs representados mediante `ClientTaxEntity` (`taxEntities: ClientTaxEntity[]`).
+   - **`NewBusinessOpportunity.selectedTaxEntityId`**: Entidad fiscal seleccionada durante New Business / formalización de propuesta como punto de partida administrativo inicial. No compite con otros aliases dentro de la oportunidad.
    - **`ClientTaxEntity.id`**: Identificador real de la entidad fiscal (fuente canónica de verdad para `businessName`, `nit`, `billingEmail`, `alegraContactId`, `alegraContactUrl`, `alegraCreated`).
-   - **`opp.selectedTaxEntityId` → `Project.taxEntityId`**: Al convertir la oportunidad, `Project` almacena únicamente `taxEntityId` como FK canónica de operación hacia `ClientTaxEntity`.
+   - **`opp.selectedTaxEntityId` → `Project.taxEntityId` (Selección Inicial, No Excluyente):** Al convertir la oportunidad, `Project` recibe `taxEntityId` como referencia inicial de facturación. **No debe asumirse que esta selección representa necesariamente la estructura fiscal definitiva ni única del proyecto.**
+   - **Frontera de Dominio Multi-NIT (Confirmada):** Un mismo proyecto **puede ser facturado a más de una entidad fiscal**. Por lo tanto, el backend **NO debe implementar una restricción de integridad de dominio que obligue a un único NIT por proyecto** ni cerrar el modelo relacional asumiendo que una FK singular es suficiente para todos los casos.
+   - **Pendiente de Validación con Ana / Administración:** Queda explícitamente pendiente definir con la Dirección General y Administración:
+     1. Si la distribución multi-NIT se define una sola vez a nivel global del proyecto o si puede variar por factura/hito;
+     2. Si dicha distribución se parametriza mediante porcentajes, montos fijos en moneda, o admite ambas modalidades.
+     *(Hasta cerrar esta definición con Administración, se mantiene `taxEntityId` como referencia inicial compatible sin imponer restricción mononit en backend).*
    - Se removió `alegraContractId` por inexistencia en API de Alegra y se eliminó la duplicidad de `selectedTaxEntityId` en `ProjectSummaryItem`.
    - Si la oportunidad contenía checklist administrativo (`administrativeChecklist`), sus datos (`billingEmail`, `alegraContactId`, `alegraContactUrl`) enriquecen la `ClientTaxEntity` en `ClientProfile`.
 

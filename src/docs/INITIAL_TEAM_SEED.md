@@ -104,7 +104,7 @@ Para orientar a Indunova en la preparación de scripts de migración o fixtures 
    current_year_anniversary = user.fecha_ingreso.replace(year=current_date.year)
    ```
 3. **Asignación de Capacidad Base Inicial:**  
-   Cada colaborador debe inicializarse con su jornada contractual configurada (por defecto 40h semanales, con 32h de dedicación efectiva a proyectos y 8h de gestión/ceremonias internas según la política de Uhura).
+   Cada colaborador debe inicializarse con su capacidad semanal contractual configurada en su perfil (`UserProfile.capacityHours`, por defecto 40h semanales según su jornada laboral legal). La capacidad base de una persona es una cantidad semanal pura; no se aplican deducciones fijas artificiales ni reservas automáticas de horas internas (ej. prohibida la equivalencia automática de 32h productivas + 8h internas). Los rituales, capacitaciones o trabajos internos se registran contra proyectos/tareas de tipo `internal_non_billable`, mientras que los seguimientos y gestiones atribuibles a un cliente se imputan a su proyecto correspondiente.
 
 ---
 
