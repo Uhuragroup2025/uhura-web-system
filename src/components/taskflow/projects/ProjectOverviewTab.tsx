@@ -811,7 +811,7 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold transition-all cursor-pointer shadow-2xs"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Registrar ronda de ajustes</span>
+              <span>Registrar ronda</span>
             </button>
           </div>
         </div>
@@ -1082,7 +1082,7 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
                   type="submit"
                   className="px-4 py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold cursor-pointer shadow-xs"
                 >
-                  Guardar Insumo
+                  Guardar insumo
                 </button>
               </div>
             </form>
@@ -1141,7 +1141,7 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
                 onClick={handleSaveFollowUp}
                 className="px-4 py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold cursor-pointer shadow-xs"
               >
-                Registrar Seguimiento Activo
+                Registrar seguimiento
               </button>
             </div>
           </div>
@@ -1218,7 +1218,7 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
                   type="submit"
                   className="px-4 py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold cursor-pointer shadow-xs"
                 >
-                  Guardar Ronda
+                  Guardar ronda
                 </button>
               </div>
             </form>

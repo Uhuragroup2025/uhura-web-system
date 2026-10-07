@@ -627,7 +627,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
                 onClick={() => setIsCustomFrente(!isCustomFrente)}
                 className="text-[10px] font-bold text-[#501f92] hover:underline cursor-pointer"
               >
-                {isCustomFrente ? '← Seleccionar existente' : '+ Nuevo servicio personalizado'}
+                {isCustomFrente ? 'Seleccionar existente' : 'Nuevo servicio personalizado'}
               </button>
             </div>
 
@@ -1031,7 +1031,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
                 onClick={handleAddCriterion}
                 className="px-3 py-1.5 bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[#0f172a] font-bold rounded-xl text-xs cursor-pointer transition-colors"
               >
-                + Agregar
+                Agregar
               </button>
             </div>
 
@@ -1070,7 +1070,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
               className="px-5 py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Crear Tarea</span>
+              <span>Crear tarea</span>
             </button>
           </div>
         </form>

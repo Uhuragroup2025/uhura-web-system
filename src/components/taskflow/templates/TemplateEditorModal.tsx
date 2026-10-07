@@ -628,7 +628,7 @@ export const TemplateEditorModal: React.FC<TemplateEditorModalProps> = ({
               className="inline-flex items-center gap-2 px-5 py-2 text-xs font-bold text-white bg-[#8a4dff] hover:bg-[#7839ee] rounded-lg shadow-sm transition-colors cursor-pointer"
             >
               <Save className="w-4 h-4" />
-              <span>{isEditing ? 'Guardar Cambios' : 'Guardar Plantilla Maestra'}</span>
+              <span>{isEditing ? 'Guardar cambios' : 'Guardar plantilla'}</span>
             </button>
           </div>
         </div>

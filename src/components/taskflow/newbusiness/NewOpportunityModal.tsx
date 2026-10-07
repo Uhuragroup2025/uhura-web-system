@@ -352,7 +352,7 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
                   : 'text-white/80 hover:text-white'
               }`}
             >
-              <span>+ Crear Manualmente</span>
+              <span>Crear manualmente</span>
             </button>
           </div>
         </div>

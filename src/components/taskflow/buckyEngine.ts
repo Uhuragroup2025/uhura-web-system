@@ -82,15 +82,101 @@ export interface BuckyContext {
 }
 
 // ==========================================
-// 2. SINTETIZADOR WEB AUDIO PROCEDURAL
+// 2. SINTETIZADOR WEB AUDIO PROCEDURAL & VENTANA DE SONIDO UX
 // ==========================================
+
+/**
+ * Configuración UX de ventana horaria permitida para sonidos de Bucky.
+ * 
+ * NOTA DE DISEÑO & EXPERIENCIA (UX):
+ * Esta regla opera exclusivamente como protección de experiencia de usuario para evitar
+ * sonidos intrusivos o inesperados fuera de una ventana horaria razonable de interacción.
+ * NO representa una jornada laboral contractual de los colaboradores ni agrega nuevos
+ * campos a UserProfile ni contratos con el backend.
+ * 
+ * Reglas de comportamiento:
+ * 1. Ventana por defecto: Lunes a viernes, de 08:00 a 18:00 en zona horaria 'America/Bogota'.
+ * 2. La preferencia manual del usuario tiene prioridad absoluta: si el usuario desactiva
+ *    el sonido (localStorage 'orbit_bucky_muted' === 'true'), Bucky nunca suena, incluso dentro de la ventana.
+ * 3. Fuera de la ventana, Bucky permanece visualmente activo (poses, animaciones, globos de diálogo),
+ *    pero con cero audio automático, alertas ni celebraciones sonoras.
+ * 4. Queda centralizada aquí para que pueda ajustarse fácilmente en el futuro sin modificar componentes.
+ */
+export interface BuckySoundWindowConfig {
+  startHour: number;
+  endHour: number;
+  workingDays: number[];
+  timeZone: string;
+}
+
+export const BUCKY_SOUND_WINDOW_CONFIG: BuckySoundWindowConfig = {
+  startHour: 8,
+  endHour: 18,
+  workingDays: [1, 2, 3, 4, 5], // Lunes a Viernes (1..5)
+  timeZone: 'America/Bogota', // Zona horaria explícita de operación
+};
+
+/**
+ * Resuelve la hora y el día hábil en la zona horaria explícita (evita discrepancias por reloj local).
+ */
+export function getHourInTimeZone(date: Date = new Date(), timeZone: string = BUCKY_SOUND_WINDOW_CONFIG.timeZone): { hour: number; day: number } {
+  try {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      hour: 'numeric',
+      hourCycle: 'h23',
+      weekday: 'short'
+    });
+    const parts = formatter.formatToParts(date);
+    const hourPart = parts.find((p) => p.type === 'hour')?.value;
+    const weekdayPart = parts.find((p) => p.type === 'weekday')?.value;
+
+    const dayMap: Record<string, number> = {
+      Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6
+    };
+
+    const hour = hourPart !== undefined ? parseInt(hourPart, 10) : date.getHours();
+    const day = weekdayPart && dayMap[weekdayPart] !== undefined ? dayMap[weekdayPart] : date.getDay();
+
+    return { hour, day };
+  } catch {
+    return { hour: date.getHours(), day: date.getDay() };
+  }
+}
+
+/**
+ * Evalúa si la fecha/hora actual se encuentra dentro de la ventana horaria de sonido permitida.
+ */
+export function isWithinBuckySoundWindow(date: Date = new Date(), config: BuckySoundWindowConfig = BUCKY_SOUND_WINDOW_CONFIG): boolean {
+  const { hour, day } = getHourInTimeZone(date, config.timeZone);
+  if (!config.workingDays.includes(day)) {
+    return false;
+  }
+  return hour >= config.startHour && hour < config.endHour;
+}
+
+// Alias de compatibilidad
+export const isWithinWorkingHours = isWithinBuckySoundWindow;
+
+/**
+ * Determina si Bucky tiene permitido emitir sonido:
+ * Debe cumplirse: (1) no estar silenciado por el usuario Y (2) encontrarse dentro de la ventana UX.
+ */
+export function isBuckySoundAllowed(date: Date = new Date()): boolean {
+  try {
+    const isMuted = localStorage.getItem('orbit_bucky_muted') === 'true';
+    if (isMuted) return false;
+    return isWithinBuckySoundWindow(date);
+  } catch {
+    return false;
+  }
+}
 
 export const playBuckySound = (
   type: 'feed' | 'tickle' | 'pop' | 'celebrate' | 'wave' | 'yawn' | 'stretch' | 'exercise' | 'hydrate' | 'step' | 'alert' | 'jump' | 'rest' | 'focus' | 'stand' | 'happy' | 'clap' | 'sleep' | 'sad' | 'tired'
 ) => {
   try {
-    const isMuted = localStorage.getItem('orbit_bucky_muted') === 'true';
-    if (isMuted) return;
+    if (!isBuckySoundAllowed()) return;
 
     const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (!AudioContextClass) return;

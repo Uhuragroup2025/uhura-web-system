@@ -629,7 +629,7 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#f8fafc] hover:bg-[#501f92] text-[#501f92] hover:text-white border border-[#e2e8f0] disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold transition-all cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>+ Crear Proyecto</span>
+            <span>Crear proyecto</span>
           </button>
         </div>
 

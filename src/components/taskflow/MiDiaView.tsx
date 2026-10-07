@@ -1004,7 +1004,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold shadow-xs transition-all cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>Cargar horas manual</span>
+                    <span>Cargar horas</span>
                   </button>
                 </div>
               </div>
@@ -1146,7 +1146,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                           onClick={() => onNavigateToView('timesheets')}
                           className="text-[11px] font-semibold text-[#501f92] hover:underline cursor-pointer inline-flex items-center gap-1"
                         >
-                          <span>Ver historial completo de semanas anteriores en Timesheets</span>
+                          <span>Ver historial en Timesheets</span>
                           <ArrowRight className="w-3 h-3" />
                         </button>
                       </div>

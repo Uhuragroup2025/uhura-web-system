@@ -597,7 +597,7 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
                 className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#501f92] hover:bg-[#381566] text-white rounded-xl text-xs font-semibold shadow-xs transition-all cursor-pointer"
               >
                 <Save className="w-3.5 h-3.5" />
-                <span>Guardar Cambios del Perfil</span>
+                <span>Guardar cambios</span>
               </button>
               <button
                 type="button"
@@ -911,7 +911,7 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
               className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#501f92] hover:bg-[#381566] text-white rounded-xl text-xs font-semibold shadow-xs transition-all cursor-pointer"
             >
               <Save className="w-4 h-4" />
-              <span>Guardar Configuración de Perfil & Acceso</span>
+              <span>Guardar cambios</span>
             </button>
             {isEditing && (
               <button

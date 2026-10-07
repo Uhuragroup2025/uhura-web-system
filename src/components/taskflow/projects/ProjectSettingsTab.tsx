@@ -245,7 +245,7 @@ export const ProjectSettingsTab: React.FC<ProjectSettingsTabProps> = ({
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold shadow-md cursor-pointer transition-all"
         >
           <Save className="w-4 h-4" />
-          <span>Guardar Cambios de Configuración</span>
+          <span>Guardar cambios</span>
         </button>
       </div>
     </form>

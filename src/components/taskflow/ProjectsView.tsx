@@ -550,7 +550,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                 className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Nueva Tarea</span>
+                <span>Nueva tarea</span>
               </button>
             )}
 
@@ -935,7 +935,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#f8fafc] hover:bg-[#f1f5f9] text-[#0f172a] text-xs font-bold border border-[#e2e8f0] transition-colors cursor-pointer whitespace-nowrap"
                   >
                     <Upload className="w-3.5 h-3.5 text-[#501f92]" />
-                    <span>Importar Backlog</span>
+                    <span>Importar backlog</span>
                   </button>
 
                   <button
@@ -943,7 +943,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold transition-all shadow-xs cursor-pointer whitespace-nowrap"
                   >
                     <Settings2 className="w-3.5 h-3.5" />
-                    <span>Configurar Fases</span>
+                    <span>Configurar fases</span>
                   </button>
                 </div>
               </div>

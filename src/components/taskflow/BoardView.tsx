@@ -158,7 +158,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
               className="px-3.5 py-1.5 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Nueva Tarea</span>
+              <span>Nueva tarea</span>
             </button>
           )}
         </div>
@@ -276,7 +276,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
                 className="px-3.5 py-1.5 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs whitespace-nowrap"
               >
                 <Plus className="w-3.5 h-3.5 shrink-0" />
-                <span>Nueva Tarea</span>
+                <span>Nueva tarea</span>
               </button>
             )}
           </div>

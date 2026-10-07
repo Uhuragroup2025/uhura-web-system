@@ -468,7 +468,7 @@ Nota: El líder responsable de scoping (${opportunity.leadUserName || 'Líder de
               className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-[#501f92] hover:bg-[#3b156b] text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
             >
               <CheckCircle2 className="w-4 h-4 text-[#d4ff4a]" />
-              <span>Guardar SOW en Oportunidad</span>
+              <span>Guardar SOW</span>
             </button>
           </div>
         </div>

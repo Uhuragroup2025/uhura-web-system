@@ -344,7 +344,7 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
                 className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#f2ecfb] text-[#501f92] hover:bg-[#501f92] hover:text-white font-bold text-xs transition-colors cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>+ Agregar Razón Social</span>
+                <span>Agregar razón social</span>
               </button>
             </div>
 
@@ -456,7 +456,7 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
                 className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#f2ecfb] text-[#501f92] hover:bg-[#501f92] hover:text-white font-bold text-xs transition-colors cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>+ Agregar Contacto</span>
+                <span>Agregar contacto</span>
               </button>
             </div>
 
@@ -572,7 +572,7 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
               className="px-5 py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] disabled:opacity-50 text-white font-bold shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
             >
               <Check className="w-4 h-4" />
-              <span>Guardar Cambios</span>
+              <span>Guardar cambios</span>
             </button>
           </div>
         </form>

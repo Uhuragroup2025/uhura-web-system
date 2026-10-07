@@ -217,7 +217,7 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
               }`}
             >
               <User className="w-3.5 h-3.5 shrink-0" />
-              <span>Mis Tareas</span>
+              <span>Mis tareas</span>
             </button>
             <button
               onClick={() => setViewMode('team')}
@@ -238,7 +238,7 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 sm:py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold shadow-2xs transition-all cursor-pointer shrink-0 whitespace-nowrap"
             >
               <Plus className="w-3.5 h-3.5 shrink-0" />
-              <span>Nueva Tarea</span>
+              <span>Nueva tarea</span>
             </button>
           )}
         </div>

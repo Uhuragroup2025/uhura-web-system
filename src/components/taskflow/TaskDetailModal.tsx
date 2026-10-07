@@ -2220,7 +2220,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                             onClick={() => setIsAddingCriterion(!isAddingCriterion)}
                             className="text-[11px] font-bold text-[#501f92] hover:underline cursor-pointer"
                           >
-                            + Agregar
+                            Agregar
                           </button>
                         </div>
 
@@ -3543,7 +3543,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                       }}
                       className="w-full py-1.5 rounded-lg bg-[#501f92] hover:bg-[#381566] text-white font-bold text-xs cursor-pointer shadow-xs transition-colors"
                     >
-                      Guardar Retrabajo
+                      Guardar retrabajo
                     </button>
                   </div>
                 )}

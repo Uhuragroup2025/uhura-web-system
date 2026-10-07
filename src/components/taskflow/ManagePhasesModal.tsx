@@ -318,7 +318,7 @@ export const ManagePhasesModal: React.FC<ManagePhasesModalProps> = ({
             onClick={handleSave}
             className="px-5 py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold shadow-xs transition-all cursor-pointer"
           >
-            Guardar Fases
+            Guardar fases
           </button>
         </div>
       </div>

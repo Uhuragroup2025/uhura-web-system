@@ -141,7 +141,7 @@ export const ProjectDeliverablesTab: React.FC<ProjectDeliverablesTabProps> = ({
           className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold shadow-xs cursor-pointer self-start sm:self-auto transition-all"
         >
           <Plus className="w-3.5 h-3.5" />
-          <span>Añadir Servicio</span>
+          <span>Añadir servicio</span>
         </button>
       </div>
 
@@ -156,7 +156,7 @@ export const ProjectDeliverablesTab: React.FC<ProjectDeliverablesTabProps> = ({
               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#501f92] text-white text-xs font-bold cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Crear el primer servicio</span>
+              <span>Crear servicio</span>
             </button>
           </div>
         ) : (
@@ -440,7 +440,7 @@ export const ProjectDeliverablesTab: React.FC<ProjectDeliverablesTabProps> = ({
                 disabled={!delName.trim()}
                 className="px-4 py-2 rounded-xl bg-[#501f92] text-white text-xs font-bold hover:bg-[#381566] disabled:opacity-50 cursor-pointer shadow-xs"
               >
-                {editingDeliverable ? 'Guardar Cambios' : 'Crear Servicio'}
+                {editingDeliverable ? 'Guardar cambios' : 'Crear servicio'}
               </button>
             </div>
           </div>

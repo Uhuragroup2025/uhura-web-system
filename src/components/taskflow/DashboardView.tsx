@@ -198,7 +198,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white text-[#0f172a] border border-[#e2e8f0] hover:bg-[#f8fafc] hover:border-[#cbd5e1] text-xs font-semibold shadow-2xs transition-all cursor-pointer shrink-0 whitespace-nowrap"
             >
               <Target className="w-3.5 h-3.5 text-[#501f92]" />
-              <span>{monthlyTarget ? 'Ajustar Meta' : 'Definir Meta'}</span>
+              <span>{monthlyTarget ? 'Ajustar meta' : 'Definir meta'}</span>
             </button>
           )}
 
@@ -227,7 +227,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold shadow-xs transition-all cursor-pointer shrink-0 whitespace-nowrap"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Cargar Horas (+)</span>
+              <span>Cargar horas</span>
             </button>
           )}
         </div>
@@ -1628,7 +1628,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 onClick={handleSaveTarget}
                 className="px-4 py-2 bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer transition-colors"
               >
-                Guardar Meta
+                Guardar meta
               </button>
             </div>
           </div>

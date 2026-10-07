@@ -42,7 +42,7 @@ import {
   Power
 } from 'lucide-react';
 import { OrbitView, TaskItem, ActiveTimerState, UserItem, TeamAbsenceEvent } from './types';
-import { resolveBuckyState } from './buckyEngine';
+import { resolveBuckyState, isBuckySoundAllowed } from './buckyEngine';
 import { BuckyLabModal } from './BuckyLabModal';
 import { UhuraLogo } from '../ui/UhuraLogo';
 import { processTeamLifeEvents, resolveBuckyTeamLifeSpeech } from './copilot/teamLifeEngine';
@@ -93,6 +93,7 @@ export type BuckyAction =
 // Sound synthesizer using Web Audio API (Zero dependencies, gentle ambient sounds)
 const playChime = (type: 'feed' | 'tickle' | 'pop' | 'celebrate' | 'wave' | 'yawn' | 'stretch' | 'exercise' | 'hydrate' | 'step' | 'alert' | 'jump' | 'rest' | 'focus' | 'stand' | 'happy' | 'clap' | 'sleep' | 'sad' | 'tired') => {
   try {
+    if (!isBuckySoundAllowed()) return;
     const AudioContext = window.AudioContext || (window as unknown as { webkitAudioContext: typeof window.AudioContext }).webkitAudioContext;
     if (!AudioContext) return;
     const ctx = new AudioContext();
@@ -355,7 +356,21 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
 
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
-  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('orbit_bucky_muted') !== 'true';
+    } catch {
+      return true;
+    }
+  });
+
+  const handleToggleSound = () => {
+    const next = !soundEnabled;
+    setSoundEnabled(next);
+    try {
+      localStorage.setItem('orbit_bucky_muted', String(!next));
+    } catch {}
+  };
   const [speechBubbleText, setSpeechBubbleText] = useState<string | null>(null);
   const [isBuckyLabOpen, setIsBuckyLabOpen] = useState(false);
   const [isTeamLifeModalOpen, setIsTeamLifeModalOpen] = useState(false);
@@ -529,9 +544,9 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
 
   const getBeaverSizeClass = () => {
     if (isExpandedPose) {
-      return 'h-[125px] sm:h-[140px]';
+      return 'h-[144px] sm:h-[160px]';
     }
-    return 'h-[115px] sm:h-[130px]';
+    return 'h-[132px] sm:h-[150px]';
   };
 
   /**
@@ -1381,9 +1396,10 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
               {/* Sound Toggle */}
               <button
                 type="button"
-                onClick={() => setSoundEnabled(!soundEnabled)}
+                onClick={handleToggleSound}
                 className="p-1.5 rounded-lg hover:bg-white/10 text-white/70 hover:text-white cursor-pointer transition-colors"
-                title={soundEnabled ? 'Silenciar efectos' : 'Activar efectos'}
+                title={soundEnabled ? 'Desactivar sonido' : 'Activar sonido'}
+                aria-label={soundEnabled ? 'Desactivar sonido' : 'Activar sonido'}
               >
                 {soundEnabled ? (
                   <Volume2 className="w-3.5 h-3.5 text-[#d4ff4a]" />

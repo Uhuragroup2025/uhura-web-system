@@ -225,7 +225,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold shadow-2xs transition-all cursor-pointer shrink-0"
           >
             <Plus className="w-4 h-4" />
-            <span>+ Nueva Cuenta</span>
+            <span>Nueva cuenta</span>
           </button>
         </div>
       </div>

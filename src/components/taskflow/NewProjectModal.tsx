@@ -1146,7 +1146,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                                   >
                                     <UserPlus className="w-3.5 h-3.5 text-[#501f92]" />
                                     <span>
-                                      {assignedMembers.length === 0 ? '+ Asignar Colaborador' : '+ Agregar otro'}
+                                      {assignedMembers.length === 0 ? 'Asignar colaborador' : 'Agregar otro'}
                                     </span>
                                   </button>
                                 </div>
@@ -1469,7 +1469,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                   onClick={() => handleSubmit('Planificación')}
                   className="px-4 py-2 rounded-xl border border-[#501f92] text-[#501f92] hover:bg-[#501f92]/5 text-xs font-bold transition-colors cursor-pointer"
                 >
-                  Guardar como Borrador
+                  Guardar borrador
                 </button>
                 <button
                   type="button"
@@ -1477,7 +1477,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                   className="px-5 py-2 rounded-xl bg-[#501f92] hover:bg-[#3d1572] text-white text-xs font-bold transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
                 >
                   <Check className="w-4 h-4" />
-                  <span>Crear e Iniciar Proyecto</span>
+                  <span>Crear e iniciar proyecto</span>
                 </button>
               </div>
             )}

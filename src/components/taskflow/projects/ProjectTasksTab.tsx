@@ -590,7 +590,7 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
             className="px-4 py-2 text-xs font-bold text-white bg-[#501f92] hover:bg-[#3f1675] rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Nueva Tarea</span>
+            <span>Nueva tarea</span>
           </button>
         </div>
       </div>
@@ -1029,7 +1029,7 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
             <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-3">
               <div>
                 <h3 className="font-extrabold text-base text-[#0f172a]">
-                  {editingTask ? 'Editar Tarea' : 'Nueva Tarea Operativa'}
+                  {editingTask ? 'Editar tarea' : 'Nueva tarea'}
                 </h3>
                 <p className="text-xs text-[#64748b] mt-0.5">
                   Unidad atómica de ejecución. Descuenta horas del rol cotizado del entregable.
@@ -1322,7 +1322,7 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
                 disabled={!formTitle.trim() || !formDeliverableId || !formRoleId}
                 className="px-4 py-2 text-xs font-bold text-white bg-[#501f92] hover:bg-[#3f1675] disabled:opacity-50 rounded-xl shadow-xs cursor-pointer"
               >
-                {editingTask ? 'Guardar Cambios' : 'Crear Tarea'}
+                {editingTask ? 'Guardar cambios' : 'Crear tarea'}
               </button>
             </div>
           </div>
@@ -1374,7 +1374,7 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
                   blockingTask.isBlocked ? 'bg-[#10b981] hover:bg-[#059669]' : 'bg-[#dc2626] hover:bg-[#b91c1c]'
                 }`}
               >
-                {blockingTask.isBlocked ? 'Desbloquear Tarea' : 'Confirmar Bloqueo'}
+                {blockingTask.isBlocked ? 'Desbloquear tarea' : 'Confirmar bloqueo'}
               </button>
             </div>
           </div>

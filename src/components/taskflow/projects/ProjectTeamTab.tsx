@@ -990,7 +990,7 @@ export const ProjectTeamTab: React.FC<ProjectTeamTabProps> = ({
                 disabled={!formUserId || !formRoleId || formWeeklyHours <= 0}
                 className="px-4 py-2 text-xs font-bold text-white bg-[#501f92] hover:bg-[#3f1675] disabled:opacity-50 rounded-xl cursor-pointer shadow-xs"
               >
-                {editingAssignment ? 'Guardar Cambios' : 'Confirmar Asignación'}
+                {editingAssignment ? 'Guardar cambios' : 'Asignar'}
               </button>
             </div>
           </div>
@@ -1052,7 +1052,7 @@ export const ProjectTeamTab: React.FC<ProjectTeamTabProps> = ({
                 disabled={!stakeholderUserId}
                 className="px-4 py-2 text-xs font-bold text-white bg-[#501f92] hover:bg-[#3f1675] disabled:opacity-50 rounded-xl"
               >
-                Guardar Seguidor
+                Guardar seguidor
               </button>
             </div>
           </div>

@@ -329,7 +329,7 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
                 className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#f2ecfb] text-[#501f92] hover:bg-[#501f92] hover:text-white font-bold text-xs transition-colors cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>+ Agregar Razón Social</span>
+                <span>Agregar razón social</span>
               </button>
             </div>
 
@@ -445,7 +445,7 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
                 className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#f2ecfb] text-[#501f92] hover:bg-[#501f92] hover:text-white font-bold text-xs transition-colors cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>+ Agregar Contacto</span>
+                <span>Agregar contacto</span>
               </button>
             </div>
 

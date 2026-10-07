@@ -367,7 +367,7 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
             className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-[#475569] bg-white hover:bg-[#f8fafc] border border-[#cbd5e1] rounded-xl transition-colors cursor-pointer"
           >
             <Plus className="w-4 h-4 text-[#501f92]" />
-            <span>+ Agregar Alcance</span>
+            <span>Agregar alcance</span>
           </button>
 
           {onMarkScopeReady && (
@@ -548,7 +548,7 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
                       <div className="space-y-2 pt-1">
                         {del.backlogItems.length === 0 ? (
                           <div className="p-4 rounded-xl bg-[#f8fafc] border border-dashed border-[#cbd5e1] text-center text-xs text-[#64748b]">
-                            No hay actividades en este servicio. Haz clic en <strong>"+ Agregar Actividad"</strong> abajo.
+                            No hay actividades en este servicio. Haz clic en <strong>"Agregar actividad"</strong> abajo.
                           </div>
                         ) : (
                         del.backlogItems.map((act, actIdx) => {
@@ -675,7 +675,7 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
             className="w-full py-3.5 rounded-2xl border-2 border-dashed border-[#cbd5e1] hover:border-[#501f92] bg-white hover:bg-[#501f92]/5 text-xs font-bold text-[#501f92] flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs"
           >
             <Plus className="w-4 h-4" />
-            <span>+ Agregar Servicio</span>
+            <span>Agregar servicio</span>
           </button>
         </div>
 

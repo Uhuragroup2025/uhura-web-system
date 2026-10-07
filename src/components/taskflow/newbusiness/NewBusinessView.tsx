@@ -645,7 +645,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#501f92] hover:bg-[#3d1572] text-xs font-bold text-white shadow-xs transition-colors cursor-pointer"
               >
                 <Plus className="w-4 h-4 text-[#d4ff4a]" />
-                <span>+ Crear manualmente</span>
+                <span>Crear manualmente</span>
               </button>
             </div>
           </div>
@@ -973,7 +973,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
               title="Crear otra oportunidad de New Business"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>+ Nueva Oportunidad</span>
+              <span>Nueva oportunidad</span>
             </button>
           )}
         </div>
