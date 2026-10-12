@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   QuoteProposal,
   QuoteDeliverable,
@@ -24,8 +24,7 @@ import {
   ArrowRight,
   TrendingUp,
   AlertTriangle,
-  FolderPlus,
-  Calculator
+  FolderPlus
 } from 'lucide-react';
 
 interface BacklogScoperProps {
@@ -248,7 +247,22 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
     onUpdateQuote(recomputeQuoteRollups(updated));
   };
 
-  // Import template items into current quote
+  // Close modal on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isImportModalOpen) {
+        setIsImportModalOpen(false);
+      }
+    };
+    if (isImportModalOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isImportModalOpen]);
+
+  // Import template items into current quote (incremental import)
   const handleImportTemplate = () => {
     const tpl = templates.find((t) => t.id === selectedTemplateToImport);
     if (!tpl) return;
@@ -277,6 +291,20 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
         totalHoursRollup: 0
       };
     });
+
+    // UX: Incremental import keeps the first newly imported deliverable expanded,
+    // and collapses all subsequent newly imported deliverables.
+    const newCollapsedState: Record<string, boolean> = {};
+    importedDeliverables.forEach((del, idx) => {
+      if (idx > 0) {
+        newCollapsedState[del.id] = true;
+      }
+    });
+
+    setCollapsedDeliverables((prev) => ({
+      ...prev,
+      ...newCollapsedState
+    }));
 
     const updated = recomputeQuoteRollups([...quote.deliverables, ...importedDeliverables]);
     onUpdateQuote(updated);
@@ -348,7 +376,7 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
           </div>
         </div>
 
-        {/* Action Buttons: Import from Template, Add Scope & Mark Scope Ready */}
+        {/* Action Buttons: Import from Template & Mark Scope Ready */}
         <div className="flex items-center gap-2">
           {templates.length > 0 && (
             <button
@@ -361,37 +389,16 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
             </button>
           )}
 
-          <button
-            type="button"
-            onClick={handleAddDeliverable}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-[#475569] bg-white hover:bg-[#f8fafc] border border-[#cbd5e1] rounded-xl transition-colors cursor-pointer"
-          >
-            <Plus className="w-4 h-4 text-[#501f92]" />
-            <span>Agregar alcance</span>
-          </button>
-
           {onMarkScopeReady && (
             <button
               type="button"
               onClick={() => onMarkScopeReady(totalHours)}
               disabled={totalHours === 0}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-extrabold text-[#0f172a] bg-[#d4ff4a] hover:bg-[#bceb34] disabled:opacity-40 disabled:cursor-not-allowed rounded-xl transition-colors cursor-pointer shadow-xs border border-[#a3e635]"
-              title="Notificar a Comercial que el alcance técnico está listo para cotización y pricing"
+              title="Marcar que el dimensionamiento técnico está listo para Comercial"
             >
               <CheckCircle2 className="w-4 h-4 text-[#0f172a]" />
               <span>Marcar alcance listo ({totalHours}h)</span>
-            </button>
-          )}
-
-          {onGoToCalculator && (
-            <button
-              type="button"
-              onClick={onGoToCalculator}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-[#475569] bg-white hover:bg-[#f8fafc] border border-[#cbd5e1] rounded-xl transition-colors cursor-pointer shadow-2xs"
-              title="Revisar vista de cotización comercial"
-            >
-              <Calculator className="w-4 h-4 text-[#501f92]" />
-              <span>Cotizador</span>
             </button>
           )}
         </div>
@@ -407,27 +414,17 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-extrabold text-[#065f46] text-sm">
-                  Handoff Líder → Comercial Completado ({totalHours}h)
+                  Alcance técnico listo ({totalHours}h)
                 </span>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#10b981] text-white">
-                  Notificado a Comercial
+                  Alcance listo para Comercial
                 </span>
               </div>
               <p className="text-[#047857] mt-0.5">
-                El líder completó el dimensionamiento técnico ({allBacklogItems.length} actividades en {quote.deliverables.length} entregables). Notificación enviada a Comercial (<strong>{commercialOwner || 'Cata · Directora Comercial'}</strong>) para estructurar pricing, márgenes y condiciones comerciales sin bloquear la navegación del líder.
+                Dimensionamiento técnico completado ({allBacklogItems.length} actividades en {quote.deliverables.length} entregables). Listo para continuar con el proceso comercial (<strong>{commercialOwner || 'Comercial'}</strong>).
               </p>
             </div>
           </div>
-          {onGoToCalculator && (
-            <button
-              type="button"
-              onClick={onGoToCalculator}
-              className="px-3.5 py-2 rounded-xl bg-[#047857] hover:bg-[#065f46] text-white font-bold text-xs transition-colors cursor-pointer shrink-0 shadow-xs flex items-center gap-1.5 self-start sm:self-auto"
-            >
-              <Calculator className="w-3.5 h-3.5 text-[#d4ff4a]" />
-              <span>Ver Cotizador Comercial</span>
-            </button>
-          )}
         </div>
       )}
 
@@ -808,7 +805,7 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
             </p>
             <div className="pt-1 flex items-center gap-1.5 text-[10px] text-[#059669] font-bold">
               <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Rollup dinámico sincronizado con Calculadora Financiera</span>
+              <span>Rollup de horas consolidado para propuesta comercial</span>
             </div>
 
             {onGoToCalculator && (
@@ -817,9 +814,8 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
                 onClick={onGoToCalculator}
                 className="w-full mt-2 py-2 px-3 rounded-xl bg-white border border-[#501f92]/30 text-xs font-bold text-[#501f92] hover:bg-[#501f92]/5 transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
               >
-                <Calculator className="w-3.5 h-3.5" />
-                <span>Abrir Cotizador Financiero</span>
-                <ArrowRight className="w-3 h-3" />
+                <span>Continuar a Propuesta Comercial</span>
+                <ArrowRight className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
@@ -828,8 +824,14 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
 
       {/* Import Template Modal */}
       {isImportModalOpen && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-[#e2e8f0] p-6 space-y-4">
+        <div
+          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150"
+          onClick={() => setIsImportModalOpen(false)}
+        >
+          <div
+            className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-[#e2e8f0] p-6 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="p-2 rounded-xl bg-[#501f92]/10 text-[#501f92]">
@@ -847,7 +849,8 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
               <button
                 type="button"
                 onClick={() => setIsImportModalOpen(false)}
-                className="text-[#94a3b8] hover:text-[#0f172a] text-sm p-1 rounded-lg"
+                className="text-[#94a3b8] hover:text-[#0f172a] text-sm p-1 rounded-lg cursor-pointer"
+                aria-label="Cerrar modal"
               >
                 ✕
               </button>

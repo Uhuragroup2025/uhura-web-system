@@ -27,8 +27,6 @@ export const ManualTimeLogModal: React.FC<ManualTimeLogModalProps> = ({
   defaultTaskId,
   onSaveManualLog
 }) => {
-  if (!isOpen) return null;
-
   // Selected task state
   const [selectedTaskId, setSelectedTaskId] = useState<string>(
     defaultTaskId || ''
@@ -85,6 +83,8 @@ export const ManualTimeLogModal: React.FC<ManualTimeLogModalProps> = ({
       searchResults: results
     };
   }, [tasks, searchQuery]);
+
+  if (!isOpen) return null;
 
   const handleSelectTask = (task: TaskItem) => {
     setSelectedTaskId(task.id);

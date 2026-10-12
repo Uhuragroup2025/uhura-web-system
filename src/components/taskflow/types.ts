@@ -1,4 +1,21 @@
-import type { QuoteFinancialConfig, QuoteFinancialSummary } from './financial/types';
+// Tipos de compatibilidad legacy para cotizaciones (tras retiro de Calculadora 2026)
+export interface LegacyQuoteFinancialConfig {
+  targetMarginPercent?: number;
+  taxPercent?: number;
+  discountPercent?: number;
+  [key: string]: any;
+}
+
+export interface LegacyQuoteFinancialSummary {
+  totalQuotedHours?: number;
+  subtotalBeforeTaxCOP?: number;
+  taxCOP?: number;
+  finalPriceWithTaxCOP?: number;
+  [key: string]: any;
+}
+
+export type QuoteFinancialConfig = LegacyQuoteFinancialConfig;
+export type QuoteFinancialSummary = LegacyQuoteFinancialSummary;
 
 export type BuckyMascotState =
   | 'idle'       // respira, parpadea, mueve ligeramente la cola
@@ -339,7 +356,8 @@ export interface ProjectSummaryItem {
   areas?: string[];
   budgetedHours: number;      // Rollup derivado de deliverables o ciclo activo
   soldHours?: number;
-  soldValueCOP?: number;
+  soldValue?: number;         // Valor contractual acordado en la moneda original (soldCurrency)
+  soldValueCOP?: number;      // Valor real en COP únicamente si soldCurrency === 'COP' (undefined si es USD, nunca 0 ficticio)
   soldCurrency?: 'COP' | 'USD';
   startDate?: string;
   endDate?: string;
@@ -940,7 +958,7 @@ export interface UserCompensationHistoryEntry {
   effectiveFrom: string;           // Fecha inicio vigencia (YYYY-MM-DD)
   effectiveTo?: string | null;     // Fecha fin (null = vigente actual)
   baseSalaryCop: number;           // Salario base mensual en COP
-  benefitFactor: number;           // Factor prestacional (ej. 1.54)
+  benefitFactor: number;           // Factor prestacional definido por Finanzas
   changeReason?: string;           // ej. 'Ajuste anual', 'Ascenso', 'Ingreso inicial'
   approvedByUserId?: string;
 }
@@ -1280,8 +1298,9 @@ export interface ProductBacklogTemplate {
 }
 
 /**
- * Contrato preparado para futura integración de la Calculadora Comercial (Sheets)
- * No inventa tarifas, salarios, markup ni márgenes.
+ * Contrato de interoperabilidad con Google Sheets de Finanzas.
+ * Finanzas / Sheets gobierna fórmulas salariales, overhead y márgenes;
+ * Orbit consolida el rollup de horas por rol presupuestadas y registra el valor cotizado.
  */
 export interface CommercialCalculatorContract {
   quoteId: string;
@@ -1402,10 +1421,14 @@ export interface QuoteProposal {
   status: QuoteProposalStatus;    // 'draft' | 'internal_review' | 'sent' | 'approved' | 'rejected' | 'archived'
   deliverables: QuoteDeliverable[];
   totalHoursRollup: number;       // Sumatoria total de horas cotizadas
-  totalQuotedValueCOP?: number;
+  totalQuotedValue?: number;      // Valor total cotizado (en la moneda especificada en currency)
+  totalQuotedValueCOP?: number;   // Compatibilidad legacy si la moneda es COP
   currency?: 'COP' | 'USD';
-  financialConfig?: QuoteFinancialConfig;
-  financialSummary?: QuoteFinancialSummary;
+  externalFinanceSheetUrl?: string; // Enlace al Sheet de Finanzas donde se calculó externamente
+  commercialProposalUrl?: string;   // Enlace o PDF de la propuesta comercial enviada
+  commercialNotes?: string;         // Supuestos y condiciones comerciales breves
+  financialConfig?: QuoteFinancialConfig; // Deprecado: conservado para compatibilidad
+  financialSummary?: QuoteFinancialSummary; // Deprecado: conservado para compatibilidad
   approvalNotes?: string;
   approvedAt?: string;
   approvedByUserId?: string;
@@ -1511,8 +1534,9 @@ export interface NewBusinessOpportunity {
   contactEmail?: string;
   contactPhone?: string;
 
-  leadUserId: string;             // Responsable de preventa / comercial en Uhura
+  leadUserId: string;             // Responsable principal de preventa / comercial en Uhura (compatibilidad)
   leadUserName?: string;
+  leadUserIds?: string[];         // Líderes responsables del scoping (uno o varios con igual responsabilidad)
   commercialOwner?: string;       // Owner comercial que asigna y lidera la negociación
   handoffHours?: number;          // SLA de handoff comercial -> líder (default 36h, editable)
   handoffDeadline?: string;       // Deadline ISO calculado a partir de handoffHours
@@ -1522,6 +1546,8 @@ export interface NewBusinessOpportunity {
   hubspotDealUrl?: string | null;     // URL directa al deal en HubSpot
   hubspotCompanyId?: string | null;   // Referencia a Empresa en HubSpot
   hubspotContactId?: string | null;   // Referencia a Contacto en HubSpot
+  hubspotDealStage?: string | null;   // Etapa del Deal en HubSpot (ej. 'closedwon', 'proposal_sent')
+  isHubspotConnected?: boolean;       // True si la oportunidad está sincronizada activamente con la API real de HubSpot
 
   // Discovery, Brief y Drive
   discoveryNotes?: string;

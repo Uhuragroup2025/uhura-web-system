@@ -19,8 +19,7 @@ import { NewOpportunityModal } from './NewOpportunityModal';
 import { ConvertOpportunityModal } from './ConvertOpportunityModal';
 import { SOWModal } from './SOWModal';
 import { UHURA_LEGAL_SIGNER } from './slaEngine';
-import { CommercialCalculator } from '../financial/CommercialCalculator';
-import { computeQuoteFinancials, formatFinancialCurrency } from '../financial/financialEngine';
+import { formatCurrency, formatHours } from '../../../utils/formatters';
 import {
   Target,
   Plus,
@@ -56,7 +55,10 @@ import {
   Copy,
   Printer,
   Play,
-  Sliders
+  Sliders,
+  X,
+  Trophy,
+  Lock
 } from 'lucide-react';
 
 interface NewBusinessViewProps {
@@ -65,7 +67,7 @@ interface NewBusinessViewProps {
   templates: ProductBacklogTemplate[];
   onUpdateOpportunity: (updatedOpp: NewBusinessOpportunity) => void;
   onCreateOpportunity: (newOpp: NewBusinessOpportunity) => void;
-  onNavigateToView?: (view: any) => void;
+  onNavigateToView?: (view: any, targetId?: string | null) => void;
   onConvertOpportunityToProject?: (payload: {
     opportunity: NewBusinessOpportunity;
     selectedQuote: QuoteProposal;
@@ -109,7 +111,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
   const canEditOpp = can(currentUser, 'edit', 'new-business') || isNotCollaboratorOrPending;
 
   const [selectedOppId, setSelectedOppId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'resumen' | 'scoping' | 'cotizacion' | 'documentos' | 'historial'>('resumen');
+  const [activeTab, setActiveTab] = useState<'resumen' | 'scoping' | 'documentos' | 'historial'>('resumen');
   const [isNewOppModalOpen, setIsNewOppModalOpen] = useState<boolean>(false);
   const [oppModalMode, setOppModalMode] = useState<'hubspot' | 'manual'>('hubspot');
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
@@ -117,8 +119,36 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
   const [isSowModalOpen, setIsSowModalOpen] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'quoting' | 'won'>('all');
-  const [conversionSuccessMessage, setConversionSuccessMessage] = useState<string | null>(null);
+  const [bannerNotification, setBannerNotification] = useState<{
+    message: string;
+    showProjectLink?: boolean;
+    actionButton?: {
+      label: string;
+      onClick: () => void;
+    };
+  } | null>(null);
   const [copiedNotification, setCopiedNotification] = useState<string | null>(null);
+
+  // Helper de notificación unificado con auto-dismiss
+  const setConversionSuccessMessage = (
+    message: string | null,
+    options?: {
+      showProjectLink?: boolean;
+      actionButton?: { label: string; onClick: () => void };
+      timeoutMs?: number;
+    }
+  ) => {
+    if (!message) {
+      setBannerNotification(null);
+    } else {
+      setBannerNotification({
+        message,
+        showProjectLink: options?.showProjectLink ?? false,
+        actionButton: options?.actionButton
+      });
+      setTimeout(() => setBannerNotification(null), options?.timeoutMs || 6000);
+    }
+  };
 
   // Solicitud de ajustes (V2) modal confirmation
   const [showAdjustmentsModal, setShowAdjustmentsModal] = useState<boolean>(false);
@@ -185,11 +215,34 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
 
   const isScopingTimerRunning = activeTimer?.taskId === scopingTask?.id;
 
-  // Dynamic leader name (never hardcoded Paola)
-  const currentLeadDisplayName =
-    activeOpp?.leadUserName ||
-    users.find((u) => u.id === activeOpp?.leadUserId)?.name ||
-    'Sin asignar';
+  // Líder productivo actual (1 líder con persistencia canónica en leadUserId)
+  const assignedLeadUser = useMemo(() => {
+    return users.find((u) => u.id === activeOpp?.leadUserId);
+  }, [activeOpp?.leadUserId, users]);
+
+  const currentLeadDisplayName = useMemo(() => {
+    return (
+      assignedLeadUser?.name ||
+      activeOpp?.leadUserName?.split('·')[0]?.trim() ||
+      'Sin asignar'
+    );
+  }, [assignedLeadUser, activeOpp?.leadUserName]);
+
+  // Preparación interna desacoplada (futuro soporte multi-lead cuando backend soporte relación 1..N)
+  const currentLeadUserIds: string[] = useMemo(() => {
+    if (Array.isArray(activeOpp?.leadUserIds) && activeOpp.leadUserIds.length > 0) {
+      return activeOpp.leadUserIds;
+    }
+    return activeOpp?.leadUserId ? [activeOpp.leadUserId] : [];
+  }, [activeOpp?.leadUserIds, activeOpp?.leadUserId]);
+
+  // HubSpot connection & simulation controls:
+  // - En producción (import.meta.env.PROD) la simulación está deshabilitada/oculta.
+  // - Si la oportunidad está conectada a HubSpot real (isHubspotConnected = true), la simulación está bloqueada.
+  // - En desarrollo/staging/demo desconectado, permite simular 'closedwon' como herramienta de prototipado.
+  const isDevEnvironment = import.meta.env.DEV || !import.meta.env.PROD;
+  const isHubspotRealConnected = !!activeOpp?.isHubspotConnected;
+  const canSimulateWon = isDevEnvironment && !isHubspotRealConnected;
 
   // Formalization Gates & Conversion eligibility
   const isWon = activeOpp?.status === 'won';
@@ -357,12 +410,13 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
     }
 
     setIsConvertModalOpen(false);
-    setConversionSuccessMessage(
-      `¡"${payload.projectName}" ha sido aprobado y activado como Cliente y Proyecto en Orbit!`
-    );
+    setBannerNotification({
+      message: `🎉 ¡"${payload.projectName}" ha sido aprobado y formalizado exitosamente como Proyecto en Orbit!`,
+      showProjectLink: true
+    });
     setTimeout(() => {
-      setConversionSuccessMessage(null);
-    }, 6000);
+      setBannerNotification(null);
+    }, 10000);
   };
 
   // Filter opportunities for catalog view
@@ -394,22 +448,41 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
   if (!selectedOppId || !activeOpp) {
     return (
       <div className="space-y-6 animate-in fade-in duration-200">
-        {/* Banner de Notificación de Éxito de Conversión */}
-        {conversionSuccessMessage && (
+        {/* Banner de Notificación Contextual */}
+        {bannerNotification && (
           <div className="p-4 rounded-2xl bg-[#ecfdf5] border border-[#a7f3d0] text-[#065f46] flex items-center justify-between gap-3 shadow-xs animate-in slide-in-from-top-2">
-            <div className="flex items-center gap-2.5">
-              <CheckCircle2 className="w-5 h-5 text-[#10b981]" />
-              <span className="text-xs font-bold">{conversionSuccessMessage}</span>
+            <div className="flex items-center gap-2.5 min-w-0">
+              <CheckCircle2 className="w-5 h-5 text-[#10b981] shrink-0" />
+              <span className="text-xs font-bold leading-relaxed">{bannerNotification.message}</span>
             </div>
-            {onNavigateToView && (
+            <div className="flex items-center gap-2 shrink-0">
+              {bannerNotification.actionButton && (
+                <button
+                  type="button"
+                  onClick={bannerNotification.actionButton.onClick}
+                  className="px-3 py-1.5 rounded-lg bg-[#501f92] hover:bg-[#3d1572] text-white text-xs font-bold transition-colors cursor-pointer shrink-0 shadow-2xs"
+                >
+                  {bannerNotification.actionButton.label}
+                </button>
+              )}
+              {bannerNotification.showProjectLink && onNavigateToView && (
+                <button
+                  type="button"
+                  onClick={() => onNavigateToView('proyectos', activeOpp?.convertedProjectId || undefined)}
+                  className="px-3 py-1.5 rounded-lg bg-[#10b981] hover:bg-[#059669] text-white text-xs font-bold transition-colors cursor-pointer shrink-0 shadow-2xs"
+                >
+                  Ver en Proyectos →
+                </button>
+              )}
               <button
                 type="button"
-                onClick={() => onNavigateToView('proyectos')}
-                className="px-3 py-1.5 rounded-lg bg-[#10b981] hover:bg-[#059669] text-white text-xs font-bold transition-colors cursor-pointer shrink-0"
+                onClick={() => setBannerNotification(null)}
+                className="p-1 rounded-lg hover:bg-[#d1fae5] text-[#065f46] cursor-pointer"
+                title="Cerrar notificación"
               >
-                Ver en Proyectos →
+                <X className="w-4 h-4" />
               </button>
-            )}
+            </div>
           </div>
         )}
 
@@ -929,22 +1002,41 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
   // =========================================================================
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
-      {/* Banner de Notificación de Éxito de Conversión */}
-      {conversionSuccessMessage && (
+      {/* Banner de Notificación Contextual */}
+      {bannerNotification && (
         <div className="p-4 rounded-2xl bg-[#ecfdf5] border border-[#a7f3d0] text-[#065f46] flex items-center justify-between gap-3 shadow-xs animate-in slide-in-from-top-2">
-          <div className="flex items-center gap-2.5">
-            <CheckCircle2 className="w-5 h-5 text-[#10b981]" />
-            <span className="text-xs font-bold">{conversionSuccessMessage}</span>
+          <div className="flex items-center gap-2.5 min-w-0">
+            <CheckCircle2 className="w-5 h-5 text-[#10b981] shrink-0" />
+            <span className="text-xs font-bold leading-relaxed">{bannerNotification.message}</span>
           </div>
-          {onNavigateToView && (
+          <div className="flex items-center gap-2 shrink-0">
+            {bannerNotification.actionButton && (
+              <button
+                type="button"
+                onClick={bannerNotification.actionButton.onClick}
+                className="px-3 py-1.5 rounded-lg bg-[#501f92] hover:bg-[#3d1572] text-white text-xs font-bold transition-colors cursor-pointer shrink-0 shadow-2xs"
+              >
+                {bannerNotification.actionButton.label}
+              </button>
+            )}
+            {bannerNotification.showProjectLink && onNavigateToView && (
+              <button
+                type="button"
+                onClick={() => onNavigateToView('proyectos', activeOpp.convertedProjectId || undefined)}
+                className="px-3 py-1.5 rounded-lg bg-[#10b981] hover:bg-[#059669] text-white text-xs font-bold transition-colors cursor-pointer shrink-0 shadow-2xs"
+              >
+                Ver en Proyectos →
+              </button>
+            )}
             <button
               type="button"
-              onClick={() => onNavigateToView('proyectos')}
-              className="px-3 py-1.5 rounded-lg bg-[#10b981] hover:bg-[#059669] text-white text-xs font-bold transition-colors cursor-pointer shrink-0"
+              onClick={() => setBannerNotification(null)}
+              className="p-1 rounded-lg hover:bg-[#d1fae5] text-[#065f46] cursor-pointer"
+              title="Cerrar notificación"
             >
-              Ver en Proyectos →
+              <X className="w-4 h-4" />
             </button>
-          )}
+          </div>
         </div>
       )}
 
@@ -962,20 +1054,6 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
           <span className="font-semibold text-[#475569]">{activeOpp.prospectAccountName}</span>
           <ChevronRight className="w-3.5 h-3.5 text-[#94a3b8]" />
           <span className="font-bold text-[#0f172a] truncate max-w-xs">{activeOpp.title}</span>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          {canCreateOpp && (
-            <button
-              type="button"
-              onClick={() => setIsNewOppModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold shadow-2xs transition-colors cursor-pointer"
-              title="Crear otra oportunidad de New Business"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Nueva oportunidad</span>
-            </button>
-          )}
         </div>
       </div>
 
@@ -1013,7 +1091,10 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
           <div className="flex items-center gap-4 text-xs text-[#64748b] flex-wrap">
             <div className="flex items-center gap-1 relative">
               <User className="w-3.5 h-3.5 text-[#501f92]" />
-              <span>Líder: <strong className="text-[#0f172a]">{currentLeadDisplayName.split('·')[0]?.trim()}</strong></span>
+              <span>
+                Líder:{' '}
+                <strong className="text-[#0f172a]">{currentLeadDisplayName}</strong>
+              </span>
               {canEditOpp && users.length > 0 && (
                 <button
                   type="button"
@@ -1021,44 +1102,63 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                   className="text-[10px] text-[#501f92] hover:underline font-bold ml-1 cursor-pointer"
                   title="Reasignar líder de scoping"
                 >
-                  (Cambiar)
+                  (Reasignar)
                 </button>
               )}
 
-              {/* Popover reasignar líder */}
+              {/* Popover reasignar líder (1 líder con persistencia real en leadUserId) */}
               {isReassigningLead && (
-                <div className="absolute top-6 left-0 z-30 bg-white rounded-xl shadow-xl border border-[#cbd5e1] p-2.5 w-60 space-y-2">
-                  <span className="text-[11px] font-bold text-[#0f172a] block">Reasignar Líder:</span>
-                  <select
-                    value={activeOpp.leadUserId}
-                    onChange={(e) => {
-                      const selectedUser = users.find((u) => u.id === e.target.value);
-                      if (selectedUser) {
-                        const updated: NewBusinessOpportunity = {
-                          ...activeOpp,
-                          leadUserId: selectedUser.id,
-                          leadUserName: `${selectedUser.name} · ${selectedUser.officialRole || selectedUser.jobTitle || 'Líder'}`,
-                          updatedAt: new Date().toISOString()
-                        };
-                        onUpdateOpportunity(updated);
-                        setIsReassigningLead(false);
-                      }
-                    }}
-                    className="w-full p-1.5 text-xs rounded-lg border border-[#cbd5e1] bg-white"
-                  >
-                    {users.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.name} ({u.officialRole || u.jobTitle || u.role})
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => setIsReassigningLead(false)}
-                    className="w-full py-1 text-[10px] text-[#64748b] hover:bg-[#f1f5f9] rounded font-bold"
-                  >
-                    Cerrar
-                  </button>
+                <div className="absolute top-6 left-0 z-30 bg-white rounded-xl shadow-xl border border-[#cbd5e1] p-3 w-64 space-y-2">
+                  <div className="flex items-center justify-between pb-1 border-b border-[#f1f5f9]">
+                    <span className="text-[11px] font-bold text-[#0f172a] block">
+                      Reasignar Líder:
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsReassigningLead(false)}
+                      className="text-[#94a3b8] hover:text-[#0f172a] text-xs font-bold"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-[#64748b]">
+                    Selecciona el líder responsable del scoping:
+                  </p>
+                  <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
+                    {users.map((u) => {
+                      const isSelected = activeOpp?.leadUserId === u.id;
+                      return (
+                        <button
+                          key={u.id}
+                          type="button"
+                          onClick={() => {
+                            const updated: NewBusinessOpportunity = {
+                              ...activeOpp,
+                              leadUserId: u.id,
+                              leadUserName: u.name,
+                              leadUserIds: [u.id],
+                              updatedAt: new Date().toISOString()
+                            };
+                            onUpdateOpportunity(updated);
+                            setIsReassigningLead(false);
+                          }}
+                          className={`w-full text-left flex items-center justify-between p-1.5 rounded-lg text-xs cursor-pointer transition-colors ${
+                            isSelected
+                              ? 'bg-[#501f92]/10 font-bold text-[#501f92]'
+                              : 'hover:bg-[#f8fafc] text-[#334155]'
+                          }`}
+                        >
+                          <span className="truncate">
+                            {u.name}{' '}
+                            <span className="text-[10px] text-[#64748b] font-normal">
+                              ({u.officialRole || u.jobTitle || u.role})
+                            </span>
+                          </span>
+                          {isSelected && <span className="text-[#501f92] text-xs font-bold">✓</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>
@@ -1171,7 +1271,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
             onNavigateToView && (
               <button
                 type="button"
-                onClick={() => onNavigateToView('proyectos')}
+                onClick={() => onNavigateToView('proyectos', activeOpp.convertedProjectId)}
                 className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#f1f5f9] hover:bg-[#e2e8f0] text-xs font-bold text-[#0f172a] transition-colors cursor-pointer"
               >
                 <FolderPlus className="w-4 h-4 text-[#10b981]" />
@@ -1179,36 +1279,59 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
               </button>
             )
           ) : (
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  if (canConvertToProject) {
-                    setIsConvertModalOpen(true);
-                  }
-                }}
-                disabled={!canConvertToProject}
-                className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-xs ${
-                  canConvertToProject
-                    ? 'bg-[#10b981] hover:bg-[#059669] text-white cursor-pointer shadow-sm'
-                    : 'bg-[#e2e8f0] text-[#94a3b8] cursor-not-allowed border border-[#cbd5e1]'
-                }`}
-                title={
-                  !isWon
-                    ? 'Convertir a Proyecto solo se habilita cuando la propuesta esté en estado GANADA'
-                    : !isFormalizationGatesMet
-                    ? `Gates pendientes: ${!contractGatePassed ? 'SOW/Contrato firmado. ' : ''}${!downPaymentGatePassed ? 'Anticipo recibido.' : ''}`
-                    : 'Convertir oportunidad y alcance formal a Proyecto y tareas en Orbit'
-                }
-              >
-                <CheckCircle2 className={`w-4 h-4 ${canConvertToProject ? 'text-white' : 'text-[#94a3b8]'}`} />
-                <span>Convertir a Proyecto</span>
-              </button>
+            <div className="flex items-center gap-2 flex-wrap">
+              {!isWon ? (
+                <>
+                  <span
+                    className="text-[10px] text-[#64748b] bg-[#f8fafc] px-2.5 py-1.5 rounded-xl border border-[#cbd5e1] font-medium flex items-center gap-1.5"
+                    title="La conversión a Proyecto requiere que el Deal alcance el estado Cerrado Ganado en HubSpot"
+                  >
+                    <Lock className="w-3 h-3 text-[#94a3b8]" />
+                    <span>HubSpot: Pendiente Cerrado Ganado</span>
+                  </span>
 
-              {!isWon && (
-                <span className="text-[10px] text-[#64748b] bg-[#f1f5f9] px-2 py-1 rounded-lg border border-[#e2e8f0] hidden sm:inline-block">
-                  Requiere: <strong>Ganada</strong>
-                </span>
+                  {canSimulateWon && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updated: NewBusinessOpportunity = {
+                          ...activeOpp,
+                          status: 'won',
+                          hubspotDealStage: 'closedwon',
+                          updatedAt: new Date().toISOString()
+                        };
+                        onUpdateOpportunity(updated);
+                        setBannerNotification({
+                          message: 'ℹ️ Simulación (Fallback Demo): Deal actualizado localmente a "Cerrado Ganado". Ahora puedes convertir la oportunidad a Proyecto.',
+                          showProjectLink: false
+                        });
+                        setTimeout(() => setBannerNotification(null), 6000);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-[#f8fafc] border border-[#cbd5e1] text-xs font-semibold text-[#475569] transition-all cursor-pointer shadow-2xs"
+                      title="Acción exclusiva de demo/entornos no productivos: simula la sincronización de HubSpot como 'Cerrado Ganado'"
+                    >
+                      <Trophy className="w-3.5 h-3.5 text-[#10b981]" />
+                      <span>Simular Cerrado Ganado (Demo)</span>
+                    </button>
+                  )}
+                </>
+              ) : (
+                <>
+                  <span className="text-[10px] text-[#047857] bg-[#ecfdf5] px-2.5 py-1.5 rounded-xl border border-[#a7f3d0] font-bold flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3 h-3 text-[#10b981]" />
+                    <span>HubSpot: Cerrado Ganado</span>
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsConvertModalOpen(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-xs bg-[#10b981] hover:bg-[#059669] text-white cursor-pointer shadow-sm"
+                    title="Convertir propuesta formalizada a Proyecto y tareas operativas en Orbit"
+                  >
+                    <CheckCircle2 className="w-4 h-4 text-white" />
+                    <span>Convertir a Proyecto</span>
+                  </button>
+                </>
               )}
 
               {isWon && !isFormalizationGatesMet && (
@@ -1216,9 +1339,9 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                   type="button"
                   onClick={() => setActiveTab('documentos')}
                   className="text-[10px] text-[#c2410c] bg-[#fff7ed] hover:bg-[#ffedd5] px-2 py-1 rounded-lg border border-[#fed7aa] font-bold cursor-pointer"
-                  title="Completar condiciones de inicio en Documentos"
+                  title="Revisar condiciones de inicio en Documentos"
                 >
-                  ⚠️ Gates pendientes ({[!contractGatePassed ? 'Contrato' : null, !downPaymentGatePassed ? 'Anticipo' : null].filter(Boolean).join(' + ')})
+                  ⚠️ Condiciones ({[!contractGatePassed ? 'Contrato' : null, !downPaymentGatePassed ? 'Anticipo' : null].filter(Boolean).join(' + ')})
                 </button>
               )}
             </div>
@@ -1226,7 +1349,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
         </div>
       </div>
 
-      {/* Navigation Tabs Simplificadas: Brief | Alcance | Cotización | Documentos | Historial */}
+      {/* Navigation Tabs: Resumen | Alcance y propuesta | Documentos | Historial */}
       <div className="flex items-center bg-[#f1f5f9] p-1 rounded-xl flex-wrap gap-1">
         <button
           type="button"
@@ -1238,7 +1361,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
           }`}
         >
           <FileText className="w-3.5 h-3.5" />
-          <span>Brief</span>
+          <span>Resumen</span>
         </button>
 
         <button
@@ -1252,19 +1375,6 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
         >
           <Layers className="w-3.5 h-3.5" />
           <span>Alcance</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('cotizacion')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
-            activeTab === 'cotizacion'
-              ? 'bg-white text-[#501f92] shadow-xs'
-              : 'text-[#64748b] hover:text-[#0f172a]'
-          }`}
-        >
-          <Calculator className="w-3.5 h-3.5" />
-          <span>Cotización</span>
         </button>
 
         <button
@@ -1634,44 +1744,60 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                   onNavigateToView && (
                     <button
                       type="button"
-                      onClick={() => onNavigateToView('proyectos')}
+                      onClick={() => onNavigateToView('proyectos', activeOpp.convertedProjectId)}
                       className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[#0f172a] text-xs font-bold transition-colors cursor-pointer"
                     >
                       <FolderPlus className="w-4 h-4 text-[#10b981]" />
                       <span>Ver Proyecto en Orbit</span>
                     </button>
                   )
-                ) : (
+                ) : isWon ? (
                   <button
                     type="button"
-                    onClick={() => {
-                      if (canConvertToProject) {
-                        setIsConvertModalOpen(true);
-                      }
-                    }}
-                    disabled={!canConvertToProject}
-                    className={`w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-colors shadow-xs ${
-                      canConvertToProject
-                        ? 'bg-[#10b981] hover:bg-[#059669] text-white cursor-pointer'
-                        : 'bg-[#e2e8f0] text-[#94a3b8] cursor-not-allowed border border-[#cbd5e1]'
-                    }`}
-                    title={
-                      !isWon
-                        ? 'Solo se habilita cuando la propuesta esté en estado GANADA'
-                        : !isFormalizationGatesMet
-                        ? 'Requiere completar SOW/Contrato y anticipo'
-                        : 'Convertir a proyecto operativo'
-                    }
+                    onClick={() => setIsConvertModalOpen(true)}
+                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-colors shadow-xs bg-[#10b981] hover:bg-[#059669] text-white cursor-pointer"
+                    title="Convertir propuesta ganada a Proyecto y tareas operativas en Orbit"
                   >
-                    <CheckCircle2 className={`w-4 h-4 ${canConvertToProject ? 'text-white' : 'text-[#94a3b8]'}`} />
-                    <span>
-                      {canConvertToProject
-                        ? 'Convertir a Cliente & Proyecto'
-                        : !isWon
-                        ? 'Convertir (Requiere estado Ganada)'
-                        : 'Convertir (Gates pendientes)'}
-                    </span>
+                    <CheckCircle2 className="w-4 h-4 text-white" />
+                    <span>Convertir a Cliente & Proyecto</span>
                   </button>
+                ) : (
+                  <div className="p-3 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] text-center space-y-2">
+                    <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-[#475569]">
+                      <Lock className="w-3.5 h-3.5 text-[#94a3b8]" />
+                      <span>Conversión sujeta a cierre comercial</span>
+                    </div>
+                    <p className="text-[11px] text-[#64748b] leading-tight">
+                      HubSpot es la fuente de verdad comercial. La conversión a Proyecto se habilita al pasar el Deal a <strong>Cerrado Ganado</strong>.
+                    </p>
+                    {canSimulateWon ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated: NewBusinessOpportunity = {
+                            ...activeOpp,
+                            status: 'won',
+                            hubspotDealStage: 'closedwon',
+                            updatedAt: new Date().toISOString()
+                          };
+                          onUpdateOpportunity(updated);
+                          setConversionSuccessMessage(
+                            'ℹ️ Simulación (Fallback Demo): Deal actualizado a "Cerrado Ganado". Ahora puedes convertir la oportunidad a Proyecto.',
+                            { timeoutMs: 6000 }
+                          );
+                        }}
+                        className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-[#f1f5f9] border border-[#cbd5e1] text-[11px] font-semibold text-[#475569] transition-all cursor-pointer shadow-2xs"
+                        title="Acción exclusiva de demo/entornos no productivos: simula el cierre ganado de HubSpot"
+                      >
+                        <Trophy className="w-3.5 h-3.5 text-[#10b981]" />
+                        <span>Simular 'Cerrado Ganado' en HubSpot (Demo)</span>
+                      </button>
+                    ) : isHubspotRealConnected ? (
+                      <p className="text-[10px] text-[#047857] bg-[#ecfdf5] p-2 rounded-lg border border-[#a7f3d0]">
+                        Sincronización activa con HubSpot: el estado cambiará automáticamente cuando el deal sea marcado como Closed Won en el CRM.
+                      </p>
+                    ) : null}
+                  </div>
                 )}
               </div>
             </div>
@@ -1793,10 +1919,10 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setActiveTab('cotizacion')}
+                  onClick={() => setActiveTab('scoping')}
                   className="px-3 py-1.5 rounded-lg bg-[#501f92] hover:bg-[#3d1572] text-xs font-bold text-white transition-colors cursor-pointer"
                 >
-                  Ver Calculadora Financiera →
+                  Ver Alcance y Propuesta →
                 </button>
               </div>
             </div>
@@ -1823,48 +1949,264 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 2: ALCANCE */}
+      {/* TAB 2: ALCANCE Y PROPUESTA */}
       {/* ========================================================================= */}
       {activeTab === 'scoping' && activeQuote && (
-        <BacklogScoper
-          quote={activeQuote}
-          allQuotes={activeOpp.quotes}
-          opportunityTitle={activeOpp.title}
-          prospectName={activeOpp.prospectAccountName}
-          onSelectQuoteVersion={(quoteId) => setActiveQuoteId(quoteId)}
-          onCreateNewQuoteVersion={(baseQuote) => handleCreateNewQuoteVersion(baseQuote)}
-          templates={templates}
-          onUpdateQuote={handleUpdateQuote}
-          onGoToCalculator={() => setActiveTab('cotizacion')}
-          onMarkScopeReady={(totalHours) => {
-            const updatedOpp: NewBusinessOpportunity = {
-              ...activeOpp,
-              status: 'internal_review',
-              updatedAt: new Date().toISOString()
-            };
-            onUpdateOpportunity(updatedOpp);
-            // Non-forcing handoff: No forzar al líder a continuar automáticamente con pricing
-            setConversionSuccessMessage(`✅ Handoff Líder → Comercial enviado: Alcance dimensionado (${totalHours}h). Notificado a Comercial (${activeOpp.commercialOwner || 'Cata · Directora Comercial'}) para pricing y condiciones.`);
-            setTimeout(() => setConversionSuccessMessage(null), 6000);
-          }}
-          opportunityStatus={activeOpp.status}
-          commercialOwner={activeOpp.commercialOwner}
-        />
-      )}
+        <div className="space-y-6 animate-in fade-in duration-150">
+          {/* Bloque 1: Alcance Técnico */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 px-1">
+              <span className="p-1.5 rounded-lg bg-[#501f92]/10 text-[#501f92]">
+                <Layers className="w-4 h-4" />
+              </span>
+              <div>
+                <h3 className="text-sm font-bold text-[#0f172a]">
+                  Alcance técnico
+                </h3>
+                <p className="text-[11px] text-[#64748b]">
+                  Frentes, entregables y actividades con horas por rol estimadas por el equipo líder.
+                </p>
+              </div>
+            </div>
 
-      {/* ========================================================================= */}
-      {/* TAB 3: COTIZACIÓN (Calculadora Comercial) */}
-      {/* ========================================================================= */}
-      {activeTab === 'cotizacion' && activeQuote && (
-        <CommercialCalculator
-          quote={activeQuote}
-          allQuotes={activeOpp.quotes}
-          opportunityTitle={activeOpp.title}
-          prospectName={activeOpp.prospectAccountName}
-          onUpdateQuote={handleUpdateQuote}
-          onSelectQuoteVersion={(quoteId) => setActiveQuoteId(quoteId)}
-          onGoToBacklogScoping={() => setActiveTab('scoping')}
-        />
+            <BacklogScoper
+              quote={activeQuote}
+              allQuotes={activeOpp.quotes}
+              opportunityTitle={activeOpp.title}
+              prospectName={activeOpp.prospectAccountName}
+              onSelectQuoteVersion={(quoteId) => setActiveQuoteId(quoteId)}
+              onCreateNewQuoteVersion={(baseQuote) => handleCreateNewQuoteVersion(baseQuote)}
+              templates={templates}
+              onUpdateQuote={handleUpdateQuote}
+              onGoToCalculator={() => {
+                const el = document.getElementById('commercial-proposal-block');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              }}
+              onMarkScopeReady={(totalHours) => {
+                const updatedOpp: NewBusinessOpportunity = {
+                  ...activeOpp,
+                  status: 'internal_review',
+                  updatedAt: new Date().toISOString()
+                };
+                onUpdateOpportunity(updatedOpp);
+                setConversionSuccessMessage(
+                  `Alcance técnico completado (${totalHours}h) · Listo para continuar con el proceso comercial.`,
+                  {
+                    showProjectLink: false,
+                    timeoutMs: 8000
+                  }
+                );
+              }}
+              opportunityStatus={activeOpp.status}
+              commercialOwner={activeOpp.commercialOwner}
+            />
+          </div>
+
+          {/* Bloque 2: Resultado Comercial (Compacto) */}
+          <div
+            id="commercial-proposal-block"
+            className="bg-white rounded-2xl border border-[#e2e8f0] p-6 shadow-2xs space-y-5"
+          >
+            <div className="flex items-start justify-between flex-wrap gap-3 pb-4 border-b border-[#f1f5f9]">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="p-1.5 rounded-lg bg-[#10b981]/10 text-[#10b981]">
+                    <DollarSign className="w-4 h-4" />
+                  </span>
+                  <h3 className="text-sm font-bold text-[#0f172a]">
+                    Resultado comercial
+                  </h3>
+                </div>
+                <p className="text-xs text-[#64748b] mt-1">
+                  Finanzas / Google Sheet Oficial es la fuente de verdad del pricing. Orbit registra el resultado cotizado para trazabilidad, SOW y conversión a proyecto.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-[#f1f5f9] text-[#475569]">
+                  Total Horas: {activeQuote.totalHoursRollup}h
+                </span>
+                <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-[#501f92]/10 text-[#501f92]">
+                  {activeQuote.versionLabel}
+                </span>
+                {activeOpp.hubspotDealStage && (
+                  <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg border bg-[#fff7ed] text-[#c2410c] border-[#fed7aa]" title="Stage sincronizado de HubSpot (Source of Truth Comercial)">
+                    HubSpot: {activeOpp.hubspotDealStage}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Formulario de Registro Comercial Compacto */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+              {/* Valor Cotizado */}
+              <div className="space-y-1">
+                <label className="font-bold text-[#475569] block">
+                  Valor cotizado: <span className="text-red-500">*</span>
+                </label>
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="number"
+                      min="0"
+                      step="1000"
+                      value={activeQuote.totalQuotedValue ?? activeQuote.totalQuotedValueCOP ?? ''}
+                      onChange={(e) => {
+                        const val = Math.max(0, Number(e.target.value) || 0);
+                        handleUpdateQuote({
+                          ...activeQuote,
+                          totalQuotedValue: val,
+                          totalQuotedValueCOP: activeQuote.currency === 'USD' ? 0 : val
+                        });
+                      }}
+                      placeholder="0"
+                      className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] font-bold text-sm text-[#0f172a] focus:ring-2 focus:ring-[#501f92]"
+                    />
+                  </div>
+                  <select
+                    value={activeQuote.currency || 'COP'}
+                    onChange={(e) => {
+                      const curr = e.target.value as 'COP' | 'USD';
+                      const val = activeQuote.totalQuotedValue ?? activeQuote.totalQuotedValueCOP ?? 0;
+                      handleUpdateQuote({
+                        ...activeQuote,
+                        currency: curr,
+                        totalQuotedValue: val,
+                        totalQuotedValueCOP: curr === 'USD' ? 0 : val
+                      });
+                    }}
+                    className="p-2 rounded-xl border border-[#cbd5e1] font-bold text-xs bg-white text-[#501f92] focus:ring-2 focus:ring-[#501f92]"
+                  >
+                    <option value="COP">COP ($)</option>
+                    <option value="USD">USD ($)</option>
+                  </select>
+                </div>
+                <span className="text-[10px] text-[#64748b]">
+                  Monto formateado:{' '}
+                  <strong className="text-[#0f172a]">
+                    {formatCurrency(
+                      activeQuote.totalQuotedValue ?? activeQuote.totalQuotedValueCOP ?? 0,
+                      activeQuote.currency || 'COP'
+                    )}
+                  </strong>
+                </span>
+              </div>
+
+              {/* Enlace a Sheet oficial de Finanzas */}
+              <div className="space-y-1">
+                <label className="font-bold text-[#475569] flex items-center justify-between">
+                  <span>Sheet oficial de Finanzas:</span>
+                  {activeQuote.externalFinanceSheetUrl && (
+                    <a
+                      href={activeQuote.externalFinanceSheetUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[11px] text-[#501f92] hover:underline flex items-center gap-0.5"
+                    >
+                      <span>Abrir Sheet</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
+                </label>
+                <input
+                  type="url"
+                  value={activeQuote.externalFinanceSheetUrl || ''}
+                  onChange={(e) => {
+                    handleUpdateQuote({
+                      ...activeQuote,
+                      externalFinanceSheetUrl: e.target.value
+                    });
+                  }}
+                  placeholder="https://docs.google.com/spreadsheets/d/..."
+                  className="w-full p-2 rounded-xl border border-[#cbd5e1] text-xs font-mono text-[#0f172a] focus:ring-2 focus:ring-[#501f92]"
+                />
+                <span className="text-[10px] text-[#64748b]">
+                  Planilla oficial de Finanzas donde se calcula el pricing.
+                </span>
+              </div>
+
+              {/* Enlace a propuesta/presentación comercial */}
+              <div className="space-y-1">
+                <label className="font-bold text-[#475569] flex items-center justify-between">
+                  <span>Propuesta / Presentación:</span>
+                  {activeQuote.commercialProposalUrl && (
+                    <a
+                      href={activeQuote.commercialProposalUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[11px] text-[#501f92] hover:underline flex items-center gap-0.5"
+                    >
+                      <span>Ver Propuesta</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
+                </label>
+                <input
+                  type="url"
+                  value={activeQuote.commercialProposalUrl || ''}
+                  onChange={(e) => {
+                    handleUpdateQuote({
+                      ...activeQuote,
+                      commercialProposalUrl: e.target.value
+                    });
+                  }}
+                  placeholder="https://drive.google.com/... o presentación comercial"
+                  className="w-full p-2 rounded-xl border border-[#cbd5e1] text-xs font-mono text-[#0f172a] focus:ring-2 focus:ring-[#501f92]"
+                />
+                <span className="text-[10px] text-[#64748b]">
+                  Enlace al documento o presentación entregada al cliente.
+                </span>
+              </div>
+            </div>
+
+            {/* Condiciones comerciales o notas breves */}
+            <div className="space-y-1 text-xs pt-1">
+              <label className="font-bold text-[#475569] block">
+                Notas / Condiciones comerciales (si aplican):
+              </label>
+              <textarea
+                rows={2}
+                value={activeQuote.commercialNotes || ''}
+                onChange={(e) => {
+                  handleUpdateQuote({
+                    ...activeQuote,
+                    commercialNotes: e.target.value
+                  });
+                }}
+                placeholder="ej. 50% anticipo y 50% contra entrega; vigencia de oferta 15 días; alcance sujeto a insumos oportunos."
+                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs text-[#0f172a] focus:ring-2 focus:ring-[#501f92]"
+              />
+            </div>
+
+            {/* Footer con CTA Guardar cambios y Conversión a Proyecto */}
+            <div className="pt-3 border-t border-[#f1f5f9] flex items-center justify-between flex-wrap gap-2">
+              <div className="text-[11px] text-[#64748b] flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleUpdateQuote(activeQuote);
+                    setConversionSuccessMessage('✅ Cambios comerciales guardados correctamente.');
+                    setTimeout(() => setConversionSuccessMessage(null), 4000);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-[#501f92] hover:bg-[#3d1572] text-xs font-bold text-white transition-all shadow-xs cursor-pointer"
+                >
+                  Guardar cambios
+                </button>
+                <span>Trazabilidad comercial registrada en la cotización activa ({activeQuote.versionLabel}).</span>
+              </div>
+
+              {isWon && (
+                <button
+                  type="button"
+                  onClick={() => setIsConvertModalOpen(true)}
+                  className="px-4 py-2 rounded-xl bg-[#10b981] hover:bg-[#059669] text-xs font-bold text-white transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-white" />
+                  <span>Convertir a Proyecto Operativo →</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ========================================================================= */}
@@ -1936,10 +2278,10 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setActiveTab('cotizacion')}
+                    onClick={() => setActiveTab('scoping')}
                     className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-[#cbd5e1] hover:bg-[#f1f5f9] text-[#475569] font-bold text-xs transition-colors cursor-pointer"
                   >
-                    <span>Ver Cotización</span>
+                    <span>Ver Propuesta Comercial</span>
                   </button>
                   {activeOpp.driveFolderUrl && (
                     <a
@@ -2052,13 +2394,14 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
               <div className="p-4 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-1">
                 <span className="text-[10px] uppercase font-bold text-[#64748b]">Inversión Contractual</span>
                 <p className="font-bold text-[#0f172a] text-sm">
-                  {formatFinancialCurrency(
-                    activeQuote.financialSummary?.finalPriceWithTaxCOP ||
-                      activeQuote.financialSummary?.subtotalBeforeTaxCOP ||
-                      activeQuote.totalQuotedValueCOP ||
+                  {formatCurrency(
+                    activeQuote.totalQuotedValue ??
+                      activeQuote.totalQuotedValueCOP ??
+                      activeQuote.financialSummary?.finalPriceWithTaxCOP ??
+                      activeQuote.financialSummary?.subtotalBeforeTaxCOP ??
                       0,
-                    'COP'
-                  )} COP
+                    activeQuote.currency || 'COP'
+                  )}
                 </p>
                 <p className="text-[11px] text-[#64748b]">Forma de pago: 50% anticipo / 50% entrega</p>
               </div>
@@ -2224,7 +2567,8 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {activeOpp.quotes.map((q) => {
               const isCurrent = q.id === activeQuoteId;
-              const fin = computeQuoteFinancials(q);
+              const qVal = q.totalQuotedValue ?? q.totalQuotedValueCOP ?? 0;
+              const qCurr = q.currency || 'COP';
               return (
                 <div
                   key={q.id}
@@ -2245,7 +2589,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                   <div className="space-y-1 text-xs text-[#64748b]">
                     <p>{q.deliverables.length} servicio(s) en alcance</p>
                     <p className="font-bold text-[#0f172a]">
-                      Estimado: {formatFinancialCurrency(fin.finalPriceWithTaxCOP)}
+                      {qVal > 0 ? `Cotizado: ${formatCurrency(qVal, qCurr)}` : 'Sin valor cotizado'}
                     </p>
                   </div>
                   <div className="pt-3 mt-3 border-t border-[#e2e8f0] flex items-center justify-between">
@@ -2431,6 +2775,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
           isOpen={isConvertModalOpen}
           opportunity={activeOpp}
           activeQuote={activeQuote}
+          users={users}
           onClose={() => setIsConvertModalOpen(false)}
           onConfirm={handleConfirmConversion}
         />

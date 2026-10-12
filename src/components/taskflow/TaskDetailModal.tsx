@@ -272,7 +272,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   // Bucky Copiloto: Chequeo de colaboradores asignados en vacaciones
   const assignedVacationAlerts = useMemo(() => {
     const alerts: { name: string; message: string; returnDate?: string }[] = [];
-    const assignedList = Array.from(new Set([assignee?.name, ...collaborators.map((c) => c.name)].filter(Boolean) as string[]));
+    const assignedList = Array.from(new Set([assignee?.name, ...(collaborators || []).map((c) => c?.name)].filter(Boolean) as string[]));
     assignedList.forEach((name) => {
       const check = checkAssigneeAvailability(name, initialUsers);
       if (check.isOnVacation) {
@@ -375,11 +375,20 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
       const initialMsgs: ChatMessage[] = [];
       if (task.messages && task.messages.length > 0) {
         task.messages.forEach((m) => {
+          const authName = m.authorName || 'Usuario';
+          const computedInitials = authName
+            .split(' ')
+            .filter(Boolean)
+            .map((n) => n[0])
+            .join('')
+            .slice(0, 2)
+            .toUpperCase() || 'US';
+
           initialMsgs.push({
             id: m.id,
-            authorName: m.authorName,
+            authorName: authName,
             authorRoleLabel: 'Comentario',
-            authorInitials: m.authorInitials || m.authorName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase(),
+            authorInitials: m.authorInitials || computedInitials,
             authorAvatarBg: m.authorAvatarBg || 'bg-[#501f92]',
             timestamp: m.timestamp,
             content: m.content,
@@ -394,8 +403,6 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
       setChatMessages(initialMsgs);
     }
   }, [task]);
-
-  if (!isOpen || !task) return null;
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -520,6 +527,8 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     });
   }, [task, localActivities]);
 
+  if (!isOpen || !task) return null;
+
   const isRunning = activeTimer?.taskId === task.id;
   const consumedHours = (task.consumedSeconds || 0) / 3600;
   const budgetedHours = task.budgetedHours || 8;
@@ -528,7 +537,10 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
   // Check dependency status
   const depTask = tasksList?.find(
-    (t) => t.id === task.dependencyTaskId || t.title.toLowerCase() === task.dependencyTaskTitle?.toLowerCase()
+    (t) =>
+      (task.dependencyTaskId && t.id === task.dependencyTaskId) ||
+      (Boolean(t?.title && task?.dependencyTaskTitle) &&
+        t.title.toLowerCase() === task.dependencyTaskTitle?.toLowerCase())
   );
   const isDepResolved = depTask
     ? depTask.completed || depTask.status === 'Done'
@@ -969,7 +981,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               // Extract task ID e.g. #TK-101 or #TASK-1
               const rawId = token.split(/[\s\[]/)[0].substring(1);
               const matchedTask = tasksList?.find(
-                (t) => t.id.toLowerCase() === rawId.toLowerCase()
+                (t) => t?.id && t.id.toLowerCase() === rawId.toLowerCase()
               );
 
               tokens.push(
@@ -2474,17 +2486,17 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                           <Hash className="w-3 h-3" /> Referenciar tarea del proyecto
                         </div>
                         {tasksList
-                          ?.filter((t) =>
-                            t.id.toLowerCase().includes(autocompleteState.query.toLowerCase()) ||
-                            t.title.toLowerCase().includes(autocompleteState.query.toLowerCase())
-                          ).slice(0, 5).length === 0 ? (
+                          ?.filter((t) => {
+                            const q = autocompleteState.query.toLowerCase();
+                            return (t?.id?.toLowerCase() || '').includes(q) || (t?.title?.toLowerCase() || '').includes(q);
+                          }).slice(0, 5).length === 0 ? (
                           <div className="px-3 py-2 text-[#94a3b8] text-[11px]">No se encontraron tareas</div>
                         ) : (
                           tasksList
-                            ?.filter((t) =>
-                              t.id.toLowerCase().includes(autocompleteState.query.toLowerCase()) ||
-                              t.title.toLowerCase().includes(autocompleteState.query.toLowerCase())
-                            )
+                            ?.filter((t) => {
+                              const q = autocompleteState.query.toLowerCase();
+                              return (t?.id?.toLowerCase() || '').includes(q) || (t?.title?.toLowerCase() || '').includes(q);
+                            })
                             .slice(0, 5)
                             .map((t) => (
                               <button
@@ -3165,7 +3177,12 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                     multiple={true}
                     value={
                       // Use collaborators combined with assignee if applicable
-                      Array.from(new Set([assignee.name, ...collaborators.map((c) => c.name)].filter((n) => n && n !== '-')))
+                      Array.from(
+                        new Set(
+                          [assignee?.name, ...collaborators.map((c) => c?.name)]
+                            .filter((n): n is string => Boolean(n && n !== '-'))
+                        )
+                      )
                     }
                     onChange={() => {}}
                     onMultiChange={(selectedNames) => {
@@ -3244,10 +3261,10 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                                 {allCollabs.slice(0, 3).map((c, i) => (
                                   <UserAvatar
                                     key={i}
-                                    name={c.name}
-                                    initials={c.initials || 'CT'}
-                                    avatarBg={c.avatarBg || 'bg-[#501f92]'}
-                                    avatarUrl={c.avatarUrl}
+                                    name={c?.name || 'Colaborador'}
+                                    initials={c?.initials || 'CT'}
+                                    avatarBg={c?.avatarBg || 'bg-[#501f92]'}
+                                    avatarUrl={c?.avatarUrl}
                                     size="xs"
                                     className="w-6 h-6 rounded-full text-[10px] shadow-2xs"
                                   />
@@ -3258,7 +3275,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                                   </span>
                                 )}
                                 <span className="text-xs font-semibold text-[#0f172a] truncate ml-0.5">
-                                  {allCollabs.map((c) => c.name.split(' ')[0]).join(', ')}
+                                  {allCollabs.map((c) => (c?.name || 'Colaborador').split(' ')[0]).join(', ')}
                                 </span>
                               </div>
                             );
@@ -3301,7 +3318,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
                   <DropdownMenu
                     multiple={true}
-                    value={followers.map((f) => f.name)}
+                    value={followers.map((f) => f?.name).filter(Boolean) as string[]}
                     onChange={() => {}}
                     onMultiChange={(selectedNames) => {
                       const updatedFollowers = selectedNames
@@ -3341,10 +3358,10 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                               {followers.slice(0, 3).map((f, i) => (
                                 <UserAvatar
                                   key={i}
-                                  name={f.name}
-                                  initials={f.initials || 'U'}
-                                  avatarBg={f.avatarBg || 'bg-[#6366f1]'}
-                                  avatarUrl={f.avatarUrl}
+                                  name={f?.name || 'Seguidor'}
+                                  initials={f?.initials || 'U'}
+                                  avatarBg={f?.avatarBg || 'bg-[#6366f1]'}
+                                  avatarUrl={f?.avatarUrl}
                                   size="xs"
                                   className="w-6 h-6 rounded-full text-[10px] shadow-2xs"
                                 />
@@ -3355,7 +3372,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                                 </span>
                               )}
                               <span className="text-xs font-semibold text-[#0f172a] truncate ml-0.5">
-                                {followers.map((f) => f.name.split(' ')[0]).join(', ')}
+                                {followers.map((f) => (f?.name || 'Seguidor').split(' ')[0]).join(', ')}
                               </span>
                             </div>
                           )}

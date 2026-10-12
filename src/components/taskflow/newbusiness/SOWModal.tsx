@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NewBusinessOpportunity, QuoteProposal } from '../types';
-import { formatFinancialCurrency } from '../financial/financialEngine';
+import { formatCurrency } from '../../../utils/formatters';
 import {
   CompanyLegalSignerConfig,
   DEFAULT_UHURA_LEGAL_SIGNER
@@ -9,7 +9,6 @@ import {
   FileText,
   X,
   Copy,
-  Printer,
   CheckCircle2,
   ExternalLink,
   ShieldCheck,
@@ -38,12 +37,14 @@ export const SOWModal: React.FC<SOWModalProps> = ({
 }) => {
   const clientName = opportunity.prospectAccountName || 'Cliente';
   const serviceTitle = opportunity.title || 'Servicio de Desarrollo & Producto Digital';
-  const totalCOP =
+  const currency = quote.currency || 'COP';
+  const totalValue =
+    quote.totalQuotedValue ||
+    quote.totalQuotedValueCOP ||
     quote.financialSummary?.finalPriceWithTaxCOP ||
     quote.financialSummary?.subtotalBeforeTaxCOP ||
-    quote.totalQuotedValueCOP ||
     0;
-  const formattedPrice = formatFinancialCurrency(totalCOP, 'COP');
+  const formattedPrice = formatCurrency(totalValue, currency);
   const estimatedWeeks = quote.financialConfig?.projectDurationWeeks || 8;
 
   // Snapshot de configuración legal: preserva el guardado en el SOW si ya existía o toma la config de la compañía
@@ -73,6 +74,21 @@ export const SOWModal: React.FC<SOWModalProps> = ({
   );
 
   const [copied, setCopied] = useState<boolean>(false);
+
+  // Close modal on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    if (isOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -172,22 +188,28 @@ Nota: El líder responsable de scoping (${opportunity.leadUserName || 'Líder de
   };
 
   return (
-    <div className="fixed inset-0 z-70 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl border border-[#e2e8f0] overflow-hidden flex flex-col max-h-[92vh]">
-        {/* Header con barra de herramientas */}
-        <div className="p-4 bg-[#1e113a] text-white flex items-center justify-between border-b border-[#261845]">
+    <div
+      className="fixed inset-0 z-70 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl border border-[#e2e8f0] overflow-hidden flex flex-col max-h-[92vh]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header con barra de herramientas de alto contraste */}
+        <div className="p-4 bg-[#0f172a] text-white flex items-center justify-between border-b border-[#1e293b]">
           <div className="flex items-center gap-2.5">
-            <span className="p-2 rounded-xl bg-[#8a4dff]/25 text-[#d4ff4a]">
+            <span className="p-2 rounded-xl bg-[#501f92] text-[#d4ff4a]">
               <FileText className="w-5 h-5" />
             </span>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold tracking-tight">Statement of Work (SOW)</h3>
-                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-white/10 text-[#c9b7ff]">
+                <h3 className="text-sm font-bold tracking-tight text-white">Statement of Work (SOW)</h3>
+                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-white/10 text-slate-200">
                   Plantilla Contractual
                 </span>
               </div>
-              <p className="text-xs text-[#c9b7ff]">
+              <p className="text-xs text-slate-300 font-medium">
                 {clientName} · {serviceTitle} (Versión: {quote.versionLabel})
               </p>
             </div>
@@ -200,28 +222,19 @@ Nota: El líder responsable de scoping (${opportunity.leadUserName || 'Líder de
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 copied
                   ? 'bg-[#10b981] text-white shadow-xs'
-                  : 'bg-white/10 hover:bg-white/20 text-white'
+                  : 'bg-white/10 hover:bg-white/20 text-white border border-white/20'
               }`}
               title="Copiar texto listo para pegar en Google Docs"
             >
-              {copied ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              {copied ? <CheckCircle2 className="w-4 h-4 text-white" /> : <Copy className="w-4 h-4 text-white" />}
               <span>{copied ? '¡Copiado!' : 'Copiar para Docs'}</span>
             </button>
 
             <button
               type="button"
-              onClick={handlePrint}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-colors cursor-pointer"
-              title="Imprimir o exportar como PDF"
-            >
-              <Printer className="w-4 h-4" />
-              <span>Imprimir / PDF</span>
-            </button>
-
-            <button
-              type="button"
               onClick={onClose}
-              className="p-1.5 rounded-lg text-[#c9b7ff] hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              aria-label="Cerrar modal"
             >
               <X className="w-5 h-5" />
             </button>
@@ -452,25 +465,14 @@ Nota: El líder responsable de scoping (${opportunity.leadUserName || 'Líder de
             Cerrar
           </button>
 
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleCopyToClipboard}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#f1f5f9] hover:bg-[#e2e8f0] text-xs font-bold text-[#0f172a] transition-colors cursor-pointer"
-            >
-              <Copy className="w-4 h-4 text-[#501f92]" />
-              <span>Copiar para Google Docs</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleSaveAndClose}
-              className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-[#501f92] hover:bg-[#3b156b] text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
-            >
-              <CheckCircle2 className="w-4 h-4 text-[#d4ff4a]" />
-              <span>Guardar SOW</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleSaveAndClose}
+            className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-[#501f92] hover:bg-[#3b156b] text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
+          >
+            <CheckCircle2 className="w-4 h-4 text-[#d4ff4a]" />
+            <span>Guardar SOW</span>
+          </button>
         </div>
       </div>
     </div>

@@ -236,6 +236,8 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
       order: 1,
       status: 'draft',
       totalHoursRollup: 0,
+      totalQuotedValue: 0,
+      totalQuotedValueCOP: 0,
       currency: 'COP',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),

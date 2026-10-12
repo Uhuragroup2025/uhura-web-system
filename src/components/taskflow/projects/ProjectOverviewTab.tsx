@@ -878,7 +878,7 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
       {/* MODAL 1: RECALCULAR CRONOGRAMA (REFORECAST CONFIRMADO POR LÍDER) */}
       {isReforecastModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-[#e2e8f0] space-y-5 animate-in zoom-in-95 duration-150">
+          <div className="bg-white text-[#0f172a] rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-[#e2e8f0] space-y-5 animate-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-[#501f92]/10 text-[#501f92] flex items-center justify-center">
@@ -917,47 +917,105 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#334155] mb-1">
+                <label className="block text-xs font-bold text-[#334155] mb-1.5">
                   Desplazamiento en Días Hábiles:
                 </label>
-                <input
-                  type="number"
-                  min="1"
-                  max="30"
-                  value={reforecastDeltaDays}
-                  onChange={(e) => setReforecastDeltaDays(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] text-xs font-bold focus:outline-hidden focus:border-[#501f92]"
-                />
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setReforecastDeltaDays((prev) => Math.max(1, prev - 1))}
+                    className="w-10 h-10 rounded-xl bg-[#f1f5f9] hover:bg-[#e2e8f0] active:scale-95 text-[#0f172a] font-black text-lg flex items-center justify-center border border-[#cbd5e1] cursor-pointer transition-all select-none shadow-2xs"
+                    title="Reducir 1 día hábil"
+                  >
+                    -
+                  </button>
+                  <div className="relative flex-1">
+                    <input
+                      type="number"
+                      min="1"
+                      max="60"
+                      value={reforecastDeltaDays}
+                      onChange={(e) => {
+                        const parsed = parseInt(e.target.value, 10);
+                        setReforecastDeltaDays(isNaN(parsed) ? 1 : Math.max(1, Math.min(60, parsed)));
+                      }}
+                      style={{
+                        color: '#0f172a',
+                        backgroundColor: '#ffffff',
+                        WebkitTextFillColor: '#0f172a',
+                        colorScheme: 'light'
+                      }}
+                      className="w-full px-3 py-2.5 rounded-xl border-2 border-[#cbd5e1] bg-white text-[#0f172a] text-center text-sm font-extrabold focus:outline-none focus:border-[#501f92] focus:ring-2 focus:ring-[#501f92]/20 shadow-2xs"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setReforecastDeltaDays((prev) => Math.min(60, prev + 1))}
+                    className="w-10 h-10 rounded-xl bg-[#501f92] hover:bg-[#381566] active:scale-95 text-white font-black text-lg flex items-center justify-center transition-all cursor-pointer select-none shadow-2xs"
+                    title="Aumentar 1 día hábil"
+                  >
+                    +
+                  </button>
+                </div>
+                <p className="text-[11px] text-[#64748b] mt-1 text-center font-medium">
+                  Se desplazarán <strong>{reforecastDeltaDays} días hábiles</strong> sobre la ruta crítica de tareas pendientes.
+                </p>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#334155] mb-1">
+                <label className="block text-xs font-bold text-[#334155] mb-1.5">
                   Causa Raíz Principal del Desvío:
                 </label>
-                <select
-                  value={reforecastCause}
-                  onChange={(e) => setReforecastCause(e.target.value as ScheduleChangeCause)}
-                  className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] text-xs font-bold focus:outline-hidden focus:border-[#501f92]"
-                >
-                  <option value="client_approval_delay">Aprobación / Feedback tardío de cliente (Gate)</option>
-                  <option value="client_input_delay">Insumo o accesos pendientes del cliente</option>
-                  <option value="internal_rework">Retrabajo interno / QA de Uhura</option>
-                  <option value="internal_execution_delay">Desvío operativo interno por complejidad</option>
-                  <option value="scope_change">Cambio de alcance acordado</option>
-                  <option value="other">Otro motivo</option>
-                </select>
+                <div className="relative">
+                  <select
+                    value={reforecastCause}
+                    onChange={(e) => setReforecastCause(e.target.value as ScheduleChangeCause)}
+                    style={{
+                      color: '#0f172a',
+                      backgroundColor: '#ffffff',
+                      WebkitTextFillColor: '#0f172a',
+                      colorScheme: 'light'
+                    }}
+                    className="w-full px-3.5 py-2.5 rounded-xl border-2 border-[#cbd5e1] bg-white text-[#0f172a] text-xs font-bold focus:outline-none focus:border-[#501f92] focus:ring-2 focus:ring-[#501f92]/20 cursor-pointer shadow-2xs"
+                  >
+                    <option value="client_approval_delay" style={{ color: '#0f172a', backgroundColor: '#ffffff' }}>
+                      Aprobación / Feedback tardío de cliente (Gate)
+                    </option>
+                    <option value="client_input_delay" style={{ color: '#0f172a', backgroundColor: '#ffffff' }}>
+                      Insumo o accesos pendientes del cliente
+                    </option>
+                    <option value="internal_rework" style={{ color: '#0f172a', backgroundColor: '#ffffff' }}>
+                      Retrabajo interno / QA de Uhura
+                    </option>
+                    <option value="internal_execution_delay" style={{ color: '#0f172a', backgroundColor: '#ffffff' }}>
+                      Desvío operativo interno por complejidad
+                    </option>
+                    <option value="scope_change" style={{ color: '#0f172a', backgroundColor: '#ffffff' }}>
+                      Cambio de alcance acordado
+                    </option>
+                    <option value="other" style={{ color: '#0f172a', backgroundColor: '#ffffff' }}>
+                      Otro motivo
+                    </option>
+                  </select>
+                </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#334155] mb-1">
+                <label className="block text-xs font-bold text-[#334155] mb-1.5">
                   Justificación / Nota de Auditoría:
                 </label>
                 <textarea
                   rows={3}
                   value={reforecastNote}
                   onChange={(e) => setReforecastNote(e.target.value)}
-                  placeholder="Detalla la razón del recalculo para constancia en el cierre del proyecto..."
-                  className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] text-xs focus:outline-hidden focus:border-[#501f92]"
+                  placeholder="Detalla la razón del recálculo para constancia en el cierre del proyecto..."
+                  style={{
+                    color: '#0f172a',
+                    backgroundColor: '#ffffff',
+                    WebkitTextFillColor: '#0f172a',
+                    colorScheme: 'light'
+                  }}
+                  className="w-full px-3.5 py-2.5 rounded-xl border-2 border-[#cbd5e1] bg-white text-[#0f172a] placeholder-[#94a3b8] text-xs font-medium focus:outline-none focus:border-[#501f92] focus:ring-2 focus:ring-[#501f92]/20 shadow-2xs leading-relaxed"
                 />
               </div>
             </div>
@@ -985,7 +1043,7 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
       {/* MODAL 2: NUEVA DEPENDENCIA / INSUMO DE CLIENTE */}
       {isNewDependencyModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-[#e2e8f0] space-y-4 animate-in zoom-in-95 duration-150">
+          <div className="bg-white text-[#0f172a] rounded-3xl max-w-md w-full p-6 shadow-2xl border border-[#e2e8f0] space-y-4 animate-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-3">
               <div className="flex items-center gap-2">
                 <Hourglass className="w-4 h-4 text-[#501f92]" />
@@ -1009,7 +1067,8 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
                   placeholder="ej. Manual de Marca, Aprobación Gate 1, Credenciales hosting"
                   value={newDepTitle}
                   onChange={(e) => setNewDepTitle(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] text-xs focus:outline-hidden focus:border-[#501f92]"
+                  style={{ color: '#0f172a', backgroundColor: '#ffffff', WebkitTextFillColor: '#0f172a' }}
+                  className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] bg-white text-[#0f172a] placeholder-[#94a3b8] text-xs focus:outline-none focus:border-[#501f92]"
                 />
               </div>
 
@@ -1019,7 +1078,8 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
                   <select
                     value={newDepType}
                     onChange={(e) => setNewDepType(e.target.value as ProjectDependencyType)}
-                    className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] text-xs focus:outline-hidden focus:border-[#501f92]"
+                    style={{ color: '#0f172a', backgroundColor: '#ffffff', WebkitTextFillColor: '#0f172a' }}
+                    className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] bg-white text-[#0f172a] text-xs focus:outline-none focus:border-[#501f92]"
                   >
                     <option value="approval">Aprobación / Gate</option>
                     <option value="client_input">Insumo del Cliente</option>
@@ -1036,9 +1096,9 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
                     required
                     value={newDepExpectedDate}
                     onChange={(e) => setNewDepExpectedDate(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] text-xs focus:outline-hidden focus:border-[#501f92]"
-                  >
-                  </input>
+                    style={{ color: '#0f172a', backgroundColor: '#ffffff', WebkitTextFillColor: '#0f172a' }}
+                    className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] bg-white text-[#0f172a] text-xs focus:outline-none focus:border-[#501f92]"
+                  />
                 </div>
               </div>
 
@@ -1047,7 +1107,8 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
                 <select
                   value={newDepFollowUpOwnerId}
                   onChange={(e) => setNewDepFollowUpOwnerId(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] text-xs focus:outline-hidden focus:border-[#501f92]"
+                  style={{ color: '#0f172a', backgroundColor: '#ffffff', WebkitTextFillColor: '#0f172a' }}
+                  className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] bg-white text-[#0f172a] text-xs focus:outline-none focus:border-[#501f92]"
                 >
                   {allUsers.map((u) => (
                     <option key={u.id} value={u.id}>
@@ -1093,7 +1154,7 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
       {/* MODAL 3: REGISTRAR GESTIÓN / SEGUIMIENTO AUDITABLE */}
       {isFollowUpModalOpen && selectedDependencyForFollowUp && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-[#e2e8f0] space-y-4 animate-in zoom-in-95 duration-150">
+          <div className="bg-white text-[#0f172a] rounded-3xl max-w-md w-full p-6 shadow-2xl border border-[#e2e8f0] space-y-4 animate-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-3">
               <div className="flex items-center gap-2">
                 <MessageSquare className="w-4 h-4 text-[#501f92]" />
@@ -1123,7 +1184,8 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
                   value={followUpNoteText}
                   onChange={(e) => setFollowUpNoteText(e.target.value)}
                   placeholder="ej. Se contactó a contacto del cliente por correo/WhatsApp; confirmaron que revisan en comité mañana..."
-                  className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] text-xs focus:outline-hidden focus:border-[#501f92]"
+                  style={{ color: '#0f172a', backgroundColor: '#ffffff', WebkitTextFillColor: '#0f172a' }}
+                  className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] bg-white text-[#0f172a] placeholder-[#94a3b8] text-xs focus:outline-none focus:border-[#501f92]"
                 />
               </div>
             </div>
@@ -1151,7 +1213,7 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
       {/* MODAL 4: REGISTRAR RONDA DE AJUSTES */}
       {isNewReworkRoundModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-[#e2e8f0] space-y-4 animate-in zoom-in-95 duration-150">
+          <div className="bg-white text-[#0f172a] rounded-3xl max-w-md w-full p-6 shadow-2xl border border-[#e2e8f0] space-y-4 animate-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-3">
               <div className="flex items-center gap-2">
                 <Repeat className="w-4 h-4 text-[#501f92]" />
@@ -1174,7 +1236,8 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
                 <select
                   value={reworkCause}
                   onChange={(e) => setReworkCause(e.target.value as ReworkRoundCause)}
-                  className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] text-xs focus:outline-hidden focus:border-[#501f92]"
+                  style={{ color: '#0f172a', backgroundColor: '#ffffff', WebkitTextFillColor: '#0f172a' }}
+                  className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] bg-white text-[#0f172a] text-xs focus:outline-none focus:border-[#501f92]"
                 >
                   <option value="client_adjustment">Feedback ordinario de cliente (dentro de lo previsto)</option>
                   <option value="internal_adjustment">QA / Corrección de error interno de Uhura</option>
@@ -1190,7 +1253,8 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
                   max="100"
                   value={reworkEstHours}
                   onChange={(e) => setReworkEstHours(parseInt(e.target.value) || 0)}
-                  className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] text-xs focus:outline-hidden focus:border-[#501f92]"
+                  style={{ color: '#0f172a', backgroundColor: '#ffffff', WebkitTextFillColor: '#0f172a' }}
+                  className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] bg-white text-[#0f172a] text-xs focus:outline-none focus:border-[#501f92]"
                 />
               </div>
 
@@ -1202,7 +1266,8 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
                   value={reworkNote}
                   onChange={(e) => setReworkNote(e.target.value)}
                   placeholder="Detalla el feedback entregado por el cliente o las correcciones técnicas requeridas..."
-                  className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] text-xs focus:outline-hidden focus:border-[#501f92]"
+                  style={{ color: '#0f172a', backgroundColor: '#ffffff', WebkitTextFillColor: '#0f172a' }}
+                  className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] bg-white text-[#0f172a] placeholder-[#94a3b8] text-xs focus:outline-none focus:border-[#501f92]"
                 />
               </div>
 

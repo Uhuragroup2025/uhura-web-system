@@ -788,42 +788,46 @@ export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
       )}
 
       {/* MODAL DE EDICIÓN / CREACIÓN */}
-      <TemplateEditorModal
-        isOpen={isEditorModalOpen}
-        template={editingTemplate}
-        onClose={() => setIsEditorModalOpen(false)}
-        onSave={handleSaveTemplate}
-      />
+      {isEditorModalOpen && (
+        <TemplateEditorModal
+          isOpen={isEditorModalOpen}
+          template={editingTemplate}
+          onClose={() => setIsEditorModalOpen(false)}
+          onSave={handleSaveTemplate}
+        />
+      )}
 
       {/* MODAL DE CLONADO / CREAR COTIZACIÓN */}
-      <CloneToQuoteModal
-        isOpen={isCloneModalOpen}
-        templates={templates}
-        opportunities={opportunities}
-        preselectedTemplateId={templateToCloneId}
-        onClose={() => setIsCloneModalOpen(false)}
-        onSaveToOpportunity={(oppId, quote) => {
-          if (onSaveToOpportunity) {
-            onSaveToOpportunity(oppId, quote);
-          } else if (onQuoteCreated) {
-            onQuoteCreated(quote);
-          }
-          triggerFeedback(
-            `Cotización "${quote.versionLabel}" guardada en la oportunidad (${quote.totalHoursRollup}h).`
-          );
-        }}
-        onCreateOpportunityWithQuote={(oppData, quote) => {
-          if (onCreateOpportunityWithQuote) {
-            onCreateOpportunityWithQuote(oppData, quote);
-          } else if (onQuoteCreated) {
-            onQuoteCreated(quote);
-          }
-          triggerFeedback(
-            `Nueva oportunidad "${oppData.title}" creada con la cotización "${quote.versionLabel}" (${quote.totalHoursRollup}h).`
-          );
-        }}
-        onQuoteCreated={handleQuoteCreatedInternal}
-      />
+      {isCloneModalOpen && (
+        <CloneToQuoteModal
+          isOpen={isCloneModalOpen}
+          templates={templates}
+          opportunities={opportunities}
+          preselectedTemplateId={templateToCloneId}
+          onClose={() => setIsCloneModalOpen(false)}
+          onSaveToOpportunity={(oppId, quote) => {
+            if (onSaveToOpportunity) {
+              onSaveToOpportunity(oppId, quote);
+            } else if (onQuoteCreated) {
+              onQuoteCreated(quote);
+            }
+            triggerFeedback(
+              `Cotización "${quote.versionLabel}" guardada en la oportunidad (${quote.totalHoursRollup}h).`
+            );
+          }}
+          onCreateOpportunityWithQuote={(oppData, quote) => {
+            if (onCreateOpportunityWithQuote) {
+              onCreateOpportunityWithQuote(oppData, quote);
+            } else if (onQuoteCreated) {
+              onQuoteCreated(quote);
+            }
+            triggerFeedback(
+              `Nueva oportunidad "${oppData.title}" creada con la cotización "${quote.versionLabel}" (${quote.totalHoursRollup}h).`
+            );
+          }}
+          onQuoteCreated={handleQuoteCreatedInternal}
+        />
+      )}
 
       {/* MODAL DE CONFIRMACIÓN DE ELIMINACIÓN NO BLOQUEANTE */}
       {templateToDelete && (

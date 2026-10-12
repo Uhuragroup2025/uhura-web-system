@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   NewBusinessOpportunity,
   QuoteProposal,
-  ProjectType
+  ProjectType,
+  UserItem
 } from '../types';
-import { formatFinancialCurrency } from '../financial/financialEngine';
+import { formatCurrency } from '../../../utils/formatters';
 import {
   CheckCircle2,
   X,
@@ -13,21 +14,25 @@ import {
   Layers,
   Calendar,
   User,
-  ArrowRight,
   ShieldCheck,
-  TrendingUp,
-  Sparkles
+  Sparkles,
+  ExternalLink,
+  Users,
+  FolderOpen
 } from 'lucide-react';
 
 interface ConvertOpportunityModalProps {
   isOpen: boolean;
   opportunity: NewBusinessOpportunity;
   activeQuote: QuoteProposal;
+  users?: UserItem[];
   onClose: () => void;
   onConfirm: (payload: {
     projectName: string;
     projectType: ProjectType;
+    leadUserId: string;
     leadName: string;
+    specialistUserIds?: string[];
     startDate: string;
     endDate?: string;
     initialFormalizationStatus?: 'pendiente_formalizacion' | 'activo';
@@ -39,16 +44,52 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
   isOpen,
   opportunity,
   activeQuote,
+  users = [],
   onClose,
   onConfirm
 }) => {
+  // Resolver usuarios elegibles como líderes (admins, leads, directores, o todos si la lista es corta)
+  const eligibleLeaders = useMemo(() => {
+    if (users.length === 0) return [];
+    const filtered = users.filter(
+      (u) =>
+        u.accessLevel === 'system_admin' ||
+        u.accessLevel === 'executive' ||
+        u.accessLevel === 'leader' ||
+        u.role?.toLowerCase().includes('lead') ||
+        u.role?.toLowerCase().includes('direc') ||
+        u.role?.toLowerCase().includes('geren') ||
+        u.role?.toLowerCase().includes('ceo')
+    );
+    return filtered.length > 0 ? filtered : users;
+  }, [users]);
+
+  // Preseleccionar al líder que realizó el scoping o el primer líder elegible
+  const initialLeadUser = useMemo(() => {
+    if (opportunity.leadUserId) {
+      const match = users.find((u) => u.id === opportunity.leadUserId);
+      if (match) return match;
+    }
+    if (opportunity.leadUserName) {
+      const match = users.find(
+        (u) =>
+          u.name.toLowerCase().includes(opportunity.leadUserName!.toLowerCase()) ||
+          opportunity.leadUserName!.toLowerCase().includes(u.name.toLowerCase())
+      );
+      if (match) return match;
+    }
+    return eligibleLeaders[0] || users[0] || null;
+  }, [opportunity, users, eligibleLeaders]);
+
   const [projectName, setProjectName] = useState<string>(
     opportunity.title || `Proyecto ${opportunity.prospectAccountName}`
   );
+  // En New Business solo permitimos proyectos de cliente (fijo o recurrente), no internal_non_billable
   const [projectType, setProjectType] = useState<ProjectType>('fixed_project');
-  const [leadName, setLeadName] = useState<string>(
-    opportunity.leadUserName || 'Product Lead'
+  const [selectedLeadId, setSelectedLeadId] = useState<string>(
+    initialLeadUser ? initialLeadUser.id : 'usr-paola'
   );
+  const [selectedSpecialistIds, setSelectedSpecialistIds] = useState<string[]>([]);
   const [startDate, setStartDate] = useState<string>(
     new Date().toISOString().slice(0, 10)
   );
@@ -58,8 +99,7 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
     return d.toISOString().slice(0, 10);
   });
 
-  // Condiciones para iniciar configurables (no bloqueo universal de anticipo)
-  const [contractRequired, setContractRequired] = useState<boolean>(true);
+  // Gates de inicio configurables (resumidos)
   const [contractSigned, setContractSigned] = useState<boolean>(
     opportunity.startConditions?.contractSignedCompleted || false
   );
@@ -76,6 +116,14 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
   if (!isOpen) return null;
 
   const totalHours = activeQuote.totalHoursRollup || 0;
+  const currency = activeQuote.currency || 'COP';
+  const totalQuotedValue =
+    activeQuote.totalQuotedValue ||
+    activeQuote.totalQuotedValueCOP ||
+    activeQuote.financialSummary?.finalPriceWithTaxCOP ||
+    activeQuote.financialSummary?.subtotalBeforeTaxCOP ||
+    0;
+
   const totalActivities = activeQuote.deliverables.reduce(
     (sum, d) => sum + d.backlogItems.length,
     0
@@ -83,17 +131,26 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
   const isNewClient = !opportunity.clientId;
   const clientName = opportunity.prospectAccountName || 'Cliente';
 
+  const currentSelectedLead = users.find((u) => u.id === selectedLeadId) || initialLeadUser;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const finalLead = currentSelectedLead || {
+      id: selectedLeadId,
+      name: opportunity.leadUserName || 'Líder Operativo'
+    };
+
     onConfirm({
       projectName: projectName.trim(),
       projectType,
-      leadName: leadName.trim(),
+      leadUserId: finalLead.id,
+      leadName: finalLead.name,
+      specialistUserIds: selectedSpecialistIds,
       startDate,
       endDate: endDate || undefined,
       initialFormalizationStatus: initialStatus,
       startConditionsConfig: {
-        contractSignedRequired: contractRequired,
+        contractSignedRequired: true,
         contractSignedCompleted: contractSigned,
         downPaymentRequired,
         downPaymentPercentage: downPaymentRequired === 'required' ? 50 : 0,
@@ -105,9 +162,15 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
     });
   };
 
+  const toggleSpecialist = (id: string) => {
+    setSelectedSpecialistIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
   return (
     <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-[#e2e8f0] overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-[#e2e8f0] overflow-hidden flex flex-col max-h-[92vh]">
         {/* Header */}
         <div className="p-5 bg-gradient-to-r from-[#501f92] to-[#7839ee] text-white flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -115,9 +178,9 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
               <Sparkles className="w-5 h-5 text-[#d4ff4a]" />
             </span>
             <div>
-              <h3 className="text-base font-bold">Convertir a Cliente & Proyecto</h3>
+              <h3 className="text-base font-bold">Convertir a Proyecto Operativo</h3>
               <p className="text-xs text-white/80">
-                Aprobación comercial · Activación operativa en Orbit
+                Hereda alcance, entregables y cotización · Activa la ejecución en Orbit
               </p>
             </div>
           </div>
@@ -131,43 +194,77 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
         </div>
 
         {/* Content Form */}
-        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-5 text-xs">
-          {/* Transition Summary Pill */}
-          <div className="p-4 rounded-xl bg-[#faf5ff] border border-[#e9d5ff] space-y-2">
+        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-5 text-xs text-[#0f172a]">
+          {/* Tarjeta de Datos Heredados desde New Business */}
+          <div className="p-4 rounded-xl bg-[#faf5ff] border border-[#e9d5ff] space-y-3">
             <div className="flex items-center justify-between">
               <span className="font-bold text-[#501f92] text-xs flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 text-[#10b981]" />
-                <span>Propuesta aprobada por el cliente</span>
+                <span>Información Heredada de New Business</span>
               </span>
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-[#501f92]/10 text-[#501f92]">
-                Versión: {activeQuote.versionLabel}
+              <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-md bg-[#501f92]/10 text-[#501f92]">
+                Propuesta: {activeQuote.versionLabel}
               </span>
             </div>
 
-            <p className="text-[#64748b] leading-relaxed">
-              Al confirmar, el prospecto pasará al módulo de <strong>Clientes</strong> (sin requerir NIT de inmediato) 
-              y se creará el <strong>Proyecto</strong> con sus <strong>{activeQuote.deliverables.length} servicio(s)</strong> y <strong>{totalActivities} tarea(s)</strong> operativas con sus horas presupuestadas.
-            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-[11px]">
+              <div className="p-2.5 rounded-lg bg-white border border-[#e9d5ff]/80">
+                <span className="text-[#64748b] block text-[10px]">Cliente / Cuenta</span>
+                <span className="font-bold text-[#0f172a] truncate block">{clientName}</span>
+              </div>
+              <div className="p-2.5 rounded-lg bg-white border border-[#e9d5ff]/80">
+                <span className="text-[#64748b] block text-[10px]">Valor Vendido</span>
+                <span className="font-black text-[#10b981] block">
+                  {formatCurrency(totalQuotedValue, currency)}
+                </span>
+              </div>
+              <div className="p-2.5 rounded-lg bg-white border border-[#e9d5ff]/80">
+                <span className="text-[#64748b] block text-[10px]">Horas Totales</span>
+                <span className="font-bold text-[#501f92] block">{totalHours}h cotizadas</span>
+              </div>
+              <div className="p-2.5 rounded-lg bg-white border border-[#e9d5ff]/80">
+                <span className="text-[#64748b] block text-[10px]">Servicios / Tareas</span>
+                <span className="font-bold text-[#0f172a] block">
+                  {activeQuote.deliverables.length} frentes · {totalActivities} tareas
+                </span>
+              </div>
+            </div>
+
+            {(opportunity.hubspotDealId || opportunity.driveFolderUrl) && (
+              <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] text-[#64748b]">
+                {opportunity.hubspotDealId && (
+                  <span className="flex items-center gap-1">
+                    <span className="font-medium text-[#0f172a]">HubSpot Deal:</span> #{opportunity.hubspotDealId}
+                  </span>
+                )}
+                {opportunity.driveFolderUrl && (
+                  <a
+                    href={opportunity.driveFolderUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1 text-[#501f92] hover:underline"
+                  >
+                    <FolderOpen className="w-3.5 h-3.5" />
+                    <span>Carpeta Google Drive vinculada</span>
+                  </a>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Client & Project Fields */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="font-bold text-[#475569] block">
-                Empresa / Cliente en Orbit:
+                Nombre del Proyecto: <span className="text-red-500">*</span>
               </label>
-              <div className="p-2.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] font-bold text-[#0f172a] flex items-center justify-between">
-                <span>{clientName}</span>
-                {isNewClient ? (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#f59e0b]/15 text-[#b45309]">
-                    Nuevo Cliente
-                  </span>
-                ) : (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#10b981]/15 text-[#10b981]">
-                    Cliente Activo
-                  </span>
-                )}
-              </div>
+              <input
+                type="text"
+                required
+                value={projectName}
+                onChange={(e) => setProjectName(e.target.value)}
+                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-medium focus:ring-2 focus:ring-[#501f92]"
+              />
             </div>
 
             <div className="space-y-1">
@@ -185,35 +282,32 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
             </div>
           </div>
 
-          <div className="space-y-1">
-            <label className="font-bold text-[#475569] block">
-              Nombre del Proyecto: <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              required
-              value={projectName}
-              onChange={(e) => setProjectName(e.target.value)}
-              className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-medium focus:ring-2 focus:ring-[#501f92]"
-            />
-          </div>
-
+          {/* Líder Operativo Real & Fechas */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="space-y-1">
+            <div className="space-y-1 sm:col-span-1">
               <label className="font-bold text-[#475569] block">
-                Líder Operativo:
+                Líder del Proyecto: <span className="text-red-500">*</span>
               </label>
-              <select
-                value={leadName}
-                onChange={(e) => setLeadName(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-medium bg-white focus:ring-2 focus:ring-[#501f92]"
-              >
-                <option value="Product Lead">Product Lead</option>
-                <option value="Growth Manager">Growth Manager</option>
-                <option value="CEO">CEO</option>
-                <option value="Creative Lead">Creative Lead</option>
-                <option value="Directora Comercial">Directora Comercial</option>
-              </select>
+              {eligibleLeaders.length > 0 ? (
+                <select
+                  value={selectedLeadId}
+                  onChange={(e) => setSelectedLeadId(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-medium bg-white focus:ring-2 focus:ring-[#501f92]"
+                >
+                  {eligibleLeaders.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name} ({u.officialRole || u.role || 'Líder'})
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div className="p-2.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] font-medium text-[#0f172a]">
+                  {opportunity.leadUserName || 'Líder asignado'}
+                </div>
+              )}
+              <span className="text-[10px] text-[#64748b] block">
+                Preseleccionado del scoping de New Business
+              </span>
             </div>
 
             <div className="space-y-1">
@@ -242,94 +336,90 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
             </div>
           </div>
 
-          {/* Scoping Summary Box */}
-          <div className="p-4 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-2">
-            <h4 className="font-bold text-[#0f172a] text-xs flex items-center justify-between">
-              <span>Presupuesto que heredará el Proyecto</span>
-              <span className="text-[#501f92] font-black text-sm">{totalHours}h</span>
-            </h4>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
-              {activeQuote.deliverables.map((del) => {
-                const h = del.backlogItems.reduce(
-                  (sum, it) => sum + (Number(it.estimatedHours) || 0),
-                  0
-                );
-                return (
-                  <div
-                    key={del.id}
-                    className="p-2 rounded-lg bg-white border border-[#e2e8f0] text-[11px]"
-                  >
-                    <div className="font-bold text-[#0f172a] truncate">{del.name}</div>
-                    <div className="text-[#64748b]">{del.backlogItems.length} act. · {h}h</div>
-                  </div>
-                );
-              })}
+          {/* Asignación Opcional de Especialistas */}
+          {users.length > 0 && (
+            <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-[#0f172a] flex items-center gap-1.5 text-xs">
+                  <Users className="w-4 h-4 text-[#501f92]" />
+                  <span>Especialistas del Equipo (Opcional)</span>
+                </span>
+                <span className="text-[10px] text-[#64748b]">
+                  Se pueden terminar de asignar después en Staffing
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {users
+                  .filter((u) => u.id !== selectedLeadId)
+                  .slice(0, 10)
+                  .map((u) => {
+                    const isSelected = selectedSpecialistIds.includes(u.id);
+                    return (
+                      <button
+                        key={u.id}
+                        type="button"
+                        onClick={() => toggleSpecialist(u.id)}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors border cursor-pointer ${
+                          isSelected
+                            ? 'bg-[#501f92] text-white border-[#501f92]'
+                            : 'bg-white text-[#475569] border-[#cbd5e1] hover:border-[#501f92]'
+                        }`}
+                      >
+                        {u.name}
+                      </button>
+                    );
+                  })}
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Configuración de Condiciones para Iniciar */}
-          <div className="p-4 rounded-xl bg-[#faf5ff] border border-[#e9d5ff] space-y-3 text-xs">
+          {/* Gates de Formalización Resumidos */}
+          <div className="p-4 rounded-xl bg-[#faf5ff] border border-[#e9d5ff] space-y-3">
             <div className="flex items-center justify-between">
               <span className="font-bold text-[#501f92] flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4" />
-                <span>Condiciones para Iniciar (Gates de Formalización)</span>
+                <span>Formalización Previa al Inicio</span>
               </span>
-              <span className="text-[10px] text-[#64748b]">Configurables por negocio</span>
+              <span className="text-[10px] text-[#64748b]">Requisitos antes de operar</span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-              <div className="p-3 bg-white rounded-lg border border-[#e2e8f0] space-y-1.5">
-                <label className="font-bold text-[#0f172a] block">
-                  1. SOW / Contrato firmado:
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="p-2.5 bg-white rounded-lg border border-[#e2e8f0] flex items-center justify-between">
+                <span className="font-medium text-[#0f172a]">1. SOW / Contrato firmado</span>
+                <label className="flex items-center gap-1.5 cursor-pointer text-[#475569]">
+                  <input
+                    type="checkbox"
+                    checked={contractSigned}
+                    onChange={(e) => setContractSigned(e.target.checked)}
+                    className="rounded text-[#501f92] focus:ring-[#501f92]"
+                  />
+                  <span>Completado</span>
                 </label>
-                <div className="flex items-center gap-3">
-                  <label className="flex items-center gap-1.5 cursor-pointer text-[#475569]">
-                    <input
-                      type="checkbox"
-                      checked={contractSigned}
-                      onChange={(e) => setContractSigned(e.target.checked)}
-                      className="rounded text-[#501f92] focus:ring-[#501f92]"
-                    />
-                    <span>¿Ya fue firmado?</span>
-                  </label>
-                </div>
               </div>
 
-              <div className="p-3 bg-white rounded-lg border border-[#e2e8f0] space-y-1.5">
-                <label className="font-bold text-[#0f172a] block">
-                  2. Anticipo Monetario:
+              <div className="p-2.5 bg-white rounded-lg border border-[#e2e8f0] flex items-center justify-between">
+                <span className="font-medium text-[#0f172a]">2. Anticipo Monetario</span>
+                <label className="flex items-center gap-1.5 cursor-pointer text-[#475569]">
+                  <input
+                    type="checkbox"
+                    checked={downPaymentReceived}
+                    onChange={(e) => setDownPaymentReceived(e.target.checked)}
+                    className="rounded text-[#501f92] focus:ring-[#501f92]"
+                  />
+                  <span>Recibido</span>
                 </label>
-                <select
-                  value={downPaymentRequired}
-                  onChange={(e) => setDownPaymentRequired(e.target.value as any)}
-                  className="w-full p-1.5 rounded-lg border border-[#cbd5e1] text-xs bg-white"
-                >
-                  <option value="required">Obligatorio (ej. 50% proyecto)</option>
-                  <option value="not_applicable">No aplica (ej. Fee o mes vencido)</option>
-                </select>
-                {downPaymentRequired === 'required' && (
-                  <label className="flex items-center gap-1.5 cursor-pointer text-[#475569] pt-1">
-                    <input
-                      type="checkbox"
-                      checked={downPaymentReceived}
-                      onChange={(e) => setDownPaymentReceived(e.target.checked)}
-                      className="rounded text-[#501f92] focus:ring-[#501f92]"
-                    />
-                    <span>¿Anticipo ya recibido en banco?</span>
-                  </label>
-                )}
               </div>
             </div>
 
             {/* Estado de Transición Inicial */}
             <div className="pt-2 border-t border-[#e9d5ff]/60 flex items-center justify-between gap-2">
               <span className="font-bold text-[#0f172a]">
-                Estado Inicial al Convertir:
+                Estado Inicial del Proyecto:
               </span>
               <select
                 value={initialStatus}
                 onChange={(e) => setInitialStatus(e.target.value as any)}
-                className="p-2 rounded-xl border border-[#cbd5e1] bg-white font-bold text-[#501f92] focus:ring-2 focus:ring-[#501f92]"
+                className="p-1.5 rounded-lg border border-[#cbd5e1] bg-white font-bold text-[#501f92] focus:ring-2 focus:ring-[#501f92]"
               >
                 <option value="pendiente_formalizacion">
                   Pendiente de Formalización (Recomendado)
@@ -339,9 +429,6 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
                 </option>
               </select>
             </div>
-            <p className="text-[10px] text-[#64748b]">
-              La documentación fiscal (RUT, Cédula) la completará Vivian en Alegra antes de facturar, sin frenar el inicio operativo.
-            </p>
           </div>
 
           {/* Footer Actions */}
@@ -358,7 +445,7 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
               className="px-5 py-2.5 text-xs font-bold text-white bg-[#501f92] hover:bg-[#3d1572] rounded-xl shadow-sm transition-all cursor-pointer flex items-center gap-2"
             >
               <CheckCircle2 className="w-4 h-4 text-[#d4ff4a]" />
-              <span>Aprobar y Activar en Orbit</span>
+              <span>Aprobar y Crear Proyecto</span>
             </button>
           </div>
         </form>

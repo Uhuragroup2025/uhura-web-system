@@ -47,6 +47,7 @@ import { NewTaskModal } from '../components/taskflow/NewTaskModal';
 import { ManualTimeLogModal } from '../components/taskflow/ManualTimeLogModal';
 import { BandejaDelDiaWidget } from '../components/taskflow/BandejaDelDiaWidget';
 import { TaskDetailModal } from '../components/taskflow/TaskDetailModal';
+import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 import { CapacityView } from '../components/taskflow/CapacityView';
 import { MiDiaView } from '../components/taskflow/MiDiaView';
 import { LaColoniaView } from '../components/taskflow/colonia/LaColoniaView';
@@ -726,15 +727,23 @@ export const TaskFlowPrototype: React.FC = () => {
   const [selectedTaskForDetail, setSelectedTaskForDetail] = useState<TaskItem | null>(null);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
 
-  // Global view selection with automatic reset to section root
-  const handleSelectView = (view: OrbitView) => {
+  // Global view selection with automatic reset to section root (allows optional targetId)
+  const handleSelectView = (view: OrbitView, targetId?: string | null) => {
     setCurrentView(view);
-    // Reset specific sub-navigation states to return to the root screen of the chosen section
+    // Reset specific sub-navigation states to return to the root screen unless a targetId is provided
     if (view === 'proyectos') {
-      setSelectedProjectIdForView(null);
+      if (targetId !== undefined) {
+        setSelectedProjectIdForView(targetId);
+      } else {
+        setSelectedProjectIdForView(null);
+      }
     }
     if (view === 'clientes') {
-      setSelectedClientId(null);
+      if (targetId !== undefined) {
+        setSelectedClientId(targetId);
+      } else {
+        setSelectedClientId(null);
+      }
     }
   };
 
@@ -1698,16 +1707,21 @@ export const TaskFlowPrototype: React.FC = () => {
     setClients((prev) =>
       prev.map((cli) => {
         if (cli.id === projectData.clientId || cli.name.toLowerCase() === projectData.clientName.toLowerCase()) {
-          const formattedValue = projectData.soldValueCOP && projectData.soldValueCOP > 0
-            ? `$${(projectData.soldValueCOP / 1000000).toFixed(1)}M`
-            : `$${((projectData.budgetedHours * 120000) / 1000000).toFixed(1)}M`;
+          const formattedValue =
+            projectData.soldCurrency === 'USD' && projectData.soldValue && projectData.soldValue > 0
+              ? `$${projectData.soldValue.toLocaleString('en-US')} USD`
+              : projectData.soldValueCOP && projectData.soldValueCOP > 0
+              ? `$${(projectData.soldValueCOP / 1000000).toFixed(1)}M COP`
+              : projectData.soldValue && projectData.soldValue > 0
+              ? `$${projectData.soldValue.toLocaleString('es-CO')} ${projectData.soldCurrency || 'COP'}`
+              : undefined;
 
           const newHistoryItem = {
             id: newProjectId,
             name: projectData.name,
             brand: projectData.brand,
             status: 'Activo' as const,
-            quotedValueCOP: formattedValue,
+            quotedValueCOP: formattedValue || '$0',
             realMarginPercent: 42.0,
             trafficLight: 'verde' as const,
             tag: projectData.projectType === 'fee_monthly' ? 'Fee mensual' : projectData.projectType === 'fixed_project' ? 'Proyecto único' : 'Interno'
@@ -1853,7 +1867,11 @@ export const TaskFlowPrototype: React.FC = () => {
     // 2. Crear Proyecto en projectsList con sus entregables
     const newProjectId = `prj-${Date.now()}`;
     const codePrefix = payload.projectName.slice(0, 3).toUpperCase().replace(/[^A-Z]/g, 'PRJ') || 'PRJ';
-    const soldCOP = quote.financialSummary?.finalPriceWithTaxCOP || quote.totalQuotedValueCOP || 0;
+    const rawSoldValue = quote.totalQuotedValue || quote.totalQuotedValueCOP || quote.financialSummary?.finalPriceWithTaxCOP || quote.financialSummary?.subtotalBeforeTaxCOP || 0;
+    const quoteCurrency = quote.currency || 'COP';
+    const soldValue = rawSoldValue > 0 ? rawSoldValue : undefined;
+    // soldValueCOP representa estrictamente COP real. Si la cotización fue en USD, se mantiene undefined (nunca 0 ficticio ni conversión inventada).
+    const soldValueCOP = quoteCurrency === 'COP' && rawSoldValue > 0 ? rawSoldValue : undefined;
 
     const newProjectDeliverables = quote.deliverables.map((qd, idx) => ({
       id: `del-${newProjectId}-${idx + 1}`,
@@ -1873,6 +1891,50 @@ export const TaskFlowPrototype: React.FC = () => {
       progressPercentage: 0
     }));
 
+    // Resolver líder real entre los usuarios de Orbit
+    const assignedLeadUser =
+      users.find((u) => u.id === (payload as any).leadUserId) ||
+      users.find((u) => u.name.toLowerCase() === payload.leadName?.toLowerCase()) ||
+      users.find((u) => u.id === opp.leadUserId) ||
+      users[0] ||
+      null;
+
+    const leadId = assignedLeadUser ? assignedLeadUser.id : 'usr-lead';
+    const leadName = assignedLeadUser ? assignedLeadUser.name : (payload.leadName || opp.leadUserName || 'Líder Operativo');
+    const leadRole = assignedLeadUser?.officialRole || assignedLeadUser?.professionalRole || assignedLeadUser?.role || 'Líder de Proyecto';
+    const leadAvatarBg = assignedLeadUser?.avatarBg || 'bg-[#501f92]';
+    const leadInitials = assignedLeadUser?.initials || leadName.slice(0, 2).toUpperCase();
+
+    const resolvedCoreTeam: any[] = [
+      {
+        id: leadId,
+        name: leadName,
+        role: leadRole,
+        avatarBg: leadAvatarBg,
+        initials: leadInitials,
+        isLead: true,
+        weeklyAllocatedHours: 4
+      }
+    ];
+
+    // Asignar especialistas opcionales si fueron seleccionados
+    if ((payload as any).specialistUserIds && Array.isArray((payload as any).specialistUserIds)) {
+      (payload as any).specialistUserIds.forEach((specId: string) => {
+        const specUser = users.find((u) => u.id === specId);
+        if (specUser && specUser.id !== leadId) {
+          resolvedCoreTeam.push({
+            id: specUser.id,
+            name: specUser.name,
+            role: specUser.officialRole || specUser.professionalRole || specUser.role || 'Especialista',
+            avatarBg: specUser.avatarBg || 'bg-[#7839ee]',
+            initials: specUser.initials || specUser.name.slice(0, 2).toUpperCase(),
+            isLead: false,
+            weeklyAllocatedHours: 8
+          });
+        }
+      });
+    }
+
     const newPrj: ProjectSummaryItem = {
       id: newProjectId,
       code: `${codePrefix}-${Math.floor(10 + Math.random() * 90)}`,
@@ -1881,31 +1943,22 @@ export const TaskFlowPrototype: React.FC = () => {
       clientName: resolvedClientName,
       taxEntityId: effectiveTaxEntityId || (clients.find(c => c.id === resolvedClientId)?.taxEntities?.[0]?.id) || null,
       brand: resolvedClientName,
-      leadName: payload.leadName || opp.leadUserName || 'Product Lead',
-      leadAvatarBg: 'bg-[#501f92]',
-      leadRole: payload.leadName || opp.leadUserName || 'Product Lead',
+      leadName,
+      leadAvatarBg,
+      leadRole,
       projectType: payload.projectType,
       serviceBase: 'Desarrollo & Estrategia',
       budgetedHours: quote.totalHoursRollup || 0,
       soldHours: quote.totalHoursRollup || 0,
-      soldValueCOP: soldCOP,
-      soldCurrency: quote.currency || 'COP',
+      soldValue,
+      soldValueCOP,
+      soldCurrency: quoteCurrency,
       startDate: payload.startDate,
       endDate: payload.endDate,
       brief: opp.briefSummary || opp.discoveryNotes,
       briefUrl: opp.briefUrl || null,
       deliverables: newProjectDeliverables,
-      coreTeam: [
-        {
-          id: 'u-lead',
-          name: payload.leadName || opp.leadUserName || 'Product Lead',
-          role: payload.leadName || opp.leadUserName || 'Product Lead',
-          avatarBg: 'bg-[#501f92]',
-          initials: (payload.leadName || 'PL').slice(0, 2).toUpperCase(),
-          isLead: true,
-          weeklyAllocatedHours: 4
-        }
-      ],
+      coreTeam: resolvedCoreTeam,
       // Propagación de interoperabilidad canónica (HubSpot, Drive, Alegra)
       originOpportunityId: opp.id,
       originQuoteIds: [quote.id],
@@ -1946,12 +1999,20 @@ export const TaskFlowPrototype: React.FC = () => {
           consumedSeconds: 0,
           completed: false,
           budgetedRole: bItem.roleName,
+          budgetedRoleId: bItem.roleId,
+          // Compatibilidad temporal del contrato frontend:
+          // TaskItem requiere objeto assignee para evitar excepciones en vistas que leen task.assignee.name.
+          // Para tareas sin responsable real asignado:
+          // - assignee.id es undefined (NUNCA un string vacío ni un usuario ficticio).
+          // - assigneeIds es [] (garantiza que NUNCA se interprete ni persista como User en backend).
+          // - El rol requerido se preserva de forma canónica e independiente en budgetedRole y budgetedRoleId.
+          assigneeIds: [],
           assignee: {
-            id: 'unassigned',
-            name: `Pendiente (${bItem.roleName})`,
+            id: undefined,
+            name: `Sin asignar (${bItem.roleName})`,
             role: bItem.roleName,
             avatarBg: 'bg-[#94a3b8]',
-            initials: bItem.roleName.slice(0, 2).toUpperCase()
+            initials: '--'
           }
         });
       });
@@ -1978,6 +2039,9 @@ export const TaskFlowPrototype: React.FC = () => {
     setOpportunities((prev) =>
       prev.map((o) => (o.id === opp.id ? updatedOpp : o))
     );
+
+    // Pre-seleccionar el nuevo proyecto para que al hacer clic en "Ver en Proyectos" abra directamente este proyecto
+    setSelectedProjectIdForView(newProjectId);
   };
 
   // Guardar cotización en oportunidad existente de New Business
@@ -2656,70 +2720,79 @@ export const TaskFlowPrototype: React.FC = () => {
       </main>
 
       {/* Task Detail & Deliverables Modal (COR Visual Split View) */}
-      <TaskDetailModal
-        isOpen={isTaskDetailModalOpen}
-        onClose={() => setIsTaskDetailModalOpen(false)}
-        task={selectedTaskForDetail}
-        tasksList={tasks}
-        onSelectTask={(t) => setSelectedTaskForDetail(t)}
-        activeTimer={activeTimer}
-        onStartTimer={handleStartTimer}
-        onPauseResumeTimer={handlePauseResumeTimer}
-        onStopTimer={handleStopTimer}
-        onUpdateTitle={handleUpdateTaskTitle}
-        onAddRework={handleAddRework}
-        onUpdateBudgetHours={handleUpdateTaskBudgetHours}
-        onUpdateTaskStatus={handleUpdateTaskStatus}
-        onUpdateTaskPriority={handleUpdateTaskPriority}
-        onUpdateDates={handleUpdateTaskDates}
-        onUpdateTeam={handleUpdateTaskTeam}
-        onUpdateCriteria={handleUpdateTaskCriteria}
-        onAddDeliverable={handleAddDeliverable}
-        onAddComment={handleAddComment}
-        onUpdateComments={handleUpdateTaskComments}
-        onRecalibrateDates={handleRecalibrateTaskDates}
-        onUpdateBlockerInfo={handleUpdateBlockerInfo}
-        onUpdatePhase={handleUpdateTaskPhase}
-        onDeleteTask={handleDeleteTask}
-        onArchiveTask={handleArchiveTask}
-        onNavigateToClient={(clientName) => {
-          setIsTaskDetailModalOpen(false);
-          const match = orbitClientsData.find(
-            (c) =>
-              c.name.toLowerCase().includes(clientName.toLowerCase()) ||
-              clientName.toLowerCase().includes(c.name.toLowerCase())
-          );
-          if (match) {
-            setSelectedClientId(match.id);
-          }
-          setCurrentView('clientes');
-        }}
-        onNavigateToProject={(projectName) => {
-          setIsTaskDetailModalOpen(false);
-          const match = projectsList.find(
-            (p) =>
-              p.name.toLowerCase().includes(projectName.toLowerCase()) ||
-              projectName.toLowerCase().includes(p.name.toLowerCase())
-          );
-          if (match) {
-            setSelectedProjectIdForView(match.id);
-          } else {
-            setSelectedProjectIdForView(null);
-          }
-          setCurrentView('proyectos');
-        }}
-        onOpenManualLog={handleOpenManualLogWithTask}
-        onMoveTask={handleMoveTask}
-      />
+      {isTaskDetailModalOpen && selectedTaskForDetail && (
+        <ErrorBoundary
+          fallbackTitle="Error al abrir el detalle de la tarea"
+          onReset={() => setIsTaskDetailModalOpen(false)}
+        >
+          <TaskDetailModal
+            isOpen={isTaskDetailModalOpen}
+            onClose={() => setIsTaskDetailModalOpen(false)}
+            task={selectedTaskForDetail}
+            tasksList={tasks}
+            onSelectTask={(t) => setSelectedTaskForDetail(t)}
+            activeTimer={activeTimer}
+            onStartTimer={handleStartTimer}
+            onPauseResumeTimer={handlePauseResumeTimer}
+            onStopTimer={handleStopTimer}
+            onUpdateTitle={handleUpdateTaskTitle}
+            onAddRework={handleAddRework}
+            onUpdateBudgetHours={handleUpdateTaskBudgetHours}
+            onUpdateTaskStatus={handleUpdateTaskStatus}
+            onUpdateTaskPriority={handleUpdateTaskPriority}
+            onUpdateDates={handleUpdateTaskDates}
+            onUpdateTeam={handleUpdateTaskTeam}
+            onUpdateCriteria={handleUpdateTaskCriteria}
+            onAddDeliverable={handleAddDeliverable}
+            onAddComment={handleAddComment}
+            onUpdateComments={handleUpdateTaskComments}
+            onRecalibrateDates={handleRecalibrateTaskDates}
+            onUpdateBlockerInfo={handleUpdateBlockerInfo}
+            onUpdatePhase={handleUpdateTaskPhase}
+            onDeleteTask={handleDeleteTask}
+            onArchiveTask={handleArchiveTask}
+            onNavigateToClient={(clientName) => {
+              setIsTaskDetailModalOpen(false);
+              const match = orbitClientsData.find(
+                (c) =>
+                  c.name.toLowerCase().includes(clientName.toLowerCase()) ||
+                  clientName.toLowerCase().includes(c.name.toLowerCase())
+              );
+              if (match) {
+                setSelectedClientId(match.id);
+              }
+              setCurrentView('clientes');
+            }}
+            onNavigateToProject={(projectName) => {
+              setIsTaskDetailModalOpen(false);
+              const match = projectsList.find(
+                (p) =>
+                  p.name.toLowerCase().includes(projectName.toLowerCase()) ||
+                  projectName.toLowerCase().includes(p.name.toLowerCase())
+              );
+              if (match) {
+                setSelectedProjectIdForView(match.id);
+              } else {
+                setSelectedProjectIdForView(null);
+              }
+              setCurrentView('proyectos');
+            }}
+            onOpenManualLog={handleOpenManualLogWithTask}
+            onMoveTask={handleMoveTask}
+          />
+        </ErrorBoundary>
+      )}
 
       {/* Manual Time Log Modal (Rendered with z-60 above TaskDetailModal) */}
-      <ManualTimeLogModal
-        isOpen={isManualLogModalOpen}
-        onClose={() => setIsManualLogModalOpen(false)}
-        tasks={tasks}
-        defaultTaskId={manualLogDefaultTaskId}
-        onSaveManualLog={handleSaveManualLog}
-      />
+      {isManualLogModalOpen && (
+        <ManualTimeLogModal
+          isOpen={isManualLogModalOpen}
+          onClose={() => setIsManualLogModalOpen(false)}
+          tasks={tasks}
+          defaultTaskId={manualLogDefaultTaskId}
+          onSaveManualLog={handleSaveManualLog}
+        />
+      )}
 
       {/* Modals */}
       <InviteUserModal

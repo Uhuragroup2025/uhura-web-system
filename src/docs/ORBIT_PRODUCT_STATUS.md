@@ -18,7 +18,7 @@
    - [Módulo 1: New Business (Entrada Comercial y Gobernanza)](#módulo-1-new-business)
    - [Módulo 2: Catálogo de Servicios y Plantillas de Producto](#módulo-2-catálogo-de-servicios-y-plantillas-de-producto)
    - [Módulo 3: Alcance & Backlog (Scoping de Entregables y Actividades)](#módulo-3-alcance--backlog)
-   - [Módulo 4: Calculadora Comercial y Motor Financiero](#módulo-4-calculadora-comercial-y-motor-financiero)
+   - [Módulo 4: Alcance Técnico y Registro Comercial (Desacoplamiento Financiero)](#módulo-4-alcance-técnico-y-registro-comercial-desacoplamiento-financiero)
    - [Módulo 5: Cotización / Propuesta Económica (Quotes)](#módulo-5-cotización--propuesta-económica)
    - [Módulo 6: Documentos y Repositorio Google Drive](#módulo-6-documentos-y-repositorio-google-drive)
    - [Módulo 7: Statement of Work (SOW Contractual)](#módulo-7-statement-of-work-sow-contractual)
@@ -148,14 +148,12 @@ El flujo lineal de la información a través del sistema se rige por la siguient
                          ▼
 [3. Alcance & Backlog: Entregable → Actividad → Rol → Horas]
                          │
+                         ├──► [Finanzas / Google Sheet Oficial: Fuente de verdad del cálculo financiero y pricing]
                          ▼
-[4. Calculadora Comercial: Horas x Rol + Overhead Uhura + Margen + IVA]
+[4. Propuesta Comercial en Orbit: Registro de Valor Cotizado, Moneda, Versión, URLs y SOW]
                          │
                          ▼
-[5. Cotización (Quote): V1, V2... Snapshot Inmutable]
-                         │
-                         ▼
-[6. SOW: Generación Contractual (Sin exponer tarifas ni horas internas)]
+[5. SOW Contractual: Generación y Documentos en Drive]
                          │
                          ▼
 [7. Formalización: SOW Firmado + Anticipo Configurado (Gates de Inicio)]
@@ -198,17 +196,18 @@ Espacio centralizado donde los líderes técnicos y de producto reciben oportuni
 - **Referencias de Código:**
   - **Vista Principal:** [`src/components/taskflow/newbusiness/NewBusinessView.tsx`](../components/taskflow/newbusiness/NewBusinessView.tsx)
   - **Scoper de Alcance:** [`src/components/taskflow/newbusiness/BacklogScoper.tsx`](../components/taskflow/newbusiness/BacklogScoper.tsx)
-  - **Calculadora Financiera:** [`src/components/taskflow/newbusiness/FinancialCalculatorView.tsx`](../components/taskflow/newbusiness/FinancialCalculatorView.tsx)
+  - **Modal de Conversión a Proyecto:** [`src/components/taskflow/newbusiness/ConvertOpportunityModal.tsx`](../components/taskflow/newbusiness/ConvertOpportunityModal.tsx)
+  - **Modal de SOW:** [`src/components/taskflow/newbusiness/SOWModal.tsx`](../components/taskflow/newbusiness/SOWModal.tsx)
   - **Tipos de Dominio:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`NewBusinessOpportunity`, `QuoteProposal`, `QuoteDeliverable`, `QuoteBacklogItem`)
 
 #### 1.2 Usuarios y Roles
 - **Product Lead / Creative Strategy Lead / Growth Manager / CEO:** Dimensionamiento técnico de entregables y actividades.
-- **Directora Comercial:** Supervisión de márgenes, bandas de negociación y creación de nuevas versiones de cotización.
+- **Directora Comercial / Finanzas:** Fijación del valor cotizado en Google Sheet externo y registro del acuerdo comercial en Orbit.
 - **Vivian (Administración):** Validación de datos de facturación previa a la emisión fiscal.
 
 #### 1.3 Estado Actual
 **Implementado en Frontend / Parcial para Backend.**  
-La navegación por pestañas (`Resumen & Brief`, `Alcance & Backlog`, `Cotización`, `Documentos`, `Historial`) está operativa con reactividad en estado local. Falta persistencia en base de datos.
+La navegación por pestañas (`Resumen`, `Alcance y propuesta`, `Documentos`) está operativa con reactividad en estado local. Falta persistencia en base de datos.
 
 #### 1.4 Entidades y Campos Principales
 - **`NewBusinessOpportunity`:**
@@ -216,7 +215,8 @@ La navegación por pestañas (`Resumen & Brief`, `Alcance & Backlog`, `Cotizaci�
   - `title`: String (Nombre del requerimiento/proyecto).
   - `prospectAccountName`: String (Nombre de la empresa prospecto).
   - `clientId`: UUID (Opcional, si el cliente ya existe en Orbit).
-  - `leadUserId` / `leadUserName`: String (Líder asignado: *Product Lead, Creative Strategy Lead, Growth Manager, CEO, Directora Comercial*).
+  - `leadUserId` / `leadUserName`: String (Líder asignado: *Product Lead, Creative Strategy Lead, Growth Manager, CEO, Directora Comercial*). *Nota: Soporte multi-lead 1..N documentado en `BACKEND_REQUIREMENTS.md` como pendiente backend; rige 1 líder canónico persistido (`leadUserId`) por compatibilidad productiva.*
+  - `leadUserIds`: Array de UUIDs (Opcional, preparación interna desacoplada para asignación múltiple concurrente 1..N).
   - `contactName`, `contactEmail`, `contactPhone`: String.
   - `hubspotDealId`, `hubspotDealUrl`: String (Identificador en HubSpot).
   - `briefUrl`: String (URL al documento de Google Drive).
@@ -321,83 +321,60 @@ Entregable (Servicio / Frente)
 
 ---
 
-### Módulo 4: Calculadora Comercial y Motor Financiero
+### Módulo 4: Alcance Técnico y Registro Comercial (Desacoplamiento Financiero)
 
-#### 4.1 Propósito
-Motor de pricing y rentabilidad que traduce las horas técnicas estructuradas en el backlog a una propuesta comercial económicamente viable y rentable para Uhura Group.
-- **Referencias de Código:**
-  - **Motor de Cálculo Financiero:** [`src/components/taskflow/financial/financialEngine.ts`](../components/taskflow/financial/financialEngine.ts)
-  - **Constantes y Tarifario Salarial:** [`src/components/taskflow/financial/constants.ts`](../components/taskflow/financial/constants.ts) (`UHURA_ROLE_FINANCIAL_RATES`, `FINANCIAL_CONSTANTS`)
-  - **Interfaz de Calculadora:** [`src/components/taskflow/newbusiness/FinancialCalculatorView.tsx`](../components/taskflow/newbusiness/FinancialCalculatorView.tsx)
-  - **Tipos Financieros:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`QuoteFinancialSummary`, `QuoteFinancialConfig`)
+#### 4.1 Regla Arquitectónica Vigente: Desacoplamiento de Responsabilidades
+En Orbit rige la siguiente división estricta de dominios:
 
-#### 4.2 Fuente de Verdad Financiera: Status Actual
-> **ADVERTENCIA CRÍTICA PARA BACKEND (INDUNOVA):**  
-> **La fuente de verdad financiera hoy sigue siendo el Google Sheet oficial de la "Calculadora Comercial UHURA 2026".**  
-> El código actual de Orbit (`financialEngine.ts`) representa un prototipo funcional avanzado de esa lógica. Mientras Finanzas y Dirección General de Uhura no firmen la validación final de fórmulas y constantes, **las reglas financieras no deben considerarse pétreas y deben exponerse como parámetros configurables en backend**, nunca como constantes `const` fijas en código.
+> **Finanzas / Google Sheet Oficial = Fuente de verdad del cálculo financiero y pricing.**  
+> Finanzas gobierna y evoluciona externamente la estructura salarial, costos, multiplicadores prestacionales, overhead, márgenes comerciales, tratamiento tributario y TRM oficial. Orbit no congela ni documenta como propias las fórmulas internas vigentes del Sheet.
 
-##### Referencia y Criterio de Aceptación Funcional:
-- **Referencia Oficial:** *Calculadora Comercial UHURA 2026 (Google Sheet oficial gobernado por Finanzas y Dirección General)*.
-- **Criterio Funcional de Paridad:**  
-  La Calculadora Comercial 2026 es la referencia vigente para validar los cálculos comerciales de Orbit. Ante los mismos inputs relevantes —por ejemplo roles, horas, duración en semanas y demás variables utilizadas por la calculadora— Orbit debe reproducir exactamente los mismos resultados y reglas de redondeo.
-- **Regla ante Ambigüedad o Gaps:**  
-  Si alguna fórmula, excepción o criterio no puede inferirse de manera inequívoca desde la calculadora o la documentación disponible, **NO debe asumirse libremente**: se debe registrar el gap formalmente para validación directa con Finanzas y Dirección General antes de codificar la regla definitiva en backend.
-- **Delimitación de Alcance:**  
-  No se implementa código adicional de esta calculadora en esta etapa; se fija la referencia y el criterio de aceptación funcional vinculante para el backend de Indunova.
+> **Orbit = Alcance Técnico + Horas por Rol + Resultado Comercial Cotizado**  
+> Orbit es la plataforma operativa y de gestión de entrega. Los líderes de scoping estructuran entregables, actividades y roles requeridos; el rollup consolidado de horas alimenta el análisis de Finanzas; y Orbit registra el resultado comercial cotizado final acordado (monto cotizado, moneda, versión, enlaces al Google Sheet y PDF de propuesta, condiciones comerciales y trazabilidad hacia la creación del proyecto operativo). Orbit no calcula internamente ni duplica fórmulas financieras.
 
-#### 4.3 Clasificación de Reglas Financieras
+#### 4.2 Retiro del Motor Financiero Interno de Orbit
+Se retiraron formalmente de Orbit:
+- El motor algorítmico interno (`financialEngine.ts`).
+- Las constantes salariales y tarifarios hardcodeados (`constants.ts`).
+- La vista de simulador comercial con sliders de margen (`FinancialCalculatorView.tsx`).
+- Cualquier cálculo de overhead, margen o IVA en tiempo real dentro del frontend.
 
-| Categoría | Concepto | Estado Actual | Regla de Implementación |
-|---|---|---|---|
-| **Regla Confirmada** | Costo Directo de Personal | Confirmada | Costo Salarial Base x 1.54 (54% de carga prestacional y aportes patronales en Colombia). |
-| **Regla Confirmada** | Gobernanza de Margen | Confirmada | Margen Deseado: 40%. Margen Mínimo: 35%. Margen Máximo: 50%. Si margen < 35%, se activa alerta roja y bandera de aprobación obligatoria (`requiresApproval: true`). |
-| **Regla Inferida (Sheet)** | Overhead Fijo Semanal | En validación | Sheet calcula gastos de estructura proporcionales a las semanas de ejecución. En Orbit está modelado sobre base de tarifa semanal prorrateada según porcentaje de dedicación. |
-| **Regla Inferida (Sheet)** | Tratamiento de IVA | En validación | Software/Desarrollo web puro exento de IVA por normativa colombiana de exportación/servicios TIC; diseño y consultoría gravados al 19%. Orbit permite clasificación por entregable. |
-| **Regla Confirmada** | TRM Dinámica e Integración Bancaria | Confirmada | Integración con API oficial de la Superfinanciera / Banco de la República vía cron job diario en el backend de Indunova. Debe admitir **override manual** por parte del equipo comercial en la cotización para fijar una tasa de cierre acordada con el cliente. |
-| **Pendiente de Validar** | Modalidad Bolsa de Horas | Pendiente | El sheet maneja proyectos cerrados y fees mensuales. La bolsa de horas pura por tickets no está formalizada financieramente. |
+Orbit no es un cotizador contable ni una calculadora comercial; Orbit registra el resultado acordado externamente para gobernanza, emisión de SOW y conversión operativa.
 
-#### 4.4 Inputs y Outputs del Motor Financiero
-- **Inputs:**
-  - Desglose de horas por rol desde el Backlog (`Record<roleId, hours>`).
-  - Semanas de duración del proyecto (`projectDurationWeeks`).
-  - Margen objetivo (`targetMarginPercentage`: ej. 40%).
-  - Clasificación fiscal de entregables (Exento / Gravado 19%).
-  - Moneda de cotización (`COP`, `USD`, `MXN`, `BRL`, `INR`).
-- **Outputs (`QuoteFinancialSummary`):**
-  - `totalDirectLaborCostCOP`: Costo salarial total + factor 1.54.
-  - `overheadContributionCOP`: Aporte proporcional a costos fijos de Uhura.
-  - `totalCostCOP`: Costo total (Labor + Overhead).
-  - `subtotalBeforeTaxCOP`: Precio de venta antes de impuestos.
-  - `ivaAmountCOP`: Impuesto calculado sobre entregables gravados.
-  - `finalPriceWithTaxCOP`: Precio final facturable en COP.
-  - `targetCurrency`: Moneda seleccionada y valores convertidos.
-  - `marginHealth`: Semáforo de rentabilidad (`healthy` | `warning` | `critical`).
+#### 4.3 Entidad y Campos de Propuesta (`QuoteProposal`)
+La entidad de cotización en Orbit conserva exclusivamente los campos de alcance técnico y trazabilidad comercial:
+- **`id`:** UUID inmutable.
+- **`opportunityId`:** UUID (FK a `NewBusinessOpportunity`).
+- **`versionLabel`:** String (ej. `V1 - Alcance Inicial`, `V2 - Alcance Ajustado`).
+- **`status`:** Enum (`draft` | `internal_review` | `sent` | `approved` | `rejected` | `archived`).
+- **`deliverables`:** Array de `QuoteDeliverable` (snapshot de entregables, actividades y roles).
+- **`totalHoursRollup`:** Sumatoria total de horas técnicas presupuestadas.
+- **`totalQuotedValue`:** Monto total acordado de la propuesta en la moneda especificada.
+- **`currency`:** Moneda de cotización (`COP` | `USD`).
+- **`totalQuotedValueCOP`:** Persistido únicamente si la moneda es COP (`undefined` si es USD; nunca 0 ficticio ni conversión por TRM inventada).
+- **`externalFinanceSheetUrl`:** Enlace directo al Google Sheet de Finanzas donde se calculó el pricing.
+- **`commercialProposalUrl`:** Enlace al documento/PDF formal de la propuesta presentada al cliente.
+- **`commercialNotes`:** Términos y condiciones comerciales acordadas (forma de pago, hitos, vigencia).
+- **`convertedToProjectId`:** Puntero idempotente al proyecto operativo en Orbit tras la conversión.
+
+#### 4.4 Separación entre Propuesta Aprobada y Cierre Ganado (HubSpot)
+1. **Propuesta Aprobada (`status === 'approved'`):** Refleja la aceptación técnica y comercial por parte del cliente del alcance presentado.
+2. **Deal Cerrado Ganado en HubSpot (`status === 'won'`):** Es la fuente de verdad comercial formal de Uhura Group.
+3. **Regla de Conversión Canónica:** La conversión a proyecto operativo en Orbit **está habilitada únicamente cuando el Deal alcanza el estado 'Cerrado Ganado' en HubSpot**. La aprobación de la propuesta en Orbit no equivale automáticamente a negocio ganado en el CRM. Mientras no se alcance el cierre formal, el sistema provee una acción explícita de simulación para entornos de demo/pruebas sin webhook activo.
 
 ---
 
 ### Módulo 5: Cotización / Propuesta Económica (Quotes)
 
 #### 5.1 Propósito
-Documento comercial y financiero formal que se presenta al cliente. Es el contenedor del snapshot de alcance y pricing.
+Documento comercial y formal que reúne el alcance técnico y el resultado comercial acordado. Es el contenedor del snapshot de entregables y del acuerdo económico.
 - **Referencias de Código:**
-  - **Modal de Versiones de Cotización:** [`src/components/taskflow/newbusiness/QuoteVersioningModal.tsx`](../components/taskflow/newbusiness/QuoteVersioningModal.tsx)
-  - **Vista de Presentación Comercial (PDF/Web):** [`src/components/taskflow/newbusiness/QuotePresentationView.tsx`](../components/taskflow/newbusiness/QuotePresentationView.tsx)
+  - **Pestaña Alcance y Propuesta:** [`src/components/taskflow/newbusiness/NewBusinessView.tsx`](../components/taskflow/newbusiness/NewBusinessView.tsx)
+  - **Scoping Técnico:** [`src/components/taskflow/newbusiness/BacklogScoper.tsx`](../components/taskflow/newbusiness/BacklogScoper.tsx)
+  - **Generación de SOW:** [`src/components/taskflow/newbusiness/SOWModal.tsx`](../components/taskflow/newbusiness/SOWModal.tsx)
   - **Tipos de Dominio:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`QuoteProposal`, `QuoteStatus`)
 
-#### 5.2 Entidades y Campos Principales
-- **`QuoteProposal`:**
-  - `id`: UUID.
-  - `opportunityId`: UUID (FK a `NewBusinessOpportunity`).
-  - `versionLabel`: String (ej. `V1`, `V2 - Alcance Ajustado`).
-  - `status`: Enum (`draft` | `internal_review` | `sent` | `approved` | `rejected` | `archived`).
-  - `deliverables`: Array de `QuoteDeliverable` (Snapshot independiente).
-  - `financialConfig`: Parámetros de cálculo utilizados.
-  - `financialSummary`: Resultados financieros calculados.
-  - `approvalNotes`: String.
-  - `totalQuotedValueCOP`: Decimal.
-  - `totalHoursRollup`: Decimal.
-
-#### 5.3 Reglas de Negocio
+#### 5.2 Reglas de Negocio
 1. **Pertenencia Estricta a NewBusinessOpportunity (Única Fuente de Verdad):** Toda entidad `QuoteProposal` pertenece obligatoria e indisolublemente a una `NewBusinessOpportunity` vía `opportunityId`. Se prohíbe terminantemente la creación de cotizaciones huérfanas o la persistencia en estados paralelos de quotes (`createdQuotes`). La persistencia se realiza exclusivamente dentro del array `quotes` de la oportunidad correspondiente.
 2. **Inmutabilidad del Snapshot:** Al aprobarse una cotización, su contenido queda congelado. No puede editarse; si el cliente pide cambios, se crea una nueva versión (`V2`).
 3. **Aprobación Selectiva:** Múltiples cotizaciones aprobadas para una misma cuenta pueden agruparse en un único proyecto o dar origen a proyectos separados según decisión comercial.
@@ -877,8 +854,8 @@ Mi Día puede mostrar de forma discreta y no invasiva:
 | **Catálogo / Plantillas** | Preparado (Frontend) | Completa | Completa | PostgreSQL | Modelos `ProductTemplate` | Roles | **SÍ (Core)** |
 | **New Business** | Preparado (Frontend) | Completa | Completa | PostgreSQL | Modelo `Opportunity` | Clientes, Roles | **SÍ (Core)** |
 | **Alcance & Backlog** | Preparado (Frontend) | Completa | Completa | PostgreSQL | Modelos `Deliverable`, `Item` | Plantillas, Roles | **SÍ (Core)** |
-| **Calculadora / Pricing** | Prototipo Avanzado | Completa | 90% (Sheet) | Configurable DB | Motor de cálculo / Fórmulas | Backlog, Tarifas | **SÍ (Core)** |
-| **Quotes (Cotizaciones)** | Preparado (Frontend) | Completa | Completa | PostgreSQL | Modelo `QuoteProposal` | New Business, Pricing| **SÍ (Core)** |
+| **Pricing / Finanzas** | Desacoplado (Google Sheet) | Completa | 100% (Sheet Externo) | Sheet Finanzas | Cálculo salarial/overhead externo | Ninguna | **NO (Externo a Finanzas)** |
+| **Propuesta / Quotes** | Preparado (Frontend) | Completa | Completa | PostgreSQL | Modelo `QuoteProposal` | New Business, Alcance | **SÍ (Core)** |
 | **SOW Contractual** | Preparado (Frontend) | Completa | Completa | PostgreSQL / Doc | Modelo `SOWDocument` | Quotes | NO (UI Liviana) |
 | **Formalización / Gates** | Preparado (Frontend) | Completa | Completa | PostgreSQL | Campos en `Opportunity/Project`| SOW, Quotes | **SÍ (Core)** |
 | **Proyectos** | Preparado (Frontend) | Completa | Completa | PostgreSQL | Modelo `Project` | Clientes, New Business| **SÍ (Core)** |
@@ -908,14 +885,14 @@ Durante la auditoría end-to-end se detectaron las siguientes inconsistencias qu
    Si el líder editaba los textos del SOW en New Business, estos se guardaban en la oportunidad, pero el proyecto recién creado no quedaba con un puntero directo a ese SOW aprobado.
 5. **Staffing Automático Vacío:**  
    Las tareas se crean correctamente a partir de las actividades cotizadas, pero quedan con `assigneeAllocations = []`. Esto es correcto según la especificación, pero en UI faltaba el botón directo de "Iniciar Staffing" desde la ficha del proyecto.
-6. **Hardcode Financiero:**  
-   El overhead semanal y el salario base por rol están en constantes de TypeScript (`constants.ts`). En backend deben ser leídos desde tablas de configuración para que Finanzas pueda actualizar salarios anuales sin desplegar nuevo código.
+6. **Desacoplamiento de Cálculos Salariales:**  
+   Los cálculos salariales, prestaciones y márgenes de pricing están desacoplados de Orbit y gobernados por Finanzas externamente; Orbit no mantiene tarifas hardcodeadas.
 7. **Regla de Cronómetro / Timer en Pausa:**  
    El tiempo transcurrido con el cronómetro en estado `PAUSED` **bajo ninguna circunstancia cuenta como tiempo efectivo de trabajo**. Únicamente los lapsos en estado activo `RUNNING` suman a la duración total del `TimeLog` al momento de hacer `Stop`.
 8. **Disparador Canónico de New Business (Brief + Scoping):**  
    New Business no se inicia cuando un deal se marca como "ganado" en el CRM ni sustituye la prospección comercial en frío. Se dispara exclusivamente cuando **se recibe un brief comercial calificado desde HubSpot que exige dimensionamiento técnico de entregables (scoping) y costeo operativo**.
-9. **Fuente Canónica Financiera:**  
-   La fuente de verdad financiera de Uhura Group es la **"Calculadora Comercial UHURA 2026" (Google Sheet)** administrada por Finanzas y Dirección. La implementación en `financialEngine.ts` es un prototipo algorítmico y el backend debe proveer persistencia paramétrica configurable para garantizar coherencia absoluta.
+9. **Desacoplamiento Financiero y Fuente de Verdad Económica:**  
+   La fuente de verdad financiera de Uhura Group es el **Google Sheet oficial de Finanzas**. Orbit desacopló y retiró su motor financiero interno (`financialEngine.ts`, constantes salariales y calculadora de márgenes). Orbit estructura el alcance técnico y las horas por rol, y registra con fidelidad el resultado comercial acordado externamente.
 10. **Eliminación de Cotizaciones Huérfanas y Única Fuente de Verdad:**  
     En el prototipo existía un contenedor huérfano (`createdQuotes`) y una vista independiente (`cotizador`) desconectada de las oportunidades. **Corrección de dominio:** Se eliminó la vista y el estado paralelo. Toda cotización (`QuoteProposal`) debe existir y persistirse exclusivamente dentro de una `NewBusinessOpportunity`. En el flujo "Usar en New Business" del catálogo de plantillas, la oportunidad debe existir previamente (seleccionando una existente o creándola desde Brief) antes de fijar y persistir el snapshot de cotización.
 
@@ -927,7 +904,7 @@ Durante la auditoría end-to-end se detectaron las siguientes inconsistencias qu
 1. **Modelado Relacional en PostgreSQL:** Creación de tablas para `Client`, `Project`, `Deliverable`, `Task`, `Opportunity`, `Quote`, `Assignment` y `TimeLog`.
 2. **Endpoint de Conversión Atómica (`POST /api/opportunities/{id}/convert/`):** La creación del cliente (si es nuevo), el proyecto, sus N entregables y sus M tareas debe ocurrir en una **única transacción atómica de base de datos**. Si falla una tarea, debe hacerse rollback completo.
 3. **Mecanismo de Bloqueo de Timer Único:** En PostgreSQL debe garantizarse mediante restricción única o validación transaccional que ningún usuario tenga dos registros `TimeLog` abiertos (`endTime IS NULL`) al mismo tiempo.
-4. **Tablas Paramétricas de Tarifario y Overhead:** Tabla `RoleRate` (rol, salario base, factor prestacional) y tabla `FinancialConfig` (overhead semanal, TRMs) para reemplazar los hardcodes del prototipo.
+4. **Persistencia de Propuestas y Alcance:** Modelo para almacenar la cotización con horas por rol rollup, valor vendido, moneda y referencias documentales (Drive, Sheets).
 
 ### Gaps Evolutivos (Pueden quedar para fases posteriores):
 1. **Webhooks automáticos con HubSpot y Alegra.**
@@ -945,8 +922,8 @@ Para asegurar una frontera limpia de trabajo entre Producto (Uhura) y la Fábric
    Las ausencias y vacaciones programadas y aprobadas en Google Calendar deben reflejarse oportunamente en la disponibilidad del módulo de Capacidad, impidiendo la sobreasignación de colaboradores en periodos no hábiles.
 2. **Integridad de Fechas Calendario:**  
    Fechas como `fecha_ingreso`, `birthDate` y los rangos de vacaciones (`startDate`, `endDate`) deben mantenerse íntegras en el día calendario civil correspondiente, sin desplazamientos o corrimientos de fecha provocados por conversiones de huso horario entre cliente y servidor.
-3. **Paridad Financiera Vinculante:**  
-   Toda cotización generada en Orbit debe arrojar los mismos resultados y reglas de redondeo que la *Calculadora Comercial UHURA 2026* (Google Sheet) ante los mismos parámetros de entrada (roles, horas, semanas, márgenes).
+3. **Fidelidad del Registro Comercial y Horas Cotizadas:**  
+   Orbit debe preservar íntegramente el rollup de horas técnicas por rol presupuestadas, el monto cotizado, la moneda (`COP` o `USD`) y los enlaces a los documentos oficiales de soporte (Google Sheet de Finanzas y propuesta formal presentada).
 4. **Atomicidad en la Conversión de Oportunidades:**  
    La creación de cliente, proyecto, entregables y tareas a partir de una oportunidad ganada debe ser atómica (todo o nada), garantizando que jamás existan estados a medias o proyectos sin entregables por fallos en la operación.
 5. **Exclusividad del Cronómetro:**  
@@ -963,8 +940,8 @@ Para asegurar una frontera limpia de trabajo entre Producto (Uhura) y la Fábric
    Indunova implementará el parseo, serialización y almacenamiento de fechas/horas en Django REST Framework para garantizar la fidelidad del día calendario sin prescripciones tecnológicas desde Producto.
 
 #### C. Coordinación y Gestión de Dependencias entre Uhura e Indunova:
-1. **Parámetros Financieros:**  
-   Indunova deberá validar la implementación contra la *Calculadora Comercial 2026*. Si alguna fórmula, parámetro o regla no puede determinarse inequívocamente desde la fuente entregada, deberá levantar el gap con Uhura antes de asumir valores o estructuras.
+1. **Desacoplamiento con Finanzas:**  
+   El backend no implementa cálculos de salarios ni márgenes en la API. El backend de Orbit únicamente persiste y expone los campos comerciales de `QuoteProposal` (horas rollup, valor cotizado, moneda, estado y URLs de soporte).
 2. **Acceso a Google Calendar:**  
    Cuando Indunova defina el mecanismo técnico de integración, deberá indicar a Uhura qué calendario, permisos y credenciales necesita para staging/producción. Uhura facilitará el acceso correspondiente al calendario corporativo gestionado por Administrativa.
 

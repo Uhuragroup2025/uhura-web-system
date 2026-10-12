@@ -138,3 +138,82 @@ Los endpoints de consulta (`GET /api/users/`, `GET /api/users/<id>/`, `GET /api/
    - Normalización: Conversión a WebP y recorte centrado 1:1 o generación de thumbnail (256x256 px).
 5. Migración de datos iniciales: Si se realiza seeding, cargar las 18 imágenes del equipo en el bucket asignando sus URLs a los perfiles de `INITIAL_TEAM_SEED.md` (con `null` para perfiles sin fotografía como Álvaro Gómez).
 ```
+
+---
+
+## 7. Soporte para Múltiples Líderes de Scoping en Oportunidades (Pendiente de Backend)
+
+> **Estado:** Pendiente backend: soporte multi-lead (por coordinar con Indunova). En frontend, el comportamiento productivo actual mantiene `leadUserId: UUID` como campo canónico persistido (1 líder), con preparación desacoplada de `leadUserIds?: string[]`. Una vez backend exponga la relación 1..N, se activará el selector multi-lead en la UI, la visibilidad compartida en Mi Día y la trazabilidad hacia el proyecto final.
+
+### 7.1 Contexto de Negocio
+Una oportunidad comercial compleja puede requerir el dimensionamiento técnico concurrente de 1..N líderes técnicos (ej. Paola en Estrategia de Producto y Camilo en Arquitectura Técnica). Ambos líderes comparten la misma responsabilidad técnica sobre el scoping, el dimensionamiento de horas y el SLA de handoff.
+
+### 7.2 Especificación para Requerimiento Backend (Indunova)
+
+```markdown
+### [Pendiente Backend] Soporte para Múltiples Líderes de Scoping (1..N) en Oportunidades Comerciales
+
+**Objetivo:** Permitir que una oportunidad comercial (`NewBusinessOpportunity`) registre uno o varios líderes técnicos (`lead_users`), conservando compatibilidad con el líder principal (`lead_user_id`).
+
+**1. Modelo de Datos y Persistencia:**
+* Opción A (Recomendada - Relación Many-to-Many):
+  ```python
+  class Opportunity(models.Model):
+      # ... campos existentes ...
+      lead_user = models.ForeignKey(
+          User, on_delete=models.SET_NULL, null=True, blank=True,
+          related_name='primary_opportunities'
+      )
+      lead_users = models.ManyToManyField(
+          User, blank=True,
+          related_name='scoping_opportunities'
+      )
+  ```
+* Opción B (Array de UUIDs):
+  ```python
+  lead_user_ids = ArrayField(models.UUIDField(), default=list, blank=True)
+  ```
+
+**2. DTO / Serializer Contract:**
+* **Payload de entrada (POST / PATCH / PUT):**
+  ```json
+  {
+    "lead_user_id": "usr-paola-002",
+    "lead_user_ids": ["usr-paola-002", "usr-camilo-003"]
+  }
+  ```
+* **Respuesta esperada (GET / Detalle y Listado):**
+  ```json
+  {
+    "id": "opp-corp-001",
+    "title": "Rediseño E-commerce B2B",
+    "lead_user_id": "usr-paola-002",
+    "lead_user_ids": ["usr-paola-002", "usr-camilo-003"],
+    "lead_users": [
+      { "id": "usr-paola-002", "name": "Paola Monsalve", "role": "Product Lead" },
+      { "id": "usr-camilo-003", "name": "Camilo Cruz", "role": "Tech Lead" }
+    ]
+  }
+  ```
+
+**3. Regla de Migración y Compatibilidad:**
+* **Datos existentes:** Para todo registro existente con `lead_user_id`, poblar automáticamente `lead_users = [lead_user_id]` o `lead_user_ids = [lead_user_id]`.
+* **Escritura retrocompatible:**
+  * Si el cliente solo envía `lead_user_id`, establecer `lead_users = [lead_user_id]`.
+  * Si el cliente envía `lead_user_ids: [A, B]`, asignar `lead_user_id = A` como líder principal de compatibilidad.
+
+**4. Endpoints de Consulta Personalizada (Mi Día / Mis Oportunidades):**
+* Al consultar oportunidades asignadas al usuario activo (`/api/opportunities/?my_opportunities=true` o `/api/my-day/`):
+  ```python
+  # Django ORM:
+  Q(lead_user_id=request.user.id) | Q(lead_users__id=request.user.id)
+  ```
+```
+
+### 7.3 Hoja de Ruta Frontend tras Entrega Backend
+Cuando Indunova publique el soporte en API:
+1. **Selector UI:** Habilitar multiselect con checkboxes (1..N líderes de scoping) en cabecera de New Business.
+2. **Mi Día:** Filtro dinámico multidimensional que muestre la tarjeta de scoping en el dashboard de cada uno de los líderes asignados.
+3. **Persistencia Real:** Enviar `lead_user_ids` junto con `lead_user_id` canónico sin riesgo de pérdida de selección.
+4. **Handoff a Proyecto:** En la conversión a proyecto en Orbit (`ConvertOpportunityModal`), permitir transferir la dupla de líderes o seleccionar el Tech Lead / Project Manager principal asignando los roles correspondientes.
+

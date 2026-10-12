@@ -11,6 +11,7 @@ import { TokensExporter } from './sections/TokensExporter';
 import { PromptGuide } from './sections/PromptGuide';
 import { TaskFlowPrototype } from './sections/TaskFlowPrototype';
 import { Eye, Zap, Volume2, ShieldCheck, Check } from 'lucide-react';
+import { ErrorBoundary } from './components/ui/ErrorBoundary';
 
 export function App() {
   const [activeSection, setActiveSection] = useState<NavigationSection>('overview');
@@ -116,7 +117,9 @@ export function App() {
             : 'max-w-7xl px-4 sm:px-6 lg:px-8 pt-8 pb-16'
         }`}
       >
-        {renderSection()}
+        <ErrorBoundary fallbackTitle="Error al cargar la sección">
+          {renderSection()}
+        </ErrorBoundary>
       </main>
 
       {/* 5. Branded Footer */}

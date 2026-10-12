@@ -8,7 +8,7 @@
 > - Definiciones y Datos Maestros: [`src/components/taskflow/templates/templateData.ts`](../components/taskflow/templates/templateData.ts)
 > - Motor de Clonación y Cálculo: [`src/components/taskflow/templates/templateEngine.ts`](../components/taskflow/templates/templateEngine.ts)
 > - Tipos y Roles Canónicos: [`src/components/taskflow/types.ts`](../components/taskflow/types.ts)
-> - Motor Financiero: [`src/components/taskflow/financial/financialEngine.ts`](../components/taskflow/financial/financialEngine.ts)
+> - Cálculo Financiero: Google Sheet oficial de Finanzas (desacoplado de Orbit)
 > - Interfaz de Biblioteca: [`src/components/taskflow/templates/TemplateLibraryView.tsx`](../components/taskflow/templates/TemplateLibraryView.tsx)
 > - Modal de Clonación e Integración con New Business: [`src/components/taskflow/templates/CloneToQuoteModal.tsx`](../components/taskflow/templates/CloneToQuoteModal.tsx)
 
@@ -23,15 +23,15 @@ El Catálogo de Servicios de Orbit actúa como la biblioteca oficial de especifi
 1. 🟢 **Base operativa confirmada:** Datos, actividades y horas base explícitamente sustentados en la documentación fuente oficial (PDF de procesos por área Uhura 2026).
 2. 🔵 **Propuesta técnica:** Especificaciones complementarias, estructuraciones de arquitectura o plantillas modulares abiertas (ej. `tmpl-custom-blank`) implementadas en Orbit para soportar New Business sin alterar la fuente canónica.
 3. 🟡 **Pendiente de validación operativa:** Elementos metodológicos, dependencias de software o condiciones de servicio que dependen de acuerdos por SOW con cada cliente y no constituyen restricciones absolutas del sistema.
-4. 🟠 **Pendiente de validación financiera/fiscal:** Parámetros tributarios, tasas de cambio o tarifas horarias que son gobernados por la Dirección Comercial/Financiera y la Calculadora Comercial, no por el catálogo técnico.
+4. 🟠 **Validación financiera externa:** Parámetros tributarios, tasas de cambio o tarifas horarias que son gobernados exclusivamente por Finanzas en el Google Sheet oficial, no por Orbit ni el catálogo técnico.
 
 ### 1.2 Anotaciones Críticas de Gobernanza
 
 Para salvaguardar la exactitud del modelo operativo, se establecen las siguientes delimitaciones puntuales:
 
 - **“Freeze Funcional” en Gates de Aprobación:** *(🟡 Pendiente de validación operativa)*. Es una buena práctica metodológica de gestión de proyectos y UAT para mitigar el *scope creep*, pero no representa un bloqueo contractual inflexible del sistema.
-- **IVA 19% Colombia y TRM:** *(🟠 Pendiente de validación financiera/fiscal)*. La configuración tributaria y la tasa representativa del mercado son variables externas sujetas a la legislación aplicable, residencia fiscal del cliente y fecha de corte de la cotización.
-- **Tarifas Horarias y Márgenes Financieros:** *(🟠 Pendiente de validación financiera/fiscal)*. Las plantillas del catálogo gobiernan exclusivamente **horas técnicas y roles asignados**. El cálculo de costos, salarios brutos, factores multiplicadores, precios de venta y márgenes es responsabilidad exclusiva de la Calculadora Comercial.
+- **IVA 19% Colombia y TRM:** *(🟠 Validación financiera externa)*. La configuración tributaria y la tasa representativa del mercado son variables externas calculadas por Finanzas en el Google Sheet oficial, según la residencia fiscal del cliente y corte de cotización.
+- **Tarifas Horarias y Márgenes Financieros:** *(🟠 Desacoplamiento Financiero canónico)*. Las plantillas del catálogo y Orbit gobiernan exclusivamente **horas técnicas y roles asignados**. El cálculo de costos, salarios brutos, factores multiplicadores, precios de venta y márgenes es responsabilidad exclusiva de Finanzas en su Google Sheet oficial. Orbit registra el resultado comercial final acordado.
 - **Builders de WordPress (Elementor Pro / Bricks Builder):** *(🟡 Pendiente de validación operativa)*. Constituyen herramientas de referencia estándar sugeridas en el proceso operativo de Producto Digital; su uso específico se valida según el stack técnico del cliente y no es obligatorio por defecto.
 - **Pasarelas de Pago E-commerce (Wompi / PayU / MercadoPago / Shopify Payments):** *(🟡 Pendiente de validación operativa)*. Opciones sugeridas del mercado. La integración definitiva depende de las comisiones, cuenta bancaria y modelo comercial de cada cliente.
 - **Aseguramiento de Calidad (QA) y Personas Reales:** *(🟢 Base operativa confirmada / Normalizada a Rol)*. Las menciones a personas específicas en la fuente se desacoplan a roles canónicos operativos (`Product Lead` para QA técnico/funcional; `Client Relationship Strategist` para validación de cara al cliente). Las referencias a fundadores o directores se reservan exclusivamente como sign-off ejecutivo de gobernanza.
@@ -506,5 +506,5 @@ Micro-actividades que se integran dentro de los servicios comercializables pero 
 
 ## 6. Enlace a la Especificación Maestra
 
-Para detalles complementarios sobre el modelo de datos relacional, el desacoplamiento en New Business, la Calculadora Comercial y los lineamientos de arquitectura:
+Para detalles complementarios sobre el modelo de datos relacional, el desacoplamiento en New Business, el registro de propuestas y los lineamientos de arquitectura:
 - Consulte la especificación completa en [`ORBIT_PRODUCT_STATUS.md`](./ORBIT_PRODUCT_STATUS.md).

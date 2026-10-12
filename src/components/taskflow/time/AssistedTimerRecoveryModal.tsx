@@ -20,15 +20,16 @@ export const AssistedTimerRecoveryModal: React.FC<AssistedTimerRecoveryModalProp
   onConfirmDecision,
   onClose
 }) => {
-  if (!isOpen || !activeTimer) return null;
-
-  const currentElapsedHours = (activeTimer.elapsedSeconds / 3600).toFixed(1);
   const [selectedAction, setSelectedAction] = useState<'adjust' | 'keep' | 'discard'>('adjust');
 
   // Valores para ajuste asistido
   const [adjustedHours, setAdjustedHours] = useState('3');
   const [adjustedMinutes, setAdjustedMinutes] = useState('30');
   const [adjustmentNote, setAdjustmentNote] = useState('Ajuste asistido: timer quedó encendido fuera de sesión.');
+
+  if (!isOpen || !activeTimer) return null;
+
+  const currentElapsedHours = (activeTimer.elapsedSeconds / 3600).toFixed(1);
 
   const triggerDecision = (action: 'keep' | 'adjust' | 'discard', adjustedSecs?: number) => {
     if (onConfirmDecision) {

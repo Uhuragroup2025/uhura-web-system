@@ -192,9 +192,11 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
         o.status === 'discovery' || o.status === 'quoting' || o.status === 'internal_review';
       if (!isActionableStatus) return false;
 
-      // Si es rol líder, filtrar dinámicamente según su leadUserId o nombre de usuario
+      // Si es rol líder, filtrar dinámicamente según su leadUserId, leadUserIds o nombre de usuario
       if (accessLevel === 'leader') {
-        const matchesId = o.leadUserId === currentUserId;
+        const matchesId =
+          o.leadUserId === currentUserId ||
+          (Array.isArray(o.leadUserIds) && o.leadUserIds.includes(currentUserId));
         const matchesName =
           o.leadUserName &&
           o.leadUserName.toLowerCase().includes(currentUserName.toLowerCase());
@@ -720,6 +722,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                   const isTimerRunningOnScoping = activeTimer?.taskId === scopingTask?.id;
                   const isAssignedToCurrentUser =
                     opp.leadUserId === currentUserId ||
+                    (Array.isArray(opp.leadUserIds) && opp.leadUserIds.includes(currentUserId)) ||
                     (opp.leadUserName && opp.leadUserName.toLowerCase().includes(currentUserName.toLowerCase()));
                   const assignedLeadDisplay = opp.leadUserName?.split('·')[0]?.trim() || 'Líder Asignado';
                   const oppHandoffSla = opp.handoffHours || 36;

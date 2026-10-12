@@ -256,7 +256,8 @@ export function createBlankCustomQuote(options?: {
 }
 
 /**
- * CONTRATO PREPARADO PARA CALCULADORA COMERCIAL (Google Sheets)
+ * CONTRATO DE INTEGRACIÓN CON GOOGLE SHEETS DE FINANZAS
+ * Consolida la bolsa de horas por rol técnico presupuestada en Orbit.
  * No inventa tarifas, salarios, markup ni márgenes.
  */
 export function prepareCommercialCalculatorContract(

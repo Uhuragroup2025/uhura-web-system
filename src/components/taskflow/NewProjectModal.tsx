@@ -51,6 +51,7 @@ export interface NewProjectPayload {
   leadRole?: string;
   budgetedHours: number;
   soldHours?: number;
+  soldValue?: number;
   soldValueCOP?: number;
   soldCurrency?: 'COP' | 'USD';
   startDate: string;

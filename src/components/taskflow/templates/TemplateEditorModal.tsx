@@ -43,8 +43,6 @@ export const TemplateEditorModal: React.FC<TemplateEditorModalProps> = ({
   onClose,
   onSave
 }) => {
-  if (!isOpen) return null;
-
   const isEditing = !!template;
 
   // Estado del formulario
@@ -94,6 +92,8 @@ export const TemplateEditorModal: React.FC<TemplateEditorModalProps> = ({
   });
 
   const [validationError, setValidationError] = useState<string | null>(null);
+
+  if (!isOpen) return null;
 
   const toggleExpand = (delId: string) => {
     setExpandedDeliverables((prev) => ({ ...prev, [delId]: !prev[delId] }));

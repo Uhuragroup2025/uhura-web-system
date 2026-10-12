@@ -67,8 +67,6 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
   onSaveToOpportunity,
   onCreateOpportunityWithQuote
 }) => {
-  if (!isOpen) return null;
-
   // Paso 1: Configuración del origen ('template' vs 'scratch')
   const [mode, setMode] = useState<'template' | 'scratch'>(
     preselectedTemplateId ? 'template' : 'template'
@@ -94,6 +92,8 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
   // Paso 2: Vista de personalización de la copia independiente clonada
   const [clonedQuote, setClonedQuote] = useState<QuoteProposal | null>(null);
   const [expandedDelId, setExpandedDelId] = useState<string | null>(null);
+
+  if (!isOpen) return null;
 
   const selectedTemplate = templates.find((t) => t.id === selectedTemplateId) || templates[0];
   const targetExistingOpp = opportunities.find((o) => o.id === selectedOpportunityId);
@@ -791,7 +791,7 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                     <div className="flex items-center gap-2">
                       <FileSpreadsheet className="w-4 h-4 text-[#38bdf8]" />
                       <span className="text-xs font-bold text-[#38bdf8] uppercase tracking-wider">
-                        Contrato Preparado: Calculadora Comercial
+                        Bolsa de Horas Consolidada para Cotización
                       </span>
                     </div>
                     <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#38bdf8]/15 text-[#38bdf8]">

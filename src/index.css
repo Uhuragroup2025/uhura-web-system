@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 :root {
+  color-scheme: light;
   /* UHURA BRAND FOUNDATION 2026 - UNIFIED CANONICAL TOKENS */
   --uhura-ink: #17131f;
   --uhura-dark: #090513;
@@ -355,6 +356,43 @@ select {
 
 .animate-beaver-point {
   animation: beaverPoint 1.2s ease-in-out;
+}
+
+/* Form inputs contrast & readability safeguard across dark/light mode */
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+  caret-color: #501f92 !important;
+  color-scheme: light !important;
+  opacity: 1 !important;
+}
+
+input::selection,
+textarea::selection,
+select::selection {
+  background-color: #ddd6fe !important;
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([class*="bg-transparent"]):not([class*="bg-black"]):not([class*="bg-slate-9"]):not([class*="bg-[#0"]),
+select:not([class*="bg-transparent"]):not([class*="bg-black"]):not([class*="bg-slate-9"]):not([class*="bg-[#0"]),
+textarea:not([class*="bg-transparent"]):not([class*="bg-black"]):not([class*="bg-slate-9"]):not([class*="bg-[#0"]) {
+  background-color: #ffffff !important;
+}
+
+select option {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+}
+
+/* Modals and light panels default text safeguard */
+.bg-white,
+[class*="bg-white"] {
+  color: #0f172a;
 }
 
 
