@@ -179,7 +179,7 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
               <>
                 <span>•</span>
                 <span className="font-medium text-[#475569]">
-                  Lead Uhura: <strong>{client.accountManagerName}</strong>
+                  Responsable de cliente: <strong>{client.accountManagerName}</strong>
                 </span>
               </>
             )}

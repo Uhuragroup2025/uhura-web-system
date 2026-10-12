@@ -207,10 +207,22 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
               </span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-[11px]">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5 text-[11px]">
               <div className="p-2.5 rounded-lg bg-white border border-[#e9d5ff]/80">
                 <span className="text-[#64748b] block text-[10px]">Cliente / Cuenta</span>
                 <span className="font-bold text-[#0f172a] truncate block">{clientName}</span>
+              </div>
+              <div className="p-2.5 rounded-lg bg-white border border-[#e9d5ff]/80">
+                <span className="text-[#64748b] block text-[10px]">Líder de Alcance</span>
+                <span className="font-bold text-[#501f92] truncate block" title={opportunity.leadUserName || 'No asignado'}>
+                  {opportunity.leadUserName || 'No asignado'}
+                </span>
+              </div>
+              <div className="p-2.5 rounded-lg bg-white border border-[#e9d5ff]/80">
+                <span className="text-[#64748b] block text-[10px]">Responsable Comercial</span>
+                <span className="font-bold text-[#0f172a] truncate block" title={opportunity.commercialOwner || 'Comercial'}>
+                  {opportunity.commercialOwner || 'Comercial'}
+                </span>
               </div>
               <div className="p-2.5 rounded-lg bg-white border border-[#e9d5ff]/80">
                 <span className="text-[#64748b] block text-[10px]">Valor Vendido</span>
@@ -223,7 +235,7 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
                 <span className="font-bold text-[#501f92] block">{totalHours}h cotizadas</span>
               </div>
               <div className="p-2.5 rounded-lg bg-white border border-[#e9d5ff]/80">
-                <span className="text-[#64748b] block text-[10px]">Servicios / Tareas</span>
+                <span className="text-[#64748b] block text-[10px]">Frentes & Tareas</span>
                 <span className="font-bold text-[#0f172a] block">
                   {activeQuote.deliverables.length} frentes · {totalActivities} tareas
                 </span>
@@ -306,7 +318,7 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
                 </div>
               )}
               <span className="text-[10px] text-[#64748b] block">
-                Preseleccionado del scoping de New Business
+                Preseleccionado a partir del líder de alcance; puedes confirmar o cambiar al líder operativo del proyecto.
               </span>
             </div>
 

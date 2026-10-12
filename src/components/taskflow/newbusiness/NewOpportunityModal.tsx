@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   NewBusinessOpportunity,
   OpportunityType,
@@ -100,6 +100,32 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
       true // fallback to any member if list is short
   );
 
+  // Commercial team members filtered strictly by functional capacity 'commercial'
+  const commercialUsers: UserItem[] = useMemo(() => {
+    const list = availableUsers.filter(
+      (u: UserItem) =>
+        u.accessLevel === 'commercial' ||
+        (u.department && u.department.toLowerCase().includes('comercial')) ||
+        (u.jobTitle && u.jobTitle.toLowerCase().includes('comercial'))
+    );
+    return list.length > 0 ? list : availableUsers;
+  }, [availableUsers]);
+
+  // Helper to map HubSpot owner string (or deal owner) to an Orbit user name
+  const resolveCommercialUserName = (rawOwner?: string) => {
+    if (!rawOwner || !rawOwner.trim()) return '';
+    const q = rawOwner.toLowerCase().trim();
+    // Check exact or partial match with commercialUsers
+    const matched = commercialUsers.find(
+      (u: UserItem) =>
+        u.name.toLowerCase().includes(q) ||
+        q.includes(u.name.toLowerCase()) ||
+        (u.email && u.email.toLowerCase() === q)
+    );
+    if (matched) return matched.name;
+    return rawOwner;
+  };
+
   // HubSpot Fetch State
   const [hubspotQuery, setHubspotQuery] = useState<string>('');
   const [isFetchingHubspot, setIsFetchingHubspot] = useState<boolean>(false);
@@ -119,7 +145,10 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
   // Dynamic Leader Assignment (defaults to first leader or u-2)
   const defaultLeader = eligibleLeaders.find((u) => u.id === 'u-2') || eligibleLeaders[0];
   const [selectedLeadUserId, setSelectedLeadUserId] = useState<string>(defaultLeader?.id || 'u-2');
-  const [commercialOwner, setCommercialOwner] = useState<string>('Cata · Directora Comercial');
+  // Commercial owner: do not assume default hardcoded owner; start empty or first commercial user if single
+  const [commercialOwner, setCommercialOwner] = useState<string>(
+    commercialUsers.length === 1 ? commercialUsers[0].name : ''
+  );
   
   const [hubspotDealId, setHubspotDealId] = useState<string>('');
   const [hubspotDealUrl, setHubspotDealUrl] = useState<string>('');
@@ -156,7 +185,7 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
         setContactPhone(matched.contactPhone);
         setHubspotDealId(matched.id);
         setHubspotDealUrl(matched.dealUrl);
-        setCommercialOwner(matched.commercialOwner);
+        setCommercialOwner(resolveCommercialUserName(matched.commercialOwner));
         if (matched.suggestedLeadUserId) {
           setSelectedLeadUserId(matched.suggestedLeadUserId);
         }
@@ -199,7 +228,7 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
     setContactPhone(deal.contactPhone);
     setHubspotDealId(deal.id);
     setHubspotDealUrl(deal.dealUrl);
-    setCommercialOwner(deal.commercialOwner);
+    setCommercialOwner(resolveCommercialUserName(deal.commercialOwner));
     if (deal.suggestedLeadUserId) {
       setSelectedLeadUserId(deal.suggestedLeadUserId);
     }
@@ -255,6 +284,7 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
       contactPhone: contactPhone.trim() || undefined,
       leadUserId: resolvedLeadUserId,
       leadUserName: resolvedLeadUserName,
+      commercialOwner: commercialOwner.trim() || undefined,
       handoffHours: safeHandoffHours,
       handoffDeadline: deadlineTimestamp,
       hubspotDealId: hubspotDealId.trim() || (entryMode === 'hubspot' ? 'hs-deal-manual' : null),
@@ -554,11 +584,11 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
             </div>
           </div>
 
-          {/* SECCIÓN 3: ASIGNACIÓN DINÁMICA DE LÍDER & SLA EDITABLE */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* SECCIÓN 3: ROLES (LÍDER DE ALCANCE & RESPONSABLE COMERCIAL) & SLA */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="space-y-1">
               <label className="font-bold text-[#475569] block">
-                Líder Asignado para Scoping: <span className="text-red-500">*</span>
+                Líder de alcance: <span className="text-red-500">*</span>
               </label>
               <select
                 value={selectedLeadUserId}
@@ -571,6 +601,30 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
                   </option>
                 ))}
               </select>
+              <span className="text-[10px] text-[#64748b] block">
+                Responsable técnico del dimensionamiento
+              </span>
+            </div>
+
+            <div className="space-y-1">
+              <label className="font-bold text-[#475569] block">
+                Responsable comercial:
+              </label>
+              <select
+                value={commercialOwner}
+                onChange={(e) => setCommercialOwner(e.target.value)}
+                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-medium bg-white focus:ring-2 focus:ring-[#501f92]"
+              >
+                <option value="">Seleccionar responsable comercial...</option>
+                {commercialUsers.map((user: UserItem) => (
+                  <option key={user.id} value={user.name}>
+                    {user.name} ({user.officialRole || user.jobTitle || user.role})
+                  </option>
+                ))}
+              </select>
+              <span className="text-[10px] text-[#64748b] block">
+                Relación de cuenta y negociación
+              </span>
             </div>
 
             <div className="space-y-1">

@@ -31,7 +31,8 @@ import {
   FeeRolloverPolicy,
   STANDARD_UHURA_ROLES,
   StandardUhuraRole,
-  TaskItem
+  TaskItem,
+  UserItem
 } from './types';
 import { initialUsers } from './mockData';
 import { checkAssigneeAvailability } from './copilot/teamLifeEngine';
@@ -49,6 +50,8 @@ export interface NewProjectPayload {
   leadName: string;
   leadAvatarBg: string;
   leadRole?: string;
+  accountManagerId?: string;
+  accountManagerName?: string;
   budgetedHours: number;
   soldHours?: number;
   soldValue?: number;
@@ -69,6 +72,7 @@ interface NewProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
   clients: ClientProfile[];
+  users?: UserItem[];
   preselectedClientId?: string | null;
   onAddProject: (projectData: NewProjectPayload) => void;
 }
@@ -115,10 +119,28 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
   isOpen,
   onClose,
   clients,
+  users = initialUsers,
   preselectedClientId,
   onAddProject
 }) => {
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
+
+  // Available users from runtime or fallback
+  const availableUsers = useMemo(() => {
+    return users && users.length > 0 ? users : initialUsers;
+  }, [users]);
+
+  // Client Relationship Managers filtered strictly by functional capacity 'client_relationship'
+  const clientRelationshipUsers = useMemo(() => {
+    const list = availableUsers.filter(
+      (u) =>
+        u.accessLevel === 'client_relationship' ||
+        (u.officialRole && u.officialRole.toLowerCase().includes('client relationship')) ||
+        (u.jobTitle && u.jobTitle.toLowerCase().includes('cuentas')) ||
+        (u.jobTitle && u.jobTitle.toLowerCase().includes('relationship'))
+    );
+    return list.length > 0 ? list : availableUsers;
+  }, [availableUsers]);
 
   // --- Step 1: Identidad & Marco ---
   const [selectedClientId, setSelectedClientId] = useState<string>(
@@ -134,9 +156,19 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
   );
   const [endDate, setEndDate] = useState<string>('');
   const [selectedLead, setSelectedLead] = useState(AVAILABLE_LEADS[0]);
+  
+  // Responsable de cliente (Uhura) - inherited from ClientProfile if present
+  const initialClient = clients.find((c) => c.id === (preselectedClientId || clients[0]?.id));
+  const [accountManagerId, setAccountManagerId] = useState<string>(
+    initialClient?.accountManagerId || ''
+  );
+  const [accountManagerName, setAccountManagerName] = useState<string>(
+    initialClient?.accountManagerName || ''
+  );
+
   const [brief, setBrief] = useState<string>('');
 
-  // --- Step 2: Frentes, Horas & Asignación Inmediata de Equipo (Unificado) ---
+  // --- Step 2: Alcance (Frentes, Horas & Asignación de Equipo) ---
   const [rolloverPolicy, setRolloverPolicy] = useState<FeeRolloverPolicy>('none');
   const [deliverables, setDeliverables] = useState<{
     id: string;
@@ -279,6 +311,25 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
   const currentClient = useMemo(() => {
     return clients.find((c) => c.id === selectedClientId) || clients[0];
   }, [clients, selectedClientId]);
+
+  // Synchronize account manager when client changes
+  useEffect(() => {
+    if (currentClient) {
+      if (currentClient.accountManagerId) {
+        setAccountManagerId(currentClient.accountManagerId);
+        // Find corresponding user name if available
+        const matchedUser = availableUsers.find((u) => u.id === currentClient.accountManagerId);
+        setAccountManagerName(matchedUser ? matchedUser.name : (currentClient.accountManagerName || ''));
+      } else if (currentClient.accountManagerName) {
+        setAccountManagerName(currentClient.accountManagerName);
+        const matchedUser = availableUsers.find((u) => u.name.toLowerCase() === currentClient.accountManagerName?.toLowerCase());
+        setAccountManagerId(matchedUser ? matchedUser.id : '');
+      } else {
+        setAccountManagerId('');
+        setAccountManagerName('');
+      }
+    }
+  }, [currentClient, availableUsers]);
 
   // Filtered clients for quick picker
   const filteredClients = useMemo(() => {
@@ -506,6 +557,8 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
       leadName: selectedLead.name,
       leadAvatarBg: selectedLead.avatarBg,
       leadRole: selectedLead.role,
+      accountManagerId: accountManagerId || undefined,
+      accountManagerName: accountManagerName.trim() || undefined,
       budgetedHours: totalQuotedHours,
       soldHours: totalQuotedHours,
       startDate,
@@ -543,7 +596,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
               <p className="text-xs text-[#64748b]">
                 Paso {currentStep} de 3: {
                   currentStep === 1 ? 'Identidad & Marco Operativo' :
-                  currentStep === 2 ? 'Frentes, Horas & Asignación de Equipo' :
+                  currentStep === 2 ? 'Alcance' :
                   'Revisión & Cierre'
                 }
               </p>
@@ -561,7 +614,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
         <div className="px-6 py-3 bg-[#f8fafc] border-b border-[#f1f5f9] flex items-center justify-between">
           {[
             { step: 1, label: 'Identidad', icon: Building2 },
-            { step: 2, label: 'Frentes, Horas & Equipo', icon: Layers },
+            { step: 2, label: 'Alcance', icon: Layers },
             { step: 3, label: 'Revisión & Cierre', icon: CheckCircle2 }
           ].map((item) => {
             const Icon = item.icon;
@@ -747,8 +800,8 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                   </div>
                 </div>
 
-                {/* Dates & Governance */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
+                {/* Fechas & Roles Clave */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
                   <div>
                     <label className="block text-xs font-medium text-[#475569] mb-1 flex items-center gap-1">
                       <Calendar className="w-3.5 h-3.5 text-[#501f92]" />
@@ -775,10 +828,13 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                       className="w-full text-xs border border-[#cbd5e1] rounded-xl px-3 py-2 bg-white text-[#0f172a] focus:ring-2 focus:ring-[#501f92]"
                     />
                   </div>
+                </div>
 
+                {/* Roles del Proyecto: Separación visual de Liderazgo Operativo vs Relación de Cuenta */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3.5 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl">
                   <div>
-                    <label className="block text-xs font-medium text-[#475569] mb-1">
-                      Project Lead Responsable *
+                    <label className="block text-xs font-bold text-[#334155] mb-1">
+                      Líder del proyecto *
                     </label>
                     <select
                       value={selectedLead.name}
@@ -786,7 +842,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                         const lead = AVAILABLE_LEADS.find((l) => l.name === e.target.value);
                         if (lead) setSelectedLead(lead);
                       }}
-                      className="w-full text-xs border border-[#cbd5e1] rounded-xl px-3 py-2 bg-white text-[#0f172a] focus:ring-2 focus:ring-[#501f92]"
+                      className="w-full text-xs border border-[#cbd5e1] rounded-xl px-3 py-2 bg-white text-[#0f172a] font-medium focus:ring-2 focus:ring-[#501f92]"
                     >
                       {AVAILABLE_LEADS.map((lead) => (
                         <option key={lead.id} value={lead.name}>
@@ -794,6 +850,51 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                         </option>
                       ))}
                     </select>
+                    <span className="text-[10px] text-[#64748b] block mt-1">
+                      Responsable técnico y operativo de la ejecución / delivery
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-[#334155] mb-1">
+                      Responsable de cliente
+                    </label>
+                    <select
+                      value={accountManagerId || (accountManagerName ? `custom-${accountManagerName}` : '')}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (!val) {
+                          setAccountManagerId('');
+                          setAccountManagerName('');
+                          return;
+                        }
+                        const matched = clientRelationshipUsers.find((u) => u.id === val);
+                        if (matched) {
+                          setAccountManagerId(matched.id);
+                          setAccountManagerName(matched.name);
+                        } else {
+                          setAccountManagerId('');
+                          setAccountManagerName(val.replace('custom-', ''));
+                        }
+                      }}
+                      className="w-full text-xs border border-[#cbd5e1] rounded-xl px-3 py-2 bg-white text-[#0f172a] font-medium focus:ring-2 focus:ring-[#501f92]"
+                    >
+                      <option value="">Seleccionar responsable de cuenta...</option>
+                      {clientRelationshipUsers.map((user) => (
+                        <option key={user.id} value={user.id}>
+                          {user.name} ({user.officialRole || user.jobTitle || user.role})
+                        </option>
+                      ))}
+                      {/* En caso de que el cliente traiga un nombre no mapeado aún en la lista */}
+                      {accountManagerName && !clientRelationshipUsers.some((u) => u.name.toLowerCase() === accountManagerName.toLowerCase()) && (
+                        <option value={`custom-${accountManagerName}`}>
+                          {accountManagerName} (Asignado en Perfil del Cliente)
+                        </option>
+                      )}
+                    </select>
+                    <span className="text-[10px] text-[#64748b] block mt-1">
+                      Relación de cuenta y gestión del cliente (heredado de Cliente)
+                    </span>
                   </div>
                 </div>
 
@@ -814,7 +915,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
             </div>
           )}
 
-          {/* STEP 2: FRENTES, HORAS & ASIGNACIÓN INMEDIATA DE EQUIPO (UNIFICADO) */}
+          {/* STEP 2: ALCANCE */}
           {currentStep === 2 && (
             <div className="space-y-5 animate-in fade-in duration-200">
               {/* Top Operational Bar */}
@@ -825,11 +926,11 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                       <Layers className="w-3.5 h-3.5" />
                     </span>
                     <h4 className="text-xs font-bold uppercase tracking-wider text-[#501f92]">
-                      Frentes, Horas & Asignación de Equipo
+                      Alcance del Proyecto
                     </h4>
                   </div>
                   <p className="text-[11px] text-[#64748b] mt-1 leading-relaxed">
-                    Asigna la bolsa de horas por frente y selecciona a los colaboradores de inmediato con visibilidad en tiempo real de su disponibilidad semanal y estado de vacaciones.
+                    Define los frentes de entregables, dimensiona la bolsa de horas y asigna los colaboradores del equipo operativo.
                   </p>
                 </div>
 
@@ -1324,7 +1425,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                     </span>
                   </div>
                   <div>
-                    <span className="text-[#64748b] block text-[10px]">Project Lead</span>
+                    <span className="text-[#64748b] block text-[10px]">Líder del proyecto</span>
                     <span className="font-semibold text-[#0f172a]">{selectedLead.name}</span>
                   </div>
                   <div>

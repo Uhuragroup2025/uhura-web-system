@@ -1658,6 +1658,8 @@ export const TaskFlowPrototype: React.FC = () => {
       leadName: projectData.leadName,
       leadAvatarBg: projectData.leadAvatarBg,
       leadRole: projectData.leadRole,
+      accountManagerId: projectData.accountManagerId,
+      accountManagerName: projectData.accountManagerName,
       projectType: projectData.projectType,
       serviceBase: projectData.serviceBase,
       budgetedHours: projectData.budgetedHours,
@@ -2823,6 +2825,7 @@ export const TaskFlowPrototype: React.FC = () => {
         }}
         onAddProject={handleAddProject}
         clients={clients}
+        users={users}
         preselectedClientId={newProjectPreselectedClientId || undefined}
       />
 

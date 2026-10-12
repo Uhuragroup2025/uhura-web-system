@@ -141,79 +141,80 @@ Los endpoints de consulta (`GET /api/users/`, `GET /api/users/<id>/`, `GET /api/
 
 ---
 
-## 7. Soporte para Múltiples Líderes de Scoping en Oportunidades (Pendiente de Backend)
+## 7. Soporte para Múltiples Líderes (Alcance y Proyecto) y Trazabilidad (Pendiente de Backend)
 
-> **Estado:** Pendiente backend: soporte multi-lead (por coordinar con Indunova). En frontend, el comportamiento productivo actual mantiene `leadUserId: UUID` como campo canónico persistido (1 líder), con preparación desacoplada de `leadUserIds?: string[]`. Una vez backend exponga la relación 1..N, se activará el selector multi-lead en la UI, la visibilidad compartida en Mi Día y la trazabilidad hacia el proyecto final.
+> **Estado:** Pendiente backend: soporte multi-lead (por coordinar con Indunova). En frontend, el comportamiento productivo actual mantiene:
+> - En New Business: `leadUserId: UUID` como campo canónico de 1 líder de alcance, con label canónico **"Líderes de alcance"**.
+> - En Proyecto: `leadUserId` / `leadName` como campo canónico de 1 líder operativo, con label canónico **"Líderes del proyecto"**.
+> - En Cliente / Negocio: label canónico **"Responsable comercial"** (en New Business) y **"Responsable de cliente"** (en Proyecto/Cliente).
 
-### 7.1 Contexto de Negocio
-Una oportunidad comercial compleja puede requerir el dimensionamiento técnico concurrente de 1..N líderes técnicos (ej. Paola en Estrategia de Producto y Camilo en Arquitectura Técnica). Ambos líderes comparten la misma responsabilidad técnica sobre el scoping, el dimensionamiento de horas y el SLA de handoff.
+### 7.1 Separación Canónica de Responsabilidades
+1. **Líderes de alcance (`scoping_leads`):** Preventa / scoping. Bajan requerimientos técnicos, estructuran entregables, estiman horas y participan en la propuesta técnica y handoff comercial. Puede haber 1..N líderes técnicos.
+2. **Líderes del proyecto (`project_leads`):** Delivery / ejecución operativa una vez el proyecto está activo o en arranque.
+3. **Responsable comercial / Responsable de cliente:** Relación de cuenta y negocio (ej. Catalina, Laura, Luisa). No debe confundirse ni mezclarse con el liderazgo técnico.
 
 ### 7.2 Especificación para Requerimiento Backend (Indunova)
 
 ```markdown
-### [Pendiente Backend] Soporte para Múltiples Líderes de Scoping (1..N) en Oportunidades Comerciales
+### [Pendiente Backend] Soporte Multi-Lead (1..N) en Oportunidades y Proyectos + Trazabilidad
 
-**Objetivo:** Permitir que una oportunidad comercial (`NewBusinessOpportunity`) registre uno o varios líderes técnicos (`lead_users`), conservando compatibilidad con el líder principal (`lead_user_id`).
-
-**1. Modelo de Datos y Persistencia:**
-* Opción A (Recomendada - Relación Many-to-Many):
-  ```python
-  class Opportunity(models.Model):
-      # ... campos existentes ...
-      lead_user = models.ForeignKey(
-          User, on_delete=models.SET_NULL, null=True, blank=True,
-          related_name='primary_opportunities'
-      )
-      lead_users = models.ManyToManyField(
-          User, blank=True,
-          related_name='scoping_opportunities'
-      )
-  ```
-* Opción B (Array de UUIDs):
-  ```python
-  lead_user_ids = ArrayField(models.UUIDField(), default=list, blank=True)
-  ```
-
-**2. DTO / Serializer Contract:**
-* **Payload de entrada (POST / PATCH / PUT):**
+**1. Oportunidades Comerciales (New Business):**
+* Permitir 1..N líderes de alcance en `Opportunity`:
+  * Relación Many-to-Many `scoping_leads` (o `lead_users`) o array `lead_user_ids`.
+  * Mantener `lead_user_id` como clave foránea para compatibilidad con datos existentes.
+* Payload esperado (POST/PATCH):
   ```json
   {
     "lead_user_id": "usr-paola-002",
     "lead_user_ids": ["usr-paola-002", "usr-camilo-003"]
   }
   ```
-* **Respuesta esperada (GET / Detalle y Listado):**
-  ```json
-  {
-    "id": "opp-corp-001",
-    "title": "Rediseño E-commerce B2B",
-    "lead_user_id": "usr-paola-002",
-    "lead_user_ids": ["usr-paola-002", "usr-camilo-003"],
-    "lead_users": [
-      { "id": "usr-paola-002", "name": "Paola Monsalve", "role": "Product Lead" },
-      { "id": "usr-camilo-003", "name": "Camilo Cruz", "role": "Tech Lead" }
-    ]
-  }
-  ```
 
-**3. Regla de Migración y Compatibilidad:**
-* **Datos existentes:** Para todo registro existente con `lead_user_id`, poblar automáticamente `lead_users = [lead_user_id]` o `lead_user_ids = [lead_user_id]`.
-* **Escritura retrocompatible:**
-  * Si el cliente solo envía `lead_user_id`, establecer `lead_users = [lead_user_id]`.
-  * Si el cliente envía `lead_user_ids: [A, B]`, asignar `lead_user_id = A` como líder principal de compatibilidad.
+**2. Proyectos Operativos (Orbit Projects):**
+* Permitir 1..N líderes del proyecto en `Project`:
+  * Relación Many-to-Many `project_leads` o array `project_lead_ids`.
+  * Mantener `lead_user_id` / `lead_name` como compatibilidad con el líder principal.
+* Trazabilidad de Scoping:
+  * Almacenar quiénes fueron los líderes de alcance que originaron el proyecto (`scoping_lead_ids` o metadatos de conversión) para conservar historial de preventa.
 
-**4. Endpoints de Consulta Personalizada (Mi Día / Mis Oportunidades):**
-* Al consultar oportunidades asignadas al usuario activo (`/api/opportunities/?my_opportunities=true` o `/api/my-day/`):
-  ```python
-  # Django ORM:
-  Q(lead_user_id=request.user.id) | Q(lead_users__id=request.user.id)
-  ```
+**3. Directriz Crítica: Responsable Comercial / Responsable de Cliente:**
+* ⚠️ **NO congelar todavía nombres técnicos nuevos** (ej. `account_manager_id` o `commercial_owner_id`).
+* Primero revisar qué modelo, entidad o campo equivalente ya existe actualmente en el backend de Indunova (en la entidad de Cliente, Cuenta o Negociación) para reutilizarlo sin duplicar conceptos.
+* **Estado actual de contratos en frontend:**
+  * En `ClientProfile`: ya existen `accountManagerId?: string;` y `accountManagerName?: string;`.
+  * En `Project` / `ProjectSummaryItem`: se expone `accountManagerName?: string;` (y opcionalmente `accountManagerId?: string;` como referencia de usuario).
+  * En `Opportunity`: se conserva `commercialOwner?: string;` (mapeado desde Deals de HubSpot o colaboradores comerciales).
+  * **Pendiente con backend:** Validar si Indunova persistirá una FK de usuario canónica (`account_manager_id`) en la tabla de proyectos o si continuará derivándose en runtime desde la entidad `ClientProfile`.
+
+**4. Regla de Migración y Compatibilidad:**
+* **Datos existentes:** Poblar la relación múltiple con el ID del líder único existente (`lead_user_id` -> `[lead_user_id]`).
+* **Escritura retrocompatible:** Si frontend o una integración externa solo envía el ID singular, backend debe actualizar automáticamente la relación múltiple con ese único miembro.
+* **Filtros Mi Día:** Consultar `Q(lead_user_id=request.user.id) | Q(scoping_leads__id=request.user.id)` para que la oportunidad y el proyecto aparezcan en el panel de todos los líderes responsables.
 ```
 
-### 7.3 Hoja de Ruta Frontend tras Entrega Backend
-Cuando Indunova publique el soporte en API:
-1. **Selector UI:** Habilitar multiselect con checkboxes (1..N líderes de scoping) en cabecera de New Business.
-2. **Mi Día:** Filtro dinámico multidimensional que muestre la tarjeta de scoping en el dashboard de cada uno de los líderes asignados.
-3. **Persistencia Real:** Enviar `lead_user_ids` junto con `lead_user_id` canónico sin riesgo de pérdida de selección.
-4. **Handoff a Proyecto:** En la conversión a proyecto en Orbit (`ConvertOpportunityModal`), permitir transferir la dupla de líderes o seleccionar el Tech Lead / Project Manager principal asignando los roles correspondientes.
+### 7.3 Flujo de Conversión New Business → Proyecto
+Cuando backend exponga el soporte multi-lead:
+1. **Trazabilidad heredada:** `ConvertOpportunityModal` muestra a los líderes de alcance y al responsable comercial como datos heredados de solo lectura.
+2. **Propuesta operativa:** Los líderes de alcance se preseleccionan automáticamente como propuesta inicial de líderes del proyecto.
+3. **Confirmación / Ajuste:** El usuario puede confirmar, quitar o agregar líderes operativos reales antes de crear el proyecto.
+4. **Desacoplamiento:** El responsable comercial o de cliente se mantiene por separado y nunca forma parte del selector técnico.
+
+---
+
+## 8. Responsabilidad Comercial vs Responsable de Cliente (Consistencia de Contratos)
+
+### 8.1 Responsable Comercial (`commercialOwner` en New Business)
+* **Contrato actual:** `commercialOwner?: string` en la entidad `Opportunity`.
+* **Derivación de UI:** El selector de la interfaz se alimenta del catálogo de usuarios de Orbit con nivel/capacidad `commercial` (`OrbitAccessLevel: 'commercial'` o funciones comerciales equivalentes). Al seleccionar un usuario de la lista, el valor guardado en `commercialOwner` es el nombre canónico del usuario (`user.name`), preservando compatibilidad exacta con el contrato de persistencia actual de Indunova sin crear campos no soportados (como `commercialOwnerId`).
+* **Sincronización HubSpot:** Si el Deal importado trae un owner comercial (`deal.commercialOwner`), la UI busca coincidencia con los usuarios de Orbit. Si no existe mapeo unívoco, se deja en blanco para selección explícita del usuario sin suposiciones ni hardcoding.
+
+### 8.2 Responsable de Cliente (`accountManagerId` / `accountManagerName` en Proyecto)
+* **Contrato en ClientProfile:** La entidad canónica de cliente almacena `accountManagerId?: string` y `accountManagerName?: string`.
+* **Herencia en Nuevo Proyecto:** Al seleccionar un cliente en el Paso 1, el proyecto prellena el Responsable de cliente a partir de dicho perfil.
+* **Sincronización bidireccional en UI:** Al cambiar el selector en el formulario de proyecto:
+  * Si se selecciona un usuario de la lista de colaboradores con capacidad `client_relationship`, se actualizan sincrónicamente tanto `accountManagerId` (ID del usuario) como `accountManagerName` (nombre del usuario).
+  * Si el cliente original tenía únicamente `accountManagerName` sin ID mapeado en runtime, se conserva dicho nombre como valor compatible.
+  * Se evita en todo momento cualquier discrepancia o desincronización donde el ID corresponda a un colaborador y el nombre a otro.
+* **Nota para Backend Indunova:** Actualmente la entidad `Project` en backend persiste principalmente `accountManagerName` o la relación del cliente. Mantener `accountManagerId` como referencia transitoria compatible en frontend hasta que el modelo relacional de backend confirme formalmente la clave foránea canónica para el responsable de cliente en la tabla/colección de proyectos.
+
 

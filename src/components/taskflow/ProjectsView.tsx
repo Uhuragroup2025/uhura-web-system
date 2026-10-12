@@ -629,7 +629,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
               <h1 className="text-2xl font-extrabold text-[#0f172a] pt-0.5 tracking-tight">{currentProject.name}</h1>
               
               <p className="text-xs text-[#64748b]">
-                Project Lead: <strong className="text-[#0f172a]">{currentProject.leadName}</strong>
+                Líder del proyecto: <strong className="text-[#0f172a]">{currentProject.leadName}</strong>
               </p>
             </div>
 

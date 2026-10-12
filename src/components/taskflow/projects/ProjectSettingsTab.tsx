@@ -98,7 +98,7 @@ export const ProjectSettingsTab: React.FC<ProjectSettingsTabProps> = ({
           </div>
 
           <div>
-            <label className="block font-bold text-[#475569] mb-1">Project Lead Responsable</label>
+            <label className="block font-bold text-[#475569] mb-1">Líder del proyecto</label>
             <input
               type="text"
               value={leadName}

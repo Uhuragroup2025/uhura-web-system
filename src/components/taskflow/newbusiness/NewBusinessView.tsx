@@ -730,7 +730,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                 <thead>
                   <tr className="bg-[#f8fafc] border-b border-[#e2e8f0] text-[#64748b] font-bold text-[11px] uppercase tracking-wider">
                     <th className="py-3 px-4">Cuenta / Oportunidad</th>
-                    <th className="py-3 px-4">Líder Asignado</th>
+                    <th className="py-3 px-4">Líder de Alcance</th>
                     <th className="py-3 px-4">Estado</th>
                     <th className="py-3 px-4">Tiempo / SLA</th>
                     <th className="py-3 px-4">Próxima Acción</th>
@@ -961,7 +961,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                     <div className="pt-2 border-t border-[#f1f5f9] space-y-1 text-xs text-[#64748b]">
                       <div className="flex items-center gap-1.5">
                         <User className="w-3.5 h-3.5 text-[#501f92]" />
-                        <span>Líder: <strong className="text-[#0f172a]">{opp.leadUserName || 'Product Lead'}</strong></span>
+                        <span>Líder de alcance: <strong className="text-[#0f172a]">{opp.leadUserName || 'Product Lead'}</strong></span>
                       </div>
                       {opp.contactName && (
                         <div className="flex items-center gap-1.5 text-[11px] text-[#64748b] truncate">
@@ -1092,7 +1092,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
             <div className="flex items-center gap-1 relative">
               <User className="w-3.5 h-3.5 text-[#501f92]" />
               <span>
-                Líder:{' '}
+                Líder de alcance:{' '}
                 <strong className="text-[#0f172a]">{currentLeadDisplayName}</strong>
               </span>
               {canEditOpp && users.length > 0 && (
@@ -1100,7 +1100,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                   type="button"
                   onClick={() => setIsReassigningLead(!isReassigningLead)}
                   className="text-[10px] text-[#501f92] hover:underline font-bold ml-1 cursor-pointer"
-                  title="Reasignar líder de scoping"
+                  title="Reasignar líder de alcance"
                 >
                   (Reasignar)
                 </button>
@@ -1111,7 +1111,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                 <div className="absolute top-6 left-0 z-30 bg-white rounded-xl shadow-xl border border-[#cbd5e1] p-3 w-64 space-y-2">
                   <div className="flex items-center justify-between pb-1 border-b border-[#f1f5f9]">
                     <span className="text-[11px] font-bold text-[#0f172a] block">
-                      Reasignar Líder:
+                      Reasignar Líder de Alcance:
                     </span>
                     <button
                       type="button"
@@ -1122,7 +1122,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                     </button>
                   </div>
                   <p className="text-[10px] text-[#64748b]">
-                    Selecciona el líder responsable del scoping:
+                    Selecciona el líder de alcance responsable del dimensionamiento:
                   </p>
                   <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
                     {users.map((u) => {
@@ -1462,7 +1462,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
               </div>
 
               <div className="p-3 bg-white/10 rounded-xl backdrop-blur-xs">
-                <span className="text-[10px] uppercase font-semibold text-white/70 block">Líder Asignado</span>
+                <span className="text-[10px] uppercase font-semibold text-white/70 block">Líder de Alcance</span>
                 <span className="font-bold text-xs text-white block">
                   {currentLeadDisplayName}
                 </span>
@@ -1523,23 +1523,30 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-2">
                 <div className="p-3 bg-[#f8fafc] rounded-xl border border-[#e2e8f0]">
                   <span className="text-[10px] uppercase font-bold text-[#64748b] block">Empresa</span>
-                  <span className="font-bold text-xs text-[#0f172a]">{activeOpp.prospectAccountName}</span>
+                  <span className="font-bold text-xs text-[#0f172a] truncate block">{activeOpp.prospectAccountName}</span>
                 </div>
 
                 <div className="p-3 bg-[#f8fafc] rounded-xl border border-[#e2e8f0]">
                   <span className="text-[10px] uppercase font-bold text-[#64748b] block">Contacto</span>
-                  <span className="font-medium text-xs text-[#0f172a]">
+                  <span className="font-medium text-xs text-[#0f172a] truncate block">
                     {activeOpp.contactName || 'No asignado'}
                   </span>
                 </div>
 
                 <div className="p-3 bg-[#f8fafc] rounded-xl border border-[#e2e8f0]">
-                  <span className="text-[10px] uppercase font-bold text-[#64748b] block">Líder Asignado</span>
-                  <span className="font-bold text-xs text-[#501f92]">
+                  <span className="text-[10px] uppercase font-bold text-[#64748b] block">Líder de Alcance</span>
+                  <span className="font-bold text-xs text-[#501f92] truncate block">
                     {activeOpp.leadUserName || 'Product Lead'}
+                  </span>
+                </div>
+
+                <div className="p-3 bg-[#f8fafc] rounded-xl border border-[#e2e8f0]">
+                  <span className="text-[10px] uppercase font-bold text-[#64748b] block">Responsable Comercial</span>
+                  <span className="font-bold text-xs text-[#0f172a] truncate block">
+                    {activeOpp.commercialOwner || 'Comercial'}
                   </span>
                 </div>
               </div>

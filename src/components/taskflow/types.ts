@@ -351,6 +351,8 @@ export interface ProjectSummaryItem {
   leadName: string;
   leadAvatarBg: string;
   leadRole?: string;
+  accountManagerId?: string;
+  accountManagerName?: string;
   projectType: ProjectType;
   serviceBase: string;
   areas?: string[];

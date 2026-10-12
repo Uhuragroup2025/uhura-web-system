@@ -276,7 +276,7 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
               </div>
 
               <div className="sm:col-span-2">
-                <label className="block font-semibold text-[#334155] mb-1">Account Manager (Uhura)</label>
+                <label className="block font-semibold text-[#334155] mb-1">Responsable de cliente (Uhura)</label>
                 <input
                   type="text"
                   value={accountManagerName}
