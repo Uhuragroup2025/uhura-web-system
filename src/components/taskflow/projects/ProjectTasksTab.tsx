@@ -1053,8 +1053,8 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
                   type="text"
                   value={formTitle}
                   onChange={(e) => setFormTitle(e.target.value)}
-                  placeholder="ej. Diseñar 6 carruseles de producto para campaña de Navidad"
-                  className="w-full px-3.5 py-2 rounded-xl bg-[#f8fafc] border border-[#cbd5e1] text-[#0f172a] font-medium focus:outline-none focus:border-[#501f92]"
+                  placeholder="Ej: Diseñar 6 carruseles de producto para campaña de Navidad"
+                  className="w-full px-3.5 py-2 rounded-xl bg-[#f8fafc] border border-[#cbd5e1] text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal font-medium focus:outline-none focus:border-[#501f92]"
                 />
               </div>
 
@@ -1301,7 +1301,7 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
                     type="text"
                     value={formBlockedReason}
                     onChange={(e) => setFormBlockedReason(e.target.value)}
-                    placeholder="Motivo del bloqueo (ej. esperando insumos o accesos del cliente)"
+                    placeholder="Motivo del bloqueo (Ej: esperando insumos o accesos del cliente)"
                     className="w-full px-3.5 py-1.5 rounded-xl bg-[#fff5f5] border border-[#fecaca] text-[#dc2626]"
                   />
                 )}
@@ -1358,8 +1358,8 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
                   type="text"
                   value={quickBlockReason}
                   onChange={(e) => setQuickBlockReason(e.target.value)}
-                  placeholder="ej. El cliente no ha compartido credenciales de la pasarela"
-                  className="w-full px-3 py-2 text-xs rounded-xl bg-[#f8fafc] border border-[#cbd5e1] text-[#0f172a]"
+                  placeholder="Ej: El cliente no ha compartido credenciales de la pasarela"
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-[#f8fafc] border border-[#cbd5e1] text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal"
                 />
               </div>
             )}

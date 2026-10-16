@@ -338,7 +338,7 @@ export const CleanDesignShowcase: React.FC = () => {
                         type="text"
                         value={aiQuery}
                         onChange={(e) => setAiQuery(e.target.value)}
-                        className="w-full bg-white text-[#17131f] placeholder-slate-400 text-xs sm:text-sm font-medium py-3.5 pl-4 pr-12 rounded-full shadow-lg focus:outline-none focus:ring-2 focus:ring-[#d4ff4a]"
+                        className="w-full bg-white text-[#17131f] placeholder:text-[#7C8AA0] placeholder:font-normal text-xs sm:text-sm font-medium py-3.5 pl-4 pr-12 rounded-full shadow-lg focus:outline-none focus:ring-2 focus:ring-[#d4ff4a]"
                       />
                       <button
                         onClick={() => handleAskAi(aiQuery)}
@@ -575,7 +575,7 @@ export const CleanDesignShowcase: React.FC = () => {
               <input
                 type="email"
                 placeholder="E-mail corporativo"
-                className="w-full h-13 px-4 rounded-xl bg-white text-[#17131f] text-sm font-medium placeholder-slate-400 focus:outline-none focus:ring-3 focus:ring-[#d4ff4a] shadow-md"
+                className="w-full h-13 px-4 rounded-xl bg-white text-[#17131f] text-sm font-medium placeholder:text-[#7C8AA0] placeholder:font-normal focus:outline-none focus:ring-3 focus:ring-[#d4ff4a] shadow-md"
               />
 
               {/* Phone Input with Country Selector */}
@@ -615,7 +615,7 @@ export const CleanDesignShowcase: React.FC = () => {
                 <input
                   type="tel"
                   placeholder="Teléfono móvil"
-                  className="w-full h-full px-4 rounded-r-xl bg-transparent text-[#17131f] text-sm font-medium placeholder-slate-400 focus:outline-none"
+                  className="w-full h-full px-4 rounded-r-xl bg-transparent text-[#17131f] text-sm font-medium placeholder:text-[#7C8AA0] placeholder:font-normal focus:outline-none"
                 />
               </div>
 

@@ -297,10 +297,10 @@ export const TemplateEditorModal: React.FC<TemplateEditorModalProps> = ({
                 <input
                   type="text"
                   required
-                  placeholder="ej. Sitio WordPress hasta 8 páginas internas"
+                  placeholder="Ej: Sitio WordPress hasta 8 páginas internas"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-[#cbd5e1] focus:ring-2 focus:ring-[#8a4dff] focus:border-transparent outline-hidden bg-white"
+                  className="w-full px-3 py-2 text-xs rounded-lg border border-[#cbd5e1] focus:ring-2 focus:ring-[#8a4dff] focus:border-transparent outline-hidden bg-white text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal"
                 />
               </div>
 

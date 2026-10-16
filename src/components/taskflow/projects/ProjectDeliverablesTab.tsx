@@ -352,8 +352,8 @@ export const ProjectDeliverablesTab: React.FC<ProjectDeliverablesTabProps> = ({
                   type="text"
                   value={delName}
                   onChange={(e) => setDelName(e.target.value)}
-                  placeholder="ej. Redes Sociales, Landing Page, Discovery..."
-                  className="w-full px-3 py-2 border border-[#cbd5e1] rounded-xl text-xs focus:ring-2 focus:ring-[#501f92]"
+                  placeholder="Ej: Redes Sociales, Landing Page, Discovery..."
+                  className="w-full px-3 py-2 border border-[#cbd5e1] rounded-xl text-xs text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal focus:ring-2 focus:ring-[#501f92]"
                 />
               </div>
 

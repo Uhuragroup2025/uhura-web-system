@@ -30,6 +30,19 @@
   --color-neutral-900: var(--uhura-ink);
   --color-neutral-950: var(--uhura-dark);
 
+  /* CANONICAL ORBIT FORM TOKENS */
+  --orbit-text-primary: #0f172a;
+  --orbit-text-secondary: #64748b;
+  --orbit-text-placeholder: #7C8AA0;
+  --orbit-text-suggested: #475569;
+  --orbit-border-default: #cbd5e1;
+  --orbit-border-subtle: #e2e8f0;
+  --orbit-border-focus: #501f92;
+  --orbit-bg-input: #ffffff;
+  --orbit-bg-readonly: #f8fafc;
+  --orbit-bg-disabled: #f1f5f9;
+  --orbit-bg-suggested: #faf5ff;
+
   /* CONTEXTUAL MAPPINGS */
   --context-accent-primary: var(--uhura-lime);
   --context-accent-secondary: var(--uhura-cyan);
@@ -222,7 +235,37 @@ body {
   outline-offset: 2px;
 }
 
-/* Global Clean Select Styling - Ensures dropdown arrows are beautifully inset and never cut off */
+/* Global Clean Form & Select Styling (Canonical QA Form Semantics) */
+input::placeholder,
+textarea::placeholder {
+  color: #7C8AA0 !important;
+  -webkit-text-fill-color: #7C8AA0 !important;
+  font-weight: 400 !important;
+  opacity: 1 !important;
+}
+
+input::-webkit-input-placeholder,
+textarea::-webkit-input-placeholder {
+  color: #7C8AA0 !important;
+  -webkit-text-fill-color: #7C8AA0 !important;
+  font-weight: 400 !important;
+  opacity: 1 !important;
+}
+
+input::-moz-placeholder,
+textarea::-moz-placeholder {
+  color: #7C8AA0 !important;
+  font-weight: 400 !important;
+  opacity: 1 !important;
+}
+
+input:-ms-input-placeholder,
+textarea:-ms-input-placeholder {
+  color: #7C8AA0 !important;
+  font-weight: 400 !important;
+  opacity: 1 !important;
+}
+
 select {
   appearance: none;
   -webkit-appearance: none;
@@ -232,6 +275,63 @@ select {
   background-position: right 0.75rem center;
   background-size: 0.85rem 0.85rem;
   padding-right: 2.25rem !important;
+}
+
+/* Unselected select state (accessible Slate 500, font-normal) */
+.orbit-select-empty,
+select[data-empty="true"],
+select:has(option:checked[value=""]),
+select:has(option:checked:not([value])) {
+  color: var(--orbit-text-secondary) !important;
+  font-weight: 400 !important;
+}
+
+select option {
+  color: var(--orbit-text-primary);
+  font-weight: 500;
+}
+
+select option[value=""],
+select option:disabled {
+  color: var(--orbit-text-secondary);
+  font-weight: 400;
+}
+
+/* Orbit Semantic Form Control Classes */
+.orbit-input {
+  color: var(--orbit-text-primary);
+  background-color: var(--orbit-bg-input);
+  border: 1px solid var(--orbit-border-default);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+.orbit-input:focus {
+  outline: none;
+  border-color: var(--orbit-border-focus);
+  box-shadow: 0 0 0 2px rgba(80, 31, 146, 0.15);
+}
+
+.orbit-field-suggested {
+  background-color: var(--orbit-bg-suggested);
+  border-color: #d8b4fe;
+  color: var(--orbit-text-suggested);
+}
+
+.orbit-field-readonly {
+  background-color: var(--orbit-bg-readonly);
+  border-color: var(--orbit-border-subtle);
+  color: var(--orbit-text-primary);
+  cursor: default;
+  user-select: text;
+}
+
+.orbit-field-disabled,
+input:disabled,
+select:disabled,
+textarea:disabled {
+  background-color: var(--orbit-bg-disabled);
+  border-color: var(--orbit-border-subtle);
+  color: var(--orbit-text-secondary);
+  cursor: not-allowed;
 }
 
 /* Floating Mascot Animation */
@@ -367,6 +467,17 @@ textarea {
   caret-color: #501f92 !important;
   color-scheme: light !important;
   opacity: 1 !important;
+}
+
+/* Ensure placeholder pseudo-elements NEVER inherit the input text-fill-color in WebKit/Blink */
+input::placeholder,
+textarea::placeholder {
+  -webkit-text-fill-color: #7C8AA0 !important;
+}
+
+input::-webkit-input-placeholder,
+textarea::-webkit-input-placeholder {
+  -webkit-text-fill-color: #7C8AA0 !important;
 }
 
 input::selection,

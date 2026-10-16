@@ -92,8 +92,8 @@ export const ProjectSettingsTab: React.FC<ProjectSettingsTabProps> = ({
               type="text"
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              placeholder="ej. YAM-NAV-01"
-              className="w-full px-3 py-2 border border-[#cbd5e1] rounded-xl text-xs font-mono text-[#0f172a] focus:ring-2 focus:ring-[#501f92]"
+              placeholder="Ej: YAM-NAV-01"
+              className="w-full px-3 py-2 border border-[#cbd5e1] rounded-xl text-xs font-mono text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal focus:ring-2 focus:ring-[#501f92]"
             />
           </div>
 

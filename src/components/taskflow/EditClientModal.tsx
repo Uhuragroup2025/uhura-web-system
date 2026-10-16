@@ -257,7 +257,7 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
                   value={name}
                   disabled={client.isInternal}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] text-[#0f172a] font-semibold focus:outline-none focus:border-[#501f92] focus:bg-white disabled:opacity-60"
+                  className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] bg-white text-[#0f172a] font-semibold focus:outline-none focus:border-[#501f92] disabled:bg-[#f1f5f9] disabled:border-[#e2e8f0] disabled:text-[#64748b] disabled:cursor-not-allowed"
                 />
               </div>
 
@@ -267,7 +267,7 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
                   value={status}
                   disabled={client.isInternal}
                   onChange={(e) => setStatus(e.target.value as ClientStatus)}
-                  className="w-full px-3 py-2 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] text-[#0f172a] font-semibold focus:outline-none focus:border-[#501f92] cursor-pointer disabled:opacity-60"
+                  className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] bg-white text-[#0f172a] font-semibold focus:outline-none focus:border-[#501f92] cursor-pointer disabled:bg-[#f1f5f9] disabled:border-[#e2e8f0] disabled:text-[#64748b] disabled:cursor-not-allowed"
                 >
                   <option value="active">🟢 Activo (Operación vigente)</option>
                   <option value="paused">🟡 Pausado (Detenido temporalmente)</option>
@@ -282,7 +282,7 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
                   value={accountManagerName}
                   onChange={(e) => setAccountManagerName(e.target.value)}
                   placeholder="Ej: Catalina Tejada, Laura Salazar"
-                  className="w-full px-3 py-2 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] text-[#0f172a] focus:outline-none focus:border-[#501f92] focus:bg-white"
+                  className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] bg-white text-[#0f172a] font-medium placeholder:text-[#7C8AA0] placeholder:font-normal focus:outline-none focus:border-[#501f92]"
                 />
               </div>
 
@@ -309,7 +309,7 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
                   value={brandsInput}
                   onChange={(e) => setBrandsInput(e.target.value)}
                   placeholder="Ej: Marca Principal, Línea B2B, Marca Retail"
-                  className="w-full px-3 py-2 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] text-[#0f172a] focus:outline-none focus:border-[#501f92] focus:bg-white"
+                  className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] bg-white text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal focus:outline-none focus:border-[#501f92]"
                 />
               </div>
 
@@ -320,7 +320,7 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Observaciones de relación, expectativas del cliente o contexto comercial..."
-                  className="w-full px-3 py-2 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] text-[#0f172a] focus:outline-none focus:border-[#501f92] focus:bg-white"
+                  className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] bg-white text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal focus:outline-none focus:border-[#501f92]"
                 />
               </div>
             </div>
@@ -396,9 +396,10 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
                         <label className="block text-[11px] font-semibold text-[#475569] mb-0.5">NIT / ID Fiscal</label>
                         <input
                           type="text"
+                          placeholder="Ej: 901.882.341-0"
                           value={tax.nit}
                           onChange={(e) => handleUpdateTaxEntity(tax.id, 'nit', e.target.value)}
-                          className="w-full px-2.5 py-1.5 rounded-lg border border-[#e2e8f0] bg-white text-[#0f172a] font-mono text-xs focus:outline-none focus:border-[#501f92]"
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-[#cbd5e1] bg-white text-[#0f172a] font-mono text-xs placeholder:text-[#7C8AA0] placeholder:font-normal placeholder:font-sans focus:outline-none focus:border-[#501f92]"
                         />
                       </div>
 
@@ -406,9 +407,10 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
                         <label className="block text-[11px] font-semibold text-[#475569] mb-0.5">Razón Social Legal</label>
                         <input
                           type="text"
+                          placeholder="Ej: Danone de Colombia S.A.S."
                           value={tax.businessName}
                           onChange={(e) => handleUpdateTaxEntity(tax.id, 'businessName', e.target.value)}
-                          className="w-full px-2.5 py-1.5 rounded-lg border border-[#e2e8f0] bg-white text-[#0f172a] font-semibold text-xs focus:outline-none focus:border-[#501f92]"
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-[#cbd5e1] bg-white text-[#0f172a] font-semibold text-xs placeholder:text-[#7C8AA0] placeholder:font-normal focus:outline-none focus:border-[#501f92]"
                         />
                       </div>
 
@@ -416,9 +418,10 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
                         <label className="block text-[11px] font-semibold text-[#475569] mb-0.5">Ciudad</label>
                         <input
                           type="text"
+                          placeholder="Ej: Medellín, Bogotá"
                           value={tax.city || ''}
                           onChange={(e) => handleUpdateTaxEntity(tax.id, 'city', e.target.value)}
-                          className="w-full px-2.5 py-1.5 rounded-lg border border-[#e2e8f0] bg-white text-[#0f172a] text-xs focus:outline-none focus:border-[#501f92]"
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-[#cbd5e1] bg-white text-[#0f172a] text-xs placeholder:text-[#7C8AA0] placeholder:font-normal focus:outline-none focus:border-[#501f92]"
                         />
                       </div>
 
@@ -426,9 +429,10 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
                         <label className="block text-[11px] font-semibold text-[#475569] mb-0.5">ID Alegra / Notas Facturación</label>
                         <input
                           type="text"
+                          placeholder="Ref externa de integración (Ej: alg-dan-001)"
                           value={tax.alegraContactId || ''}
                           onChange={(e) => handleUpdateTaxEntity(tax.id, 'alegraContactId', e.target.value)}
-                          className="w-full px-2.5 py-1.5 rounded-lg border border-[#e2e8f0] bg-white text-[#0f172a] font-mono text-xs focus:outline-none focus:border-[#501f92]"
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-[#cbd5e1] bg-white text-[#0f172a] font-mono text-xs placeholder:text-[#7C8AA0] placeholder:font-normal placeholder:font-sans focus:outline-none focus:border-[#501f92]"
                         />
                       </div>
                     </div>
@@ -502,9 +506,10 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
                       <label className="block text-[11px] font-semibold text-[#475569] mb-0.5">Nombre Completo</label>
                       <input
                         type="text"
+                        placeholder="Ej: Carlos Mendoza"
                         value={contact.name}
                         onChange={(e) => handleUpdateContact(contact.id, 'name', e.target.value)}
-                        className="w-full px-2.5 py-1.5 rounded-lg border border-[#e2e8f0] bg-white text-[#0f172a] font-semibold text-xs focus:outline-none focus:border-[#501f92]"
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-[#cbd5e1] bg-white text-[#0f172a] font-semibold text-xs placeholder:text-[#7C8AA0] placeholder:font-normal focus:outline-none focus:border-[#501f92]"
                       />
                     </div>
 
@@ -512,9 +517,10 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
                       <label className="block text-[11px] font-semibold text-[#475569] mb-0.5">Cargo / Rol</label>
                       <input
                         type="text"
+                        placeholder="Ej: Brand & Growth Director"
                         value={contact.roleTitle || ''}
                         onChange={(e) => handleUpdateContact(contact.id, 'roleTitle', e.target.value)}
-                        className="w-full px-2.5 py-1.5 rounded-lg border border-[#e2e8f0] bg-white text-[#0f172a] text-xs focus:outline-none focus:border-[#501f92]"
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-[#cbd5e1] bg-white text-[#0f172a] text-xs placeholder:text-[#7C8AA0] placeholder:font-normal focus:outline-none focus:border-[#501f92]"
                       />
                     </div>
 
@@ -523,7 +529,7 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
                       <select
                         value={contact.contactType}
                         onChange={(e) => handleUpdateContact(contact.id, 'contactType', e.target.value as ClientContactRole)}
-                        className="w-full px-2.5 py-1.5 rounded-lg border border-[#e2e8f0] bg-white text-[#0f172a] font-semibold text-xs focus:outline-none focus:border-[#501f92] cursor-pointer"
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-[#cbd5e1] bg-white text-[#0f172a] font-semibold text-xs focus:outline-none focus:border-[#501f92] cursor-pointer"
                       >
                         <option value="operativo">Operativo</option>
                         <option value="comercial">Comercial</option>
@@ -536,9 +542,10 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
                       <label className="block text-[11px] font-semibold text-[#475569] mb-0.5">Correo Electrónico</label>
                       <input
                         type="email"
+                        placeholder="carlos.mendoza@empresa.com"
                         value={contact.email}
                         onChange={(e) => handleUpdateContact(contact.id, 'email', e.target.value)}
-                        className="w-full px-2.5 py-1.5 rounded-lg border border-[#e2e8f0] bg-white text-[#0f172a] text-xs focus:outline-none focus:border-[#501f92]"
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-[#cbd5e1] bg-white text-[#0f172a] text-xs placeholder:text-[#7C8AA0] placeholder:font-normal focus:outline-none focus:border-[#501f92]"
                       />
                     </div>
 
@@ -546,9 +553,10 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
                       <label className="block text-[11px] font-semibold text-[#475569] mb-0.5">Teléfono</label>
                       <input
                         type="text"
+                        placeholder="+57 (310) 902-8314"
                         value={contact.phone || ''}
                         onChange={(e) => handleUpdateContact(contact.id, 'phone', e.target.value)}
-                        className="w-full px-2.5 py-1.5 rounded-lg border border-[#e2e8f0] bg-white text-[#0f172a] font-mono text-xs focus:outline-none focus:border-[#501f92]"
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-[#cbd5e1] bg-white text-[#0f172a] font-mono text-xs placeholder:text-[#7C8AA0] placeholder:font-normal placeholder:font-sans focus:outline-none focus:border-[#501f92]"
                       />
                     </div>
                   </div>

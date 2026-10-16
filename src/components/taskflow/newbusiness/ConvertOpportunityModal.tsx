@@ -98,6 +98,7 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
     d.setMonth(d.getMonth() + 2);
     return d.toISOString().slice(0, 10);
   });
+  const [isEndDateCustomized, setIsEndDateCustomized] = useState<boolean>(false);
 
   // Gates de inicio configurables (resumidos)
   const [contractSigned, setContractSigned] = useState<boolean>(
@@ -331,19 +332,33 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
                 required
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-medium focus:ring-2 focus:ring-[#501f92]"
+                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-medium bg-white focus:ring-2 focus:ring-[#501f92]"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="font-bold text-[#475569] block">
-                Fecha Estimada Entrega:
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="font-bold text-[#475569] block">
+                  Fecha Estimada Entrega:
+                </label>
+                {!isEndDateCustomized && (
+                  <span className="text-[10px] font-semibold text-[#501f92] bg-[#f2ecfb] px-1.5 py-0.2 rounded">
+                    Sugerida
+                  </span>
+                )}
+              </div>
               <input
                 type="date"
                 value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-medium focus:ring-2 focus:ring-[#501f92]"
+                onChange={(e) => {
+                  setEndDate(e.target.value);
+                  setIsEndDateCustomized(true);
+                }}
+                className={`w-full p-2.5 rounded-xl border transition-colors focus:ring-2 focus:ring-[#501f92] ${
+                  !isEndDateCustomized
+                    ? 'bg-[#faf5ff] border-[#d8b4fe] text-[#475569] font-medium'
+                    : 'bg-white border-[#cbd5e1] text-[#0f172a] font-medium'
+                }`}
               />
             </div>
           </div>

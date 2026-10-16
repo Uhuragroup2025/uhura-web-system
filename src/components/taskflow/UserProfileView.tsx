@@ -419,8 +419,8 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
                 type="text"
                 value={jobTitle}
                 onChange={(e) => setJobTitle(e.target.value)}
-                placeholder="ej. Product Lead, Front-End Dev"
-                className="w-full px-3 py-2 bg-white border border-[#cbd5e1] rounded-xl text-xs text-[#0f172a] focus:outline-none focus:ring-2 focus:ring-[#8a4dff]"
+                placeholder="Ej: Product Lead, Front-End Dev"
+                className="w-full px-3 py-2 bg-white border border-[#cbd5e1] rounded-xl text-xs text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal focus:outline-none focus:ring-2 focus:ring-[#8a4dff]"
               />
               <p className="text-[10px] text-[#94a3b8]">Denominación funcional visible en la plataforma</p>
             </div>
@@ -455,10 +455,10 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
                 type="text"
                 value={department}
                 onChange={(e) => setDepartment(e.target.value)}
-                placeholder="ej. Dirección de Producto, Creatividad"
-                className="w-full px-3 py-2 bg-white border border-[#cbd5e1] rounded-xl text-xs text-[#0f172a] focus:outline-none focus:ring-2 focus:ring-[#8a4dff]"
+                placeholder="Ej: Dirección de Producto, Creatividad"
+                className="w-full px-3 py-2 bg-white border border-[#cbd5e1] rounded-xl text-xs text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal focus:outline-none focus:ring-2 focus:ring-[#8a4dff]"
               />
-              <p className="text-[10px] text-[#94a3b8]">Unidad operativa de pertenencia</p>
+              <p className="text-[10px] text-[#64748b]">Unidad operativa de pertenencia</p>
             </div>
 
             {/* Líder Directo (Selector de usuarios existentes) */}
@@ -469,16 +469,19 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
               <select
                 value={leaderId}
                 onChange={(e) => setLeaderId(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-[#cbd5e1] rounded-xl text-xs text-[#0f172a] focus:outline-none focus:ring-2 focus:ring-[#8a4dff]"
+                data-empty={!leaderId}
+                className={`w-full px-3 py-2 bg-white border border-[#cbd5e1] rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-[#8a4dff] transition-colors ${
+                  !leaderId ? 'text-[#64748b] font-normal' : 'text-[#0f172a] font-medium'
+                }`}
               >
                 <option value="">Sin líder directo / Dirección General</option>
                 {potentialLeaders.map((u) => (
-                  <option key={u.id} value={u.id}>
+                  <option key={u.id} value={u.id} className="text-[#0f172a] font-medium">
                     {u.name} — {u.jobTitle || u.role}
                   </option>
                 ))}
               </select>
-              <p className="text-[10px] text-[#94a3b8]">Relación canónica almacenada por ID</p>
+              <p className="text-[10px] text-[#64748b]">Relación canónica almacenada por ID</p>
             </div>
 
             {/* Ciudad */}
@@ -490,10 +493,10 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
                 type="text"
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
-                placeholder="ej. Cali, Medellín, Bogotá"
-                className="w-full px-3 py-2 bg-white border border-[#cbd5e1] rounded-xl text-xs text-[#0f172a] focus:outline-none focus:ring-2 focus:ring-[#8a4dff]"
+                placeholder="Ej: Cali, Medellín, Bogotá"
+                className="w-full px-3 py-2 bg-white border border-[#cbd5e1] rounded-xl text-xs text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal focus:outline-none focus:ring-2 focus:ring-[#8a4dff]"
               />
-              <p className="text-[10px] text-[#94a3b8]">Sede operativa o residencia</p>
+              <p className="text-[10px] text-[#64748b]">Sede operativa o residencia</p>
             </div>
 
             {/* Fecha de Cumpleaños */}
@@ -505,10 +508,10 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
                 type="text"
                 value={birthDate}
                 onChange={(e) => setBirthDate(e.target.value)}
-                placeholder="ej. 9 de Ene o 1992-01-09"
-                className="w-full px-3 py-2 bg-white border border-[#cbd5e1] rounded-xl text-xs text-[#0f172a] focus:outline-none focus:ring-2 focus:ring-[#8a4dff]"
+                placeholder="Ej: 9 de Ene o 1992-01-09"
+                className="w-full px-3 py-2 bg-white border border-[#cbd5e1] rounded-xl text-xs text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal focus:outline-none focus:ring-2 focus:ring-[#8a4dff]"
               />
-              <p className="text-[10px] text-[#94a3b8]">Consumido por Mi Día y Bucky</p>
+              <p className="text-[10px] text-[#64748b]">Consumido por Mi Día y Bucky</p>
             </div>
 
             {/* Nivel de Acceso Funcional RBAC */}
@@ -558,8 +561,8 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
                 value={joinedDate}
                 onChange={(e) => canEditHireDate && setJoinedDate(e.target.value)}
                 disabled={!canEditHireDate}
-                placeholder="ej. 05 Jul 2022 o 2022-07-05"
-                className={`w-full px-3 py-2 border rounded-xl text-xs text-[#0f172a] focus:outline-none ${
+                placeholder="Ej: 05 Jul 2022 o 2022-07-05"
+                className={`w-full px-3 py-2 border rounded-xl text-xs text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal focus:outline-none ${
                   canEditHireDate
                     ? 'bg-white border-[#cbd5e1] focus:ring-2 focus:ring-[#8a4dff]'
                     : 'bg-[#f1f5f9] border-[#e2e8f0] text-[#64748b] cursor-not-allowed'

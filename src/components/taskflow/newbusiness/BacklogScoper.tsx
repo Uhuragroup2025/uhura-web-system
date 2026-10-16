@@ -333,76 +333,6 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Top Scoping Control Bar */}
-      <div className="p-4 bg-white rounded-2xl border border-[#e2e8f0] shadow-2xs flex flex-wrap items-center justify-between gap-4">
-        {/* Version Selector & Title */}
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-2">
-            <span className="p-2 rounded-xl bg-[#501f92]/10 text-[#501f92]">
-              <Layers className="w-5 h-5" />
-            </span>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#501f92] bg-[#501f92]/10 px-2 py-0.5 rounded-md">
-                  Scoping Operativo de Backlog
-                </span>
-                <span className="text-xs text-[#64748b]">
-                  {allBacklogItems.length} actividades en {quote.deliverables.length} frentes
-                </span>
-              </div>
-              <div className="flex items-center gap-2 mt-1">
-                <select
-                  value={quote.id}
-                  onChange={(e) => onSelectQuoteVersion(e.target.value)}
-                  className="text-sm font-bold text-[#0f172a] bg-[#f8fafc] border border-[#cbd5e1] rounded-lg px-2.5 py-1 focus:ring-2 focus:ring-[#501f92] cursor-pointer"
-                >
-                  {allQuotes.map((q) => (
-                    <option key={q.id} value={q.id}>
-                      {q.versionLabel} ({q.totalHoursRollup}h)
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  onClick={() => onCreateNewQuoteVersion(quote)}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[#cbd5e1] bg-white hover:bg-[#f8fafc] text-xs font-semibold text-[#475569] transition-colors cursor-pointer"
-                  title="Duplicar este alcance para crear una versión alternativa (ej. MVP priorizado o Fase 2)"
-                >
-                  <Copy className="w-3.5 h-3.5 text-[#501f92]" />
-                  <span>Duplicar Versión</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Action Buttons: Import from Template & Mark Scope Ready */}
-        <div className="flex items-center gap-2">
-          {templates.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setIsImportModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-[#501f92] bg-[#501f92]/10 hover:bg-[#501f92]/15 rounded-xl transition-colors cursor-pointer"
-            >
-              <BookOpen className="w-4 h-4" />
-              <span>Importar Plantilla</span>
-            </button>
-          )}
-
-          {onMarkScopeReady && (
-            <button
-              type="button"
-              onClick={() => onMarkScopeReady(totalHours)}
-              disabled={totalHours === 0}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-extrabold text-[#0f172a] bg-[#d4ff4a] hover:bg-[#bceb34] disabled:opacity-40 disabled:cursor-not-allowed rounded-xl transition-colors cursor-pointer shadow-xs border border-[#a3e635]"
-              title="Marcar que el dimensionamiento técnico está listo para Comercial"
-            >
-              <CheckCircle2 className="w-4 h-4 text-[#0f172a]" />
-              <span>Marcar alcance listo ({totalHours}h)</span>
-            </button>
-          )}
-        </div>
-      </div>
 
       {/* Handoff Status Notification Banner if technical scoping was marked ready */}
       {opportunityStatus === 'internal_review' && (
@@ -502,18 +432,18 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
                           type="text"
                           value={del.name}
                           onChange={(e) => handleUpdateDeliverableName(del.id, e.target.value)}
-                          placeholder="Nombre del Servicio (ej. Desarrollo Web, Diseño UI, Redes Sociales...)"
+                          placeholder="Nombre del Servicio (Ej: Desarrollo Web, Diseño UI, Redes Sociales...)"
                           className="font-bold text-sm text-[#0f172a] bg-transparent border-b border-transparent hover:border-[#cbd5e1] focus:border-[#501f92] outline-hidden px-1 py-0.5 w-full transition-colors"
                         />
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
-                      <div className="px-2.5 py-1 rounded-lg bg-white border border-[#cbd5e1] text-right">
-                        <span className="text-[10px] text-[#64748b] font-semibold uppercase mr-1">
+                      <div className="px-2.5 py-1 rounded-lg bg-[#f8fafc] border border-[#e2e8f0] text-right">
+                        <span className="text-[10px] text-[#64748b] font-medium mr-1">
                           Subtotal:
                         </span>
-                        <span className="text-xs font-black text-[#501f92]">
+                        <span className="text-xs font-bold font-mono text-[#501f92]">
                           {delTotalHours}h
                         </span>
                       </div>
@@ -538,111 +468,115 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
                         value={del.description || ''}
                         onChange={(e) => handleUpdateDeliverableDesc(del.id, e.target.value)}
                         placeholder="Alcance o especificaciones generales de este servicio (opcional)..."
-                        className="text-xs text-[#64748b] bg-[#f8fafc]/60 border border-transparent hover:border-[#e2e8f0] focus:border-[#501f92] rounded-lg px-2.5 py-1.5 w-full outline-hidden transition-colors"
+                        className="text-xs text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal bg-[#f8fafc]/60 border border-transparent hover:border-[#e2e8f0] focus:border-[#501f92] rounded-lg px-2.5 py-1.5 w-full outline-hidden transition-colors"
                       />
 
-                      {/* Activities List (Table-like cards) */}
-                      <div className="space-y-2 pt-1">
+                      {/* Activities List: Tabla limpia con divisores y acciones en hover */}
+                      <div className="pt-1">
                         {del.backlogItems.length === 0 ? (
                           <div className="p-4 rounded-xl bg-[#f8fafc] border border-dashed border-[#cbd5e1] text-center text-xs text-[#64748b]">
                             No hay actividades en este servicio. Haz clic en <strong>"Agregar actividad"</strong> abajo.
                           </div>
                         ) : (
-                        del.backlogItems.map((act, actIdx) => {
-                          const badgeStyle =
-                            ROLE_BADGE_STYLES[act.roleName] || {
-                              bg: 'bg-[#501f92]/10',
-                              text: 'text-[#501f92]',
-                              border: 'border-[#501f92]/20'
-                            };
+                          <div className="rounded-xl border border-[#e2e8f0] bg-white divide-y divide-[#f1f5f9] overflow-hidden">
+                            {del.backlogItems.map((act, actIdx) => {
+                              const badgeStyle =
+                                ROLE_BADGE_STYLES[act.roleName] || {
+                                  bg: 'bg-[#501f92]/10',
+                                  text: 'text-[#501f92]',
+                                  border: 'border-[#501f92]/20'
+                                };
 
-                          return (
-                            <div
-                              key={act.id}
-                              className="p-2.5 rounded-xl border border-[#e2e8f0] bg-white hover:border-[#cbd5e1] transition-all flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 group shadow-2xs"
-                            >
-                              {/* Left: Index & Title */}
-                              <div className="flex items-center gap-2 flex-1 min-w-[200px]">
-                                <span className="text-[10px] font-bold text-[#94a3b8] w-4 shrink-0 text-center">
-                                  {actIdx + 1}.
-                                </span>
-                                <input
-                                  type="text"
-                                  value={act.title}
-                                  onChange={(e) =>
-                                    handleUpdateActivity(del.id, act.id, 'title', e.target.value)
-                                  }
-                                  placeholder="Nombre de la actividad (ej. Home, Buscador, Checkout...)"
-                                  className="text-xs font-semibold text-[#0f172a] bg-transparent border-b border-transparent hover:border-[#cbd5e1] focus:border-[#501f92] outline-hidden px-1 py-0.5 w-full transition-colors"
-                                />
-                              </div>
-
-                              {/* Center: Role Dropdown with badge */}
-                              <div className="flex items-center gap-2 shrink-0">
-                                <select
-                                  value={act.roleName}
-                                  onChange={(e) =>
-                                    handleUpdateActivity(
-                                      del.id,
-                                      act.id,
-                                      'roleName',
-                                      e.target.value as StandardUhuraRole
-                                    )
-                                  }
-                                  className={`text-[11px] font-bold px-2 py-1 rounded-lg border ${badgeStyle.border} ${badgeStyle.bg} ${badgeStyle.text} focus:ring-1 focus:ring-[#501f92] cursor-pointer outline-hidden`}
+                              return (
+                                <div
+                                  key={act.id}
+                                  className="px-3 py-2 flex items-center justify-between gap-2.5 hover:bg-[#f8fafc] transition-colors group"
                                 >
-                                  {STANDARD_UHURA_ROLES.map((role) => (
-                                    <option key={role} value={role} className="bg-white text-[#0f172a]">
-                                      {role}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
+                                  {/* Left: Index & Title */}
+                                  <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+                                    <span className="text-[11px] font-mono text-[#94a3b8] w-4 shrink-0 text-center">
+                                      {actIdx + 1}.
+                                    </span>
+                                    <input
+                                      type="text"
+                                      value={act.title}
+                                      onChange={(e) =>
+                                        handleUpdateActivity(del.id, act.id, 'title', e.target.value)
+                                      }
+                                      placeholder="Nombre de la actividad..."
+                                      className="text-xs font-medium text-[#0f172a] placeholder:text-[#94a3b8] bg-transparent outline-hidden w-full transition-colors"
+                                    />
+                                  </div>
 
-                              {/* Right: Estimated Hours Input & Actions */}
-                              <div className="flex items-center gap-1.5 shrink-0">
-                                <div className="flex items-center gap-1 bg-[#f8fafc] px-2 py-1 rounded-lg border border-[#cbd5e1]">
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    step="0.5"
-                                    value={act.estimatedHours}
-                                    onChange={(e) =>
-                                      handleUpdateActivity(
-                                        del.id,
-                                        act.id,
-                                        'estimatedHours',
-                                        e.target.value
-                                      )
-                                    }
-                                    className="w-14 text-right text-xs font-bold text-[#0f172a] bg-transparent outline-hidden"
-                                  />
-                                  <span className="text-[11px] font-black text-[#501f92]">h</span>
+                                  {/* Center: Role Dropdown */}
+                                  <div className="shrink-0">
+                                    <select
+                                      value={act.roleName}
+                                      onChange={(e) =>
+                                        handleUpdateActivity(
+                                          del.id,
+                                          act.id,
+                                          'roleName',
+                                          e.target.value as StandardUhuraRole
+                                        )
+                                      }
+                                      className={`text-[11px] font-semibold px-2 py-0.5 rounded-md border border-transparent hover:border-[#cbd5e1] ${badgeStyle.bg} ${badgeStyle.text} focus:ring-1 focus:ring-[#501f92] cursor-pointer outline-hidden transition-colors`}
+                                    >
+                                      {STANDARD_UHURA_ROLES.map((role) => (
+                                        <option key={role} value={role} className="bg-white text-[#0f172a]">
+                                          {role}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+
+                                  {/* Right: Estimated Hours & Action Icons (revealed on hover) */}
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <div className="flex items-center gap-1 bg-[#f8fafc] px-2 py-0.5 rounded-md border border-[#e2e8f0]">
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        step="0.5"
+                                        value={act.estimatedHours}
+                                        onChange={(e) =>
+                                          handleUpdateActivity(
+                                            del.id,
+                                            act.id,
+                                            'estimatedHours',
+                                            e.target.value
+                                          )
+                                        }
+                                        className="w-10 text-right text-xs font-bold font-mono text-[#0f172a] bg-transparent outline-hidden"
+                                      />
+                                      <span className="text-[10px] font-bold text-[#64748b]">h</span>
+                                    </div>
+
+                                    {/* Botones de acción discretos: visibles al pasar el cursor */}
+                                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDuplicateActivity(del.id, act.id)}
+                                        className="p-1 text-[#94a3b8] hover:text-[#501f92] rounded hover:bg-white transition-colors cursor-pointer"
+                                        title="Duplicar actividad"
+                                      >
+                                        <Copy className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemoveActivity(del.id, act.id)}
+                                        className="p-1 text-[#94a3b8] hover:text-[#ef4444] rounded hover:bg-white transition-colors cursor-pointer"
+                                        title="Eliminar actividad"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  </div>
                                 </div>
-
-                                <button
-                                  type="button"
-                                  onClick={() => handleDuplicateActivity(del.id, act.id)}
-                                  className="p-1 text-[#94a3b8] hover:text-[#501f92] rounded transition-colors cursor-pointer"
-                                  title="Duplicar actividad"
-                                >
-                                  <Copy className="w-3.5 h-3.5" />
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveActivity(del.id, act.id)}
-                                  className="p-1 text-[#94a3b8] hover:text-[#ef4444] rounded transition-colors cursor-pointer"
-                                  title="Eliminar actividad"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
 
                     {/* Add Activity Button in this deliverable */}
                     <div className="pt-2 flex items-center justify-between">
@@ -678,33 +612,22 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
 
         {/* Right Column: Dynamic Rollup Engine (4 cols - Sticky) */}
         <div className="lg:col-span-4 space-y-4 lg:sticky lg:top-4">
-          {/* Card: Rollup de Horas por Rol (Nivel 2) */}
-          <div className="p-5 bg-white rounded-2xl border border-[#e2e8f0] shadow-xs space-y-4">
+          {/* Card: Rollup de Horas por Rol */}
+          <div className="p-4 sm:p-5 bg-white rounded-2xl border border-[#e2e8f0] shadow-xs space-y-3.5">
             <div className="flex items-center justify-between pb-3 border-b border-[#f1f5f9]">
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#501f92]">
-                  Nivel 2 · Rollup Dinámico
-                </span>
                 <h3 className="text-sm font-bold text-[#0f172a]">
-                  Horas Cotizadas por Rol
+                  Horas por Rol
                 </h3>
+                <span className="text-[11px] text-[#64748b]">
+                  Rollup automático desde el backlog
+                </span>
               </div>
               <div className="text-right">
-                <span className="text-[10px] text-[#64748b] block uppercase font-bold">
-                  Nivel 3: Total
-                </span>
-                <span className="text-lg font-black text-[#501f92]">
+                <span className="text-xl font-black text-[#501f92]">
                   {totalHours}h
                 </span>
               </div>
-            </div>
-
-            {/* Explanatory note matching user prompt */}
-            <div className="p-2.5 bg-[#f8fafc] rounded-xl border border-[#e2e8f0] text-[11px] text-[#475569] leading-relaxed flex items-start gap-2">
-              <Sparkles className="w-4 h-4 text-[#501f92] shrink-0 mt-0.5" />
-              <span>
-                <strong>El backlog genera las horas:</strong> Cada actividad suma automáticamente al rol correspondiente. Este rollup se conecta directo al Cotizador Financiero (Fase 2).
-              </span>
             </div>
 
             {/* Breakdown by Role with progress bar */}
@@ -814,7 +737,7 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
                 onClick={onGoToCalculator}
                 className="w-full mt-2 py-2 px-3 rounded-xl bg-white border border-[#501f92]/30 text-xs font-bold text-[#501f92] hover:bg-[#501f92]/5 transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
               >
-                <span>Continuar a Propuesta Comercial</span>
+                <span>Ir a Cotización & Pricing</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             )}

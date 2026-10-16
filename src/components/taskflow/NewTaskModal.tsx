@@ -582,10 +582,14 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
                   <select
                     value={selectedClientName}
                     onChange={(e) => handleClientSelectChange(e.target.value)}
-                    className="w-full bg-white border border-[#cbd5e1] px-3 py-2 rounded-xl text-xs font-semibold text-[#0f172a] focus:outline-none focus:border-[#501f92] focus:ring-1 focus:ring-[#501f92] cursor-pointer"
+                    data-empty={!selectedClientName}
+                    className={`w-full bg-white border border-[#cbd5e1] px-3 py-2 rounded-xl text-xs focus:outline-none focus:border-[#501f92] focus:ring-1 focus:ring-[#501f92] cursor-pointer transition-colors ${
+                      !selectedClientName ? 'text-[#64748b] font-normal' : 'text-[#0f172a] font-semibold'
+                    }`}
                   >
+                    <option value="">Seleccionar cliente...</option>
                     {availableClients.map((c) => (
-                      <option key={c} value={c}>
+                      <option key={c} value={c} className="text-[#0f172a] font-medium">
                         {c}
                       </option>
                     ))}
@@ -600,10 +604,14 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
                   <select
                     value={selectedProjectId}
                     onChange={(e) => setSelectedProjectId(e.target.value)}
-                    className="w-full bg-white border border-[#cbd5e1] px-3 py-2 rounded-xl text-xs font-semibold text-[#501f92] focus:outline-none focus:border-[#501f92] focus:ring-1 focus:ring-[#501f92] cursor-pointer"
+                    data-empty={!selectedProjectId}
+                    className={`w-full bg-white border border-[#cbd5e1] px-3 py-2 rounded-xl text-xs focus:outline-none focus:border-[#501f92] focus:ring-1 focus:ring-[#501f92] cursor-pointer transition-colors ${
+                      !selectedProjectId ? 'text-[#64748b] font-normal' : 'text-[#501f92] font-semibold'
+                    }`}
                   >
+                    <option value="">Seleccionar proyecto...</option>
                     {projectsForSelectedClient.map((p) => (
-                      <option key={p.id} value={p.id}>
+                      <option key={p.id} value={p.id} className="text-[#0f172a] font-medium">
                         {p.name} ({p.projectType === 'fee_monthly' ? 'Fee' : p.projectType === 'fixed_project' ? 'Único' : 'Interno'})
                       </option>
                     ))}
@@ -635,10 +643,10 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
               <input
                 type="text"
                 required
-                placeholder="Ej. Redes Sociales, Landing Page, Pauta, E-commerce..."
+                placeholder="Ej: Redes Sociales, Landing Page, Pauta, E-commerce..."
                 value={customFrenteText}
                 onChange={(e) => setCustomFrenteText(e.target.value)}
-                className="w-full bg-white border border-[#8a4dff] px-3 py-2 rounded-xl text-xs text-[#0f172a] font-bold focus:outline-none focus:ring-1 focus:ring-[#8a4dff]"
+                className="w-full bg-white border border-[#8a4dff] px-3 py-2 rounded-xl text-xs text-[#0f172a] font-bold placeholder:text-[#7C8AA0] placeholder:font-normal focus:outline-none focus:ring-1 focus:ring-[#8a4dff]"
               />
             ) : (
               <div className="flex flex-wrap items-center gap-1.5">
@@ -699,10 +707,10 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
               <input
                 type="text"
                 required
-                placeholder="Ej. Prototipo landing, Estrategia de contenidos, Publicación de pauta..."
+                placeholder="Ej: Prototipo landing, Estrategia de contenidos, Publicación de pauta..."
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full bg-[#f8fafc] border border-[#cbd5e1] px-3.5 py-2.5 rounded-xl text-xs text-[#0f172a] placeholder-[#94a3b8] font-semibold focus:outline-none focus:ring-2 focus:ring-[#8a4dff]/20 focus:border-[#8a4dff]"
+                className="w-full bg-white border border-[#cbd5e1] px-3.5 py-2.5 rounded-xl text-xs text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal font-semibold focus:outline-none focus:ring-2 focus:ring-[#8a4dff]/20 focus:border-[#8a4dff]"
               />
             </div>
 
@@ -715,7 +723,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
                 placeholder="Detalla el alcance, insumos requeridos, enlaces a Figma o brief..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="w-full bg-[#f8fafc] border border-[#cbd5e1] px-3.5 py-2 rounded-xl text-xs text-[#0f172a] placeholder-[#94a3b8] focus:outline-none focus:border-[#8a4dff]"
+                className="w-full bg-white border border-[#cbd5e1] px-3.5 py-2 rounded-xl text-xs text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal focus:outline-none focus:border-[#8a4dff]"
               />
             </div>
           </div>
@@ -1015,7 +1023,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
             <div className="flex items-center gap-2">
               <input
                 type="text"
-                placeholder="Ej. Aprobación de copy por parte del cliente, link de staging activo..."
+                placeholder="Ej: Aprobación de copy por parte del cliente, link de staging activo..."
                 value={criterionInput}
                 onChange={(e) => setCriterionInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -1024,7 +1032,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
                     handleAddCriterion();
                   }
                 }}
-                className="flex-1 bg-[#f8fafc] border border-[#cbd5e1] px-3 py-1.5 rounded-xl text-xs text-[#0f172a] focus:outline-none focus:border-[#8a4dff]"
+                className="flex-1 bg-[#f8fafc] border border-[#cbd5e1] px-3 py-1.5 rounded-xl text-xs text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal focus:outline-none focus:border-[#8a4dff]"
               />
               <button
                 type="button"

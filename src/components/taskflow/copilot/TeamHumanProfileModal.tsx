@@ -412,7 +412,7 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
                   placeholder="Buscar compañero, cargo o gustos..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl text-xs text-[#0f172a] placeholder-[#94a3b8] focus:outline-[#7c3aed]"
+                  className="w-full pl-9 pr-3 py-2 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl text-xs text-[#0f172a] placeholder:text-[#7C8AA0] focus:outline-[#7c3aed]"
                 />
                 {search && (
                   <button
@@ -694,10 +694,10 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
                         </label>
                         <input
                           type="text"
-                          placeholder="ej. Medellín, Cali, Bogotá..."
+                          placeholder="Ej: Medellín, Cali, Bogotá..."
                           value={editCity}
                           onChange={(e) => setEditCity(e.target.value)}
-                          className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs focus:outline-[#7c3aed] bg-[#f8fafc]"
+                          className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs focus:outline-[#7c3aed] bg-[#f8fafc] text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal"
                         />
                       </div>
 
@@ -744,7 +744,7 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
                         placeholder="Comparte qué te gusta hacer en tu tiempo libre (música, cine, deportes, gastronomía, naturaleza, hobbies...)"
                         value={editHobbies}
                         onChange={(e) => setEditHobbies(e.target.value)}
-                        className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs focus:outline-[#7c3aed] bg-[#f8fafc] leading-relaxed"
+                        className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs focus:outline-[#7c3aed] bg-[#f8fafc] leading-relaxed text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal"
                       />
                     </div>
 
@@ -755,10 +755,10 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
                       </label>
                       <textarea
                         rows={2}
-                        placeholder="Cuéntanos un sueño personal o proyecto que te inspire (ej. viajar a un lugar especial, aprender algo nuevo...)"
+                        placeholder="Cuéntanos un sueño personal o proyecto que te inspire (Ej: viajar a un lugar especial, aprender algo nuevo...)"
                         value={editPersonalDream}
                         onChange={(e) => setEditPersonalDream(e.target.value)}
-                        className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs focus:outline-[#7c3aed] bg-[#f8fafc] leading-relaxed"
+                        className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs focus:outline-[#7c3aed] bg-[#f8fafc] leading-relaxed text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal"
                       />
                     </div>
 
@@ -769,10 +769,10 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
                       </label>
                       <input
                         type="text"
-                        placeholder="ej. Zeus (perro), Cocoa (gata) — o dejar vacío si no tienes"
+                        placeholder="Ej: Zeus (perro), Cocoa (gata) — o dejar vacío si no tienes"
                         value={editPetNames}
                         onChange={(e) => setEditPetNames(e.target.value)}
-                        className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs focus:outline-[#7c3aed] bg-[#f8fafc]"
+                        className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs focus:outline-[#7c3aed] bg-[#f8fafc] text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal"
                       />
                     </div>
 

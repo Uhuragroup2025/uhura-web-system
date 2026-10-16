@@ -111,7 +111,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
   const canEditOpp = can(currentUser, 'edit', 'new-business') || isNotCollaboratorOrPending;
 
   const [selectedOppId, setSelectedOppId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'resumen' | 'scoping' | 'documentos' | 'historial'>('resumen');
+  const [activeTab, setActiveTab] = useState<'resumen' | 'scoping' | 'cotizacion' | 'documentos' | 'historial'>('resumen');
   const [isNewOppModalOpen, setIsNewOppModalOpen] = useState<boolean>(false);
   const [oppModalMode, setOppModalMode] = useState<'hubspot' | 'manual'>('hubspot');
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
@@ -128,6 +128,46 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
     };
   } | null>(null);
   const [copiedNotification, setCopiedNotification] = useState<string | null>(null);
+  const [wonCelebrationOpp, setWonCelebrationOpp] = useState<NewBusinessOpportunity | null>(null);
+
+  // Fanfarria triunfal Web Audio para celebrar propuesta ganada
+  const playWonFanfare = () => {
+    try {
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      // Arpegio mayor triunfal: C5, E5, G5, C6, E6
+      const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51];
+      notes.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.11);
+        gain.gain.setValueAtTime(0.18, ctx.currentTime + idx * 0.11);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.11 + 0.4);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + idx * 0.11);
+        osc.stop(ctx.currentTime + idx * 0.11 + 0.45);
+      });
+    } catch {
+      // AudioContext bloqueado o no disponible en navegador
+    }
+  };
+
+  const handleMarkOpportunityWon = (opp: NewBusinessOpportunity) => {
+    const updated: NewBusinessOpportunity = {
+      ...opp,
+      status: 'won',
+      updatedAt: new Date().toISOString()
+    };
+    onUpdateOpportunity(updated);
+    setWonCelebrationOpp(updated);
+    playWonFanfare();
+    setConversionSuccessMessage('🎉 ¡FIESTA TOTAL EN LA COLONIA! ¡Propuesta GANADA! Revisa los gates de formalización (Contrato/Anticipo) en Documentos para habilitar la conversión a Proyecto.', {
+      timeoutMs: 9000
+    });
+  };
 
   // Helper de notificación unificado con auto-dismiss
   const setConversionSuccessMessage = (
@@ -1040,22 +1080,20 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
         </div>
       )}
 
-      {/* Breadcrumbs (Migas de Pan Estandarizadas) */}
-      <div className="flex items-center justify-between gap-3 text-xs bg-white px-4 py-2.5 rounded-2xl border border-[#e2e8f0] shadow-2xs">
-        <div className="flex items-center gap-2 flex-wrap">
-          <button
-            type="button"
-            onClick={() => setSelectedOppId(null)}
-            className="font-semibold text-[#64748b] hover:text-[#0f172a] transition-colors cursor-pointer"
-          >
-            New Business
-          </button>
-          <ChevronRight className="w-3.5 h-3.5 text-[#94a3b8]" />
-          <span className="font-semibold text-[#475569]">{activeOpp.prospectAccountName}</span>
-          <ChevronRight className="w-3.5 h-3.5 text-[#94a3b8]" />
-          <span className="font-bold text-[#0f172a] truncate max-w-xs">{activeOpp.title}</span>
-        </div>
-      </div>
+      {/* Breadcrumbs minimalistas */}
+      <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-[#64748b] px-1 py-0.5">
+        <button
+          type="button"
+          onClick={() => setSelectedOppId(null)}
+          className="font-medium hover:text-[#0f172a] transition-colors cursor-pointer"
+        >
+          New Business
+        </button>
+        <span className="text-[#cbd5e1]">/</span>
+        <span className="font-medium text-[#475569]">{activeOpp.prospectAccountName}</span>
+        <span className="text-[#cbd5e1]">/</span>
+        <span className="font-semibold text-[#0f172a] truncate max-w-xs">{activeOpp.title}</span>
+      </nav>
 
       {/* Active Opp Summary Header Banner */}
       <div className="p-5 bg-white rounded-2xl border border-[#e2e8f0] shadow-2xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -1375,6 +1413,19 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
         >
           <Layers className="w-3.5 h-3.5" />
           <span>Alcance</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('cotizacion')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+            activeTab === 'cotizacion'
+              ? 'bg-white text-[#501f92] shadow-xs'
+              : 'text-[#64748b] hover:text-[#0f172a]'
+          }`}
+        >
+          <DollarSign className="w-3.5 h-3.5" />
+          <span>Cotización</span>
         </button>
 
         <button
@@ -1738,14 +1789,6 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
 
               {/* Botones de acción rápida */}
               <div className="pt-3 border-t border-[#e2e8f0] space-y-2">
-                <button
-                  type="button"
-                  onClick={() => setIsSowModalOpen(true)}
-                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#faf5ff] hover:bg-[#f3e8ff] text-[#501f92] text-xs font-bold border border-[#e9d5ff] transition-colors cursor-pointer"
-                >
-                  <FileText className="w-4 h-4" />
-                  <span>Generar / Ver SOW Formal</span>
-                </button>
 
                 {activeOpp.convertedProjectId ? (
                   onNavigateToView && (
@@ -1877,19 +1920,10 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
 
                 <button
                   type="button"
-                  onClick={() => {
-                    const updated: NewBusinessOpportunity = {
-                      ...activeOpp,
-                      status: 'won',
-                      updatedAt: new Date().toISOString()
-                    };
-                    onUpdateOpportunity(updated);
-                    setConversionSuccessMessage('Propuesta marcada como GANADA. Completa los gates de formalización (Contrato/Anticipo) en Documentos para habilitar la conversión a Proyecto.');
-                    setTimeout(() => setConversionSuccessMessage(null), 5000);
-                  }}
+                  onClick={() => handleMarkOpportunityWon(activeOpp)}
                   className="px-3.5 py-2 rounded-xl bg-[#10b981] hover:bg-[#059669] text-white text-xs font-bold shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
                 >
-                  <CheckCircle2 className="w-4 h-4" />
+                  <Trophy className="w-4 h-4 text-[#d4ff4a]" />
                   <span>Ganada</span>
                 </button>
 
@@ -1926,10 +1960,11 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setActiveTab('scoping')}
-                  className="px-3 py-1.5 rounded-lg bg-[#501f92] hover:bg-[#3d1572] text-xs font-bold text-white transition-colors cursor-pointer"
+                  onClick={() => setActiveTab('cotizacion')}
+                  className="px-3 py-1.5 rounded-lg bg-[#501f92] hover:bg-[#3d1572] text-xs font-bold text-white transition-colors cursor-pointer flex items-center gap-1.5"
                 >
-                  Ver Alcance y Propuesta →
+                  <DollarSign className="w-3.5 h-3.5 text-[#d4ff4a]" />
+                  <span>Ver Cotización & Pricing →</span>
                 </button>
               </div>
             </div>
@@ -1956,64 +1991,351 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 2: ALCANCE Y PROPUESTA */}
+      {/* TAB 2: ALCANCE TÉCNICO (Diligenciado por el Líder Asignado) */}
       {/* ========================================================================= */}
       {activeTab === 'scoping' && activeQuote && (
         <div className="space-y-6 animate-in fade-in duration-150">
-          {/* Bloque 1: Alcance Técnico */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 px-1">
-              <span className="p-1.5 rounded-lg bg-[#501f92]/10 text-[#501f92]">
-                <Layers className="w-4 h-4" />
-              </span>
-              <div>
+          {/* Panel Superior del Líder Asignado: Limpio, minimalista y sin ruido visual */}
+          <div className="bg-white rounded-2xl border border-[#e2e8f0] p-4 sm:p-5 shadow-2xs space-y-4">
+            {/* Encabezado con Identificación del Líder y Tipo de Proyecto */}
+            <div className="flex items-center justify-between pb-3 border-b border-[#f1f5f9] flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 rounded-lg bg-[#501f92]/10 text-[#501f92]">
+                  <Layers className="w-4 h-4" />
+                </span>
                 <h3 className="text-sm font-bold text-[#0f172a]">
-                  Alcance técnico
+                  Alcance Técnico & Estimación
                 </h3>
-                <p className="text-[11px] text-[#64748b]">
-                  Frentes, entregables y actividades con horas por rol estimadas por el equipo líder.
-                </p>
+              </div>
+
+              {/* Selector de Tipo de Proyecto (Proyecto Único vs Fee Mensual) */}
+              <div className="flex items-center gap-1.5 text-xs text-[#64748b]">
+                <span>Modelo:</span>
+                <select
+                  value={activeOpp.projectType || 'fixed_project'}
+                  onChange={(e) => {
+                    const newType = e.target.value as ProjectType;
+                    onUpdateOpportunity({
+                      ...activeOpp,
+                      projectType: newType,
+                      updatedAt: new Date().toISOString()
+                    });
+                  }}
+                  className="font-bold text-[#0f172a] bg-[#f8fafc] border border-[#cbd5e1] rounded-lg px-2.5 py-1 text-xs cursor-pointer outline-hidden hover:border-[#501f92] transition-colors"
+                >
+                  <option value="fixed_project">Proyecto Único (One-Shot)</option>
+                  <option value="fee_monthly">Fee Mensual Recurrente</option>
+                </select>
               </div>
             </div>
 
-            <BacklogScoper
-              quote={activeQuote}
-              allQuotes={activeOpp.quotes}
-              opportunityTitle={activeOpp.title}
-              prospectName={activeOpp.prospectAccountName}
-              onSelectQuoteVersion={(quoteId) => setActiveQuoteId(quoteId)}
-              onCreateNewQuoteVersion={(baseQuote) => handleCreateNewQuoteVersion(baseQuote)}
-              templates={templates}
-              onUpdateQuote={handleUpdateQuote}
-              onGoToCalculator={() => {
-                const el = document.getElementById('commercial-proposal-block');
-                if (el) el.scrollIntoView({ behavior: 'smooth' });
-              }}
-              onMarkScopeReady={(totalHours) => {
-                const updatedOpp: NewBusinessOpportunity = {
-                  ...activeOpp,
-                  status: 'internal_review',
-                  updatedAt: new Date().toISOString()
-                };
-                onUpdateOpportunity(updatedOpp);
-                setConversionSuccessMessage(
-                  `Alcance técnico completado (${totalHours}h) · Listo para continuar con el proceso comercial.`,
-                  {
-                    showProjectLink: false,
-                    timeoutMs: 8000
-                  }
-                );
-              }}
-              opportunityStatus={activeOpp.status}
-              commercialOwner={activeOpp.commercialOwner}
-            />
+            {/* Insumos del Líder: 1. Propuesta/Presentación (PPT de Drive) + 2. Duración en Semanas */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5 text-xs">
+              {/* 1. Propuesta / Presentación (Google Drive / Slides) */}
+              <div className="md:col-span-7 space-y-1">
+                <label className="font-semibold text-[#475569] flex items-center justify-between">
+                  <span>Presentación / Propuesta (Drive)</span>
+                </label>
+                <div className="relative flex items-center">
+                  <input
+                    type="url"
+                    value={activeQuote.commercialProposalUrl || ''}
+                    onChange={(e) => {
+                      handleUpdateQuote({
+                        ...activeQuote,
+                        commercialProposalUrl: e.target.value
+                      });
+                    }}
+                    placeholder="https://docs.google.com/presentation/d/... o enlace a Drive"
+                    className="w-full pl-3 pr-10 py-2 rounded-xl border border-[#cbd5e1] text-xs font-mono text-[#0f172a] placeholder:text-[#94a3b8] placeholder:font-sans focus:ring-1 focus:ring-[#501f92] focus:border-[#501f92] transition-colors"
+                  />
+                  {activeQuote.commercialProposalUrl && (
+                    <a
+                      href={activeQuote.commercialProposalUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="absolute right-2 p-1.5 text-[#501f92] hover:bg-[#501f92]/10 rounded-lg transition-colors cursor-pointer"
+                      title="Abrir presentación en Google Drive"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              {/* 2. Duración en Semanas y Días Hábiles (Solo para Proyecto Único) */}
+              <div className="md:col-span-5 space-y-1">
+                {(!activeOpp.projectType || activeOpp.projectType === 'fixed_project') ? (
+                  <>
+                    <label className="font-semibold text-[#475569] flex items-center justify-between">
+                      <span>Duración estimada</span>
+                      {(activeQuote.estimatedWeeks ?? activeQuote.financialConfig?.projectDurationWeeks) ? (
+                        <span className="text-[10px] font-medium text-[#047857] bg-[#ecfdf5] px-2 py-0.5 rounded-md border border-[#a7f3d0]">
+                          ~{((activeQuote.estimatedWeeks ?? activeQuote.financialConfig?.projectDurationWeeks ?? 0) * 5)} días hábiles
+                        </span>
+                      ) : null}
+                    </label>
+                    <div className="relative flex items-center">
+                      <input
+                        type="number"
+                        min="1"
+                        max="52"
+                        step="1"
+                        value={activeQuote.estimatedWeeks ?? activeQuote.financialConfig?.projectDurationWeeks ?? ''}
+                        onChange={(e) => {
+                          const val = Math.max(0, parseInt(e.target.value, 10) || 0);
+                          handleUpdateQuote({
+                            ...activeQuote,
+                            estimatedWeeks: val,
+                            financialConfig: {
+                              ...activeQuote.financialConfig,
+                              projectDurationWeeks: val
+                            }
+                          });
+                        }}
+                        placeholder="Ej: 4"
+                        className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] font-bold text-xs text-[#0f172a] placeholder:text-[#94a3b8] placeholder:font-normal focus:ring-1 focus:ring-[#501f92] focus:border-[#501f92]"
+                      />
+                      <span className="absolute right-3 text-xs text-[#64748b]">
+                        semanas
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="p-2 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] text-[11px] text-[#64748b] flex items-center gap-1.5 h-[38px] mt-4">
+                    <Clock className="w-3.5 h-3.5 text-[#501f92] shrink-0" />
+                    <span className="truncate">Fee Mensual Recurrente · Sin semanas fijas</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Fila 3: Barra de acciones pulida */}
+            <div className="pt-3 border-t border-[#f1f5f9] flex items-center justify-between flex-wrap gap-2.5">
+              {/* Selector de Versión de Cotización */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] text-[#64748b]">Versión:</span>
+                <select
+                  value={activeQuote.id}
+                  onChange={(e) => setActiveQuoteId(e.target.value)}
+                  className="text-xs font-bold text-[#0f172a] bg-[#f8fafc] border border-[#cbd5e1] rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-[#501f92] cursor-pointer"
+                >
+                  {activeOpp.quotes.map((q) => (
+                    <option key={q.id} value={q.id}>
+                      {q.versionLabel} ({q.totalHoursRollup}h)
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => handleCreateNewQuoteVersion(activeQuote)}
+                  className="p-1.5 rounded-lg border border-[#cbd5e1] bg-white hover:bg-[#f8fafc] text-[#475569] hover:text-[#501f92] transition-colors cursor-pointer"
+                  title="Duplicar este alcance para crear una versión alternativa"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {/* Acciones: Guardar y Marcar alcance listo */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleUpdateQuote(activeQuote);
+                    setConversionSuccessMessage('Alcance técnico guardado.');
+                    setTimeout(() => setConversionSuccessMessage(null), 3000);
+                  }}
+                  className="px-3.5 py-1.5 rounded-lg border border-[#cbd5e1] bg-white hover:bg-[#f8fafc] text-xs font-semibold text-[#475569] transition-colors cursor-pointer"
+                >
+                  Guardar
+                </button>
+
+                {(() => {
+                  const isPptFilled = Boolean(activeQuote.commercialProposalUrl && activeQuote.commercialProposalUrl.trim().length > 5);
+                  const isWeeksFilled = activeOpp.projectType === 'fee_monthly' || Boolean((activeQuote.estimatedWeeks ?? activeQuote.financialConfig?.projectDurationWeeks ?? 0) > 0);
+                  const isScopeFilled = activeQuote.totalHoursRollup > 0 && activeQuote.deliverables.length > 0;
+                  const isReadyToMark = isPptFilled && isWeeksFilled && isScopeFilled;
+
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updatedOpp: NewBusinessOpportunity = {
+                          ...activeOpp,
+                          status: 'internal_review',
+                          updatedAt: new Date().toISOString()
+                        };
+                        onUpdateOpportunity(updatedOpp);
+                        setConversionSuccessMessage(
+                          `Alcance técnico listo (${activeQuote.totalHoursRollup}h). Notificación enviada a Comercial.`,
+                          {
+                            showProjectLink: false,
+                            timeoutMs: 7000
+                          }
+                        );
+                      }}
+                      disabled={!isReadyToMark}
+                      className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                        isReadyToMark
+                          ? 'bg-[#501f92] hover:bg-[#3d1572] text-white shadow-xs cursor-pointer'
+                          : 'bg-[#f1f5f9] text-[#94a3b8] border border-[#e2e8f0] cursor-not-allowed'
+                      }`}
+                      title={
+                        isReadyToMark
+                          ? 'Marcar que el dimensionamiento técnico está listo para Comercial'
+                          : 'Diligencia Propuesta (Drive), Semanas y Alcance para habilitar'
+                      }
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Marcar alcance listo ({activeQuote.totalHoursRollup}h)</span>
+                    </button>
+                  );
+                })()}
+              </div>
+            </div>
+
+            {/* Hint sutil solo si falta algo */}
+            {(() => {
+              const isPptFilled = Boolean(activeQuote.commercialProposalUrl && activeQuote.commercialProposalUrl.trim().length > 5);
+              const isWeeksFilled = activeOpp.projectType === 'fee_monthly' || Boolean((activeQuote.estimatedWeeks ?? activeQuote.financialConfig?.projectDurationWeeks ?? 0) > 0);
+              const isScopeFilled = activeQuote.totalHoursRollup > 0 && activeQuote.deliverables.length > 0;
+              const isReadyToMark = isPptFilled && isWeeksFilled && isScopeFilled;
+
+              if (isReadyToMark) return null;
+
+              return (
+                <div className="text-[11px] text-[#b45309] bg-[#fffbeb] px-3 py-2 rounded-lg border border-[#fef3c7] flex items-center gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 text-[#d97706] shrink-0" />
+                  <span>
+                    Pendiente para marcar listo:{' '}
+                    {!isPptFilled && <span className="font-semibold mr-1">• Link Drive</span>}
+                    {!isWeeksFilled && <span className="font-semibold mr-1">• Semanas</span>}
+                    {!isScopeFilled && <span className="font-semibold mr-1">• Horas en alcance</span>}
+                  </span>
+                </div>
+              );
+            })()}
           </div>
 
-          {/* Bloque 2: Resultado Comercial (Compacto) */}
-          <div
-            id="commercial-proposal-block"
-            className="bg-white rounded-2xl border border-[#e2e8f0] p-6 shadow-2xs space-y-5"
-          >
+          {/* Scoper Operativo de Backlog (Frentes, Entregables y Actividades) */}
+          <BacklogScoper
+            quote={activeQuote}
+            allQuotes={activeOpp.quotes}
+            opportunityTitle={activeOpp.title}
+            prospectName={activeOpp.prospectAccountName}
+            onSelectQuoteVersion={(quoteId) => setActiveQuoteId(quoteId)}
+            onCreateNewQuoteVersion={(baseQuote) => handleCreateNewQuoteVersion(baseQuote)}
+            templates={templates}
+            onUpdateQuote={handleUpdateQuote}
+            onGoToCalculator={() => setActiveTab('cotizacion')}
+            onMarkScopeReady={(totalHours) => {
+              const updatedOpp: NewBusinessOpportunity = {
+                ...activeOpp,
+                status: 'internal_review',
+                updatedAt: new Date().toISOString()
+              };
+              onUpdateOpportunity(updatedOpp);
+              setConversionSuccessMessage(
+                `Alcance técnico completado (${totalHours}h) · Listo para continuar con el proceso comercial.`,
+                {
+                  showProjectLink: false,
+                  timeoutMs: 8000
+                }
+              );
+            }}
+            opportunityStatus={activeOpp.status}
+            commercialOwner={activeOpp.commercialOwner}
+          />
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 3: COTIZACIÓN COMERCIAL & PRICING (Diligenciado por Comercial) */}
+      {/* ========================================================================= */}
+      {activeTab === 'cotizacion' && activeQuote && (
+        <div className="space-y-6 animate-in fade-in duration-150">
+          {/* Tarjeta de Insumos Recibidos del Líder */}
+          <div className="bg-gradient-to-br from-[#140b24] via-[#241142] to-[#501f92] text-white rounded-2xl p-6 shadow-sm space-y-4">
+            <div className="flex items-start justify-between flex-wrap gap-4">
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#d4ff4a] bg-white/10 px-2.5 py-1 rounded-md">
+                    Insumos Técnicos del Líder
+                  </span>
+                  <span className="text-xs text-white/70">
+                    Líder: <strong className="text-white">{activeOpp.leadUserName || 'Líder de Alcance'}</strong>
+                  </span>
+                  <span className="text-xs text-white/70">
+                    Versión: <strong className="text-white">{activeQuote.versionLabel}</strong>
+                  </span>
+                </div>
+                <h2 className="text-lg font-black text-white mt-1">
+                  Cotización Comercial & Pricing en Finanzas
+                </h2>
+                <p className="text-xs text-white/80 max-w-2xl mt-1">
+                  Usa las horas totales y semanas estimadas por el líder para calcular el precio en la calculadora oficial de Google Sheets. Luego registra el valor oficial acordado aquí en Orbit.
+                </p>
+              </div>
+
+              {activeQuote.commercialProposalUrl && (
+                <a
+                  href={activeQuote.commercialProposalUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <ExternalLink className="w-3.5 h-3.5 text-[#d4ff4a]" />
+                  <span>Ver Propuesta del Líder</span>
+                </a>
+              )}
+            </div>
+
+            {/* Métricas clave que Comercial ingresa a la calculadora */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+              <div className="p-3 rounded-xl bg-white/5 border border-white/10 space-y-0.5">
+                <span className="text-[10px] uppercase font-bold text-white/60 block">Total Horas</span>
+                <div className="text-xl font-black text-[#d4ff4a]">
+                  {activeQuote.totalHoursRollup}h
+                </div>
+                <span className="text-[10px] text-white/70">
+                  {activeQuote.deliverables.reduce((acc, d) => acc + d.backlogItems.length, 0)} actividades
+                </span>
+              </div>
+
+              <div className="p-3 rounded-xl bg-white/5 border border-white/10 space-y-0.5">
+                <span className="text-[10px] uppercase font-bold text-white/60 block">Duración Estimada</span>
+                <div className="text-xl font-black text-white">
+                  {activeQuote.estimatedWeeks ?? activeQuote.financialConfig?.projectDurationWeeks ?? 0} sem
+                </div>
+                <span className="text-[10px] text-white/70">
+                  ~{((activeQuote.estimatedWeeks ?? activeQuote.financialConfig?.projectDurationWeeks ?? 0) * 5)} días hábiles
+                </span>
+              </div>
+
+              <div className="p-3 rounded-xl bg-white/5 border border-white/10 space-y-0.5">
+                <span className="text-[10px] uppercase font-bold text-white/60 block">Modelo de Negocio</span>
+                <div className="text-sm font-bold text-white mt-1">
+                  {activeOpp.projectType === 'fee_monthly' ? 'Fee Mensual' : 'Proyecto Único'}
+                </div>
+                <span className="text-[10px] text-white/70">
+                  {activeOpp.projectType === 'fee_monthly' ? 'Recurrente' : 'Alcance cerrado'}
+                </span>
+              </div>
+
+              <div className="p-3 rounded-xl bg-white/5 border border-white/10 space-y-0.5">
+                <span className="text-[10px] uppercase font-bold text-white/60 block">Owner Comercial</span>
+                <div className="text-sm font-bold text-[#d4ff4a] mt-1">
+                  {activeOpp.commercialOwner || 'Catalina / Luisa'}
+                </div>
+                <span className="text-[10px] text-white/70">
+                  Negociación y cierre
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Formulario Comercial: Sheet de Finanzas, Valor Cotizado, Condiciones */}
+          <div className="bg-white rounded-2xl border border-[#e2e8f0] p-6 shadow-2xs space-y-5">
             <div className="flex items-start justify-between flex-wrap gap-3 pb-4 border-b border-[#f1f5f9]">
               <div>
                 <div className="flex items-center gap-2">
@@ -2021,87 +2343,32 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                     <DollarSign className="w-4 h-4" />
                   </span>
                   <h3 className="text-sm font-bold text-[#0f172a]">
-                    Resultado comercial
+                    Registro de Acuerdo Comercial & Pricing Oficial
                   </h3>
                 </div>
                 <p className="text-xs text-[#64748b] mt-1">
-                  Finanzas / Google Sheet Oficial es la fuente de verdad del pricing. Orbit registra el resultado cotizado para trazabilidad, SOW y conversión a proyecto.
+                  Finanzas / Google Sheet Oficial es la fuente de verdad del pricing. Orbit registra el resultado acordado para gobernanza, SOW y conversión a proyecto.
                 </p>
               </div>
+
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-[#f1f5f9] text-[#475569]">
-                  Total Horas: {activeQuote.totalHoursRollup}h
-                </span>
                 <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-[#501f92]/10 text-[#501f92]">
                   {activeQuote.versionLabel}
                 </span>
                 {activeOpp.hubspotDealStage && (
-                  <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg border bg-[#fff7ed] text-[#c2410c] border-[#fed7aa]" title="Stage sincronizado de HubSpot (Source of Truth Comercial)">
+                  <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg border bg-[#fff7ed] text-[#c2410c] border-[#fed7aa]">
                     HubSpot: {activeOpp.hubspotDealStage}
                   </span>
                 )}
               </div>
             </div>
 
-            {/* Formulario de Registro Comercial Compacto */}
+            {/* Grid: Sheet de Finanzas + Valor Cotizado + Moneda */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
-              {/* Valor Cotizado */}
-              <div className="space-y-1">
-                <label className="font-bold text-[#475569] block">
-                  Valor cotizado: <span className="text-red-500">*</span>
-                </label>
-                <div className="flex items-center gap-2">
-                  <div className="relative flex-1">
-                    <input
-                      type="number"
-                      min="0"
-                      step="1000"
-                      value={activeQuote.totalQuotedValue ?? activeQuote.totalQuotedValueCOP ?? ''}
-                      onChange={(e) => {
-                        const val = Math.max(0, Number(e.target.value) || 0);
-                        handleUpdateQuote({
-                          ...activeQuote,
-                          totalQuotedValue: val,
-                          totalQuotedValueCOP: activeQuote.currency === 'USD' ? 0 : val
-                        });
-                      }}
-                      placeholder="0"
-                      className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] font-bold text-sm text-[#0f172a] focus:ring-2 focus:ring-[#501f92]"
-                    />
-                  </div>
-                  <select
-                    value={activeQuote.currency || 'COP'}
-                    onChange={(e) => {
-                      const curr = e.target.value as 'COP' | 'USD';
-                      const val = activeQuote.totalQuotedValue ?? activeQuote.totalQuotedValueCOP ?? 0;
-                      handleUpdateQuote({
-                        ...activeQuote,
-                        currency: curr,
-                        totalQuotedValue: val,
-                        totalQuotedValueCOP: curr === 'USD' ? 0 : val
-                      });
-                    }}
-                    className="p-2 rounded-xl border border-[#cbd5e1] font-bold text-xs bg-white text-[#501f92] focus:ring-2 focus:ring-[#501f92]"
-                  >
-                    <option value="COP">COP ($)</option>
-                    <option value="USD">USD ($)</option>
-                  </select>
-                </div>
-                <span className="text-[10px] text-[#64748b]">
-                  Monto formateado:{' '}
-                  <strong className="text-[#0f172a]">
-                    {formatCurrency(
-                      activeQuote.totalQuotedValue ?? activeQuote.totalQuotedValueCOP ?? 0,
-                      activeQuote.currency || 'COP'
-                    )}
-                  </strong>
-                </span>
-              </div>
-
               {/* Enlace a Sheet oficial de Finanzas */}
-              <div className="space-y-1">
+              <div className="space-y-1 lg:col-span-1">
                 <label className="font-bold text-[#475569] flex items-center justify-between">
-                  <span>Sheet oficial de Finanzas:</span>
+                  <span>Sheet oficial de Finanzas: <span className="text-red-500">*</span></span>
                   {activeQuote.externalFinanceSheetUrl && (
                     <a
                       href={activeQuote.externalFinanceSheetUrl}
@@ -2124,17 +2391,64 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                     });
                   }}
                   placeholder="https://docs.google.com/spreadsheets/d/..."
-                  className="w-full p-2 rounded-xl border border-[#cbd5e1] text-xs font-mono text-[#0f172a] focus:ring-2 focus:ring-[#501f92]"
+                  className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs font-mono text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-sans placeholder:font-normal focus:ring-2 focus:ring-[#501f92]"
                 />
                 <span className="text-[10px] text-[#64748b]">
-                  Planilla oficial de Finanzas donde se calcula el pricing.
+                  Planilla de Google Sheets donde Catalina/Luisa calculan el pricing con semanas y horas.
                 </span>
               </div>
 
-              {/* Enlace a propuesta/presentación comercial */}
-              <div className="space-y-1">
+              {/* Valor Cotizado */}
+              <div className="space-y-1 lg:col-span-1">
+                <label className="font-bold text-[#475569] block">
+                  Valor cotizado acordado: <span className="text-red-500">*</span>
+                </label>
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="number"
+                      min="0"
+                      step="1000"
+                      value={activeQuote.totalQuotedValue ?? activeQuote.totalQuotedValueCOP ?? ''}
+                      onChange={(e) => {
+                        const val = Math.max(0, Number(e.target.value) || 0);
+                        handleUpdateQuote({
+                          ...activeQuote,
+                          totalQuotedValue: val,
+                          totalQuotedValueCOP: activeQuote.currency === 'USD' ? 0 : val
+                        });
+                      }}
+                      placeholder="0"
+                      className="w-full px-3 py-2.5 rounded-xl border border-[#cbd5e1] font-bold text-sm text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal focus:ring-2 focus:ring-[#501f92]"
+                    />
+                  </div>
+                  <select
+                    value={activeQuote.currency || 'COP'}
+                    onChange={(e) => {
+                      const curr = e.target.value as 'COP' | 'USD';
+                      const val = activeQuote.totalQuotedValue ?? activeQuote.totalQuotedValueCOP ?? 0;
+                      handleUpdateQuote({
+                        ...activeQuote,
+                        currency: curr,
+                        totalQuotedValue: val,
+                        totalQuotedValueCOP: curr === 'USD' ? 0 : val
+                      });
+                    }}
+                    className="p-2.5 rounded-xl border border-[#cbd5e1] font-bold text-xs bg-white text-[#501f92] focus:ring-2 focus:ring-[#501f92] cursor-pointer"
+                  >
+                    <option value="COP">COP ($)</option>
+                    <option value="USD">USD ($)</option>
+                  </select>
+                </div>
+                <span className="text-[10px] text-[#64748b]">
+                  Monto: <strong className="text-[#0f172a]">{formatCurrency(activeQuote.totalQuotedValue ?? activeQuote.totalQuotedValueCOP ?? 0, activeQuote.currency || 'COP')}</strong>
+                </span>
+              </div>
+
+              {/* Presentación Comercial del Líder */}
+              <div className="space-y-1 lg:col-span-1">
                 <label className="font-bold text-[#475569] flex items-center justify-between">
-                  <span>Propuesta / Presentación:</span>
+                  <span>Propuesta / Presentación (PPT):</span>
                   {activeQuote.commercialProposalUrl && (
                     <a
                       href={activeQuote.commercialProposalUrl}
@@ -2156,8 +2470,8 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                       commercialProposalUrl: e.target.value
                     });
                   }}
-                  placeholder="https://drive.google.com/... o presentación comercial"
-                  className="w-full p-2 rounded-xl border border-[#cbd5e1] text-xs font-mono text-[#0f172a] focus:ring-2 focus:ring-[#501f92]"
+                  placeholder="https://docs.google.com/presentation/d/..."
+                  className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs font-mono text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-sans placeholder:font-normal focus:ring-2 focus:ring-[#501f92]"
                 />
                 <span className="text-[10px] text-[#64748b]">
                   Enlace al documento o presentación entregada al cliente.
@@ -2165,10 +2479,10 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
               </div>
             </div>
 
-            {/* Condiciones comerciales o notas breves */}
+            {/* Condiciones comerciales o notas */}
             <div className="space-y-1 text-xs pt-1">
               <label className="font-bold text-[#475569] block">
-                Notas / Condiciones comerciales (si aplican):
+                Notas / Condiciones comerciales (Términos de pago, vigencia, supuestos):
               </label>
               <textarea
                 rows={2}
@@ -2179,38 +2493,51 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                     commercialNotes: e.target.value
                   });
                 }}
-                placeholder="ej. 50% anticipo y 50% contra entrega; vigencia de oferta 15 días; alcance sujeto a insumos oportunos."
-                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs text-[#0f172a] focus:ring-2 focus:ring-[#501f92]"
+                placeholder="Ej: 50% anticipo al kick-off y 50% contra entrega final; vigencia de oferta 15 días calendario; insumos requeridos en sprint 1."
+                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal focus:ring-2 focus:ring-[#501f92]"
               />
             </div>
 
-            {/* Footer con CTA Guardar cambios y Conversión a Proyecto */}
+            {/* Footer con CTA Guardar cambios y Acciones de Avance */}
             <div className="pt-3 border-t border-[#f1f5f9] flex items-center justify-between flex-wrap gap-2">
-              <div className="text-[11px] text-[#64748b] flex items-center gap-2">
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => {
                     handleUpdateQuote(activeQuote);
-                    setConversionSuccessMessage('✅ Cambios comerciales guardados correctamente.');
+                    setConversionSuccessMessage('✅ Cotización comercial guardada correctamente.');
                     setTimeout(() => setConversionSuccessMessage(null), 4000);
                   }}
                   className="px-4 py-2 rounded-xl bg-[#501f92] hover:bg-[#3d1572] text-xs font-bold text-white transition-all shadow-xs cursor-pointer"
                 >
-                  Guardar cambios
+                  Guardar cotización
                 </button>
-                <span>Trazabilidad comercial registrada en la cotización activa ({activeQuote.versionLabel}).</span>
+                <span className="text-[11px] text-[#64748b]">
+                  Registrado para trazabilidad de la oportunidad ({activeQuote.versionLabel}).
+                </span>
               </div>
 
-              {isWon && (
-                <button
-                  type="button"
-                  onClick={() => setIsConvertModalOpen(true)}
-                  className="px-4 py-2 rounded-xl bg-[#10b981] hover:bg-[#059669] text-xs font-bold text-white transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-white" />
-                  <span>Convertir a Proyecto Operativo →</span>
-                </button>
-              )}
+              <div className="flex items-center gap-2">
+                {activeOpp.status !== 'won' ? (
+                  <button
+                    type="button"
+                    onClick={() => handleMarkOpportunityWon(activeOpp)}
+                    className="px-4 py-2 rounded-xl bg-[#10b981] hover:bg-[#059669] text-white text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer hover:scale-[1.02]"
+                  >
+                    <Trophy className="w-4 h-4 text-[#d4ff4a]" />
+                    <span>Marcar Propuesta Ganada 🏆</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setIsConvertModalOpen(true)}
+                    className="px-4 py-2 rounded-xl bg-[#10b981] hover:bg-[#059669] text-xs font-bold text-white transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-white" />
+                    <span>Convertir a Proyecto Operativo →</span>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -2348,9 +2675,16 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                     <FileText className="w-5 h-5" />
                   </span>
                   <div>
-                    <h3 className="text-base font-bold text-[#0f172a]">
-                      Statement of Work (SOW) - Plantilla Contractual
-                    </h3>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-base font-bold text-[#0f172a]">
+                        Statement of Work (SOW) - Plantilla Contractual
+                      </h3>
+                      {isWon && (
+                        <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#10b981] text-white shadow-xs">
+                          🏆 Propuesta Ganada · Listo para Firma
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-[#64748b]">
                       Generado automáticamente desde el alcance de {activeQuote.versionLabel} sin exponer horas internas por rol
                     </p>
@@ -2359,6 +2693,14 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
               </div>
 
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsSowModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border-2 border-[#501f92] hover:bg-[#501f92] hover:text-white text-xs font-black text-[#501f92] shadow-xs transition-all cursor-pointer hover:scale-[1.02]"
+                >
+                  <Copy className="w-4 h-4 text-current" />
+                  <span>Ver / Copiar SOW para Docs</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => setIsSowModalOpen(true)}
@@ -2740,8 +3082,8 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                 type="text"
                 value={lossReasonInput}
                 onChange={(e) => setLossReasonInput(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs focus:ring-2 focus:ring-[#dc2626]"
-                placeholder="ej. Presupuesto fuera de rango, eligió otro proveedor, cancelado..."
+                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal focus:ring-2 focus:ring-[#dc2626]"
+                placeholder="Ej: Presupuesto fuera de rango, eligió otro proveedor, cancelado..."
               />
             </div>
 
@@ -2797,6 +3139,188 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
           onClose={() => setIsSowModalOpen(false)}
           onSaveSOWData={handleSaveSowData}
         />
+      )}
+
+      {/* Modal Fiesta Bucky: ¡Propuesta Ganada! */}
+      {wonCelebrationOpp && (
+        <div
+          className="fixed inset-0 z-80 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
+          onClick={() => setWonCelebrationOpp(null)}
+        >
+          <div
+            className="relative bg-gradient-to-b from-[#140b24] via-[#241142] to-[#0f172a] text-white w-full max-w-xl rounded-3xl p-6 sm:p-8 shadow-2xl border-2 border-[#d4ff4a]/60 text-center overflow-hidden animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Confeti festivo animado en cascada */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden">
+              {[
+                { left: '8%', delay: '0s', color: '#d4ff4a', size: '10px' },
+                { left: '22%', delay: '0.3s', color: '#a78bfa', size: '12px' },
+                { left: '36%', delay: '0.7s', color: '#38bdf8', size: '8px' },
+                { left: '50%', delay: '0.2s', color: '#f43f5e', size: '10px' },
+                { left: '64%', delay: '0.5s', color: '#fbbf24', size: '12px' },
+                { left: '78%', delay: '0.1s', color: '#34d399', size: '9px' },
+                { left: '92%', delay: '0.8s', color: '#ec4899', size: '11px' },
+                { left: '16%', delay: '1.1s', color: '#d4ff4a', size: '9px' },
+                { left: '44%', delay: '1.3s', color: '#60a5fa', size: '11px' },
+                { left: '84%', delay: '1.0s', color: '#fbbf24', size: '8px' },
+              ].map((c, i) => (
+                <span
+                  key={i}
+                  className="absolute rounded-full opacity-80 animate-ping"
+                  style={{
+                    left: c.left,
+                    top: `${12 + (i * 7)}%`,
+                    width: c.size,
+                    height: c.size,
+                    backgroundColor: c.color,
+                    animationDuration: '2.5s',
+                    animationDelay: c.delay,
+                  }}
+                />
+              ))}
+            </div>
+
+            {/* Luces y auras de neón */}
+            <div className="absolute -top-20 -left-20 w-56 h-56 bg-[#d4ff4a]/25 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-20 -right-20 w-56 h-56 bg-[#501f92]/60 rounded-full blur-3xl pointer-events-none" />
+
+            {/* Botón cerrar */}
+            <button
+              type="button"
+              onClick={() => setWonCelebrationOpp(null)}
+              className="absolute top-4 right-4 p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors cursor-pointer z-10"
+              aria-label="Cerrar celebración"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Bucky Celebrando con aura de fiesta */}
+            <div className="relative mx-auto w-36 h-36 sm:w-44 sm:h-44 mb-3 flex items-center justify-center">
+              <div className="absolute inset-0 bg-gradient-to-tr from-[#d4ff4a]/30 to-[#a78bfa]/30 rounded-full blur-2xl scale-110 animate-pulse" />
+              <img
+                src="/bucky_celebrating_cutout.png"
+                alt="Bucky Celebrando Propuesta Ganada"
+                className="relative w-full h-full object-contain drop-shadow-[0_12px_32px_rgba(212,255,74,0.45)] animate-bounce"
+                style={{ animationDuration: '1.8s' }}
+              />
+              <span className="absolute -top-1 -right-2 text-2xl animate-spin" style={{ animationDuration: '6s' }}>
+                ✨
+              </span>
+              <span className="absolute top-2 -left-3 text-2xl animate-pulse">
+                🍾
+              </span>
+            </div>
+
+            {/* Título de Celebración */}
+            <div className="space-y-1.5 relative z-10">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-black uppercase tracking-widest bg-[#d4ff4a] text-[#0f172a] shadow-md shadow-[#d4ff4a]/20">
+                <span>🎉 ¡DESTAPEMOS LA CHICHA EN LA COLONIA! 🎉</span>
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight mt-1 flex items-center justify-center gap-2 flex-wrap">
+                <span>¡PROPUESTA GANADA!</span>
+                <span>🏆</span>
+              </h2>
+              <p className="text-xs sm:text-sm text-[#cbd5e1] max-w-md mx-auto">
+                ¡Tremenda victoria para el equipo! Reconocimiento de honor tanto para el área Comercial como para el Líder de Solución.
+              </p>
+            </div>
+
+            {/* Reconocimiento Dual: Comercial + Líder Técnico */}
+            <div className="mt-5 p-4 rounded-2xl bg-white/5 border border-white/15 backdrop-blur-xs space-y-3 text-left text-xs relative z-10">
+              <div className="flex items-center justify-between pb-2 border-b border-white/10 flex-wrap gap-2">
+                <span className="text-white/60 font-medium">Cuenta / Prospecto:</span>
+                <strong className="text-white font-bold text-sm truncate max-w-[260px]">
+                  {wonCelebrationOpp.prospectAccountName || 'Cliente'}
+                </strong>
+              </div>
+
+              {/* Fila Doble de Héroes: Comercial y Líder Técnico */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                {/* 1. Héroe Comercial */}
+                <div className="p-3 rounded-xl bg-white/5 border border-white/10 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] uppercase font-black tracking-wider text-[#d4ff4a] flex items-center gap-1">
+                      <span>💼 Comercial Estrella</span>
+                    </span>
+                    <span className="text-[10px] text-white/50 font-bold">Cierre</span>
+                  </div>
+                  <div className="text-sm font-black text-white truncate">
+                    {wonCelebrationOpp.commercialOwner || 'Catalina / Luisa'}
+                  </div>
+                  <p className="text-[10px] text-white/70 leading-snug">
+                    Defensa de pricing, negociación estratégica y cierre formal del acuerdo.
+                  </p>
+                </div>
+
+                {/* 2. Héroe Líder Técnico */}
+                <div className="p-3 rounded-xl bg-white/5 border border-white/10 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] uppercase font-black tracking-wider text-[#a78bfa] flex items-center gap-1">
+                      <span>⚡ Solución & Scoping</span>
+                    </span>
+                    <span className="text-[10px] text-white/50 font-bold">Técnico</span>
+                  </div>
+                  <div className="text-sm font-black text-white truncate">
+                    {wonCelebrationOpp.leadUserName || 'Líder de Alcance'}
+                  </div>
+                  <p className="text-[10px] text-white/70 leading-snug">
+                    Dimensionamiento técnico de {activeQuote?.totalHoursRollup || 0}h, entregables claros y alcance blindado.
+                  </p>
+                </div>
+              </div>
+
+              {/* Métricas clave del acuerdo comercial */}
+              {activeQuote && (
+                <div className="pt-2 border-t border-white/10 grid grid-cols-3 gap-2 text-center">
+                  <div className="p-2 rounded-lg bg-white/5">
+                    <span className="text-[9px] uppercase font-bold text-white/60 block">Valor Acordado</span>
+                    <span className="text-xs font-black text-[#d4ff4a]">
+                      {formatCurrency(
+                        activeQuote.totalQuotedValue ?? activeQuote.totalQuotedValueCOP ?? 0,
+                        activeQuote.currency || 'COP'
+                      )}
+                    </span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-white/5">
+                    <span className="text-[9px] uppercase font-bold text-white/60 block">Duración</span>
+                    <span className="text-xs font-bold text-white">
+                      {activeQuote.estimatedWeeks ?? activeQuote.financialConfig?.projectDurationWeeks ?? 0} sem
+                    </span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-white/5">
+                    <span className="text-[9px] uppercase font-bold text-white/60 block">Esfuerzo</span>
+                    <span className="text-xs font-bold text-[#a78bfa]">
+                      {activeQuote.totalHoursRollup}h
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Botones de acción */}
+            <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-2.5 relative z-10">
+              <button
+                type="button"
+                onClick={() => {
+                  setWonCelebrationOpp(null);
+                  setActiveTab('documentos');
+                }}
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#d4ff4a] hover:bg-[#bceb34] text-[#0f172a] text-xs font-black shadow-lg shadow-[#d4ff4a]/25 transition-all hover:scale-[1.02] cursor-pointer"
+              >
+                Ir a Documentos y Gates (Contrato/Anticipo) →
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setWonCelebrationOpp(null)}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all cursor-pointer"
+              >
+                ¡A celebrar con el equipo! 🥂🚀
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -208,7 +208,7 @@ export const ImportBacklogModal: React.FC<ImportBacklogModalProps> = ({
               rows={5}
               value={rawText}
               onChange={(e) => setRawText(e.target.value)}
-              className="w-full text-xs font-mono p-3.5 rounded-2xl bg-white text-[#0f172a] border-2 border-[#cbd5e1] focus:border-[#501f92] focus:ring-2 focus:ring-[#501f92]/20 outline-none leading-relaxed shadow-inner placeholder-[#94a3b8]"
+              className="w-full text-xs font-mono p-3.5 rounded-2xl bg-white text-[#0f172a] border-2 border-[#cbd5e1] focus:border-[#501f92] focus:ring-2 focus:ring-[#501f92]/20 outline-none leading-relaxed shadow-inner placeholder:text-[#7C8AA0]"
               placeholder="Fase	Frente	Tarea	Rol	Responsable	Horas	Inicio	Entrega	Dependencia"
             />
           </div>

@@ -240,7 +240,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
             placeholder="Buscar cliente, marca o contacto..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-1.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] text-xs font-medium text-[#0f172a] placeholder-[#94a3b8] focus:outline-none focus:border-[#501f92] focus:bg-white transition-all"
+            className="w-full pl-9 pr-4 py-1.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] text-xs font-medium text-[#0f172a] placeholder:text-[#7C8AA0] focus:outline-none focus:border-[#501f92] focus:bg-white transition-all"
           />
         </div>
 

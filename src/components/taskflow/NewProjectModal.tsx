@@ -717,7 +717,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                         type="text"
                         value={brand}
                         onChange={(e) => setBrand(e.target.value)}
-                        placeholder="Ej. Yamaha, Danone..."
+                        placeholder="Ej: Yamaha, Danone..."
                         className="font-semibold text-[#0f172a] bg-transparent border-b border-[#cbd5e1] px-1 py-0.5 focus:border-[#501f92] outline-hidden text-xs"
                       />
                     </div>
@@ -741,8 +741,8 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                     type="text"
                     value={projectName}
                     onChange={(e) => setProjectName(e.target.value)}
-                    placeholder="Ej. Campaña Navidad 2026, E-commerce Shopify, Mantenimiento Q4..."
-                    className="w-full text-sm font-semibold border border-[#cbd5e1] rounded-xl px-3.5 py-2.5 bg-white text-[#0f172a] placeholder:text-[#94a3b8] focus:ring-2 focus:ring-[#501f92] focus:border-transparent"
+                    placeholder="Ej: Campaña Navidad 2026, E-commerce Shopify, Mantenimiento Q4..."
+                    className="w-full text-sm font-semibold border border-[#cbd5e1] rounded-xl px-3.5 py-2.5 bg-white text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal focus:ring-2 focus:ring-[#501f92] focus:border-transparent"
                   />
                 </div>
 
@@ -825,7 +825,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                       value={endDate}
                       onChange={(e) => setEndDate(e.target.value)}
                       placeholder={projectType === 'fee_monthly' ? 'Abierto / Renovación' : ''}
-                      className="w-full text-xs border border-[#cbd5e1] rounded-xl px-3 py-2 bg-white text-[#0f172a] focus:ring-2 focus:ring-[#501f92]"
+                      className="w-full text-xs border border-[#cbd5e1] rounded-xl px-3 py-2 bg-white text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal focus:ring-2 focus:ring-[#501f92]"
                     />
                   </div>
                 </div>
@@ -842,10 +842,10 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                         const lead = AVAILABLE_LEADS.find((l) => l.name === e.target.value);
                         if (lead) setSelectedLead(lead);
                       }}
-                      className="w-full text-xs border border-[#cbd5e1] rounded-xl px-3 py-2 bg-white text-[#0f172a] font-medium focus:ring-2 focus:ring-[#501f92]"
+                      className="w-full text-xs border border-[#cbd5e1] rounded-xl px-3 py-2 bg-white text-[#0f172a] font-semibold focus:ring-2 focus:ring-[#501f92]"
                     >
                       {AVAILABLE_LEADS.map((lead) => (
-                        <option key={lead.id} value={lead.name}>
+                        <option key={lead.id} value={lead.name} className="text-[#0f172a] font-medium">
                           {lead.name} ({lead.role})
                         </option>
                       ))}
@@ -877,17 +877,22 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                           setAccountManagerName(val.replace('custom-', ''));
                         }
                       }}
-                      className="w-full text-xs border border-[#cbd5e1] rounded-xl px-3 py-2 bg-white text-[#0f172a] font-medium focus:ring-2 focus:ring-[#501f92]"
+                      data-empty={!(accountManagerId || accountManagerName)}
+                      className={`w-full text-xs border border-[#cbd5e1] rounded-xl px-3 py-2 bg-white transition-colors focus:ring-2 focus:ring-[#501f92] ${
+                        !(accountManagerId || accountManagerName)
+                          ? 'text-[#64748b] font-normal'
+                          : 'text-[#0f172a] font-semibold'
+                      }`}
                     >
                       <option value="">Seleccionar responsable de cuenta...</option>
                       {clientRelationshipUsers.map((user) => (
-                        <option key={user.id} value={user.id}>
+                        <option key={user.id} value={user.id} className="text-[#0f172a] font-medium">
                           {user.name} ({user.officialRole || user.jobTitle || user.role})
                         </option>
                       ))}
                       {/* En caso de que el cliente traiga un nombre no mapeado aún en la lista */}
                       {accountManagerName && !clientRelationshipUsers.some((u) => u.name.toLowerCase() === accountManagerName.toLowerCase()) && (
-                        <option value={`custom-${accountManagerName}`}>
+                        <option value={`custom-${accountManagerName}`} className="text-[#0f172a] font-medium">
                           {accountManagerName} (Asignado en Perfil del Cliente)
                         </option>
                       )}
@@ -908,7 +913,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                     value={brief}
                     onChange={(e) => setBrief(e.target.value)}
                     placeholder="Contexto estratégico, entregables clave o alcance comercial..."
-                    className="w-full text-xs border border-[#cbd5e1] rounded-xl p-3 bg-white text-[#0f172a] focus:ring-2 focus:ring-[#501f92]"
+                    className="w-full text-xs border border-[#cbd5e1] rounded-xl p-3 bg-white text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal focus:ring-2 focus:ring-[#501f92]"
                   />
                 </div>
               </div>
@@ -1062,8 +1067,8 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                             type="text"
                             value={del.name}
                             onChange={(e) => handleUpdateDeliverableName(del.id, e.target.value)}
-                            placeholder="Nombre del Frente (ej. Redes Sociales, Landing Page, Paid Media...)"
-                            className="font-bold text-sm text-[#0f172a] border-b border-transparent hover:border-[#cbd5e1] focus:border-[#501f92] outline-hidden px-1 py-0.5 w-full transition-colors"
+                            placeholder="Nombre del Frente (Ej: Redes Sociales, Landing Page, Paid Media...)"
+                            className="font-bold text-sm text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal border-b border-transparent hover:border-[#cbd5e1] focus:border-[#501f92] outline-hidden px-1 py-0.5 w-full transition-colors"
                           />
                         </div>
                         <div className="flex items-center gap-3 shrink-0">
@@ -1088,7 +1093,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                         value={del.description}
                         onChange={(e) => handleUpdateDeliverableDesc(del.id, e.target.value)}
                         placeholder="Alcance u objetivos de este frente..."
-                        className="text-xs text-[#64748b] border-b border-transparent hover:border-[#e2e8f0] focus:border-[#501f92] outline-hidden px-1 py-0.5 w-full"
+                        className="text-xs text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal border-b border-transparent hover:border-[#e2e8f0] focus:border-[#501f92] outline-hidden px-1 py-0.5 w-full"
                       />
 
                       {/* Role Budgets + Direct Assignees within this deliverable */}

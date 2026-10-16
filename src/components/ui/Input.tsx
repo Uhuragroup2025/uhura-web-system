@@ -13,6 +13,8 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   isLoading?: boolean;
   contextTheme?: 'dark' | 'light';
   sizeVariant?: 'sm' | 'md' | 'lg';
+  isSuggested?: boolean;
+  isReadOnly?: boolean;
 }
 
 export const Input: React.FC<InputProps> = ({
@@ -29,9 +31,13 @@ export const Input: React.FC<InputProps> = ({
   id,
   className = '',
   disabled,
+  isSuggested = false,
+  isReadOnly = false,
+  readOnly,
   ...props
 }) => {
   const isDark = contextTheme === 'dark' || variant === 'glass';
+  const effectiveReadOnly = isReadOnly || readOnly;
 
   // Stable ID generation for WCAG label associations
   const inputId = id || (label ? `input-${label.toLowerCase().replace(/[^a-z0-9]/g, '-')}` : undefined);
@@ -59,16 +65,26 @@ export const Input: React.FC<InputProps> = ({
     if (isDark) {
       return error
         ? 'bg-[#140b24] border border-rose-500 text-white placeholder-white/50 focus-visible:ring-rose-500'
-        : 'bg-[#140b24] border border-white/15 text-white placeholder-white/40 hover:border-white/30 focus-visible:ring-[#8a4dff] shadow-2xs';
+        : 'bg-[#140b24] border border-white/15 text-white placeholder-white/50 hover:border-white/30 focus-visible:ring-[#8a4dff] shadow-2xs';
     }
 
-    return error
-      ? 'bg-white border border-rose-500 text-[#0f172a] placeholder-[#94a3b8] focus-visible:ring-rose-500 focus-visible:border-rose-500 shadow-2xs'
-      : 'bg-white border border-[#e2e8f0] text-[#0f172a] placeholder-[#94a3b8] hover:border-[#cbd5e1] focus:border-[#501f92] shadow-2xs';
+    if (error) {
+      return 'bg-white border border-rose-500 text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal focus-visible:ring-rose-500 focus-visible:border-rose-500 shadow-2xs';
+    }
+
+    if (effectiveReadOnly) {
+      return 'bg-[#f8fafc] border border-[#e2e8f0] text-[#0f172a] cursor-default';
+    }
+
+    if (isSuggested) {
+      return 'bg-[#faf5ff] border border-[#d8b4fe] text-[#475569] placeholder:text-[#7C8AA0] placeholder:font-normal hover:border-[#a855f7] focus:border-[#501f92] shadow-2xs';
+    }
+
+    return 'bg-white border border-[#cbd5e1] text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal hover:border-[#94a3b8] focus:border-[#501f92] shadow-2xs';
   };
 
   const disabledClasses = disabled
-    ? 'opacity-50 cursor-not-allowed bg-[#f8fafc] dark:bg-white/5'
+    ? 'cursor-not-allowed bg-[#f1f5f9] text-[#64748b] border-[#cbd5e1]'
     : '';
 
   const labelColor = isDark ? 'text-white' : 'text-[#0f172a]';

@@ -1428,6 +1428,7 @@ export interface QuoteProposal {
   currency?: 'COP' | 'USD';
   externalFinanceSheetUrl?: string; // Enlace al Sheet de Finanzas donde se calculó externamente
   commercialProposalUrl?: string;   // Enlace o PDF de la propuesta comercial enviada
+  estimatedWeeks?: number;          // Duración estimada en semanas por el Líder (solo proyectos únicos)
   commercialNotes?: string;         // Supuestos y condiciones comerciales breves
   financialConfig?: QuoteFinancialConfig; // Deprecado: conservado para compatibilidad
   financialSummary?: QuoteFinancialSummary; // Deprecado: conservado para compatibilidad
@@ -1528,6 +1529,7 @@ export interface NewBusinessOpportunity {
   id: string;
   title: string;                  // Título comercial de la oportunidad
   type: OpportunityType;          // 'new_client' | 'upsell' | 'cross_sell' | 'renewal'
+  projectType?: ProjectType;      // 'fixed_project' (proyecto único) | 'fee_monthly' (fee mensual) | 'internal_non_billable'
   
   // Resolución de cliente: si es prospecto nuevo clientId es null hasta ganar
   clientId?: string | null;       // FK -> ClientProfile si es cliente existente

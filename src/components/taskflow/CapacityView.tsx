@@ -950,7 +950,7 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
                 <select
                   value={selectedDepartment}
                   onChange={(e) => setSelectedDepartment(e.target.value)}
-                  className="bg-[#f8fafc] border border-[#e2e8f0] px-3 py-1.5 rounded-xl text-xs font-semibold text-[#0f172a] focus:outline-none focus:border-[#501f92]"
+                  className="bg-white border border-[#cbd5e1] px-3 py-1.5 rounded-xl text-xs font-semibold text-[#0f172a] focus:outline-none focus:border-[#501f92] cursor-pointer"
                 >
                   <option value="all">Todas las áreas ({teamMembersData.length})</option>
                   <option value="Área Creatividad">Área Creatividad</option>

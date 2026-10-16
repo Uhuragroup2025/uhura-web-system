@@ -1600,7 +1600,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     type="number"
                     value={targetInput}
                     onChange={(e) => setTargetInput(e.target.value)}
-                    placeholder="Ej. 350"
+                    placeholder="Ej: 350"
                     className="w-full pl-8 pr-12 py-2.5 bg-[#f9fafb] border border-[#e5e7eb] rounded-xl text-sm font-bold text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#8a4dff]/20 focus:border-[#8a4dff]"
                   />
                   <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-[#6b7280]">

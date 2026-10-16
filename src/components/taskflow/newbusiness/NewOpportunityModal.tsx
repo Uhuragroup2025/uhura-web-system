@@ -405,10 +405,10 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
               <div className="flex gap-2">
                 <input
                   type="text"
-                  placeholder="Pegar URL o ID del deal (ej. https://app.hubspot.com/... o 1049281)"
+                  placeholder="Pegar URL o ID del deal (Ej: https://app.hubspot.com/... o 1049281)"
                   value={hubspotQuery}
                   onChange={(e) => setHubspotQuery(e.target.value)}
-                  className="flex-1 p-2.5 rounded-xl border border-[#fed7aa] bg-white text-[#0f172a] text-xs focus:ring-2 focus:ring-[#ff5c35] focus:outline-none"
+                  className="flex-1 p-2.5 rounded-xl border border-[#fed7aa] bg-white text-[#0f172a] text-xs placeholder:text-[#7C8AA0] placeholder:font-normal focus:ring-2 focus:ring-[#ff5c35] focus:outline-none"
                 />
                 <button
                   type="button"
@@ -518,11 +518,14 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
                 required
                 value={selectedClientId}
                 onChange={(e) => setSelectedClientId(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] bg-white text-[#0f172a] font-medium focus:ring-2 focus:ring-[#501f92]"
+                data-empty={!selectedClientId}
+                className={`w-full p-2.5 rounded-xl border border-[#cbd5e1] bg-white focus:ring-2 focus:ring-[#501f92] transition-colors ${
+                  !selectedClientId ? 'text-[#64748b] font-normal' : 'text-[#0f172a] font-semibold'
+                }`}
               >
                 <option value="">-- Elige un cliente existente --</option>
                 {existingClients.map((c) => (
-                  <option key={c.id} value={c.id}>
+                  <option key={c.id} value={c.id} className="text-[#0f172a] font-medium">
                     {c.name}
                   </option>
                 ))}
@@ -536,10 +539,10 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
               <input
                 type="text"
                 required
-                placeholder="ej. Danone S.A., GeoTours, BrandCo..."
+                placeholder="Ej: Danone S.A., GeoTours, BrandCo..."
                 value={prospectName}
                 onChange={(e) => setProspectName(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-medium focus:ring-2 focus:ring-[#501f92]"
+                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-medium placeholder:text-[#7C8AA0] placeholder:font-normal focus:ring-2 focus:ring-[#501f92]"
               />
             </div>
           )}
@@ -552,10 +555,10 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
             <input
               type="text"
               required
-              placeholder="ej. Rediseño ecommerce Bonafont..."
+              placeholder="Ej: Rediseño ecommerce Bonafont..."
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-medium focus:ring-2 focus:ring-[#501f92]"
+              className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-medium placeholder:text-[#7C8AA0] placeholder:font-normal focus:ring-2 focus:ring-[#501f92]"
             />
           </div>
 
@@ -565,10 +568,10 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
               <label className="font-bold text-[#475569] block">Contacto Principal:</label>
               <input
                 type="text"
-                placeholder="ej. Carlos Mendoza"
+                placeholder="Ej: Carlos Mendoza"
                 value={contactName}
                 onChange={(e) => setContactName(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-medium focus:ring-2 focus:ring-[#501f92]"
+                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-medium placeholder:text-[#7C8AA0] placeholder:font-normal focus:ring-2 focus:ring-[#501f92]"
               />
             </div>
 
@@ -579,7 +582,7 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
                 placeholder="carlos@empresa.com"
                 value={contactEmail}
                 onChange={(e) => setContactEmail(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-medium focus:ring-2 focus:ring-[#501f92]"
+                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-medium placeholder:text-[#7C8AA0] placeholder:font-normal focus:ring-2 focus:ring-[#501f92]"
               />
             </div>
           </div>
@@ -593,7 +596,7 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
               <select
                 value={selectedLeadUserId}
                 onChange={(e) => setSelectedLeadUserId(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-bold bg-white focus:ring-2 focus:ring-[#501f92]"
+                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-semibold bg-white focus:ring-2 focus:ring-[#501f92]"
               >
                 {eligibleLeaders.map((leader) => (
                   <option key={leader.id} value={leader.id}>
@@ -613,11 +616,14 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
               <select
                 value={commercialOwner}
                 onChange={(e) => setCommercialOwner(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-medium bg-white focus:ring-2 focus:ring-[#501f92]"
+                data-empty={!commercialOwner}
+                className={`w-full p-2.5 rounded-xl border border-[#cbd5e1] bg-white focus:ring-2 focus:ring-[#501f92] transition-colors ${
+                  !commercialOwner ? 'text-[#64748b] font-normal' : 'text-[#0f172a] font-semibold'
+                }`}
               >
                 <option value="">Seleccionar responsable comercial...</option>
                 {commercialUsers.map((user: UserItem) => (
-                  <option key={user.id} value={user.name}>
+                  <option key={user.id} value={user.name} className="text-[#0f172a] font-medium">
                     {user.name} ({user.officialRole || user.jobTitle || user.role})
                   </option>
                 ))}
@@ -662,7 +668,7 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
                     value={handoffHours}
                     onChange={(e) => setHandoffHours(Math.max(1, Number(e.target.value)))}
                     className="flex-1 p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-bold bg-white focus:ring-2 focus:ring-[#501f92]"
-                    placeholder="ej. 36"
+                    placeholder="Ej: 36"
                   />
                   <span className="text-xs text-[#64748b] font-medium">horas</span>
                   <button

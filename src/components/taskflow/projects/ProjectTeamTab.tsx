@@ -972,8 +972,8 @@ export const ProjectTeamTab: React.FC<ProjectTeamTabProps> = ({
                   type="text"
                   value={formNotes}
                   onChange={(e) => setFormNotes(e.target.value)}
-                  placeholder="ej. Apoyo en sprint de lanzamiento o reuniones de alineación semanal"
-                  className="w-full px-3.5 py-2 text-xs rounded-xl bg-[#f8fafc] border border-[#cbd5e1] text-[#0f172a]"
+                  placeholder="Ej: Apoyo en sprint de lanzamiento o reuniones de alineación semanal"
+                  className="w-full px-3.5 py-2 text-xs rounded-xl bg-[#f8fafc] border border-[#cbd5e1] text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal"
                 />
               </div>
             </div>
@@ -1034,8 +1034,8 @@ export const ProjectTeamTab: React.FC<ProjectTeamTabProps> = ({
                   type="text"
                   value={stakeholderDepartment}
                   onChange={(e) => setStakeholderDepartment(e.target.value)}
-                  placeholder="ej. Dirección Comercial, Finanzas o QA"
-                  className="w-full px-3 py-2 text-xs rounded-xl bg-[#f8fafc] border border-[#cbd5e1]"
+                  placeholder="Ej: Dirección Comercial, Finanzas o QA"
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-[#f8fafc] border border-[#cbd5e1] text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal"
                 />
               </div>
             </div>

@@ -168,7 +168,7 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
               setIsSearchOpen(true);
             }}
             onFocus={() => setIsSearchOpen(true)}
-            className={`w-full ${isDarkTheme ? 'bg-white/5 hover:bg-white/10 focus:bg-white/15 border border-white/10 focus:border-[#d4ff4a] text-white placeholder-white/40' : 'bg-[#f8fafc] hover:bg-[#f1f5f9] focus:bg-white border border-[#e2e8f0] focus:border-[#501f92] text-[#0f172a] placeholder-[#94a3b8]'} pl-8 pr-9 sm:pr-14 py-1.5 rounded-xl text-xs focus:outline-none transition-all`}
+            className={`w-full ${isDarkTheme ? 'bg-white/5 hover:bg-white/10 focus:bg-white/15 border border-white/10 focus:border-[#d4ff4a] text-white placeholder-white/40' : 'bg-[#f8fafc] hover:bg-[#f1f5f9] focus:bg-white border border-[#e2e8f0] focus:border-[#501f92] text-[#0f172a] placeholder:text-[#7C8AA0]'} pl-8 pr-9 sm:pr-14 py-1.5 rounded-xl text-xs focus:outline-none transition-all`}
           />
           <kbd className={`hidden sm:inline-block absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-mono px-1.5 py-0.5 rounded shadow-2xs pointer-events-none ${isDarkTheme ? 'text-white/40 bg-white/5 border border-white/10' : 'text-[#94a3b8] bg-white border border-[#e2e8f0]'}`}>
             ⌘K

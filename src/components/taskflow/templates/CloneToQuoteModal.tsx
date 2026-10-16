@@ -443,8 +443,8 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                         type="text"
                         value={versionLabel}
                         onChange={(e) => setVersionLabel(e.target.value)}
-                        placeholder="ej. Opción A: Alcance Recomendado"
-                        className="w-full px-3 py-2 text-xs rounded-lg border border-[#cbd5e1] focus:ring-2 focus:ring-[#8a4dff] focus:border-transparent outline-hidden bg-white"
+                        placeholder="Ej: Opción A: Alcance Recomendado"
+                        className="w-full px-3 py-2 text-xs rounded-lg border border-[#cbd5e1] focus:ring-2 focus:ring-[#8a4dff] focus:border-transparent outline-hidden bg-white text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal"
                       />
                     </div>
                   </div>
@@ -458,8 +458,8 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                         type="text"
                         value={newOpportunityTitle}
                         onChange={(e) => setNewOpportunityTitle(e.target.value)}
-                        placeholder="ej. Rediseño Web & Integración ERP"
-                        className="w-full px-3 py-2 text-xs rounded-lg border border-[#cbd5e1] focus:ring-2 focus:ring-[#8a4dff] focus:border-transparent outline-hidden bg-white"
+                        placeholder="Ej: Rediseño Web & Integración ERP"
+                        className="w-full px-3 py-2 text-xs rounded-lg border border-[#cbd5e1] focus:ring-2 focus:ring-[#8a4dff] focus:border-transparent outline-hidden bg-white text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal"
                       />
                     </div>
 
@@ -471,8 +471,8 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                         type="text"
                         value={newProspectAccountName}
                         onChange={(e) => setNewProspectAccountName(e.target.value)}
-                        placeholder="ej. Grupo Argos"
-                        className="w-full px-3 py-2 text-xs rounded-lg border border-[#cbd5e1] focus:ring-2 focus:ring-[#8a4dff] focus:border-transparent outline-hidden bg-white"
+                        placeholder="Ej: Grupo Argos"
+                        className="w-full px-3 py-2 text-xs rounded-lg border border-[#cbd5e1] focus:ring-2 focus:ring-[#8a4dff] focus:border-transparent outline-hidden bg-white text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal"
                       />
                     </div>
 
@@ -484,8 +484,8 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                         type="text"
                         value={versionLabel}
                         onChange={(e) => setVersionLabel(e.target.value)}
-                        placeholder="ej. Opción A: Alcance Recomendado"
-                        className="w-full px-3 py-2 text-xs rounded-lg border border-[#cbd5e1] focus:ring-2 focus:ring-[#8a4dff] focus:border-transparent outline-hidden bg-white"
+                        placeholder="Ej: Opción A: Alcance Recomendado"
+                        className="w-full px-3 py-2 text-xs rounded-lg border border-[#cbd5e1] focus:ring-2 focus:ring-[#8a4dff] focus:border-transparent outline-hidden bg-white text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal"
                       />
                     </div>
                   </div>

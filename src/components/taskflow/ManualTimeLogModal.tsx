@@ -231,7 +231,7 @@ export const ManualTimeLogModal: React.FC<ManualTimeLogModalProps> = ({
                       placeholder="Buscar por tarea, proyecto o cliente..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full bg-[#f8fafc] border border-[#e2e8f0] pl-9 pr-3 py-2 rounded-xl text-xs text-[#0f172a] placeholder-[#94a3b8] focus:outline-none focus:border-[#501f92] focus:bg-white"
+                      className="w-full bg-[#f8fafc] border border-[#e2e8f0] pl-9 pr-3 py-2 rounded-xl text-xs text-[#0f172a] placeholder:text-[#7C8AA0] focus:outline-none focus:border-[#501f92] focus:bg-white"
                     />
                   </div>
 
@@ -353,7 +353,7 @@ export const ManualTimeLogModal: React.FC<ManualTimeLogModalProps> = ({
                 required
                 value={logDate}
                 onChange={(e) => setLogDate(e.target.value)}
-                className="w-full bg-[#f8fafc] border border-[#e2e8f0] px-3.5 py-2.5 rounded-xl text-xs font-semibold text-[#0f172a] focus:outline-none focus:border-[#501f92] focus:bg-white cursor-pointer"
+                className="w-full bg-white border border-[#cbd5e1] px-3.5 py-2.5 rounded-xl text-xs font-semibold text-[#0f172a] focus:outline-none focus:border-[#501f92] cursor-pointer"
               />
             </div>
 
@@ -469,7 +469,7 @@ export const ManualTimeLogModal: React.FC<ManualTimeLogModalProps> = ({
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="Detalla qué hiciste en esta sesión (e.g. maquetación de hero, diseño de copies)..."
-                className="w-full bg-[#f8fafc] border border-[#e2e8f0] p-3 rounded-xl text-xs text-[#0f172a] placeholder-[#94a3b8] focus:outline-none focus:border-[#501f92] focus:bg-white resize-none"
+                className="w-full bg-white border border-[#cbd5e1] p-3 rounded-xl text-xs text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal focus:outline-none focus:border-[#501f92] resize-none"
               />
             </div>
           </form>

@@ -11,4 +11,6 @@ export * from './Eyebrow';
 export * from './Card';
 export * from './GlassCard';
 export * from './Input';
+export * from './Select';
+export * from './Textarea';
 export * from './UhuraLogo';

@@ -219,15 +219,21 @@ Nota: El líder responsable de scoping (${opportunity.leadUserName || 'Líder de
             <button
               type="button"
               onClick={handleCopyToClipboard}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer shadow-lg ${
                 copied
-                  ? 'bg-[#10b981] text-white shadow-xs'
-                  : 'bg-white/10 hover:bg-white/20 text-white border border-white/20'
+                  ? 'bg-[#10b981] hover:bg-[#059669] text-white ring-2 ring-white'
+                  : 'bg-white hover:bg-[#f1f5f9] text-[#501f92] border-2 border-[#501f92] ring-2 ring-[#d4ff4a] hover:scale-[1.02]'
               }`}
-              title="Copiar texto listo para pegar en Google Docs"
+              title="Copiar texto formal estructurado listo para pegar en Google Docs"
             >
-              {copied ? <CheckCircle2 className="w-4 h-4 text-white" /> : <Copy className="w-4 h-4 text-white" />}
-              <span>{copied ? '¡Copiado!' : 'Copiar para Docs'}</span>
+              {copied ? (
+                <CheckCircle2 className="w-4 h-4 text-white" />
+              ) : (
+                <Copy className="w-4 h-4 text-[#501f92]" />
+              )}
+              <span className="font-extrabold tracking-tight">
+                {copied ? '¡Copiado para Docs!' : 'Copiar para Docs'}
+              </span>
             </button>
 
             <button
@@ -303,7 +309,7 @@ Nota: El líder responsable de scoping (${opportunity.leadUserName || 'Líder de
                 value={objective}
                 onChange={(e) => setObjective(e.target.value)}
                 rows={3}
-                className="w-full p-3 rounded-xl border border-[#cbd5e1] text-xs focus:ring-2 focus:ring-[#501f92] bg-[#fdfefe]"
+                className="w-full p-3 rounded-xl border border-[#cbd5e1] text-xs text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal focus:ring-2 focus:ring-[#501f92] bg-white"
                 placeholder="Objetivo del proyecto..."
               />
             </div>
@@ -355,7 +361,7 @@ Nota: El líder responsable de scoping (${opportunity.leadUserName || 'Líder de
                 value={scheduleNotes}
                 onChange={(e) => setScheduleNotes(e.target.value)}
                 rows={2}
-                className="w-full p-3 rounded-xl border border-[#cbd5e1] text-xs focus:ring-2 focus:ring-[#501f92] bg-[#fdfefe]"
+                className="w-full p-3 rounded-xl border border-[#cbd5e1] text-xs text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal focus:ring-2 focus:ring-[#501f92] bg-white"
                 placeholder="Notas de cronograma..."
               />
             </div>
@@ -373,7 +379,7 @@ Nota: El líder responsable de scoping (${opportunity.leadUserName || 'Líder de
                 value={exclusions}
                 onChange={(e) => setExclusiones(e.target.value)}
                 rows={3}
-                className="w-full p-3 rounded-xl border border-[#cbd5e1] text-xs focus:ring-2 focus:ring-[#501f92] bg-[#fdfefe]"
+                className="w-full p-3 rounded-xl border border-[#cbd5e1] text-xs text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal focus:ring-2 focus:ring-[#501f92] bg-white"
                 placeholder="Exclusiones..."
               />
             </div>
@@ -400,7 +406,7 @@ Nota: El líder responsable de scoping (${opportunity.leadUserName || 'Líder de
                 value={paymentTerms}
                 onChange={(e) => setPaymentTerms(e.target.value)}
                 rows={3}
-                className="w-full p-3 rounded-xl border border-[#cbd5e1] text-xs focus:ring-2 focus:ring-[#501f92] bg-[#fdfefe]"
+                className="w-full p-3 rounded-xl border border-[#cbd5e1] text-xs text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal focus:ring-2 focus:ring-[#501f92] bg-white"
                 placeholder="Términos de pago..."
               />
             </div>
@@ -456,7 +462,7 @@ Nota: El líder responsable de scoping (${opportunity.leadUserName || 'Líder de
         </div>
 
         {/* Footer */}
-        <div className="p-4 bg-white border-t border-[#e2e8f0] flex items-center justify-between">
+        <div className="p-4 bg-white border-t border-[#e2e8f0] flex items-center justify-between flex-wrap gap-2">
           <button
             type="button"
             onClick={onClose}
@@ -465,14 +471,34 @@ Nota: El líder responsable de scoping (${opportunity.leadUserName || 'Líder de
             Cerrar
           </button>
 
-          <button
-            type="button"
-            onClick={handleSaveAndClose}
-            className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-[#501f92] hover:bg-[#3b156b] text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
-          >
-            <CheckCircle2 className="w-4 h-4 text-[#d4ff4a]" />
-            <span>Guardar SOW</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleCopyToClipboard}
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer shadow-xs ${
+                copied
+                  ? 'bg-[#10b981] text-white border-2 border-[#059669]'
+                  : 'bg-white hover:bg-[#f8fafc] text-[#501f92] border-2 border-[#501f92] hover:shadow-sm'
+              }`}
+              title="Copiar texto formal estructurado listo para pegar en Google Docs"
+            >
+              {copied ? (
+                <CheckCircle2 className="w-4 h-4 text-white" />
+              ) : (
+                <Copy className="w-4 h-4 text-[#501f92]" />
+              )}
+              <span>{copied ? '¡Copiado para Docs!' : 'Copiar para Docs'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleSaveAndClose}
+              className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-[#501f92] hover:bg-[#3b156b] text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
+            >
+              <CheckCircle2 className="w-4 h-4 text-[#d4ff4a]" />
+              <span>Guardar SOW</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -1094,8 +1094,8 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                       required
                       value={quickTitle}
                       onChange={(e) => setQuickTitle(e.target.value)}
-                      placeholder="Ej. Integración pasarela de pagos Wompi"
-                      className="w-full px-3 py-2 text-xs bg-white text-[#0f172a] font-medium border border-[#cbd5e1] rounded-xl focus:outline-none focus:border-[#501f92] focus:ring-1 focus:ring-[#501f92] placeholder-[#94a3b8]"
+                      placeholder="Ej: Integración pasarela de pagos Wompi"
+                      className="w-full px-3 py-2 text-xs bg-white text-[#0f172a] font-medium border border-[#cbd5e1] rounded-xl focus:outline-none focus:border-[#501f92] focus:ring-1 focus:ring-[#501f92] placeholder:text-[#7C8AA0] placeholder:font-normal"
                     />
                   </div>
 
@@ -1713,7 +1713,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             placeholder="Buscar por proyecto, cliente o marca..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full text-xs text-[#0f172a] placeholder-[#94a3b8] focus:outline-none bg-transparent min-w-0"
+            className="w-full text-xs text-[#0f172a] placeholder:text-[#7C8AA0] focus:outline-none bg-transparent min-w-0"
           />
         </div>
 

@@ -1015,7 +1015,7 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
                     WebkitTextFillColor: '#0f172a',
                     colorScheme: 'light'
                   }}
-                  className="w-full px-3.5 py-2.5 rounded-xl border-2 border-[#cbd5e1] bg-white text-[#0f172a] placeholder-[#94a3b8] text-xs font-medium focus:outline-none focus:border-[#501f92] focus:ring-2 focus:ring-[#501f92]/20 shadow-2xs leading-relaxed"
+                  className="w-full px-3.5 py-2.5 rounded-xl border-2 border-[#cbd5e1] bg-white text-[#0f172a] placeholder:text-[#7C8AA0] text-xs font-medium focus:outline-none focus:border-[#501f92] focus:ring-2 focus:ring-[#501f92]/20 shadow-2xs leading-relaxed"
                 />
               </div>
             </div>
@@ -1064,11 +1064,11 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
                 <input
                   type="text"
                   required
-                  placeholder="ej. Manual de Marca, Aprobación Gate 1, Credenciales hosting"
+                  placeholder="Ej: Manual de Marca, Aprobación Gate 1, Credenciales hosting"
                   value={newDepTitle}
                   onChange={(e) => setNewDepTitle(e.target.value)}
                   style={{ color: '#0f172a', backgroundColor: '#ffffff', WebkitTextFillColor: '#0f172a' }}
-                  className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] bg-white text-[#0f172a] placeholder-[#94a3b8] text-xs focus:outline-none focus:border-[#501f92]"
+                  className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] bg-white text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal text-xs focus:outline-none focus:border-[#501f92]"
                 />
               </div>
 
@@ -1183,9 +1183,9 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
                   required
                   value={followUpNoteText}
                   onChange={(e) => setFollowUpNoteText(e.target.value)}
-                  placeholder="ej. Se contactó a contacto del cliente por correo/WhatsApp; confirmaron que revisan en comité mañana..."
+                  placeholder="Ej: Se contactó a contacto del cliente por correo/WhatsApp; confirmaron que revisan en comité mañana..."
                   style={{ color: '#0f172a', backgroundColor: '#ffffff', WebkitTextFillColor: '#0f172a' }}
-                  className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] bg-white text-[#0f172a] placeholder-[#94a3b8] text-xs focus:outline-none focus:border-[#501f92]"
+                  className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] bg-white text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal text-xs focus:outline-none focus:border-[#501f92]"
                 />
               </div>
             </div>
@@ -1267,7 +1267,7 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
                   onChange={(e) => setReworkNote(e.target.value)}
                   placeholder="Detalla el feedback entregado por el cliente o las correcciones técnicas requeridas..."
                   style={{ color: '#0f172a', backgroundColor: '#ffffff', WebkitTextFillColor: '#0f172a' }}
-                  className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] bg-white text-[#0f172a] placeholder-[#94a3b8] text-xs focus:outline-none focus:border-[#501f92]"
+                  className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] bg-white text-[#0f172a] placeholder:text-[#7C8AA0] text-xs focus:outline-none focus:border-[#501f92]"
                 />
               </div>
 

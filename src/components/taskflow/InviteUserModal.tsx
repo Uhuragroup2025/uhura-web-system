@@ -80,10 +80,10 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
             <input
               type="text"
               required
-              placeholder="Ej. Carlos Rivera"
+              placeholder="Ej: Carlos Rivera"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl text-xs text-[#0f172a] focus:outline-none focus:border-[#501f92] focus:bg-white transition-all"
+              className="w-full px-3.5 py-2.5 bg-white border border-[#cbd5e1] rounded-xl text-xs text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal focus:outline-none focus:border-[#501f92] transition-all"
             />
           </div>
 
@@ -97,7 +97,7 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
               placeholder="carlos@empresa.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl text-xs text-[#0f172a] focus:outline-none focus:border-[#501f92] focus:bg-white transition-all"
+              className="w-full px-3.5 py-2.5 bg-white border border-[#cbd5e1] rounded-xl text-xs text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal focus:outline-none focus:border-[#501f92] transition-all"
             />
           </div>
 

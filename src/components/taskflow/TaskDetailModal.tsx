@@ -2586,7 +2586,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                           handleSendMessage();
                         }
                       }}
-                      className="flex-1 text-xs text-[#0f172a] placeholder-[#94a3b8] focus:outline-none bg-transparent resize-none leading-relaxed min-h-[44px]"
+                      className="flex-1 text-xs text-[#0f172a] placeholder:text-[#7C8AA0] focus:outline-none bg-transparent resize-none leading-relaxed min-h-[44px]"
                     />
                   </div>
 
@@ -3479,8 +3479,8 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                         rows={2}
                         value={reworkReason}
                         onChange={(e) => setReworkReason(e.target.value)}
-                        placeholder="Ej. Cambio de copies por nueva directriz del cliente..."
-                        className="w-full px-2.5 py-1.5 rounded-lg border border-[#e2e8f0] bg-white text-xs text-[#0f172a] focus:outline-none focus:border-[#501f92] resize-none"
+                        placeholder="Ej: Cambio de copies por nueva directriz del cliente..."
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-[#cbd5e1] bg-white text-xs text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal focus:outline-none focus:border-[#501f92] resize-none"
                       />
                     </div>
 
@@ -3494,7 +3494,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                           value={reworkRequestedBy}
                           onChange={(e) => setReworkRequestedBy(e.target.value)}
                           placeholder="Nombre persona"
-                          className="w-full px-2 py-1 rounded-lg border border-[#e2e8f0] bg-white text-xs text-[#0f172a] focus:outline-none focus:border-[#501f92]"
+                          className="w-full px-2 py-1 rounded-lg border border-[#cbd5e1] bg-white text-xs text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal focus:outline-none focus:border-[#501f92]"
                         />
                       </div>
                       <div>
@@ -3507,7 +3507,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                           min="0.5"
                           value={reworkHours}
                           onChange={(e) => setReworkHours(e.target.value)}
-                          className="w-full px-2 py-1 rounded-lg border border-[#e2e8f0] bg-white text-xs text-[#0f172a] focus:outline-none focus:border-[#501f92]"
+                          className="w-full px-2 py-1 rounded-lg border border-[#cbd5e1] bg-white text-xs text-[#0f172a] focus:outline-none focus:border-[#501f92]"
                         />
                       </div>
                     </div>
@@ -3677,10 +3677,10 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                 </label>
                 <input
                   type="text"
-                  placeholder="Ej. Maquetas UI v2, Grabación de feedback"
+                  placeholder="Ej: Maquetas UI v2, Grabación de feedback"
                   value={linkInputTitle}
                   onChange={(e) => setLinkInputTitle(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-[#e2e8f0] bg-white text-xs text-[#0f172a] focus:outline-none focus:border-[#501f92]"
+                  className="w-full p-2.5 rounded-xl border border-[#e2e8f0] bg-white text-xs text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal focus:outline-none focus:border-[#501f92]"
                 />
               </div>
             </div>
