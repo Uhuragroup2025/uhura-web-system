@@ -58,7 +58,8 @@ import {
   Sliders,
   X,
   Trophy,
-  Lock
+  Lock,
+  Info
 } from 'lucide-react';
 
 interface NewBusinessViewProps {
@@ -129,6 +130,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
   } | null>(null);
   const [copiedNotification, setCopiedNotification] = useState<string | null>(null);
   const [wonCelebrationOpp, setWonCelebrationOpp] = useState<NewBusinessOpportunity | null>(null);
+  const [isQuoteSavedFeedback, setIsQuoteSavedFeedback] = useState<boolean>(false);
 
   // Fanfarria triunfal Web Audio para celebrar propuesta ganada
   const playWonFanfare = () => {
@@ -159,6 +161,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
     const updated: NewBusinessOpportunity = {
       ...opp,
       status: 'won',
+      hubspotDealStage: 'closedwon',
       updatedAt: new Date().toISOString()
     };
     onUpdateOpportunity(updated);
@@ -1292,18 +1295,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
             </a>
           )}
 
-          {activeOpp.driveFolderUrl && (
-            <a
-              href={activeOpp.driveFolderUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-[#cbd5e1] bg-white text-[#475569] hover:text-[#0f172a] hover:bg-[#f8fafc] text-xs font-bold transition-colors"
-            >
-              <Folder className="w-3.5 h-3.5 text-[#501f92]" />
-              <span>Drive</span>
-              <ExternalLink className="w-3 h-3" />
-            </a>
-          )}
+
 
           {activeOpp.convertedProjectId ? (
             onNavigateToView && (
@@ -1354,22 +1346,15 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                   )}
                 </>
               ) : (
-                <>
-                  <span className="text-[10px] text-[#047857] bg-[#ecfdf5] px-2.5 py-1.5 rounded-xl border border-[#a7f3d0] font-bold flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3 h-3 text-[#10b981]" />
-                    <span>HubSpot: Cerrado Ganado</span>
-                  </span>
-
-                  <button
-                    type="button"
-                    onClick={() => setIsConvertModalOpen(true)}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-xs bg-[#10b981] hover:bg-[#059669] text-white cursor-pointer shadow-sm"
-                    title="Convertir propuesta formalizada a Proyecto y tareas operativas en Orbit"
-                  >
-                    <CheckCircle2 className="w-4 h-4 text-white" />
-                    <span>Convertir a Proyecto</span>
-                  </button>
-                </>
+                <button
+                  type="button"
+                  onClick={() => setIsConvertModalOpen(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-xs bg-[#10b981] hover:bg-[#059669] text-white cursor-pointer shadow-sm hover:scale-[1.02]"
+                  title="Convertir propuesta formalizada a Proyecto y tareas operativas en Orbit"
+                >
+                  <CheckCircle2 className="w-4 h-4 text-white" />
+                  <span>Convertir a Proyecto</span>
+                </button>
               )}
 
               {isWon && !isFormalizationGatesMet && (
@@ -1529,31 +1514,39 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
               </div>
             </div>
 
-            <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-xs text-white/80 space-y-1.5">
-              <span className="font-bold text-white text-[11px] block">
-                ¿Qué actividades de preventa cubre esta tarea interna?
-              </span>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[10.5px] text-white/75">
-                <div className="flex items-center gap-1.5"><span>•</span><span>1. Revisar brief y Drive</span></div>
-                <div className="flex items-center gap-1.5"><span>•</span><span>2. Discovery con cliente</span></div>
-                <div className="flex items-center gap-1.5"><span>•</span><span>3. Agente de propuestas</span></div>
-                <div className="flex items-center gap-1.5"><span>•</span><span>4. Pulir presentación comercial</span></div>
-                <div className="flex items-center gap-1.5"><span>•</span><span>5. Scoping backlog y horas</span></div>
-                <div className="flex items-center gap-1.5"><span>•</span><span>6. Revisión interna comercial</span></div>
-                <div className="flex items-center gap-1.5"><span>•</span><span>7. Presentación al cliente</span></div>
-                <div className="flex items-center gap-1.5"><span>•</span><span>8. Negociación y versión V2</span></div>
-              </div>
-              <div className="pt-1.5 border-t border-white/10 text-[10px] text-[#d4ff4a] flex items-center justify-between flex-wrap gap-1">
-                <span>
-                  🔒 <strong>Separación estricta de costos:</strong> Las horas de preventa se imputan a UHURA Group y nunca se mezclan ni descuentan de las horas cotizadas del proyecto.
+            <details className="group rounded-xl bg-white/5 border border-white/10 text-xs text-white/80 p-2.5 transition-all">
+              <summary className="flex items-center justify-between cursor-pointer list-none select-none text-[11px] font-semibold text-white/90">
+                <span className="flex items-center gap-1.5">
+                  <Info className="w-3.5 h-3.5 text-[#d4ff4a]" />
+                  <span>¿Qué actividades cubre esta tarea de preventa?</span>
                 </span>
-                {activeOpp.status === 'won' && (
-                  <span className="font-bold bg-white/15 px-2 py-0.5 rounded text-white">
-                    Métrica comercial: {preventaHoursLogged.toFixed(1)}h preventa / {activeQuote.totalHoursRollup}h vendidas
+                <span className="text-[10px] text-[#d4ff4a] font-mono group-open:rotate-180 transition-transform">
+                  ▼
+                </span>
+              </summary>
+              <div className="pt-2.5 space-y-2 text-[10.5px]">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-white/75">
+                  <div className="flex items-center gap-1.5"><span>•</span><span>1. Revisar brief y Drive</span></div>
+                  <div className="flex items-center gap-1.5"><span>•</span><span>2. Discovery con cliente</span></div>
+                  <div className="flex items-center gap-1.5"><span>•</span><span>3. Agente de propuestas</span></div>
+                  <div className="flex items-center gap-1.5"><span>•</span><span>4. Pulir presentación comercial</span></div>
+                  <div className="flex items-center gap-1.5"><span>•</span><span>5. Scoping backlog y horas</span></div>
+                  <div className="flex items-center gap-1.5"><span>•</span><span>6. Revisión interna comercial</span></div>
+                  <div className="flex items-center gap-1.5"><span>•</span><span>7. Presentación al cliente</span></div>
+                  <div className="flex items-center gap-1.5"><span>•</span><span>8. Negociación y versión V2</span></div>
+                </div>
+                <div className="pt-1.5 border-t border-white/10 text-[10px] text-[#d4ff4a] flex items-center justify-between flex-wrap gap-1">
+                  <span>
+                    🔒 <strong>Separación estricta de costos:</strong> Las horas de preventa se imputan a UHURA Group y nunca se descuentan del proyecto.
                   </span>
-                )}
+                  {activeOpp.status === 'won' && (
+                    <span className="font-bold bg-white/15 px-2 py-0.5 rounded text-white">
+                      Métrica: {preventaHoursLogged.toFixed(1)}h preventa / {activeQuote.totalHoursRollup}h vendidas
+                    </span>
+                  )}
+                </div>
               </div>
-            </div>
+            </details>
           </div>
 
           {/* Fila 1: Tarjeta de Información General y Enlaces Externos */}
@@ -2253,102 +2246,24 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
       {/* TAB 3: COTIZACIÓN COMERCIAL & PRICING (Diligenciado por Comercial) */}
       {/* ========================================================================= */}
       {activeTab === 'cotizacion' && activeQuote && (
-        <div className="space-y-6 animate-in fade-in duration-150">
-          {/* Tarjeta de Insumos Recibidos del Líder */}
-          <div className="bg-gradient-to-br from-[#140b24] via-[#241142] to-[#501f92] text-white rounded-2xl p-6 shadow-sm space-y-4">
-            <div className="flex items-start justify-between flex-wrap gap-4">
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#d4ff4a] bg-white/10 px-2.5 py-1 rounded-md">
-                    Insumos Técnicos del Líder
-                  </span>
-                  <span className="text-xs text-white/70">
-                    Líder: <strong className="text-white">{activeOpp.leadUserName || 'Líder de Alcance'}</strong>
-                  </span>
-                  <span className="text-xs text-white/70">
-                    Versión: <strong className="text-white">{activeQuote.versionLabel}</strong>
-                  </span>
-                </div>
-                <h2 className="text-lg font-black text-white mt-1">
-                  Cotización Comercial & Pricing en Finanzas
-                </h2>
-                <p className="text-xs text-white/80 max-w-2xl mt-1">
-                  Usa las horas totales y semanas estimadas por el líder para calcular el precio en la calculadora oficial de Google Sheets. Luego registra el valor oficial acordado aquí en Orbit.
-                </p>
-              </div>
-
-              {activeQuote.commercialProposalUrl && (
-                <a
-                  href={activeQuote.commercialProposalUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer"
-                >
-                  <ExternalLink className="w-3.5 h-3.5 text-[#d4ff4a]" />
-                  <span>Ver Propuesta del Líder</span>
-                </a>
-              )}
-            </div>
-
-            {/* Métricas clave que Comercial ingresa a la calculadora */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-              <div className="p-3 rounded-xl bg-white/5 border border-white/10 space-y-0.5">
-                <span className="text-[10px] uppercase font-bold text-white/60 block">Total Horas</span>
-                <div className="text-xl font-black text-[#d4ff4a]">
-                  {activeQuote.totalHoursRollup}h
-                </div>
-                <span className="text-[10px] text-white/70">
-                  {activeQuote.deliverables.reduce((acc, d) => acc + d.backlogItems.length, 0)} actividades
-                </span>
-              </div>
-
-              <div className="p-3 rounded-xl bg-white/5 border border-white/10 space-y-0.5">
-                <span className="text-[10px] uppercase font-bold text-white/60 block">Duración Estimada</span>
-                <div className="text-xl font-black text-white">
-                  {activeQuote.estimatedWeeks ?? activeQuote.financialConfig?.projectDurationWeeks ?? 0} sem
-                </div>
-                <span className="text-[10px] text-white/70">
-                  ~{((activeQuote.estimatedWeeks ?? activeQuote.financialConfig?.projectDurationWeeks ?? 0) * 5)} días hábiles
-                </span>
-              </div>
-
-              <div className="p-3 rounded-xl bg-white/5 border border-white/10 space-y-0.5">
-                <span className="text-[10px] uppercase font-bold text-white/60 block">Modelo de Negocio</span>
-                <div className="text-sm font-bold text-white mt-1">
-                  {activeOpp.projectType === 'fee_monthly' ? 'Fee Mensual' : 'Proyecto Único'}
-                </div>
-                <span className="text-[10px] text-white/70">
-                  {activeOpp.projectType === 'fee_monthly' ? 'Recurrente' : 'Alcance cerrado'}
-                </span>
-              </div>
-
-              <div className="p-3 rounded-xl bg-white/5 border border-white/10 space-y-0.5">
-                <span className="text-[10px] uppercase font-bold text-white/60 block">Owner Comercial</span>
-                <div className="text-sm font-bold text-[#d4ff4a] mt-1">
-                  {activeOpp.commercialOwner || 'Catalina / Luisa'}
-                </div>
-                <span className="text-[10px] text-white/70">
-                  Negociación y cierre
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Formulario Comercial: Sheet de Finanzas, Valor Cotizado, Condiciones */}
-          <div className="bg-white rounded-2xl border border-[#e2e8f0] p-6 shadow-2xs space-y-5">
+        <div className="space-y-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl border border-[#cbd5e1] p-6 shadow-sm space-y-5">
+            {/* Cabecera integrada con contexto y tags */}
             <div className="flex items-start justify-between flex-wrap gap-3 pb-4 border-b border-[#f1f5f9]">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="p-1.5 rounded-lg bg-[#10b981]/10 text-[#10b981]">
-                    <DollarSign className="w-4 h-4" />
+                  <span className="p-2 rounded-xl bg-[#501f92]/10 text-[#501f92]">
+                    <DollarSign className="w-5 h-5" />
                   </span>
-                  <h3 className="text-sm font-bold text-[#0f172a]">
-                    Registro de Acuerdo Comercial & Pricing Oficial
-                  </h3>
+                  <div>
+                    <h3 className="text-base font-extrabold text-[#0f172a]">
+                      Cotización Comercial & Pricing Oficial
+                    </h3>
+                    <p className="text-xs text-[#64748b] mt-0.5">
+                      Finanzas / Google Sheet Oficial es la fuente de verdad del pricing para SOW y conversión.
+                    </p>
+                  </div>
                 </div>
-                <p className="text-xs text-[#64748b] mt-1">
-                  Finanzas / Google Sheet Oficial es la fuente de verdad del pricing. Orbit registra el resultado acordado para gobernanza, SOW y conversión a proyecto.
-                </p>
               </div>
 
               <div className="flex items-center gap-2 flex-wrap">
@@ -2363,46 +2278,61 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
               </div>
             </div>
 
-            {/* Grid: Sheet de Finanzas + Valor Cotizado + Moneda */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
-              {/* Enlace a Sheet oficial de Finanzas */}
-              <div className="space-y-1 lg:col-span-1">
-                <label className="font-bold text-[#475569] flex items-center justify-between">
-                  <span>Sheet oficial de Finanzas: <span className="text-red-500">*</span></span>
-                  {activeQuote.externalFinanceSheetUrl && (
-                    <a
-                      href={activeQuote.externalFinanceSheetUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-[11px] text-[#501f92] hover:underline flex items-center gap-0.5"
-                    >
-                      <span>Abrir Sheet</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
-                  )}
-                </label>
-                <input
-                  type="url"
-                  value={activeQuote.externalFinanceSheetUrl || ''}
-                  onChange={(e) => {
-                    handleUpdateQuote({
-                      ...activeQuote,
-                      externalFinanceSheetUrl: e.target.value
-                    });
-                  }}
-                  placeholder="https://docs.google.com/spreadsheets/d/..."
-                  className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs font-mono text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-sans placeholder:font-normal focus:ring-2 focus:ring-[#501f92]"
-                />
-                <span className="text-[10px] text-[#64748b]">
-                  Planilla de Google Sheets donde Catalina/Luisa calculan el pricing con semanas y horas.
-                </span>
+            {/* Cinta compacta de Insumos Técnicos del Líder */}
+            <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] flex items-center justify-between flex-wrap gap-3 text-xs">
+              <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] text-[#64748b]">Líder de Alcance:</span>
+                  <strong className="text-[#0f172a] font-bold">{activeOpp.leadUserName || 'Líder Técnico'}</strong>
+                </div>
+                <span className="text-[#cbd5e1] hidden sm:inline">•</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] text-[#64748b]">Esfuerzo:</span>
+                  <span className="px-2 py-0.5 rounded-md bg-[#501f92]/10 text-[#501f92] font-black">
+                    {activeQuote.totalHoursRollup}h
+                  </span>
+                  <span className="text-[10px] text-[#64748b]">
+                    ({activeQuote.deliverables.reduce((acc, d) => acc + d.backlogItems.length, 0)} actividades)
+                  </span>
+                </div>
+                <span className="text-[#cbd5e1] hidden sm:inline">•</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] text-[#64748b]">Duración:</span>
+                  <strong className="text-[#0f172a] font-bold">
+                    {activeQuote.estimatedWeeks ?? activeQuote.financialConfig?.projectDurationWeeks ?? 0} sem
+                  </strong>
+                  <span className="text-[10px] text-[#64748b]">
+                    (~{((activeQuote.estimatedWeeks ?? activeQuote.financialConfig?.projectDurationWeeks ?? 0) * 5)} días hábiles)
+                  </span>
+                </div>
+                <span className="text-[#cbd5e1] hidden sm:inline">•</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] text-[#64748b]">Modelo:</span>
+                  <span className="font-semibold text-[#0f172a]">
+                    {activeOpp.projectType === 'fee_monthly' ? 'Fee Mensual' : 'Proyecto Único'}
+                  </span>
+                </div>
+                <span className="text-[#cbd5e1] hidden sm:inline">•</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] text-[#64748b]">Owner Comercial:</span>
+                  <strong className="text-[#501f92] font-bold">{activeOpp.commercialOwner || 'Catalina / Luisa'}</strong>
+                </div>
               </div>
+            </div>
 
-              {/* Valor Cotizado */}
-              <div className="space-y-1 lg:col-span-1">
-                <label className="font-bold text-[#475569] block">
-                  Valor cotizado acordado: <span className="text-red-500">*</span>
-                </label>
+            {/* Grid Principal: Valor Acordado + Fuentes de Verdad */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 pt-1 text-xs">
+              {/* Columna Izquierda: Pricing Acordado (5 cols) */}
+              <div className="lg:col-span-5 p-4 rounded-xl bg-gradient-to-br from-[#faf5ff] to-[#f5f3ff] border border-[#e9d5ff] space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="font-extrabold text-[#501f92] text-xs">
+                    Valor Cotizado Acordado: <span className="text-red-500">*</span>
+                  </label>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-white text-[#501f92] border border-[#d8b4fe]">
+                    Monto Oficial
+                  </span>
+                </div>
+
                 <div className="flex items-center gap-2">
                   <div className="relative flex-1">
                     <input
@@ -2419,7 +2349,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                         });
                       }}
                       placeholder="0"
-                      className="w-full px-3 py-2.5 rounded-xl border border-[#cbd5e1] font-bold text-sm text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal focus:ring-2 focus:ring-[#501f92]"
+                      className="w-full px-3 py-2.5 rounded-xl border border-[#cbd5e1] font-black text-base text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal focus:ring-2 focus:ring-[#501f92] bg-white shadow-xs"
                     />
                   </div>
                   <select
@@ -2434,48 +2364,110 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                         totalQuotedValueCOP: curr === 'USD' ? 0 : val
                       });
                     }}
-                    className="p-2.5 rounded-xl border border-[#cbd5e1] font-bold text-xs bg-white text-[#501f92] focus:ring-2 focus:ring-[#501f92] cursor-pointer"
+                    className="p-2.5 rounded-xl border border-[#cbd5e1] font-bold text-xs bg-white text-[#501f92] focus:ring-2 focus:ring-[#501f92] cursor-pointer shadow-xs"
                   >
                     <option value="COP">COP ($)</option>
                     <option value="USD">USD ($)</option>
                   </select>
                 </div>
-                <span className="text-[10px] text-[#64748b]">
-                  Monto: <strong className="text-[#0f172a]">{formatCurrency(activeQuote.totalQuotedValue ?? activeQuote.totalQuotedValueCOP ?? 0, activeQuote.currency || 'COP')}</strong>
-                </span>
+
+                {/* Desglose visual automático */}
+                {(() => {
+                  const val = activeQuote.totalQuotedValue ?? activeQuote.totalQuotedValueCOP ?? 0;
+                  const curr = activeQuote.currency || 'COP';
+                  const half = Math.round(val / 2);
+                  const iva = Math.round(val * 0.19);
+                  const total = Math.round(val * 1.19);
+                  return (
+                    <div className="space-y-1.5 pt-2 border-t border-[#e9d5ff]/80 text-[11px]">
+                      <div className="flex items-center justify-between text-[#64748b]">
+                        <span>Subtotal antes de IVA:</span>
+                        <strong className="text-[#0f172a] font-bold">{formatCurrency(val, curr)}</strong>
+                      </div>
+                      <div className="flex items-center justify-between text-[#64748b]">
+                        <span>Esquema estándar (50% / 50%):</span>
+                        <span className="font-semibold text-[#501f92]">{formatCurrency(half, curr)} c/u</span>
+                      </div>
+                      <div className="flex items-center justify-between text-[#64748b]">
+                        <span>Total con IVA 19%:</span>
+                        <span className="text-[#0f172a] font-medium">{formatCurrency(total, curr)}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
-              {/* Presentación Comercial del Líder */}
-              <div className="space-y-1 lg:col-span-1">
-                <label className="font-bold text-[#475569] flex items-center justify-between">
-                  <span>Propuesta / Presentación (PPT):</span>
-                  {activeQuote.commercialProposalUrl && (
-                    <a
-                      href={activeQuote.commercialProposalUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-[11px] text-[#501f92] hover:underline flex items-center gap-0.5"
-                    >
-                      <span>Ver Propuesta</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
-                  )}
-                </label>
-                <input
-                  type="url"
-                  value={activeQuote.commercialProposalUrl || ''}
-                  onChange={(e) => {
-                    handleUpdateQuote({
-                      ...activeQuote,
-                      commercialProposalUrl: e.target.value
-                    });
-                  }}
-                  placeholder="https://docs.google.com/presentation/d/..."
-                  className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs font-mono text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-sans placeholder:font-normal focus:ring-2 focus:ring-[#501f92]"
-                />
-                <span className="text-[10px] text-[#64748b]">
-                  Enlace al documento o presentación entregada al cliente.
-                </span>
+              {/* Columna Derecha: Fuentes de Verdad (7 cols) */}
+              <div className="lg:col-span-7 space-y-3">
+                {/* Sheet oficial de Finanzas */}
+                <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-[#475569] text-xs">
+                      Sheet oficial de Finanzas: <span className="text-red-500">*</span>
+                    </label>
+                    {activeQuote.externalFinanceSheetUrl && (
+                      <a
+                        href={activeQuote.externalFinanceSheetUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-[11px] font-bold text-[#501f92] hover:underline"
+                      >
+                        <span>Abrir Sheet</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                  </div>
+                  <input
+                    type="url"
+                    value={activeQuote.externalFinanceSheetUrl || ''}
+                    onChange={(e) => {
+                      handleUpdateQuote({
+                        ...activeQuote,
+                        externalFinanceSheetUrl: e.target.value
+                      });
+                    }}
+                    placeholder="https://docs.google.com/spreadsheets/d/..."
+                    className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs font-mono text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-sans placeholder:font-normal focus:ring-2 focus:ring-[#501f92] bg-white"
+                  />
+                  <p className="text-[10px] text-[#64748b]">
+                    Planilla de Google Sheets donde Catalina/Luisa calculan el pricing con semanas y horas.
+                  </p>
+                </div>
+
+                {/* Presentación Comercial / Propuesta */}
+                <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-[#475569] text-xs">
+                      Propuesta / Presentación (PPT):
+                    </label>
+                    {activeQuote.commercialProposalUrl && (
+                      <a
+                        href={activeQuote.commercialProposalUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-[11px] font-bold text-[#501f92] hover:underline"
+                      >
+                        <span>Ver Propuesta</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                  </div>
+                  <input
+                    type="url"
+                    value={activeQuote.commercialProposalUrl || ''}
+                    onChange={(e) => {
+                      handleUpdateQuote({
+                        ...activeQuote,
+                        commercialProposalUrl: e.target.value
+                      });
+                    }}
+                    placeholder="https://docs.google.com/presentation/d/..."
+                    className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs font-mono text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-sans placeholder:font-normal focus:ring-2 focus:ring-[#501f92] bg-white"
+                  />
+                  <p className="text-[10px] text-[#64748b]">
+                    Enlace al documento o presentación entregada al cliente.
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -2505,38 +2497,52 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                   type="button"
                   onClick={() => {
                     handleUpdateQuote(activeQuote);
+                    setIsQuoteSavedFeedback(true);
                     setConversionSuccessMessage('✅ Cotización comercial guardada correctamente.');
-                    setTimeout(() => setConversionSuccessMessage(null), 4000);
+                    setTimeout(() => {
+                      setIsQuoteSavedFeedback(false);
+                      setConversionSuccessMessage(null);
+                    }, 3000);
                   }}
-                  className="px-4 py-2 rounded-xl bg-[#501f92] hover:bg-[#3d1572] text-xs font-bold text-white transition-all shadow-xs cursor-pointer"
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5 active:scale-95 ${
+                    isQuoteSavedFeedback
+                      ? 'bg-[#059669] text-white ring-2 ring-[#a7f3d0]'
+                      : 'bg-[#501f92] hover:bg-[#3d1572] active:bg-[#2e0e57] text-white'
+                  }`}
+                  title="Guardar los valores económicos y condiciones de esta cotización"
                 >
-                  Guardar cotización
+                  {isQuoteSavedFeedback ? (
+                    <>
+                      <CheckCircle2 className="w-3.5 h-3.5 text-[#d4ff4a]" />
+                      <span>¡Cotización guardada!</span>
+                    </>
+                  ) : (
+                    <span>Guardar cotización</span>
+                  )}
                 </button>
-                <span className="text-[11px] text-[#64748b]">
-                  Registrado para trazabilidad de la oportunidad ({activeQuote.versionLabel}).
-                </span>
               </div>
 
               <div className="flex items-center gap-2">
-                {activeOpp.status !== 'won' ? (
-                  <button
-                    type="button"
-                    onClick={() => handleMarkOpportunityWon(activeOpp)}
-                    className="px-4 py-2 rounded-xl bg-[#10b981] hover:bg-[#059669] text-white text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer hover:scale-[1.02]"
-                  >
-                    <Trophy className="w-4 h-4 text-[#d4ff4a]" />
-                    <span>Marcar Propuesta Ganada 🏆</span>
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setIsConvertModalOpen(true)}
-                    className="px-4 py-2 rounded-xl bg-[#10b981] hover:bg-[#059669] text-xs font-bold text-white transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Sparkles className="w-3.5 h-3.5 text-white" />
-                    <span>Convertir a Proyecto Operativo →</span>
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (activeOpp.status !== 'won') {
+                      handleMarkOpportunityWon(activeOpp);
+                    } else {
+                      setWonCelebrationOpp(activeOpp);
+                      playWonFanfare();
+                    }
+                  }}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 ${
+                    activeOpp.status === 'won'
+                      ? 'bg-[#ecfdf5] hover:bg-[#d1fae5] active:bg-[#a7f3d0] text-[#047857] border border-[#a7f3d0]'
+                      : 'bg-[#10b981] hover:bg-[#059669] active:bg-[#047857] text-white'
+                  }`}
+                  title={activeOpp.status === 'won' ? 'Ver celebración de la propuesta ganada con Bucky' : 'Marcar que el cliente aprobó la propuesta comercial'}
+                >
+                  <Trophy className="w-4 h-4 text-[#d4ff4a]" />
+                  <span>{activeOpp.status === 'won' ? 'Propuesta Ganada (Ver Bucky 🎉)' : 'Marcar como ganada 🏆'}</span>
+                </button>
               </div>
             </div>
           </div>
@@ -2547,23 +2553,25 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
       {/* TAB 4: DOCUMENTOS (Google Drive oficial + Propuesta + SOW) */}
       {/* ========================================================================= */}
       {activeTab === 'documentos' && activeQuote && (
-        <div className="space-y-6 animate-in fade-in duration-150 text-xs">
-          {/* Header de Documentos & Drive Simplificado */}
-          <div className="bg-white rounded-2xl border border-[#e2e8f0] p-6 shadow-2xs space-y-4">
-            <div>
-              <h3 className="text-base font-extrabold text-[#0f172a]">
-                Documentos & Repositorio Oficial
-              </h3>
-              <p className="text-xs text-[#64748b]">
-                Google Drive es la fuente documental oficial de Uhura. Orbit enlaza y sincroniza las referencias para evitar duplicidad.
-              </p>
+        <div className="space-y-5 animate-in fade-in duration-150 text-xs">
+          {/* Header de Documentos & Repositorio Oficial (3 cards simplificadas con tooltips) */}
+          <div className="bg-white rounded-2xl border border-[#cbd5e1] p-6 shadow-2xs space-y-4">
+            <div className="flex items-start justify-between flex-wrap gap-2">
+              <div>
+                <h3 className="text-base font-extrabold text-[#0f172a]">
+                  Documentos & Repositorio Oficial
+                </h3>
+                <p className="text-xs text-[#64748b] mt-0.5">
+                  Google Drive es la fuente documental oficial de Uhura. Orbit enlaza y sincroniza las referencias para evitar duplicidad.
+                </p>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
               {/* 1. Carpeta Drive */}
               <div className="p-4 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] flex flex-col justify-between space-y-3">
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
                     <span className="p-2 rounded-xl bg-[#501f92]/10 text-[#501f92]">
                       <Folder className="w-5 h-5" />
                     </span>
@@ -2572,9 +2580,12 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                       <span className="text-[10px] text-[#64748b]">Repositorio del prospecto</span>
                     </div>
                   </div>
-                  <p className="text-[11px] text-[#64748b]">
-                    Brief, propuesta, insumos y grabaciones de discovery en su ubicación oficial.
-                  </p>
+                  <div
+                    className="text-[#94a3b8] hover:text-[#501f92] p-1 rounded-md cursor-help transition-colors"
+                    title="Brief, propuesta, insumos y grabaciones de discovery en su ubicación oficial en Google Drive."
+                  >
+                    <Info className="w-4 h-4" />
+                  </div>
                 </div>
 
                 {activeOpp.driveFolderUrl ? (
@@ -2582,20 +2593,20 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                     href={activeOpp.driveFolderUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#501f92] hover:bg-[#3d1572] text-white font-bold text-xs transition-colors"
+                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#501f92] hover:bg-[#3d1572] text-white font-bold text-xs transition-colors shadow-2xs"
                   >
-                    <span>Abrir carpeta Drive</span>
+                    <span>Ver Carpeta en Drive</span>
                     <ExternalLink className="w-3.5 h-3.5" />
                   </a>
                 ) : (
-                  <span className="text-[11px] text-[#94a3b8] italic">Sin carpeta vinculada</span>
+                  <span className="text-[11px] text-[#94a3b8] italic py-1 text-center">Sin carpeta vinculada</span>
                 )}
               </div>
 
               {/* 2. Propuesta Comercial */}
               <div className="p-4 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] flex flex-col justify-between space-y-3">
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
                     <span className="p-2 rounded-xl bg-[#8a4dff]/10 text-[#8a4dff]">
                       <FileText className="w-5 h-5" />
                     </span>
@@ -2604,37 +2615,39 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                       <span className="text-[10px] text-[#64748b]">{activeQuote.versionLabel}</span>
                     </div>
                   </div>
-                  <p className="text-[11px] text-[#64748b]">
-                    Presentación oficial elaborada con el agente y pulida por el líder.
-                  </p>
+                  <div
+                    className="text-[#94a3b8] hover:text-[#501f92] p-1 rounded-md cursor-help transition-colors"
+                    title="Presentación comercial oficial elaborada con el cliente y pulida por el líder."
+                  >
+                    <Info className="w-4 h-4" />
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                {activeQuote.commercialProposalUrl ? (
+                  <a
+                    href={activeQuote.commercialProposalUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-[#cbd5e1] hover:bg-[#f1f5f9] active:bg-[#e2e8f0] active:scale-95 text-[#475569] font-bold text-xs transition-colors cursor-pointer shadow-2xs"
+                  >
+                    <span>Ver Propuesta</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                ) : (
                   <button
                     type="button"
                     onClick={() => setActiveTab('scoping')}
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-[#cbd5e1] hover:bg-[#f1f5f9] text-[#475569] font-bold text-xs transition-colors cursor-pointer"
+                    className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-[#cbd5e1] hover:bg-[#f1f5f9] active:bg-[#e2e8f0] active:scale-95 text-[#475569] font-bold text-xs transition-colors cursor-pointer shadow-2xs"
                   >
-                    <span>Ver Propuesta Comercial</span>
+                    <span>Ver Propuesta</span>
                   </button>
-                  {activeOpp.driveFolderUrl && (
-                    <a
-                      href={activeOpp.driveFolderUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center justify-center p-2 rounded-xl bg-[#501f92]/10 hover:bg-[#501f92]/20 text-[#501f92] font-bold text-xs transition-colors"
-                      title="Abrir presentación en Drive"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
-                  )}
-                </div>
+                )}
               </div>
 
               {/* 3. SOW Contractual */}
               <div className="p-4 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] flex flex-col justify-between space-y-3">
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
                     <span className="p-2 rounded-xl bg-[#10b981]/10 text-[#10b981]">
                       <FileCheck className="w-5 h-5" />
                     </span>
@@ -2645,135 +2658,38 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                           ? 'Firmado'
                           : activeOpp.sowData?.status === 'ready_for_review'
                           ? 'Generado'
-                          : 'Pendiente'}
+                          : 'Listo para firma'}
                       </span>
                     </div>
                   </div>
-                  <p className="text-[11px] text-[#64748b]">
-                    Documento formal de alcance para cliente sin exponer horas por rol.
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setIsSowModalOpen(true)}
-                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-[#10b981]/40 text-[#047857] hover:bg-emerald-50 font-bold text-xs transition-colors cursor-pointer"
-                >
-                  <FileText className="w-3.5 h-3.5 text-[#10b981]" />
-                  <span>Abrir Editor de SOW</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Sección SOW (Statement of Work) */}
-          <div className="bg-white rounded-2xl border border-[#e2e8f0] p-6 shadow-2xs space-y-4">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="p-2 rounded-xl bg-[#8a4dff]/15 text-[#501f92]">
-                    <FileText className="w-5 h-5" />
-                  </span>
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-base font-bold text-[#0f172a]">
-                        Statement of Work (SOW) - Plantilla Contractual
-                      </h3>
-                      {isWon && (
-                        <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#10b981] text-white shadow-xs">
-                          🏆 Propuesta Ganada · Listo para Firma
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-[#64748b]">
-                      Generado automáticamente desde el alcance de {activeQuote.versionLabel} sin exponer horas internas por rol
-                    </p>
+                  <div
+                    className="text-[#94a3b8] hover:text-[#501f92] p-1 rounded-md cursor-help transition-colors"
+                    title="Gobernanza de Alcance Exterior: El SOW incluye objetivos, entregables, actividades formales, cronograma, exclusiones y valor comercial acordado. Las horas y tarifas internas por perfil quedan reservadas exclusivamente para la operación interna de Uhura."
+                  >
+                    <Info className="w-4 h-4" />
                   </div>
                 </div>
-              </div>
 
-              <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setIsSowModalOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border-2 border-[#501f92] hover:bg-[#501f92] hover:text-white text-xs font-black text-[#501f92] shadow-xs transition-all cursor-pointer hover:scale-[1.02]"
+                  className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-[#cbd5e1] hover:bg-[#f1f5f9] active:bg-[#e2e8f0] active:scale-95 text-[#475569] font-bold text-xs transition-colors cursor-pointer shadow-2xs"
+                  title="Gobernanza de Alcance Exterior: El SOW incluye objetivos, entregables, actividades formales, cronograma, exclusiones y valor comercial acordado. Las horas y tarifas internas por perfil quedan reservadas exclusivamente para la operación interna de Uhura."
                 >
-                  <Copy className="w-4 h-4 text-current" />
-                  <span>Ver / Copiar SOW para Docs</span>
+                  <FileText className="w-3.5 h-3.5 text-current" />
+                  <span>Abrir / Preparar SOW Formal</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setIsSowModalOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#501f92] hover:bg-[#3d1572] text-xs font-bold text-white shadow-xs transition-colors cursor-pointer"
-                >
-                  <FileText className="w-4 h-4 text-[#d4ff4a]" />
-                  <span>Abrir Editor de SOW</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Banner de protección de tarifas y secreto operativo */}
-            <div className="p-3.5 rounded-xl bg-[#eff6ff] border border-[#bfdbfe] flex items-center justify-between text-[#1e40af]">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-[#2563eb] shrink-0" />
-                <span>
-                  <strong>Gobernanza de Alcance Exterior:</strong> El SOW incluye objetivos, entregables, actividades formales, cronograma, exclusiones y valor comercial acordado. <strong>Las horas y tarifas internas por perfil quedan reservadas exclusivamente para la operación interna de Uhura.</strong>
-                </span>
-              </div>
-            </div>
-
-            {/* Resumen del Contenido del SOW */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-1">
-              <div className="p-4 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-1">
-                <span className="text-[10px] uppercase font-bold text-[#64748b]">Entregables Formales</span>
-                <p className="font-bold text-[#0f172a] text-sm">{activeQuote.deliverables.length} Componentes</p>
-                <p className="text-[11px] text-[#64748b]">
-                  {activeQuote.deliverables.reduce((s, d) => s + d.backlogItems.length, 0)} actividades contempladas
-                </p>
-              </div>
-
-              <div className="p-4 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-1">
-                <span className="text-[10px] uppercase font-bold text-[#64748b]">Duración Estimada</span>
-                <p className="font-bold text-[#0f172a] text-sm">
-                  {activeQuote.financialConfig?.projectDurationWeeks || 8} Semanas
-                </p>
-                <p className="text-[11px] text-[#64748b]">A partir del kick-off e insumos</p>
-              </div>
-
-              <div className="p-4 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-1">
-                <span className="text-[10px] uppercase font-bold text-[#64748b]">Inversión Contractual</span>
-                <p className="font-bold text-[#0f172a] text-sm">
-                  {formatCurrency(
-                    activeQuote.totalQuotedValue ??
-                      activeQuote.totalQuotedValueCOP ??
-                      activeQuote.financialSummary?.finalPriceWithTaxCOP ??
-                      activeQuote.financialSummary?.subtotalBeforeTaxCOP ??
-                      0,
-                    activeQuote.currency || 'COP'
-                  )}
-                </p>
-                <p className="text-[11px] text-[#64748b]">Forma de pago: 50% anticipo / 50% entrega</p>
-              </div>
-
-              <div className="p-4 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-1">
-                <span className="text-[10px] uppercase font-bold text-[#64748b]">Firmante Contractual</span>
-                <p className="font-bold text-[#0f172a] text-sm">
-                  {activeOpp.sowData?.sowSigner || UHURA_LEGAL_SIGNER.name}
-                </p>
-                <p className="text-[11px] text-[#501f92] font-semibold">
-                  {activeOpp.sowData?.sowSignerRole?.split('·')[0]?.trim() || 'Representante Legal'} · {activeOpp.sowData?.signatureProvider || UHURA_LEGAL_SIGNER.signatureProvider}
-                </p>
               </div>
             </div>
           </div>
 
-          {/* Checklist Administrativo (Vivian & Alegra) */}
-          <div className="bg-white rounded-2xl border border-[#e2e8f0] p-6 shadow-2xs space-y-4">
-            <div className="flex items-center justify-between">
+          {/* Checklist Administrativo & Facturación (Alegra) */}
+          <div className="bg-white rounded-2xl border border-[#cbd5e1] p-6 shadow-2xs space-y-4">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <div>
                 <h3 className="text-sm font-bold text-[#0f172a] uppercase tracking-wider flex items-center gap-2">
                   <CheckSquare className="w-4 h-4 text-[#501f92]" />
-                  <span>Checklist Administrativo & Facturación (Vivian · Alegra)</span>
+                  <span>Checklist Administrativo & Facturación (Alegra)</span>
                 </h3>
                 <p className="text-xs text-[#64748b]">
                   Documentación requerida antes de emitir la factura en Alegra (no bloquea el kick-off operativo)
@@ -2786,9 +2702,9 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
               {/* RUT */}
-              <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-2">
+              <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] flex flex-col justify-between space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-[#0f172a]">1. RUT Actualizado</span>
+                  <span className="font-bold text-[#0f172a] text-xs">1. RUT Actualizado</span>
                   <span
                     className={`text-[10px] font-bold px-2 py-0.5 rounded ${
                       activeOpp.administrativeChecklist?.rutStatus === 'received'
@@ -2799,30 +2715,37 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                     {activeOpp.administrativeChecklist?.rutStatus === 'received' ? 'Recibido' : 'Pendiente'}
                   </span>
                 </div>
-                <div className="flex items-center gap-2 pt-1">
+                <div className="flex items-center rounded-xl bg-[#e2e8f0]/60 p-0.5 border border-[#cbd5e1]">
                   <button
                     type="button"
-                    onClick={() =>
-                      handleUpdateAdminChecklist({
-                        rutStatus:
-                          activeOpp.administrativeChecklist?.rutStatus === 'received'
-                            ? 'pending'
-                            : 'received'
-                      })
-                    }
-                    className="text-xs font-bold text-[#501f92] hover:underline cursor-pointer"
+                    onClick={() => handleUpdateAdminChecklist({ rutStatus: 'pending' })}
+                    className={`flex-1 py-1 px-2 rounded-lg text-[11px] font-bold transition-all ${
+                      activeOpp.administrativeChecklist?.rutStatus !== 'received'
+                        ? 'bg-white text-amber-700 shadow-2xs font-extrabold'
+                        : 'text-[#64748b] hover:text-[#0f172a]'
+                    }`}
                   >
-                    {activeOpp.administrativeChecklist?.rutStatus === 'received'
-                      ? 'Marcar como Pendiente'
-                      : 'Marcar como Recibido'}
+                    Pendiente
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateAdminChecklist({ rutStatus: 'received' })}
+                    className={`flex-1 py-1 px-2 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 ${
+                      activeOpp.administrativeChecklist?.rutStatus === 'received'
+                        ? 'bg-[#059669] text-white shadow-2xs font-extrabold'
+                        : 'text-[#64748b] hover:text-[#0f172a]'
+                    }`}
+                  >
+                    <CheckCircle2 className="w-3 h-3" />
+                    <span>Recibido</span>
                   </button>
                 </div>
               </div>
 
               {/* Cédula */}
-              <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-2">
+              <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] flex flex-col justify-between space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-[#0f172a]">2. Cédula Rep. Legal</span>
+                  <span className="font-bold text-[#0f172a] text-xs">2. Cédula Rep. Legal</span>
                   <span
                     className={`text-[10px] font-bold px-2 py-0.5 rounded ${
                       activeOpp.administrativeChecklist?.idCardStatus === 'received'
@@ -2833,55 +2756,65 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                     {activeOpp.administrativeChecklist?.idCardStatus === 'received' ? 'Recibida' : 'Pendiente'}
                   </span>
                 </div>
-                <div className="flex items-center gap-2 pt-1">
+                <div className="flex items-center rounded-xl bg-[#e2e8f0]/60 p-0.5 border border-[#cbd5e1]">
                   <button
                     type="button"
-                    onClick={() =>
-                      handleUpdateAdminChecklist({
-                        idCardStatus:
-                          activeOpp.administrativeChecklist?.idCardStatus === 'received'
-                            ? 'pending'
-                            : 'received'
-                      })
-                    }
-                    className="text-xs font-bold text-[#501f92] hover:underline cursor-pointer"
+                    onClick={() => handleUpdateAdminChecklist({ idCardStatus: 'pending' })}
+                    className={`flex-1 py-1 px-2 rounded-lg text-[11px] font-bold transition-all ${
+                      activeOpp.administrativeChecklist?.idCardStatus !== 'received'
+                        ? 'bg-white text-amber-700 shadow-2xs font-extrabold'
+                        : 'text-[#64748b] hover:text-[#0f172a]'
+                    }`}
                   >
-                    {activeOpp.administrativeChecklist?.idCardStatus === 'received'
-                      ? 'Marcar como Pendiente'
-                      : 'Marcar como Recibida'}
+                    Pendiente
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateAdminChecklist({ idCardStatus: 'received' })}
+                    className={`flex-1 py-1 px-2 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 ${
+                      activeOpp.administrativeChecklist?.idCardStatus === 'received'
+                        ? 'bg-[#059669] text-white shadow-2xs font-extrabold'
+                        : 'text-[#64748b] hover:text-[#0f172a]'
+                    }`}
+                  >
+                    <CheckCircle2 className="w-3 h-3" />
+                    <span>Recibida</span>
                   </button>
                 </div>
               </div>
 
               {/* Correo Facturación */}
-              <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-2">
-                <span className="font-bold text-[#0f172a] block">3. Correo Facturación</span>
+              <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] flex flex-col justify-between space-y-2.5">
+                <span className="font-bold text-[#0f172a] text-xs block">3. Correo Facturación</span>
                 <input
                   type="email"
                   value={activeOpp.administrativeChecklist?.billingEmail || activeOpp.contactEmail || ''}
                   onChange={(e) => handleUpdateAdminChecklist({ billingEmail: e.target.value })}
                   placeholder="facturacion@empresa.com"
-                  className="w-full p-1.5 rounded-lg border border-[#cbd5e1] text-xs bg-white text-[#0f172a]"
+                  className="w-full p-1.5 rounded-lg border border-[#cbd5e1] text-xs bg-white text-[#0f172a] focus:ring-1 focus:ring-[#501f92] focus:border-[#501f92]"
                 />
               </div>
 
               {/* Alegra */}
-              <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-2">
+              <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] flex flex-col justify-between space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-[#0f172a]">4. Creado en Alegra</span>
-                  <input
-                    type="checkbox"
-                    checked={activeOpp.administrativeChecklist?.alegraCreated || false}
-                    onChange={(e) => handleUpdateAdminChecklist({ alegraCreated: e.target.checked })}
-                    className="rounded text-[#501f92] focus:ring-[#501f92]"
-                  />
+                  <span className="font-bold text-[#0f172a] text-xs">4. Creado en Alegra</span>
+                  <label className="inline-flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={activeOpp.administrativeChecklist?.alegraCreated || false}
+                      onChange={(e) => handleUpdateAdminChecklist({ alegraCreated: e.target.checked })}
+                      className="rounded text-[#501f92] focus:ring-[#501f92] cursor-pointer"
+                    />
+                    <span className="text-[10px] font-bold text-[#475569]">Sí</span>
+                  </label>
                 </div>
                 <input
                   type="text"
                   value={activeOpp.administrativeChecklist?.alegraContactId || ''}
                   onChange={(e) => handleUpdateAdminChecklist({ alegraContactId: e.target.value })}
                   placeholder="ID Tercero Alegra (opcional)"
-                  className="w-full p-1.5 rounded-lg border border-[#cbd5e1] text-xs bg-white text-[#0f172a]"
+                  className="w-full p-1.5 rounded-lg border border-[#cbd5e1] text-xs bg-white text-[#0f172a] focus:ring-1 focus:ring-[#501f92] focus:border-[#501f92]"
                 />
               </div>
             </div>
@@ -3298,25 +3231,19 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
               )}
             </div>
 
-            {/* Botones de acción */}
-            <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-2.5 relative z-10">
+            {/* Botón único de acción: Ir a Documentos para preparar el SOW */}
+            <div className="mt-6 flex items-center justify-center relative z-10">
               <button
                 type="button"
                 onClick={() => {
                   setWonCelebrationOpp(null);
                   setActiveTab('documentos');
                 }}
-                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#d4ff4a] hover:bg-[#bceb34] text-[#0f172a] text-xs font-black shadow-lg shadow-[#d4ff4a]/25 transition-all hover:scale-[1.02] cursor-pointer"
+                className="w-full sm:w-auto px-7 py-3 rounded-xl bg-[#d4ff4a] hover:bg-[#bceb34] text-[#0f172a] text-xs font-black shadow-lg shadow-[#d4ff4a]/25 transition-all hover:scale-[1.02] cursor-pointer flex items-center justify-center gap-2"
               >
-                Ir a Documentos y Gates (Contrato/Anticipo) →
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setWonCelebrationOpp(null)}
-                className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all cursor-pointer"
-              >
-                ¡A celebrar con el equipo! 🥂🚀
+                <span>Ir a Documentos</span>
+                <span className="text-[11px] font-bold text-[#0f172a]/75">(Preparar SOW)</span>
+                <ArrowRight className="w-4 h-4 text-[#0f172a]" />
               </button>
             </div>
           </div>

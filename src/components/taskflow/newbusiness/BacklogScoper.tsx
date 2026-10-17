@@ -333,31 +333,6 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
 
   return (
     <div className="space-y-6">
-
-      {/* Handoff Status Notification Banner if technical scoping was marked ready */}
-      {opportunityStatus === 'internal_review' && (
-        <div className="p-4 rounded-2xl bg-gradient-to-r from-[#ecfdf5] via-[#f0fdf4] to-[#f7fee7] border border-[#a7f3d0] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-2xs animate-in fade-in duration-200">
-          <div className="flex items-start gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-[#10b981]/15 text-[#047857] flex items-center justify-center shrink-0 mt-0.5">
-              <CheckCircle2 className="w-5 h-5 text-[#059669]" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-extrabold text-[#065f46] text-sm">
-                  Alcance técnico listo ({totalHours}h)
-                </span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#10b981] text-white">
-                  Alcance listo para Comercial
-                </span>
-              </div>
-              <p className="text-[#047857] mt-0.5">
-                Dimensionamiento técnico completado ({allBacklogItems.length} actividades en {quote.deliverables.length} entregables). Listo para continuar con el proceso comercial (<strong>{commercialOwner || 'Comercial'}</strong>).
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Main Scoping Grid: Left = Deliverables & Activities / Right = Real-Time Rollup Engine */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Column: Entregables y Actividades (8 cols) */}

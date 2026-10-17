@@ -48,12 +48,14 @@ import {
   Flag
 } from 'lucide-react';
 import { initialUsers } from '../mockData';
+import { ProjectDependenciesSection } from './ProjectDependenciesSection';
 
 interface ProjectTasksTabProps {
   project: ProjectSummaryItem;
   tasks: TaskItem[];
   allProjects?: ProjectSummaryItem[];
   users?: UserItem[];
+  currentUser?: UserItem | null;
   activeTimer?: ActiveTimerState | null;
   onStartTimer?: (task: TaskItem) => void;
   onPauseResumeTimer?: () => void;
@@ -67,6 +69,7 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
   tasks = [],
   allProjects = [],
   users = initialUsers,
+  currentUser,
   activeTimer,
   onStartTimer,
   onPauseResumeTimer,
@@ -81,10 +84,8 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterBlockedOnly, setFilterBlockedOnly] = useState(false);
 
-  // Estados de acordeón para entregables
-  const [expandedDeliverables, setExpandedDeliverables] = useState<Record<string, boolean>>({
-    all: true
-  });
+  // Estados de acordeón para entregables (por defecto chips cerrados para no sobrecargar la vista)
+  const [expandedDeliverables, setExpandedDeliverables] = useState<Record<string, boolean>>({});
 
   // Modal para Crear / Editar Tarea
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
@@ -529,7 +530,15 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
         </div>
       </div>
 
-      {/* 2. BARRA DE CONTROL, VISTAS Y BÚSQUEDA */}
+      {/* 2. GESTIÓN DE DEPENDENCIAS, INSUMOS & GATES DE CLIENTE */}
+      <ProjectDependenciesSection
+        project={project}
+        currentUser={currentUser}
+        allUsers={users}
+        onUpdateProject={onUpdateProject}
+      />
+
+      {/* 3. BARRA DE CONTROL, VISTAS Y BÚSQUEDA */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 bg-white p-4 rounded-3xl border border-[#e2e8f0] shadow-2xs">
         <div className="flex items-center gap-2 w-full md:w-auto flex-1 max-w-md">
           <div className="relative flex-1">
@@ -556,7 +565,29 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
           </button>
         </div>
 
-        <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+        <div className="flex items-center gap-2 w-full md:w-auto justify-end flex-wrap">
+          {/* Toggle Expandir/Colapsar todo en modo Frentes */}
+          {viewMode === 'deliverables' && (
+            <button
+              type="button"
+              onClick={() => {
+                const anyOpen = selectableDeliverables.some((d) => !!expandedDeliverables[d.id]);
+                if (anyOpen) {
+                  setExpandedDeliverables({});
+                } else {
+                  const allOpen: Record<string, boolean> = {};
+                  selectableDeliverables.forEach((d) => {
+                    allOpen[d.id] = true;
+                  });
+                  setExpandedDeliverables(allOpen);
+                }
+              }}
+              className="px-3 py-1.5 text-xs font-bold text-[#64748b] hover:text-[#501f92] bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] rounded-xl transition-all cursor-pointer"
+            >
+              {selectableDeliverables.some((d) => !!expandedDeliverables[d.id]) ? 'Colapsar frentes' : 'Expandir frentes'}
+            </button>
+          )}
+
           {/* Switch de Vistas */}
           <div className="bg-[#f1f5f9] p-1 rounded-xl flex items-center gap-1 text-xs">
             <button
@@ -595,7 +626,7 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
         </div>
       </div>
 
-      {/* 3. VISTA 1: AGRUPADA POR ENTREGABLE (MODO RECOMENDADO ORBIT) */}
+      {/* 4. VISTA 1: AGRUPADA POR ENTREGABLE (MODO RECOMENDADO ORBIT) */}
       {viewMode === 'deliverables' && (
         <div className="space-y-4">
           {selectableDeliverables.map((del) => {
@@ -605,11 +636,11 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
             const delQuotedTotal = del.roleBudgets?.reduce((sum, rb) => sum + rb.quotedHours, 0) || 0;
             const completedCount = delTasks.filter((t) => normalizeTaskStatus(t.status) === 'completed').length;
             const progressPercent = delTasks.length > 0 ? Math.round((completedCount / delTasks.length) * 100) : 0;
-            const isExpanded = expandedDeliverables[del.id] !== false;
+            const isExpanded = !!expandedDeliverables[del.id];
 
             return (
               <div key={del.id} className="bg-white rounded-3xl border border-[#e2e8f0] shadow-xs overflow-hidden">
-                {/* Cabecera del Entregable */}
+                {/* Cabecera del Entregable (Chip / Banner limpio) */}
                 <div
                   onClick={() =>
                     setExpandedDeliverables((prev) => ({ ...prev, [del.id]: !isExpanded }))

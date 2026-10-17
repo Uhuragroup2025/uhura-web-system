@@ -180,12 +180,14 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   const [quickRole, setQuickRole] = useState('Front End');
   const [quickHours, setQuickHours] = useState('4');
   const [quickAssignee, setQuickAssignee] = useState('Catalina Tejada');
+  const [budgetSubView, setBudgetSubView] = useState<'matrix' | 'deliverables'>('matrix');
 
   // Compute metrics for each project based on tasks (dynamic calculation)
   const enrichedProjects = useMemo(() => {
     return projectsList.map((prj) => {
       const projectTasks = tasks.filter(
         (t) =>
+          t.projectId === prj.id ||
           t.projectName?.toLowerCase() === prj.name.toLowerCase() ||
           t.board?.toLowerCase() === prj.name.toLowerCase()
       );

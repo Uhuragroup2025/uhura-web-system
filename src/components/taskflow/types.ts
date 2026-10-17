@@ -1504,13 +1504,26 @@ export interface SowDocumentData {
   exclusions: string;
   commercialValueFormatted: string;
   paymentTerms: string;
+  // Metadatos Formales Uhura SOW (Battsaver / Choucair)
+  clientNit?: string;
+  orderNumber?: string;               // OC (ej. OC196)
+  archetype?: 'ecommerce_shopify' | 'web_wordpress' | 'custom_app';
+  supervisorClient?: string;         // 'Juan Camilo Palacio López'
+  supervisorClientRole?: string;     // 'Marketing y Comunicaciones'
+  supervisorProvider?: string;       // 'Luisa Fernanda Urazán Prieto (Especialista en Relacionamiento)'
+  clientRepresentative?: string;     // 'María Clara Choucair Cárdenas'
+  clientRepresentativeId?: string;   // 'C.C. No. 43.089.700'
+  clientRepresentativeRole?: string; // 'Representante Legal / Gerente General'
+  sowSignerId?: string;              // 'C.C. No. 80.419.145'
+  providerCompany?: string;          // 'UHURA S.A.S.'
+  providerNit?: string;              // '901.093.070-2'
   status: 'draft' | 'ready_for_review' | 'sent_for_signature' | 'signed';
   googleDocUrl?: string;
   signedDocUrl?: string;
   lastUpdatedAt?: string;
   // Representación Legal y Firma Contractual (Álvaro Gómez / Adobe Acrobat Sign)
-  sowSigner?: string;               // 'Álvaro Gómez' (Representante Legal de UHURA)
-  sowSignerRole?: string;           // 'Representante Legal · UHURA GROUP S.A.S.'
+  sowSigner?: string;               // 'Álvaro Antonio Gómez Machuca' o 'Ana María Giraldo'
+  sowSignerRole?: string;           // 'Representante Legal / Gerente General · UHURA S.A.S.'
   signatureProvider?: string;       // 'Adobe Acrobat Sign'
   signatureReferenceUrl?: string;   // Link o referencia del documento en Adobe Acrobat Sign
   signedAt?: string;

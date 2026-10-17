@@ -20,24 +20,33 @@
 export interface CompanyLegalSignerConfig {
   name: string;
   role: string;
+  idNumber?: string;
   nit?: string;
   signatureProvider: string;
 }
 
-/**
- * Configuración Legal de Respaldo / Mock UI.
- * 
- * NOTA DE ARQUITECTURA:
- * Este objeto NO es canónico ni vinculante. Los datos definitivos (Representante Legal,
- * razón social formal y NIT) provienen de la configuración corporativa administrada
- * en Backend / Ajustes Legales de la Compañía.
- * Al emitir o preparar un SOW, Orbit toma la configuración corporativa vigente
- * y almacena un snapshot inmutable en `opportunity.sowData` (sowSigner, sowSignerRole, signatureProvider).
- */
-export const DEFAULT_UHURA_LEGAL_SIGNER: CompanyLegalSignerConfig = {
-  name: 'Representante Legal Asignado',
-  role: 'Representante Legal · UHURA GROUP S.A.S.',
+export const UHURA_OFFICIAL_LEGAL_ENTITY = {
+  companyName: 'UHURA S.A.S.',
+  nit: '901.093.070-2',
+  primarySigner: {
+    name: 'Álvaro Antonio Gómez Machuca',
+    role: 'Representante Legal / Gerente General',
+    idNumber: 'C.C. No. 80.419.145'
+  },
+  alternateSigner: {
+    name: 'Ana María Giraldo',
+    role: 'CEO / Representante Legal',
+    idNumber: 'C.C. No. 52.889.321'
+  },
   signatureProvider: 'Adobe Acrobat Sign'
+};
+
+export const DEFAULT_UHURA_LEGAL_SIGNER: CompanyLegalSignerConfig = {
+  name: UHURA_OFFICIAL_LEGAL_ENTITY.primarySigner.name,
+  role: `${UHURA_OFFICIAL_LEGAL_ENTITY.primarySigner.role} · ${UHURA_OFFICIAL_LEGAL_ENTITY.companyName}`,
+  idNumber: UHURA_OFFICIAL_LEGAL_ENTITY.primarySigner.idNumber,
+  nit: UHURA_OFFICIAL_LEGAL_ENTITY.nit,
+  signatureProvider: UHURA_OFFICIAL_LEGAL_ENTITY.signatureProvider
 };
 
 export const UHURA_LEGAL_SIGNER = DEFAULT_UHURA_LEGAL_SIGNER;
