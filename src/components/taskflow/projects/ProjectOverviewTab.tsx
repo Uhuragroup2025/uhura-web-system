@@ -397,7 +397,6 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
             >
               <UserAvatar
                 user={{
-                  id: member.id,
                   name: member.name,
                   avatarBg: member.avatarBg || 'bg-[#501f92]',
                   initials: member.initials || member.name.slice(0, 2).toUpperCase()
@@ -500,7 +499,7 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
                 </label>
                 <select
                   value={reforecastCause}
-                  onChange={(e) => setRforecastCause(e.target.value as ScheduleChangeCause)}
+                  onChange={(e) => setReforecastCause(e.target.value as ScheduleChangeCause)}
                   style={{ color: '#0f172a', backgroundColor: '#ffffff', WebkitTextFillColor: '#0f172a' }}
                   className="w-full px-3.5 py-2.5 rounded-xl border-2 border-[#cbd5e1] bg-white text-[#0f172a] text-xs font-bold focus:outline-none focus:border-[#501f92]"
                 >

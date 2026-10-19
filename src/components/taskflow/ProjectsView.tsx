@@ -633,6 +633,22 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
               <p className="text-xs text-[#64748b]">
                 Líder del proyecto: <strong className="text-[#0f172a]">{currentProject.leadName}</strong>
               </p>
+              {!isFeeProject && (
+                <div className="flex items-center gap-2 flex-wrap pt-1">
+                  <span
+                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#faf5ff] text-[#501f92] border border-[#e9d5ff]"
+                    title="Límite contractual de aprobaciones formales para evitar sobrecostos"
+                  >
+                    🛡️ Gates incluidos: 2
+                  </span>
+                  <span
+                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#f0fdf4] text-[#166534] border border-[#bbf7d0]"
+                    title="2 tandas por gate: 1 tanda grande de feedback estructural + 1 tanda menor de afinamiento"
+                  >
+                    🔄 Tandas de ajuste: 2 por gate
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Health Box */}
@@ -717,7 +733,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
           </div>
         </div>
 
-        {/* Main Tabs: Resumen | Frentes | Tareas | Equipo | Configuración | Horas | Actividad */}
+        {/* Main Tabs: Resumen | Tareas | Equipo | Matriz Horas | Backlog? | Actividad | Configuración */}
         <div className="flex items-center gap-2 border-b border-[#e2e8f0] pb-1 overflow-x-auto custom-scrollbar">
           <button
             onClick={() => setActiveTab('overview')}
@@ -729,18 +745,6 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
           >
             <LayoutDashboard className="w-3.5 h-3.5 text-current" />
             <span>Resumen</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('deliverables')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
-              activeTab === 'deliverables'
-                ? 'bg-[#f5f3ff] text-[#501f92] border border-[#ddd6fe] shadow-2xs'
-                : 'text-[#64748b] hover:text-[#501f92] hover:bg-[#f8fafc] border border-transparent'
-            }`}
-          >
-            <Layers className="w-3.5 h-3.5 text-current" />
-            <span>Servicios & Roles ({currentProject.deliverables?.length || 0})</span>
           </button>
 
           <button
@@ -768,15 +772,15 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
           </button>
 
           <button
-            onClick={() => setActiveTab('settings')}
+            onClick={() => setActiveTab('budget')}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
-              activeTab === 'settings'
+              activeTab === 'budget'
                 ? 'bg-[#f5f3ff] text-[#501f92] border border-[#ddd6fe] shadow-2xs'
                 : 'text-[#64748b] hover:text-[#501f92] hover:bg-[#f8fafc] border border-transparent'
             }`}
           >
-            <Settings2 className="w-3.5 h-3.5 text-current" />
-            <span>Configuración</span>
+            <FileSpreadsheet className="w-3.5 h-3.5 text-current" />
+            <span>Matriz Horas</span>
           </button>
 
           {!isFeeProject && currentProject.phasesList && currentProject.phasesList.length > 0 && (
@@ -803,18 +807,6 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
           )}
 
           <button
-            onClick={() => setActiveTab('budget')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
-              activeTab === 'budget'
-                ? 'bg-[#f5f3ff] text-[#501f92] border border-[#ddd6fe] shadow-2xs'
-                : 'text-[#64748b] hover:text-[#501f92] hover:bg-[#f8fafc] border border-transparent'
-            }`}
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-current" />
-            <span>Matriz Horas</span>
-          </button>
-
-          <button
             onClick={() => setActiveTab('activity')}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
               activeTab === 'activity'
@@ -824,6 +816,18 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
           >
             <Activity className="w-3.5 h-3.5 text-current" />
             <span>Actividad</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+              activeTab === 'settings'
+                ? 'bg-[#f5f3ff] text-[#501f92] border border-[#ddd6fe] shadow-2xs'
+                : 'text-[#64748b] hover:text-[#501f92] hover:bg-[#f8fafc] border border-transparent'
+            }`}
+          >
+            <Settings2 className="w-3.5 h-3.5 text-current" />
+            <span>Configuración</span>
           </button>
         </div>
 
@@ -836,7 +840,10 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             currentUser={currentUser}
             allUsers={users || initialUsers}
             onUpdateProject={onUpdateProject}
-            onNavigateToDeliverables={() => setActiveTab('deliverables')}
+            onNavigateToDeliverables={() => {
+              setActiveTab('budget');
+              setBudgetSubView('deliverables');
+            }}
             onNavigateToTasks={(frenteName) => {
               setActiveTab('tasks');
               if (frenteName) setSelectedFrenteFilter(frenteName);
@@ -848,7 +855,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
           />
         )}
 
-        {/* TAB DELIVERABLES: FRENTES & ROLES */}
+        {/* TAB DELIVERABLES: FRENTES & ROLES (Ruta de retrocompatibilidad) */}
         {activeTab === 'deliverables' && (
           <ProjectDeliverablesTab
             deliverables={currentProject.deliverables || []}
@@ -894,6 +901,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             tasks={currentProject.tasks}
             allProjects={projectsList}
             users={initialUsers}
+            currentUser={currentUser}
             activeTimer={activeTimer}
             onStartTimer={onStartTimer}
             onPauseResumeTimer={onPauseResumeTimer}
@@ -1357,14 +1365,69 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
           </div>
         )}
 
-        {/* TAB 3: HORAS & PRESUPUESTO (La vista analítica y de rentabilidad) */}
+        {/* TAB 3: HORAS & PRESUPUESTO (La vista analítica y de rentabilidad unificada) */}
         {activeTab === 'budget' && (
           <div className="space-y-5">
-            {/* Top Analysis Notice */}
-            <div className="p-4 rounded-2xl bg-gradient-to-r from-[#f5f3ff] to-[#f8fafc] border border-[#e9d5ff] flex items-start gap-3">
-              <Sparkles className="w-5 h-5 text-[#501f92] shrink-0 mt-0.5" />
-              <div>
-                <h4 className="font-bold text-xs text-[#0f172a]">
+            {/* Sub-view Switcher: Matriz de Horas vs Configurar Servicios */}
+            <div className="flex items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-[#e2e8f0] shadow-xs flex-wrap">
+              <div className="flex items-center gap-2">
+                <FileSpreadsheet className="w-4 h-4 text-[#501f92]" />
+                <span className="font-extrabold text-sm text-[#0f172a]">Matriz de Horas & Servicios</span>
+              </div>
+              <div className="flex items-center bg-[#f1f5f9] p-1 rounded-xl text-xs font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setBudgetSubView('matrix')}
+                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                    budgetSubView === 'matrix' ? 'bg-white text-[#501f92] shadow-2xs font-bold' : 'text-[#64748b] hover:text-[#0f172a]'
+                  }`}
+                >
+                  <TableIcon className="w-3.5 h-3.5" />
+                  <span>Matriz Analítica (Rol & Servicio)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBudgetSubView('deliverables')}
+                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                    budgetSubView === 'deliverables' ? 'bg-white text-[#501f92] shadow-2xs font-bold' : 'text-[#64748b] hover:text-[#0f172a]'
+                  }`}
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>Configurar Servicios & Roles ({currentProject.deliverables?.length || 0})</span>
+                </button>
+              </div>
+            </div>
+
+            {budgetSubView === 'deliverables' ? (
+              <ProjectDeliverablesTab
+                deliverables={currentProject.deliverables || []}
+                tasks={currentProject.tasks}
+                projectName={currentProject.name}
+                onUpdateDeliverables={(newDeliverables) => {
+                  if (onUpdateProject) {
+                    const newTotalQuoted = newDeliverables.reduce(
+                      (sum, d) => sum + (d.roleBudgets?.reduce((rSum, r) => rSum + (r.quotedHours || 0), 0) || 0),
+                      0
+                    );
+                    onUpdateProject({
+                      ...currentProject,
+                      deliverables: newDeliverables,
+                      budgetedHours: newTotalQuoted > 0 ? newTotalQuoted : currentProject.budgetedHours
+                    });
+                  }
+                }}
+                onNavigateToTasksWithFilter={(frenteName) => {
+                  setActiveTab('tasks');
+                  setSelectedFrenteFilter(frenteName);
+                }}
+              />
+            ) : (
+              <>
+                {/* Top Analysis Notice */}
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-[#f5f3ff] to-[#f8fafc] border border-[#e9d5ff] flex items-start gap-3">
+                  <Sparkles className="w-5 h-5 text-[#501f92] shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="font-bold text-xs text-[#0f172a]">
                   Análisis Operativo: Horas Cotizadas vs. Horas Reales por Rol
                 </h4>
                 <p className="text-[11px] text-[#64748b] mt-0.5 leading-relaxed">
@@ -1546,8 +1609,10 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                 </table>
               </div>
             </div>
-          </div>
+          </>
         )}
+      </div>
+    )}
 
         {/* TAB 3: EQUIPO Y ASIGNACIONES */}
         {activeTab === 'team' && (

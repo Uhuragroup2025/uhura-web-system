@@ -15,7 +15,7 @@ import {
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
-import { calculateBusinessDays } from '../tasks/taskEngine';
+import { calculateBusinessDays } from '../health/projectHealthEngine';
 
 interface ProjectDependenciesSectionProps {
   project: ProjectSummaryItem;
