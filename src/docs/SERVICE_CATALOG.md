@@ -49,9 +49,9 @@ Orbit implementa un modelo de datos robusto para la evolución del catálogo:
 
 ---
 
-## 3. Catálogo Oficial de 12 Roles Canónicos y Normalización de Personas
+## 3. Catálogo Oficial de 13 Roles Canónicos y Normalización de Personas
 
-Orbit estandariza los perfiles requeridos para la ejecución técnica y comercial en un catálogo cerrado de **12 roles canónicos cotizables**, complementados por el estado de reserva **`Pendiente de definición`**.
+Orbit estandariza los perfiles requeridos para la ejecución técnica y comercial en un catálogo cerrado de **13 roles canónicos cotizables**, complementados por el estado de reserva **`Pendiente de definición`**.
 
 ### 3.1 Matriz Oficial de Roles Canónicos
 
@@ -65,13 +65,18 @@ Orbit estandariza los perfiles requeridos para la ejecución técnica y comercia
 | **Creative Designer** | `Creative designer`, `Creativo Gráfico` | Creativa / Arte | Banners publicitarios, recursos gráficos de campaña, optimización visual de producto (PDP) y branding. |
 | **Creative Strategy Lead** | `Líder Área Creativa`, `Director Creativo` | Creativa | Dirección conceptual, estrategia de comunicación y narrativa visual de propuestas de marca. |
 | **Trafficker Media** | `Tracfiker`, `Trafficker Media`, `Especialista Pauta` | Growth & Media | Estrategia de medios pagados, configuración de píxeles, eventos de conversión y optimización de pauta. |
+| **DigiOps Specialist** | `DigiOps`, `DigiOps Specialist` | Growth & Soluciones Digitales | Ejecución operativa de servicios DigiOps según el alcance contratado. |
 | **Community Manager** | `Community Manager`, `CM` | Contenido & Social | Gestión de comunidades, moderación y soporte conversacional en redes sociales. |
 | **Content Creator** | `Content Creator`, `Creador de Contenido` | Creativa / Social | Producción multimedia, fotografía, video corto (UGC) y assets de contenido orgánico. |
 | **Directora Comercial** | `Directora Comercial`, `Head of Sales` | Comercial | Supervisión de márgenes, estrategia de negociación, propuestas comerciales y pricing. |
 | **Growth Manager** | `Growth Manager`, `Director de Growth` | Growth & Media | Estrategia de crecimiento digital, embudos de conversión, planeación mensual y experimentación. |
 | *Pendiente de definición* | `ROLE_PENDING_DEFINITION` | Gobernanza | Estado reservado para actividades cuya correlación funcional de rol no sea inequívoca en la fuente. |
 
-### 3.2 Tratamiento de Personas Reales Detectadas en la Fuente
+### 3.2 Asignación de múltiples roles
+
+Un colaborador puede tener **uno o más roles profesionales/cotizables** sin duplicar su usuario. Por ejemplo, Simón Vélez tiene los roles `Trafficker Media` y `DigiOps Specialist`, porque distribuye su dedicación entre ambas funciones. El `accessLevel` se define por separado y no se deriva de estos roles.
+
+### 3.3 Tratamiento de Personas Reales Detectadas en la Fuente
 
 Siguiendo el principio de **"interpretar la función y no convertir personas en roles"**, las personas identificadas en los formatos primarios son normalizadas de la siguiente manera:
 
