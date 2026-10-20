@@ -349,7 +349,7 @@ Fuente: *"FORMATO DE PROCESO DE ÁREA UHURA (2026) - PRODUCTO DIGITAL"*
 #### 2.4 Reglas de Negocio
 1. **Independencia de Snapshot:** Al importar una plantilla a una cotización en New Business, se genera una copia desacoplada. Las modificaciones que haga el líder técnico en la cotización NO alteran la plantilla maestra, y futuros cambios en la plantilla maestra NO alteran cotizaciones ya creadas.
 2. **Flujo "Usar en New Business" y Asociación Previa Obligatoria:** La plantilla no genera cotizaciones huérfanas en el vacío ni en estados paralelos. La oportunidad debe existir previamente antes de persistir la cotización: el usuario selecciona una oportunidad existente en New Business o crea una nueva a partir de un Brief/prospecto, asignando `opportunityId` antes de finalizar la cotización.
-3. **Roles Estándar Obligatorios:** Las plantillas solo pueden construirse con roles del catálogo oficial de Uhura (`STANDARD_UHURA_ROLES`). Nombres informales (*"diseñador web"*, *"redactor"*, *"developer"*, *"tracfiker"*) han sido normalizados a sus respectivos 12 roles canónicos (*"Digital Designer"*, *"Digital Content Specialist"*, *"Front-End Dev"*, *"Client Relationship Strategist"*, *"Trafficker Media"*).
+3. **Roles Estándar Obligatorios:** Las plantillas solo pueden construirse con roles del catálogo oficial de Uhura (`STANDARD_UHURA_ROLES`). Nombres informales (*"diseñador web"*, *"redactor"*, *"developer"*, *"tracfiker"*) han sido normalizados a sus respectivos 13 roles canónicos (*"Digital Designer"*, *"Digital Content Specialist"*, *"Front-End Dev"*, *"Client Relationship Strategist"*, *"Trafficker Media"*).
 4. **Cálculo Recursivo de Horas:** Toda plantilla recalcula automáticamente sus horas por actividad, horas acumuladas por entregable y total de horas por rol usando [`recalculateTemplateHours`](../components/taskflow/templates/templateEngine.ts).
 
 ---
@@ -367,7 +367,7 @@ Constructor jerárquico de la ingeniería de la propuesta técnica. Permite a lo
 Durante la sesión de dimensionamiento técnico, el Líder de Alcance cuenta con las siguientes capacidades aprobadas:
 1. **Punto de partida flexible:** Puede elegir partir de una plantilla estándar del Catálogo de Servicios (e.g. *Sitio Web Informativo WordPress*, *Tienda Shopify*) o estructurar el alcance desde cero para requerimientos a la medida.
 2. **Ajuste fino de entregables y actividades:** Crear, renombrar, reordenar y eliminar entregables (frentes de servicio) y actividades atómicas.
-3. **Definición de roles canónicos:** Cada actividad se asocia obligatoriamente a uno de los 12 roles canónicos de Uhura (`STANDARD_UHURA_ROLES`).
+3. **Definición de roles canónicos:** Cada actividad se asocia obligatoriamente a uno de los 13 roles canónicos de Uhura (`STANDARD_UHURA_ROLES`).
 4. **Ajuste de horas estimadas:** Estimación decimal de horas por actividad, con recálculo dinámico en vivo del total por entregable y por rol.
 5. **Asignación de colaboradores tentativos:** Definir colaboradores específicos cuando corresponda para proyectar staffing temprano sin romper la atomicidad del rol cotizado.
 6. **Enlace a propuesta técnica (Drive / PPT):** Campo explícito para adjuntar/pegar la URL de la presentación comercial o documento de arquitectura técnica en Google Drive.
@@ -1111,7 +1111,7 @@ Para asegurar una frontera limpia de trabajo entre Producto (Uhura) y la Fábric
 Orbit separa tajantemente entre **rol profesional/cotizable** (el oficio operativo de la persona que factura o ejecuta horas en proyectos de clientes) y **perfil interno de sistema** (funciones de dirección o soporte que no se cotizan en proyectos de clientes).
 
 #### 1. Roles Profesionales Canónicos (`StandardUhuraRole`):
-Existen exactamente 12 roles oficiales en el catálogo de servicios de Uhura:
+Existen exactamente 13 roles oficiales en el catálogo de servicios de Uhura:
 1. `Client Relationship Strategist`
 2. `Front-End Dev`
 3. `Community Manager`
@@ -1119,11 +1119,14 @@ Existen exactamente 12 roles oficiales en el catálogo de servicios de Uhura:
 5. `Digital Content Specialist`
 6. `Product Lead`
 7. `Trafficker Media`
-8. `Creative Strategy Lead`
-9. `Creative Designer`
-10. `Content Creator`
-11. `Directora Comercial`
-12. `Growth Manager`
+8. `DigiOps Specialist`
+9. `Creative Strategy Lead`
+10. `Creative Designer`
+11. `Content Creator`
+12. `Directora Comercial`
+13. `Growth Manager`
+
+Un colaborador puede tener **uno o más roles profesionales/cotizables**. Esta relación no crea usuarios adicionales ni modifica su `accessLevel`: la identidad del colaborador sigue siendo única y el RBAC se administra por separado.
 
 #### 2. Perfiles Internos de Sistema (`InternalSystemRole`):
 Roles operativos no cotizables para tareas operativas estándar:
@@ -1277,9 +1280,9 @@ Solo existen 5 alcances autorizados:
 > Se formaliza la separación estricta entre **identidad profesional**, **nivel RBAC funcional** y **compatibilidad técnica secundaria**, garantizando que la matriz RBAC permanezca cerrada y con una única fuente de verdad.
 
 #### 1. Separación Conceptual de Atributos:
-1. **`jobTitle` / `officialRole` → Identidad Profesional:**
+1. **`jobTitle` / `officialRoles` → Identidad Profesional:**
    - **`jobTitle`**: Denominación funcional y operativa visible del cargo en la organización (ej. *Product Lead*, *Front-End Dev*, *Senior Growth Strategist*).
-   - **`officialRole`**: Vinculación formal con uno de los **12 Roles Canónicos de Uhura** del Catálogo de Servicios (`StandardUhuraRole`). Es obligatorio para todo colaborador que ejecute o cotice horas en proyectos y propuestas de New Business.
+   - **`officialRoles`**: Vinculación formal con uno o más de los **13 Roles Canónicos de Uhura** del Catálogo de Servicios (`StandardUhuraRole[]`). Es obligatorio para todo colaborador que ejecute o cotice horas en proyectos y propuestas de New Business.
 2. **`accessLevel` → Nivel RBAC Funcional:**
    - Nivel de autorización gobernado **exclusivamente por la Matriz Canónica RBAC** (`CanonicalOrbitAccessLevel`: `collaborator`, `leader`, `client_relationship`, `commercial`, `administrative`, `executive`, `system_admin`).
    - Gobierna de manera exhaustiva el acceso a módulos, vistas y alcances (`AccessScope`).
@@ -1295,7 +1298,7 @@ Solo existen 5 alcances autorizados:
 
 #### 3. Requerimientos de Persistencia Mínima en Backend (Indunova):
 El backend debe persistir en base de datos como mínimo los siguientes campos del colaborador:
-1. **`jobTitle`** (string) / **`officialRole`** (`StandardUhuraRole`, cuando corresponda al catálogo)
+1. **`jobTitle`** (string) / **`officialRoles`** (`StandardUhuraRole[]`, cuando corresponda al catálogo)
 2. **`accessLevel`** (`OrbitAccessLevel`: 7 niveles canónicos + transitorio `pending`)
 3. **`department`** (string: área operativa o departamento)
 4. **`leaderId` / `reportsTo`** (UUID/FK al colaborador líder directo)
@@ -1321,7 +1324,7 @@ $$\text{Auditoría: } \text{valor anterior} \longrightarrow \text{valor nuevo} \
 
 **Contrato Mínimo de Auditoría:**
 - **`userId`** (string): Identificador único del colaborador afectado.
-- **`field`** (string): Campo modificado (`accessLevel`, `officialRole`, `leaderId`, `status`, `fecha_ingreso`, etc.).
+- **`field`** (string): Campo modificado (`accessLevel`, `officialRoles`, `leaderId`, `status`, `fecha_ingreso`, etc.).
 - **`previousValue`** (string | null): Valor anterior del campo antes de la modificación.
 - **`newValue`** (string | null): Nuevo valor asignado al campo tras la edición.
 - **`changedAt`** (string): Timestamp ISO UTC registrado por el servidor en el momento exacto del guardado.
@@ -1330,7 +1333,7 @@ $$\text{Auditoría: } \text{valor anterior} \longrightarrow \text{valor nuevo} \
 
 Campos sujetos a auditoría obligatoria en backend:
 - **`accessLevel`** (Nivel de Acceso RBAC)
-- **`officialRole`** (Rol Profesional del Catálogo)
+- **`officialRoles`** (Roles Profesionales del Catálogo)
 - **`leaderId` / `reportsTo`** (Líder Directo de reporte)
 - **`status`** (Estado de Cuenta)
 - **`fecha_ingreso`** (Fecha Contractual de Ingreso, restringida a perfiles administrativos autorizados)
@@ -1408,7 +1411,7 @@ El perfil del colaborador en Orbit define la identidad funcional, contractual y 
    - **`fecha_ingreso` / `joinedDate`:** Fecha fundacional de vinculación laboral en formato ISO `YYYY-MM-DD` (Date, obligatorio; dato canónico de edición restringida a perfiles autorizados [Administrativa / RRHH / Dirección General]. Antigüedad y aniversario se derivan directamente de él; no debe documentarse como inmutable).
    - **`birthDate`:** Fecha de nacimiento en formato ISO `YYYY-MM-DD` (Date, obligatorio para colaboradores activos; administrable y visualizable en *Equipo & Accesos*).
    - **`jobTitle`:** Cargo operativo o denominación funcional visible (string, obligatorio).
-   - **`officialRole` (`StandardUhuraRole`):** Uno de los 12 roles oficiales del Catálogo de Servicios (obligatorio para todo perfil que cotice o ejecute horas en proyectos).
+   - **`officialRoles` (`StandardUhuraRole[]`):** Uno o más de los 13 roles oficiales del Catálogo de Servicios (obligatorio para todo perfil que cotice o ejecute horas en proyectos).
    - **`accessLevel` (`OrbitAccessLevel`):** Nivel de autorización gobernado exclusivamente por la matriz canónica RBAC (`collaborator`, `leader`, `client_relationship`, `commercial`, `administrative`, `executive`, `system_admin`, más estado transitorio `pending`).
    - **`role` (`UserRole`):** Atributo técnico secundario de compatibilidad heredada (`Admin` | `Member` | `Viewer`). **NO** gobierna permisos funcionales.
    - **`department`:** Área o departamento operativo (string, obligatorio para colaboradores activos).
@@ -1447,7 +1450,7 @@ El modelo actual de colaborador en Orbit (`UserProfile` en backend Django / `Use
   - `name` / `fullName` (Nombre completo)
   - `email` (Correo electrónico corporativo único `@uhuragroup.com`)
   - `jobTitle` (Cargo funcional visible)
-  - `officialRole` / `professionalRole` (`StandardUhuraRole`: uno de los 12 roles oficiales del catálogo)
+  - `officialRoles` / `professionalRoles` (`StandardUhuraRole[]`: uno o más de los 13 roles oficiales del catálogo)
   - `accessLevel` (`CanonicalOrbitAccessLevel`: uno de los 7 niveles canónicos RBAC)
   - `department` (Área o departamento operativo)
   - `leaderId` / `reportsTo` (Identificador del líder directo)
@@ -1505,7 +1508,7 @@ A futuro, el módulo de **Equipo & Accesos** podrá evolucionar para permitir la
 | Dimensión | Ahora (Core Personas en Orbit) | Evolutivo (Futuro People Master) |
 | :--- | :--- | :--- |
 | **Identidad** | Nombre, email, avatar, ciudad | Documento legal, tipo de identificación, nacionalidad, dirección |
-| **Puesto & Rol** | `jobTitle`, `officialRole` (Catálogo), `department`, `leaderId` | Centro de costos, banda salarial, organigrama formal corporativo |
+| **Puesto & Rol** | `jobTitle`, `officialRoles` (Catálogo), `department`, `leaderId` | Centro de costos, banda salarial, organigrama formal corporativo |
 | **Acceso & Permisos** | Matriz Canónica RBAC (7 niveles intactos) | Capacidades/permisos granulares específicos de RRHH y compensación |
 | **Capacidad & Horas** | Capacidad semanal operativa (`capacityHours`), balance de ausencias | Historial de variaciones de jornada, cálculo de prestaciones |
 | **Fechas Clave** | `fecha_ingreso` (Hire Date), `birthDate` (Cumpleaños) | Fechas de renovación de contrato, vencimiento de períodos de prueba |
