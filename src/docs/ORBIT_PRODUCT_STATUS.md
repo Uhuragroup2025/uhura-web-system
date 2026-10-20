@@ -2,16 +2,16 @@
 
 > **Documento:** Especificación Funcional Maestra para Portabilidad, Backend y Modelo de Datos  
 > **Destinatario Técnico Principal:** Indunova (Backend Django REST Framework / PostgreSQL) y Equipo de Producto Uhura Group  
-> **Fecha de Actualización:** Septiembre 2026  
-> **Versión:** 3.0.0 (Master Functional Freeze Document)  
-> **Estado:** Especificación Maestra Canónica — Fuente de Verdad Funcional de Orbit  
+> **Fecha de Actualización:** Octubre 2026  
+> **Versión:** 3.2.0 (Master Functional Freeze & UAT Reconciliation)  
+> **Estado:** Especificación Maestra Canónica Reconciliada — Fuente de Verdad Funcional de Orbit  
 
 ---
 
 ## Índice General
 
 1. [Propósito del Documento y Concepto de Freeze Funcional](#1-propósito-del-documento-y-concepto-de-freeze-funcional)
-2. [Frontera de Sistemas y Triángulo de Responsabilidades](#2-frontera-de-sistemas-y-triángulo-de-responsabilidades)
+2. [Frontera de Sistemas y Cuadrilátero de Responsabilidades](#2-frontera-de-sistemas-y-cuadrilátero-de-responsabilidades)
 3. [Navegación del Sistema y Consolidación de Módulos](#3-navegación-del-sistema-y-consolidación-de-módulos)
 4. [Mapa Macro de Dependencias y Ciclo de Vida](#4-mapa-macro-de-dependencias-y-ciclo-de-vida)
 5. [Especificación Funcional por Módulo](#5-especificación-funcional-por-módulo)
@@ -22,16 +22,16 @@
    - [Módulo 5: Cotización / Propuesta Económica (Quotes)](#módulo-5-cotización--propuesta-económica)
    - [Módulo 6: Documentos y Repositorio Google Drive](#módulo-6-documentos-y-repositorio-google-drive)
    - [Módulo 7: Statement of Work (SOW Contractual)](#módulo-7-statement-of-work-sow-contractual)
-   - [Módulo 8: Formalización y Condiciones de Inicio (Gates)](#módulo-8-formalización-y-condiciones-de-inicio-gates)
+   - [Módulo 8: Formalización, Conversión a Proyecto y Gates](#módulo-8-formalización-conversión-a-proyecto-y-gates)
    - [Módulo 9: Clientes (Cuentas y Entidades Fiscales)](#módulo-9-clientes)
    - [Módulo 10: Administración Fiscal y Frontera con Alegra](#módulo-10-administración-fiscal-y-frontera-con-alegra)
-   - [Módulo 11: Proyectos (Estructura Operativa y Ciclos)](#módulo-11-proyectos)
+   - [Módulo 11: Proyectos (Estructura Operativa, Gobernanza y Vistas)](#módulo-11-proyectos)
    - [Módulo 12: Entregables (Componentes Operativos)](#módulo-12-entregables)
-   - [Módulo 13: Tareas (Unidad Atómica de Trabajo)](#módulo-13-tareas)
+   - [Módulo 13: Tareas y Detalle Operativo (TaskDetailModal)](#módulo-13-tareas-y-detalle-operativo-taskdetailmodal)
    - [Módulo 14: Staffing y Asignaciones](#módulo-14-staffing-y-asignaciones)
    - [Módulo 15: Capacidad del Equipo](#módulo-15-capacidad-del-equipo)
    - [Módulo 16: Time Tracking (Registro de Tiempo)](#módulo-16-time-tracking)
-   - [Módulo 17: Mi Día (Home Contextual)](#módulo-17-mi-día)
+   - [Módulo 17: Mi Día (Home Contextual y Bandeja de Acción)](#módulo-17-mi-día)
    - [Módulo 18: Bucky y La Colonia (Copiloto y Gamificación)](#módulo-18-bucky-y-la-colonia)
 6. [Integraciones Externas: Arquitectura y Comportamiento](#6-integraciones-externas-arquitectura-y-comportamiento)
 7. [Matriz Global de Portabilidad por Módulo](#7-matriz-global-de-portabilidad-por-módulo)
@@ -44,42 +44,65 @@
 
 ## 1. Propósito del Documento y Concepto de Freeze Funcional
 
-Este documento constituye la **especificación funcional y de arquitectura de dominio maestra** de Orbit. Ha sido estructurado específicamente para que el equipo de backend e infraestructura (**Indunova**) disponga del diseño relacional, reglas invariantes, contratos de transferencia y fronteras de integración necesarios para construir la persistencia en PostgreSQL y los servicios REST en Django.
+Este documento constituye la **especificación funcional y de arquitectura de dominio maestra** de Orbit, reconciliada directamente con el prototipo de producto y la experiencia aprobada en pruebas UAT. Ha sido estructurado específicamente para que el equipo de backend e infraestructura (**Indunova**) disponga del diseño relacional, reglas invariantes, contratos de transferencia y fronteras de integración necesarios para construir la persistencia en PostgreSQL y los servicios REST en Django.
 
 ### Definición de Freeze Funcional
 > **El "Freeze Funcional" NO significa que todas las pantallas estén visualmente terminadas o que no puedan pulirse detalles estéticos de UI.**  
 > Significa que **la topología de entidades, las relaciones, las reglas de negocio, los estados de transición, la persistencia requerida y las fronteras con sistemas externos quedan congelados y formalizados**. Ningún cambio posterior alterará la lógica de datos aquí establecida sin un proceso formal de control de versiones.
+> **Regla de oro de UAT:** Un defecto puntual de implementación en staging no cambia la especificación funcional; documenta el comportamiento esperado aprobado de Orbit frente a las discrepancias.
 
 ### Clasificación de Componentes para Portabilidad:
-1. **Core para Portabilidad (Crítico):** Bloquea la base de datos y los flujos indispensables de negocio. Debe implementarse con máxima prioridad (Clientes, Proyectos, Entregables, Tareas, New Business, Quotes, Time Tracking, Capacidad).
+1. **Core para Portabilidad (Crítico):** Bloquea la base de datos y los flujos indispensables de negocio. Debe implementarse con máxima prioridad (Clientes, Proyectos, Entregables, Tareas, New Business, Quotes, Time Tracking, Capacidad, Mi Día).
 2. **UI Liviana / Transaccional Simple:** Puede operar con endpoints CRUD básicos mientras el frontend maneja la interactividad (Plantillas de Producto, Documentos/Drive Links, SOW).
 3. **Evolutivo / No Bloqueante:** Funcionalidades de enriquecimiento que no deben demorar la migración del backend transaccional (La Colonia, Bucky Inteligente, Webhooks automáticos con HubSpot/Alegra).
 
 ---
 
-## 2. Frontera de Sistemas y Triángulo de Responsabilidades
+## 2. Frontera de Sistemas y Cuadrilátero de Responsabilidades
 
-Orbit **no es un CRM generalista ni un ERP contable**. Su frontera funcional está delimitada por tres sistemas:
+Orbit **no es un CRM generalista, ni una calculadora contable, ni un ERP tributario**. Su frontera funcional está delimitada por cuatro sistemas y un repositorio documental:
 
-```
+```text
            ┌─────────────────────────────────────────┐
            │        HUBSPOT (CRM Comercial)          │
            │ • Prospección, Leads, Deals             │
            │ • Pipeline de Ventas, Etapas Comerciales│
            │ • Actividades comerciales (mails, calls)│
-           │ • SOURCE OF TRUTH COMERCIAL             │
+           │ • SOURCE OF TRUTH ESTADO COMERCIAL      │
            └────────────────────┬────────────────────┘
-                                │ (Handoff por Brief o Deal Ganado)
+                                │ (Handoff por Brief: Creación de Oportunidad)
                                 ▼
            ┌─────────────────────────────────────────┐
            │       ORBIT (Operating System)          │
-           │ • Dimensionamiento Técnico (Backlog)    │
-           │ • Horas por Rol y Costos Variables      │
-           │ • Cotización y Bandas de Margen         │
-           │ • Generación de SOW y Formalización     │
-           │ • Proyectos, Entregables y Tareas       │
-           │ • Staffing, Capacidad y Time Tracking   │
+           │ • Dimensionamiento Técnico (Alcance)    │
+           │ • Entregables, Actividades y Roles      │
+           │ • Horas Técnicas Totales y por Rol      │
+           │ • Link a Propuesta Técnica (Drive/PPT)  │
+           │ • Semanas Productivas de Entrega        │
            │ • SOURCE OF TRUTH OPERATIVO & ALCANCE   │
+           └──────────┬───────────────────▲──────────┘
+                      │                   │
+  Rollup de Horas     │                   │ Registro de Resultado Comercial:
+  y Perfiles Cotizados│                   │ Valor Cotizado, Moneda, Versión
+                      ▼                   │ Enlaces a Sheet y Documentos
+           ┌──────────────────────────────┴──────────┐
+           │  GOOGLE SHEET / CALCULADORA COMERCIAL   │
+           │ • Tarifas de Costo Salarial y Nómina    │
+           │ • Multiplicadores Prestacionales        │
+           │ • Overhead Operativo y Bandas de Margen │
+           │ • Tratamiento de IVA y TRM Oficial      │
+           │ • SOURCE OF TRUTH CÁLCULO FINANCIERO    │
+           └─────────────────────────────────────────┘
+                                │
+                                ▼ (Cliente Aprueba Propuesta Económica)
+           ┌─────────────────────────────────────────┐
+           │         CONVERSIÓN EN ORBIT             │
+           │ • Deal Ganado en HubSpot / Orbit        │
+           │ • Oportunidad Ganada ➔ Proyecto Activo   │
+           │ • Entregables y Tareas creados 1:1      │
+           │ • Horas Cotizadas heredadas a control   │
+           │ • Staffing, Capacidad y Time Tracking   │
+           │ • Mi Día contextual por rol             │
            └────────────────────┬────────────────────┘
                                 │ (Handoff al Facturar)
                                 ▼
@@ -92,25 +115,25 @@ Orbit **no es un CRM generalista ni un ERP contable**. Su frontera funcional est
            └─────────────────────────────────────────┘
 ```
 
-* **HubSpot:** Dueño de la relación comercial.
-* **Orbit:** Dueño del alcance, dimensionamiento técnico, horas, cotización, proyecto y ejecución.
-* **Alegra:** Dueño de la facturación, los impuestos y el recaudo.
-* **Google Drive:** Repositorio pasivo de archivos y entregables.
+* **HubSpot:** Dueño de la relación comercial y fuente de verdad del estado del deal (`won` / `lost`).
+* **Google Sheet Oficial / Calculadora Comercial:** Fuente de verdad del pricing y cálculo financiero (márgenes, costos internos, tarifas, IVA y TRM). **Orbit no calcula internamente tarifas ni márgenes**.
+* **Orbit:** Dueño del alcance, dimensionamiento técnico, horas técnicas, conversión a proyectos, entregables, tareas, ejecución operativa, Mi Día y capacidad.
+* **Alegra:** Dueño de la facturación electrónica, los impuestos y el recaudo.
+* **Google Drive:** Repositorio pasivo de archivos, minutas, briefs, presentaciones y entregables.
 
 ---
 
 ## 3. Navegación del Sistema y Consolidación de Módulos
 
-Para eliminar redundancias cognitivas y reflejar el flujo real de trabajo, la barra de navegación lateral (Sidebar) se consolida en la siguiente estructura oficial:
+Para eliminar redundancias cognitivas y reflejar el flujo real de trabajo, la barra de navegación lateral (Sidebar) se consolida en la siguiente estructura oficial de 4 grupos canónicos:
 
 ### Estructura Vigente del Sidebar:
-```
+```text
 OPERACIÓN
-  ├─ Mi Día (Home Contextual por Rol)
-  ├─ Proyectos (Directorio Operativo, Fichas y Ciclos de Fee)
-  ├─ Tareas (Listado / Kanban Operativo)
-  ├─ Horas (Time Tracking y Auditoría de Time Logs)
-  └─ Capacidad (Matriz de Carga Planificada vs. Ejecución)
+  ├─ Mi Día (Home Contextual por Rol · Bandeja de Acción, Timer y Horas del Día)
+  ├─ Proyectos (Directorio Operativo, Fichas de Proyecto, Tareas y Matriz de Horas)
+  ├─ Tareas (Listado / Kanban Operativo con bloques de entregables plegados por defecto)
+  └─ Capacidad (Matriz de Carga Planificada vs. Ejecución y Disponibilidad)
 
 COMERCIAL / PROPUESTAS
   ├─ Clientes (Marcas, Contactos y Fichas Administrativas)
@@ -118,69 +141,103 @@ COMERCIAL / PROPUESTAS
   └─ Catálogo de Servicios (Biblioteca de Plantillas Maestras de Producto)
 
 EXPERIENCIA
-  └─ La Colonia (Simulador / Gamificación de Productividad)
+  └─ La Colonia (Simulador / Hábitat Vivencial de Bucky)
 
-ADMINISTRACIÓN
-  ├─ Equipo & Roles (Catálogo de Tarifas y Configuración de Personal)
-  └─ Ajustes de Sistema
+SISTEMA / ADMINISTRACIÓN
+  └─ Equipo & Accesos (Directorio de Colaboradores, Invitaciones y Matriz RBAC Unificada)
 ```
 
-> **DECISIÓN DE CONSOLIDACIÓN:**  
-> **El módulo antes denominado "Cotizador" NO existe como elemento independiente en el sidebar.** La cotización es una vista/fase interna que vive dentro de la oportunidad en **New Business**. No tiene sentido cotizar en el vacío sin un brief o cliente asociado.
+> **DECISIONES DE CONSOLIDACIÓN Y REDUCCIÓN DE RUIDO:**  
+> 1. **Horas / Time Tracking:** Se retiró `Horas` de la navegación primaria. Mi Día absorbió el cronómetro (timer), la carga rápida/manual y el registro de horas de hoy. La consulta histórica de Timesheets se accede de forma secundaria contextual.  
+> 2. **Cotizador:** NO existe como módulo independiente en el sidebar. La cotización es una fase interna dentro de la oportunidad en **New Business**.  
+> 3. **Finanzas y El Muro:** Se retiraron del sidebar de navegación diaria para preservar el foco operativo.  
+> 4. **Equipo & Accesos:** Centraliza en una experiencia tabulada el directorio del equipo, invitaciones y la matriz RBAC.
 
 ---
 
 ## 4. Mapa Macro de Dependencias y Ciclo de Vida
 
-El flujo lineal de la información a través del sistema se rige por la siguiente cadena de valor:
+El flujo lineal de la información y los handoffs entre roles a través de Orbit se rige por la siguiente cadena de valor:
 
 ```text
-[HUBSPOT: Brief Recibido & Necesidad de Scoping Técnico]
+[1. HUBSPOT: Brief Recibido & Oportunidad Comercial]
          │
          ▼
-[1. New Business: Registro de Oportunidad]
+[2. COMERCIAL EN ORBIT (Catalina / Luisa)]
+         │ • Crea Oportunidad en New Business
+         │ • Registra prospecto, brief y contacto
+         │ • Asigna Líder de Alcance (ej. Paola Monsalve / Diego Cadavid)
          │
-         ├───────────────────────────────┐
-         ▼                               ▼
-[2. Catálogo de Servicios]     [Creación desde Cero]
-         │                               │
-         └───────────────┬───────────────┘
-                         ▼
-[3. Alcance & Backlog: Entregable → Actividad → Rol → Horas]
-                         │
-                         ├──► [Finanzas / Google Sheet Oficial: Fuente de verdad del cálculo financiero y pricing]
-                         ▼
-[4. Propuesta Comercial en Orbit: Registro de Valor Cotizado, Moneda, Versión, URLs y SOW]
-                         │
-                         ▼
-[5. SOW Contractual: Generación y Documentos en Drive]
-                         │
-                         ▼
-[7. Formalización: SOW Firmado + Anticipo Configurado (Gates de Inicio)]
-                         │
-                         ▼ (Evento de Conversión)
-[8. Cliente Operativo] ──┼──► [9. Proyecto en Orbit (Código ej. ECO-42)]
-                         │                    │
-                         │                    ▼
-                         │            [10. Entregables del Proyecto]
-                         │                    │
-                         │                    ▼
-                         │            [11. Tareas Atómicas (To Do, sin asignar)]
-                         │                    │
-                         │                    ▼
-                         │            [12. Staffing: Rol Cotizado ➔ Persona Real]
-                         │                    │
-                         │                    ▼
-                         │            [13. Capacidad: Planificada vs. Disponible]
-                         │                    │
-                         │                    ▼
-                         │            [14. Time Tracking: Start/Stop ➔ TimeLog]
-                         │                    │
-                         ▼                    ▼
-               [15. Auditoría Vivian]   [16. Rollup Horas Cotizadas vs Reales]
-                         │
-                         ▼
-               [17. Alegra: Facturación]
+         ▼ (Handoff 1: Notificación en campana y acción en Mi Día del Líder)
+[3. LÍDER DE ALCANCE EN ORBIT (Product Lead / Creative Lead)]
+         │ • Recibe la oportunidad asignada en su bandeja de Mi Día
+         │ • Ingresa a New Business ➔ "Alcance y propuesta"
+         │ • Elige estructurar desde Catálogo de Servicios o desde cero
+         │ • Define Entregables, Actividades, Roles canónicos y Horas estimadas
+         │ • Asigna colaboradores tentativos si aplica
+         │ • Diligencia semanas productivas de entrega (para Proyecto Único)
+         │ • Pega enlace a la presentación de propuesta técnica (Drive / PPT)
+         │ • Visualiza el rollup dinámico de horas técnicas
+         │ • Ejecuta: [ Marcar alcance listo (X h) / Notificar a Comercial ]
+         │
+         ▼ (Handoff 2: Oportunidad pasa a status: 'internal_review')
+[4. COMERCIAL RECIBE HANDOFF (Mi Día & Notificaciones)]
+         │ • Recibe alerta de alcance técnico finalizado
+         │ • Extrae horas técnicas y resumen de perfiles desde Orbit
+         │ • Realiza el cálculo financiero en el Google Sheet Oficial / Calculadora
+         │ • Registra en Orbit el resultado comercial acordado:
+         │     - Valor cotizado final y moneda (COP / USD)
+         │     - Versión de propuesta (V1, V2...)
+         │     - URL de la Calculadora de Finanzas / Google Sheet
+         │     - URL de la propuesta formal / PPT
+         │     - Notas comerciales y condiciones de pago
+         │ • Presenta la propuesta económica al cliente
+         │
+         ▼
+[5. APROBACIÓN POR CLIENTE Y HUBSPOT]
+         │ • Cliente aprueba propuesta técnica y comercial
+         │ • HubSpot refleja Deal Ganado ('won') ── Fuente de verdad comercial
+         │ • Comercial marca Oportunidad como Ganada en Orbit
+         │
+         ▼
+[6. CONVERSIÓN A PROYECTO OPERATIVO (ConvertOpportunityModal)]
+         │ • Comercial o Líder ejecuta "Convertir a Proyecto Operativo"
+         │ • Se genera el Proyecto con código (ej. ECO-42, PRJ-01)
+         │ • SE TRASLADAN AUTOMÁTICAMENTE:
+         │     - Entregables cotizados (1:1 con snapshot aprobado)
+         │     - Tareas operativas atómicas derivadas de las actividades
+         │     - Presupuesto de horas por rol (soldHours / budgetedHours)
+         │     - Trazabilidad: Comercial, Líder, Cliente, HubSpot Deal, Drive
+         │ • El equipo NUNCA arranca de cero
+         │
+         ▼
+[7. EJECUCIÓN OPERATIVA EN PROYECTO]
+         ├─ Encabezado: Reglas Contractuales (Gates: 2, Rondas de ajuste: max 2, Kickoff: 3d)
+         ├─ Pestaña Resumen: Scope, gobernanza y equipo asignado (sin KPIs redundantes)
+         ├─ Pestaña Tareas:
+         │    - Bloque de Dependencias, Insumos y Aprobaciones arriba de la lista
+         │    - Lista de tareas con entregables colapsados por defecto (chips cerrados)
+         │    - Detalle de Tarea (TaskDetailModal):
+         │        * Ciclo: Iniciar ➔ Solicitar revisión ➔ Aprobar/Devolver
+         │        * Horas estimadas, ejecutadas y disponibles con barra progresiva
+         │        * Prioridad (Urgente / Alta / Media / Baja) y Fechas
+         │        * Responsables: Project Lead, ejecutor, colaboradores, rol cotizado
+         │        * Registro formal auditado de Retrabajos por tarea
+         ├─ Pestaña Equipo: Staffing y asignación semanal
+         ├─ Pestaña Matriz Horas: Consolidado de consumo por Rol y por Servicio
+         └─ Pestaña Configuración y Actividad
+         │
+         ▼
+[8. BANDEJA CONTEXTUAL: MI DÍA]
+         │ • Comercial: Oportunidades por asignar, cotizaciones pendientes, formalización
+         │ • Líder de Alcance: Oportunidades asignadas para dimensionar alcance técnico
+         │ • Project Lead: Tareas en revisión (aprobar/devolver), blockers, insumos vencidos
+         │ • Colaborador: Tareas asignadas activas, timer, solicitar revisión
+         │
+         ▼
+[9. CONTROL DE CAPACIDAD Y FACTURACIÓN FISCAL]
+         ├─ Capacidad: Disponibilidad semanal neta (descontando festivos y ausencias)
+         └─ Alegra: Facturación electrónica DIAN a través de Vivian y Terceros fiscales
 ```
 
 ---
@@ -192,7 +249,7 @@ El flujo lineal de la información a través del sistema se rige por la siguient
 ### Módulo 1: New Business
 
 #### 1.1 Propósito
-Espacio centralizado donde los líderes técnicos y de producto reciben oportunidades desde el área comercial (briefs), dimensionan el alcance técnico, generan cotizaciones, gestionan el SOW y las condiciones de inicio, y ejecutan la conversión formal a proyectos operativos.
+Espacio centralizado donde Comercial y los líderes de alcance/producto colaboran en el ciclo de preventa e ingeniería de propuestas: recepción de requerimientos comerciales (briefs), dimensionamiento técnico del alcance (scoping), registro del resultado comercial acordado externamente, emisión de SOW y formalización para la conversión a proyectos operativos.
 - **Referencias de Código:**
   - **Vista Principal:** [`src/components/taskflow/newbusiness/NewBusinessView.tsx`](../components/taskflow/newbusiness/NewBusinessView.tsx)
   - **Scoper de Alcance:** [`src/components/taskflow/newbusiness/BacklogScoper.tsx`](../components/taskflow/newbusiness/BacklogScoper.tsx)
@@ -200,10 +257,18 @@ Espacio centralizado donde los líderes técnicos y de producto reciben oportuni
   - **Modal de SOW:** [`src/components/taskflow/newbusiness/SOWModal.tsx`](../components/taskflow/newbusiness/SOWModal.tsx)
   - **Tipos de Dominio:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`NewBusinessOpportunity`, `QuoteProposal`, `QuoteDeliverable`, `QuoteBacklogItem`)
 
-#### 1.2 Usuarios y Roles
-- **Product Lead / Creative Strategy Lead / Growth Manager / CEO:** Dimensionamiento técnico de entregables y actividades.
-- **Directora Comercial / Finanzas:** Fijación del valor cotizado en Google Sheet externo y registro del acuerdo comercial en Orbit.
-- **Vivian (Administración):** Validación de datos de facturación previa a la emisión fiscal.
+#### 1.2 Flujo Canónico de Viaje de Usuario (Handoff Comercial ↔ Líder de Alcance)
+El journey punta a punta de New Business está estructurado en 10 pasos coordinados:
+1. **Comercial crea la oportunidad:** Registra el prospecto, título, tipo de proyecto (`fixed_project` o `fee_monthly`), deal de HubSpot y enlace al brief en Google Drive.
+2. **Comercial asigna Líder de Alcance:** Selecciona el líder técnico responsable del dimensionamiento (Product Lead, Creative Strategy Lead, Growth Manager, CEO).
+3. **Líder recibe la oportunidad:** Mi Día y la campana de notificaciones alertan al Líder con una acción prioritaria en su bandeja.
+4. **Líder trabaja el Alcance Técnico:** Ingresa a la pestaña *Alcance y propuesta*, estructura los entregables y actividades (desde catálogo o desde cero), asigna roles oficiales (`StandardUhuraRole`), horas estimadas, colaboradores tentativos, diligencia las semanas productivas y adjunta el enlace a la presentación de propuesta técnica (PPT/Drive).
+5. **Líder marca "Alcance listo / Notificar a Comercial":** Al pulsar el botón `Marcar alcance listo (X h)`, el sistema valida que estén diligenciados: (a) Enlace a la propuesta técnica/PPT en Drive, (b) Semanas productivas de entrega (para proyectos únicos), y (c) Horas técnicas en el alcance. La oportunidad pasa automáticamente a estado `internal_review` (*"Alcance listo · En revisión de pricing y margen"*).
+6. **Comercial recibe el handoff:** Mi Día y la campana alertan a Comercial (Catalina / Luisa) que la oportunidad está lista para cotización financiera.
+7. **Comercial realiza cálculo financiero externo:** Abre el **Google Sheet Oficial / Calculadora Comercial** de Uhura Group y calcula el pricing, salarios, overhead, margen comercial e impuestos.
+8. **Comercial registra el resultado comercial en Orbit:** Registra en la cotización el monto total cotizado final, la moneda (`COP` o `USD`), la versión, la URL del Google Sheet de Finanzas y la URL del PDF/PPT de la propuesta comercial.
+9. **Cliente aprueba la propuesta:** Tras presentar la propuesta formal, el cliente manifiesta su aprobación técnica y económica. HubSpot refleja el estado Cerrado Ganado (`won`). Comercial actualiza el estado a Ganada en Orbit.
+10. **Conversión a Proyecto Operativo:** Comercial o Líder ejecuta `Convertir a Proyecto Operativo`, transfiriendo el alcance y las horas aprobadas a la ejecución.
 
 #### 1.3 Estado Actual
 **Implementado en Frontend / Parcial para Backend.**  
@@ -215,13 +280,14 @@ La navegación por pestañas (`Resumen`, `Alcance y propuesta`, `Documentos`) es
   - `title`: String (Nombre del requerimiento/proyecto).
   - `prospectAccountName`: String (Nombre de la empresa prospecto).
   - `clientId`: UUID (Opcional, si el cliente ya existe en Orbit).
-  - `leadUserId` / `leadUserName`: String (Líder asignado: *Product Lead, Creative Strategy Lead, Growth Manager, CEO, Directora Comercial*). *Nota: Soporte multi-lead 1..N documentado en `BACKEND_REQUIREMENTS.md` como pendiente backend; rige 1 líder canónico persistido (`leadUserId`) por compatibilidad productiva.*
+  - `leadUserId` / `leadUserName`: String (Líder asignado canónico: *Product Lead, Creative Strategy Lead, Growth Manager, CEO, Directora Comercial*).
+  - `commercialOwner`: String (Comercial asignada: Catalina Tejada, Luisa Urazán, etc.).
   - `leadUserIds`: Array de UUIDs (Opcional, preparación interna desacoplada para asignación múltiple concurrente 1..N).
   - `contactName`, `contactEmail`, `contactPhone`: String.
   - `hubspotDealId`, `hubspotDealUrl`: String (Identificador en HubSpot).
   - `briefUrl`: String (URL al documento de Google Drive).
   - `driveFolderUrl`: String (URL de la carpeta del prospecto).
-  - `status`: Enum (`discovery` | `scoping` | `quoting` | `negotiation` | `won` | `lost` | `abandoned`).
+  - `status`: Enum (`discovery` | `scoping` | `quoting` | `internal_review` | `negotiation` | `won` | `lost` | `abandoned`).
   - `formalizationStatus`: Enum (`pendiente_formalizacion` | `listo_para_onboarding` | `activo`).
   - `quotes`: Array de `QuoteProposal`.
   - `startConditions`: `StartConditionsConfig`.
@@ -231,7 +297,7 @@ La navegación por pestañas (`Resumen`, `Alcance y propuesta`, `Documentos`) es
   - `convertedAt`: Timestamp ISO.
 
 #### 1.5 Reglas de Negocio
-1. **Autonomía Multi-Quote:** Una oportunidad puede contener N cotizaciones. El cliente puede aprobar una y descartar otra.
+1. **Autonomía Multi-Quote:** Una oportunidad puede contener N versiones de cotización (`V1`, `V2`...). El cliente puede aprobar una versión específica y descartar otra.
 2. **Gobernanza de Horas de Preventa:** El tiempo dedicado a dimensionar la oportunidad nunca se factura al cliente ni se resta del presupuesto vendido. Se imputa internamente a `Cliente: UHURA Group`, `Proyecto: New Business`.
 3. **Trigger de Entrada (Brief Calificado + Necesidad de Scoping):** New Business se activa **únicamente cuando se recibe un Brief comercial en HubSpot y surge la necesidad de realizar un dimensionamiento técnico de alcance (scoping) y costeo operativo**. NO se dispara por el mero hecho de 'ganar' un deal comercial, ni gestiona prospección comercial en frío.
 
@@ -291,17 +357,31 @@ Fuente: *"FORMATO DE PROCESO DE ÁREA UHURA (2026) - PRODUCTO DIGITAL"*
 ### Módulo 3: Alcance & Backlog
 
 #### 3.1 Propósito
-Constructor jerárquico de la ingeniería de la propuesta técnica. Permite a los líderes desglosar el servicio en Entregables y Actividades concretas con asignación de rol y presupuesto de horas.
+Constructor jerárquico de la ingeniería de la propuesta técnica. Permite a los líderes de producto desglosar el servicio en Entregables y Actividades concretas, asignar roles presupuestados y horas estimadas, y validar el dimensionamiento antes de notificar al área comercial.
 - **Referencias de Código:**
   - **Componente Scoper de Backlog:** [`src/components/taskflow/newbusiness/BacklogScoper.tsx`](../components/taskflow/newbusiness/BacklogScoper.tsx)
+  - **Pestaña Alcance en New Business:** [`src/components/taskflow/newbusiness/NewBusinessView.tsx`](../components/taskflow/newbusiness/NewBusinessView.tsx)
   - **Tipos de Datos:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`QuoteDeliverable`, `QuoteBacklogItem`)
 
-#### 3.2 Estructura Jerárquica y Objetos
+#### 3.2 Capacidades Obligatorias del Líder en Alcance
+Durante la sesión de dimensionamiento técnico, el Líder de Alcance cuenta con las siguientes capacidades aprobadas:
+1. **Punto de partida flexible:** Puede elegir partir de una plantilla estándar del Catálogo de Servicios (e.g. *Sitio Web Informativo WordPress*, *Tienda Shopify*) o estructurar el alcance desde cero para requerimientos a la medida.
+2. **Ajuste fino de entregables y actividades:** Crear, renombrar, reordenar y eliminar entregables (frentes de servicio) y actividades atómicas.
+3. **Definición de roles canónicos:** Cada actividad se asocia obligatoriamente a uno de los 12 roles canónicos de Uhura (`STANDARD_UHURA_ROLES`).
+4. **Ajuste de horas estimadas:** Estimación decimal de horas por actividad, con recálculo dinámico en vivo del total por entregable y por rol.
+5. **Asignación de colaboradores tentativos:** Definir colaboradores específicos cuando corresponda para proyectar staffing temprano sin romper la atomicidad del rol cotizado.
+6. **Enlace a propuesta técnica (Drive / PPT):** Campo explícito para adjuntar/pegar la URL de la presentación comercial o documento de arquitectura técnica en Google Drive.
+7. **Semanas productivas de entrega:** Para proyectos de alcance único (`fixed_project`), registrar la duración estimada en semanas productivas de calendario.
+8. **Resumen y Rollup de Horas en Vivo:** Visualización clara de horas totales del alcance, horas por rol y distribución porcentual.
+9. **Acción "Marcar Alcance Listo / Notificar a Comercial":** Cierre formal del scoping técnico mediante el botón `Marcar alcance listo (X h)`, detonando la transición a `internal_review` y alertando a Comercial.
+
+#### 3.3 Estructura Jerárquica y Objetos
 ```text
-Entregable (Servicio / Frente)
-  └─ Actividad (QuoteBacklogItem)
+Entregable (Servicio / Frente Operativo)
+  └─ Actividad (QuoteBacklogItem ➔ Futura Tarea Atómica)
        ├─ Rol Presupuestado (budgetedRoleId)
-       └─ Horas Estimadas (estimatedHours)
+       ├─ Horas Estimadas (estimatedHours)
+       └─ Colaborador Tentativo Opcional (assigneeId / assigneeName)
 ```
 - **`QuoteDeliverable`:**
   - `id`: UUID.
@@ -311,13 +391,14 @@ Entregable (Servicio / Frente)
   - `backlogItems`: Array de `QuoteBacklogItem`:
     - `id`: UUID.
     - `title`: String.
-    - `roleId`: String.
+    - `roleId`: String (FK a `STANDARD_UHURA_ROLES`).
+    - `roleName`: String.
     - `estimatedHours`: Decimal.
     - `orderIndex`: Integer.
 
-#### 3.3 Reglas de Negocio
+#### 3.4 Reglas de Negocio
 1. **Rollup Dinámico:** La sumatoria de horas por rol y horas globales del proyecto se recalcula en tiempo real en frontend y debe ser revalidada por backend en cada guardado.
-2. **Preparación para Ejecución:** Cada actividad del backlog está diseñada para transformarse 1:1 en una tarea atómica del proyecto operativo al momento de la conversión.
+2. **Preparación para Ejecución:** Cada actividad del backlog está diseñada para transformarse 1:1 en una tarea atómica del proyecto operativo al momento de la conversión, garantizando que el equipo nunca arranque desde cero.
 
 ---
 
@@ -327,10 +408,10 @@ Entregable (Servicio / Frente)
 En Orbit rige la siguiente división estricta de dominios:
 
 > **Finanzas / Google Sheet Oficial = Fuente de verdad del cálculo financiero y pricing.**  
-> Finanzas gobierna y evoluciona externamente la estructura salarial, costos, multiplicadores prestacionales, overhead, márgenes comerciales, tratamiento tributario y TRM oficial. Orbit no congela ni documenta como propias las fórmulas internas vigentes del Sheet.
+> Finanzas gobierna y evoluciona externamente la estructura salarial, costos de nómina, multiplicadores prestacionales, overhead operativo, bandas de margen comercial, tratamiento tributario (IVA) y TRM oficial. **Orbit no calcula tarifas, márgenes, IVA, bandas financieras ni fórmulas salariales internas.**
 
-> **Orbit = Alcance Técnico + Horas por Rol + Resultado Comercial Cotizado**  
-> Orbit es la plataforma operativa y de gestión de entrega. Los líderes de scoping estructuran entregables, actividades y roles requeridos; el rollup consolidado de horas alimenta el análisis de Finanzas; y Orbit registra el resultado comercial cotizado final acordado (monto cotizado, moneda, versión, enlaces al Google Sheet y PDF de propuesta, condiciones comerciales y trazabilidad hacia la creación del proyecto operativo). Orbit no calcula internamente ni duplica fórmulas financieras.
+> **Orbit = Alcance Técnico + Horas por Rol + Registro del Acuerdo Comercial Cotizado**  
+> Orbit es la plataforma operativa y de gestión de entrega. Los líderes estructuran entregables, actividades y roles requeridos; el rollup consolidado de horas alimenta el análisis de Finanzas; y Comercial registra en Orbit el resultado comercial cotizado final acordado (monto cotizado, moneda, versión, enlaces al Google Sheet y PDF/PPT de propuesta, condiciones comerciales y trazabilidad hacia la creación del proyecto operativo).
 
 #### 4.2 Retiro del Motor Financiero Interno de Orbit
 Se retiraron formalmente de Orbit:
@@ -353,21 +434,21 @@ La entidad de cotización en Orbit conserva exclusivamente los campos de alcance
 - **`currency`:** Moneda de cotización (`COP` | `USD`).
 - **`totalQuotedValueCOP`:** Persistido únicamente si la moneda es COP (`undefined` si es USD; nunca 0 ficticio ni conversión por TRM inventada).
 - **`externalFinanceSheetUrl`:** Enlace directo al Google Sheet de Finanzas donde se calculó el pricing.
-- **`commercialProposalUrl`:** Enlace al documento/PDF formal de la propuesta presentada al cliente.
+- **`commercialProposalUrl`:** Enlace al documento/PDF formal o PPT de la propuesta presentada al cliente.
 - **`commercialNotes`:** Términos y condiciones comerciales acordadas (forma de pago, hitos, vigencia).
 - **`convertedToProjectId`:** Puntero idempotente al proyecto operativo en Orbit tras la conversión.
 
 #### 4.4 Separación entre Propuesta Aprobada y Cierre Ganado (HubSpot)
 1. **Propuesta Aprobada (`status === 'approved'`):** Refleja la aceptación técnica y comercial por parte del cliente del alcance presentado.
 2. **Deal Cerrado Ganado en HubSpot (`status === 'won'`):** Es la fuente de verdad comercial formal de Uhura Group.
-3. **Regla de Conversión Canónica:** La conversión a proyecto operativo en Orbit **está habilitada únicamente cuando el Deal alcanza el estado 'Cerrado Ganado' en HubSpot**. La aprobación de la propuesta en Orbit no equivale automáticamente a negocio ganado en el CRM. Mientras no se alcance el cierre formal, el sistema provee una acción explícita de simulación para entornos de demo/pruebas sin webhook activo.
+3. **Regla de Conversión Canónica:** La conversión a proyecto operativo en Orbit **está habilitada cuando el Deal alcanza el estado 'Cerrado Ganado' en HubSpot o se marca como Ganada en Orbit**. Mientras la integración bidireccional automática con HubSpot esté en desarrollo, Comercial puede completar manualmente el flujo Ganada ➔ Convertir a proyecto en Orbit.
 
 ---
 
 ### Módulo 5: Cotización / Propuesta Económica (Quotes)
 
 #### 5.1 Propósito
-Documento comercial y formal que reúne el alcance técnico y el resultado comercial acordado. Es el contenedor del snapshot de entregables y del acuerdo económico.
+Documento formal que reúne el alcance técnico, las horas aprobadas y el resultado comercial acordado. Es el contenedor del snapshot de entregables y del acuerdo económico.
 - **Referencias de Código:**
   - **Pestaña Alcance y Propuesta:** [`src/components/taskflow/newbusiness/NewBusinessView.tsx`](../components/taskflow/newbusiness/NewBusinessView.tsx)
   - **Scoping Técnico:** [`src/components/taskflow/newbusiness/BacklogScoper.tsx`](../components/taskflow/newbusiness/BacklogScoper.tsx)
@@ -432,17 +513,31 @@ Generador de la plantilla contractual técnica entre Uhura Group y el Cliente, e
 
 ---
 
-### Módulo 8: Formalización y Condiciones de Inicio (Gates)
+### Módulo 8: Formalización, Conversión a Proyecto y Gates
 
 #### 8.1 Propósito
-Asegurar que la operación no arranque a ciegas, pero sin generar bloqueos burocráticos innecesarios que deterioren la experiencia del cliente o del equipo.
+Asegurar una transición ordenada y atómica entre la oportunidad comercial aprobada y el proyecto operativo, garantizando que el equipo nunca arranque desde cero y que las condiciones contractuales de inicio queden registradas con total trazabilidad.
 - **Referencias de Código:**
+  - **Modal Conversión a Proyecto:** [`src/components/taskflow/newbusiness/ConvertOpportunityModal.tsx`](../components/taskflow/newbusiness/ConvertOpportunityModal.tsx)
+  - **Controlador de Conversión:** [`src/sections/TaskFlowPrototype.tsx`](../sections/TaskFlowPrototype.tsx) (`handleConvertOpportunityToProject`)
   - **Modal Condiciones de Inicio:** [`src/components/taskflow/newbusiness/StartConditionsModal.tsx`](../components/taskflow/newbusiness/StartConditionsModal.tsx)
   - **Modal Checklist Administrativo:** [`src/components/taskflow/newbusiness/AdministrativeChecklistModal.tsx`](../components/taskflow/newbusiness/AdministrativeChecklistModal.tsx)
-  - **Modal Conversión a Proyecto:** [`src/components/taskflow/newbusiness/ConvertOpportunityModal.tsx`](../components/taskflow/newbusiness/ConvertOpportunityModal.tsx)
   - **Tipos de Dominio:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`StartConditionsConfig`, `AdministrativeChecklist`, `FormalizationStatus`)
 
-#### 8.2 Estados de Transición hacia Operación
+#### 8.2 Reglas Invariantes de la Conversión a Proyecto Operativo
+Al convertir una oportunidad ganada a proyecto (`handleConvertOpportunityToProject`), el sistema ejecuta las siguientes reglas determinísticas:
+1. **Creación Atómica del Proyecto:** Se genera la entidad `ProjectSummaryItem` con código único (e.g. `ECO-42`, `PRJ-01`), asignando el tipo de proyecto (`fixed_project` o `fee_monthly`), cliente, fechas y líder operativo.
+2. **Traslado de Entregables:** Los entregables cotizados en la propuesta aprobada (`QuoteDeliverable`) se transforman 1:1 en `ProjectDeliverable`, preservando su orden, descripción y desglose de horas cotizadas por rol (`budgetByRole`).
+3. **Traslado de Tareas Atómicas:** Cada actividad del backlog cotizado (`QuoteBacklogItem`) se transforma en una tarea operativa (`TaskItem`) con:
+   - `status: 'todo'`
+   - `budgetedHours = item.estimatedHours`
+   - `budgetedRole = item.roleName` y `budgetedRoleId = item.roleId`
+   - `deliverableId = parentDeliverable.id`
+   - Si la oportunidad traía actividades detalladas, se preservan 1:1; si contenía entregables macro, el proyecto arranca con esas unidades estructurales para que el equipo no empiece desde una hoja en blanco.
+4. **Presupuesto Canónico de Horas:** `project.soldHours` hereda de forma inmutable el total de horas cotizadas de la propuesta (`quote.totalHoursRollup`).
+5. **Trazabilidad Integral:** Se transfieren los enlaces y referencias clave: `commercialOwner`, `leadUserId`, `clientId`, `hubspotDealId`, `hubspotDealUrl`, `driveFolderUrl`, `driveFolderId`, y la referencia fiscal inicial `taxEntityId`.
+
+#### 8.3 Estados de Transición hacia Operación
 ```text
 [Cotización Aprobada]
          │
@@ -462,9 +557,9 @@ Asegurar que la operación no arranque a ciegas, pero sin generar bloqueos buroc
 [Estado: Activo] ──► (El equipo registra tiempo y ejecuta tareas con normalidad)
 ```
 
-#### 8.3 Invariantes de Negocio
-- **El RUT y la Cédula NO son bloqueantes para el inicio operativo.** Son requeridos por Vivian antes de emitir la factura legal en Alegra, pero el equipo de desarrollo/diseño puede arrancar discovery y sprints.
-- **El anticipo es configurable por tipo de negocio:** En proyectos de alcance cerrado es típicamente el 50%; en servicios mensuales recurrentes (retainer / fee) puede establecerse como *No Aplica* (mes vencido o cobro recurrente).
+#### 8.4 Invariantes de Negocio
+- **El RUT y la Cédula NO son bloqueantes para el inicio operativo:** Son gestionados por Vivian antes de emitir la factura legal en Alegra, pero el equipo técnico puede iniciar discovery y diseño.
+- **Anticipo configurable:** En proyectos únicos cerrados es usualmente el 50%; en contratos de fee mensual se define como *No Aplica*.
 
 ---
 
@@ -516,21 +611,43 @@ Gestión de datos de facturación electrónica y articulación con el sistema co
 
 ---
 
-### Módulo 11: Proyectos
+### Módulo 11: Proyectos (Estructura Operativa, Gobernanza y Vistas)
 
 #### 11.1 Propósito
-Contenedor principal de la ejecución operativa, control de presupuesto de horas y entrega de valor al cliente.
+Contenedor principal de la ejecución operativa, control presupuestal de horas, visibilidad de gobernanza contractual y entrega de valor al cliente.
 - **Referencias de Código:**
-  - **Vista Detalle de Proyecto:** [`src/components/taskflow/projects/ProjectDetailView.tsx`](../components/taskflow/projects/ProjectDetailView.tsx)
-  - **Modal Nuevo Proyecto Operativo:** [`src/components/taskflow/NewProjectModal.tsx`](../components/taskflow/NewProjectModal.tsx)
-  - **Tipos de Dominio:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`ProjectProfile`, `ProjectType`, `ProjectStatus`)
+  - **Vista Principal de Proyectos:** [`src/components/taskflow/ProjectsView.tsx`](../components/taskflow/ProjectsView.tsx)
+  - **Pestaña Resumen Ejecutivo:** [`src/components/taskflow/projects/ProjectOverviewTab.tsx`](../components/taskflow/projects/ProjectOverviewTab.tsx)
+  - **Pestaña Tareas Operativas:** [`src/components/taskflow/projects/ProjectTasksTab.tsx`](../components/taskflow/projects/ProjectTasksTab.tsx)
+  - **Sección de Dependencias e Insumos:** [`src/components/taskflow/projects/ProjectDependenciesSection.tsx`](../components/taskflow/projects/ProjectDependenciesSection.tsx)
+  - **Tipos de Dominio:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`ProjectProfile`, `ProjectSummaryItem`, `ProjectType`, `ProjectStatus`)
 
-#### 11.2 Tipos de Proyecto
-1. `fixed_project`: Proyecto de alcance cerrado (fecha inicio, fecha fin, entregables fijos, bolsa de horas cerrada). Rige el trinomio Baseline / Forecast / Real.
-2. `fee_monthly`: Servicio recurrente mensual (ciclos de facturación mensual, asignaciones estables de capacidad).
-3. `internal_non_billable`: Proyectos internos de Uhura (preventa, diseño de marca propia, automatización).
+#### 11.2 Estructura Aprobada de Navegación Interna del Proyecto
+La ficha de proyecto se organiza en la siguiente estructura de pestañas oficial:
+```text
+1. Resumen: Visión ejecutiva del proyecto, alcance técnico, gobernanza y equipo asignado.
+2. Tareas: Tablero operativo y lista de tareas con entregables colapsados por defecto y bloque de dependencias.
+3. Equipo: Matriz de staffing, colaboradores asignados, horas semanales y roles.
+4. Matriz Horas: Matriz de consumo presupuestal con vistas consolidadas de "Horas por Rol" y "Horas por Servicio/Entregable".
+5. Backlog (Opcional): Visible únicamente cuando el proyecto contiene fases estructuradas.
+6. Actividad: Auditoría cronológica de cambios y eventos del proyecto.
+7. Configuración: Parámetros del proyecto, fechas oficiales y estados de formalización.
+```
 
-#### 11.3 Entidades y Campos Principales
+> **DECISIÓN DE DISEÑO Y REDUCCIÓN DE RUIDO VISUAL (PESTAÑA RESUMEN):**  
+> Para evitar saturación y duplicidad cognitiva, la pestaña **Resumen** se optimizó radicalmente:
+> 1. **Eliminación de KPI Cards Duplicadas:** Las 4 tarjetas de resumen ("Presupuesto", "Ejecución", "Entregables", "Cronograma") fueron retiradas del cuerpo de Resumen porque ya se muestran de manera destacada y siempre visible en la tarjeta superior del encabezado del proyecto.
+> 2. **Eliminación de la Sección de Reworks Global:** Se retiró el bloque "Rondas de Ajuste & Retrabajos" del cuerpo de Resumen, dado que los retrabajos se auditan formalmente a nivel atómico en cada tarea y su límite contractual se visibiliza en la gobernanza.
+> 3. **Traslado de Dependencias a Tareas:** La sección "Dependencias, Insumos & Aprobaciones de Cliente" se trasladó a la pestaña **Tareas**, situándose inmediatamente arriba de la lista de tareas para que el equipo resuelva bloqueos antes de iniciar su jornada de ejecución.
+
+#### 11.3 Gobernanza Contractual en el Encabezado del Proyecto
+En el encabezado del proyecto, especialmente para proyectos de alcance único (`fixed_project`), se visibilizan las reglas contractuales fundamentales acordadas:
+- **Gates de Aprobación Incluidos:** Número de hitos formales de validación con el cliente (Default: 2 gates, ej. Gate 1: UX/Contenido, Gate 2: Implementación/QA).
+- **Rondas de Ajuste por Gate:** Límite contractual de iteraciones por cada gate (Default: máximo 2 tandas de ajustes: 1 tanda integral grande y 1 tanda de pulido menor).
+- **Devolución de Kickoff:** Ventana de revisión y respuesta inicial (3 días hábiles sin consumo de capacidad).
+- **Trinomio de Cronograma:** Baseline inicial (inmutable), Forecast proyectado (según dependencias confirmadas) y Fecha Real de cierre.
+
+#### 11.4 Entidades y Campos Principales
 - **`ProjectProfile` (`ProjectSummaryItem`):**
   - `id`: UUID.
   - `code`: String (Código corto de proyecto, ej. `ECO-42`, `ZAP-01`).
@@ -556,7 +673,7 @@ Contenedor principal de la ejecución operativa, control de presupuesto de horas
   - `reworkRounds`: Array de `ProjectReworkRound` (Historial de iteraciones de feedback y ajustes).
   - `projectHealth`: Objeto `ProjectHealthResult` calculado por el motor multivectorial.
 
-#### 11.4 Dependencias de Cliente (`ProjectDependency`)
+#### 11.5 Dependencias e Insumos de Cliente (`ProjectDependency`)
 Entidad persistente para insumos, accesos o gates que condicionan la ruta crítica:
 - `id`: UUID.
 - `projectId`: FK a `ProjectProfile`.
@@ -570,56 +687,18 @@ Entidad persistente para insumos, accesos o gates que condicionan la ruta críti
 - `completedAt` / `receivedAt`: Date | null.
 - `status`: Enum (`pending` | `received` | `overdue` | `waived`).
 - `blocking`: Boolean (Indica si detiene la ruta crítica de entrega).
-- `lastFollowUpAt`: DateTime | null (Fecha de la última gestión con el cliente).
-- `followUpNotes`: String | null (Bitácora de seguimiento).
-
-#### 11.5 Rondas de Ajuste & Retrabajo (`ProjectReworkRound`)
-- `id`: UUID.
-- `projectId`: FK a `ProjectProfile`.
-- `deliverableId`: FK opcional a `ProjectDeliverable`.
-- `roundNumber`: Integer (Ronda 1, 2, 3...).
-- `cause`: Enum (`client_adjustment` | `internal_adjustment` | `scope_redefinition`).
-- `requestedAt`: DateTime.
-- `completedAt`: DateTime | null.
-- `estimatedHours`: Decimal.
-- `actualHours`: Decimal.
-- `note`: String.
-- `createdByUserId`: FK a User.
-- `isAdditionalIteration`: Boolean derivado (`roundNumber > includedReworkRounds`). Señaliza que supera las 2 rondas estándar sin implicar cobro automático.
+- `lastFollowUpAt`: DateTime | null.
+- `followUpNotes`: String | null.
 
 #### 11.6 Historial de Reforecast y Atribución (`ProjectScheduleChange`)
 - `id`: UUID.
 - `projectId`: FK a `ProjectProfile`.
-- `previousForecastEndDate`: Date.
-- `newForecastEndDate`: Date.
+- `previousForecastEndDate`, `newForecastEndDate`: Date.
 - `deltaBusinessDays`: Integer.
 - `cause`: Enum (`client_input_delay` | `client_approval_delay` | `internal_rework` | `internal_execution_delay` | `scope_change` | `other`).
-- `dependencyId`: FK opcional a `ProjectDependency`.
 - `confirmedByUserId`: FK a User (Exclusivo Líder o Dirección Ejecutiva).
 - `note`: String (Justificación obligatoria).
 - `createdAt`: DateTime inmutable.
-
-#### 11.7 Motor Multivectorial de Salud del Proyecto (`ProjectHealth`)
-El estado de salud no se basa en una sola métrica. Evalúa 4 vectores cuantitativos ($S_{\text{burn}}$, $S_{\text{sched}}$, $S_{\text{dep}}$, $S_{\text{fric}}$) con guardrails determinísticos:
-1. **Presupuesto Contractual:** `Presupuesto_Contractual = project.soldHours ?? project.budgetedHours`.
-2. **Avance Ponderado:** Calculado por avance explícito (`progressPercent`) y tareas/entregables completados sobre `Presupuesto_Contractual` (topado a 100%).
-3. **Tiempo Productivo:** Descuenta ventanas de kickoff y gates dentro de SLA ($W$).
-4. **Guardrails de Riesgo (`risk` / Rojo):**
-   - **G-R1:** Horas $\ge 85\%$ y Avance $< 50\%$.
-   - **G-R2:** Desvío de calendario $> 5$ días hábiles en `fixed_project`.
-   - **G-R3:** $\ge 1$ dependencia bloqueante desatendida ($D_{\text{unf}} \ge 1$, atraso $> 5$d o sin gestión en $\le 2$d).
-   - **G-R4:** Horas $> 105\%$ con Avance $< 100\%$.
-   - **G-R5:** Avance $= 100\%$ con Horas $> 115\%$ (sobrecosto severo al cierre).
-5. **Guardrails de Atención (`attention` / Amarillo):**
-   - **G-A1:** Desbalance de quema ($H_{\text{pct}} - P_{\text{pct}} \ge 15\%$ y $< 40\%$).
-   - **G-A2:** Desvío de calendario entre $+2$ y $+5$ días hábiles.
-   - **G-A3:** Dependencias bloqueantes vencidas con seguimiento activo reciente ($D_{\text{act}} \ge 1, D_{\text{unf}} = 0$).
-   - **G-A4:** Retrabajo interno activo $\ge 2$ o tareas vencidas $\ge 3$.
-   - **G-A5:** Horas entre $80\%$ y $100\%$ con Avance $< 80\%$.
-   - **G-A6:** Avance $= 100\%$ con Horas entre $100\%$ y $115\%$ (desviación presupuestal moderada al cierre).
-   - **G-A7:** Rondas adicionales de cliente ($\text{roundNumber} \ge 3$).
-   - **G-A8:** Redefinición de alcance registrada (`scope_redefinition`).
-6. **UI Explicable:** Todo badge muestra estado, métricas y razón textual humana (ej. *Atención — Horas 60% · Avance 52% · Gate 1 +3 días*).
 
 ---
 
@@ -639,36 +718,70 @@ Componente o fase operativa que agrupa un conjunto de tareas y un presupuesto es
   - `description`: String.
   - `orderIndex`: Integer.
   - `status`: Enum (`pending` | `in_progress` | `review` | `completed`).
-  - `budgetByRole`: Array de `DeliverableRoleBudget`:
-    - `roleId`: String.
-    - `quotedHours`: Decimal (Horas cotizadas en New Business).
-    - `executedHours`: Decimal (Horas reales registradas vía TimeLog).
+  - `budgetByRole`: Array de `DeliverableRoleBudget` (`roleId`, `quotedHours`, `executedHours`).
 - **Métrica Clave de Control:**
   $$\text{Desviación de Horas} = \text{executedHours} - \text{quotedHours}$$
 
 ---
 
-### Módulo 13: Tareas
+### Módulo 13: Tareas y Detalle Operativo (TaskDetailModal)
 
 #### 13.1 Propósito
-Unidad atómica de trabajo ejecutable por el equipo.
+Unidad atómica de trabajo ejecutable por el equipo con ciclo de vida completo de ejecución, validación de calidad, registro de tiempo y trazabilidad de retrabajos.
 - **Referencias de Código:**
-  - **Componente Tarjeta de Tarea:** [`src/components/taskflow/tasks/TaskCard.tsx`](../components/taskflow/tasks/TaskCard.tsx)
-  - **Modal Nueva Tarea:** [`src/components/taskflow/NewTaskModal.tsx`](../components/taskflow/NewTaskModal.tsx)
-  - **Tipos de Dominio:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`Task`, `TaskStatus`, `TaskAssigneeAllocation`)
+  - **Modal de Detalle de Tarea:** [`src/components/taskflow/TaskDetailModal.tsx`](../components/taskflow/TaskDetailModal.tsx)
+  - **Pestaña Tareas de Proyecto:** [`src/components/taskflow/projects/ProjectTasksTab.tsx`](../components/taskflow/projects/ProjectTasksTab.tsx)
+  - **Tarjeta de Tarea en Kanban:** [`src/components/taskflow/tasks/TaskCard.tsx`](../components/taskflow/tasks/TaskCard.tsx)
+  - **Tipos de Dominio:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`TaskItem`, `TaskStatus`, `TaskPriority`, `TaskRework`, `TaskDeliverable`)
 
-#### 13.2 Reglas Invariantes de Producto
-1. **Sin Subtareas en MVP:** Para evitar dispersión y falta de control, la tarea es atómica. Si algo requiere división, se crean múltiples tareas bajo el mismo entregable.
-2. **Conversión 1:1 desde New Business:** Cada actividad del backlog cotizado (`QuoteBacklogItem`) se convierte en una tarea con:
-   - `status: 'todo'`
-   - `estimatedHours = item.estimatedHours`
-   - `budgetedRoleId = item.roleId`
-   - `assigneeAllocations = []` (Nace sin persona física asignada).
-3. **Multi-ejecutor:** Una tarea puede tener más de una persona asignada con distribución explícita de horas estimadas (`assigneeAllocations`).
-4. **Estados Canónicos:**
-   `todo` ➔ `in_progress` ➔ `in_review` ➔ `completed`
-5. **Bloqueo:** Es un flag booleano (`isBlocked: true`) con campo de motivo (`blockReason`), no un estado de columna.
-6. **Retrabajos:** Flag (`isRework: true`) para trazar desviaciones de calidad sin alterar el presupuesto original.
+#### 13.2 Visualización en Pestaña Tareas: Entregables Plegados y Dependencias
+1. **Entregables Plegados por Defecto (Chips Cerrados):**  
+   Para evitar la saturación visual al abrir un proyecto con decenas de tareas, los bloques de entregables inician cerrados/colapsados por defecto (`expandedDeliverables = {}`). Cada bloque muestra su chip de resumen con conteo de tareas y horas. El usuario puede expandir o colapsar individualmente cualquier entregable o usar los botones de acción rápida *Expandir todo* / *Colapsar todo*.
+2. **Dependencias e Insumos Arriba de la Lista:**  
+   La sección `ProjectDependenciesSection` vive en la parte superior de la pestaña Tareas, permitiendo a los líderes y colaboradores visualizar de un vistazo si existen insumos o accesos pendientes de cliente antes de iniciar tareas bloqueadas.
+
+#### 13.3 Detalle de Tarea: Flujo Operativo en `TaskDetailModal`
+El modal de detalle de tarea representa la experiencia integral de ejecución con los siguientes 7 componentes funcionales:
+
+1. **Franja Superior de Estado con Próximo Paso Contextual:**
+   - Si la tarea está en **Por Hacer (`To Do`)**: Muestra *"Pendiente de inicio · Asignada a [Colaborador]"* y el botón primario `[ Iniciar tarea ]`.
+   - Si la tarea está en **En Progreso (`In Progress`)**: Muestra *"Ejecución activa por [Colaborador] · Al terminar entregables, solicita revisión"* y el botón `[ Solicitar revisión → ]`.
+   - Si la tarea está en **En Revisión (`Review`)**: El revisor o líder ve dos opciones inmediatas:
+     - `[ Devolver ]`: Abre el diálogo para documentar observaciones y regresa la tarea a `In Progress`.
+     - `[ Aprobar y Completar ]`: Valida la entrega y transiciona la tarea a `Done`.
+   - Si la tarea está en **Completada (`Done`)**: Permite la acción `[ Reabrir ]` si surgieron novedades.
+   - *Nota de producto:* Al terminar la ejecución, toda tarea pasa por revisión de calidad/liderazgo para asegurar el estándar de entrega.
+
+2. **Tarjeta de Estado y Prioridad:**
+   - Selector claro de prioridad: `Urgente` (rojo), `Alta` (naranja), `Media` (ámbar), `Baja` (azul/slate).
+
+3. **Control Presupuestal de Horas:**
+   - Visualización explícita de: **Horas estimadas**, **Horas ejecutadas** (vía cronómetro o log manual) y **Horas disponibles restantes**.
+   - Barra de consumo progresiva con cambio semántico de color (verde ➔ ámbar ➔ rojo al superar el 100%).
+
+4. **Cronograma Operativo:**
+   - Fechas visibles de **Fecha de Inicio** y **Fecha Límite de Entrega (`dueDate`)**.
+
+5. **Responsables y Rol Cotizado:**
+   - **Project Lead:** Líder responsable del proyecto y de la aprobación final.
+   - **Responsable de la Tarea:** Colaborador principal asignado.
+   - **Colaboradores Ejecutores:** Miembros del equipo que registran horas en la tarea con su cuota correspondiente.
+   - **Rol Cotizado Canónico (`budgetedRole`):** Muestra el perfil contractual que fue presupuestado en New Business (ej. *Front-End Dev*, *Digital Designer*), permitiendo auditar desvíos de seniority.
+
+6. **Mensajes, Entregables y Actividad:**
+   - Pestaña de conversación y mensajes de trabajo con menciones `@`, archivos adjuntos y enlaces formateados (Figma, Drive, GitHub, Loom).
+   - Pestaña de Entregables con links de entrega, checklist de criterios de aceptación y marcación de estado.
+   - Pestaña de Actividad con auditoría inmutable de cambios de estado, reasignaciones y registros de tiempo.
+
+7. **Registro Formal de Retrabajos / Rondas de Ajuste (`TaskRework`):**
+   - Panel dedicado para auditar iteraciones de ajuste sobre la tarea:
+     - **Número de Ronda:** Ronda 1, Ronda 2, Ronda 3...
+     - **Origen:** `client` (*Por Cliente · Solicitud de ajuste externo*) vs. `internal` (*QA / Interno · Control de calidad Uhura*).
+     - **Causa Raíz:** Feedback de cliente, Error interno de QA o Cambio de alcance.
+     - **Horas Adicionales Incurridas:** Horas dedicadas a subsanar el ajuste.
+     - **Solicitante:** Nombre de la persona (cliente o líder interno) que exigió la ronda.
+     - **Justificación:** Motivo documentado del ajuste.
+     - **Trazabilidad:** Al registrarse el retrabajo, se inserta automáticamente un evento estructurado en el feed de mensajes de la tarea (`🔄 [Retrabajo Ronda X · Yh]: Motivo`) para conocimiento de todo el equipo.
 
 ---
 
@@ -738,20 +851,53 @@ Captura fidedigna y sin fricción de las horas realmente invertidas por el equip
 
 ---
 
-### Módulo 17: Mi Día (Home Contextual)
+### Módulo 17: Mi Día (Home Contextual y Bandeja de Acción)
 
 #### 17.1 Propósito
-Pantalla principal de inicio para todo usuario de Orbit, adaptada a su rol y prioridades de trabajo diario. Elimina la dispersión entre dashboards analíticos y listas de tareas.
+Pantalla principal de inicio para todo usuario de Orbit, diseñada como una bandeja de acción contextual viva que responde en tiempo real a la pregunta: *"¿Quién tiene la siguiente acción?"*. Elimina la dispersión entre dashboards analíticos y listas de tareas desconectadas, organizando el día en tres niveles esenciales:
+1. **¿Qué requiere mi atención hoy?** (Bandeja dinámica de excepciones y handoffs por rol; si el contador es 0, la sección desaparece).
+2. **¿Qué tengo que hacer hoy?** (Lista priorizada de tareas asignadas para hoy con timer integrado y botón para solicitar revisión).
+3. **¿Cómo voy?** (Progreso de horas de la jornada, carga rápida y consulta de registros de tiempo).
+
 - **Referencias de Código:**
-  - **Vista Principal Mi Día:** [`src/components/taskflow/myday/MyDayView.tsx`](../components/taskflow/myday/MyDayView.tsx)
+  - **Componente Principal Mi Día:** [`src/components/taskflow/MiDiaView.tsx`](../components/taskflow/MiDiaView.tsx)
+  - **Tipos y Perspectivas:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts)
+  - **Motor de Vida de Equipo:** [`src/components/taskflow/copilot/teamLifeEngine.ts`](../components/taskflow/copilot/teamLifeEngine.ts)
 
-#### 17.2 Perspectivas por Rol
-- **Colaborador / Operativo:** Tareas asignadas para hoy, tareas en revisión, timer activo, horas registradas hoy vs. planificadas restantes.
-- **Líder de Proyecto / Product Lead:** Pulso de entregables, tareas bloqueadas de su equipo, solicitudes de revisión pendientes, desviaciones de horas.
-- **Comercial / New Business:** Prospectos en cotización, propuestas por enviar, status de formalización.
-- **Dirección (CEO / Operaciones):** Horas globales de la semana, proyectos en riesgo, capacidad disponible del equipo.
+#### 17.2 Perspectivas y Handoffs Contextuales por Rol
+Mi Día adapta dinámicamente sus secciones de atención según el rol activo del usuario:
 
-#### 17.3 Eventos de Equipo en Mi Día (Cumpleaños, Aniversarios y Ausencias)
+- **1. Comercial (Catalina Tejada / Luisa Urazán / Equipo Comercial):**
+  - **Asignación de Líder:** Detecta oportunidades comerciales creadas que aún no tienen líder de alcance asignado.
+  - **Registro de Cotización Externa (Handoff de Alcance Listo):** Detecta oportunidades en estado `internal_review` donde el Líder ya marcó el alcance técnico como listo (`Marcar alcance listo`). Muestra la acción para realizar el cálculo financiero en el Google Sheet oficial y registrar el valor cotizado en Orbit.
+  - **Formalización Administrativa:** Detecta oportunidades ganadas que requieren checklist de facturación (RUT, correo de facturación) o conversión formal a proyecto operativo.
+
+- **2. Líder de Alcance (Product Lead / Creative Strategy Lead / Growth Manager):**
+  - **Scoping Técnico Pendiente:** Muestra las oportunidades comerciales que Comercial le asignó para dimensionar alcance técnico (backlog, entregables, roles y horas).
+  - **Handoff a Comercial:** Al completar la propuesta, el botón `Marcar alcance listo (X h)` remueve la oportunidad de la bandeja del Líder y la transfiere automáticamente a la bandeja de Comercial.
+
+- **3. Project Lead (Líder del Proyecto Operativo):**
+  - **Solicitudes de Revisión Pendientes:** Muestra las tareas que los colaboradores finalizaron y enviaron a revisión (`Review`). El líder puede `Aprobar y Completar` o `Devolver` con observaciones de ajuste.
+  - **Bloqueos Operativos del Equipo:** Tareas marcadas con `isBlocked: true` que requieren intervención para destrabar el frente de trabajo.
+  - **Desvíos Presupuestales:** Alertas tempranas de tareas o entregables donde `horas consumidas > horas presupuestadas`.
+  - **Dependencias e Insumos Críticos Vencidos:** Insumos o accesos de clientes (`ownerType: 'client'`) que han superado la fecha límite y amenazan la ruta crítica.
+
+- **4. Colaborador / Operativo (Front-End Dev, Diseñadores, Copywriters, etc.):**
+  - **Tareas Asignadas para Hoy:** Lista clara y priorizada de tareas asignadas activas en orden de urgencia.
+  - **Acción Operativa Directa:** Inicio directo de cronómetro (timer), registro de horas y botón `Solicitar revisión ->` al terminar los entregables para pasar la tarea al líder.
+  - **Retrabajos Asignados:** Notificación destacada de tareas devueltas en revisión o con retrabajo registrado que requieren corrección prioritaria.
+
+- **5. Dirección / Management (CEO / Operaciones):**
+  - Proyectos en riesgo en el motor multivectorial de salud.
+  - Capacidad libre del equipo semana a semana para evaluar nuevos negocios.
+  - Excepciones financieras y operativas de alto nivel sin ruido administrativo menor.
+
+#### 17.3 Articulación entre Mi Día y la Campana de Notificaciones
+Orbit utiliza un modelo complementario de comunicación:
+- **Mi Día:** Es la **bandeja de trabajo estructurada** donde el usuario encuentra sus tareas prioritarias, pendientes de revisión y handoffs accionables organizados por jerarquía.
+- **Campana de Notificaciones (In-App):** Es el **canal de eventos inmediatos** que notifica en tiempo real cuando ocurre un handoff (ej. *"Comercial te asignó la oportunidad X"*, *"Paola marcó el alcance listo para la oportunidad Y"*, *"Diego solicitó revisión en la tarea Z"*). Ambos sistemas consumen el mismo modelo de eventos sin duplicar lógica de negocio.
+
+#### 17.4 Eventos de Equipo en Mi Día (Cumpleaños, Aniversarios y Ausencias)
 Mi Día puede mostrar de forma discreta y no invasiva:
 - **Cumpleaños de hoy y próximos:** Calculados en tiempo de ejecución a partir de `birthDate` persistido en el perfil (`UserItem`).
 - **Aniversarios en Uhura:** Calculados a partir de `fecha_ingreso` persistido en el perfil (derivando la fecha anual del año en curso y los años cumplidos).
@@ -873,7 +1019,7 @@ Mi Día puede mostrar de forma discreta y no invasiva:
 
 ## 8. Auditoría de Inconsistencias entre Prototipo UI y Especificación
 
-Durante la auditoría end-to-end se detectaron las siguientes inconsistencias que el backend de Indunova y el frontend deben subsanar:
+Durante la auditoría end-to-end de UAT se detectaron y reconciliaron las siguientes inconsistencias funcionales:
 
 1. **`initialStatus` ignorado en conversión:**  
    El modal de conversión permite seleccionar si el proyecto arranca en `Pendiente de Formalización` o `Activo`. En el controlador del prototipo estaba forzándose siempre a `'Activo'`. **Regla:** Debe respetarse el valor seleccionado por el líder.
@@ -883,10 +1029,10 @@ Durante la auditoría end-to-end se detectaron las siguientes inconsistencias qu
    El checklist de Vivian (RUT recibido, correo facturación) se guardaba en la oportunidad pero no se inyectaba a la entidad `ClientTaxEntity` del cliente recién creado.
 4. **Desconexión con SOW Histórico:**  
    Si el líder editaba los textos del SOW en New Business, estos se guardaban en la oportunidad, pero el proyecto recién creado no quedaba con un puntero directo a ese SOW aprobado.
-5. **Staffing Automático Vacío:**  
-   Las tareas se crean correctamente a partir de las actividades cotizadas, pero quedan con `assigneeAllocations = []`. Esto es correcto según la especificación, pero en UI faltaba el botón directo de "Iniciar Staffing" desde la ficha del proyecto.
+5. **Staffing Automático Vacío y Tareas no en Blanco:**  
+   Las tareas se crean correctamente a partir de las actividades cotizadas con su presupuesto de horas y su rol cotizado correspondiente (`budgetedRole`, `budgetedRoleId`). Nacen con `assigneeAllocations = []` (sin persona física asignada) pero listas para la ejecución operativa; el equipo no empieza desde cero.
 6. **Desacoplamiento de Cálculos Salariales:**  
-   Los cálculos salariales, prestaciones y márgenes de pricing están desacoplados de Orbit y gobernados por Finanzas externamente; Orbit no mantiene tarifas hardcodeadas.
+   Los cálculos salariales, prestaciones y márgenes de pricing están desacoplados de Orbit y gobernados por Finanzas externamente; Orbit no mantiene tarifas hardcodeadas ni calcula márgenes.
 7. **Regla de Cronómetro / Timer en Pausa:**  
    El tiempo transcurrido con el cronómetro en estado `PAUSED` **bajo ninguna circunstancia cuenta como tiempo efectivo de trabajo**. Únicamente los lapsos en estado activo `RUNNING` suman a la duración total del `TimeLog` al momento de hacer `Stop`.
 8. **Disparador Canónico de New Business (Brief + Scoping):**  
@@ -894,7 +1040,13 @@ Durante la auditoría end-to-end se detectaron las siguientes inconsistencias qu
 9. **Desacoplamiento Financiero y Fuente de Verdad Económica:**  
    La fuente de verdad financiera de Uhura Group es el **Google Sheet oficial de Finanzas**. Orbit desacopló y retiró su motor financiero interno (`financialEngine.ts`, constantes salariales y calculadora de márgenes). Orbit estructura el alcance técnico y las horas por rol, y registra con fidelidad el resultado comercial acordado externamente.
 10. **Eliminación de Cotizaciones Huérfanas y Única Fuente de Verdad:**  
-    En el prototipo existía un contenedor huérfano (`createdQuotes`) y una vista independiente (`cotizador`) desconectada de las oportunidades. **Corrección de dominio:** Se eliminó la vista y el estado paralelo. Toda cotización (`QuoteProposal`) debe existir y persistirse exclusivamente dentro de una `NewBusinessOpportunity`. En el flujo "Usar en New Business" del catálogo de plantillas, la oportunidad debe existir previamente (seleccionando una existente o creándola desde Brief) antes de fijar y persistir el snapshot de cotización.
+    En el prototipo existía un contenedor huérfano (`createdQuotes`) y una vista independiente (`cotizador`) desconectada de las oportunidades. **Corrección de dominio:** Se eliminó la vista y el estado paralelo. Toda cotización (`QuoteProposal`) debe existir y persistirse exclusivamente dentro de una `NewBusinessOpportunity`. En el flujo "Usar en New Business" del catálogo de plantillas, la oportunidad debe existir previamente antes de fijar y persistir el snapshot de cotización.
+11. **Detalle de Tarea y Ciclo Operativo (`TaskDetailModal`):**  
+    En UAT se detectó que el detalle de tarea difería entre staging y el prototipo. **Reconciliación oficial:** La experiencia aprobada incluye: franja superior con próximo paso operativo (`Iniciar tarea` ➔ `Solicitar revisión ->` ➔ `Aprobar y Completar / Devolver`), prioridad (`Urgente` a `Baja`), barra de consumo de horas (estimadas, ejecutadas, disponibles), cronograma (inicio y entrega), responsables (Project Lead, asignado, colaboradores y rol cotizado) y registro formal auditado de retrabajos (número de ronda, causa raíz, horas y solicitante).
+12. **Reducción de Ruido en Resumen de Proyecto y Entregables Plegados:**  
+    En la vista de Proyectos, Resumen se depuró eliminando la duplicación de KPIs que ya están en el encabezado y el bloque redundante de retrabajos. La sección de dependencias de cliente se reubicó en la parte superior de la pestaña Tareas, y los entregables inician plegados (chips cerrados) para evitar sobrecarga visual.
+13. **Consolidación de Matriz de Horas y Servicios:**  
+    Se consolidó la información presupuestal dentro de la pestaña `Matriz Horas`, ofreciendo visibilidad integrada tanto por Rol como por Servicio/Entregable, eliminando pestañas duplicadas en el proyecto.
 
 ---
 
@@ -978,6 +1130,39 @@ Roles operativos no cotizables para tareas operativas estándar:
 1. `CEO` (Dirección General y Visión Estratégica)
 2. `Administrativa` (Vivian: Datos fiscales, RUT, facturación en Alegra y cartera)
 3. `Admin de Sistema` (TI y gobernanza de plataforma)
+
+### 10.3. Responsabilidades Operativas Clave por Rol en los Journeys Aprobados
+- **Comercial (Catalina Tejada / Luisa Urazán / Equipo Comercial):**
+  - Creación de oportunidades en New Business a partir de briefs.
+  - Asignación formal del Líder de Alcance.
+  - Recepción del handoff de alcance listo (`internal_review`) en Mi Día.
+  - Realización del cálculo financiero externo en el Google Sheet oficial.
+  - Registro del resultado comercial en Orbit (monto cotizado, moneda, versión y URLs).
+  - Marcación de oportunidad como Ganada (`won`) tras aprobación del cliente.
+  - Ejecución de la conversión a proyecto operativo.
+- **Líder de Alcance / Project Lead (Paola Monsalve / Diego Cadavid / Líderes de Área):**
+  - Estructuración del dimensionamiento técnico (entregables, actividades, roles y horas).
+  - Estimación de semanas productivas de entrega y anclaje de propuesta técnica (Drive/PPT).
+  - Notificación de alcance listo a Comercial (`Marcar alcance listo`).
+  - Gestión y seguimiento de dependencias, insumos y aprobaciones de cliente en el proyecto.
+  - Revisión formal de tareas finalizadas por colaboradores (aprobar y completar o devolver).
+  - Registro y auditoría de rondas de retrabajo.
+- **Colaborador (Especialistas Técnicos y Creativos):**
+  - Visualización contextual de tareas asignadas para hoy en Mi Día.
+  - Ejecución activa con cronómetro (timer) o registro manual de horas.
+  - Solicitud formal de revisión al finalizar entregables (`Solicitar revisión ->`).
+- **Dirección Ejecutiva (CEO / Ana Giraldo):**
+  - Supervisión transversal del portafolio y salud de proyectos.
+  - Monitoreo de capacidad global del equipo semana a semana.
+  - Aprobación de excepciones de cronograma (reforecasts oficiales) y condiciones especiales.
+
+### 10.4. Pendientes de Decisión de Producto
+1. **[Pendiente de decisión de Producto] Tipologías de Tarea Exentas de Revisión:**  
+   Se requiere formalizar si ciertas tipologías de tareas operativas menores o no cotizables (ej. rituales internos de equipo, standups de 15 minutos, soporte ad-hoc) pueden auto-completarse directamente por el colaborador sin transicionar obligatoriamente por el estado `Review` del Líder.
+2. **[Pendiente de decisión de Producto] Parametrización Multi-NIT por Proyecto:**  
+   Definir con la Dirección General y Administración si la facturación de un proyecto distribuido entre más de una entidad fiscal (`ClientTaxEntity`) se parametriza una sola vez a nivel global del proyecto o si puede variar por hito/factura emitida, y si se calcula mediante porcentajes, montos fijos o ambas modalidades.
+
+---
 
 ### 10.3. Niveles de Acceso Canónicos (`CanonicalOrbitAccessLevel`)
 La experiencia de usuario y la autorización relacional se rigen por **7 niveles de acceso funcionales canónicos**:

@@ -27,7 +27,10 @@ import {
   ExternalLink,
   Info,
   Users,
-  Hourglass
+  Hourglass,
+  Calendar,
+  Gift,
+  Heart
 } from 'lucide-react';
 import {
   TaskItem,
@@ -36,7 +39,8 @@ import {
   UserItem,
   TimeLog,
   ProjectSummaryItem,
-  ProjectDependency
+  ProjectDependency,
+  TeamAbsenceEvent
 } from './types';
 import { getUserAccessLevel, can } from './auth/permissions';
 import { initialUsers, initialAbsenceEvents } from './mockData';
@@ -49,6 +53,7 @@ export interface MiDiaViewProps {
   tasks: TaskItem[];
   currentUser?: UserItem;
   users?: UserItem[];
+  absenceEvents?: TeamAbsenceEvent[];
   timeLogs?: TimeLog[];
   onDeleteTimeLog?: (id: string) => void;
   activeTimer: ActiveTimerState | null;
@@ -73,6 +78,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
   tasks,
   currentUser,
   users,
+  absenceEvents,
   timeLogs = [],
   onDeleteTimeLog,
   activeTimer,
@@ -96,6 +102,8 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
   const [isLogsAccordionOpen, setIsLogsAccordionOpen] = useState(false);
   const [isHumanProfileModalOpen, setIsHumanProfileModalOpen] = useState(false);
   const [selectedTeamUserId, setSelectedTeamUserId] = useState<string | undefined>(undefined);
+  const [isLuisaHandoffModalOpen, setIsLuisaHandoffModalOpen] = useState(false);
+  const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
 
   // 1. RBAC & Identity Resolution
   const accessLevel = currentUser ? getUserAccessLevel(currentUser) : 'leader';
@@ -278,97 +286,99 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
 
   const isExecutive = accessLevel === 'executive';
 
-  // Contexto humano del equipo ("Hoy en el equipo")
+  // Contexto humano del equipo ("Hoy en el equipo" & Ausencias)
   const effectiveUsers = useMemo(() => {
     return users && users.length > 0 ? users : initialUsers;
   }, [users]);
 
-  const teamHumanHighlights = useMemo(() => {
-    const data = processTeamLifeEvents(effectiveUsers, new Date(2026, 8, 16), initialAbsenceEvents);
-    const list: {
-      icon: string;
-      text: string;
-      subtext?: string;
-      userId?: string;
+  const effectiveAbsences = useMemo(() => {
+    return absenceEvents && absenceEvents.length > 0 ? absenceEvents : initialAbsenceEvents;
+  }, [absenceEvents]);
+
+  // Fecha de referencia canónica de Orbit UAT actual: 19 de Octubre 2026
+  const referenceDateStr = '2026-10-19';
+
+  // Radar de ausencias próximas (próximos 14 días o activas)
+  const upcomingVacations = useMemo(() => {
+    const list: Array<{
+      id: string;
+      userId: string;
       userName: string;
-      avatarBg: string;
-      initials: string;
-      badgeColor: string;
       user?: UserItem;
-    }[] = [];
+      startDate: string;
+      endDate: string;
+      daysRemaining: number;
+      title: string;
+      notes?: string;
+      isUrgent: boolean;
+      daysDuration: number;
+    }> = [];
 
-    // Aniversarios hoy (ej. Óscar cumple 2 años)
-    data.todayEvents
-      .filter((e) => e.type === 'anniversary')
-      .forEach((e) => {
-        const u = effectiveUsers.find((user) => user.id === e.userId);
+    effectiveAbsences.forEach((abs) => {
+      if (abs.status !== 'active') return;
+      const targetUser = effectiveUsers.find((u) => u.id === abs.userId);
+      const diffDays = Math.ceil(
+        (new Date(abs.startDate).getTime() - new Date(referenceDateStr).getTime()) / (1000 * 60 * 60 * 24)
+      );
+
+      const endDateEffective = abs.endDate || abs.startDate;
+      const duration = Math.ceil(
+        (new Date(endDateEffective).getTime() - new Date(abs.startDate).getTime()) / (1000 * 60 * 60 * 24)
+      ) + 1;
+
+      if (diffDays >= 0 && diffDays <= 14) {
         list.push({
-          icon: '🎉',
-          text: `${e.userName.split(' ')[0]} cumple ${e.yearsCount || 2} años en Uhura`,
-          subtext: u?.jobTitle || 'Equipo Uhura',
-          userId: e.userId,
-          userName: e.userName,
-          avatarBg: e.userAvatarBg || 'bg-[#7c3aed]',
-          initials: e.userInitials || 'UH',
-          badgeColor: 'border-[#ddd6fe] bg-[#f5f3ff] text-[#7c3aed]',
-          user: u
+          id: abs.id,
+          userId: abs.userId,
+          userName: targetUser?.name || abs.userName || 'Colaborador',
+          user: targetUser,
+          startDate: abs.startDate,
+          endDate: endDateEffective,
+          daysRemaining: diffDays,
+          title: abs.title,
+          notes: abs.notes,
+          isUrgent: diffDays <= 3,
+          daysDuration: duration
         });
-      });
-
-    // Cumpleaños hoy
-    data.todayEvents
-      .filter((e) => e.type === 'birthday')
-      .forEach((e) => {
-        const u = effectiveUsers.find((user) => user.id === e.userId);
-        list.push({
-          icon: '🎂',
-          text: `Cumpleaños de ${e.userName.split(' ')[0]}`,
-          subtext: u?.jobTitle || 'Equipo Uhura',
-          userId: e.userId,
-          userName: e.userName,
-          avatarBg: e.userAvatarBg || 'bg-[#db2777]',
-          initials: e.userInitials || 'UH',
-          badgeColor: 'border-[#fbcfe8] bg-[#fdf2f8] text-[#db2777]',
-          user: u
-        });
-      });
-
-    // Vacaciones activas
-    data.activeAbsences.forEach((e) => {
-      const u = effectiveUsers.find((user) => user.id === e.userId);
-      list.push({
-        icon: '🏖',
-        text: `${e.userName.split(' ')[0]} de vacaciones`,
-        subtext: 'Hasta el 22 de Sep',
-        userId: e.userId,
-        userName: e.userName,
-        avatarBg: e.userAvatarBg || 'bg-[#0284c7]',
-        initials: e.userInitials || 'UH',
-        badgeColor: 'border-[#bae6fd] bg-[#f0f9ff] text-[#0284c7]',
-        user: u
-      });
+      }
     });
 
-    // Próximo evento de equipo relevante si no hay suficientes
-    if (list.length < 3) {
-      data.upcomingEvents.slice(0, 1).forEach((e) => {
-        const u = effectiveUsers.find((user) => user.id === e.userId);
-        list.push({
-          icon: '🎈',
-          text: `${e.userName.split(' ')[0]}: ${e.headline}`,
-          subtext: 'Próximamente',
-          userId: e.userId,
-          userName: e.userName,
-          avatarBg: e.userAvatarBg || 'bg-[#501f92]',
-          initials: e.userInitials || 'UH',
-          badgeColor: 'border-[#ede9fe] bg-[#faf5ff] text-[#501f92]',
-          user: u
-        });
-      });
-    }
+    return list.sort((a, b) => a.daysRemaining - b.daysRemaining);
+  }, [effectiveAbsences, effectiveUsers]);
 
-    return list;
+  // Próximos cumpleaños (próximos 14 días de Octubre)
+  const upcomingBirthdays = useMemo(() => {
+    const currentMonth = 10;
+    const currentDay = 19;
+    return effectiveUsers
+      .filter((u) => {
+        if (!u.birthDate) return false;
+        const parts = u.birthDate.split('-');
+        const m = parseInt(parts[1], 10);
+        const d = parseInt(parts[2], 10);
+        return m === currentMonth && d >= currentDay && d <= currentDay + 14;
+      })
+      .map((u) => {
+        const parts = u.birthDate!.split('-');
+        const d = parseInt(parts[2], 10);
+        const days = d - currentDay;
+        return {
+          user: u,
+          day: d,
+          daysRemaining: days,
+          dateFormatted: u.birthDateFormatted || `${d} de Octubre`
+        };
+      })
+      .sort((a, b) => a.daysRemaining - b.daysRemaining);
   }, [effectiveUsers]);
+
+  // Cuentas y proyectos liderados por Luisa para coordinación de traspasos
+  const luisaAccounts = useMemo(() => {
+    return clients.filter((c) => {
+      const mgr = (c.accountManagerName || '').toLowerCase();
+      return mgr.includes('luisa') || c.accountManagerId === 'u-3' || c.accountManagerId === 'u-18';
+    });
+  }, [clients]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
@@ -380,140 +390,12 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
         </div>
       )}
 
-      {/* 3 NIVELES ESTRUCTURALES DE MI DÍA (LIMPIO, SIN COLUMNA LATERAL) */}
-      <div className="space-y-6 max-w-6xl mx-auto">
-          {/* HOY EN EL EQUIPO & FICHA HUMANA (PROPUESTA AMIGABLE, ATRACTIVA Y LIGERA) */}
-          <section className="bg-white rounded-3xl p-4 sm:p-5 border border-[#ede9fe] shadow-xs space-y-3.5 transition-all">
-            {/* Fila Superior: Encabezado cultural + Accesos Rápidos */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-[#faf5ff] border border-[#ddd6fe] flex items-center justify-center text-lg shadow-2xs shrink-0">
-                  🦫
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-[#2e1859] text-sm tracking-tight">
-                      Hoy en la colonia
-                    </h3>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#7c3aed] bg-[#f5f3ff] px-2 py-0.5 rounded-full">
-                      Cultura Uhura
-                    </span>
-                  </div>
-                  <p className="text-xs text-[#64748b] mt-0.5">
-                    {teamHumanHighlights.length > 0
-                      ? 'Celebraciones, aniversarios y momentos especiales del equipo hoy.'
-                      : 'La colonia avanza con ritmo sereno · Conoce pasatiempos y fechas de tus compañeros.'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Botones de acción: Mi Ficha + Explorar Fichas */}
-              <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
-                {currentUser && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedTeamUserId(currentUser.id);
-                      setIsHumanProfileModalOpen(true);
-                    }}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#faf5ff] hover:bg-[#ede9fe] border border-[#ddd6fe] text-[#501f92] text-xs font-bold transition-all cursor-pointer shadow-2xs"
-                    title="Ver o editar mis pasatiempos y datos personales"
-                  >
-                    <UserAvatar user={currentUser} size="xs" />
-                    <span>Mi ficha</span>
-                  </button>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedTeamUserId(undefined);
-                    setIsHumanProfileModalOpen(true);
-                  }}
-                  className="group inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold transition-all cursor-pointer shadow-2xs"
-                  title="Explorar fichas humanas, pasatiempos y fechas de todo el equipo"
-                >
-                  <div className="flex items-center -space-x-1.5 shrink-0">
-                    {effectiveUsers.slice(0, 3).map((u) => (
-                      <UserAvatar
-                        key={u.id}
-                        user={u}
-                        size="xs"
-                        className="ring-1 ring-white rounded-full"
-                        imageClassName="rounded-full"
-                        fallbackClassName="rounded-full"
-                      />
-                    ))}
-                  </div>
-                  <span>Fichas Humanas ({effectiveUsers.length})</span>
-                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-                </button>
-              </div>
-            </div>
-
-            {/* Fila Inferior: Tarjetas amigables y limpias de colaboradores */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-1">
-              {teamHumanHighlights.map((item, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => {
-                    setSelectedTeamUserId(item.userId);
-                    setIsHumanProfileModalOpen(true);
-                  }}
-                  className="group p-3 rounded-2xl bg-[#fcfaff] hover:bg-[#f5f3ff] border border-[#f1edfa] hover:border-[#8a4dff] flex items-center justify-between gap-3 text-left transition-all cursor-pointer shadow-2xs hover:shadow-xs"
-                  title={`Abrir ficha humana de ${item.userName}`}
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <UserAvatar
-                      user={item.user || { name: item.userName, initials: item.initials, avatarBg: item.avatarBg }}
-                      size="md"
-                      badge={<span className="text-xs">{item.icon}</span>}
-                    />
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-[#0f172a] group-hover:text-[#501f92] truncate">
-                        {item.userName}
-                      </p>
-                      <p className="text-[11px] text-[#64748b] truncate leading-tight mt-0.5">
-                        {item.text}
-                      </p>
-                    </div>
-                  </div>
-
-                  <span className="text-[11px] font-semibold text-[#8a4dff] opacity-0 group-hover:opacity-100 transition-opacity shrink-0 flex items-center gap-0.5">
-                    <span>Ver</span>
-                    <ArrowRight className="w-3 h-3" />
-                  </span>
-                </button>
-              ))}
-
-              {/* Tarjeta de descubrimiento de compañeros cuando hay pocos eventos hoy */}
-              {teamHumanHighlights.length < 3 && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedTeamUserId(undefined);
-                    setIsHumanProfileModalOpen(true);
-                  }}
-                  className="group p-3 rounded-2xl bg-[#f8fafc] hover:bg-[#f5f3ff] border border-dashed border-[#cbd5e1] hover:border-[#8a4dff] flex items-center gap-3 text-left transition-all cursor-pointer"
-                  title="Conoce pasatiempos, fechas y aspiraciones del equipo"
-                >
-                  <div className="w-9 h-9 rounded-xl bg-white border border-[#e2e8f0] flex items-center justify-center text-sm shrink-0 text-[#7c3aed]">
-                    ✨
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold text-[#334155] group-hover:text-[#501f92] truncate">
-                      Conoce a la colonia
-                    </p>
-                    <p className="text-[11px] text-[#64748b] truncate leading-tight mt-0.5">
-                      Explora gustos, pasatiempos y mascotas del equipo
-                    </p>
-                  </div>
-                  <ArrowRight className="w-3.5 h-3.5 text-[#94a3b8] group-hover:text-[#7c3aed] group-hover:translate-x-0.5 transition-all shrink-0" />
-                </button>
-              )}
-            </div>
-          </section>
+      {/* ==================================================================== */}
+      {/* CONTENEDOR 2 COLUMNAS: EJECUCIÓN OPERATIVA + SIDEBAR DE RADAR HUMANO */}
+      {/* ==================================================================== */}
+      <div className="max-w-7xl mx-auto flex flex-col xl:flex-row gap-6 items-start">
+        {/* COLUMNA PRINCIPAL DE EJECUCIÓN (NIVELES 1, 2 Y 3) */}
+        <div className="flex-1 min-w-0 space-y-6 w-full">
 
           {/* NIVEL 1: ¿QUÉ REQUIERE MI ATENCIÓN? (CONDICIONAL ESTRICTO: 0 SI NO HAY ACCIONES) */}
           {hasAttentionItems && (
@@ -1159,7 +1041,308 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
               </div>
             </div>
           )}
+        </div>
+
+        {/* ==================================================================== */}
+        {/* SIDEBAR DERECHO: RADAR DEL EQUIPO (PRÓXIMAS VACACIONES Y CULTURA) */}
+        {/* ==================================================================== */}
+        <aside className="w-full xl:w-84 shrink-0 space-y-4">
+          {/* Tarjeta Principal del Radar de Ausencias */}
+          <div className="bg-white rounded-3xl p-5 border border-[#ede9fe] shadow-xs space-y-4 transition-all">
+            {/* Header del Sidebar */}
+            <div className="flex items-center justify-between pb-3 border-b border-[#f1f5f9]">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-[#faf5ff] border border-[#ede9fe] flex items-center justify-center text-sm">
+                  🦫
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold text-[#0f172a] uppercase tracking-wider">
+                    Radar del Equipo
+                  </h3>
+                  <span className="text-[11px] text-[#64748b] block">
+                    Ausencias y fechas clave
+                  </span>
+                </div>
+              </div>
+
+              {upcomingVacations.length > 0 && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#fef3c7] text-[#b45309] border border-[#fde68a] animate-pulse">
+                  {upcomingVacations.length} vacación próxima
+                </span>
+              )}
+            </div>
+
+            {/* CASO ESPECIAL VACACIONES DE LUISA / ALERTAS PRÓXIMAS */}
+            {upcomingVacations.length > 0 ? (
+              <div className="space-y-3">
+                {upcomingVacations.map((vac) => {
+                  const isLuisa = vac.userId === 'u-3' || vac.userName.toLowerCase().includes('luisa');
+                  const daysBadgeText = vac.daysRemaining === 0
+                    ? 'Inicia hoy'
+                    : vac.daysRemaining === 1
+                    ? 'Mañana'
+                    : vac.daysRemaining === 2
+                    ? 'Sale en 2 días · Pasado mañana'
+                    : `En ${vac.daysRemaining} días`;
+
+                  return (
+                    <div
+                      key={vac.id}
+                      className={`p-4 rounded-2xl border transition-all ${
+                        isLuisa
+                          ? 'bg-gradient-to-br from-[#fffbeb] to-[#fef3c7] border-[#f59e0b] shadow-2xs'
+                          : 'bg-[#f8fafc] border-[#e2e8f0]'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
+                          isLuisa
+                            ? 'bg-[#b45309] text-white'
+                            : 'bg-[#0284c7]/10 text-[#0284c7]'
+                        }`}>
+                          🏖️ {daysBadgeText}
+                        </span>
+                        <span className="text-[10px] font-mono text-[#64748b]">
+                          {vac.daysDuration} días
+                        </span>
+                      </div>
+
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-[#0284c7] text-white font-bold flex items-center justify-center shrink-0 shadow-2xs">
+                          {vac.user?.initials || 'LU'}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="text-xs font-bold text-[#0f172a] truncate">
+                            {vac.userName}
+                          </h4>
+                          <p className="text-[11px] text-[#64748b] truncate mt-0.5">
+                            {vac.user?.jobTitle || 'Operaciones & Cuentas'}
+                          </p>
+                          <p className="text-[10px] font-medium text-[#78350f] mt-1 bg-white/60 p-1.5 rounded-lg border border-[#fde68a]/60">
+                            📅 <strong>{vac.startDate} al {vac.endDate}</strong>
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Prompt funcional y empático */}
+                      <div className="mt-3 text-[11px] text-[#78350f] leading-relaxed bg-white/70 p-2.5 rounded-xl border border-[#fde68a]">
+                        💡 <strong>Para tener en cuenta:</strong> {vac.userName.split(' ')[0]} saldrá a vacaciones pronto. Si tienes tareas, dudas o temas de clientes con ella, coordina entregas y handoffs antes de su salida.
+                      </div>
+
+                      {/* Botones de acción directa */}
+                      <div className="grid grid-cols-2 gap-2 mt-3">
+                        {isLuisa && (
+                          <button
+                            type="button"
+                            onClick={() => setIsLuisaHandoffModalOpen(true)}
+                            className="w-full px-2.5 py-1.5 rounded-xl bg-[#b45309] hover:bg-[#92400e] text-white text-[11px] font-bold transition-colors cursor-pointer flex items-center justify-center gap-1 shadow-2xs"
+                          >
+                            <span>📋 Ver cuentas</span>
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedTeamUserId(vac.userId);
+                            setIsHumanProfileModalOpen(true);
+                          }}
+                          className={`w-full px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition-colors cursor-pointer flex items-center justify-center gap-1 ${
+                            isLuisa
+                              ? 'bg-white text-[#78350f] border border-[#fde68a] hover:bg-[#fffbeb]'
+                              : 'col-span-2 bg-[#501f92] text-white hover:bg-[#381566]'
+                          }`}
+                        >
+                          <span>🦫 Ver ficha</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] text-center text-xs text-[#64748b]">
+                <p className="font-semibold text-[#0f172a]">Toda la colonia disponible</p>
+                <p className="text-[11px] text-[#94a3b8] mt-0.5">
+                  Sin ausencias ni vacaciones programadas esta semana.
+                </p>
+              </div>
+            )}
+
+            {/* SECCIÓN DE PRÓXIMOS CUMPLEAÑOS */}
+            {upcomingBirthdays.length > 0 && (
+              <div className="pt-2 border-t border-[#f1f5f9] space-y-2">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#db2777] block">
+                  🎂 Próximos Cumpleaños
+                </span>
+                {upcomingBirthdays.map((item) => (
+                  <div
+                    key={item.user.id}
+                    className="p-3 rounded-2xl bg-[#fff1f2] border border-[#ffe4e6] flex items-center justify-between gap-3 text-xs"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-lg bg-[#db2777] text-white font-bold text-xs flex items-center justify-center shrink-0">
+                        {item.user.initials || 'CV'}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-bold text-[#0f172a] truncate">
+                          {item.user.name}
+                        </p>
+                        <p className="text-[10px] text-[#64748b] truncate">
+                          {item.dateFormatted} {item.daysRemaining > 0 ? `(en ${item.daysRemaining}d)` : '(¡Hoy!)'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedTeamUserId(item.user.id);
+                        setIsHumanProfileModalOpen(true);
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-white border border-[#fecdd3] text-[#db2777] hover:bg-[#ffe4e6] text-[10px] font-bold shrink-0 cursor-pointer transition-colors"
+                    >
+                      Gustos
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* ACCESOS DIRECTOS A CULTURA Y FICHAS HUMANAS */}
+            <div className="pt-2 border-t border-[#f1f5f9] space-y-2">
+              {onNavigateToView && (
+                <button
+                  type="button"
+                  onClick={() => onNavigateToView('la-colonia')}
+                  className="w-full p-2.5 rounded-2xl bg-[#faf5ff] hover:bg-[#ede9fe] border border-[#ddd6fe] text-[#501f92] text-xs font-bold transition-all flex items-center justify-between cursor-pointer group"
+                >
+                  <div className="flex items-center gap-2">
+                    <span>🦫</span>
+                    <span>Conoce a la colonia</span>
+                  </div>
+                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                </button>
+              )}
+
+              {currentUser && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedTeamUserId(currentUser.id);
+                    setIsHumanProfileModalOpen(true);
+                  }}
+                  className="w-full p-2.5 rounded-2xl bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] text-[#334155] text-xs font-semibold transition-all flex items-center justify-between cursor-pointer"
+                >
+                  <div className="flex items-center gap-2">
+                    <UserAvatar user={currentUser} size="xs" />
+                    <span>Mi ficha personal</span>
+                  </div>
+                  <span className="text-[11px] text-[#8a4dff] font-bold">Editar →</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </aside>
       </div>
+
+      {/* MODAL DE COORDINACIÓN DE TRASPASO POR VACACIONES DE LUISA */}
+      {isLuisaHandoffModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-5 border border-[#e2e8f0] shadow-2xl animate-in zoom-in-95 duration-150">
+            <div className="flex items-start justify-between gap-3 pb-3 border-b border-[#f1f5f9]">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#fffbeb] border border-[#fde68a] flex items-center justify-center text-xl">
+                  🏖️
+                </div>
+                <div>
+                  <h3 className="font-bold text-[#0f172a] text-sm">
+                    Traspaso de Cuentas — Vacaciones de Luisa
+                  </h3>
+                  <p className="text-xs text-[#64748b]">
+                    Del 21 al 28 de Octubre 2026 (8 días de descanso aprobados)
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsLuisaHandoffModalOpen(false)}
+                className="w-8 h-8 rounded-xl bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[#64748b] flex items-center justify-center cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <p className="text-[#334155] leading-relaxed">
+                Antes de salir el <strong>miércoles 21 de Octubre</strong>, estas son las cuentas activas asignadas a Luisa en Orbit:
+              </p>
+
+              <div className="space-y-2">
+                {luisaAccounts.map((c) => (
+                  <div
+                    key={c.id}
+                    className="p-3 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] flex items-center justify-between"
+                  >
+                    <div>
+                      <span className="font-bold text-[#0f172a]">{c.name}</span>
+                      <span className="text-[10px] text-[#64748b] block mt-0.5">
+                        Líder de cuenta: Luisa Urazán • NIT: {c.nit || 'Activo'}
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#ecfdf5] text-[#059669]">
+                      {c.receivableStatus || 'Al día'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-[#fffbeb] border border-[#fde68a] space-y-2">
+                <span className="font-bold text-[#78350f] block text-[11px] uppercase tracking-wider">
+                  ✓ Checklist de preparación para el equipo:
+                </span>
+                <ul className="space-y-1.5 text-[11px] text-[#78350f]">
+                  <li className="flex items-center gap-1.5">
+                    <Check className="w-3.5 h-3.5 text-[#059669]" />
+                    <span>Designar contacto de soporte para clientes de Luisa durante su ausencia.</span>
+                  </li>
+                  <li className="flex items-center gap-1.5">
+                    <Check className="w-3.5 h-3.5 text-[#059669]" />
+                    <span>Revisar entregables críticos de la semana antes del martes 20 Oct.</span>
+                  </li>
+                  <li className="flex items-center gap-1.5">
+                    <Check className="w-3.5 h-3.5 text-[#059669]" />
+                    <span>Consultas operativas con Lu antes del cierre del martes a las 18:00 hs.</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#f1f5f9]">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedTeamUserId('u-3');
+                  setIsLuisaHandoffModalOpen(false);
+                  setIsHumanProfileModalOpen(true);
+                }}
+                className="px-4 py-2 rounded-xl bg-[#faf5ff] border border-[#ddd6fe] text-[#501f92] text-xs font-bold hover:bg-[#ede9fe] transition-colors cursor-pointer"
+              >
+                Ver Ficha de Luisa
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsLuisaHandoffModalOpen(false);
+                  showToast('Coordinación de vacaciones con Luisa registrada.');
+                }}
+                className="px-4 py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold transition-colors cursor-pointer"
+              >
+                Entendido / Coordinado
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL DE FICHA HUMANA & GUSTOS DEL EQUIPO UHURA */}
       <TeamHumanProfileModal

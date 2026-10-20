@@ -16,7 +16,8 @@ import {
   ChevronRight,
   User,
   PartyPopper,
-  Filter
+  Filter,
+  Lock
 } from 'lucide-react';
 import { UserItem } from '../types';
 import { UserAvatar } from '../UserAvatar';
@@ -184,9 +185,21 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
     return calculateAgeFromBirthDate(activeUser?.birthDate);
   }, [activeUser?.birthDate]);
 
+  // Permisos: Solo el colaborador dueño de la ficha puede editar sus datos humanos ("Mi Ficha"),
+  // o perfiles con nivel de administración (system_admin / administrative / executive / Admin).
+  const isSelf = Boolean(currentUser && activeUser && currentUser.id === activeUser.id);
+  const isAdmin = Boolean(
+    currentUser &&
+      (currentUser.accessLevel === 'system_admin' ||
+        currentUser.accessLevel === 'administrative' ||
+        currentUser.accessLevel === 'executive' ||
+        currentUser.role === 'Admin')
+  );
+  const canEdit = isSelf || isAdmin;
+
   // Al iniciar edición, precargar datos de la persona seleccionada
   const handleStartEdit = () => {
-    if (!activeUser) return;
+    if (!activeUser || !canEdit) return;
     setEditHobbies(activeUser.hobbies || '');
     setEditPersonalDream(activeUser.personalDream || '');
     setEditPetNames(activeUser.petNames || '');
@@ -200,11 +213,16 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
   // Guardar cambios en el perfil (actualiza la fuente canónica de la app)
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeUser) return;
+    if (!activeUser || !canEdit) return;
 
     const trimmedBirthDate = editBirthDate.trim();
     const formattedBday = trimmedBirthDate ? formatBirthDateHuman(trimmedBirthDate) : activeUser.birthDateFormatted;
-    const trimmedAnniversary = editAnniversaryDate.trim();
+    
+    // Regla de Gobernanza: Si es colaborador estándar en autoservicio, la fecha de ingreso
+    // NO es modificable desde Ficha Humana para proteger la antigüedad contractual.
+    const resolvedAnniversary = isAdmin
+      ? editAnniversaryDate.trim()
+      : (activeUser.anniversaryDate || activeUser.joinedDate);
 
     const updatedUser: UserItem = {
       ...activeUser,
@@ -214,8 +232,8 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
       city: editCity.trim() || undefined,
       birthDate: trimmedBirthDate || activeUser.birthDate,
       birthDateFormatted: formattedBday || activeUser.birthDateFormatted,
-      anniversaryDate: trimmedAnniversary || activeUser.anniversaryDate,
-      joinedDate: trimmedAnniversary || activeUser.joinedDate
+      anniversaryDate: resolvedAnniversary || activeUser.anniversaryDate,
+      joinedDate: resolvedAnniversary || activeUser.joinedDate
     };
 
     if (onUpdateUser) {
@@ -647,15 +665,22 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
 
                   {/* CTA Editar / Cancelar */}
                   {!isEditing ? (
-                    <button
-                      type="button"
-                      onClick={handleStartEdit}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-[#501f92] hover:text-white bg-[#f5f3ff] hover:bg-[#501f92] border border-[#ddd6fe] hover:border-[#501f92] transition-all cursor-pointer self-start sm:self-auto shadow-2xs"
-                      title={`Actualizar ficha humana de ${activeUser.name}`}
-                    >
-                      <Edit3 className="w-3.5 h-3.5" />
-                      <span>Editar ficha</span>
-                    </button>
+                    canEdit ? (
+                      <button
+                        type="button"
+                        onClick={handleStartEdit}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-[#501f92] hover:text-white bg-[#f5f3ff] hover:bg-[#501f92] border border-[#ddd6fe] hover:border-[#501f92] transition-all cursor-pointer self-start sm:self-auto shadow-2xs"
+                        title={isSelf ? 'Actualizar mi ficha humana' : `Actualizar ficha de ${activeUser.name} (como Admin)`}
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        <span>{isSelf ? 'Editar mi ficha' : 'Editar ficha (Admin)'}</span>
+                      </button>
+                    ) : (
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-[#64748b] bg-[#f8fafc] border border-[#e2e8f0]">
+                        <Lock className="w-3.5 h-3.5 text-[#94a3b8]" />
+                        <span>Modo lectura</span>
+                      </div>
+                    )
                   ) : (
                     <button
                       type="button"
@@ -717,19 +742,36 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
                         </span>
                       </div>
 
-                      {/* Fecha de ingreso / Aniversario */}
+                      {/* Fecha de ingreso / Aniversario (Protegido para colaboradores) */}
                       <div>
-                        <label className="font-bold text-[#334155] block mb-1">
-                          🎉 Fecha de ingreso (Aniversario)
+                        <label className="font-bold text-[#334155] block mb-1 flex items-center justify-between">
+                          <span>🎉 Fecha de ingreso</span>
+                          {!isAdmin && (
+                            <span className="text-[10px] text-[#b45309] font-medium flex items-center gap-0.5">
+                              <Lock className="w-2.5 h-2.5 text-[#b45309]" /> Protegido
+                            </span>
+                          )}
                         </label>
-                        <input
-                          type="date"
-                          value={editAnniversaryDate}
-                          onChange={(e) => setEditAnniversaryDate(e.target.value)}
-                          className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs focus:outline-[#7c3aed] bg-[#f8fafc]"
-                        />
-                        <span className="text-[10px] text-[#94a3b8] mt-0.5 block">
-                          Calcula aniversarios en Uhura.
+                        {isAdmin ? (
+                          <input
+                            type="text"
+                            placeholder="01 / 07 / 2024"
+                            value={editAnniversaryDate}
+                            onChange={(e) => setEditAnniversaryDate(e.target.value)}
+                            className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs focus:outline-[#7c3aed] bg-[#f8fafc]"
+                          />
+                        ) : (
+                          <input
+                            type="text"
+                            disabled
+                            value={activeUser.joinedDate || activeUser.anniversaryDate || '01 / 07 / 2024'}
+                            className="w-full p-2.5 rounded-xl border border-[#e2e8f0] text-xs bg-[#f1f5f9] text-[#64748b] cursor-not-allowed select-none"
+                          />
+                        )}
+                        <span className="text-[10px] text-[#64748b] mt-0.5 block">
+                          {isAdmin
+                            ? 'Dato contractual editable por Administrador.'
+                            : 'Dato contractual oficial · Administrado en Equipo & Accesos.'}
                         </span>
                       </div>
                     </div>

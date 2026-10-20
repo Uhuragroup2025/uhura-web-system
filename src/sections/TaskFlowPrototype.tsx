@@ -2156,7 +2156,7 @@ export const TaskFlowPrototype: React.FC = () => {
       case 'mi-dia':
         return 'Mi Día · Bucky el Castor de Orbit 🦫';
       case 'la-colonia':
-        return 'La Colonia · El Hábitat de Bucky 🦫🪵';
+        return 'Fichas humanas · La Colonia 🦫';
       case 'dashboard':
         return 'Dashboard';
       case 'proyectos':
@@ -2330,7 +2330,7 @@ export const TaskFlowPrototype: React.FC = () => {
                 loggedHoursToday={loggedHoursToday}
                 targetDayHours={8.0}
                 currentUser={currentUser}
-                isDarkTheme={currentView === 'la-colonia'}
+                isDarkTheme={false}
                 onSelectTask={(task) => {
                   setSelectedTaskForDetail(task);
                   setIsTaskDetailModalOpen(true);
@@ -2353,6 +2353,7 @@ export const TaskFlowPrototype: React.FC = () => {
                     tasks={tasks}
                     currentUser={currentUser}
                     users={users}
+                    absenceEvents={absenceEvents}
                     timeLogs={timeLogs}
                     onDeleteTimeLog={handleDeleteTimeLog}
                     activeTimer={activeTimer}
@@ -2383,6 +2384,7 @@ export const TaskFlowPrototype: React.FC = () => {
                     currentUser={currentUser}
                     teamUsers={users}
                     onNavigateToView={handleSelectView}
+                    onUpdateUser={handleUpdateUser}
                   />
                 )}
 

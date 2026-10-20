@@ -1,21 +1,19 @@
 /**
  * ============================================================================
- * LA COLONIA · WORLD AS INTERFACE (ORBIT SPATIAL & DIEGETIC UI)
+ * LA COLONIA & FICHAS HUMANAS (ORBIT CULTURA UHURA)
  * ============================================================================
  * 
- * Filosofía: "El mundo es la interfaz".
- * 
- * Principios de Diseño:
- * 1. Low Chrome & Scene-First: El hábitat ribereño es el canvas completo de borde a borde.
- * 2. Cero lenguaje SaaS: Eliminado el header interno, tarjetas contenedoras, docks pesados y borders rectangulares.
- * 3. Diegetic UI: Los datos viven dentro de las estructuras (Observatorio muestra el ranking, Taller/Nenúfares muestran los juegos y records).
- * 4. Hotspots Espaciales: Cabaña de Cedro, Estanque de Nenúfares y Observatorio son puntos de entrada orgánicos con feedback ambiental.
- * 5. Bucky como Host Vivo: Centro narrativo con micro-diálogo contextual y UNA SOLA acción primaria heroica.
- * 6. Mucho Espacio Negativo: Composición visual cinematográfica que respira.
- * 7. Ambient Micro-Motion: Río en movimiento, luciérnagas, polvo estelar, transiciones suaves día/atardecer/noche.
+ * Réplica fiel de la vista de Staging (Captura #1):
+ * - Banner "Conoce a la colonia" (Cumpleaños, aniversarios, gustos y mascotas del equipo)
+ * - Filtros: [ Todos ] [ Cumpleaños del mes ] [ Aniversarios del mes ]
+ * - Buscador rápido con atajo de teclado
+ * - Cuadrícula de 3 columnas de tarjetas humanas de colaboradores
+ * - Integración con TeamHumanProfileModal para editar o ver detalles
+ * - Acceso directo a "Mi Ficha"
+ * - Toggle para disfrutar del Hábitat interactivo y minijuegos de Bucky
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { OrbitView, TaskItem, UserItem } from '../types';
 import { ColonyGameId, ColonyChallenge, WeeklyLeaderboardEntry, TeammateOption } from './types';
 import {
@@ -28,6 +26,7 @@ import {
 import { ColoniaMinigames } from './ColoniaMinigames';
 import { ColoniaSocialInbox } from './ColoniaSocialInbox';
 import { ColoniaRankingView } from './ColoniaRankingView';
+import { TeamHumanProfileModal } from '../copilot/TeamHumanProfileModal';
 import { UserAvatar } from '../UserAvatar';
 import {
   isSoundEnabled,
@@ -51,7 +50,15 @@ import {
   Moon,
   Sunset,
   Sun,
-  X
+  X,
+  Search,
+  Users,
+  Gamepad2,
+  Heart,
+  Calendar,
+  Gift,
+  ArrowRight,
+  Filter
 } from 'lucide-react';
 
 interface LaColoniaViewProps {
@@ -62,21 +69,37 @@ interface LaColoniaViewProps {
   currentUser?: UserItem;
   teamUsers?: UserItem[];
   onNavigateToView: (view: OrbitView) => void;
+  onUpdateUser?: (updatedUser: UserItem) => void;
 }
 
 type AmbientTime = 'night' | 'sunset' | 'day';
+type ColoniaTabMode = 'fichas' | 'habitat';
+type FilterCategory = 'todos' | 'cumples' | 'aniversarios';
 
 export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
   currentUser,
   teamUsers = [],
-  onNavigateToView
+  onNavigateToView,
+  onUpdateUser
 }) => {
+  // Pestaña principal: 'fichas' (Grid canónico de Staging) o 'habitat' (Minijuegos y diorama 3D)
+  const [activeTabMode, setActiveTabMode] = useState<ColoniaTabMode>('fichas');
+
+  // Filtros de Fichas Humanas
+  const [selectedFilter, setSelectedFilter] = useState<FilterCategory>('todos');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Modal de Ficha Humana
+  const [isHumanModalOpen, setIsHumanModalOpen] = useState(false);
+  const [selectedModalUserId, setSelectedModalUserId] = useState<string | undefined>(undefined);
+
+  // Estados para el hábitat de Bucky y minijuegos
   const [activeGame, setActiveGame] = useState<ColonyGameId | null>(null);
   const [activeChallengeToPlay, setActiveChallengeToPlay] = useState<ColonyChallenge | null>(null);
   const [challenges, setChallenges] = useState<ColonyChallenge[]>(loadColonyChallenges);
   const [weeklyBoards, setWeeklyBoards] = useState<Record<ColonyGameId, WeeklyLeaderboardEntry[]>>(loadWeeklyLeaderboards);
 
-  // Modales ligeros (Progressive Disclosure)
+  // Modales ligeros de Hábitat
   const [isInboxOpen, setIsInboxOpen] = useState(false);
   const [isRankingOpen, setIsRankingOpen] = useState(false);
   const [rankingGame, setRankingGame] = useState<ColonyGameId>('torre');
@@ -103,18 +126,6 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
 
   const activeUserId = currentUser?.id || 'u-2';
 
-  // Fuente canónica de colaboradores activos desde Equipo & Accesos (excluye al usuario actual e inactivos)
-  const activeTeammates: TeammateOption[] = (teamUsers || [])
-    .filter((u) => u.id !== activeUserId && u.status !== 'Inactive')
-    .map((u) => ({
-      id: u.id,
-      name: u.name,
-      role: u.officialRole || u.jobTitle || u.role || 'Colaborador',
-      initials: u.initials || u.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase(),
-      avatarBg: u.avatarBg || 'bg-[#501f92]',
-      avatarUrl: u.avatarUrl
-    }));
-
   const refreshColonyData = () => {
     setChallenges(loadColonyChallenges());
     setWeeklyBoards(loadWeeklyLeaderboards());
@@ -129,6 +140,59 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
     setTimeout(() => setToastMessage(null), 3000);
   };
 
+  // Filtrado de colaboradores para Fichas Humanas
+  const filteredUsers = useMemo(() => {
+    const list = teamUsers.filter((u) => u.status !== 'Inactive');
+    const query = searchQuery.trim().toLowerCase();
+
+    return list.filter((user) => {
+      // 1. Filtro de búsqueda
+      if (query) {
+        const matchesName = user.name.toLowerCase().includes(query);
+        const matchesRole = (user.jobTitle || user.officialRole || '').toLowerCase().includes(query);
+        const matchesCity = (user.city || '').toLowerCase().includes(query);
+        const matchesHobbies = (user.hobbies || '').toLowerCase().includes(query);
+        const matchesPets = (user.petNames || '').toLowerCase().includes(query);
+        if (!matchesName && !matchesRole && !matchesCity && !matchesHobbies && !matchesPets) {
+          return false;
+        }
+      }
+
+      // 2. Filtro de categoría: Todos / Cumpleaños del mes / Aniversarios del mes
+      // Octubre (mes 10) es el mes actual del contexto
+      if (selectedFilter === 'cumples') {
+        if (!user.birthDate) return false;
+        const parts = user.birthDate.split('-');
+        const month = parseInt(parts[1], 10);
+        return month === 10; // Octubre
+      }
+
+      if (selectedFilter === 'aniversarios') {
+        if (!user.joinedDate && !user.anniversaryDate) return false;
+        const joined = (user.joinedDate || user.anniversaryDate || '').toLowerCase();
+        return joined.includes('oct') || joined.includes('/ 10 /');
+      }
+
+      return true;
+    });
+  }, [teamUsers, searchQuery, selectedFilter]);
+
+  // Formateador amigable de Fecha de Ingreso y Antigüedad
+  const formatJoinedInfo = (user: UserItem) => {
+    if (user.joinedDate) {
+      if (user.joinedDate.includes('·')) return user.joinedDate;
+      const years = user.anniversaryYears || 2;
+      return `${user.joinedDate} · ${years} años`;
+    }
+    if (user.anniversaryDate) {
+      const parts = user.anniversaryDate.split('-');
+      const year = parts[0];
+      const years = 2026 - parseInt(year, 10);
+      return `${user.anniversaryDate} · ${years > 0 ? years : 1} años`;
+    }
+    return 'Sin registrar';
+  };
+
   // Alternador sutil de ambientación (Noche -> Atardecer -> Día)
   const handleToggleAmbient = () => {
     playTapSound();
@@ -139,671 +203,451 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
     } catch {}
   };
 
-  const handleToggleSound = () => {
-    const next = !soundOn;
-    setSoundOn(next);
-    setSoundEnabled(next);
-    if (next) playTapSound();
-  };
-
-  // Clasificación de retos
-  const receivedChallenges = challenges.filter(
-    (c) => c.status === 'pending' && c.challengedUserId === activeUserId
-  );
-  const sentChallenges = challenges.filter(
-    (c) => c.status === 'pending' && c.challengerUserId === activeUserId
-  );
-  const historyChallenges = challenges.filter((c) => c.status === 'completed');
-
-  // Datos del Ranking semanal
-  const torreBoard = weeklyBoards['torre'] || [];
-  const top1Torre = torreBoard[0] || { name: 'Diego', score: 120 };
-  const userTorreIndex = torreBoard.findIndex((e) => e.userId === activeUserId || e.highlight);
-  const userTorreBest = userTorreIndex !== -1 ? torreBoard[userTorreIndex].score : 100;
-  const userTorreRank = userTorreIndex !== -1 ? userTorreIndex + 1 : 2;
-
-  const nenufarBoard = weeklyBoards['nenufar'] || [];
-  const top1Nenufar = nenufarBoard[0] || { name: 'Laura', score: 22 };
-
-  // Reto prioritario activo
-  const pendingChallenge = receivedChallenges[0] || null;
-
-  // Aceptar y jugar reto
-  const handleAcceptChallenge = (challenge: ColonyChallenge) => {
-    playTapSound();
-    setActiveChallengeToPlay(challenge);
-    setActiveGame(challenge.gameId);
-    setIsInboxOpen(false);
-  };
-
-  // Revancha
-  const handleRematch = (oldChallenge: ColonyChallenge) => {
-    playTapSound();
-    setActiveChallengeToPlay(null);
-    setActiveGame(oldChallenge.gameId);
-    setIsInboxOpen(false);
-  };
-
-  // Completar partida
-  const handleCompleteGame = (gameId: ColonyGameId, score: number) => {
-    refreshColonyData();
-    setLastGameResult({ gameId, score });
-    setBuckyMood('celebrating');
-    setActiveGame(null);
-    setActiveChallengeToPlay(null);
-  };
-
-  const handleChallengeCreatedFromGame = (newChallenge: ColonyChallenge) => {
-    refreshColonyData();
-    showToast(`Reto enviado a ${newChallenge.challengedName} (${newChallenge.challengerScore} pts) ⚔️`);
-  };
-
-  // Crear reto directo
-  const handleCreateDirectChallenge = (teammate: TeammateOption) => {
-    playTapSound();
-    const userBest =
-      weeklyBoards[newChallengeGame]?.find((e) => e.userId === activeUserId || e.highlight)?.score ||
-      (newChallengeGame === 'torre' ? userTorreBest : 15);
-
-    const challengerData = {
-      id: activeUserId,
-      name: currentUser?.name || 'Paola Monsalve',
-      initials: currentUser?.initials || 'PM',
-      role: currentUser?.jobTitle || currentUser?.officialRole || currentUser?.role || 'Product Lead',
-      avatarBg: currentUser?.avatarBg || 'bg-[#501f92]'
-    };
-
-    createColonyChallenge(
-      newChallengeGame,
-      challengerData,
-      userBest,
-      {
-        id: teammate.id,
-        name: teammate.name,
-        initials: teammate.initials,
-        role: teammate.role,
-        avatarBg: teammate.avatarBg
-      }
-    );
-
-    refreshColonyData();
-    setIsNewChallengeModalOpen(false);
-    showToast(`Reto enviado a ${teammate.name} ⚔️`);
-  };
-
-  // Click en Bucky (reacción viva y orgánica)
-  const handleBuckyClick = () => {
-    playTapSound();
-    setBuckyPhraseIndex((prev) => prev + 1);
-    setBuckyMood((prev) => (prev === 'happy' ? 'celebrating' : prev === 'celebrating' ? 'focus' : 'happy'));
-    const idleRemarks = [
-      '“Respira hondo y relaja los hombros 🌿”',
-      '“El río corre tranquilo hoy con Uhura 🪵”',
-      '“15 segundos bastan para despejar la mente ✨”',
-      '“¿Probamos una partida rápida?”'
-    ];
-    showToast(idleRemarks[buckyPhraseIndex % idleRemarks.length]);
-  };
-
-  // =========================================================================
-  // BUCKY COMO HOST: DIÁLOGO DIEGÉTICO & ACCIÓN PRIMARIA ÚNICA
-  // =========================================================================
-  let buckyDialogue = '';
-  let primaryActionLabel = '';
-  let primaryActionHandler = () => {};
-  let secondaryActionNode: React.ReactNode = null;
-
-  if (pendingChallenge) {
-    const rivalName = pendingChallenge.challengerName.split(' ')[0];
-    const gameName = pendingChallenge.gameId === 'torre' ? 'Torre de Cedro' : 'Reflejos';
-    buckyDialogue = `${rivalName} te dejó ${pendingChallenge.challengerScore} pts en ${gameName} 👀 ¿Lo superas?`;
-    primaryActionLabel = `SUPERAR A ${rivalName.toUpperCase()} · 15s`;
-    primaryActionHandler = () => handleAcceptChallenge(pendingChallenge);
-  } else if (lastGameResult) {
-    const leaderName = top1Torre.name.split(' ')[0];
-    const diff = Math.max(0, top1Torre.score - lastGameResult.score);
-    if (lastGameResult.score >= top1Torre.score) {
-      buckyDialogue = `${lastGameResult.score} pts 👀 ¡Estás arriba esta semana! 👑`;
-      primaryActionLabel = 'RETAR A ALGUIEN';
-      primaryActionHandler = () => setIsNewChallengeModalOpen(true);
-      secondaryActionNode = (
-        <button
-          onClick={() => {
-            playTapSound();
-            setActiveChallengeToPlay(null);
-            setActiveGame(lastGameResult.gameId);
-          }}
-          className="text-xs text-white/60 hover:text-white transition-colors cursor-pointer flex items-center gap-1.5 focus-visible:outline-none focus-visible:underline"
-        >
-          <RotateCcw className="w-3.5 h-3.5" />
-          <span>Otra ronda</span>
-        </button>
-      );
-    } else {
-      buckyDialogue = `${lastGameResult.score} pts 👀 Te faltaron ${diff} para alcanzar a ${leaderName}.`;
-      primaryActionLabel = 'REVANCHA · 15s';
-      primaryActionHandler = () => {
-        playTapSound();
-        setActiveChallengeToPlay(null);
-        setActiveGame(lastGameResult.gameId);
-      };
-      secondaryActionNode = (
-        <button
-          onClick={() => {
-            playTapSound();
-            setIsNewChallengeModalOpen(true);
-          }}
-          className="text-xs text-[#d4ff4a] hover:underline transition-colors cursor-pointer flex items-center gap-1 focus-visible:outline-none"
-        >
-          <Swords className="w-3 h-3 text-[#d4ff4a]" />
-          <span>Retar con mis {lastGameResult.score} pts</span>
-        </button>
-      );
-    }
-  } else {
-    const leaderName = top1Torre.name.split(' ')[0];
-    buckyDialogue = `${leaderName} sigue arriba con ${top1Torre.score}. ¿Probamos una?`;
-    primaryActionLabel = 'JUGAR TORRE DE CEDRO · 15s';
-    primaryActionHandler = () => {
-      playTapSound();
-      setActiveChallengeToPlay(null);
-      setActiveGame('torre');
-    };
-  }
-
-  // Fondos atmosféricos cinematográficos de borde a borde
-  const ambientBackgrounds: Record<AmbientTime, string> = {
-    night: 'from-[#0d051f] via-[#090317] to-[#04010b]',
-    sunset: 'from-[#2b0c36] via-[#1a0624] to-[#0a0210]',
-    day: 'from-[#1c1240] via-[#120a2c] to-[#070314]'
-  };
-
   return (
-    <div
-      className={`relative w-full min-h-[calc(100vh-62px)] bg-gradient-to-b ${ambientBackgrounds[ambientTime]} text-white select-none transition-colors duration-1000 flex flex-col justify-between overflow-hidden`}
-    >
-      {/* ================================================================= */}
-      {/* CAPA DE AMBIENTE: ESTRELLAS, LUCIÉRNAGAS Y POLVO CÓSMICO */}
-      {/* ================================================================= */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {/* Estrellas distantes fijas y pulsantes */}
-        <div className="absolute top-10 left-1/4 w-1.5 h-1.5 rounded-full bg-white/70 motion-safe:animate-pulse" />
-        <div className="absolute top-24 left-16 w-1 h-1 rounded-full bg-[#d4ff4a]/60" />
-        <div className="absolute top-16 right-1/3 w-1.5 h-1.5 rounded-full bg-[#4be5ff]/60 motion-safe:animate-ping opacity-60" />
-        <div className="absolute top-36 right-20 w-1 h-1 rounded-full bg-white/50" />
-        <div className="absolute top-8 right-1/4 w-2 h-2 rounded-full bg-[#c9b7ff]/30 motion-safe:animate-pulse" />
-
-        {/* Luciérnagas flotantes con movimiento sutil */}
-        <div className="absolute bottom-40 left-1/3 w-1.5 h-1.5 rounded-full bg-[#d4ff4a] blur-[1px] motion-safe:animate-bounce duration-1000 opacity-75" />
-        <div className="absolute bottom-56 right-1/4 w-2 h-2 rounded-full bg-[#4be5ff] blur-[1.5px] motion-safe:animate-pulse duration-700 opacity-60" />
-        <div className="absolute bottom-28 right-1/3 w-1 h-1 rounded-full bg-[#d4ff4a] blur-[0.5px] motion-safe:animate-ping duration-1000 opacity-50" />
-
-        {/* Constelación orbital integrada en el cielo */}
-        <svg className="absolute top-6 right-24 w-52 h-32 stroke-[#8a4dff]/20 stroke-[1] fill-none">
-          <polyline points="15,30 65,15 120,45 170,25" />
-          <circle cx="15" cy="30" r="2" fill="#8a4dff" />
-          <circle cx="65" cy="15" r="2.5" fill="#d4ff4a" />
-          <circle cx="120" cy="45" r="2" fill="#8a4dff" />
-          <circle cx="170" cy="25" r="3" fill="#c9b7ff" />
-        </svg>
-
-        {/* Relieve natural del valle: Colinas orgánicas sin bordes de card */}
-        <div className="absolute -bottom-28 -left-24 w-[520px] h-[400px] rounded-[200px] bg-gradient-to-tr from-[#120722] via-[#1a0c32] to-transparent opacity-85 transform -rotate-6 pointer-events-none" />
-        <div className="absolute -bottom-24 -right-24 w-[540px] h-[420px] rounded-[220px] bg-gradient-to-tl from-[#0f051e] via-[#17092d] to-transparent opacity-85 transform rotate-3 pointer-events-none" />
-
-        {/* Río ribereño vivo que atraviesa el horizonte */}
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-80 overflow-hidden pointer-events-none">
-          <svg viewBox="0 0 800 300" className="w-full h-full preserve-3d">
-            <defs>
-              <linearGradient id="riverStreamDiegetic" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#1e3a8a" stopOpacity="0.25" />
-                <stop offset="50%" stopColor="#0284c7" stopOpacity="0.5" />
-                <stop offset="100%" stopColor="#0369a1" stopOpacity="0.75" />
-              </linearGradient>
-            </defs>
-            <path
-              d="M 80,300 C 240,210 340,160 400,100 C 450,45 500,20 600,0 L 710,0 C 630,35 550,85 500,140 C 440,205 340,255 180,300 Z"
-              fill="url(#riverStreamDiegetic)"
-            />
-            <path
-              d="M 160,285 Q 270,215 380,140"
-              fill="none"
-              stroke="#38bdf8"
-              strokeWidth="2.5"
-              strokeOpacity="0.45"
-              strokeDasharray="14 18"
-              className="motion-safe:animate-pulse"
-            />
-            <path
-              d="M 280,265 Q 380,185 480,115"
-              fill="none"
-              stroke="#d4ff4a"
-              strokeWidth="1.5"
-              strokeOpacity="0.3"
-              strokeDasharray="8 14"
-            />
-          </svg>
-        </div>
-      </div>
-
-      {/* Toast flotante discreto */}
+    <div className={`min-h-full flex flex-col ${activeTabMode === 'habitat' ? 'bg-[#0a0418] text-white' : 'bg-[#f8fafc] text-[#0f172a]'}`}>
+      {/* Toast efímero */}
       {toastMessage && (
-        <div className="fixed top-5 right-6 z-50 bg-[#120824]/95 border border-[#d4ff4a]/60 text-white px-3.5 py-2 rounded-xl shadow-2xl flex items-center gap-2 animate-in fade-in duration-150 backdrop-blur-md">
-          <Sparkles className="w-3.5 h-3.5 text-[#d4ff4a] shrink-0" />
-          <span className="text-xs font-semibold">{toastMessage}</span>
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-[#0f172a] text-white text-xs font-semibold shadow-xl border border-white/10 animate-in slide-in-from-bottom-2">
+          <Sparkles className="w-4 h-4 text-[#d4ff4a]" />
+          <span>{toastMessage}</span>
         </div>
       )}
 
-      {/* ================================================================= */}
-      {/* 1. SECTOR SUPERIOR / CÓSMICO: DIEGETIC OBSERVATORIO */}
-      {/* ================================================================= */}
-      <header className="relative z-20 w-full pt-4 sm:pt-6 px-6 sm:px-12 flex items-start justify-between">
-        {/* Espacio izquierdo para equilibrio visual */}
-        <div className="w-24 sm:w-32" />
-
-        {/* Hotspot Diegético: Observatorio Orbital (Ranking Semanal Integrado) */}
-        <div className="flex flex-col items-center">
-          <button
-            onClick={() => {
-              playTapSound();
-              setRankingGame('torre');
-              setIsRankingOpen(true);
-            }}
-            className="group relative flex flex-col items-center cursor-pointer transition-transform duration-300 hover:scale-105 focus-visible:outline-none"
-            title="Mirar por el Observatorio · Ranking semanal"
-            aria-label={`Observatorio: Puesto #${userTorreRank} esta semana, ${userTorreBest} puntos`}
-          >
-            {/* Halo estelar suave al interactuar */}
-            <div className="absolute -inset-3 bg-[#d4ff4a]/15 rounded-full blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-
-            {/* Icono del telescopio cósmico */}
-            <div className="text-3xl sm:text-4xl filter drop-shadow-[0_0_16px_rgba(212,255,74,0.45)] group-hover:rotate-6 transition-transform duration-300">
-              🔭
-            </div>
-
-            {/* Readout diegético sobre el cielo (sin caja ni bordes) */}
-            <div className="mt-1 text-center font-mono">
-              <span className="text-[11px] sm:text-xs font-bold text-[#d4ff4a] tracking-tight block">
-                #{userTorreRank} esta semana
-              </span>
-              <span className="text-[10px] text-white/50 tracking-normal font-sans">
-                {userTorreBest} pts
-              </span>
-            </div>
-          </button>
-        </div>
-
-        {/* Controles sutiles del horizonte cósmico (derecha) */}
-        <div className="w-24 sm:w-32 flex items-center justify-end gap-2 text-white/40">
-          <button
-            onClick={handleToggleSound}
-            className="p-2 rounded-xl hover:text-white transition-colors cursor-pointer focus-visible:outline-none"
-            title={soundOn ? 'Silenciar sonidos' : 'Activar sonidos'}
-            aria-label="Alternar sonido"
-          >
-            {soundOn ? <Volume2 className="w-3.5 h-3.5 text-[#d4ff4a]" /> : <VolumeX className="w-3.5 h-3.5" />}
-          </button>
-          <button
-            onClick={handleToggleAmbient}
-            className="p-2 rounded-xl hover:text-white transition-colors cursor-pointer focus-visible:outline-none"
-            title="Cambiar atmósfera (Noche · Atardecer · Día)"
-            aria-label="Cambiar iluminación del hábitat"
-          >
-            {ambientTime === 'night' ? (
-              <Moon className="w-3.5 h-3.5 text-[#d4ff4a]" />
-            ) : ambientTime === 'sunset' ? (
-              <Sunset className="w-3.5 h-3.5 text-[#fdba74]" />
-            ) : (
-              <Sun className="w-3.5 h-3.5 text-[#38bdf8]" />
-            )}
-          </button>
-        </div>
-      </header>
-
-      {/* ================================================================= */}
-      {/* 2. SECTOR CENTRAL: EL HÁBITAT VIVO (HOTSPOTS + BUCKY PROTAGONISTA) */}
-      {/* ================================================================= */}
-      <main className="relative z-20 w-full max-w-5xl mx-auto px-4 sm:px-8 py-2 sm:py-6 flex flex-col md:flex-row items-center justify-between gap-8 md:gap-4 my-auto">
-        {/* =============================================================== */}
-        {/* HOTSPOT 1: TALLER DE CEDRO (Portal a Torre de Cedro) */}
-        {/* =============================================================== */}
-        <div className="flex flex-col items-center md:items-start order-2 md:order-1">
-          <button
-            onClick={() => {
-              playTapSound();
-              setActiveChallengeToPlay(null);
-              setActiveGame('torre');
-            }}
-            className="group relative flex flex-col items-center md:items-start cursor-pointer transition-all duration-300 hover:-translate-y-1 focus-visible:outline-none text-left"
-            title="Entrar al Taller de Cedro · Jugar Torre de Cedro (15s)"
-            aria-label="Taller de Cedro, juega Torre de Cedro, micro-pausa de 15 segundos"
-          >
-            {/* Brillo ambiental suave al aproximarse */}
-            <div className="absolute -inset-4 bg-[#8a4dff]/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-
-            {/* Arquitectura del taller */}
-            <div className="flex items-center gap-1.5 filter drop-shadow-[0_12px_24px_rgba(0,0,0,0.6)] group-hover:scale-105 transition-transform duration-300">
-              <span className="text-5xl sm:text-6xl">🏡</span>
-              <span className="text-2xl sm:text-3xl -ml-2 mb-2">🪵</span>
-            </div>
-
-            {/* Label diegético limpio (sin card ni background de contenedor) */}
-            <div className="mt-2 text-center md:text-left space-y-0.5">
-              <div className="flex items-center gap-1.5 justify-center md:justify-start">
-                <span className="text-xs sm:text-sm font-black text-white group-hover:text-[#d4ff4a] transition-colors">
-                  Taller de Cedro
-                </span>
-                <span className="text-[10px] text-[#d4ff4a] font-mono">15s</span>
-              </div>
-              <p className="text-[11px] text-white/50">Apila troncos en eje</p>
-              <p className="text-[10px] font-mono text-[#c9b7ff]/80">
-                Récord semanal: <strong className="text-white">{top1Torre.score} pts</strong>
+      {/* ==================================================================== */}
+      {/* VISTA 1: FICHAS HUMANAS (RÉPLICA FIEL DE STAGING) */}
+      {/* ==================================================================== */}
+      {activeTabMode === 'fichas' && (
+        <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto w-full">
+          {/* Header Bar con Selector de Modo & Buscador */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-black text-[#0f172a] tracking-tight">
+                Fichas humanas
+              </h1>
+              <p className="text-xs text-[#64748b] mt-0.5">
+                Cultura Uhura · La dimensión humana, gustos y celebraciones del equipo.
               </p>
             </div>
-          </button>
-        </div>
 
-        {/* =============================================================== */}
-        {/* BUCKY EN EL CENTRO: HOST NARRATIVO & ACCIÓN PRIMARIA ÚNICA */}
-        {/* =============================================================== */}
-        <div className="flex flex-col items-center text-center order-1 md:order-2 space-y-3 max-w-sm sm:max-w-md mx-auto">
-          {/* Diálogo diegético conversacional (sin componentes de plástico pesados) */}
-          <div
-            onClick={handleBuckyClick}
-            className="cursor-pointer group px-4 py-2 rounded-2xl bg-black/40 border border-white/10 hover:border-[#d4ff4a]/60 backdrop-blur-md transition-all duration-200"
-            title="Toca a Bucky para charlar"
-          >
-            <p className="text-xs sm:text-sm font-semibold text-white/95 leading-snug group-hover:text-[#d4ff4a] transition-colors">
-              {buckyDialogue}
-            </p>
-          </div>
-
-          {/* Sprite protagónico de Bucky con micro-animación orgánica */}
-          <div
-            onClick={handleBuckyClick}
-            className="relative cursor-pointer group py-1"
-            title="Bucky el Castor"
-          >
-            {/* Halo suave de presencia */}
-            <div className="absolute inset-0 bg-[#8a4dff]/25 rounded-full blur-2xl transform group-hover:scale-125 transition-transform duration-500 pointer-events-none" />
-
-            <img
-              src={
-                buckyMood === 'celebrating'
-                  ? buckyCelebratingImg
-                  : buckyMood === 'focus'
-                  ? buckyFocusImg
-                  : buckyHoodieHappyImg
-              }
-              alt="Bucky, anfitrión de La Colonia"
-              className="w-32 h-32 sm:w-36 sm:h-36 object-contain filter drop-shadow-[0_16px_28px_rgba(0,0,0,0.7)] transform group-hover:scale-105 active:scale-95 transition-all duration-300"
-            />
-            {/* Sombra de contacto sobre el muelle */}
-            <div className="w-24 h-3.5 bg-black/60 rounded-full blur-xs mx-auto mt-1" />
-          </div>
-
-          {/* =========================================================== */}
-          {/* LA ÚNICA ACCIÓN PRIMARIA HEROICA DE TODA LA PANTALLA */}
-          {/* =========================================================== */}
-          <div className="w-full pt-1 space-y-2 flex flex-col items-center">
-            <button
-              onClick={() => {
-                playTapSound();
-                primaryActionHandler();
-              }}
-              className="w-full sm:w-80 py-3.5 px-6 rounded-2xl bg-gradient-to-r from-[#d4ff4a] via-[#4be5ff] to-[#38d4ee] text-[#120822] text-xs sm:text-sm font-black tracking-wider uppercase shadow-[0_0_28px_rgba(212,255,74,0.35)] transition-all transform hover:scale-[1.03] active:scale-95 cursor-pointer flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d4ff4a]"
-            >
-              <Play className="w-4 h-4 fill-[#120822]" />
-              <span>{primaryActionLabel}</span>
-            </button>
-
-            {/* Acción secundaria o indicador sutil */}
-            <div className="h-6 flex items-center justify-center">
-              {secondaryActionNode ? (
-                secondaryActionNode
-              ) : pendingChallenge ? (
-                <button
-                  onClick={() => {
-                    playTapSound();
-                    setIsInboxOpen(true);
-                  }}
-                  className="text-[11px] text-[#d4ff4a] hover:underline transition-colors cursor-pointer flex items-center gap-1.5 focus-visible:outline-none"
-                >
-                  <Swords className="w-3 h-3 text-[#d4ff4a]" />
-                  <span>
-                    {receivedChallenges.length} {receivedChallenges.length === 1 ? 'reto recibido pendiente' : 'retos recibidos pendientes'}
-                  </span>
-                </button>
-              ) : (
-                <span className="text-[11px] text-white/40 font-mono">
-                  Tu récord: <strong className="text-white/70">{userTorreBest}</strong> · Récord semanal: <strong className="text-[#d4ff4a]">{top1Torre.score}</strong>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              {/* Buscador Rápido con ⌘K */}
+              <div className="relative w-full sm:w-64">
+                <Search className="w-4 h-4 text-[#94a3b8] absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  placeholder="Buscar compañero, cargo o gustos..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-8 py-2 bg-white border border-[#e2e8f0] rounded-xl text-xs text-[#0f172a] placeholder:text-[#94a3b8] focus:outline-[#8a4dff] shadow-2xs"
+                />
+                <span className="absolute right-2.5 top-2.5 text-[10px] font-mono text-[#94a3b8] bg-[#f1f5f9] px-1.5 py-0.2 rounded border border-[#e2e8f0]">
+                  ⌘K
                 </span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* =============================================================== */}
-        {/* HOTSPOT 2: JARDÍN DE NENÚFARES (Portal a Reflejos de Nenúfar) */}
-        {/* =============================================================== */}
-        <div className="flex flex-col items-center md:items-end order-3">
-          <button
-            onClick={() => {
-              playTapSound();
-              setActiveChallengeToPlay(null);
-              setActiveGame('nenufar');
-            }}
-            className="group relative flex flex-col items-center md:items-end cursor-pointer transition-all duration-300 hover:-translate-y-1 focus-visible:outline-none text-right"
-            title="Entrar al Estanque · Jugar Reflejos de Nenúfar (15s)"
-            aria-label="Estanque de Nenúfares, juega Reflejos de Nenúfar, micro-pausa de 15 segundos"
-          >
-            {/* Brillo acuático sutil */}
-            <div className="absolute -inset-4 bg-[#38bdf8]/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-
-            {/* Vegetación y nenúfares acuáticos */}
-            <div className="flex items-center gap-1.5 filter drop-shadow-[0_12px_24px_rgba(0,0,0,0.6)] group-hover:scale-105 transition-transform duration-300">
-              <span className="text-5xl sm:text-6xl">🌸</span>
-              <span className="text-2xl sm:text-3xl -ml-2 mb-2">⚡</span>
-            </div>
-
-            {/* Label diegético limpio */}
-            <div className="mt-2 text-center md:text-right space-y-0.5">
-              <div className="flex items-center gap-1.5 justify-center md:justify-end">
-                <span className="text-xs sm:text-sm font-black text-white group-hover:text-[#4be5ff] transition-colors">
-                  Nenúfares
-                </span>
-                <span className="text-[10px] text-[#4be5ff] font-mono">15s</span>
               </div>
-              <p className="text-[11px] text-white/50">Toca el nenúfar ágil</p>
-              <p className="text-[10px] font-mono text-[#c9b7ff]/80">
-                Récord semanal: <strong className="text-white">{top1Nenufar.score} pts</strong>
-              </p>
-            </div>
-          </button>
-        </div>
-      </main>
 
-      {/* ================================================================= */}
-      {/* 3. SECTOR INFERIOR / HUD SILENCIOSO: NAVEGACIÓN SECUNDARIA DISCRETA */}
-      {/* ================================================================= */}
-      <footer className="relative z-20 w-full px-6 sm:px-12 pb-5 sm:pb-7 flex items-center justify-between text-xs text-white/60">
-        {/* Retos sociales */}
-        <button
-          onClick={() => {
-            playTapSound();
-            setIsInboxOpen(true);
-          }}
-          className="flex items-center gap-2 hover:text-white transition-colors cursor-pointer focus-visible:outline-none focus-visible:underline"
-        >
-          <Swords className="w-3.5 h-3.5 text-[#d4ff4a]" />
-          <span>Tus retos</span>
-          {receivedChallenges.length > 0 && (
-            <span className="text-[10px] font-mono font-bold text-[#d4ff4a]">
-              ({receivedChallenges.length})
-            </span>
-          )}
-        </button>
-
-        {/* Retar a alguien */}
-        <button
-          onClick={() => {
-            playTapSound();
-            setIsNewChallengeModalOpen(true);
-          }}
-          className="flex items-center gap-1.5 text-white/70 hover:text-white transition-colors cursor-pointer focus-visible:outline-none focus-visible:underline"
-        >
-          <Plus className="w-3.5 h-3.5 text-[#d4ff4a]" />
-          <span>Retar a alguien</span>
-        </button>
-
-        {/* Atmósfera */}
-        <button
-          onClick={handleToggleAmbient}
-          className="hover:text-white transition-colors cursor-pointer capitalize focus-visible:outline-none hidden sm:inline"
-        >
-          <span>Ambiente: </span>
-          <span className="text-white/80 font-medium">{ambientTime}</span>
-        </button>
-      </footer>
-
-      {/* ================================================================= */}
-      {/* VENTANAS MODALES LIGERAS (PROGRESSIVE DISCLOSURE) */}
-      {/* ================================================================= */}
-
-      {/* 1. Inbox Social de Retos */}
-      <ColoniaSocialInbox
-        isOpen={isInboxOpen}
-        onClose={() => setIsInboxOpen(false)}
-        receivedChallenges={receivedChallenges}
-        sentChallenges={sentChallenges}
-        historyChallenges={historyChallenges}
-        activeUserId={activeUserId}
-        onPlayChallenge={handleAcceptChallenge}
-        onRematch={handleRematch}
-        onOpenNewChallenge={() => {
-          setIsInboxOpen(false);
-          setIsNewChallengeModalOpen(true);
-        }}
-      />
-
-      {/* 2. Ranking Semanal */}
-      <ColoniaRankingView
-        isOpen={isRankingOpen}
-        onClose={() => setIsRankingOpen(false)}
-        weeklyBoards={weeklyBoards}
-        initialGame={rankingGame}
-        activeUserId={activeUserId}
-        onPlayGame={(gameId) => {
-          setActiveChallengeToPlay(null);
-          setActiveGame(gameId);
-        }}
-      />
-
-      {/* 3. Selector de rival para Retar (fuente canónica de Equipo & Accesos) */}
-      {isNewChallengeModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-150">
-          <div className="relative w-full max-w-md bg-[#120822] border border-[#8a4dff]/60 rounded-3xl p-5 text-white shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-white/10 pb-3">
-              <div className="flex items-center gap-2">
-                <Swords className="w-5 h-5 text-[#d4ff4a]" />
-                <h3 className="text-base font-black text-white">Retar a un compañero</h3>
-              </div>
+              {/* Toggle a Modo Hábitat / Minijuegos */}
               <button
-                onClick={() => setIsNewChallengeModalOpen(false)}
-                className="p-1 rounded-lg text-white/60 hover:text-white cursor-pointer"
-                title="Cerrar modal"
+                type="button"
+                onClick={() => setActiveTabMode('habitat')}
+                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#2e1859] hover:bg-[#1a0f30] text-white text-xs font-bold transition-all shadow-xs cursor-pointer shrink-0"
+                title="Entrar al hábitat interactivo y minijuegos de Bucky"
               >
-                <X className="w-5 h-5" />
+                <Gamepad2 className="w-3.5 h-3.5 text-[#d4ff4a]" />
+                <span>Hábitat de Bucky</span>
               </button>
             </div>
+          </div>
 
-            <p className="text-xs text-[#c9b7ff]">
-              Selecciona el juego y a quién desafiar con tu marca semanal:
-            </p>
-
-            {/* Selector de Juego */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-white uppercase tracking-wider block">
-                1. Elige el juego
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => setNewChallengeGame('torre')}
-                  className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                    newChallengeGame === 'torre'
-                      ? 'bg-[#501f92] border-[#d4ff4a] text-white'
-                      : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
-                  }`}
-                >
-                  <span className="text-lg block mb-0.5">🌿</span>
-                  <div className="text-xs font-bold text-white">Torre de Cedro</div>
-                  <span className="text-[10px] text-white/50">Timing · 15s</span>
-                </button>
-
-                <button
-                  onClick={() => setNewChallengeGame('nenufar')}
-                  className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                    newChallengeGame === 'nenufar'
-                      ? 'bg-[#501f92] border-[#d4ff4a] text-white'
-                      : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
-                  }`}
-                >
-                  <span className="text-lg block mb-0.5">⚡</span>
-                  <div className="text-xs font-bold text-white">Reflejos Nenúfar</div>
-                  <span className="text-[10px] text-white/50">Velocidad · 15s</span>
-                </button>
+          {/* Banner Superior "Conoce a la colonia" (Exacto Staging) */}
+          <div className="bg-white rounded-3xl p-5 border border-[#e2e8f0] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-[#faf5ff] border border-[#ede9fe] flex items-center justify-center text-2xl shadow-2xs shrink-0">
+                🦫
+              </div>
+              <div>
+                <h2 className="text-base sm:text-lg font-extrabold text-[#0f172a] tracking-tight">
+                  Conoce a la colonia
+                </h2>
+                <p className="text-xs text-[#64748b] mt-0.5">
+                  Cumpleaños, aniversarios, gustos y mascotas del equipo.
+                </p>
               </div>
             </div>
 
-            {/* Selector de Compañero (Fuente Canónica Equipo & Accesos) */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-white uppercase tracking-wider block">
-                2. Elige a quién retar
-              </label>
-              {activeTeammates.length === 0 ? (
-                <div className="p-4 text-center rounded-xl bg-white/5 border border-white/5 text-xs text-white/60">
-                  No hay otros colaboradores activos disponibles en Equipo & Accesos para retar.
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
-                  {activeTeammates.map((teammate) => (
-                    <button
-                      key={teammate.id}
-                      onClick={() => handleCreateDirectChallenge(teammate)}
-                      className="p-2 rounded-xl bg-white/5 hover:bg-[#501f92]/40 border border-white/10 hover:border-[#d4ff4a] text-left transition-all cursor-pointer group flex items-center gap-2"
-                    >
-                      <UserAvatar
-                        user={teammate}
-                        size="sm"
-                        className="w-7 h-7 rounded-lg text-[10px]"
-                      />
-                      <div className="truncate">
-                        <div className="text-xs font-bold text-white group-hover:text-[#d4ff4a] truncate">
-                          {teammate.name.split(' ')[0]}
-                        </div>
-                        <span className="text-[9px] text-white/50 block truncate">{teammate.role}</span>
+            {/* Filtros: [ Todos ] [ Cumpleaños del mes ] [ Aniversarios del mes ] + [ Mi Ficha ] */}
+            <div className="flex items-center gap-2 flex-wrap self-start md:self-auto">
+              <div className="inline-flex items-center p-1 bg-[#f1f5f9] rounded-xl text-xs font-bold text-[#64748b]">
+                <button
+                  type="button"
+                  onClick={() => setSelectedFilter('todos')}
+                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                    selectedFilter === 'todos'
+                      ? 'bg-white text-[#0f172a] shadow-xs'
+                      : 'hover:text-[#0f172a]'
+                  }`}
+                >
+                  Todos ({teamUsers.filter((u) => u.status !== 'Inactive').length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedFilter('cumples')}
+                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
+                    selectedFilter === 'cumples'
+                      ? 'bg-white text-[#db2777] shadow-xs'
+                      : 'hover:text-[#0f172a]'
+                  }`}
+                >
+                  <span>🎂 Cumpleaños del mes</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedFilter('aniversarios')}
+                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
+                    selectedFilter === 'aniversarios'
+                      ? 'bg-white text-[#7c3aed] shadow-xs'
+                      : 'hover:text-[#0f172a]'
+                  }`}
+                >
+                  <span>🎉 Aniversarios del mes</span>
+                </button>
+              </div>
+
+              {/* Botón Mi Ficha */}
+              {currentUser && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedModalUserId(currentUser.id);
+                    setIsHumanModalOpen(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#d4ff4a] hover:bg-[#bceb34] text-[#0f172a] text-xs font-bold transition-all shadow-2xs cursor-pointer ml-1"
+                  title="Editar mis pasatiempos, gustos y metas personales"
+                >
+                  <UserAvatar user={currentUser} size="xs" />
+                  <span>Mi Ficha</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Cuadrícula de Tarjetas de Colaboradores (3 Columnas, Exacto a Staging) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {filteredUsers.map((user) => {
+              const birthdayDisplay = user.birthDateFormatted || (user.birthDate ? user.birthDate.split('-').slice(1).join('/') : 'Sin registrar');
+              const joinedDisplay = formatJoinedInfo(user);
+              const isCurrentUserCard = currentUser?.id === user.id;
+
+              return (
+                <div
+                  key={user.id}
+                  onClick={() => {
+                    setSelectedModalUserId(user.id);
+                    setIsHumanModalOpen(true);
+                  }}
+                  className={`bg-white rounded-3xl p-5 border transition-all duration-200 cursor-pointer flex flex-col justify-between group shadow-2xs hover:shadow-md ${
+                    isCurrentUserCard
+                      ? 'border-[#8a4dff] ring-1 ring-[#8a4dff]/20'
+                      : 'border-[#e2e8f0] hover:border-[#cbd5e1]'
+                  }`}
+                >
+                  <div>
+                    {/* Header de la Tarjeta: Avatar + Nombre + Cargo · Ciudad */}
+                    <div className="flex items-start gap-3.5">
+                      <div
+                        className={`w-11 h-11 rounded-2xl flex items-center justify-center text-sm font-bold text-white shrink-0 shadow-2xs overflow-hidden ${
+                          user.avatarBg || 'bg-[#3b186b]'
+                        }`}
+                      >
+                        {user.avatarUrl ? (
+                          <img
+                            src={user.avatarUrl}
+                            alt={user.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <span>{user.initials || user.name.slice(0, 2).toUpperCase()}</span>
+                        )}
                       </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <h3 className="font-bold text-[#0f172a] text-sm group-hover:text-[#501f92] transition-colors truncate">
+                            {user.name}
+                          </h3>
+                          {isCurrentUserCard && (
+                            <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-[#ede9fe] text-[#7c3aed]">
+                              Tú
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-[#64748b] truncate mt-0.5">
+                          {user.jobTitle || user.officialRole || 'Equipo Uhura'}
+                          {user.city ? ` · ${user.city}` : ''}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Dos Badges en Fila: Cumpleaños & En Uhura Desde */}
+                    <div className="grid grid-cols-2 gap-2 mt-4">
+                      {/* Badge 1: 🎂 CUMPLEAÑOS */}
+                      <div className="p-2.5 rounded-2xl bg-[#fff1f2] border border-[#ffe4e6] text-xs">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#e11d48] flex items-center gap-1">
+                          <span>🎂</span>
+                          <span>CUMPLEAÑOS</span>
+                        </span>
+                        <p className="font-bold text-[#0f172a] text-xs mt-1 truncate">
+                          {birthdayDisplay}
+                        </p>
+                      </div>
+
+                      {/* Badge 2: 🎉 EN UHURA DESDE */}
+                      <div className="p-2.5 rounded-2xl bg-[#f5f3ff] border border-[#ede9fe] text-xs">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#7c3aed] flex items-center gap-1">
+                          <span>🎉</span>
+                          <span>EN UHURA DESDE</span>
+                        </span>
+                        <p className="font-bold text-[#0f172a] text-xs mt-1 truncate">
+                          {joinedDisplay}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Contenido Cultural: Le gusta & Mascotas */}
+                    <div className="mt-4 space-y-2 text-xs">
+                      {user.hobbies ? (
+                        <p className="text-[#334155] leading-relaxed line-clamp-3">
+                          <strong className="text-[#0f172a] font-bold">Le gusta: </strong>
+                          <span className="text-[#475569]">{user.hobbies}</span>
+                        </p>
+                      ) : (
+                        <p className="text-[#94a3b8] italic text-[11px]">
+                          Sin pasatiempos registrados aún · Clic para agregar
+                        </p>
+                      )}
+
+                      {user.petNames && (
+                        <p className="text-[#334155] leading-relaxed text-xs">
+                          <strong className="text-[#0f172a] font-bold">Mascotas: </strong>
+                          <span className="text-[#475569]">{user.petNames}</span>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Footer sutil con prompt para abrir */}
+                  <div className="mt-4 pt-3 border-t border-[#f1f5f9] flex items-center justify-between text-[11px] text-[#64748b]">
+                    <span className="group-hover:text-[#501f92] font-semibold transition-colors">
+                      Ver ficha completa
+                    </span>
+                    <ArrowRight className="w-3.5 h-3.5 text-[#94a3b8] group-hover:translate-x-0.5 group-hover:text-[#501f92] transition-all" />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Empty State si no hay resultados */}
+          {filteredUsers.length === 0 && (
+            <div className="p-12 text-center rounded-3xl bg-white border border-[#e2e8f0] space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-[#f1f5f9] flex items-center justify-center mx-auto text-xl">
+                🔍
+              </div>
+              <h3 className="text-sm font-bold text-[#0f172a]">
+                No se encontraron compañeros
+              </h3>
+              <p className="text-xs text-[#64748b] max-w-sm mx-auto">
+                No hay resultados para tu búsqueda o filtro actual. Intenta con otro término o selecciona "Todos".
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery('');
+                  setSelectedFilter('todos');
+                }}
+                className="px-4 py-2 rounded-xl bg-[#501f92] text-white text-xs font-bold cursor-pointer"
+              >
+                Restablecer filtros
+              </button>
+            </div>
+          )}
+
+          {/* Sticker de Bucky flotante en la esquina inferior derecha (Fiel a Staging) */}
+          <div className="fixed bottom-6 right-8 pointer-events-none z-30 hidden sm:block">
+            <img
+              src={buckyHoodieHappyImg}
+              alt="Bucky Uhura"
+              className="w-24 h-24 object-contain drop-shadow-xl"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* VISTA 2: EL HÁBITAT Y MINIJUEGOS DE BUCKY (EXPERIENCIAL / LÚDICO) */}
+      {/* ==================================================================== */}
+      {activeTabMode === 'habitat' && (
+        <div className="p-6 lg:p-8 space-y-6 max-w-7xl mx-auto w-full">
+          {/* Top Bar Hábitat */}
+          <div className="flex items-center justify-between gap-4 pb-4 border-b border-white/10">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setActiveTabMode('fichas')}
+                className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <ArrowRight className="w-3.5 h-3.5 rotate-180" />
+                <span>Volver a Fichas Humanas</span>
+              </button>
+              <span className="text-xs text-white/60">•</span>
+              <h2 className="text-sm font-bold text-white flex items-center gap-1.5">
+                <span>🪵</span>
+                <span>Hábitat y Minijuegos de Bucky</span>
+              </h2>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setSoundOn(!soundOn)}
+                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white cursor-pointer"
+                title={soundOn ? 'Silenciar sonidos' : 'Activar sonidos'}
+              >
+                {soundOn ? <Volume2 className="w-4 h-4 text-[#d4ff4a]" /> : <VolumeX className="w-4 h-4 text-white/60" />}
+              </button>
+              <button
+                onClick={handleToggleAmbient}
+                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white cursor-pointer"
+                title="Cambiar iluminación del hábitat"
+              >
+                {ambientTime === 'night' ? <Moon className="w-4 h-4 text-[#c9b7ff]" /> : ambientTime === 'sunset' ? <Sunset className="w-4 h-4 text-[#f59e0b]" /> : <Sun className="w-4 h-4 text-[#fbbf24]" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Contenido de Minijuegos y Retos */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Columna Izquierda: Retador y Minijuegos Activos */}
+            <div className="lg:col-span-2 space-y-6">
+              <div className="p-6 rounded-3xl bg-gradient-to-br from-[#1e113a] to-[#2e1859] border border-white/10 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#d4ff4a] bg-white/10 px-2 py-0.5 rounded-full">
+                      Pausa Saludable · 15 Segundos
+                    </span>
+                    <h3 className="text-lg font-black text-white mt-1">
+                      Minijuegos Rápidos de la Colonia
+                    </h3>
+                  </div>
+                  <img
+                    src={buckyFocusImg}
+                    alt="Bucky"
+                    className="w-14 h-14 object-contain"
+                  />
+                </div>
+                <p className="text-xs text-white/80 leading-relaxed">
+                  Despeja la mente entre sprints. Cada juego toma menos de 20 segundos y fomenta la cercanía sin distraer de las metas del día.
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                  <button
+                    onClick={() => setActiveGame('torre')}
+                    className="p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-left transition-all cursor-pointer group"
+                  >
+                    <div className="text-2xl mb-2">🪵</div>
+                    <h4 className="font-bold text-white text-sm group-hover:text-[#d4ff4a] transition-colors">
+                      Torre de Troncos
+                    </h4>
+                    <p className="text-[11px] text-white/60 mt-1">
+                      Equilibra la mayor cantidad de troncos antes de que caigan.
+                    </p>
+                  </button>
+
+                  <button
+                    onClick={() => setActiveGame('nenufar')}
+                    className="p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-left transition-all cursor-pointer group"
+                  >
+                    <div className="text-2xl mb-2">🌿</div>
+                    <h4 className="font-bold text-white text-sm group-hover:text-[#d4ff4a] transition-colors">
+                      Salto de Nenúfares
+                    </h4>
+                    <p className="text-[11px] text-white/60 mt-1">
+                      Salta con Bucky calculando el ritmo del río.
+                    </p>
+                  </button>
+                </div>
+              </div>
+
+              {/* Si hay un juego activo */}
+              {activeGame && (
+                <div className="p-6 rounded-3xl bg-[#140b27] border border-[#8a4dff]/40 shadow-xl space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-white/10">
+                    <h4 className="font-bold text-white text-sm flex items-center gap-2">
+                      <Gamepad2 className="w-4 h-4 text-[#d4ff4a]" />
+                      <span>Jugando: {activeGame === 'torre' ? 'Torre de Troncos' : 'Salto de Nenúfares'}</span>
+                    </h4>
+                    <button
+                      onClick={() => setActiveGame(null)}
+                      className="text-xs text-white/60 hover:text-white cursor-pointer"
+                    >
+                      Cerrar juego ×
                     </button>
-                  ))}
+                  </div>
+
+                  <ColoniaMinigames
+                    type={activeGame}
+                    onComplete={(gameId: ColonyGameId, score: number) => {
+                      setLastGameResult({ gameId, score });
+                      showToast(`¡Partida terminada! Puntuación: ${score} pts 🪵✨`);
+                      setActiveGame(null);
+                    }}
+                    onClose={() => setActiveGame(null)}
+                  />
                 </div>
               )}
+            </div>
+
+            {/* Columna Derecha: Leaderboard Semanal */}
+            <div className="space-y-6">
+              <div className="p-5 rounded-3xl bg-[#180d32] border border-white/10 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Trophy className="w-4 h-4 text-[#fbbf24]" />
+                    <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                      Ranking Semanal
+                    </h4>
+                  </div>
+                  <span className="text-[10px] text-white/50">Esta semana</span>
+                </div>
+
+                <div className="space-y-2">
+                  {weeklyBoards.torre?.slice(0, 5).map((entry, idx) => (
+                    <div
+                      key={entry.userId}
+                      className="p-2.5 rounded-xl bg-white/5 border border-white/5 flex items-center justify-between text-xs"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-[#d4ff4a] w-4">
+                          #{idx + 1}
+                        </span>
+                        <span className="font-medium text-white">{entry.name}</span>
+                      </div>
+                      <span className="font-mono text-white/70">{entry.score} pts</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* 4. Minijuegos de 15 segundos */}
-      <ColoniaMinigames
-        type={activeGame}
-        activeChallenge={activeChallengeToPlay}
-        teammates={activeTeammates}
+      {/* MODAL DE FICHA HUMANA & GUSTOS DEL EQUIPO UHURA */}
+      <TeamHumanProfileModal
+        isOpen={isHumanModalOpen}
+        onClose={() => setIsHumanModalOpen(false)}
+        users={teamUsers}
+        selectedUserId={selectedModalUserId}
+        onUpdateUser={onUpdateUser}
         currentUser={currentUser}
-        onClose={() => {
-          setActiveGame(null);
-          setActiveChallengeToPlay(null);
-        }}
-        onComplete={handleCompleteGame}
-        onChallengeCreated={handleChallengeCreatedFromGame}
       />
     </div>
   );
