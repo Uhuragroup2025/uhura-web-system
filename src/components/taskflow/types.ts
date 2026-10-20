@@ -623,6 +623,7 @@ export const STANDARD_UHURA_ROLES = [
   'Digital Content Specialist',
   'Product Lead',
   'Trafficker Media',
+  'DigiOps Specialist',
   'Creative Strategy Lead',
   'Creative Designer',
   'Content Creator',
@@ -895,8 +896,10 @@ export interface UserItem {
   capacityHours?: number;
   utilizedPercent?: number;
   jobTitle?: string;
-  officialRole?: StandardUhuraRole;
+  officialRole?: StandardUhuraRole; // Rol cotizable principal (compatibilidad)
+  officialRoles?: StandardUhuraRole[]; // Uno o más roles cotizables vigentes
   professionalRole?: StandardUhuraRole | InternalSystemRole;
+  professionalRoles?: StandardUhuraRole[]; // Roles profesionales/cotizables vigentes
   accessLevel?: OrbitAccessLevel;
   birthDate?: string;          // Formato ISO 'YYYY-MM-DD'
   birthDateFormatted?: string; // ej. '18 de Sep'
