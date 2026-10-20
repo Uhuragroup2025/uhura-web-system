@@ -76,7 +76,7 @@ export const Overview: React.FC<OverviewProps> = ({ onNavigate }) => {
               icon={<ArrowRight className="w-4 h-4" />}
               onClick={() => onNavigate('taskflow-prototype')}
             >
-              Ver Prototipo TaskFlow SaaS
+              Ver prototipo Orbit
             </Button>
             <Button
               variant="glass"
@@ -158,7 +158,7 @@ export const Overview: React.FC<OverviewProps> = ({ onNavigate }) => {
                 <Box className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-[#17131f]">TaskFlow Workspace Pro</h3>
+                <h3 className="text-base font-bold text-[#17131f]">Ver prototipo Orbit</h3>
                 <span className="text-xs text-[#616161]">Prototipo SaaS interactivo</span>
               </div>
             </div>
