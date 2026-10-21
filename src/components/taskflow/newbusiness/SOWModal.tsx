@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { NewBusinessOpportunity, QuoteProposal, SowDocumentData } from '../types';
+import { NewBusinessOpportunity, QuoteProposal, SowDocumentData, ClientProfile } from '../types';
 import { formatCurrency } from '../../../utils/formatters';
 import {
   CompanyLegalSignerConfig,
@@ -38,6 +38,9 @@ import {
 } from 'lucide-react';
 
 interface SOWModalProps {
+  client?: ClientProfile;
+  documentVersion?: string;
+  onChangeDocumentVersion?: (version: string) => void;
   isOpen: boolean;
   opportunity: NewBusinessOpportunity;
   quote: QuoteProposal;
@@ -47,6 +50,9 @@ interface SOWModalProps {
 }
 
 export const SOWModal: React.FC<SOWModalProps> = ({
+  client,
+  documentVersion = '1.0',
+  onChangeDocumentVersion,
   isOpen,
   opportunity,
   quote,
@@ -54,7 +60,10 @@ export const SOWModal: React.FC<SOWModalProps> = ({
   onSaveSOWData,
   companyLegalConfig = DEFAULT_UHURA_LEGAL_SIGNER
 }) => {
-  const clientName = opportunity.prospectAccountName || 'Cliente';
+  const taxEntities = client?.taxEntities || [];
+  const taxEntity = taxEntities.find((entity) => entity.id === opportunity.selectedTaxEntityId) ||
+    taxEntities.find((entity) => entity.isPrimary) || (taxEntities.length === 1 ? taxEntities[0] : undefined);
+  const clientName = client?.name || opportunity.prospectAccountName || 'Cliente';
   const serviceTitle = opportunity.title || 'Servicio de Desarrollo & Producto Digital';
   const currency = quote.currency || 'COP';
   const totalValue =
@@ -78,7 +87,7 @@ export const SOWModal: React.FC<SOWModalProps> = ({
   const [activeTab, setActiveTab] = useState<'preview' | 'clauses'>('preview');
 
   // Metadatos Formales
-  const [clientNit, setClientNit] = useState<string>(opportunity.sowData?.clientNit || '');
+  const [clientNit, setClientNit] = useState<string>(opportunity.sowData?.clientNit || taxEntity?.nit || '');
   const [orderNumber, setOrderNumber] = useState<string>(opportunity.sowData?.orderNumber || '');
   const [supervisorClient, setSupervisorClient] = useState<string>(opportunity.sowData?.supervisorClient || '');
   const [supervisorClientRole, setSupervisorClientRole] = useState<string>(opportunity.sowData?.supervisorClientRole || '');
@@ -88,10 +97,10 @@ export const SOWModal: React.FC<SOWModalProps> = ({
 
   // Representación Legal Cliente
   const [clientRepresentative, setClientRepresentative] = useState<string>(
-    opportunity.sowData?.clientRepresentative || opportunity.contactName || ''
+    opportunity.sowData?.clientRepresentative || taxEntity?.legalRepresentativeName || opportunity.contactName || ''
   );
   const [clientRepresentativeId, setClientRepresentativeId] = useState<string>(
-    opportunity.sowData?.clientRepresentativeId || ''
+    opportunity.sowData?.clientRepresentativeId || taxEntity?.legalRepresentativeId || ''
   );
   const [clientRepresentativeRole, setClientRepresentativeRole] = useState<string>(
     opportunity.sowData?.clientRepresentativeRole || 'Representante Legal / Gerente General'
@@ -143,6 +152,7 @@ export const SOWModal: React.FC<SOWModalProps> = ({
   const generatedHtml = useMemo(() => {
     return buildSowHtml({
       opportunity,
+      documentVersion,
       quote,
       clientNit,
       orderNumber,
@@ -165,6 +175,7 @@ export const SOWModal: React.FC<SOWModalProps> = ({
     });
   }, [
     opportunity,
+    documentVersion,
     quote,
     clientNit,
     orderNumber,
@@ -185,6 +196,7 @@ export const SOWModal: React.FC<SOWModalProps> = ({
   const generatedPlain = useMemo(() => {
     return buildSowPlainText({
       opportunity,
+      documentVersion,
       quote,
       clientNit,
       orderNumber,
@@ -207,6 +219,7 @@ export const SOWModal: React.FC<SOWModalProps> = ({
     });
   }, [
     opportunity,
+    documentVersion,
     quote,
     clientNit,
     orderNumber,
@@ -327,7 +340,7 @@ export const SOWModal: React.FC<SOWModalProps> = ({
                 </h3>
               </div>
               <p className="text-xs text-slate-300 font-medium mt-0.5">
-                {clientName} · {serviceTitle} ({quote.versionLabel})
+                {clientName} · {serviceTitle}
               </p>
             </div>
           </div>
@@ -436,9 +449,12 @@ export const SOWModal: React.FC<SOWModalProps> = ({
                   <div className="text-left sm:text-right text-[11px] space-y-0.5 text-[#64748b]">
                     <span className="font-black text-[#501f92] text-xs block">UHURA S.A.S.</span>
                     <span>NIT: 901.093.070-2</span>
-                    <span className="block font-mono text-[#0f172a] font-bold">
-                      Versión: {quote.versionLabel || '1.0 – Final para Firma'}
-                    </span>
+                    <label className="block font-bold text-[#501f92]">
+                      Versión documental del SOW
+                      <input aria-label="Versión documental del SOW" value={documentVersion}
+                        onChange={(event) => onChangeDocumentVersion?.(event.target.value)}
+                        className="ml-2 w-24 border border-[#cbd5e1] rounded px-2 py-1" />
+                    </label>
                     <span>Fecha: {new Date().toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
                   </div>
                 </div>

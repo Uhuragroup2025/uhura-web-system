@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 
 interface TemplateLibraryViewProps {
+  users?: UserItem[];
   templates: ProductBacklogTemplate[];
   onUpdateTemplates: (templates: ProductBacklogTemplate[]) => void;
   opportunities?: NewBusinessOpportunity[];
@@ -42,6 +43,7 @@ interface TemplateLibraryViewProps {
     opportunityData: {
       title: string;
       prospectAccountName?: string;
+      leadUserId: string;
       leadUserName?: string;
     },
     quote: QuoteProposal
@@ -52,6 +54,7 @@ interface TemplateLibraryViewProps {
 }
 
 export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
+  users = [],
   templates,
   onUpdateTemplates,
   opportunities = [],
@@ -225,7 +228,7 @@ export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
       onQuoteCreated(quote);
     }
     triggerFeedback(
-      `Cotización "${quote.versionLabel}" generada (${quote.totalHoursRollup}h). La plantilla maestra permanece intacta.`
+      `Cotización de la oportunidad generada (${quote.totalHoursRollup}h). La plantilla maestra permanece intacta.`
     );
   };
 
@@ -800,6 +803,7 @@ export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
       {/* MODAL DE CLONADO / CREAR COTIZACIÓN */}
       {isCloneModalOpen && (
         <CloneToQuoteModal
+          users={users}
           isOpen={isCloneModalOpen}
           templates={templates}
           opportunities={opportunities}
@@ -812,7 +816,7 @@ export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
               onQuoteCreated(quote);
             }
             triggerFeedback(
-              `Cotización "${quote.versionLabel}" guardada en la oportunidad (${quote.totalHoursRollup}h).`
+              `Contenido agregado al alcance actual (${quote.totalHoursRollup}h).`
             );
           }}
           onCreateOpportunityWithQuote={(oppData, quote) => {
@@ -822,7 +826,7 @@ export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
               onQuoteCreated(quote);
             }
             triggerFeedback(
-              `Nueva oportunidad "${oppData.title}" creada con la cotización "${quote.versionLabel}" (${quote.totalHoursRollup}h).`
+              `Nueva oportunidad "${oppData.title}" creada con el alcance inicial (${quote.totalHoursRollup}h).`
             );
           }}
           onQuoteCreated={handleQuoteCreatedInternal}

@@ -5,7 +5,6 @@ import {
   ClientProfile,
   ProductBacklogTemplate,
   ProjectType,
-  AdministrativeChecklist,
   StartConditionsConfig,
   SowDocumentData,
   UserItem,
@@ -13,11 +12,12 @@ import {
   TimeLog,
   ActiveTimerState
 } from '../types';
+import { getOperationalQuote, withOperationalQuote, getCommercialOwnerName, isValidFinanceSheetUrl, quoteSignature, quoteMissingRequirements } from './quoteRules';
 import { can } from '../auth/permissions';
-import { BacklogScoper } from './BacklogScoper';
+import { serviceValidationMessages, isScopeReadyForReview, isEligibleScopingLeader } from './teamCandidates';
+import { BacklogScoper, type ScopeServiceDraft } from './BacklogScoper';
 import { NewOpportunityModal } from './NewOpportunityModal';
 import { ConvertOpportunityModal } from './ConvertOpportunityModal';
-import { SOWModal } from './SOWModal';
 import { UHURA_LEGAL_SIGNER } from './slaEngine';
 import { formatCurrency, formatHours } from '../../../utils/formatters';
 import {
@@ -48,7 +48,6 @@ import {
   ShieldCheck,
   CheckSquare,
   FileCheck,
-  History,
   DollarSign,
   AlertCircle,
   HelpCircle,
@@ -66,6 +65,11 @@ import {
 } from 'lucide-react';
 
 interface NewBusinessViewProps {
+  scopeUi: Record<string, { saved: boolean; services: ScopeServiceDraft[] }>;
+  onChangeScopeUi: (quoteId: string, state: { saved: boolean; services: ScopeServiceDraft[] }) => void;
+  onOpenSow: (opportunityId: string) => void;
+  savedQuotes: Record<string, string>;
+  onSetQuoteSaved: (quoteId: string, signature?: string) => void;
   opportunities: NewBusinessOpportunity[];
   clients: ClientProfile[];
   templates: ProductBacklogTemplate[];
@@ -77,6 +81,8 @@ interface NewBusinessViewProps {
     selectedQuote: QuoteProposal;
     projectName: string;
     projectType: ProjectType;
+    leadUserId: string;
+    specialistUserIds?: string[];
     leadName: string;
     startDate: string;
     endDate?: string;
@@ -93,6 +99,11 @@ interface NewBusinessViewProps {
 }
 
 export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+  scopeUi,
+  onChangeScopeUi,
+  onOpenSow,
+  savedQuotes,
+  onSetQuoteSaved,
   opportunities,
   clients,
   templates,
@@ -101,13 +112,15 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
   onNavigateToView,
   onConvertOpportunityToProject,
   currentUser,
-  users = [],
+  users: teamUsers = [],
   tasks = [],
   timeLogs = [],
   activeTimer = null,
   onStartTimer,
   onStopTimer
 }) => {
+  const users = teamUsers.filter((user) => user.status === 'Active');
+
   // Leaders, Commercial, Executives, and System Admins can create and manage opportunities
   const isNotCollaboratorOrPending = !currentUser || (currentUser.accessLevel !== 'collaborator' && currentUser.accessLevel !== 'pending');
   const canCreateOpp = can(currentUser, 'create', 'new-business') || isNotCollaboratorOrPending;
@@ -115,12 +128,11 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
   const canEditOpp = can(currentUser, 'edit', 'new-business') || isNotCollaboratorOrPending;
 
   const [selectedOppId, setSelectedOppId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'resumen' | 'scoping' | 'cotizacion' | 'documentos' | 'historial'>('resumen');
+  const [activeTab, setActiveTab] = useState<'resumen' | 'scoping' | 'cotizacion' | 'documentos'>('resumen');
   const [isNewOppModalOpen, setIsNewOppModalOpen] = useState<boolean>(false);
   const [oppModalMode, setOppModalMode] = useState<'hubspot' | 'manual'>('hubspot');
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [isConvertModalOpen, setIsConvertModalOpen] = useState<boolean>(false);
-  const [isSowModalOpen, setIsSowModalOpen] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'quoting' | 'won'>('all');
   const [bannerNotification, setBannerNotification] = useState<{
@@ -166,6 +178,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
   };
 
   const handleMarkOpportunityWon = (opp: NewBusinessOpportunity) => {
+    if (opp.id !== activeOpp?.id || !isQuoteDiligenciada) return;
     const updated: NewBusinessOpportunity = {
       ...opp,
       status: 'won',
@@ -175,7 +188,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
     onUpdateOpportunity(updated);
     setWonCelebrationOpp(updated);
     playWonFanfare();
-    setConversionSuccessMessage('🎉 ¡FIESTA TOTAL EN LA COLONIA! ¡Propuesta GANADA! Revisa los gates de formalización (Contrato/Anticipo) en Documentos para habilitar la conversión a Proyecto.', {
+    setConversionSuccessMessage('🎉 ¡FIESTA TOTAL EN LA COLONIA! ¡Propuesta GANADA! Puedes convertir la oportunidad a Cliente y Proyecto. La formalización fiscal se gestiona en la ficha del Cliente y no bloquea la conversión.', {
       timeoutMs: 9000
     });
   };
@@ -200,9 +213,6 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
       setTimeout(() => setBannerNotification(null), options?.timeoutMs || 6000);
     }
   };
-
-  // Solicitud de ajustes (V2) modal confirmation
-  const [showAdjustmentsModal, setShowAdjustmentsModal] = useState<boolean>(false);
 
   // SLA inline editing state
   const [isEditingSla, setIsEditingSla] = useState<boolean>(false);
@@ -236,13 +246,11 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
 
   const activeOpp = opportunities.find((o) => o.id === selectedOppId);
 
-  // Active quote inside the selected opportunity
-  const [activeQuoteId, setActiveQuoteId] = useState<string>(
-    activeOpp?.quotes[0]?.id || ''
-  );
-
-  const activeQuote =
-    activeOpp?.quotes.find((q) => q.id === activeQuoteId) || activeOpp?.quotes[0];
+  const activeQuote = getOperationalQuote(activeOpp);
+  const scopeState = activeQuote ? scopeUi[activeQuote.id] || { saved: false, services: [] } : { saved: false, services: [] };
+  const allServicesValid = scopeState.services.every((service) => serviceValidationMessages(service).length === 0);
+  const allServicesPrepared = allServicesValid && scopeState.services.every((service) => service.saved === true);
+  const isScopeReadOnly = scopeState.saved && allServicesValid;
 
   // Controlled Draft State for Cotización (prevents premature locking on keystroke)
   const [quoteValueDraft, setQuoteValueDraft] = useState<string>('');
@@ -261,7 +269,8 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
       setQuoteCurrencyDraft(activeQuote.currency || 'COP');
       setQuoteSheetUrlDraft(activeQuote.externalFinanceSheetUrl || '');
       setQuoteNotesDraft(activeQuote.commercialNotes || '');
-      setIsEditingQuoteFields(!val && !activeQuote.externalFinanceSheetUrl);
+      setIsEditingQuoteFields(!savedQuotes[activeQuote.id]);
+      setIsQuoteSavedFeedback(false);
     }
   }, [activeQuote?.id]);
 
@@ -276,10 +285,14 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
 
   // Helper: ¿La cotización ya fue guardada con monto por comercial?
   const isQuoteDiligenciada = Boolean(
-    ((activeQuote?.totalQuotedValue && activeQuote.totalQuotedValue > 0) ||
-     (activeQuote?.totalQuotedValueCOP && activeQuote.totalQuotedValueCOP > 0)) &&
+    activeQuote && savedQuotes[activeQuote.id] === quoteSignature(activeQuote.totalQuotedValue ?? activeQuote.totalQuotedValueCOP ?? 0, activeQuote.externalFinanceSheetUrl || '') &&
+    isValidFinanceSheetUrl(activeQuote.externalFinanceSheetUrl) &&
+    (activeQuote.totalQuotedValue ?? activeQuote.totalQuotedValueCOP ?? 0) > 0 &&
     !isEditingQuoteFields
   );
+
+  const missingQuoteFields = quoteMissingRequirements(Number(quoteValueDraft), quoteSheetUrlDraft);
+  const quotePendingMessage = missingQuoteFields.length ? missingQuoteFields.join(' ') : 'Falta guardar la cotización para habilitar Marcar como ganada.';
 
   // Scoping task and preventa hours calculation
   const scopingTask = tasks.find(
@@ -304,17 +317,10 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
   const isScopingTimerRunning = activeTimer?.taskId === scopingTask?.id;
 
   // Líder productivo actual (1 líder con persistencia canónica en leadUserId)
-  const assignedLeadUser = useMemo(() => {
-    return users.find((u) => u.id === activeOpp?.leadUserId);
-  }, [activeOpp?.leadUserId, users]);
-
   const currentLeadDisplayName = useMemo(() => {
-    return (
-      assignedLeadUser?.name ||
-      activeOpp?.leadUserName?.split('·')[0]?.trim() ||
-      'Sin asignar'
-    );
-  }, [assignedLeadUser, activeOpp?.leadUserName]);
+    const ids = activeOpp?.leadUserIds?.length ? activeOpp.leadUserIds : [activeOpp?.leadUserId];
+    return users.filter((user) => ids.includes(user.id)).map((user) => user.name).join(', ') || 'Sin asignar';
+  }, [activeOpp?.leadUserIds, activeOpp?.leadUserId, users]);
 
   // Preparación interna desacoplada (futuro soporte multi-lead cuando backend soporte relación 1..N)
   const currentLeadUserIds: string[] = useMemo(() => {
@@ -345,24 +351,6 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
   const isFormalizationGatesMet = contractGatePassed && downPaymentGatePassed;
   const canConvertToProject = isWon;
 
-  // Handle updating administrative checklist directly
-  const handleUpdateAdminChecklist = (patch: Partial<AdministrativeChecklist>) => {
-    if (!activeOpp) return;
-    const currentChecklist: AdministrativeChecklist = activeOpp.administrativeChecklist || {
-      rutStatus: 'pending',
-      idCardStatus: 'pending',
-      billingEmail: activeOpp.contactEmail || '',
-      alegraCreated: false,
-      responsibleName: 'Vivian'
-    };
-    const updatedOpp: NewBusinessOpportunity = {
-      ...activeOpp,
-      administrativeChecklist: { ...currentChecklist, ...patch },
-      updatedAt: new Date().toISOString()
-    };
-    onUpdateOpportunity(updatedOpp);
-  };
-
   // Handle updating start conditions directly
   const handleUpdateStartConditions = (patch: Partial<StartConditionsConfig>) => {
     if (!activeOpp) return;
@@ -384,91 +372,22 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
     onUpdateOpportunity(updatedOpp);
   };
 
-  // Handle saving SOW data
-  const handleSaveSowData = (sowData: SowDocumentData) => {
-    if (!activeOpp) return;
-    const updatedOpp: NewBusinessOpportunity = {
-      ...activeOpp,
-      sowData,
-      updatedAt: new Date().toISOString()
-    };
-    onUpdateOpportunity(updatedOpp);
-  };
-
   // Handle updating a quote within the current opportunity
   const handleUpdateQuote = (updatedQuote: QuoteProposal) => {
     if (!activeOpp) return;
-    const updatedQuotes = activeOpp.quotes.map((q) =>
-      q.id === updatedQuote.id ? updatedQuote : q
-    );
     const updatedOpp: NewBusinessOpportunity = {
-      ...activeOpp,
-      quotes: updatedQuotes,
+      ...withOperationalQuote(activeOpp, updatedQuote),
       updatedAt: new Date().toISOString()
     };
     onUpdateOpportunity(updatedOpp);
-  };
-
-  // Handle creating a new version of quote within current opportunity
-  const handleCreateNewQuoteVersion = (baseQuote?: QuoteProposal) => {
-    if (!activeOpp) return;
-    const nextOrder = activeOpp.quotes.length + 1;
-    const newQuoteId = `quote-${activeOpp.id}-v${nextOrder}-${Date.now()}`;
-
-    let newQuote: QuoteProposal;
-    if (baseQuote) {
-      // Clone from base quote
-      newQuote = {
-        ...baseQuote,
-        id: newQuoteId,
-        versionLabel: `V${nextOrder} - Alternativa basada en ${baseQuote.versionLabel.split(' - ')[0]}`,
-        order: nextOrder,
-        status: 'draft',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        deliverables: baseQuote.deliverables.map((d, dIdx) => ({
-          ...d,
-          id: `qdel-${newQuoteId}-${dIdx}`,
-          quoteId: newQuoteId,
-          roleBudgets: d.roleBudgets.map((rb) => ({ ...rb })),
-          backlogItems: d.backlogItems.map((b, bIdx) => ({
-            ...b,
-            id: `act-${newQuoteId}-${dIdx}-${bIdx}`,
-            quoteDeliverableId: `qdel-${newQuoteId}-${dIdx}`
-          }))
-        }))
-      };
-    } else {
-      // Empty new version
-      newQuote = {
-        id: newQuoteId,
-        opportunityId: activeOpp.id,
-        versionLabel: `V${nextOrder} - Nueva Versión`,
-        order: nextOrder,
-        status: 'draft',
-        totalHoursRollup: 0,
-        currency: 'COP',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        deliverables: []
-      };
-    }
-
-    const updatedOpp: NewBusinessOpportunity = {
-      ...activeOpp,
-      quotes: [...activeOpp.quotes, newQuote],
-      updatedAt: new Date().toISOString()
-    };
-
-    onUpdateOpportunity(updatedOpp);
-    setActiveQuoteId(newQuote.id);
   };
 
   // Callback when a new opportunity is created
-  const handleCreatedOpportunity = (newOpp: NewBusinessOpportunity) => {
+  const [commercialTeamUi, setCommercialTeamUi] = useState<Record<string, string[]>>({});
+  const handleCreatedOpportunity = (newOpp: NewBusinessOpportunity, commercialUserIds: string[] = []) => {
+    setCommercialTeamUi((previous) => ({ ...previous, [newOpp.id]: commercialUserIds }));
     onCreateOpportunity(newOpp);
     setSelectedOppId(newOpp.id);
-    setActiveQuoteId(newOpp.quotes[0]?.id || '');
     setActiveTab('scoping');
   };
 
@@ -476,11 +395,13 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
   const handleConfirmConversion = (payload: {
     projectName: string;
     projectType: ProjectType;
+    leadUserId: string;
+    specialistUserIds?: string[];
     leadName: string;
     startDate: string;
     endDate?: string;
   }) => {
-    if (!activeOpp || !activeQuote) return;
+    if (!activeOpp || !activeQuote || !users.some((user) => user.id === payload.leadUserId)) return;
     if (onConvertOpportunityToProject) {
       onConvertOpportunityToProject({
         opportunity: activeOpp,
@@ -499,7 +420,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
 
     setIsConvertModalOpen(false);
     setBannerNotification({
-      message: `🎉 ¡"${payload.projectName}" ha sido aprobado y formalizado exitosamente como Proyecto y Cliente!`,
+      message: `🎉 ¡"${payload.projectName}" se ha convertido a Cliente y Proyecto! La formalización fiscal continúa en la ficha del Cliente.`,
       showProjectLink: true
     });
     setTimeout(() => {
@@ -526,7 +447,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
   const totalQuotingCount = opportunities.filter((o) => o.status !== 'won').length;
   const totalWonCount = opportunities.filter((o) => o.status === 'won').length;
   const totalQuotedHours = opportunities.reduce((acc, o) => {
-    const h = o.quotes[0]?.totalHoursRollup || 0;
+    const h = getOperationalQuote(o)?.totalHoursRollup || 0;
     return acc + h;
   }, 0);
 
@@ -837,7 +758,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                 <tbody className="divide-y divide-[#f1f5f9]">
                   {filteredOpps.map((opp) => {
                     const isWon = opp.status === 'won';
-                    const mainQuote = opp.quotes[0];
+                    const mainQuote = getOperationalQuote(opp);
                     const totalHours = mainQuote?.totalHoursRollup || 0;
 
                     let statusBadge = {
@@ -883,7 +804,6 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                         key={opp.id}
                         onClick={() => {
                           setSelectedOppId(opp.id);
-                          setActiveQuoteId(opp.quotes[0]?.id || '');
                           setActiveTab('scoping');
                         }}
                         className="hover:bg-[#f8fafc]/80 transition-colors cursor-pointer group"
@@ -914,10 +834,10 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                         <td className="py-3.5 px-4">
                           <div className="flex items-center gap-2">
                             <div className="w-6 h-6 rounded-full bg-[#501f92]/10 text-[#501f92] font-bold text-[10px] flex items-center justify-center">
-                              {(opp.leadUserName || 'PL').slice(0, 2).toUpperCase()}
+                              {users.find((user) => user.id === opp.leadUserId)?.initials || '--'}
                             </div>
                             <span className="font-semibold text-[#334155] text-xs">
-                              {opp.leadUserName?.split('·')[0]?.trim() || 'Product Lead'}
+                              {users.find((user) => user.id === opp.leadUserId)?.name || 'Sin asignar'}
                             </span>
                           </div>
                         </td>
@@ -971,7 +891,6 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                               type="button"
                               onClick={() => {
                                 setSelectedOppId(opp.id);
-                                setActiveQuoteId(opp.quotes[0]?.id || '');
                                 setActiveTab('scoping');
                               }}
                               className="px-2.5 py-1 rounded-lg bg-[#501f92]/10 hover:bg-[#501f92] text-[#501f92] hover:text-white font-bold text-xs transition-colors cursor-pointer"
@@ -991,7 +910,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
           /* TARJETAS COMPACTAS (Alternativa) */
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredOpps.map((opp) => {
-              const mainQuote = opp.quotes[0];
+              const mainQuote = getOperationalQuote(opp);
               const totalHours = mainQuote?.totalHoursRollup || 0;
               const isWon = opp.status === 'won';
 
@@ -1000,7 +919,6 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                   key={opp.id}
                   onClick={() => {
                     setSelectedOppId(opp.id);
-                    setActiveQuoteId(opp.quotes[0]?.id || '');
                     setActiveTab('scoping');
                   }}
                   className={`bg-white rounded-2xl border transition-all duration-200 cursor-pointer flex flex-col justify-between hover:shadow-md hover:border-[#501f92] ${
@@ -1058,7 +976,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                     <div className="pt-2 border-t border-[#f1f5f9] space-y-1 text-xs text-[#64748b]">
                       <div className="flex items-center gap-1.5">
                         <User className="w-3.5 h-3.5 text-[#501f92]" />
-                        <span>Líder de alcance: <strong className="text-[#0f172a]">{opp.leadUserName || 'Product Lead'}</strong></span>
+                        <span>Líder de alcance: <strong className="text-[#0f172a]">{users.find((user) => user.id === opp.leadUserId)?.name || 'Sin asignar'}</strong></span>
                       </div>
                       {opp.contactName && (
                         <div className="flex items-center gap-1.5 text-[11px] text-[#64748b] truncate">
@@ -1229,22 +1147,23 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                     Selecciona el líder de alcance responsable del dimensionamiento:
                   </p>
                   <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
-                    {users.map((u) => {
-                      const isSelected = activeOpp?.leadUserId === u.id;
+                    {users.filter(isEligibleScopingLeader).map((u) => {
+                      const isSelected = currentLeadUserIds.includes(u.id);
                       return (
                         <button
                           key={u.id}
                           type="button"
                           onClick={() => {
+                            const ids = isSelected ? currentLeadUserIds.filter((id) => id !== u.id) : [...currentLeadUserIds, u.id];
+                            if (!ids.length) return;
                             const updated: NewBusinessOpportunity = {
                               ...activeOpp,
-                              leadUserId: u.id,
-                              leadUserName: u.name,
-                              leadUserIds: [u.id],
+                              leadUserId: ids[0],
+                              leadUserName: users.find((user) => user.id === ids[0])?.name || 'Sin asignar',
+                              leadUserIds: ids,
                               updatedAt: new Date().toISOString()
                             };
                             onUpdateOpportunity(updated);
-                            setIsReassigningLead(false);
                           }}
                           className={`w-full text-left flex items-center justify-between p-1.5 rounded-lg text-xs cursor-pointer transition-colors ${
                             isSelected
@@ -1269,7 +1188,8 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
 
             <div className="flex items-center gap-1 relative">
               <Clock className="w-3.5 h-3.5 text-[#501f92]" />
-              <span>SLA Handoff: <strong className="text-[#0f172a]">~{activeOpp.handoffHours || 36}h</strong></span>
+              {commercialTeamUi[activeOpp.id]?.length > 0 && <span className="text-xs">Responsables comerciales: <strong>{users.filter((user) => commercialTeamUi[activeOpp.id].includes(user.id)).map((user) => user.name).join(', ')}</strong></span>}
+              <span>SLA Handoff: <strong className="text-[#0f172a]">~{Number((activeOpp.handoffHours || 36).toFixed(1))}h</strong></span>
               {canEditOpp && (
                 <button
                   type="button"
@@ -1429,12 +1349,13 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                     title={
                       isQuoteDiligenciada
                         ? 'Marcar propuesta aprobada formalmente por el cliente'
-                        : 'Diligencia y guarda primero la pestaña Cotización (Valor y Sheet) para habilitar'
+                        : quotePendingMessage
                     }
                   >
                     <Trophy className={`w-3.5 h-3.5 ${isQuoteDiligenciada ? 'text-[#d4ff4a]' : 'text-[#cbd5e1]'}`} />
                     <span>Marcar como ganada 🏆</span>
                   </button>
+                  {!isQuoteDiligenciada && <span role="status" className="text-[11px] text-[#b45309] max-w-xs">{quotePendingMessage}</span>}
 
                   <button
                     type="button"
@@ -1515,18 +1436,6 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
           <span>Documentos</span>
         </button>
 
-        <button
-          type="button"
-          onClick={() => setActiveTab('historial')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
-            activeTab === 'historial'
-              ? 'bg-white text-[#501f92] shadow-xs'
-              : 'text-[#64748b] hover:text-[#0f172a]'
-          }`}
-        >
-          <History className="w-3.5 h-3.5" />
-          <span>Historial ({activeOpp.quotes.length})</span>
-        </button>
       </div>
 
       {/* ========================================================================= */}
@@ -1626,7 +1535,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                       Resumen de Requerimientos / Discovery
                     </h3>
                   </div>
-                  {!isEditingBrief && (activeOpp.briefSummary || activeOpp.discoveryNotes) && (
+                  {!isEditingBrief && (
                     <button
                       type="button"
                       onClick={() => setIsEditingBrief(true)}
@@ -1638,9 +1547,9 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                   )}
                 </div>
 
-                {!isEditingBrief && (activeOpp.briefSummary || activeOpp.discoveryNotes) ? (
+                {!isEditingBrief ? (
                   <div className="p-4 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] text-xs text-[#334155] leading-relaxed whitespace-pre-wrap">
-                    {activeOpp.briefSummary || activeOpp.discoveryNotes}
+                    {activeOpp.briefSummary || activeOpp.discoveryNotes || 'Sin brief registrado.'}
                   </div>
                 ) : (
                   <div className="space-y-2.5">
@@ -1834,11 +1743,11 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                 <div className="p-3 bg-[#f8fafc] rounded-xl border border-[#e2e8f0] space-y-1.5 text-[11px]">
                   <div className="flex items-center justify-between">
                     <span className="text-[#64748b]">Líder de Alcance:</span>
-                    <strong className="text-[#501f92] font-bold">{activeOpp.leadUserName || 'Diego Cadavid'}</strong>
+                    <strong className="text-[#501f92] font-bold">{currentLeadDisplayName}</strong>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-[#64748b]">Owner Comercial:</span>
-                    <strong className="text-[#0f172a] font-bold">{activeOpp.commercialOwner || 'Catalina / Luisa'}</strong>
+                    <strong className="text-[#0f172a] font-bold">{getCommercialOwnerName(activeOpp, users)}</strong>
                   </div>
                   <div className="flex items-center justify-between pt-1 border-t border-[#e2e8f0]">
                     <span className="text-[#64748b]">Horas Preventa Invertidas:</span>
@@ -1875,7 +1784,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
               {/* Selector de Tipo de Proyecto (Proyecto Único vs Fee Mensual) */}
               <div className="flex items-center gap-1.5 text-xs text-[#64748b]">
                 <span>Modelo:</span>
-                <select
+                {isScopeReadOnly ? <strong>{activeOpp.projectType === 'fee_monthly' ? 'Fee mensual' : 'Proyecto único'}</strong> : <select
                   value={activeOpp.projectType || 'fixed_project'}
                   onChange={(e) => {
                     const newType = e.target.value as ProjectType;
@@ -1889,10 +1798,17 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                 >
                   <option value="fixed_project">Proyecto Único (One-Shot)</option>
                   <option value="fee_monthly">Fee Mensual Recurrente</option>
-                </select>
+                </select>}
               </div>
             </div>
 
+            {isScopeReadOnly ? (
+              <div className="space-y-2 text-xs text-[#334155]" aria-label="Datos generales del alcance guardado">
+                <p>Presentación / propuesta técnica general: {activeQuote.commercialProposalUrl ? <a className="underline text-[#501f92]" href={activeQuote.commercialProposalUrl} target="_blank" rel="noreferrer">Abrir presentación</a> : 'Pendiente'}</p>
+                <p>Duración general estimada del proyecto: {activeQuote.estimatedWeeks || 'Pendiente'} semanas</p>
+                <p>La duración general se define manualmente; los servicios pueden ejecutarse en paralelo.</p>
+              </div>
+            ) : (<>
             {/* Insumos del Líder: 1. Propuesta/Presentación (PPT de Drive) + 2. Duración en Semanas */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5 text-xs">
               {/* 1. Propuesta / Presentación (Google Drive / Slides) */}
@@ -1927,12 +1843,11 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                 </div>
               </div>
 
-              {/* 2. Duración en Semanas y Días Hábiles (Solo para Proyecto Único) */}
+              {/* Sugerencia por servicio más largo; admite ajuste por dependencias. */}
               <div className="md:col-span-5 space-y-1">
-                {(!activeOpp.projectType || activeOpp.projectType === 'fixed_project') ? (
                   <>
                     <label className="font-semibold text-[#475569] flex items-center justify-between">
-                      <span>Duración estimada</span>
+                      <span>Duración general estimada del proyecto</span>
                       {(activeQuote.estimatedWeeks ?? activeQuote.financialConfig?.projectDurationWeeks) ? (
                         <span className="text-[10px] font-medium text-[#047857] bg-[#ecfdf5] px-2 py-0.5 rounded-md border border-[#a7f3d0]">
                           ~{((activeQuote.estimatedWeeks ?? activeQuote.financialConfig?.projectDurationWeeks ?? 0) * 5)} días hábiles
@@ -1945,6 +1860,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                         min="1"
                         max="52"
                         step="1"
+                        aria-label="Duración general estimada del proyecto"
                         value={activeQuote.estimatedWeeks ?? activeQuote.financialConfig?.projectDurationWeeks ?? ''}
                         onChange={(e) => {
                           const val = Math.max(0, parseInt(e.target.value, 10) || 0);
@@ -1965,14 +1881,11 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                       </span>
                     </div>
                   </>
-                ) : (
-                  <div className="p-2 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] text-[11px] text-[#64748b] flex items-center gap-1.5 h-[38px] mt-4">
-                    <Clock className="w-3.5 h-3.5 text-[#501f92] shrink-0" />
-                    <span className="truncate">Fee Mensual Recurrente · Sin semanas fijas</span>
-                  </div>
-                )}
+
               </div>
             </div>
+
+            </>)}
 
             {/* Fila 3: Barra de acciones pulida */}
             <div className="pt-3 border-t border-[#f1f5f9] flex items-center justify-between flex-wrap gap-2.5">
@@ -1987,31 +1900,44 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                 </span>
               </div>
 
+              <p className="text-xs text-[#64748b]">Duración sugerida según el servicio más largo; ajustable si hay dependencias. No se suman servicios en paralelo.</p>
               {/* Acciones: Guardar y Marcar alcance listo */}
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => {
+                    if (isScopeReadOnly) {
+                      onChangeScopeUi(activeQuote.id, { ...scopeState, saved: false });
+                      return;
+                    }
+                    const invalidServices = scopeState.services.filter((service) => serviceValidationMessages(service).length > 0);
+                    if (invalidServices.length) {
+                      setConversionSuccessMessage(invalidServices.map((service) => `${service.name}: ${serviceValidationMessages(service).join(' ')}`).join(' '));
+                      return;
+                    }
                     handleUpdateQuote(activeQuote);
+                    onChangeScopeUi(activeQuote.id, { ...scopeState, saved: true, services: scopeState.services });
                     setConversionSuccessMessage('Alcance técnico guardado.');
                     setTimeout(() => setConversionSuccessMessage(null), 3000);
                   }}
                   className="px-3.5 py-1.5 rounded-lg border border-[#cbd5e1] bg-white hover:bg-[#f8fafc] text-xs font-semibold text-[#475569] transition-colors cursor-pointer"
                 >
-                  Guardar
+                  {isScopeReadOnly ? <span className="inline-flex items-center gap-1"><Pencil className="w-3 h-3" />Editar alcance</span> : 'Guardar datos generales'}
                 </button>
 
                 {(() => {
                   const isPptFilled = Boolean(activeQuote.commercialProposalUrl && activeQuote.commercialProposalUrl.trim().length > 5);
-                  const isWeeksFilled = activeOpp.projectType === 'fee_monthly' || Boolean((activeQuote.estimatedWeeks ?? activeQuote.financialConfig?.projectDurationWeeks ?? 0) > 0);
-                  const isScopeFilled = activeQuote.totalHoursRollup > 0 && activeQuote.deliverables.length > 0;
-                  const isReadyToMark = isPptFilled && isWeeksFilled && isScopeFilled;
-                  const isAlreadyMarked = activeOpp.status === 'internal_review' || activeOpp.status === 'proposal_sent' || activeOpp.status === 'negotiation' || activeOpp.status === 'won';
+                  const projectWeeks = Number(activeQuote.estimatedWeeks ?? activeQuote.financialConfig?.projectDurationWeeks);
+                  const isWeeksFilled = Number.isFinite(projectWeeks) && projectWeeks >= 1;
+                  const isScopeFilled = activeQuote.totalHoursRollup > 0 && activeQuote.deliverables.some((deliverable) => deliverable.backlogItems.some((activity) => activity.estimatedHours > 0));
+                  const isReadyToMark = isScopeReadyForReview(activeQuote, scopeState.services);
+                  const isAlreadyMarked = isReadyToMark && (activeOpp.status === 'internal_review' || activeOpp.status === 'proposal_sent' || activeOpp.status === 'negotiation' || activeOpp.status === 'won');
 
                   return (
                     <button
                       type="button"
                       onClick={() => {
+                        if (!isReadyToMark || !window.confirm('¿Confirmas que no faltan servicios y que la PPT incluye la propuesta completa?')) return;
                         const updatedOpp: NewBusinessOpportunity = {
                           ...activeOpp,
                           status: 'internal_review',
@@ -2057,9 +1983,10 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
             {/* Hint sutil solo si falta algo */}
             {(() => {
               const isPptFilled = Boolean(activeQuote.commercialProposalUrl && activeQuote.commercialProposalUrl.trim().length > 5);
-              const isWeeksFilled = activeOpp.projectType === 'fee_monthly' || Boolean((activeQuote.estimatedWeeks ?? activeQuote.financialConfig?.projectDurationWeeks ?? 0) > 0);
-              const isScopeFilled = activeQuote.totalHoursRollup > 0 && activeQuote.deliverables.length > 0;
-              const isReadyToMark = isPptFilled && isWeeksFilled && isScopeFilled;
+              const projectWeeks = Number(activeQuote.estimatedWeeks ?? activeQuote.financialConfig?.projectDurationWeeks);
+                  const isWeeksFilled = Number.isFinite(projectWeeks) && projectWeeks >= 1;
+              const isScopeFilled = activeQuote.totalHoursRollup > 0 && activeQuote.deliverables.some((deliverable) => deliverable.backlogItems.some((activity) => activity.estimatedHours > 0));
+              const isReadyToMark = isScopeReadyForReview(activeQuote, scopeState.services);
 
               if (isReadyToMark) return null;
 
@@ -2071,6 +1998,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                     {!isPptFilled && <span className="font-semibold mr-1">• Link Drive</span>}
                     {!isWeeksFilled && <span className="font-semibold mr-1">• Semanas</span>}
                     {!isScopeFilled && <span className="font-semibold mr-1">• Horas en alcance</span>}
+                    {!allServicesPrepared && <span className="font-semibold">• Servicios pendientes de duración o edición</span>}
                   </span>
                 </div>
               );
@@ -2080,16 +2008,32 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
           {/* Scoper Operativo de Backlog (Frentes, Entregables y Actividades) */}
           <BacklogScoper
             quote={activeQuote}
-            allQuotes={activeOpp.quotes}
+            readOnly={isScopeReadOnly}
+            onRequestEdit={() => onChangeScopeUi(activeQuote.id, { ...scopeState, saved: false })}
+            services={scopeState.services}
+            onChangeServices={(services) => {
+              onChangeScopeUi(activeQuote.id, { saved: false, services });
+              const previousSuggested = Math.max(0, ...scopeState.services.map((service) => Number(service.weeks) || 0));
+              const suggested = Math.max(0, ...services.map((service) => Number.isFinite(Number(service.weeks)) ? Number(service.weeks) : 0));
+              const current = Number(activeQuote.estimatedWeeks ?? activeQuote.financialConfig?.projectDurationWeeks) || 0;
+              if (suggested > 0 && (!current || current === previousSuggested)) handleUpdateQuote({ ...activeQuote, estimatedWeeks: suggested });
+            }}
             opportunityTitle={activeOpp.title}
             prospectName={activeOpp.prospectAccountName}
-            onSelectQuoteVersion={(quoteId) => setActiveQuoteId(quoteId)}
-            onCreateNewQuoteVersion={(baseQuote) => handleCreateNewQuoteVersion(baseQuote)}
             templates={templates}
             users={users}
-            onUpdateQuote={handleUpdateQuote}
+            onUpdateQuote={(updated) => {
+              const changedServices = scopeState.services.map((service) => {
+                const before = activeQuote.deliverables.filter((item) => service.deliverableIds.includes(item.id));
+                const after = updated.deliverables.filter((item) => service.deliverableIds.includes(item.id));
+                return JSON.stringify(before) === JSON.stringify(after) ? service : { ...service, saved: false };
+              });
+              if (changedServices.some((service, index) => service !== scopeState.services[index])) onChangeScopeUi(activeQuote.id, { saved: false, services: changedServices });
+              handleUpdateQuote(updated);
+            }}
             onGoToCalculator={() => setActiveTab('cotizacion')}
             onMarkScopeReady={(totalHours) => {
+              if (!isScopeReadyForReview(activeQuote, scopeState.services) || !window.confirm('¿Confirmas que no faltan servicios y que la PPT incluye la propuesta completa?')) return;
               const updatedOpp: NewBusinessOpportunity = {
                 ...activeOpp,
                 status: 'internal_review',
@@ -2136,7 +2080,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
 
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-[#501f92]/10 text-[#501f92]">
-                  {activeQuote.versionLabel}
+                  Alcance de la oportunidad
                 </span>
                 {activeOpp.hubspotDealStage && (
                   <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg border bg-[#fff7ed] text-[#c2410c] border-[#fed7aa]">
@@ -2151,7 +2095,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
               <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
                 <div className="flex items-center gap-1.5">
                   <span className="text-[11px] text-[#64748b]">Líder de Alcance:</span>
-                  <strong className="text-[#0f172a] font-bold">{activeOpp.leadUserName || 'Líder Técnico'}</strong>
+                  <strong className="text-[#0f172a] font-bold">{currentLeadDisplayName}</strong>
                 </div>
                 <span className="text-[#cbd5e1] hidden sm:inline">•</span>
                 <div className="flex items-center gap-1.5">
@@ -2183,7 +2127,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                 <span className="text-[#cbd5e1] hidden sm:inline">•</span>
                 <div className="flex items-center gap-1.5">
                   <span className="text-[11px] text-[#64748b]">Owner Comercial:</span>
-                  <strong className="text-[#501f92] font-bold">{activeOpp.commercialOwner || 'Catalina / Luisa'}</strong>
+                  <strong className="text-[#501f92] font-bold">{getCommercialOwnerName(activeOpp, users)}</strong>
                 </div>
               </div>
             </div>
@@ -2204,7 +2148,12 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                   </div>
                   <button
                     type="button"
-                    onClick={() => setIsEditingQuoteFields(true)}
+                    onClick={() => {
+                      setIsEditingQuoteFields(true);
+                      setIsQuoteSavedFeedback(false);
+                      setConversionSuccessMessage(null);
+                      onSetQuoteSaved(activeQuote.id);
+                    }}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-[#cbd5e1] hover:border-[#501f92] text-xs font-bold text-[#501f92] transition-colors cursor-pointer shadow-2xs"
                   >
                     <Pencil className="w-3.5 h-3.5" />
@@ -2366,7 +2315,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                         className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs font-mono text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-sans placeholder:font-normal focus:ring-2 focus:ring-[#501f92] bg-white"
                       />
                       <p className="text-[10px] text-[#64748b]">
-                        Planilla de Google Sheets donde Catalina/Luisa calculan el pricing con semanas y horas.
+                        Planilla de Google Sheets donde Finanzas calcula el pricing con semanas y horas.
                       </p>
                     </div>
 
@@ -2398,17 +2347,22 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                 )}
                 {!isQuoteSavedFeedback && !isQuoteDiligenciada && (
                   <span className="text-[11px] text-[#b45309]">
-                    * Ingresa el monto y el link del Sheet, luego haz clic en Guardar Cotización para habilitar 'Marcar como ganada' arriba.
+                    {quotePendingMessage}
                   </span>
                 )}
               </div>
 
               <div className="flex items-center gap-2 flex-wrap ml-auto">
-                {/* Botón principal a la derecha como primer botón */}
-                <button
+                {/* Solo se guarda mientras los campos están en edición. */}
+                {isEditingQuoteFields && <button
                   type="button"
                   onClick={() => {
                     const numVal = Math.max(0, Number(quoteValueDraft) || 0);
+                    if (!Number.isFinite(numVal) || numVal <= 0 || !isValidFinanceSheetUrl(quoteSheetUrlDraft)) {
+                      setIsQuoteSavedFeedback(false);
+                      setConversionSuccessMessage(quoteMissingRequirements(numVal, quoteSheetUrlDraft).join(' '));
+                      return;
+                    }
                     const updatedQuote: QuoteProposal = {
                       ...activeQuote,
                       totalQuotedValue: numVal,
@@ -2418,6 +2372,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                       commercialNotes: quoteNotesDraft.trim()
                     };
                     handleUpdateQuote(updatedQuote);
+                    onSetQuoteSaved(activeQuote.id, quoteSignature(numVal, quoteSheetUrlDraft));
                     setIsQuoteSavedFeedback(true);
                     setIsEditingQuoteFields(false);
                     setConversionSuccessMessage('✅ Cotización comercial guardada correctamente. Ahora puedes marcar como ganada arriba.');
@@ -2441,7 +2396,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                   ) : (
                     <span>Guardar cotización</span>
                   )}
-                </button>
+                </button>}
 
                 {activeOpp.status === 'won' && !activeOpp.convertedProjectId && (
                   <button
@@ -2533,8 +2488,8 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                       <FileText className="w-5 h-5" />
                     </span>
                     <div>
-                      <h4 className="font-bold text-xs text-[#0f172a]">Propuesta Comercial</h4>
-                      <span className="text-[10px] text-[#64748b]">{activeQuote.versionLabel}</span>
+                      <h4 className="font-bold text-xs text-[#0f172a]">Presentación PPT</h4>
+                      <span className="text-[10px] text-[#64748b]">Alcance de la oportunidad</span>
                     </div>
                   </div>
                   <div
@@ -2594,7 +2549,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
 
                 <button
                   type="button"
-                  onClick={() => setIsSowModalOpen(true)}
+                  onClick={() => onOpenSow(activeOpp.id)}
                   className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-[#cbd5e1] hover:bg-[#f1f5f9] active:bg-[#e2e8f0] active:scale-95 text-[#475569] font-bold text-xs transition-colors cursor-pointer shadow-2xs"
                   title="Gobernanza de Alcance Exterior: El SOW incluye objetivos, entregables, actividades formales, cronograma, exclusiones y valor comercial acordado. Las horas y tarifas internas por perfil quedan reservadas exclusivamente para la operación interna de Uhura."
                 >
@@ -2605,236 +2560,6 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
             </div>
           </div>
 
-          {/* Checklist Administrativo & Facturación (Alegra) */}
-          <div className="bg-white rounded-2xl border border-[#cbd5e1] p-6 shadow-2xs space-y-4">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div>
-                <h3 className="text-sm font-bold text-[#0f172a] uppercase tracking-wider flex items-center gap-2">
-                  <CheckSquare className="w-4 h-4 text-[#501f92]" />
-                  <span>Checklist Administrativo & Facturación (Alegra)</span>
-                </h3>
-                <p className="text-xs text-[#64748b]">
-                  Documentación requerida antes de emitir la factura en Alegra (no bloquea el kick-off operativo)
-                </p>
-              </div>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#f1f5f9] text-[#475569]">
-                Responsable: {activeOpp.administrativeChecklist?.responsibleName || 'Vivian'}
-              </span>
-            </div>
-
-            {/* Aviso explicativo de no-bloqueo y gestión contable */}
-            <div className="p-3 rounded-xl bg-[#f0fdf4] border border-[#bbf7d0] text-xs text-[#166534] flex items-start gap-2.5">
-              <span className="text-base shrink-0">💡</span>
-              <div className="space-y-0.5">
-                <p className="font-bold">
-                  Documentación fiscal independiente del cierre comercial:
-                </p>
-                <p className="text-[11px] text-[#15803d] leading-relaxed">
-                  RUT, Cédula de Representante Legal y Tercero en Alegra son gestionados por Vivian para emitir la factura. Pertenecen formalmente a la ficha del Cliente en <strong>Clientes & Facturación</strong> y <strong>NO bloquean marcar la propuesta como ganada ni el inicio operativo del proyecto</strong>.
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
-              {/* RUT */}
-              <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] flex flex-col justify-between space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-[#0f172a] text-xs">1. RUT Actualizado</span>
-                  <span
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                      activeOpp.administrativeChecklist?.rutStatus === 'received'
-                        ? 'bg-[#10b981]/15 text-[#10b981]'
-                        : 'bg-[#f59e0b]/15 text-[#b45309]'
-                    }`}
-                  >
-                    {activeOpp.administrativeChecklist?.rutStatus === 'received' ? 'Recibido' : 'Pendiente'}
-                  </span>
-                </div>
-                <div className="flex items-center rounded-xl bg-[#e2e8f0]/60 p-0.5 border border-[#cbd5e1]">
-                  <button
-                    type="button"
-                    onClick={() => handleUpdateAdminChecklist({ rutStatus: 'pending' })}
-                    className={`flex-1 py-1 px-2 rounded-lg text-[11px] font-bold transition-all ${
-                      activeOpp.administrativeChecklist?.rutStatus !== 'received'
-                        ? 'bg-white text-amber-700 shadow-2xs font-extrabold'
-                        : 'text-[#64748b] hover:text-[#0f172a]'
-                    }`}
-                  >
-                    Pendiente
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleUpdateAdminChecklist({ rutStatus: 'received' })}
-                    className={`flex-1 py-1 px-2 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 ${
-                      activeOpp.administrativeChecklist?.rutStatus === 'received'
-                        ? 'bg-[#059669] text-white shadow-2xs font-extrabold'
-                        : 'text-[#64748b] hover:text-[#0f172a]'
-                    }`}
-                  >
-                    <CheckCircle2 className="w-3 h-3" />
-                    <span>Recibido</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Cédula */}
-              <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] flex flex-col justify-between space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-[#0f172a] text-xs">2. Cédula Rep. Legal</span>
-                  <span
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                      activeOpp.administrativeChecklist?.idCardStatus === 'received'
-                        ? 'bg-[#10b981]/15 text-[#10b981]'
-                        : 'bg-[#f59e0b]/15 text-[#b45309]'
-                    }`}
-                  >
-                    {activeOpp.administrativeChecklist?.idCardStatus === 'received' ? 'Recibida' : 'Pendiente'}
-                  </span>
-                </div>
-                <div className="flex items-center rounded-xl bg-[#e2e8f0]/60 p-0.5 border border-[#cbd5e1]">
-                  <button
-                    type="button"
-                    onClick={() => handleUpdateAdminChecklist({ idCardStatus: 'pending' })}
-                    className={`flex-1 py-1 px-2 rounded-lg text-[11px] font-bold transition-all ${
-                      activeOpp.administrativeChecklist?.idCardStatus !== 'received'
-                        ? 'bg-white text-amber-700 shadow-2xs font-extrabold'
-                        : 'text-[#64748b] hover:text-[#0f172a]'
-                    }`}
-                  >
-                    Pendiente
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleUpdateAdminChecklist({ idCardStatus: 'received' })}
-                    className={`flex-1 py-1 px-2 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 ${
-                      activeOpp.administrativeChecklist?.idCardStatus === 'received'
-                        ? 'bg-[#059669] text-white shadow-2xs font-extrabold'
-                        : 'text-[#64748b] hover:text-[#0f172a]'
-                    }`}
-                  >
-                    <CheckCircle2 className="w-3 h-3" />
-                    <span>Recibida</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Correo Facturación */}
-              <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] flex flex-col justify-between space-y-2.5">
-                <span className="font-bold text-[#0f172a] text-xs block">3. Correo Facturación</span>
-                <input
-                  type="email"
-                  value={activeOpp.administrativeChecklist?.billingEmail || activeOpp.contactEmail || ''}
-                  onChange={(e) => handleUpdateAdminChecklist({ billingEmail: e.target.value })}
-                  placeholder="facturacion@empresa.com"
-                  className="w-full p-1.5 rounded-lg border border-[#cbd5e1] text-xs bg-white text-[#0f172a] focus:ring-1 focus:ring-[#501f92] focus:border-[#501f92]"
-                />
-              </div>
-
-              {/* Alegra */}
-              <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] flex flex-col justify-between space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-[#0f172a] text-xs">4. Creado en Alegra</span>
-                  <label className="inline-flex items-center gap-1.5 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={activeOpp.administrativeChecklist?.alegraCreated || false}
-                      onChange={(e) => handleUpdateAdminChecklist({ alegraCreated: e.target.checked })}
-                      className="rounded text-[#501f92] focus:ring-[#501f92] cursor-pointer"
-                    />
-                    <span className="text-[10px] font-bold text-[#475569]">Sí</span>
-                  </label>
-                </div>
-                <input
-                  type="text"
-                  value={activeOpp.administrativeChecklist?.alegraContactId || ''}
-                  onChange={(e) => handleUpdateAdminChecklist({ alegraContactId: e.target.value })}
-                  placeholder="ID Tercero Alegra (opcional)"
-                  className="w-full p-1.5 rounded-lg border border-[#cbd5e1] text-xs bg-white text-[#0f172a] focus:ring-1 focus:ring-[#501f92] focus:border-[#501f92]"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* TAB 5: HISTORIAL DE VERSIONES & BITÁCORA */}
-      {/* ========================================================================= */}
-      {activeTab === 'historial' && (
-        <div className="bg-white rounded-2xl border border-[#e2e8f0] p-6 shadow-2xs space-y-6 animate-in fade-in duration-150">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <div>
-              <h3 className="text-base font-bold text-[#0f172a]">
-                Historial de Versiones & Cotizaciones
-              </h3>
-              <p className="text-xs text-[#64748b]">
-                Versión oficial activa de la propuesta. Edita directamente el alcance y la cotización para actualizar valores y horas.
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold px-3 py-1.5 rounded-xl bg-[#501f92]/10 text-[#501f92] border border-[#501f92]/20">
-                Versión actual: {activeQuote.versionLabel}
-              </span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {activeOpp.quotes.map((q) => {
-              const isCurrent = q.id === activeQuoteId;
-              const qVal = q.totalQuotedValue ?? q.totalQuotedValueCOP ?? 0;
-              const qCurr = q.currency || 'COP';
-              return (
-                <div
-                  key={q.id}
-                  className={`p-4 rounded-2xl border transition-all ${
-                    isCurrent
-                      ? 'border-[#501f92] bg-[#501f92]/5 shadow-sm'
-                      : 'border-[#e2e8f0] bg-white hover:border-[#cbd5e1]'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold text-[#501f92]">
-                      {q.versionLabel}
-                    </span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#f1f5f9] text-[#475569]">
-                      {q.totalHoursRollup}h
-                    </span>
-                  </div>
-                  <div className="space-y-1 text-xs text-[#64748b]">
-                    <p>{q.deliverables.length} servicio(s) en alcance</p>
-                    <p className="font-bold text-[#0f172a]">
-                      {qVal > 0 ? `Cotizado: ${formatCurrency(qVal, qCurr)}` : 'Sin valor cotizado'}
-                    </p>
-                  </div>
-                  <div className="pt-3 mt-3 border-t border-[#e2e8f0] flex items-center justify-between">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActiveQuoteId(q.id);
-                        setActiveTab('scoping');
-                      }}
-                      className="text-xs font-bold text-[#501f92] hover:underline cursor-pointer"
-                    >
-                      {isCurrent ? 'Editando ahora' : 'Cargar versión'}
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Bitácora de Conversión */}
-          {activeOpp.convertedAt && (
-            <div className="p-4 rounded-xl bg-[#ecfdf5] border border-[#a7f3d0] text-xs text-[#065f46] space-y-1">
-              <span className="font-bold flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-[#10b981]" />
-                <span>Conversión a Cliente y Proyecto completada</span>
-              </span>
-              <p className="text-[11px] text-[#047857]">
-                Registrado en Orbit el: {new Date(activeOpp.convertedAt).toLocaleString('es-CO')}
-              </p>
-            </div>
-          )}
         </div>
       )}
 
@@ -2848,85 +2573,6 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
         onClose={() => setIsNewOppModalOpen(false)}
         onSaveOpportunity={handleCreatedOpportunity}
       />
-
-      {/* Modal de Confirmación: Solicitó Ajustes (Crear V2) */}
-      {showAdjustmentsModal && activeOpp && activeQuote && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-[#e2e8f0] p-6 space-y-4">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#ffedd5] text-[#c2410c] flex items-center justify-center shrink-0">
-                <Copy className="w-5 h-5" />
-              </div>
-              <div className="space-y-1">
-                <h3 className="text-base font-extrabold text-[#0f172a]">
-                  ¿Deseas crear una nueva versión (V2)?
-                </h3>
-                <p className="text-xs text-[#64748b]">
-                  El cliente solicitó ajustes sobre la propuesta actual (<strong>{activeQuote.versionLabel}</strong>).
-                </p>
-              </div>
-            </div>
-
-            <div className="p-3 bg-[#f8fafc] rounded-xl border border-[#e2e8f0] text-xs text-[#475569] space-y-1.5">
-              <p>
-                Al confirmar <strong>Crear V2</strong>, Orbit duplicará íntegramente los entregables y actividades de la V1 para que el líder pueda adaptar horas y roles sin sobreescribir el histórico original.
-              </p>
-              <p className="text-[11px] text-[#64748b]">
-                Si prefieres seguir trabajando sobre la misma versión, puedes simplemente marcarla en negociación.
-              </p>
-            </div>
-
-            <div className="space-y-2 pt-2 border-t border-[#f1f5f9]">
-              <button
-                type="button"
-                onClick={() => {
-                  handleCreateNewQuoteVersion(activeQuote);
-                  const updated: NewBusinessOpportunity = {
-                    ...activeOpp,
-                    status: 'negotiation',
-                    updatedAt: new Date().toISOString()
-                  };
-                  onUpdateOpportunity(updated);
-                  setActiveTab('scoping');
-                  setShowAdjustmentsModal(false);
-                  setConversionSuccessMessage('Cliente solicitó ajustes: Versión V2 creada clonando V1 para adaptar el alcance sin sobreescribir.');
-                  setTimeout(() => setConversionSuccessMessage(null), 5000);
-                }}
-                className="w-full py-2.5 px-4 rounded-xl bg-[#501f92] hover:bg-[#3d1572] text-white text-xs font-bold shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-2"
-              >
-                <Plus className="w-4 h-4 text-[#d4ff4a]" />
-                <span>Crear V2 (Clonar V1)</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  const updated: NewBusinessOpportunity = {
-                    ...activeOpp,
-                    status: 'negotiation',
-                    updatedAt: new Date().toISOString()
-                  };
-                  onUpdateOpportunity(updated);
-                  setShowAdjustmentsModal(false);
-                  setConversionSuccessMessage('Oportunidad actualizada a estado Negociación.');
-                  setTimeout(() => setConversionSuccessMessage(null), 4000);
-                }}
-                className="w-full py-2 px-4 rounded-xl border border-[#fed7aa] bg-[#fff7ed] hover:bg-[#ffedd5] text-[#c2410c] text-xs font-bold transition-colors cursor-pointer"
-              >
-                Solo marcar en Negociación (Sin V2)
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setShowAdjustmentsModal(false)}
-                className="w-full py-1.5 text-xs text-[#64748b] hover:text-[#0f172a] font-medium cursor-pointer"
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Modal de Confirmación: Registrar como Perdida */}
       {lossModalOpen && activeOpp && (
@@ -2993,17 +2639,6 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
           clients={clients}
           onClose={() => setIsConvertModalOpen(false)}
           onConfirm={handleConfirmConversion}
-        />
-      )}
-
-      {/* Modal de Generación de SOW */}
-      {activeQuote && (
-        <SOWModal
-          isOpen={isSowModalOpen}
-          opportunity={activeOpp}
-          quote={activeQuote}
-          onClose={() => setIsSowModalOpen(false)}
-          onSaveSOWData={handleSaveSowData}
         />
       )}
 
@@ -3112,7 +2747,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                     <span className="text-[10px] text-white/50 font-bold">Cierre</span>
                   </div>
                   <div className="text-sm font-black text-white truncate">
-                    {wonCelebrationOpp.commercialOwner || 'Catalina / Luisa'}
+                    {getCommercialOwnerName(wonCelebrationOpp, users)}
                   </div>
                   <p className="text-[10px] text-white/70 leading-snug">
                     Defensa de pricing, negociación estratégica y cierre formal del acuerdo.
@@ -3128,7 +2763,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                     <span className="text-[10px] text-white/50 font-bold">Técnico</span>
                   </div>
                   <div className="text-sm font-black text-white truncate">
-                    {wonCelebrationOpp.leadUserName || 'Líder de Alcance'}
+                    {users.find((user) => user.id === wonCelebrationOpp.leadUserId)?.name || 'Sin asignar'}
                   </div>
                   <p className="text-[10px] text-white/70 leading-snug">
                     Dimensionamiento técnico de {activeQuote?.totalHoursRollup || 0}h, entregables claros y alcance blindado.

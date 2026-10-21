@@ -1,0 +1,3436 @@
+diff --git a/src/components/taskflow/ClientDetailView.tsx b/src/components/taskflow/ClientDetailView.tsx
+index f64c82a..f4015b3 100644
+--- a/src/components/taskflow/ClientDetailView.tsx
++++ b/src/components/taskflow/ClientDetailView.tsx
+@@ -36,6 +36,8 @@ interface ClientDetailViewProps {
+   onBack: () => void;
+   onNavigateToDashboard?: () => void;
+   onNavigateToProject?: (projectName: string) => void;
++  onViewProjectSow?: (projectId: string) => void;
++  sowProjectIds?: string[];
+   onOpenNewProject?: () => void;
+   onEditClient?: (client: ClientProfile) => void;
+   onUpdateClient?: (client: ClientProfile) => void;
+@@ -47,6 +49,8 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
+   onBack,
+   onNavigateToDashboard,
+   onNavigateToProject,
++  onViewProjectSow,
++  sowProjectIds = [],
+   onOpenNewProject,
+   onEditClient,
+   onUpdateClient
+@@ -389,6 +393,12 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
+                       {tax.notes}
+                     </div>
+                   )}
++                  <dl className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-[#475569]">
++                    <div><dt className="font-semibold">RUT actualizado</dt><dd>{tax.rutUrl ? <a href={tax.rutUrl} target="_blank" rel="noreferrer" className="text-[#501f92] underline">Ver RUT</a> : 'Pendiente'}</dd></div>
++                    <div><dt className="font-semibold">Cédula del representante legal</dt><dd>{tax.legalRepresentativeId || 'Pendiente'}</dd></div>
++                    <div><dt className="font-semibold">Correo de facturación</dt><dd>{tax.billingEmail || 'Pendiente'}</dd></div>
++                    <div><dt className="font-semibold">Creado en Alegra</dt><dd>{tax.alegraCreated ? 'Sí' : 'Pendiente'}</dd></div>
++                  </dl>
+                   {tax.alegraContactId && (
+                     <div className="text-[10px] font-mono text-[#501f92] mt-1">
+                       ID Alegra: {tax.alegraContactId}
+@@ -697,6 +707,12 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
+                         <span className="font-bold text-[#0f172a] group-hover:text-[#501f92] transition-colors">
+                           {prj.name}
+                         </span>
++                        {onViewProjectSow && sowProjectIds.includes(prj.id) && (
++                          <button type="button" className="text-[#501f92] underline text-xs"
++                            onClick={(event) => { event.stopPropagation(); onViewProjectSow(prj.id); }}>
++                            Ver SOW
++                          </button>
++                        )}
+                         {prj.tag && (
+                           <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded bg-[#f2ecfb] text-[#501f92]">
+                             {prj.tag}
+diff --git a/src/components/taskflow/ClientsView.tsx b/src/components/taskflow/ClientsView.tsx
+index c81249f..99879c9 100644
+--- a/src/components/taskflow/ClientsView.tsx
++++ b/src/components/taskflow/ClientsView.tsx
+@@ -25,6 +25,8 @@ interface ClientsViewProps {
+   onSelectClient?: (clientId: string | null) => void;
+   onNavigateToDashboard?: () => void;
+   onNavigateToProject?: (projectName: string) => void;
++  onViewProjectSow?: (projectId: string) => void;
++  sowProjectIds?: string[];
+   onOpenNewProjectForClient?: (clientId: string) => void;
+   onUpdateClient?: (updatedClient: ClientProfile) => void;
+   onCreateClient?: (newClient: ClientProfile) => void;
+@@ -38,6 +40,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
+   onSelectClient,
+   onNavigateToDashboard,
+   onNavigateToProject,
++  onViewProjectSow,
++  sowProjectIds = [],
+   onOpenNewProjectForClient,
+   onUpdateClient,
+   onCreateClient
+@@ -135,6 +139,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
+           onBack={handleBackToList}
+           onNavigateToDashboard={onNavigateToDashboard}
+           onNavigateToProject={onNavigateToProject}
++          onViewProjectSow={onViewProjectSow}
++          sowProjectIds={sowProjectIds}
+           onOpenNewProject={() => {
+             if (onOpenNewProjectForClient) onOpenNewProjectForClient(selectedClient.id);
+           }}
+diff --git a/src/components/taskflow/EditClientModal.tsx b/src/components/taskflow/EditClientModal.tsx
+index 01dfaae..9e45fab 100644
+--- a/src/components/taskflow/EditClientModal.tsx
++++ b/src/components/taskflow/EditClientModal.tsx
+@@ -435,6 +435,24 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
+                           className="w-full px-2.5 py-1.5 rounded-lg border border-[#cbd5e1] bg-white text-[#0f172a] font-mono text-xs placeholder:text-[#7C8AA0] placeholder:font-normal placeholder:font-sans focus:outline-none focus:border-[#501f92]"
+                         />
+                       </div>
++
++                      {([
++                        ['rutUrl', 'RUT actualizado (enlace)', 'url'],
++                        ['legalRepresentativeId', 'Cédula del representante legal', 'text'],
++                        ['billingEmail', 'Correo de facturación', 'email']
++                      ] as const).map(([field, label, type]) => (
++                        <label key={field} className="block text-[11px] font-semibold text-[#475569]">
++                          {label}
++                          <input type={type} value={tax[field] || ''}
++                            onChange={(event) => handleUpdateTaxEntity(tax.id, field, event.target.value)}
++                            className="mt-1 w-full px-2.5 py-1.5 rounded-lg border border-[#cbd5e1] bg-white text-[#0f172a] text-xs" />
++                        </label>
++                      ))}
++                      <label className="flex items-center gap-2 text-xs text-[#475569]">
++                        <input type="checkbox" checked={tax.alegraCreated || false}
++                          onChange={(event) => handleUpdateTaxEntity(tax.id, 'alegraCreated', event.target.checked)} />
++                        Creado en Alegra
++                      </label>
+                     </div>
+                   </div>
+                 ))}
+diff --git a/src/components/taskflow/newbusiness/BacklogScoper.tsx b/src/components/taskflow/newbusiness/BacklogScoper.tsx
+index c918565..4d58c08 100644
+--- a/src/components/taskflow/newbusiness/BacklogScoper.tsx
++++ b/src/components/taskflow/newbusiness/BacklogScoper.tsx
+@@ -5,8 +5,10 @@ import {
+   QuoteBacklogItem,
+   STANDARD_UHURA_ROLES,
+   StandardUhuraRole,
++  UserItem,
+   ProductBacklogTemplate
+ } from '../types';
++import { serviceValidationMessages } from './teamCandidates';
+ import { computeRoleBudgetsFromActivities, computeTotalHoursFromRoleBudgets } from '../templates/templateEngine';
+ import {
+   Plus,
+@@ -17,8 +19,6 @@ import {
+   ChevronDown,
+   ChevronRight,
+   ChevronUp,
+-  ArrowUp,
+-  ArrowDown,
+   Info,
+   Clock,
+   CheckCircle2,
+@@ -28,15 +28,20 @@ import {
+   TrendingUp,
+   AlertTriangle,
+   FolderPlus,
+-  GripVertical
++  GripVertical,
++  Pencil
+ } from 'lucide-react';
+ 
++// Metadatos visuales de la sesión; no forman parte del modelo ni del contrato de la oportunidad.
++export type ScopeServiceDraft = { id: string; name: string; deliverableIds: string[]; weeks: string; saved?: boolean };
++
+ interface BacklogScoperProps {
++  readOnly?: boolean;
++  onRequestEdit?: () => void;
++  services: ScopeServiceDraft[];
++  onChangeServices: (services: ScopeServiceDraft[]) => void;
+   quote: QuoteProposal;
+-  allQuotes: QuoteProposal[];
+   onUpdateQuote: (updatedQuote: QuoteProposal) => void;
+-  onSelectQuoteVersion: (quoteId: string) => void;
+-  onCreateNewQuoteVersion: (baseQuote?: QuoteProposal) => void;
+   templates?: ProductBacklogTemplate[];
+   opportunityTitle?: string;
+   prospectName?: string;
+@@ -68,10 +73,11 @@ const ROLE_BADGE_STYLES: Record<string, { bg: string; text: string; border: stri
+ 
+ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
+   quote,
+-  allQuotes,
++  readOnly = false,
++  onRequestEdit,
++  services,
++  onChangeServices,
+   onUpdateQuote,
+-  onSelectQuoteVersion,
+-  onCreateNewQuoteVersion,
+   templates = [],
+   opportunityTitle,
+   prospectName,
+@@ -79,8 +85,12 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
+   onMarkScopeReady,
+   opportunityStatus,
+   commercialOwner,
+-  users = []
++  users: teamUsers = []
+ }) => {
++  const users = teamUsers.filter((user) => user.status === 'Active');
++  const [savedServiceFeedback, setSavedServiceFeedback] = useState<string | null>(null);
++  useEffect(() => { if (!savedServiceFeedback) return; const timer = setTimeout(() => setSavedServiceFeedback(null), 3000); return () => clearTimeout(timer); }, [savedServiceFeedback]);
++  const dragged = React.useRef<{ deliverableId: string; activityId?: string } | null>(null);
+   const [collapsedDeliverables, setCollapsedDeliverables] = useState<Record<string, boolean>>({});
+   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+   const [selectedTemplateToImport, setSelectedTemplateToImport] = useState<string>('');
+@@ -95,7 +105,7 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
+ 
+   // Helper: Recompute rollups for a quote whenever deliverables change
+   const recomputeQuoteRollups = (deliverables: QuoteDeliverable[]): QuoteProposal => {
+-    const updatedDeliverables = deliverables.map((del) => {
++    const updatedDeliverables = deliverables.map((del, index) => {
+       const computedRoleBudgets = computeRoleBudgetsFromActivities(
+         del.backlogItems.map((b) => ({
+           roleId: b.roleName,
+@@ -114,6 +124,8 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
+ 
+       return {
+         ...del,
++        order: index + 1,
++        backlogItems: del.backlogItems.map((item, activityIndex) => ({ ...item, order: activityIndex + 1 })),
+         roleBudgets: computedRoleBudgets,
+         totalHoursRollup: subtotal
+       };
+@@ -170,47 +182,36 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
+     onUpdateQuote(recomputeQuoteRollups(updated));
+   };
+ 
+-  const handleMoveDeliverable = (delId: string, direction: 'up' | 'down') => {
+-    const idx = quote.deliverables.findIndex((d) => d.id === delId);
+-    if (idx === -1) return;
+-    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+-    if (targetIdx < 0 || targetIdx >= quote.deliverables.length) return;
+-
+-    const list = [...quote.deliverables];
+-    const temp = list[idx];
+-    list[idx] = list[targetIdx];
+-    list[targetIdx] = temp;
+-
+-    // Actualizar órdenes relativos
+-    const reordered = list.map((d, index) => ({ ...d, order: index + 1 }));
+-    onUpdateQuote(recomputeQuoteRollups(reordered));
+-  };
+-
+-  const handleMoveActivity = (delId: string, actId: string, direction: 'up' | 'down') => {
+-    const updated = quote.deliverables.map((d) => {
+-      if (d.id !== delId) return d;
+-      const actIdx = d.backlogItems.findIndex((a) => a.id === actId);
+-      if (actIdx === -1) return d;
+-      const targetActIdx = direction === 'up' ? actIdx - 1 : actIdx + 1;
+-      if (targetActIdx < 0 || targetActIdx >= d.backlogItems.length) return d;
+-
+-      const actList = [...d.backlogItems];
+-      const temp = actList[actIdx];
+-      actList[actIdx] = actList[targetActIdx];
+-      actList[targetActIdx] = temp;
+-
+-      return {
+-        ...d,
+-        backlogItems: actList.map((a, i) => ({ ...a, order: i + 1 }))
+-      };
++  const handleDrop = (event: React.DragEvent, deliverableId: string, activityId?: string) => {
++    event.preventDefault();
++    event.stopPropagation();
++    const source = dragged.current;
++    dragged.current = null;
++    if (!source || Boolean(source.activityId) !== Boolean(activityId)) return;
++    if (!activityId) {
++      const list = [...quote.deliverables].sort((a, b) => a.order - b.order);
++      const from = list.findIndex((item) => item.id === source.deliverableId);
++      const to = list.findIndex((item) => item.id === deliverableId);
++      if (from < 0 || to < 0 || from === to) return;
++      list.splice(to, 0, list.splice(from, 1)[0]);
++      onUpdateQuote(recomputeQuoteRollups(list.map((item, index) => ({ ...item, order: index + 1 }))));
++      return;
++    }
++    if (source.deliverableId !== deliverableId) return;
++    const list = quote.deliverables.map((del) => {
++      if (del.id !== deliverableId) return del;
++      const activities = [...del.backlogItems].sort((a, b) => a.order - b.order);
++      const from = activities.findIndex((item) => item.id === source.activityId);
++      const to = activities.findIndex((item) => item.id === activityId);
++      if (from < 0 || to < 0) return del;
++      activities.splice(to, 0, activities.splice(from, 1)[0]);
++      return { ...del, backlogItems: activities.map((item, index) => ({ ...item, order: index + 1 })) };
+     });
+-
+-    onUpdateQuote(recomputeQuoteRollups(updated));
++    onUpdateQuote(recomputeQuoteRollups(list));
+   };
+ 
+   // Activity (Backlog Item) Operations
+   const handleAddActivity = (delId: string) => {
+-    const defaultUser = users[0];
+     const newAct: QuoteBacklogItem = {
+       id: `act-${Date.now()}`,
+       quoteDeliverableId: delId,
+@@ -218,9 +219,9 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
+       roleId: 'Front-End Dev',
+       roleName: 'Front-End Dev',
+       estimatedHours: 8,
+-      suggestedUserId: defaultUser?.id || null,
+-      suggestedUserName: defaultUser?.name || null,
+-      order: 99
++      suggestedUserId: null,
++      suggestedUserName: null,
++      order: (quote.deliverables.find((del) => del.id === delId)?.backlogItems.length || 0) + 1
+     };
+ 
+     const updated = quote.deliverables.map((d) => {
+@@ -244,6 +245,10 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
+       if (d.id !== delId) return d;
+       const updatedItems = d.backlogItems.map((act) => {
+         if (act.id !== actId) return act;
++        if (field === 'suggestedUserId') {
++          const user = users.find((u) => u.id === value);
++          return { ...act, suggestedUserId: user?.id || null, suggestedUserName: user?.name || null };
++        }
+         if (field === 'roleName') {
+           return { ...act, roleName: value, roleId: value };
+         }
+@@ -268,7 +273,9 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
+       ...targetAct,
+       id: `act-${Date.now()}`,
+       title: `${targetAct.title} (Copia)`,
+-      order: targetAct.order + 1
++      suggestedUserId: null,
++      suggestedUserName: null,
++      order: targetDel.backlogItems.length + 1
+     };
+ 
+     const updated = quote.deliverables.map((d) => {
+@@ -314,16 +321,10 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
+     const tpl = templates.find((t) => t.id === selectedTemplateToImport);
+     if (!tpl) return;
+ 
++    const importId = crypto.randomUUID();
+     const importedDeliverables: QuoteDeliverable[] = tpl.deliverables.map((td, dIdx) => {
+-      const delId = `qdel-imported-${Date.now()}-${dIdx}`;
++      const delId = `qdel-imported-${importId}-${dIdx}`;
+       const backlogItems: QuoteBacklogItem[] = td.activities.map((act, aIdx) => {
+-        // Encontrar persona sugerida por coincidencia de rol o rotación del equipo
+-        const matchedUser = users.find((u) => {
+-          const uRole = (u.officialRole || u.professionalRole || u.jobTitle || u.role || '').toLowerCase();
+-          const aRole = (act.roleName || '').toLowerCase();
+-          return uRole.includes(aRole) || aRole.includes(uRole);
+-        }) || (users.length > 0 ? users[aIdx % users.length] : null);
+-
+         return {
+           id: `act-imp-${Date.now()}-${dIdx}-${aIdx}`,
+           quoteDeliverableId: delId,
+@@ -332,8 +333,8 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
+           roleId: act.roleName,
+           roleName: act.roleName,
+           estimatedHours: act.estimatedHours,
+-          suggestedUserId: matchedUser?.id || null,
+-          suggestedUserName: matchedUser?.name || null,
++          suggestedUserId: null,
++          suggestedUserName: null,
+           order: aIdx + 1
+         };
+       });
+@@ -364,6 +365,8 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
+       ...newCollapsedState
+     }));
+ 
++    onChangeServices([...services, { id: importId, name: tpl.name,
++      deliverableIds: importedDeliverables.map((deliverable) => deliverable.id), weeks: '', saved: false }]);
+     const updated = recomputeQuoteRollups([...quote.deliverables, ...importedDeliverables]);
+     onUpdateQuote(updated);
+     setIsImportModalOpen(false);
+@@ -389,6 +392,65 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
+     return computeTotalHoursFromRoleBudgets(globalRoleRollup);
+   }, [globalRoleRollup]);
+ 
++  const serviceHeader = (service: ScopeServiceDraft) => {
++    const issues = serviceValidationMessages(service);
++    const locked = Boolean(readOnly || service.saved) && issues.length === 0;
++    return <section data-service={service.id} className="rounded-xl border-l-4 border border-[#a78bfa] bg-[#ede9fe] p-4 shadow-sm space-y-3">
++      <div className="flex items-center justify-between flex-wrap gap-2">
++        <h3 className="font-bold text-[#3b176d]">Servicio: {service.name}</h3>
++        <button type="button" disabled={!locked} aria-label={`Editar servicio ${service.name}`}
++          onClick={() => {
++            if (!locked && issues.length > 0) return;
++            if (readOnly) onRequestEdit?.();
++            onChangeServices(services.map((item) => item.id === service.id ? { ...item, saved: false } : item));
++            setSavedServiceFeedback(locked ? null : service.id);
++          }} className="inline-flex items-center gap-1 rounded-lg bg-white border border-[#a78bfa] px-3 py-1.5 text-xs font-bold text-[#501f92] disabled:opacity-50 disabled:cursor-not-allowed">
++          <Pencil className="w-3 h-3" />Editar servicio
++        </button>
++      </div>
++      {savedServiceFeedback === service.id && <p role="status" className="text-xs font-semibold text-[#047857]">Servicio guardado. El alcance general continúa pendiente de revisión.</p>}
++      {!locked && issues.map((issue) => <p key={issue} role="status" className="text-xs text-[#b45309]">{issue}</p>)}
++      {locked ? <p className="text-base font-bold text-[#501f92]">Duración del servicio: {service.weeks ? `${service.weeks} semanas` : 'Pendiente'}</p> :
++        <label className="block text-base font-bold text-[#501f92]">Duración del servicio en semanas
++          <input aria-label={`Semanas del servicio ${service.name}`} type="number" min="1" step="1" value={service.weeks}
++            onChange={(event) => onChangeServices(services.map((item) => item.id === service.id ? { ...item, weeks: event.target.value, saved: false } : item))}
++            className="mt-1 w-full border border-[#a78bfa] rounded-lg bg-white p-2" />
++        </label>}
++    </section>;
++  };
++
++  const hoursSummary = <aside aria-label="Resumen de horas del alcance" className="lg:col-span-4 lg:sticky lg:top-4 p-5 rounded-2xl border border-[#cbd5e1] bg-white shadow-sm space-y-4">
++    <div className="flex items-center justify-between border-b border-[#e2e8f0] pb-3"><h3 className="font-bold text-[#501f92]">Horas por Rol</h3><strong>{Number(totalHours.toFixed(2))}h</strong></div>
++    <div className="space-y-2">{globalRoleRollup.map((role) => <div key={role.roleId} className="flex justify-between gap-3 text-xs"><span>{role.roleName}</span><strong>{Number(role.quotedHours.toFixed(2))}h</strong></div>)}</div>
++    <h3 className="font-bold text-[#501f92] border-t border-[#e2e8f0] pt-3">Horas por servicio</h3>
++    {services.map((service) => {
++      const items = quote.deliverables.filter((item) => service.deliverableIds.includes(item.id));
++      const hours = items.flatMap((item) => item.backlogItems).reduce((sum,item) => sum + item.estimatedHours,0);
++      return <div key={service.id} className="flex justify-between gap-3 text-xs"><span>{service.name}</span><strong>{Number(hours.toFixed(2))}h</strong></div>;
++    })}
++    {quote.deliverables.filter((item) => !services.some((service) => service.deliverableIds.includes(item.id))).map((item) => <div key={item.id} className="flex justify-between gap-3 text-xs"><span>{item.name}</span><strong>{Number(item.backlogItems.reduce((sum,activity) => sum+activity.estimatedHours,0).toFixed(2))}h</strong></div>)}
++    <h3 className="font-bold text-[#501f92] border-t border-[#e2e8f0] pt-3">Duración por servicio</h3>
++    {services.map((service) => <div key={service.id} className="flex justify-between gap-3 text-xs"><span>{service.name}</span><strong className="whitespace-nowrap">{service.weeks || 'Pendiente'}{service.weeks ? ' semanas' : ''}</strong></div>)}
++    <p className="text-xs text-[#64748b]">Las duraciones pueden transcurrir en paralelo.</p>
++  </aside>;
++
++  const readingDeliverable = (deliverable: QuoteDeliverable) => <article className="p-4 bg-white border border-[#e2e8f0] rounded-xl space-y-2">
++    <h4 className="font-bold">{deliverable.name}</h4><p className="text-xs">{deliverable.description}</p>
++    <ul className="text-xs space-y-2">{[...deliverable.backlogItems].sort((a,b) => a.order-b.order).map((activity) => <li key={activity.id}>{activity.title || 'Actividad sin título'} · {activity.roleName} · {activity.estimatedHours}h · {users.find((user) => user.id === activity.suggestedUserId)?.name || 'Sin asignar'}</li>)}</ul>
++  </article>;
++
++  const orderedDeliverables = [...quote.deliverables].sort((a, b) => a.order - b.order);
++  if (readOnly) return <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
++    <div className="lg:col-span-8 space-y-4" aria-label="Alcance guardado">{orderedDeliverables.map((deliverable) => {
++      const service = services.find((item) => item.deliverableIds.includes(deliverable.id));
++      return <div key={deliverable.id} className="space-y-3">
++        {service && orderedDeliverables.find((item) => service.deliverableIds.includes(item.id))?.id === deliverable.id && serviceHeader(service)}
++        {readingDeliverable(deliverable)}
++      </div>;
++    })}</div>
++    {hoursSummary}
++  </div>;
++
+   return (
+     <div className="space-y-6">
+       {/* Main Scoping Grid: Left = Deliverables & Activities / Right = Real-Time Rollup Engine */}
+@@ -417,7 +479,7 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
+                     className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 text-xs font-bold text-[#501f92] bg-[#501f92]/10 hover:bg-[#501f92]/20 border border-[#501f92]/30 rounded-2xl transition-colors cursor-pointer shadow-2xs"
+                   >
+                     <BookOpen className="w-4 h-4 text-[#501f92]" />
+-                    <span>Usar plantilla del catálogo</span>
++                    <span>Agregar plantilla</span>
+                   </button>
+                 )}
+                 <button
+@@ -431,16 +493,29 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
+               </div>
+             </div>
+           ) : (
+-            quote.deliverables.map((del, delIdx) => {
++            [...quote.deliverables].sort((a, b) => a.order - b.order).map((del, delIdx) => {
+               const isCollapsed = !!collapsedDeliverables[del.id];
+               const delTotalHours = del.backlogItems.reduce(
+                 (sum, item) => sum + (Number(item.estimatedHours) || 0),
+                 0
+               );
+ 
++              const service = services.find((item) => item.deliverableIds.includes(del.id));
+               return (
+-                <div
++                <div key={del.id} data-service-editor={service?.id} className="space-y-4" onBlur={(event) => {
++                  if (!service || service.saved || serviceValidationMessages(service).length) return;
++                  if ((event.target as HTMLElement).closest('button[aria-label^="Editar servicio"]')) return;
++                  const next = event.relatedTarget as HTMLElement | null;
++                  if (next?.closest('[data-service-editor]')?.getAttribute('data-service-editor') === service.id) return;
++                  onChangeServices(services.map((item) => item.id === service.id ? { ...item, saved: true } : item));
++                  setSavedServiceFeedback(service.id);
++                }}>
++                {service && orderedDeliverables.find((item) => service.deliverableIds.includes(item.id))?.id === del.id && serviceHeader(service)}
++                {service?.saved && serviceValidationMessages(service).length === 0 ? readingDeliverable(del) : <div
+                   key={del.id}
++                  onDragEnter={(event) => event.preventDefault()}
++                  onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = 'move'; }}
++                  onDrop={(event) => handleDrop(event, del.id)}
+                   className="bg-white rounded-2xl border border-[#e2e8f0] shadow-xs overflow-hidden transition-all"
+                 >
+                   {/* Deliverable Header */}
+@@ -457,7 +532,19 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
+                           <ChevronDown className="w-4 h-4" />
+                         )}
+                       </button>
+-                      <GripVertical className="w-4 h-4 text-[#94a3b8] cursor-grab active:cursor-grabbing shrink-0 opacity-70 hover:opacity-100" />
++                      <button
++                        type="button" draggable aria-label="Arrastrar para reordenar"
++                        className="cursor-grab active:cursor-grabbing"
++                        onDragStart={(event) => {
++                          event.stopPropagation();
++                          dragged.current = { deliverableId: del.id };
++                          event.dataTransfer.effectAllowed = 'move';
++                          event.dataTransfer.setData('text/plain', del.id);
++                        }}
++                        onDragEnd={() => { dragged.current = null; }}
++                      >
++                        <GripVertical className="w-4 h-4 text-[#94a3b8] shrink-0 opacity-70 hover:opacity-100" />
++                      </button>
+                       <span className="w-6 h-6 rounded-full bg-[#501f92]/10 text-[#501f92] text-xs font-bold flex items-center justify-center shrink-0">
+                         {delIdx + 1}
+                       </span>
+@@ -482,35 +569,6 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
+                         </span>
+                       </div>
+ 
+-                      <div className="flex items-center gap-0.5">
+-                        <button
+-                          type="button"
+-                          disabled={delIdx === 0}
+-                          onClick={() => handleMoveDeliverable(del.id, 'up')}
+-                          className={`p-1 rounded hover:bg-white transition-colors ${
+-                            delIdx === 0
+-                              ? 'text-[#cbd5e1] cursor-not-allowed'
+-                              : 'text-[#64748b] hover:text-[#501f92] cursor-pointer'
+-                          }`}
+-                          title="Mover entregable hacia arriba"
+-                        >
+-                          <ArrowUp className="w-3.5 h-3.5" />
+-                        </button>
+-                        <button
+-                          type="button"
+-                          disabled={delIdx === quote.deliverables.length - 1}
+-                          onClick={() => handleMoveDeliverable(del.id, 'down')}
+-                          className={`p-1 rounded hover:bg-white transition-colors ${
+-                            delIdx === quote.deliverables.length - 1
+-                              ? 'text-[#cbd5e1] cursor-not-allowed'
+-                              : 'text-[#64748b] hover:text-[#501f92] cursor-pointer'
+-                          }`}
+-                          title="Mover entregable hacia abajo"
+-                        >
+-                          <ArrowDown className="w-3.5 h-3.5" />
+-                        </button>
+-                      </div>
+-
+                       <button
+                         type="button"
+                         onClick={() => handleRemoveDeliverable(del.id)}
+@@ -542,7 +600,7 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
+                           </div>
+                         ) : (
+                           <div className="rounded-xl border border-[#e2e8f0] bg-white divide-y divide-[#f1f5f9] overflow-hidden">
+-                            {del.backlogItems.map((act, actIdx) => {
++                            {[...del.backlogItems].sort((a, b) => a.order - b.order).map((act, actIdx) => {
+                               const badgeStyle =
+                                 ROLE_BADGE_STYLES[act.roleName] || {
+                                   bg: 'bg-[#501f92]/10',
+@@ -553,11 +611,25 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
+                               return (
+                                 <div
+                                   key={act.id}
++                                  onDragOver={(event) => { event.preventDefault(); event.stopPropagation(); event.dataTransfer.dropEffect = 'move'; }}
++                                  onDrop={(event) => handleDrop(event, del.id, dragged.current?.activityId ? act.id : undefined)}
+                                   className="px-3 py-2 flex items-center justify-between gap-2.5 hover:bg-[#f8fafc] transition-colors group"
+                                 >
+                                   {/* Left: Drag Handle, Index & Title */}
+                                   <div className="flex items-center gap-1.5 flex-1 min-w-[200px]">
+-                                    <GripVertical className="w-3.5 h-3.5 text-[#94a3b8] cursor-grab active:cursor-grabbing shrink-0 opacity-40 group-hover:opacity-100 transition-opacity" />
++                                    <button
++                                      type="button" draggable aria-label="Arrastrar para reordenar"
++                                      className="cursor-grab active:cursor-grabbing"
++                                      onDragStart={(event) => {
++                                        event.stopPropagation();
++                                        dragged.current = { deliverableId: del.id, activityId: act.id };
++                                        event.dataTransfer.effectAllowed = 'move';
++                                        event.dataTransfer.setData('text/plain', act.id);
++                                      }}
++                                      onDragEnd={() => { dragged.current = null; }}
++                                    >
++                                      <GripVertical className="w-3.5 h-3.5 text-[#94a3b8] shrink-0 opacity-40 group-hover:opacity-100 transition-opacity" />
++                                    </button>
+                                     <span className="text-[11px] font-mono text-[#94a3b8] w-4 shrink-0 text-center">
+                                       {actIdx + 1}.
+                                     </span>
+@@ -598,11 +670,9 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
+                                   {/* Responsable de Ejecución */}
+                                   <div className="shrink-0">
+                                     <select
+-                                      value={act.suggestedUserId || ''}
++                                      value={users.some((user) => user.id === act.suggestedUserId) ? act.suggestedUserId || '' : ''}
+                                       onChange={(e) => {
+-                                        const selUser = users.find((u) => u.id === e.target.value);
+                                         handleUpdateActivity(del.id, act.id, 'suggestedUserId', e.target.value || null);
+-                                        handleUpdateActivity(del.id, act.id, 'suggestedUserName', selUser?.name || null);
+                                       }}
+                                       className="text-[11px] font-medium px-2 py-0.5 rounded-md border border-[#e2e8f0] bg-white text-[#334155] hover:border-[#cbd5e1] focus:ring-1 focus:ring-[#501f92] cursor-pointer outline-hidden transition-colors max-w-[130px] truncate"
+                                       title="Persona responsable de ejecutar la actividad"
+@@ -639,32 +709,6 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
+ 
+                                     {/* Botones de acción discretos: visibles al pasar el cursor */}
+                                     <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+-                                      <button
+-                                        type="button"
+-                                        disabled={actIdx === 0}
+-                                        onClick={() => handleMoveActivity(del.id, act.id, 'up')}
+-                                        className={`p-1 rounded hover:bg-white transition-colors ${
+-                                          actIdx === 0
+-                                            ? 'text-[#e2e8f0] cursor-not-allowed'
+-                                            : 'text-[#94a3b8] hover:text-[#501f92] cursor-pointer'
+-                                        }`}
+-                                        title="Subir actividad"
+-                                      >
+-                                        <ArrowUp className="w-3.5 h-3.5" />
+-                                      </button>
+-                                      <button
+-                                        type="button"
+-                                        disabled={actIdx === del.backlogItems.length - 1}
+-                                        onClick={() => handleMoveActivity(del.id, act.id, 'down')}
+-                                        className={`p-1 rounded hover:bg-white transition-colors ${
+-                                          actIdx === del.backlogItems.length - 1
+-                                            ? 'text-[#e2e8f0] cursor-not-allowed'
+-                                            : 'text-[#94a3b8] hover:text-[#501f92] cursor-pointer'
+-                                        }`}
+-                                        title="Bajar actividad"
+-                                      >
+-                                        <ArrowDown className="w-3.5 h-3.5" />
+-                                      </button>
+                                       <button
+                                         type="button"
+                                         onClick={() => handleDuplicateActivity(del.id, act.id)}
+@@ -707,10 +751,22 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
+                     </div>
+                   </div>
+                 )}
+-              </div>
++              </div>}
++                </div>
+             );
+           }))}
+ 
++          {quote.deliverables.length > 0 && templates.length > 0 && (
++            <button
++              type="button"
++              onClick={() => setIsImportModalOpen(true)}
++              className="px-4 py-2 rounded-xl border border-[#cbd5e1] bg-white text-xs font-bold text-[#501f92] flex items-center gap-2 cursor-pointer"
++            >
++              <BookOpen className="w-4 h-4" />
++              Agregar plantilla
++            </button>
++          )}
++
+           {/* Bottom Add Deliverable CTA */}
+           <button
+             type="button"
+@@ -722,101 +778,7 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
+           </button>
+         </div>
+ 
+-        {/* Right Column: Dynamic Rollup Engine (4 cols - Sticky) */}
+-        <div className="lg:col-span-4 space-y-4 lg:sticky lg:top-4">
+-          {/* Card: Rollup de Horas por Rol */}
+-          <div className="p-4 sm:p-5 bg-white rounded-2xl border border-[#e2e8f0] shadow-xs space-y-3.5">
+-            <div className="flex items-center justify-between pb-3 border-b border-[#f1f5f9]">
+-              <div>
+-                <h3 className="text-sm font-bold text-[#0f172a]">
+-                  Horas por Rol
+-                </h3>
+-                <span className="text-[11px] text-[#64748b]">
+-                  Rollup automático desde el backlog
+-                </span>
+-              </div>
+-              <div className="text-right">
+-                <span className="text-xl font-black text-[#501f92]">
+-                  {totalHours}h
+-                </span>
+-              </div>
+-            </div>
+-
+-            {/* Breakdown by Role with progress bar */}
+-            <div className="space-y-3">
+-              {globalRoleRollup.length === 0 ? (
+-                <p className="text-xs text-[#94a3b8] italic text-center py-2">
+-                  No hay horas estimadas todavía.
+-                </p>
+-              ) : (
+-                globalRoleRollup.map((rb) => {
+-                  const percentage = totalHours > 0 ? Math.round((rb.quotedHours / totalHours) * 100) : 0;
+-                  const badgeStyle =
+-                    ROLE_BADGE_STYLES[rb.roleName] || {
+-                      bg: 'bg-[#501f92]/10',
+-                      text: 'text-[#501f92]',
+-                      border: 'border-[#501f92]/20'
+-                    };
+-
+-                  return (
+-                    <div key={rb.roleId} className="space-y-1">
+-                      <div className="flex items-center justify-between text-xs">
+-                        <span className="font-semibold text-[#0f172a] flex items-center gap-1.5 truncate max-w-[180px]">
+-                          <span
+-                            className={`w-2 h-2 rounded-full ${badgeStyle.bg} border ${badgeStyle.border}`}
+-                          />
+-                          <span title={rb.roleName}>{rb.roleName}</span>
+-                        </span>
+-                        <div className="text-right shrink-0">
+-                          <strong className="text-[#0f172a]">{rb.quotedHours}h</strong>
+-                          <span className="text-[10px] text-[#64748b] ml-1">({percentage}%)</span>
+-                        </div>
+-                      </div>
+-
+-                      {/* Visual Bar */}
+-                      <div className="w-full bg-[#f1f5f9] rounded-full h-1.5 overflow-hidden">
+-                        <div
+-                          className="bg-[#501f92] h-full rounded-full transition-all duration-300"
+-                          style={{ width: `${percentage}%` }}
+-                        />
+-                      </div>
+-                    </div>
+-                  );
+-                })
+-              )}
+-            </div>
+-
+-            {/* Deliverables Subtotal Rollup */}
+-            <div className="pt-3 border-t border-[#f1f5f9] space-y-2">
+-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#64748b] block">
+-                Distribución por Frente:
+-              </span>
+-              <div className="space-y-1.5">
+-                {quote.deliverables.map((del) => {
+-                  const subtotal = del.backlogItems.reduce(
+-                    (acc, act) => acc + (Number(act.estimatedHours) || 0),
+-                    0
+-                  );
+-                  const pct = totalHours > 0 ? Math.round((subtotal / totalHours) * 100) : 0;
+-
+-                  return (
+-                    <div
+-                      key={del.id}
+-                      className="flex items-center justify-between text-[11px] text-[#475569]"
+-                    >
+-                      <span className="truncate mr-2 max-w-[200px]" title={del.name}>
+-                        {del.name}
+-                      </span>
+-                      <span className="font-semibold text-[#0f172a] shrink-0">
+-                        {subtotal}h ({pct}%)
+-                      </span>
+-                    </div>
+-                  );
+-                })}
+-              </div>
+-            </div>
+-          </div>
+-        </div>
++        {hoursSummary}
+       </div>
+ 
+       {/* Import Template Modal */}
+diff --git a/src/components/taskflow/newbusiness/ConvertOpportunityModal.tsx b/src/components/taskflow/newbusiness/ConvertOpportunityModal.tsx
+index 770f946..4dc398b 100644
+--- a/src/components/taskflow/newbusiness/ConvertOpportunityModal.tsx
++++ b/src/components/taskflow/newbusiness/ConvertOpportunityModal.tsx
+@@ -6,6 +6,7 @@ import {
+   UserItem,
+   ClientProfile
+ } from '../types';
++import { isEligibleTeamMember, matchesQuotedRole, searchActiveTeam } from './teamCandidates';
+ import { formatCurrency } from '../../../utils/formatters';
+ import {
+   CheckCircle2,
+@@ -47,20 +48,20 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
+   isOpen,
+   opportunity,
+   activeQuote,
+-  users = [],
++  users: teamUsers = [],
+   clients = [],
+   onClose,
+   onConfirm
+ }) => {
++  const users = teamUsers.filter(isEligibleTeamMember);
++
+   // Resolver si la cuenta ya existe en Clientes
+   const matchedExistingClient = useMemo(() => {
+     if (!clients || clients.length === 0) return null;
+     if (opportunity.clientId) {
+       return clients.find((c) => c.id === opportunity.clientId) || null;
+     }
+-    const clean = (opportunity.prospectAccountName || '').trim().toLowerCase();
+-    if (!clean) return null;
+-    return clients.find((c) => c.name.trim().toLowerCase() === clean) || null;
++    return null;
+   }, [clients, opportunity]);
+ 
+   // Roles y horas dimensionados por el líder técnico en el backlog
+@@ -100,15 +101,7 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
+       const match = users.find((u) => u.id === opportunity.leadUserId);
+       if (match) return match;
+     }
+-    if (opportunity.leadUserName) {
+-      const match = users.find(
+-        (u) =>
+-          u.name.toLowerCase().includes(opportunity.leadUserName!.toLowerCase()) ||
+-          opportunity.leadUserName!.toLowerCase().includes(u.name.toLowerCase())
+-      );
+-      if (match) return match;
+-    }
+-    return eligibleLeaders[0] || users[0] || null;
++    return null;
+   }, [opportunity, users, eligibleLeaders]);
+ 
+   const [projectName, setProjectName] = useState<string>(
+@@ -118,9 +111,14 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
+     opportunity.projectType || 'fixed_project'
+   );
+   const [selectedLeadId, setSelectedLeadId] = useState<string>(
+-    initialLeadUser ? initialLeadUser.id : 'usr-paola'
++    initialLeadUser?.id || ''
+   );
+-  const [selectedSpecialistIds, setSelectedSpecialistIds] = useState<string[]>([]);
++  const [selectedByRole, setSelectedByRole] = useState<Record<string, string[]>>({});
++  const [searchRole, setSearchRole] = useState<string | null>(null);
++  const [query, setQuery] = useState('');
++  const [showExtraSearch, setShowExtraSearch] = useState(false);
++  const [extraRole, setExtraRole] = useState('');
++  const selectedSpecialistIds = Array.from(new Set(Object.values(selectedByRole).flat()));
+   const [startDate, setStartDate] = useState<string>(
+     new Date().toISOString().slice(0, 10)
+   );
+@@ -147,21 +145,19 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
+     0
+   );
+   const clientName = opportunity.prospectAccountName || 'Cliente';
+-  const currentSelectedLead = users.find((u) => u.id === selectedLeadId) || initialLeadUser;
++  const currentSelectedLead = users.find((u) => u.id === selectedLeadId);
+ 
+   const handleSubmit = (e: React.FormEvent) => {
+     e.preventDefault();
+-    const finalLead = currentSelectedLead || {
+-      id: selectedLeadId,
+-      name: opportunity.leadUserName || 'Líder Operativo'
+-    };
++    const finalLead = currentSelectedLead;
++    if (!finalLead || (opportunity.clientId && !matchedExistingClient)) return;
+ 
+     onConfirm({
+       projectName: projectName.trim(),
+       projectType,
+       leadUserId: finalLead.id,
+       leadName: finalLead.name,
+-      specialistUserIds: selectedSpecialistIds,
++      specialistUserIds: selectedSpecialistIds.filter((id) => users.some((user) => user.id === id)),
+       startDate,
+       endDate: endDate || undefined,
+       initialFormalizationStatus: 'pendiente_formalizacion',
+@@ -178,12 +174,20 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
+     });
+   };
+ 
+-  const toggleSpecialist = (id: string) => {
+-    setSelectedSpecialistIds((prev) =>
+-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+-    );
++  const toggleSpecialist = (role: string, id: string) => {
++    if (!users.some((user) => user.id === id)) return;
++    setSelectedByRole((previous) => {
++      const ids = previous[role] || [];
++      return { ...previous, [role]: ids.includes(id) ? ids.filter((item) => item !== id) : [...ids, id] };
++    });
+   };
+ 
++  const selectedPeople = (role: string) => (selectedByRole[role] || []).flatMap((id) => {
++    const user = users.find((item) => item.id === id);
++    return user ? [<button key={id} type="button" aria-label={`Quitar ${user.name} de ${role}`} onClick={() => toggleSpecialist(role, id)}
++      className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-[#ede9fe] text-[#501f92] text-xs">{user.name}<X className="w-3 h-3" /></button>] : [];
++  });
++
+   return (
+     <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
+       <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-[#e2e8f0] overflow-hidden flex flex-col max-h-[92vh]">
+@@ -271,8 +275,8 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
+             </div>
+             <div className="p-2.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
+               <span className="text-[#64748b] block text-[10px] font-medium">Líder Scoping</span>
+-              <span className="font-bold text-[#501f92] text-xs block truncate" title={opportunity.leadUserName || 'Diego Cadavid'}>
+-                {opportunity.leadUserName || 'Diego Cadavid'}
++              <span className="font-bold text-[#501f92] text-xs block truncate" title={users.find((user) => user.id === opportunity.leadUserId)?.name || 'Sin asignar'}>
++                {users.find((user) => user.id === opportunity.leadUserId)?.name || 'Sin asignar'}
+               </span>
+             </div>
+           </div>
+@@ -315,11 +319,13 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
+               </label>
+               {eligibleLeaders.length > 0 ? (
+                 <select
++                  required
+                   value={selectedLeadId}
+                   onChange={(e) => setSelectedLeadId(e.target.value)}
+                   className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-medium bg-white focus:ring-2 focus:ring-[#501f92] shadow-2xs"
+                 >
+-                  {eligibleLeaders.map((u) => (
++                  <option value="">Sin asignar</option>
++                    {eligibleLeaders.map((u) => (
+                     <option key={u.id} value={u.id}>
+                       {u.name} ({u.officialRole || u.role || 'Líder'})
+                     </option>
+@@ -327,7 +333,7 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
+                 </select>
+               ) : (
+                 <div className="p-2.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] font-medium text-[#0f172a]">
+-                  {opportunity.leadUserName || 'Líder asignado'}
++                  Sin asignar
+                 </div>
+               )}
+             </div>
+@@ -372,113 +378,52 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
+             </div>
+           </div>
+ 
+-          {/* Roles dimensionados en el alcance técnico (Staffing Inicial) */}
+-          <div className="p-4 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-3">
+-            <div className="flex items-center justify-between flex-wrap gap-1">
+-              <span className="font-bold text-[#0f172a] flex items-center gap-1.5 text-xs">
+-                <Users className="w-4 h-4 text-[#501f92]" />
+-                <span>Especialistas Dimensionados en el Alcance (Opcional)</span>
+-              </span>
+-              <span className="text-[10px] text-[#64748b]">
+-                {scopedRoles.length} rol(es) presupuestados por Diego
+-              </span>
++          <section className="p-4 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-3" aria-label="Asignación de especialistas">
++            <div className="flex items-center justify-between gap-2"><h4 className="font-bold text-[#0f172a]">Equipo sugerido según los roles del alcance</h4><span className="text-xs text-[#64748b]">{selectedSpecialistIds.length} seleccionados</span></div>
++            <p className="text-xs text-[#64748b]">Estas personas se incorporarán al equipo inicial del proyecto. La asignación específica de tareas se conserva desde el Alcance o se completa durante la planificación.</p>
++            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
++            {scopedRoles.map((role) => {
++              const matches = users.filter((user) => matchesQuotedRole(user, role.roleName));
++              const candidates = matches.filter((user) => searchRole !== role.roleName || !query.trim() || searchActiveTeam([user], query).length > 0).slice(0, 3);
++              return <div key={role.roleName} className="rounded-lg border border-[#e2e8f0] bg-white p-3 space-y-2">
++                <div className="flex justify-between gap-2"><strong className="text-xs">{role.roleName}</strong><span className="text-xs text-[#501f92]">{Number(role.hours.toFixed(2))}h</span></div>
++                <div className="flex flex-wrap gap-1">{selectedPeople(role.roleName)}</div>
++                <div className="flex flex-wrap gap-1">{candidates.filter((user) => !(selectedByRole[role.roleName] || []).includes(user.id)).map((user) =>
++                  <button key={user.id} type="button" aria-label={`Agregar ${user.name} a ${role.roleName}`} onClick={() => toggleSpecialist(role.roleName, user.id)}
++                    className="px-2 py-1 border border-[#cbd5e1] rounded-md text-xs text-[#475569] hover:border-[#501f92]">+ {user.name}</button>)}</div>
++                {matches.length === 0 && <p className="text-xs text-[#64748b]">Sin candidatos activos con este rol.</p>}
++                <button type="button" onClick={() => { setSearchRole(searchRole === role.roleName ? null : role.roleName); setQuery(''); }} className="text-[11px] text-[#501f92] underline">Buscar candidatos de {role.roleName}</button>
++                {searchRole === role.roleName && <input aria-label={`Buscar candidatos de ${role.roleName}`} placeholder="Buscar por nombre o rol" value={query} onChange={(event) => setQuery(event.target.value)} className="block w-full p-2 border border-[#cbd5e1] rounded-lg text-xs" />}
++              </div>;
++            })}
+             </div>
+-
+-            {/* Lista de roles presupuestados con sus horas */}
+-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+-              {scopedRoles.map((sr) => {
+-                // Encontrar especialistas que coincidan con este rol
+-                const matchingUsers = users.filter((u) => {
+-                  const roleLower = (u.officialRole || u.role || '').toLowerCase();
+-                  const targetLower = sr.roleName.toLowerCase();
+-                  return roleLower.includes(targetLower) || targetLower.includes(roleLower);
+-                });
+-
+-                return (
+-                  <div
+-                    key={sr.roleName}
+-                    className="p-2.5 rounded-lg bg-white border border-[#e2e8f0] space-y-1.5"
+-                  >
+-                    <div className="flex items-center justify-between text-xs">
+-                      <span className="font-bold text-[#0f172a]">{sr.roleName}</span>
+-                      <span className="text-[10px] font-mono font-bold text-[#501f92] bg-[#501f92]/10 px-1.5 py-0.5 rounded">
+-                        {sr.hours}h
+-                      </span>
+-                    </div>
+-
+-                    <div className="flex flex-wrap gap-1">
+-                      {(matchingUsers.length > 0 ? matchingUsers : users.slice(0, 3)).map((u) => {
+-                        const isSelected = selectedSpecialistIds.includes(u.id);
+-                        return (
+-                          <button
+-                            key={u.id}
+-                            type="button"
+-                            onClick={() => toggleSpecialist(u.id)}
+-                            className={`px-2 py-0.5 rounded-md text-[10.5px] font-medium transition-colors border cursor-pointer flex items-center gap-1 ${
+-                              isSelected
+-                                ? 'bg-[#501f92] text-white border-[#501f92]'
+-                                : 'bg-[#f8fafc] text-[#475569] border-[#cbd5e1] hover:border-[#501f92]'
+-                            }`}
+-                          >
+-                            {isSelected && <Check className="w-3 h-3 text-[#d4ff4a]" />}
+-                            <span>{u.name}</span>
+-                          </button>
+-                        );
+-                      })}
+-                    </div>
+-                  </div>
+-                );
+-              })}
+-            </div>
+-
+-            {/* Asignación libre y flexible: Cualquier miembro del equipo (Laura, Catalina, Luisa...) */}
+-            <div className="p-3 bg-white rounded-lg border border-[#e2e8f0] space-y-2">
+-              <div className="flex items-center justify-between">
+-                <span className="text-xs font-bold text-[#0f172a] flex items-center gap-1.5">
+-                  <span>👥 Asignar otros integrantes del equipo al proyecto</span>
+-                </span>
+-                <span className="text-[10px] text-[#64748b]">
+-                  {selectedSpecialistIds.length} seleccionado(s)
+-                </span>
+-              </div>
+-              <p className="text-[10.5px] text-[#64748b]">
+-                En la práctica real, podemos asignar a cualquier persona disponible (ej. Laura, Catalina, Diego) sin importar el rol estricto cotizado en el alcance.
+-              </p>
+-              <div className="flex flex-wrap gap-1.5 pt-1">
+-                {users.map((u) => {
+-                  const isSelected = selectedSpecialistIds.includes(u.id);
+-                  return (
+-                    <button
+-                      key={u.id}
+-                      type="button"
+-                      onClick={() => toggleSpecialist(u.id)}
+-                      className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all border cursor-pointer flex items-center gap-1.5 ${
+-                        isSelected
+-                          ? 'bg-[#501f92] text-white border-[#501f92] shadow-2xs'
+-                          : 'bg-[#f8fafc] text-[#334155] border-[#cbd5e1] hover:border-[#501f92]'
+-                      }`}
+-                    >
+-                      {isSelected ? (
+-                        <Check className="w-3.5 h-3.5 text-[#d4ff4a]" />
+-                      ) : (
+-                        <span className="w-2 h-2 rounded-full bg-[#cbd5e1]" />
+-                      )}
+-                      <span>{u.name}</span>
+-                      <span className={`text-[10px] ${isSelected ? 'text-white/80' : 'text-[#64748b]'}`}>
+-                        ({u.officialRole || u.jobTitle || u.role || 'Equipo'})
+-                      </span>
+-                    </button>
+-                  );
+-                })}
+-              </div>
++            <div className="border-t border-[#e2e8f0] pt-2 space-y-2">
++              <div className="flex flex-wrap gap-1">{selectedPeople('__additional__')}</div>
++              <button type="button" onClick={() => { setShowExtraSearch(!showExtraSearch); setQuery(''); setSearchRole(null); }} className="text-xs font-medium text-[#501f92]">+ Agregar otro integrante</button>
++              {showExtraSearch && <div className="space-y-2">
++                <label className="block text-xs">Agrupar sugerencia en
++                  <select aria-label="Rol de destino del integrante adicional" value={extraRole} onChange={(event) => setExtraRole(event.target.value)} className="ml-2 border border-[#cbd5e1] rounded p-1">
++                    <option value="">Equipo adicional</option>{scopedRoles.map((role) => <option key={role.roleName} value={role.roleName}>{role.roleName}</option>)}
++                  </select>
++                </label>
++                <input role="combobox" aria-label="Buscar otro integrante activo" aria-expanded={Boolean(query.trim())} aria-controls="extra-team-results" aria-autocomplete="list"
++                  placeholder="Escribe un nombre o rol" value={query} onChange={(event) => setQuery(event.target.value)} className="w-full p-2 border border-[#cbd5e1] rounded-lg text-xs" />
++                {query.trim() && <div role="listbox" id="extra-team-results" className="max-h-36 overflow-y-auto space-y-1">
++                  {searchActiveTeam(users, query).map((user) => <button role="option" aria-selected={(selectedByRole[extraRole || '__additional__'] || []).includes(user.id)} type="button" key={user.id}
++                    onClick={() => { toggleSpecialist(extraRole || '__additional__', user.id); setQuery(''); }} className="w-full text-left rounded p-2 hover:bg-[#ede9fe] text-xs">
++                    {user.name} · {user.officialRole || user.professionalRole || user.jobTitle}
++                  </button>)}
++                  {searchActiveTeam(users, query).length === 0 && <p className="text-xs text-[#64748b]">Sin coincidencias en el equipo activo.</p>}
++                </div>}
++              </div>}
+             </div>
+-          </div>
++          </section>
+ 
+           {/* Nota de gobernanza: la formalización legal y fiscal no bloquea la creación */}
+           <div className="p-3 rounded-xl bg-[#f0fdf4] border border-[#bbf7d0] text-[11px] text-[#166534] flex items-center gap-2">
+             <ShieldCheck className="w-4 h-4 text-[#16a34a] shrink-0" />
+             <span>
+-              El proyecto nacerá en estado <strong>Pendiente de Formalización</strong>. La recopilación de RUT, Cédula y creación en Alegra queda asignada a <strong>Finanzas (Vivian)</strong> en la ficha del Cliente sin bloquear la estructuración operativa.
++              El proyecto nacerá en estado <strong>Pendiente de Formalización</strong>. La recopilación de RUT, Cédula y creación en Alegra queda asignada a <strong>Finanzas</strong> en la ficha del Cliente sin bloquear la estructuración operativa.
+             </span>
+           </div>
+ 
+@@ -493,6 +438,7 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
+             </button>
+             <button
+               type="submit"
++              disabled={!currentSelectedLead || Boolean(opportunity.clientId && !matchedExistingClient)}
+               className="px-5 py-2.5 text-xs font-bold text-white bg-[#501f92] hover:bg-[#3d1572] rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-2 hover:scale-[1.01]"
+             >
+               <CheckCircle2 className="w-4 h-4 text-[#d4ff4a]" />
+diff --git a/src/components/taskflow/newbusiness/NewBusinessView.tsx b/src/components/taskflow/newbusiness/NewBusinessView.tsx
+index bf9cbcd..c0ac10f 100644
+--- a/src/components/taskflow/newbusiness/NewBusinessView.tsx
++++ b/src/components/taskflow/newbusiness/NewBusinessView.tsx
+@@ -5,7 +5,6 @@ import {
+   ClientProfile,
+   ProductBacklogTemplate,
+   ProjectType,
+-  AdministrativeChecklist,
+   StartConditionsConfig,
+   SowDocumentData,
+   UserItem,
+@@ -13,11 +12,12 @@ import {
+   TimeLog,
+   ActiveTimerState
+ } from '../types';
++import { getOperationalQuote, withOperationalQuote, getCommercialOwnerName, isValidFinanceSheetUrl, quoteSignature, quoteMissingRequirements } from './quoteRules';
+ import { can } from '../auth/permissions';
+-import { BacklogScoper } from './BacklogScoper';
++import { serviceValidationMessages, isScopeReadyForReview, isEligibleScopingLeader } from './teamCandidates';
++import { BacklogScoper, type ScopeServiceDraft } from './BacklogScoper';
+ import { NewOpportunityModal } from './NewOpportunityModal';
+ import { ConvertOpportunityModal } from './ConvertOpportunityModal';
+-import { SOWModal } from './SOWModal';
+ import { UHURA_LEGAL_SIGNER } from './slaEngine';
+ import { formatCurrency, formatHours } from '../../../utils/formatters';
+ import {
+@@ -48,7 +48,6 @@ import {
+   ShieldCheck,
+   CheckSquare,
+   FileCheck,
+-  History,
+   DollarSign,
+   AlertCircle,
+   HelpCircle,
+@@ -66,6 +65,11 @@ import {
+ } from 'lucide-react';
+ 
+ interface NewBusinessViewProps {
++  scopeUi: Record<string, { saved: boolean; services: ScopeServiceDraft[] }>;
++  onChangeScopeUi: (quoteId: string, state: { saved: boolean; services: ScopeServiceDraft[] }) => void;
++  onOpenSow: (opportunityId: string) => void;
++  savedQuotes: Record<string, string>;
++  onSetQuoteSaved: (quoteId: string, signature?: string) => void;
+   opportunities: NewBusinessOpportunity[];
+   clients: ClientProfile[];
+   templates: ProductBacklogTemplate[];
+@@ -77,6 +81,8 @@ interface NewBusinessViewProps {
+     selectedQuote: QuoteProposal;
+     projectName: string;
+     projectType: ProjectType;
++    leadUserId: string;
++    specialistUserIds?: string[];
+     leadName: string;
+     startDate: string;
+     endDate?: string;
+@@ -93,6 +99,11 @@ interface NewBusinessViewProps {
+ }
+ 
+ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
++  scopeUi,
++  onChangeScopeUi,
++  onOpenSow,
++  savedQuotes,
++  onSetQuoteSaved,
+   opportunities,
+   clients,
+   templates,
+@@ -101,13 +112,15 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+   onNavigateToView,
+   onConvertOpportunityToProject,
+   currentUser,
+-  users = [],
++  users: teamUsers = [],
+   tasks = [],
+   timeLogs = [],
+   activeTimer = null,
+   onStartTimer,
+   onStopTimer
+ }) => {
++  const users = teamUsers.filter((user) => user.status === 'Active');
++
+   // Leaders, Commercial, Executives, and System Admins can create and manage opportunities
+   const isNotCollaboratorOrPending = !currentUser || (currentUser.accessLevel !== 'collaborator' && currentUser.accessLevel !== 'pending');
+   const canCreateOpp = can(currentUser, 'create', 'new-business') || isNotCollaboratorOrPending;
+@@ -115,12 +128,11 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+   const canEditOpp = can(currentUser, 'edit', 'new-business') || isNotCollaboratorOrPending;
+ 
+   const [selectedOppId, setSelectedOppId] = useState<string | null>(null);
+-  const [activeTab, setActiveTab] = useState<'resumen' | 'scoping' | 'cotizacion' | 'documentos' | 'historial'>('resumen');
++  const [activeTab, setActiveTab] = useState<'resumen' | 'scoping' | 'cotizacion' | 'documentos'>('resumen');
+   const [isNewOppModalOpen, setIsNewOppModalOpen] = useState<boolean>(false);
+   const [oppModalMode, setOppModalMode] = useState<'hubspot' | 'manual'>('hubspot');
+   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
+   const [isConvertModalOpen, setIsConvertModalOpen] = useState<boolean>(false);
+-  const [isSowModalOpen, setIsSowModalOpen] = useState<boolean>(false);
+   const [searchQuery, setSearchQuery] = useState<string>('');
+   const [statusFilter, setStatusFilter] = useState<'all' | 'quoting' | 'won'>('all');
+   const [bannerNotification, setBannerNotification] = useState<{
+@@ -166,6 +178,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+   };
+ 
+   const handleMarkOpportunityWon = (opp: NewBusinessOpportunity) => {
++    if (opp.id !== activeOpp?.id || !isQuoteDiligenciada) return;
+     const updated: NewBusinessOpportunity = {
+       ...opp,
+       status: 'won',
+@@ -175,7 +188,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+     onUpdateOpportunity(updated);
+     setWonCelebrationOpp(updated);
+     playWonFanfare();
+-    setConversionSuccessMessage('🎉 ¡FIESTA TOTAL EN LA COLONIA! ¡Propuesta GANADA! Revisa los gates de formalización (Contrato/Anticipo) en Documentos para habilitar la conversión a Proyecto.', {
++    setConversionSuccessMessage('🎉 ¡FIESTA TOTAL EN LA COLONIA! ¡Propuesta GANADA! Puedes convertir la oportunidad a Cliente y Proyecto. La formalización fiscal se gestiona en la ficha del Cliente y no bloquea la conversión.', {
+       timeoutMs: 9000
+     });
+   };
+@@ -201,9 +214,6 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+     }
+   };
+ 
+-  // Solicitud de ajustes (V2) modal confirmation
+-  const [showAdjustmentsModal, setShowAdjustmentsModal] = useState<boolean>(false);
+-
+   // SLA inline editing state
+   const [isEditingSla, setIsEditingSla] = useState<boolean>(false);
+   const [customSlaInput, setCustomSlaInput] = useState<number>(36);
+@@ -236,13 +246,11 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+ 
+   const activeOpp = opportunities.find((o) => o.id === selectedOppId);
+ 
+-  // Active quote inside the selected opportunity
+-  const [activeQuoteId, setActiveQuoteId] = useState<string>(
+-    activeOpp?.quotes[0]?.id || ''
+-  );
+-
+-  const activeQuote =
+-    activeOpp?.quotes.find((q) => q.id === activeQuoteId) || activeOpp?.quotes[0];
++  const activeQuote = getOperationalQuote(activeOpp);
++  const scopeState = activeQuote ? scopeUi[activeQuote.id] || { saved: false, services: [] } : { saved: false, services: [] };
++  const allServicesValid = scopeState.services.every((service) => serviceValidationMessages(service).length === 0);
++  const allServicesPrepared = allServicesValid && scopeState.services.every((service) => service.saved === true);
++  const isScopeReadOnly = scopeState.saved && allServicesValid;
+ 
+   // Controlled Draft State for Cotización (prevents premature locking on keystroke)
+   const [quoteValueDraft, setQuoteValueDraft] = useState<string>('');
+@@ -261,7 +269,8 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+       setQuoteCurrencyDraft(activeQuote.currency || 'COP');
+       setQuoteSheetUrlDraft(activeQuote.externalFinanceSheetUrl || '');
+       setQuoteNotesDraft(activeQuote.commercialNotes || '');
+-      setIsEditingQuoteFields(!val && !activeQuote.externalFinanceSheetUrl);
++      setIsEditingQuoteFields(!savedQuotes[activeQuote.id]);
++      setIsQuoteSavedFeedback(false);
+     }
+   }, [activeQuote?.id]);
+ 
+@@ -276,11 +285,15 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+ 
+   // Helper: ¿La cotización ya fue guardada con monto por comercial?
+   const isQuoteDiligenciada = Boolean(
+-    ((activeQuote?.totalQuotedValue && activeQuote.totalQuotedValue > 0) ||
+-     (activeQuote?.totalQuotedValueCOP && activeQuote.totalQuotedValueCOP > 0)) &&
++    activeQuote && savedQuotes[activeQuote.id] === quoteSignature(activeQuote.totalQuotedValue ?? activeQuote.totalQuotedValueCOP ?? 0, activeQuote.externalFinanceSheetUrl || '') &&
++    isValidFinanceSheetUrl(activeQuote.externalFinanceSheetUrl) &&
++    (activeQuote.totalQuotedValue ?? activeQuote.totalQuotedValueCOP ?? 0) > 0 &&
+     !isEditingQuoteFields
+   );
+ 
++  const missingQuoteFields = quoteMissingRequirements(Number(quoteValueDraft), quoteSheetUrlDraft);
++  const quotePendingMessage = missingQuoteFields.length ? missingQuoteFields.join(' ') : 'Falta guardar la cotización para habilitar Marcar como ganada.';
++
+   // Scoping task and preventa hours calculation
+   const scopingTask = tasks.find(
+     (t) =>
+@@ -304,17 +317,10 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+   const isScopingTimerRunning = activeTimer?.taskId === scopingTask?.id;
+ 
+   // Líder productivo actual (1 líder con persistencia canónica en leadUserId)
+-  const assignedLeadUser = useMemo(() => {
+-    return users.find((u) => u.id === activeOpp?.leadUserId);
+-  }, [activeOpp?.leadUserId, users]);
+-
+   const currentLeadDisplayName = useMemo(() => {
+-    return (
+-      assignedLeadUser?.name ||
+-      activeOpp?.leadUserName?.split('·')[0]?.trim() ||
+-      'Sin asignar'
+-    );
+-  }, [assignedLeadUser, activeOpp?.leadUserName]);
++    const ids = activeOpp?.leadUserIds?.length ? activeOpp.leadUserIds : [activeOpp?.leadUserId];
++    return users.filter((user) => ids.includes(user.id)).map((user) => user.name).join(', ') || 'Sin asignar';
++  }, [activeOpp?.leadUserIds, activeOpp?.leadUserId, users]);
+ 
+   // Preparación interna desacoplada (futuro soporte multi-lead cuando backend soporte relación 1..N)
+   const currentLeadUserIds: string[] = useMemo(() => {
+@@ -345,24 +351,6 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+   const isFormalizationGatesMet = contractGatePassed && downPaymentGatePassed;
+   const canConvertToProject = isWon;
+ 
+-  // Handle updating administrative checklist directly
+-  const handleUpdateAdminChecklist = (patch: Partial<AdministrativeChecklist>) => {
+-    if (!activeOpp) return;
+-    const currentChecklist: AdministrativeChecklist = activeOpp.administrativeChecklist || {
+-      rutStatus: 'pending',
+-      idCardStatus: 'pending',
+-      billingEmail: activeOpp.contactEmail || '',
+-      alegraCreated: false,
+-      responsibleName: 'Vivian'
+-    };
+-    const updatedOpp: NewBusinessOpportunity = {
+-      ...activeOpp,
+-      administrativeChecklist: { ...currentChecklist, ...patch },
+-      updatedAt: new Date().toISOString()
+-    };
+-    onUpdateOpportunity(updatedOpp);
+-  };
+-
+   // Handle updating start conditions directly
+   const handleUpdateStartConditions = (patch: Partial<StartConditionsConfig>) => {
+     if (!activeOpp) return;
+@@ -384,91 +372,20 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+     onUpdateOpportunity(updatedOpp);
+   };
+ 
+-  // Handle saving SOW data
+-  const handleSaveSowData = (sowData: SowDocumentData) => {
+-    if (!activeOpp) return;
+-    const updatedOpp: NewBusinessOpportunity = {
+-      ...activeOpp,
+-      sowData,
+-      updatedAt: new Date().toISOString()
+-    };
+-    onUpdateOpportunity(updatedOpp);
+-  };
+-
+   // Handle updating a quote within the current opportunity
+   const handleUpdateQuote = (updatedQuote: QuoteProposal) => {
+     if (!activeOpp) return;
+-    const updatedQuotes = activeOpp.quotes.map((q) =>
+-      q.id === updatedQuote.id ? updatedQuote : q
+-    );
+-    const updatedOpp: NewBusinessOpportunity = {
+-      ...activeOpp,
+-      quotes: updatedQuotes,
+-      updatedAt: new Date().toISOString()
+-    };
+-    onUpdateOpportunity(updatedOpp);
+-  };
+-
+-  // Handle creating a new version of quote within current opportunity
+-  const handleCreateNewQuoteVersion = (baseQuote?: QuoteProposal) => {
+-    if (!activeOpp) return;
+-    const nextOrder = activeOpp.quotes.length + 1;
+-    const newQuoteId = `quote-${activeOpp.id}-v${nextOrder}-${Date.now()}`;
+-
+-    let newQuote: QuoteProposal;
+-    if (baseQuote) {
+-      // Clone from base quote
+-      newQuote = {
+-        ...baseQuote,
+-        id: newQuoteId,
+-        versionLabel: `V${nextOrder} - Alternativa basada en ${baseQuote.versionLabel.split(' - ')[0]}`,
+-        order: nextOrder,
+-        status: 'draft',
+-        createdAt: new Date().toISOString(),
+-        updatedAt: new Date().toISOString(),
+-        deliverables: baseQuote.deliverables.map((d, dIdx) => ({
+-          ...d,
+-          id: `qdel-${newQuoteId}-${dIdx}`,
+-          quoteId: newQuoteId,
+-          roleBudgets: d.roleBudgets.map((rb) => ({ ...rb })),
+-          backlogItems: d.backlogItems.map((b, bIdx) => ({
+-            ...b,
+-            id: `act-${newQuoteId}-${dIdx}-${bIdx}`,
+-            quoteDeliverableId: `qdel-${newQuoteId}-${dIdx}`
+-          }))
+-        }))
+-      };
+-    } else {
+-      // Empty new version
+-      newQuote = {
+-        id: newQuoteId,
+-        opportunityId: activeOpp.id,
+-        versionLabel: `V${nextOrder} - Nueva Versión`,
+-        order: nextOrder,
+-        status: 'draft',
+-        totalHoursRollup: 0,
+-        currency: 'COP',
+-        createdAt: new Date().toISOString(),
+-        updatedAt: new Date().toISOString(),
+-        deliverables: []
+-      };
+-    }
+-
+     const updatedOpp: NewBusinessOpportunity = {
+-      ...activeOpp,
+-      quotes: [...activeOpp.quotes, newQuote],
++      ...withOperationalQuote(activeOpp, updatedQuote),
+       updatedAt: new Date().toISOString()
+     };
+-
+     onUpdateOpportunity(updatedOpp);
+-    setActiveQuoteId(newQuote.id);
+   };
+ 
+   // Callback when a new opportunity is created
+   const handleCreatedOpportunity = (newOpp: NewBusinessOpportunity) => {
+     onCreateOpportunity(newOpp);
+     setSelectedOppId(newOpp.id);
+-    setActiveQuoteId(newOpp.quotes[0]?.id || '');
+     setActiveTab('scoping');
+   };
+ 
+@@ -476,11 +393,13 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+   const handleConfirmConversion = (payload: {
+     projectName: string;
+     projectType: ProjectType;
++    leadUserId: string;
++    specialistUserIds?: string[];
+     leadName: string;
+     startDate: string;
+     endDate?: string;
+   }) => {
+-    if (!activeOpp || !activeQuote) return;
++    if (!activeOpp || !activeQuote || !users.some((user) => user.id === payload.leadUserId)) return;
+     if (onConvertOpportunityToProject) {
+       onConvertOpportunityToProject({
+         opportunity: activeOpp,
+@@ -499,7 +418,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+ 
+     setIsConvertModalOpen(false);
+     setBannerNotification({
+-      message: `🎉 ¡"${payload.projectName}" ha sido aprobado y formalizado exitosamente como Proyecto y Cliente!`,
++      message: `🎉 ¡"${payload.projectName}" se ha convertido a Cliente y Proyecto! La formalización fiscal continúa en la ficha del Cliente.`,
+       showProjectLink: true
+     });
+     setTimeout(() => {
+@@ -526,7 +445,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+   const totalQuotingCount = opportunities.filter((o) => o.status !== 'won').length;
+   const totalWonCount = opportunities.filter((o) => o.status === 'won').length;
+   const totalQuotedHours = opportunities.reduce((acc, o) => {
+-    const h = o.quotes[0]?.totalHoursRollup || 0;
++    const h = getOperationalQuote(o)?.totalHoursRollup || 0;
+     return acc + h;
+   }, 0);
+ 
+@@ -837,7 +756,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+                 <tbody className="divide-y divide-[#f1f5f9]">
+                   {filteredOpps.map((opp) => {
+                     const isWon = opp.status === 'won';
+-                    const mainQuote = opp.quotes[0];
++                    const mainQuote = getOperationalQuote(opp);
+                     const totalHours = mainQuote?.totalHoursRollup || 0;
+ 
+                     let statusBadge = {
+@@ -883,7 +802,6 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+                         key={opp.id}
+                         onClick={() => {
+                           setSelectedOppId(opp.id);
+-                          setActiveQuoteId(opp.quotes[0]?.id || '');
+                           setActiveTab('scoping');
+                         }}
+                         className="hover:bg-[#f8fafc]/80 transition-colors cursor-pointer group"
+@@ -914,10 +832,10 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+                         <td className="py-3.5 px-4">
+                           <div className="flex items-center gap-2">
+                             <div className="w-6 h-6 rounded-full bg-[#501f92]/10 text-[#501f92] font-bold text-[10px] flex items-center justify-center">
+-                              {(opp.leadUserName || 'PL').slice(0, 2).toUpperCase()}
++                              {users.find((user) => user.id === opp.leadUserId)?.initials || '--'}
+                             </div>
+                             <span className="font-semibold text-[#334155] text-xs">
+-                              {opp.leadUserName?.split('·')[0]?.trim() || 'Product Lead'}
++                              {users.find((user) => user.id === opp.leadUserId)?.name || 'Sin asignar'}
+                             </span>
+                           </div>
+                         </td>
+@@ -971,7 +889,6 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+                               type="button"
+                               onClick={() => {
+                                 setSelectedOppId(opp.id);
+-                                setActiveQuoteId(opp.quotes[0]?.id || '');
+                                 setActiveTab('scoping');
+                               }}
+                               className="px-2.5 py-1 rounded-lg bg-[#501f92]/10 hover:bg-[#501f92] text-[#501f92] hover:text-white font-bold text-xs transition-colors cursor-pointer"
+@@ -991,7 +908,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+           /* TARJETAS COMPACTAS (Alternativa) */
+           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+             {filteredOpps.map((opp) => {
+-              const mainQuote = opp.quotes[0];
++              const mainQuote = getOperationalQuote(opp);
+               const totalHours = mainQuote?.totalHoursRollup || 0;
+               const isWon = opp.status === 'won';
+ 
+@@ -1000,7 +917,6 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+                   key={opp.id}
+                   onClick={() => {
+                     setSelectedOppId(opp.id);
+-                    setActiveQuoteId(opp.quotes[0]?.id || '');
+                     setActiveTab('scoping');
+                   }}
+                   className={`bg-white rounded-2xl border transition-all duration-200 cursor-pointer flex flex-col justify-between hover:shadow-md hover:border-[#501f92] ${
+@@ -1058,7 +974,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+                     <div className="pt-2 border-t border-[#f1f5f9] space-y-1 text-xs text-[#64748b]">
+                       <div className="flex items-center gap-1.5">
+                         <User className="w-3.5 h-3.5 text-[#501f92]" />
+-                        <span>Líder de alcance: <strong className="text-[#0f172a]">{opp.leadUserName || 'Product Lead'}</strong></span>
++                        <span>Líder de alcance: <strong className="text-[#0f172a]">{users.find((user) => user.id === opp.leadUserId)?.name || 'Sin asignar'}</strong></span>
+                       </div>
+                       {opp.contactName && (
+                         <div className="flex items-center gap-1.5 text-[11px] text-[#64748b] truncate">
+@@ -1229,22 +1145,23 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+                     Selecciona el líder de alcance responsable del dimensionamiento:
+                   </p>
+                   <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
+-                    {users.map((u) => {
+-                      const isSelected = activeOpp?.leadUserId === u.id;
++                    {users.filter(isEligibleScopingLeader).map((u) => {
++                      const isSelected = currentLeadUserIds.includes(u.id);
+                       return (
+                         <button
+                           key={u.id}
+                           type="button"
+                           onClick={() => {
++                            const ids = isSelected ? currentLeadUserIds.filter((id) => id !== u.id) : [...currentLeadUserIds, u.id];
++                            if (!ids.length) return;
+                             const updated: NewBusinessOpportunity = {
+                               ...activeOpp,
+-                              leadUserId: u.id,
+-                              leadUserName: u.name,
+-                              leadUserIds: [u.id],
++                              leadUserId: ids[0],
++                              leadUserName: users.find((user) => user.id === ids[0])?.name || 'Sin asignar',
++                              leadUserIds: ids,
+                               updatedAt: new Date().toISOString()
+                             };
+                             onUpdateOpportunity(updated);
+-                            setIsReassigningLead(false);
+                           }}
+                           className={`w-full text-left flex items-center justify-between p-1.5 rounded-lg text-xs cursor-pointer transition-colors ${
+                             isSelected
+@@ -1269,7 +1186,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+ 
+             <div className="flex items-center gap-1 relative">
+               <Clock className="w-3.5 h-3.5 text-[#501f92]" />
+-              <span>SLA Handoff: <strong className="text-[#0f172a]">~{activeOpp.handoffHours || 36}h</strong></span>
++              <span>SLA Handoff: <strong className="text-[#0f172a]">~{Number((activeOpp.handoffHours || 36).toFixed(1))}h</strong></span>
+               {canEditOpp && (
+                 <button
+                   type="button"
+@@ -1429,12 +1346,13 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+                     title={
+                       isQuoteDiligenciada
+                         ? 'Marcar propuesta aprobada formalmente por el cliente'
+-                        : 'Diligencia y guarda primero la pestaña Cotización (Valor y Sheet) para habilitar'
++                        : quotePendingMessage
+                     }
+                   >
+                     <Trophy className={`w-3.5 h-3.5 ${isQuoteDiligenciada ? 'text-[#d4ff4a]' : 'text-[#cbd5e1]'}`} />
+                     <span>Marcar como ganada 🏆</span>
+                   </button>
++                  {!isQuoteDiligenciada && <span role="status" className="text-[11px] text-[#b45309] max-w-xs">{quotePendingMessage}</span>}
+ 
+                   <button
+                     type="button"
+@@ -1515,18 +1433,6 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+           <span>Documentos</span>
+         </button>
+ 
+-        <button
+-          type="button"
+-          onClick={() => setActiveTab('historial')}
+-          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+-            activeTab === 'historial'
+-              ? 'bg-white text-[#501f92] shadow-xs'
+-              : 'text-[#64748b] hover:text-[#0f172a]'
+-          }`}
+-        >
+-          <History className="w-3.5 h-3.5" />
+-          <span>Historial ({activeOpp.quotes.length})</span>
+-        </button>
+       </div>
+ 
+       {/* ========================================================================= */}
+@@ -1626,7 +1532,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+                       Resumen de Requerimientos / Discovery
+                     </h3>
+                   </div>
+-                  {!isEditingBrief && (activeOpp.briefSummary || activeOpp.discoveryNotes) && (
++                  {!isEditingBrief && (
+                     <button
+                       type="button"
+                       onClick={() => setIsEditingBrief(true)}
+@@ -1638,9 +1544,9 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+                   )}
+                 </div>
+ 
+-                {!isEditingBrief && (activeOpp.briefSummary || activeOpp.discoveryNotes) ? (
++                {!isEditingBrief ? (
+                   <div className="p-4 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] text-xs text-[#334155] leading-relaxed whitespace-pre-wrap">
+-                    {activeOpp.briefSummary || activeOpp.discoveryNotes}
++                    {activeOpp.briefSummary || activeOpp.discoveryNotes || 'Sin brief registrado.'}
+                   </div>
+                 ) : (
+                   <div className="space-y-2.5">
+@@ -1834,11 +1740,11 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+                 <div className="p-3 bg-[#f8fafc] rounded-xl border border-[#e2e8f0] space-y-1.5 text-[11px]">
+                   <div className="flex items-center justify-between">
+                     <span className="text-[#64748b]">Líder de Alcance:</span>
+-                    <strong className="text-[#501f92] font-bold">{activeOpp.leadUserName || 'Diego Cadavid'}</strong>
++                    <strong className="text-[#501f92] font-bold">{currentLeadDisplayName}</strong>
+                   </div>
+                   <div className="flex items-center justify-between">
+                     <span className="text-[#64748b]">Owner Comercial:</span>
+-                    <strong className="text-[#0f172a] font-bold">{activeOpp.commercialOwner || 'Catalina / Luisa'}</strong>
++                    <strong className="text-[#0f172a] font-bold">{getCommercialOwnerName(activeOpp, users)}</strong>
+                   </div>
+                   <div className="flex items-center justify-between pt-1 border-t border-[#e2e8f0]">
+                     <span className="text-[#64748b]">Horas Preventa Invertidas:</span>
+@@ -1875,7 +1781,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+               {/* Selector de Tipo de Proyecto (Proyecto Único vs Fee Mensual) */}
+               <div className="flex items-center gap-1.5 text-xs text-[#64748b]">
+                 <span>Modelo:</span>
+-                <select
++                {isScopeReadOnly ? <strong>{activeOpp.projectType === 'fee_monthly' ? 'Fee mensual' : 'Proyecto único'}</strong> : <select
+                   value={activeOpp.projectType || 'fixed_project'}
+                   onChange={(e) => {
+                     const newType = e.target.value as ProjectType;
+@@ -1889,10 +1795,17 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+                 >
+                   <option value="fixed_project">Proyecto Único (One-Shot)</option>
+                   <option value="fee_monthly">Fee Mensual Recurrente</option>
+-                </select>
++                </select>}
+               </div>
+             </div>
+ 
++            {isScopeReadOnly ? (
++              <div className="space-y-2 text-xs text-[#334155]" aria-label="Datos generales del alcance guardado">
++                <p>Presentación / propuesta técnica general: {activeQuote.commercialProposalUrl ? <a className="underline text-[#501f92]" href={activeQuote.commercialProposalUrl} target="_blank" rel="noreferrer">Abrir presentación</a> : 'Pendiente'}</p>
++                <p>Duración general estimada del proyecto: {activeQuote.estimatedWeeks || 'Pendiente'} semanas</p>
++                <p>La duración general se define manualmente; los servicios pueden ejecutarse en paralelo.</p>
++              </div>
++            ) : (<>
+             {/* Insumos del Líder: 1. Propuesta/Presentación (PPT de Drive) + 2. Duración en Semanas */}
+             <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5 text-xs">
+               {/* 1. Propuesta / Presentación (Google Drive / Slides) */}
+@@ -1927,12 +1840,11 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+                 </div>
+               </div>
+ 
+-              {/* 2. Duración en Semanas y Días Hábiles (Solo para Proyecto Único) */}
++              {/* Sugerencia por servicio más largo; admite ajuste por dependencias. */}
+               <div className="md:col-span-5 space-y-1">
+-                {(!activeOpp.projectType || activeOpp.projectType === 'fixed_project') ? (
+                   <>
+                     <label className="font-semibold text-[#475569] flex items-center justify-between">
+-                      <span>Duración estimada</span>
++                      <span>Duración general estimada del proyecto</span>
+                       {(activeQuote.estimatedWeeks ?? activeQuote.financialConfig?.projectDurationWeeks) ? (
+                         <span className="text-[10px] font-medium text-[#047857] bg-[#ecfdf5] px-2 py-0.5 rounded-md border border-[#a7f3d0]">
+                           ~{((activeQuote.estimatedWeeks ?? activeQuote.financialConfig?.projectDurationWeeks ?? 0) * 5)} días hábiles
+@@ -1945,6 +1857,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+                         min="1"
+                         max="52"
+                         step="1"
++                        aria-label="Duración general estimada del proyecto"
+                         value={activeQuote.estimatedWeeks ?? activeQuote.financialConfig?.projectDurationWeeks ?? ''}
+                         onChange={(e) => {
+                           const val = Math.max(0, parseInt(e.target.value, 10) || 0);
+@@ -1965,15 +1878,12 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+                       </span>
+                     </div>
+                   </>
+-                ) : (
+-                  <div className="p-2 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] text-[11px] text-[#64748b] flex items-center gap-1.5 h-[38px] mt-4">
+-                    <Clock className="w-3.5 h-3.5 text-[#501f92] shrink-0" />
+-                    <span className="truncate">Fee Mensual Recurrente · Sin semanas fijas</span>
+-                  </div>
+-                )}
++
+               </div>
+             </div>
+ 
++            </>)}
++
+             {/* Fila 3: Barra de acciones pulida */}
+             <div className="pt-3 border-t border-[#f1f5f9] flex items-center justify-between flex-wrap gap-2.5">
+               {/* Alcance Técnico Directamente Editable */}
+@@ -1987,31 +1897,44 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+                 </span>
+               </div>
+ 
++              <p className="text-xs text-[#64748b]">Duración sugerida según el servicio más largo; ajustable si hay dependencias. No se suman servicios en paralelo.</p>
+               {/* Acciones: Guardar y Marcar alcance listo */}
+               <div className="flex items-center gap-2">
+                 <button
+                   type="button"
+                   onClick={() => {
++                    if (isScopeReadOnly) {
++                      onChangeScopeUi(activeQuote.id, { ...scopeState, saved: false });
++                      return;
++                    }
++                    const invalidServices = scopeState.services.filter((service) => serviceValidationMessages(service).length > 0);
++                    if (invalidServices.length) {
++                      setConversionSuccessMessage(invalidServices.map((service) => `${service.name}: ${serviceValidationMessages(service).join(' ')}`).join(' '));
++                      return;
++                    }
+                     handleUpdateQuote(activeQuote);
++                    onChangeScopeUi(activeQuote.id, { ...scopeState, saved: true, services: scopeState.services });
+                     setConversionSuccessMessage('Alcance técnico guardado.');
+                     setTimeout(() => setConversionSuccessMessage(null), 3000);
+                   }}
+                   className="px-3.5 py-1.5 rounded-lg border border-[#cbd5e1] bg-white hover:bg-[#f8fafc] text-xs font-semibold text-[#475569] transition-colors cursor-pointer"
+                 >
+-                  Guardar
++                  {isScopeReadOnly ? <span className="inline-flex items-center gap-1"><Pencil className="w-3 h-3" />Editar alcance</span> : 'Guardar datos generales'}
+                 </button>
+ 
+                 {(() => {
+                   const isPptFilled = Boolean(activeQuote.commercialProposalUrl && activeQuote.commercialProposalUrl.trim().length > 5);
+-                  const isWeeksFilled = activeOpp.projectType === 'fee_monthly' || Boolean((activeQuote.estimatedWeeks ?? activeQuote.financialConfig?.projectDurationWeeks ?? 0) > 0);
+-                  const isScopeFilled = activeQuote.totalHoursRollup > 0 && activeQuote.deliverables.length > 0;
+-                  const isReadyToMark = isPptFilled && isWeeksFilled && isScopeFilled;
+-                  const isAlreadyMarked = activeOpp.status === 'internal_review' || activeOpp.status === 'proposal_sent' || activeOpp.status === 'negotiation' || activeOpp.status === 'won';
++                  const projectWeeks = Number(activeQuote.estimatedWeeks ?? activeQuote.financialConfig?.projectDurationWeeks);
++                  const isWeeksFilled = Number.isFinite(projectWeeks) && projectWeeks >= 1;
++                  const isScopeFilled = activeQuote.totalHoursRollup > 0 && activeQuote.deliverables.some((deliverable) => deliverable.backlogItems.some((activity) => activity.estimatedHours > 0));
++                  const isReadyToMark = isScopeReadyForReview(activeQuote, scopeState.services);
++                  const isAlreadyMarked = isReadyToMark && (activeOpp.status === 'internal_review' || activeOpp.status === 'proposal_sent' || activeOpp.status === 'negotiation' || activeOpp.status === 'won');
+ 
+                   return (
+                     <button
+                       type="button"
+                       onClick={() => {
++                        if (!isReadyToMark || !window.confirm('¿Confirmas que no faltan servicios y que la PPT incluye la propuesta completa?')) return;
+                         const updatedOpp: NewBusinessOpportunity = {
+                           ...activeOpp,
+                           status: 'internal_review',
+@@ -2057,9 +1980,10 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+             {/* Hint sutil solo si falta algo */}
+             {(() => {
+               const isPptFilled = Boolean(activeQuote.commercialProposalUrl && activeQuote.commercialProposalUrl.trim().length > 5);
+-              const isWeeksFilled = activeOpp.projectType === 'fee_monthly' || Boolean((activeQuote.estimatedWeeks ?? activeQuote.financialConfig?.projectDurationWeeks ?? 0) > 0);
+-              const isScopeFilled = activeQuote.totalHoursRollup > 0 && activeQuote.deliverables.length > 0;
+-              const isReadyToMark = isPptFilled && isWeeksFilled && isScopeFilled;
++              const projectWeeks = Number(activeQuote.estimatedWeeks ?? activeQuote.financialConfig?.projectDurationWeeks);
++                  const isWeeksFilled = Number.isFinite(projectWeeks) && projectWeeks >= 1;
++              const isScopeFilled = activeQuote.totalHoursRollup > 0 && activeQuote.deliverables.some((deliverable) => deliverable.backlogItems.some((activity) => activity.estimatedHours > 0));
++              const isReadyToMark = isScopeReadyForReview(activeQuote, scopeState.services);
+ 
+               if (isReadyToMark) return null;
+ 
+@@ -2071,6 +1995,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+                     {!isPptFilled && <span className="font-semibold mr-1">• Link Drive</span>}
+                     {!isWeeksFilled && <span className="font-semibold mr-1">• Semanas</span>}
+                     {!isScopeFilled && <span className="font-semibold mr-1">• Horas en alcance</span>}
++                    {!allServicesPrepared && <span className="font-semibold">• Servicios pendientes de duración o edición</span>}
+                   </span>
+                 </div>
+               );
+@@ -2080,16 +2005,32 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+           {/* Scoper Operativo de Backlog (Frentes, Entregables y Actividades) */}
+           <BacklogScoper
+             quote={activeQuote}
+-            allQuotes={activeOpp.quotes}
++            readOnly={isScopeReadOnly}
++            onRequestEdit={() => onChangeScopeUi(activeQuote.id, { ...scopeState, saved: false })}
++            services={scopeState.services}
++            onChangeServices={(services) => {
++              onChangeScopeUi(activeQuote.id, { saved: false, services });
++              const previousSuggested = Math.max(0, ...scopeState.services.map((service) => Number(service.weeks) || 0));
++              const suggested = Math.max(0, ...services.map((service) => Number.isFinite(Number(service.weeks)) ? Number(service.weeks) : 0));
++              const current = Number(activeQuote.estimatedWeeks ?? activeQuote.financialConfig?.projectDurationWeeks) || 0;
++              if (suggested > 0 && (!current || current === previousSuggested)) handleUpdateQuote({ ...activeQuote, estimatedWeeks: suggested });
++            }}
+             opportunityTitle={activeOpp.title}
+             prospectName={activeOpp.prospectAccountName}
+-            onSelectQuoteVersion={(quoteId) => setActiveQuoteId(quoteId)}
+-            onCreateNewQuoteVersion={(baseQuote) => handleCreateNewQuoteVersion(baseQuote)}
+             templates={templates}
+             users={users}
+-            onUpdateQuote={handleUpdateQuote}
++            onUpdateQuote={(updated) => {
++              const changedServices = scopeState.services.map((service) => {
++                const before = activeQuote.deliverables.filter((item) => service.deliverableIds.includes(item.id));
++                const after = updated.deliverables.filter((item) => service.deliverableIds.includes(item.id));
++                return JSON.stringify(before) === JSON.stringify(after) ? service : { ...service, saved: false };
++              });
++              if (changedServices.some((service, index) => service !== scopeState.services[index])) onChangeScopeUi(activeQuote.id, { saved: false, services: changedServices });
++              handleUpdateQuote(updated);
++            }}
+             onGoToCalculator={() => setActiveTab('cotizacion')}
+             onMarkScopeReady={(totalHours) => {
++              if (!isScopeReadyForReview(activeQuote, scopeState.services) || !window.confirm('¿Confirmas que no faltan servicios y que la PPT incluye la propuesta completa?')) return;
+               const updatedOpp: NewBusinessOpportunity = {
+                 ...activeOpp,
+                 status: 'internal_review',
+@@ -2136,7 +2077,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+ 
+               <div className="flex items-center gap-2 flex-wrap">
+                 <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-[#501f92]/10 text-[#501f92]">
+-                  {activeQuote.versionLabel}
++                  Alcance de la oportunidad
+                 </span>
+                 {activeOpp.hubspotDealStage && (
+                   <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg border bg-[#fff7ed] text-[#c2410c] border-[#fed7aa]">
+@@ -2151,7 +2092,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+               <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
+                 <div className="flex items-center gap-1.5">
+                   <span className="text-[11px] text-[#64748b]">Líder de Alcance:</span>
+-                  <strong className="text-[#0f172a] font-bold">{activeOpp.leadUserName || 'Líder Técnico'}</strong>
++                  <strong className="text-[#0f172a] font-bold">{currentLeadDisplayName}</strong>
+                 </div>
+                 <span className="text-[#cbd5e1] hidden sm:inline">•</span>
+                 <div className="flex items-center gap-1.5">
+@@ -2183,7 +2124,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+                 <span className="text-[#cbd5e1] hidden sm:inline">•</span>
+                 <div className="flex items-center gap-1.5">
+                   <span className="text-[11px] text-[#64748b]">Owner Comercial:</span>
+-                  <strong className="text-[#501f92] font-bold">{activeOpp.commercialOwner || 'Catalina / Luisa'}</strong>
++                  <strong className="text-[#501f92] font-bold">{getCommercialOwnerName(activeOpp, users)}</strong>
+                 </div>
+               </div>
+             </div>
+@@ -2204,7 +2145,12 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+                   </div>
+                   <button
+                     type="button"
+-                    onClick={() => setIsEditingQuoteFields(true)}
++                    onClick={() => {
++                      setIsEditingQuoteFields(true);
++                      setIsQuoteSavedFeedback(false);
++                      setConversionSuccessMessage(null);
++                      onSetQuoteSaved(activeQuote.id);
++                    }}
+                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-[#cbd5e1] hover:border-[#501f92] text-xs font-bold text-[#501f92] transition-colors cursor-pointer shadow-2xs"
+                   >
+                     <Pencil className="w-3.5 h-3.5" />
+@@ -2366,7 +2312,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+                         className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs font-mono text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-sans placeholder:font-normal focus:ring-2 focus:ring-[#501f92] bg-white"
+                       />
+                       <p className="text-[10px] text-[#64748b]">
+-                        Planilla de Google Sheets donde Catalina/Luisa calculan el pricing con semanas y horas.
++                        Planilla de Google Sheets donde Finanzas calcula el pricing con semanas y horas.
+                       </p>
+                     </div>
+ 
+@@ -2398,17 +2344,22 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+                 )}
+                 {!isQuoteSavedFeedback && !isQuoteDiligenciada && (
+                   <span className="text-[11px] text-[#b45309]">
+-                    * Ingresa el monto y el link del Sheet, luego haz clic en Guardar Cotización para habilitar 'Marcar como ganada' arriba.
++                    {quotePendingMessage}
+                   </span>
+                 )}
+               </div>
+ 
+               <div className="flex items-center gap-2 flex-wrap ml-auto">
+-                {/* Botón principal a la derecha como primer botón */}
+-                <button
++                {/* Solo se guarda mientras los campos están en edición. */}
++                {isEditingQuoteFields && <button
+                   type="button"
+                   onClick={() => {
+                     const numVal = Math.max(0, Number(quoteValueDraft) || 0);
++                    if (!Number.isFinite(numVal) || numVal <= 0 || !isValidFinanceSheetUrl(quoteSheetUrlDraft)) {
++                      setIsQuoteSavedFeedback(false);
++                      setConversionSuccessMessage(quoteMissingRequirements(numVal, quoteSheetUrlDraft).join(' '));
++                      return;
++                    }
+                     const updatedQuote: QuoteProposal = {
+                       ...activeQuote,
+                       totalQuotedValue: numVal,
+@@ -2418,6 +2369,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+                       commercialNotes: quoteNotesDraft.trim()
+                     };
+                     handleUpdateQuote(updatedQuote);
++                    onSetQuoteSaved(activeQuote.id, quoteSignature(numVal, quoteSheetUrlDraft));
+                     setIsQuoteSavedFeedback(true);
+                     setIsEditingQuoteFields(false);
+                     setConversionSuccessMessage('✅ Cotización comercial guardada correctamente. Ahora puedes marcar como ganada arriba.');
+@@ -2441,7 +2393,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+                   ) : (
+                     <span>Guardar cotización</span>
+                   )}
+-                </button>
++                </button>}
+ 
+                 {activeOpp.status === 'won' && !activeOpp.convertedProjectId && (
+                   <button
+@@ -2533,8 +2485,8 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+                       <FileText className="w-5 h-5" />
+                     </span>
+                     <div>
+-                      <h4 className="font-bold text-xs text-[#0f172a]">Propuesta Comercial</h4>
+-                      <span className="text-[10px] text-[#64748b]">{activeQuote.versionLabel}</span>
++                      <h4 className="font-bold text-xs text-[#0f172a]">Presentación PPT</h4>
++                      <span className="text-[10px] text-[#64748b]">Alcance de la oportunidad</span>
+                     </div>
+                   </div>
+                   <div
+@@ -2594,7 +2546,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+ 
+                 <button
+                   type="button"
+-                  onClick={() => setIsSowModalOpen(true)}
++                  onClick={() => onOpenSow(activeOpp.id)}
+                   className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-[#cbd5e1] hover:bg-[#f1f5f9] active:bg-[#e2e8f0] active:scale-95 text-[#475569] font-bold text-xs transition-colors cursor-pointer shadow-2xs"
+                   title="Gobernanza de Alcance Exterior: El SOW incluye objetivos, entregables, actividades formales, cronograma, exclusiones y valor comercial acordado. Las horas y tarifas internas por perfil quedan reservadas exclusivamente para la operación interna de Uhura."
+                 >
+@@ -2605,236 +2557,6 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+             </div>
+           </div>
+ 
+-          {/* Checklist Administrativo & Facturación (Alegra) */}
+-          <div className="bg-white rounded-2xl border border-[#cbd5e1] p-6 shadow-2xs space-y-4">
+-            <div className="flex items-center justify-between flex-wrap gap-2">
+-              <div>
+-                <h3 className="text-sm font-bold text-[#0f172a] uppercase tracking-wider flex items-center gap-2">
+-                  <CheckSquare className="w-4 h-4 text-[#501f92]" />
+-                  <span>Checklist Administrativo & Facturación (Alegra)</span>
+-                </h3>
+-                <p className="text-xs text-[#64748b]">
+-                  Documentación requerida antes de emitir la factura en Alegra (no bloquea el kick-off operativo)
+-                </p>
+-              </div>
+-              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#f1f5f9] text-[#475569]">
+-                Responsable: {activeOpp.administrativeChecklist?.responsibleName || 'Vivian'}
+-              </span>
+-            </div>
+-
+-            {/* Aviso explicativo de no-bloqueo y gestión contable */}
+-            <div className="p-3 rounded-xl bg-[#f0fdf4] border border-[#bbf7d0] text-xs text-[#166534] flex items-start gap-2.5">
+-              <span className="text-base shrink-0">💡</span>
+-              <div className="space-y-0.5">
+-                <p className="font-bold">
+-                  Documentación fiscal independiente del cierre comercial:
+-                </p>
+-                <p className="text-[11px] text-[#15803d] leading-relaxed">
+-                  RUT, Cédula de Representante Legal y Tercero en Alegra son gestionados por Vivian para emitir la factura. Pertenecen formalmente a la ficha del Cliente en <strong>Clientes & Facturación</strong> y <strong>NO bloquean marcar la propuesta como ganada ni el inicio operativo del proyecto</strong>.
+-                </p>
+-              </div>
+-            </div>
+-
+-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
+-              {/* RUT */}
+-              <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] flex flex-col justify-between space-y-2.5">
+-                <div className="flex items-center justify-between">
+-                  <span className="font-bold text-[#0f172a] text-xs">1. RUT Actualizado</span>
+-                  <span
+-                    className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+-                      activeOpp.administrativeChecklist?.rutStatus === 'received'
+-                        ? 'bg-[#10b981]/15 text-[#10b981]'
+-                        : 'bg-[#f59e0b]/15 text-[#b45309]'
+-                    }`}
+-                  >
+-                    {activeOpp.administrativeChecklist?.rutStatus === 'received' ? 'Recibido' : 'Pendiente'}
+-                  </span>
+-                </div>
+-                <div className="flex items-center rounded-xl bg-[#e2e8f0]/60 p-0.5 border border-[#cbd5e1]">
+-                  <button
+-                    type="button"
+-                    onClick={() => handleUpdateAdminChecklist({ rutStatus: 'pending' })}
+-                    className={`flex-1 py-1 px-2 rounded-lg text-[11px] font-bold transition-all ${
+-                      activeOpp.administrativeChecklist?.rutStatus !== 'received'
+-                        ? 'bg-white text-amber-700 shadow-2xs font-extrabold'
+-                        : 'text-[#64748b] hover:text-[#0f172a]'
+-                    }`}
+-                  >
+-                    Pendiente
+-                  </button>
+-                  <button
+-                    type="button"
+-                    onClick={() => handleUpdateAdminChecklist({ rutStatus: 'received' })}
+-                    className={`flex-1 py-1 px-2 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 ${
+-                      activeOpp.administrativeChecklist?.rutStatus === 'received'
+-                        ? 'bg-[#059669] text-white shadow-2xs font-extrabold'
+-                        : 'text-[#64748b] hover:text-[#0f172a]'
+-                    }`}
+-                  >
+-                    <CheckCircle2 className="w-3 h-3" />
+-                    <span>Recibido</span>
+-                  </button>
+-                </div>
+-              </div>
+-
+-              {/* Cédula */}
+-              <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] flex flex-col justify-between space-y-2.5">
+-                <div className="flex items-center justify-between">
+-                  <span className="font-bold text-[#0f172a] text-xs">2. Cédula Rep. Legal</span>
+-                  <span
+-                    className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+-                      activeOpp.administrativeChecklist?.idCardStatus === 'received'
+-                        ? 'bg-[#10b981]/15 text-[#10b981]'
+-                        : 'bg-[#f59e0b]/15 text-[#b45309]'
+-                    }`}
+-                  >
+-                    {activeOpp.administrativeChecklist?.idCardStatus === 'received' ? 'Recibida' : 'Pendiente'}
+-                  </span>
+-                </div>
+-                <div className="flex items-center rounded-xl bg-[#e2e8f0]/60 p-0.5 border border-[#cbd5e1]">
+-                  <button
+-                    type="button"
+-                    onClick={() => handleUpdateAdminChecklist({ idCardStatus: 'pending' })}
+-                    className={`flex-1 py-1 px-2 rounded-lg text-[11px] font-bold transition-all ${
+-                      activeOpp.administrativeChecklist?.idCardStatus !== 'received'
+-                        ? 'bg-white text-amber-700 shadow-2xs font-extrabold'
+-                        : 'text-[#64748b] hover:text-[#0f172a]'
+-                    }`}
+-                  >
+-                    Pendiente
+-                  </button>
+-                  <button
+-                    type="button"
+-                    onClick={() => handleUpdateAdminChecklist({ idCardStatus: 'received' })}
+-                    className={`flex-1 py-1 px-2 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 ${
+-                      activeOpp.administrativeChecklist?.idCardStatus === 'received'
+-                        ? 'bg-[#059669] text-white shadow-2xs font-extrabold'
+-                        : 'text-[#64748b] hover:text-[#0f172a]'
+-                    }`}
+-                  >
+-                    <CheckCircle2 className="w-3 h-3" />
+-                    <span>Recibida</span>
+-                  </button>
+-                </div>
+-              </div>
+-
+-              {/* Correo Facturación */}
+-              <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] flex flex-col justify-between space-y-2.5">
+-                <span className="font-bold text-[#0f172a] text-xs block">3. Correo Facturación</span>
+-                <input
+-                  type="email"
+-                  value={activeOpp.administrativeChecklist?.billingEmail || activeOpp.contactEmail || ''}
+-                  onChange={(e) => handleUpdateAdminChecklist({ billingEmail: e.target.value })}
+-                  placeholder="facturacion@empresa.com"
+-                  className="w-full p-1.5 rounded-lg border border-[#cbd5e1] text-xs bg-white text-[#0f172a] focus:ring-1 focus:ring-[#501f92] focus:border-[#501f92]"
+-                />
+-              </div>
+-
+-              {/* Alegra */}
+-              <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] flex flex-col justify-between space-y-2.5">
+-                <div className="flex items-center justify-between">
+-                  <span className="font-bold text-[#0f172a] text-xs">4. Creado en Alegra</span>
+-                  <label className="inline-flex items-center gap-1.5 cursor-pointer">
+-                    <input
+-                      type="checkbox"
+-                      checked={activeOpp.administrativeChecklist?.alegraCreated || false}
+-                      onChange={(e) => handleUpdateAdminChecklist({ alegraCreated: e.target.checked })}
+-                      className="rounded text-[#501f92] focus:ring-[#501f92] cursor-pointer"
+-                    />
+-                    <span className="text-[10px] font-bold text-[#475569]">Sí</span>
+-                  </label>
+-                </div>
+-                <input
+-                  type="text"
+-                  value={activeOpp.administrativeChecklist?.alegraContactId || ''}
+-                  onChange={(e) => handleUpdateAdminChecklist({ alegraContactId: e.target.value })}
+-                  placeholder="ID Tercero Alegra (opcional)"
+-                  className="w-full p-1.5 rounded-lg border border-[#cbd5e1] text-xs bg-white text-[#0f172a] focus:ring-1 focus:ring-[#501f92] focus:border-[#501f92]"
+-                />
+-              </div>
+-            </div>
+-          </div>
+-        </div>
+-      )}
+-
+-      {/* ========================================================================= */}
+-      {/* TAB 5: HISTORIAL DE VERSIONES & BITÁCORA */}
+-      {/* ========================================================================= */}
+-      {activeTab === 'historial' && (
+-        <div className="bg-white rounded-2xl border border-[#e2e8f0] p-6 shadow-2xs space-y-6 animate-in fade-in duration-150">
+-          <div className="flex items-center justify-between flex-wrap gap-2">
+-            <div>
+-              <h3 className="text-base font-bold text-[#0f172a]">
+-                Historial de Versiones & Cotizaciones
+-              </h3>
+-              <p className="text-xs text-[#64748b]">
+-                Versión oficial activa de la propuesta. Edita directamente el alcance y la cotización para actualizar valores y horas.
+-              </p>
+-            </div>
+-            <div className="flex items-center gap-2">
+-              <span className="text-xs font-bold px-3 py-1.5 rounded-xl bg-[#501f92]/10 text-[#501f92] border border-[#501f92]/20">
+-                Versión actual: {activeQuote.versionLabel}
+-              </span>
+-            </div>
+-          </div>
+-
+-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+-            {activeOpp.quotes.map((q) => {
+-              const isCurrent = q.id === activeQuoteId;
+-              const qVal = q.totalQuotedValue ?? q.totalQuotedValueCOP ?? 0;
+-              const qCurr = q.currency || 'COP';
+-              return (
+-                <div
+-                  key={q.id}
+-                  className={`p-4 rounded-2xl border transition-all ${
+-                    isCurrent
+-                      ? 'border-[#501f92] bg-[#501f92]/5 shadow-sm'
+-                      : 'border-[#e2e8f0] bg-white hover:border-[#cbd5e1]'
+-                  }`}
+-                >
+-                  <div className="flex items-center justify-between mb-2">
+-                    <span className="text-xs font-bold text-[#501f92]">
+-                      {q.versionLabel}
+-                    </span>
+-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#f1f5f9] text-[#475569]">
+-                      {q.totalHoursRollup}h
+-                    </span>
+-                  </div>
+-                  <div className="space-y-1 text-xs text-[#64748b]">
+-                    <p>{q.deliverables.length} servicio(s) en alcance</p>
+-                    <p className="font-bold text-[#0f172a]">
+-                      {qVal > 0 ? `Cotizado: ${formatCurrency(qVal, qCurr)}` : 'Sin valor cotizado'}
+-                    </p>
+-                  </div>
+-                  <div className="pt-3 mt-3 border-t border-[#e2e8f0] flex items-center justify-between">
+-                    <button
+-                      type="button"
+-                      onClick={() => {
+-                        setActiveQuoteId(q.id);
+-                        setActiveTab('scoping');
+-                      }}
+-                      className="text-xs font-bold text-[#501f92] hover:underline cursor-pointer"
+-                    >
+-                      {isCurrent ? 'Editando ahora' : 'Cargar versión'}
+-                    </button>
+-                  </div>
+-                </div>
+-              );
+-            })}
+-          </div>
+-
+-          {/* Bitácora de Conversión */}
+-          {activeOpp.convertedAt && (
+-            <div className="p-4 rounded-xl bg-[#ecfdf5] border border-[#a7f3d0] text-xs text-[#065f46] space-y-1">
+-              <span className="font-bold flex items-center gap-1.5">
+-                <CheckCircle2 className="w-4 h-4 text-[#10b981]" />
+-                <span>Conversión a Cliente y Proyecto completada</span>
+-              </span>
+-              <p className="text-[11px] text-[#047857]">
+-                Registrado en Orbit el: {new Date(activeOpp.convertedAt).toLocaleString('es-CO')}
+-              </p>
+-            </div>
+-          )}
+         </div>
+       )}
+ 
+@@ -2849,85 +2571,6 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+         onSaveOpportunity={handleCreatedOpportunity}
+       />
+ 
+-      {/* Modal de Confirmación: Solicitó Ajustes (Crear V2) */}
+-      {showAdjustmentsModal && activeOpp && activeQuote && (
+-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-[#e2e8f0] p-6 space-y-4">
+-            <div className="flex items-start gap-3">
+-              <div className="w-10 h-10 rounded-xl bg-[#ffedd5] text-[#c2410c] flex items-center justify-center shrink-0">
+-                <Copy className="w-5 h-5" />
+-              </div>
+-              <div className="space-y-1">
+-                <h3 className="text-base font-extrabold text-[#0f172a]">
+-                  ¿Deseas crear una nueva versión (V2)?
+-                </h3>
+-                <p className="text-xs text-[#64748b]">
+-                  El cliente solicitó ajustes sobre la propuesta actual (<strong>{activeQuote.versionLabel}</strong>).
+-                </p>
+-              </div>
+-            </div>
+-
+-            <div className="p-3 bg-[#f8fafc] rounded-xl border border-[#e2e8f0] text-xs text-[#475569] space-y-1.5">
+-              <p>
+-                Al confirmar <strong>Crear V2</strong>, Orbit duplicará íntegramente los entregables y actividades de la V1 para que el líder pueda adaptar horas y roles sin sobreescribir el histórico original.
+-              </p>
+-              <p className="text-[11px] text-[#64748b]">
+-                Si prefieres seguir trabajando sobre la misma versión, puedes simplemente marcarla en negociación.
+-              </p>
+-            </div>
+-
+-            <div className="space-y-2 pt-2 border-t border-[#f1f5f9]">
+-              <button
+-                type="button"
+-                onClick={() => {
+-                  handleCreateNewQuoteVersion(activeQuote);
+-                  const updated: NewBusinessOpportunity = {
+-                    ...activeOpp,
+-                    status: 'negotiation',
+-                    updatedAt: new Date().toISOString()
+-                  };
+-                  onUpdateOpportunity(updated);
+-                  setActiveTab('scoping');
+-                  setShowAdjustmentsModal(false);
+-                  setConversionSuccessMessage('Cliente solicitó ajustes: Versión V2 creada clonando V1 para adaptar el alcance sin sobreescribir.');
+-                  setTimeout(() => setConversionSuccessMessage(null), 5000);
+-                }}
+-                className="w-full py-2.5 px-4 rounded-xl bg-[#501f92] hover:bg-[#3d1572] text-white text-xs font-bold shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-2"
+-              >
+-                <Plus className="w-4 h-4 text-[#d4ff4a]" />
+-                <span>Crear V2 (Clonar V1)</span>
+-              </button>
+-
+-              <button
+-                type="button"
+-                onClick={() => {
+-                  const updated: NewBusinessOpportunity = {
+-                    ...activeOpp,
+-                    status: 'negotiation',
+-                    updatedAt: new Date().toISOString()
+-                  };
+-                  onUpdateOpportunity(updated);
+-                  setShowAdjustmentsModal(false);
+-                  setConversionSuccessMessage('Oportunidad actualizada a estado Negociación.');
+-                  setTimeout(() => setConversionSuccessMessage(null), 4000);
+-                }}
+-                className="w-full py-2 px-4 rounded-xl border border-[#fed7aa] bg-[#fff7ed] hover:bg-[#ffedd5] text-[#c2410c] text-xs font-bold transition-colors cursor-pointer"
+-              >
+-                Solo marcar en Negociación (Sin V2)
+-              </button>
+-
+-              <button
+-                type="button"
+-                onClick={() => setShowAdjustmentsModal(false)}
+-                className="w-full py-1.5 text-xs text-[#64748b] hover:text-[#0f172a] font-medium cursor-pointer"
+-              >
+-                Cancelar
+-              </button>
+-            </div>
+-          </div>
+-        </div>
+-      )}
+-
+       {/* Modal de Confirmación: Registrar como Perdida */}
+       {lossModalOpen && activeOpp && (
+         <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+@@ -2996,17 +2639,6 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+         />
+       )}
+ 
+-      {/* Modal de Generación de SOW */}
+-      {activeQuote && (
+-        <SOWModal
+-          isOpen={isSowModalOpen}
+-          opportunity={activeOpp}
+-          quote={activeQuote}
+-          onClose={() => setIsSowModalOpen(false)}
+-          onSaveSOWData={handleSaveSowData}
+-        />
+-      )}
+-
+       {/* Modal Fiesta Bucky: ¡Propuesta Ganada! */}
+       {wonCelebrationOpp && (
+         <div
+@@ -3112,7 +2744,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+                     <span className="text-[10px] text-white/50 font-bold">Cierre</span>
+                   </div>
+                   <div className="text-sm font-black text-white truncate">
+-                    {wonCelebrationOpp.commercialOwner || 'Catalina / Luisa'}
++                    {getCommercialOwnerName(wonCelebrationOpp, users)}
+                   </div>
+                   <p className="text-[10px] text-white/70 leading-snug">
+                     Defensa de pricing, negociación estratégica y cierre formal del acuerdo.
+@@ -3128,7 +2760,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+                     <span className="text-[10px] text-white/50 font-bold">Técnico</span>
+                   </div>
+                   <div className="text-sm font-black text-white truncate">
+-                    {wonCelebrationOpp.leadUserName || 'Líder de Alcance'}
++                    {users.find((user) => user.id === wonCelebrationOpp.leadUserId)?.name || 'Sin asignar'}
+                   </div>
+                   <p className="text-[10px] text-white/70 leading-snug">
+                     Dimensionamiento técnico de {activeQuote?.totalHoursRollup || 0}h, entregables claros y alcance blindado.
+diff --git a/src/components/taskflow/newbusiness/NewOpportunityModal.tsx b/src/components/taskflow/newbusiness/NewOpportunityModal.tsx
+index b0266d9..b3d9d34 100644
+--- a/src/components/taskflow/newbusiness/NewOpportunityModal.tsx
++++ b/src/components/taskflow/newbusiness/NewOpportunityModal.tsx
+@@ -1,4 +1,4 @@
+-import React, { useState, useMemo } from 'react';
++import React, { useState, useMemo, useEffect } from 'react';
+ import {
+   NewBusinessOpportunity,
+   OpportunityType,
+@@ -7,7 +7,7 @@ import {
+   QuoteProposal,
+   UserItem
+ } from '../types';
+-import { initialUsers } from '../mockData';
++import { isEligibleScopingLeader } from './teamCandidates';
+ import {
+   Target,
+   X,
+@@ -49,7 +49,6 @@ const HUBSPOT_DEMO_DEALS = [
+     contactPhone: '+57 (311) 889-0012',
+     dealUrl: 'https://app.hubspot.com/contacts/8821940/deal/1049281',
+     commercialOwner: 'Cata · Directora Comercial',
+-    suggestedLeadUserId: 'u-2', // Paola Monsalve / Product Lead
+     driveFolderUrl: 'https://drive.google.com/drive/folders/1Danone-Bonafont-Ecommerce-2026'
+   },
+   {
+@@ -61,7 +60,6 @@ const HUBSPOT_DEMO_DEALS = [
+     contactPhone: '+57 (314) 776-5544',
+     dealUrl: 'https://app.hubspot.com/contacts/8821940/deal/2098144',
+     commercialOwner: 'Cata · Directora Comercial',
+-    suggestedLeadUserId: 'u-4', // Diego Cadavid / Creative Strategy Lead
+     driveFolderUrl: 'https://drive.google.com/drive/folders/1GeoTours-Plataforma-2026'
+   },
+   {
+@@ -73,7 +71,6 @@ const HUBSPOT_DEMO_DEALS = [
+     contactPhone: '+57 (300) 443-1289',
+     dealUrl: 'https://app.hubspot.com/contacts/8821940/deal/3829105',
+     commercialOwner: 'Cata · Directora Comercial',
+-    suggestedLeadUserId: 'u-5', // Esmeralda Duque Ramírez / Growth Manager
+     driveFolderUrl: 'https://drive.google.com/drive/folders/1Bambu-Performance-Q4'
+   }
+ ];
+@@ -84,21 +81,14 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
+   onSaveOpportunity,
+   existingClients,
+   initialMode = 'hubspot',
+-  users = initialUsers
++  users = []
+ }) => {
+   const [entryMode, setEntryMode] = useState<'hubspot' | 'manual'>(initialMode);
++  useEffect(() => { if (isOpen) setEntryMode(initialMode); }, [isOpen, initialMode]);
+ 
+   // Available leaders for assignment (filtered from users)
+-  const availableUsers = users && users.length > 0 ? users : initialUsers;
+-  const eligibleLeaders = availableUsers.filter(
+-    (u) =>
+-      u.accessLevel === 'leader' ||
+-      u.accessLevel === 'executive' ||
+-      u.accessLevel === 'system_admin' ||
+-      u.role === 'Admin' ||
+-      (u.jobTitle && (u.jobTitle.includes('Lead') || u.jobTitle.includes('Manager') || u.jobTitle.includes('CEO') || u.jobTitle.includes('Director'))) ||
+-      true // fallback to any member if list is short
+-  );
++  const availableUsers = users.filter((user) => user.status === 'Active');
++  const eligibleLeaders = availableUsers.filter(isEligibleScopingLeader);
+ 
+   // Commercial team members filtered strictly by functional capacity 'commercial'
+   const commercialUsers: UserItem[] = useMemo(() => {
+@@ -111,8 +101,8 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
+     return list.length > 0 ? list : availableUsers;
+   }, [availableUsers]);
+ 
+-  // Helper to map HubSpot owner string (or deal owner) to an Orbit user name
+-  const resolveCommercialUserName = (rawOwner?: string) => {
++  // Resolver el owner de HubSpot a un ID canónico activo de Orbit
++  const resolveCommercialUserId = (rawOwner?: string) => {
+     if (!rawOwner || !rawOwner.trim()) return '';
+     const q = rawOwner.toLowerCase().trim();
+     // Check exact or partial match with commercialUsers
+@@ -122,8 +112,8 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
+         q.includes(u.name.toLowerCase()) ||
+         (u.email && u.email.toLowerCase() === q)
+     );
+-    if (matched) return matched.name;
+-    return rawOwner;
++    if (matched) return matched.id;
++    return '';
+   };
+ 
+   // HubSpot Fetch State
+@@ -138,25 +128,30 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
+   const [selectedClientId, setSelectedClientId] = useState<string>('');
+   const [prospectName, setProspectName] = useState<string>('');
+   const [title, setTitle] = useState<string>('');
++  const [brief, setBrief] = useState('');
+   const [contactName, setContactName] = useState<string>('');
+   const [contactEmail, setContactEmail] = useState<string>('');
+   const [contactPhone, setContactPhone] = useState<string>('');
+   
+-  // Dynamic Leader Assignment (defaults to first leader or u-2)
+-  const defaultLeader = eligibleLeaders.find((u) => u.id === 'u-2') || eligibleLeaders[0];
+-  const [selectedLeadUserId, setSelectedLeadUserId] = useState<string>(defaultLeader?.id || 'u-2');
++  // Comercial elige explícitamente un ID del equipo activo existente.
++  const [selectedLeadUserIds, setSelectedLeadUserIds] = useState<string[]>([]);
+   // Commercial owner: do not assume default hardcoded owner; start empty or first commercial user if single
+   const [commercialOwner, setCommercialOwner] = useState<string>(
+-    commercialUsers.length === 1 ? commercialUsers[0].name : ''
++    commercialUsers.length === 1 ? commercialUsers[0].id : ''
+   );
+   
+   const [hubspotDealId, setHubspotDealId] = useState<string>('');
+   const [hubspotDealUrl, setHubspotDealUrl] = useState<string>('');
+   const [driveFolderUrl, setDriveFolderUrl] = useState<string>('');
+   
+-  // SLA editable with 36h default
+-  const [handoffHours, setHandoffHours] = useState<number>(36);
+-  const [isCustomHandoff, setIsCustomHandoff] = useState<boolean>(false);
++  const toLocalDateTime = (time: number) => {
++    const date = new Date(time);
++    return new Date(time - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
++  };
++  const [deliveryDate, setDeliveryDate] = useState(() => toLocalDateTime(Date.now() + 36 * 3600000));
++  const [deliveryError, setDeliveryError] = useState('');
++  const [leadersOpen, setLeadersOpen] = useState(false);
++  useEffect(() => { if (isOpen) { setDeliveryDate(toLocalDateTime(Date.now() + 36 * 3600000)); setDeliveryError(''); setLeadersOpen(false); } }, [isOpen]);
+ 
+   if (!isOpen) return null;
+ 
+@@ -185,10 +180,7 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
+         setContactPhone(matched.contactPhone);
+         setHubspotDealId(matched.id);
+         setHubspotDealUrl(matched.dealUrl);
+-        setCommercialOwner(resolveCommercialUserName(matched.commercialOwner));
+-        if (matched.suggestedLeadUserId) {
+-          setSelectedLeadUserId(matched.suggestedLeadUserId);
+-        }
++        setCommercialOwner(resolveCommercialUserId(matched.commercialOwner));
+         setDriveFolderUrl(matched.driveFolderUrl);
+       } else {
+         // Real-world fallback: Parse entered URL or treat string as deal ID
+@@ -228,10 +220,7 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
+     setContactPhone(deal.contactPhone);
+     setHubspotDealId(deal.id);
+     setHubspotDealUrl(deal.dealUrl);
+-    setCommercialOwner(resolveCommercialUserName(deal.commercialOwner));
+-    if (deal.suggestedLeadUserId) {
+-      setSelectedLeadUserId(deal.suggestedLeadUserId);
+-    }
++    setCommercialOwner(resolveCommercialUserId(deal.commercialOwner));
+     setDriveFolderUrl(deal.driveFolderUrl);
+     setHubspotFetched(true);
+   };
+@@ -244,24 +233,30 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
+       : prospectName.trim() || 'Nuevo Prospecto';
+ 
+     const oppId = `opp-${Date.now()}`;
+-    const defaultQuoteId = `quote-${oppId}-v1`;
++    const defaultQuoteId = `quote-${oppId}`;
+ 
+     const userEnteredDriveFolder = driveFolderUrl.trim();
+     const resolvedDriveFolder = userEnteredDriveFolder || undefined;
+ 
+-    // Calculate SLA deadline based on editable handoff hours
+-    const safeHandoffHours = Math.max(1, Number(handoffHours) || 36);
+-    const deadlineTimestamp = new Date(Date.now() + safeHandoffHours * 3600 * 1000).toISOString();
++    const deliveryTime = new Date(deliveryDate).getTime();
++    const remaining = deliveryTime - Date.now();
++    if (!Number.isFinite(deliveryTime) || remaining <= 0 || remaining > 36 * 3600000) {
++      setDeliveryError('Selecciona una fecha futura dentro de las próximas 36 horas.');
++      return;
++    }
++    const safeHandoffHours = remaining / 3600000;
++    const deadlineTimestamp = new Date(deliveryTime).toISOString();
+ 
+     // Resolve assigned leader dynamically
+-    const assignedUser = eligibleLeaders.find((u) => u.id === selectedLeadUserId) || eligibleLeaders[0];
++    const assignedUser = eligibleLeaders.find((u) => selectedLeadUserIds.includes(u.id));
++    if (!assignedUser) return;
+     const resolvedLeadUserId = assignedUser.id;
+     const resolvedLeadUserName = `${assignedUser.name} · ${assignedUser.officialRole || assignedUser.jobTitle || assignedUser.professionalRole || assignedUser.role || 'Líder de Proyecto'}`;
+ 
+     const initialQuote: QuoteProposal = {
+       id: defaultQuoteId,
+       opportunityId: oppId,
+-      versionLabel: 'V1 - Alcance Inicial',
++      versionLabel: '', // Compatibilidad con el contrato existente
+       order: 1,
+       status: 'draft',
+       totalHoursRollup: 0,
+@@ -283,8 +278,9 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
+       contactEmail: contactEmail.trim() || undefined,
+       contactPhone: contactPhone.trim() || undefined,
+       leadUserId: resolvedLeadUserId,
++      leadUserIds: eligibleLeaders.filter((user) => selectedLeadUserIds.includes(user.id)).map((user) => user.id),
+       leadUserName: resolvedLeadUserName,
+-      commercialOwner: commercialOwner.trim() || undefined,
++      commercialOwner: commercialUsers.find((user) => user.id === commercialOwner)?.name,
+       handoffHours: safeHandoffHours,
+       handoffDeadline: deadlineTimestamp,
+       hubspotDealId: hubspotDealId.trim() || (entryMode === 'hubspot' ? 'hs-deal-manual' : null),
+@@ -304,14 +300,8 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
+           }
+         : undefined,
+       status: 'discovery', // Fresh handoff ready for sizing in Alcance
++      briefSummary: brief.trim() || undefined,
+       quotes: [initialQuote],
+-      administrativeChecklist: {
+-        rutStatus: 'pending',
+-        idCardStatus: 'pending',
+-        billingEmail: contactEmail.trim() || '',
+-        alegraCreated: false,
+-        responsibleName: 'Vivian'
+-      },
+       startConditions: {
+         contractSignedRequired: true,
+         contractSignedCompleted: false,
+@@ -479,7 +469,7 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
+           )}
+ 
+           {/* SECCIÓN 2: CUENTA & OPORTUNIDAD */}
+-          {entryMode === 'manual' && (
++          {(
+             <div className="p-3 bg-[#f8fafc] rounded-2xl border border-[#e2e8f0] space-y-2">
+               <span className="font-bold text-[#0f172a] block">Tipo de Cuenta:</span>
+               <div className="flex items-center gap-4">
+@@ -491,7 +481,7 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
+                     onChange={() => setIsExistingClient(false)}
+                     className="text-[#501f92] focus:ring-[#501f92]"
+                   />
+-                  <span>Nuevo Prospecto (sin NIT todavía)</span>
++                  <span>Cliente nuevo</span>
+                 </label>
+ 
+                 <label className="flex items-center gap-2 cursor-pointer font-medium text-[#475569]">
+@@ -502,24 +492,31 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
+                     onChange={() => setIsExistingClient(true)}
+                     className="text-[#501f92] focus:ring-[#501f92]"
+                   />
+-                  <span>Cliente Operativo Existente</span>
++                  <span>Cliente existente</span>
+                 </label>
+               </div>
+             </div>
+           )}
+ 
+           {/* Cuenta */}
+-          {entryMode === 'manual' && isExistingClient ? (
++          {isExistingClient ? (
+             <div className="space-y-1">
+-              <label className="font-bold text-[#475569] block">
++              <label className="font-bold text-[#475569] block min-h-6">
+                 Selecciona el Cliente Existente: <span className="text-red-500">*</span>
+               </label>
+               <select
+                 required
+                 value={selectedClientId}
+-                onChange={(e) => setSelectedClientId(e.target.value)}
++                onChange={(event) => {
++                  setSelectedClientId(event.target.value);
++                  const client = existingClients.find((item) => item.id === event.target.value);
++                  const contact = client?.contacts?.find((item) => item.isPrimary) || client?.contacts?.[0];
++                  setContactName(contact?.name || client?.commercialInfo?.contactName || '');
++                  setContactEmail(contact?.email || client?.commercialInfo?.contactEmail || '');
++                  setContactPhone(contact?.phone || client?.commercialInfo?.contactPhone || '');
++                }}
+                 data-empty={!selectedClientId}
+-                className={`w-full p-2.5 rounded-xl border border-[#cbd5e1] bg-white focus:ring-2 focus:ring-[#501f92] transition-colors ${
++                className={`w-full h-11 min-w-0 px-3 rounded-xl border border-[#cbd5e1] bg-white focus:ring-2 focus:ring-[#501f92] transition-colors ${
+                   !selectedClientId ? 'text-[#64748b] font-normal' : 'text-[#0f172a] font-semibold'
+                 }`}
+               >
+@@ -533,7 +530,7 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
+             </div>
+           ) : (
+             <div className="space-y-1">
+-              <label className="font-bold text-[#475569] block">
++              <label className="font-bold text-[#475569] block min-h-6">
+                 Empresa o Cuenta: <span className="text-red-500">*</span>
+               </label>
+               <input
+@@ -547,9 +544,22 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
+             </div>
+           )}
+ 
++          {isExistingClient && selectedClientId && (
++            <div className="p-3 rounded-xl border border-[#e2e8f0] text-xs text-[#475569] space-y-2">
++              <strong>Datos fiscales del Cliente (se reutilizan sin copiarlos a la oportunidad)</strong>
++              {(existingClients.find((client) => client.id === selectedClientId)?.taxEntities || []).map((entity) => (
++                <div key={entity.id} className="space-y-1">
++                  <p>{entity.businessName} · NIT: {entity.nit || 'Pendiente'}</p>
++                  <p>RUT: {entity.rutUrl ? 'Registrado' : 'Pendiente'} · Cédula: {entity.legalRepresentativeId || 'Pendiente'}</p>
++                  <p>Facturación: {entity.billingEmail || 'Pendiente'} · Alegra: {entity.alegraCreated ? 'Creado' : 'Pendiente'}</p>
++                </div>
++              ))}
++            </div>
++          )}
++
+           {/* Oportunidad */}
+           <div className="space-y-1">
+-            <label className="font-bold text-[#475569] block">
++            <label className="font-bold text-[#475569] block min-h-6">
+               Nombre de la Oportunidad / Requerimiento: <span className="text-red-500">*</span>
+             </label>
+             <input
+@@ -562,10 +572,17 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
+             />
+           </div>
+ 
++          <label className="block space-y-1 font-bold text-[#475569]">
++            Brief (opcional)
++            <textarea value={brief} onChange={(event) => setBrief(event.target.value)}
++              className="w-full p-2.5 rounded-xl border border-[#cbd5e1] bg-white text-[#0f172a] font-normal"
++              placeholder="Contexto y requerimiento recibido del cliente" />
++          </label>
++
+           {/* Contacto Principal (Nombre & Email) */}
+           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+             <div className="space-y-1">
+-              <label className="font-bold text-[#475569] block">Contacto Principal:</label>
++              <label className="font-bold text-[#475569] block min-h-6">Contacto Principal:</label>
+               <input
+                 type="text"
+                 placeholder="Ej: Carlos Mendoza"
+@@ -576,7 +593,7 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
+             </div>
+ 
+             <div className="space-y-1">
+-              <label className="font-bold text-[#475569] block">Email de Contacto:</label>
++              <label className="font-bold text-[#475569] block min-h-6">Email de Contacto:</label>
+               <input
+                 type="email"
+                 placeholder="carlos@empresa.com"
+@@ -588,42 +605,39 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
+           </div>
+ 
+           {/* SECCIÓN 3: ROLES (LÍDER DE ALCANCE & RESPONSABLE COMERCIAL) & SLA */}
+-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
++          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-start">
+             <div className="space-y-1">
+-              <label className="font-bold text-[#475569] block">
++              <label className="font-bold text-[#475569] block min-h-6">
+                 Líder de alcance: <span className="text-red-500">*</span>
+               </label>
+-              <select
+-                value={selectedLeadUserId}
+-                onChange={(e) => setSelectedLeadUserId(e.target.value)}
+-                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-semibold bg-white focus:ring-2 focus:ring-[#501f92]"
+-              >
+-                {eligibleLeaders.map((leader) => (
+-                  <option key={leader.id} value={leader.id}>
+-                    {leader.name} ({leader.officialRole || leader.jobTitle || leader.role})
+-                  </option>
+-                ))}
+-              </select>
+-              <span className="text-[10px] text-[#64748b] block">
+-                Responsable técnico del dimensionamiento
+-              </span>
++              <div className="relative" onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setLeadersOpen(false); }}>
++                <button type="button" aria-label="Líder de alcance" aria-expanded={leadersOpen} onClick={() => setLeadersOpen(!leadersOpen)} onKeyDown={(event) => { if (event.key === 'Escape') setLeadersOpen(false); }} className="w-full h-11 min-w-0 text-left px-3 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-semibold bg-white flex justify-between items-center gap-2">
++                  <span className="truncate">{selectedLeadUserIds.length ? eligibleLeaders.filter((leader) => selectedLeadUserIds.includes(leader.id)).map((leader) => leader.name).join(', ') : 'Seleccionar líderes…'}</span><span aria-hidden="true">⌄</span>
++                </button>
++                {leadersOpen && <div className="absolute z-40 top-full mt-1 w-full max-h-48 overflow-y-auto space-y-2 rounded-xl border border-[#cbd5e1] p-3 bg-white shadow-lg">
++                  {eligibleLeaders.map((leader) => <label key={leader.id} className="flex items-center gap-2 text-xs">
++                    <input type="checkbox" checked={selectedLeadUserIds.includes(leader.id)} onChange={(event) => { const checked = event.target.checked; setSelectedLeadUserIds((ids) => checked ? [...ids, leader.id] : ids.filter((id) => id !== leader.id)); }} />{leader.name}
++                  </label>)}
++                </div>}
++              </div>
++              {!selectedLeadUserIds.length && <span className="text-[10px] text-[#b45309]">Selecciona al menos un líder de scoping.</span>}
+             </div>
+ 
+             <div className="space-y-1">
+-              <label className="font-bold text-[#475569] block">
++              <label className="font-bold text-[#475569] block min-h-6">
+                 Responsable comercial:
+               </label>
+               <select
+                 value={commercialOwner}
+                 onChange={(e) => setCommercialOwner(e.target.value)}
+                 data-empty={!commercialOwner}
+-                className={`w-full p-2.5 rounded-xl border border-[#cbd5e1] bg-white focus:ring-2 focus:ring-[#501f92] transition-colors ${
++                className={`w-full h-11 min-w-0 px-3 rounded-xl border border-[#cbd5e1] bg-white focus:ring-2 focus:ring-[#501f92] transition-colors ${
+                   !commercialOwner ? 'text-[#64748b] font-normal' : 'text-[#0f172a] font-semibold'
+                 }`}
+               >
+                 <option value="">Seleccionar responsable comercial...</option>
+                 {commercialUsers.map((user: UserItem) => (
+-                  <option key={user.id} value={user.name} className="text-[#0f172a] font-medium">
++                  <option key={user.id} value={user.id} className="text-[#0f172a] font-medium">
+                     {user.name} ({user.officialRole || user.jobTitle || user.role})
+                   </option>
+                 ))}
+@@ -633,53 +647,11 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
+               </span>
+             </div>
+ 
+-            <div className="space-y-1">
+-              <div className="flex items-center justify-between">
+-                <label className="font-bold text-[#475569] block">Deadline de Handoff (SLA):</label>
+-                <span className="text-[10px] text-[#501f92] font-semibold">Predeterminado 36h</span>
+-              </div>
+-              
+-              {!isCustomHandoff ? (
+-                <div className="flex gap-1.5">
+-                  <select
+-                    value={handoffHours}
+-                    onChange={(e) => {
+-                      if (e.target.value === 'custom') {
+-                        setIsCustomHandoff(true);
+-                      } else {
+-                        setHandoffHours(Number(e.target.value));
+-                      }
+-                    }}
+-                    className="flex-1 p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-medium bg-white focus:ring-2 focus:ring-[#501f92]"
+-                  >
+-                    <option value={24}>24 horas (urgente)</option>
+-                    <option value={36}>36 horas (estándar Uhura)</option>
+-                    <option value={48}>48 horas</option>
+-                    <option value={72}>72 horas (complejo)</option>
+-                    <option value="custom">✏️ Personalizado en horas...</option>
+-                  </select>
+-                </div>
+-              ) : (
+-                <div className="flex items-center gap-2">
+-                  <input
+-                    type="number"
+-                    min={1}
+-                    max={240}
+-                    value={handoffHours}
+-                    onChange={(e) => setHandoffHours(Math.max(1, Number(e.target.value)))}
+-                    className="flex-1 p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-bold bg-white focus:ring-2 focus:ring-[#501f92]"
+-                    placeholder="Ej: 36"
+-                  />
+-                  <span className="text-xs text-[#64748b] font-medium">horas</span>
+-                  <button
+-                    type="button"
+-                    onClick={() => setIsCustomHandoff(false)}
+-                    className="text-[11px] text-[#501f92] font-bold hover:underline cursor-pointer"
+-                  >
+-                    Presets
+-                  </button>
+-                </div>
+-              )}
++            <div className="space-y-1 min-w-0">
++              <label htmlFor="opportunity-delivery-date" className="font-bold text-[#475569] block min-h-6">Fecha Max. de entrega</label>
++              <input id="opportunity-delivery-date" type="datetime-local" required value={deliveryDate} min={toLocalDateTime(Date.now() + 60000)} max={toLocalDateTime(Date.now() + 36 * 3600000)} onInput={(event) => { setDeliveryDate(event.currentTarget.value); setDeliveryError(''); }} onChange={(event) => { setDeliveryDate(event.target.value); setDeliveryError(''); }} className="w-full min-w-0 h-11 px-3 rounded-xl border border-[#cbd5e1] text-[#0f172a] bg-white text-xs" />
++              <p className="text-[10px] text-[#64748b]">Dentro de las próximas 36 horas.</p>
++              {deliveryError && <p role="alert" className="text-xs text-red-600">{deliveryError}</p>}
+             </div>
+           </div>
+ 
+diff --git a/src/components/taskflow/newbusiness/SOWModal.tsx b/src/components/taskflow/newbusiness/SOWModal.tsx
+index 56c3173..72001ba 100644
+--- a/src/components/taskflow/newbusiness/SOWModal.tsx
++++ b/src/components/taskflow/newbusiness/SOWModal.tsx
+@@ -1,5 +1,5 @@
+ import React, { useState, useEffect, useMemo } from 'react';
+-import { NewBusinessOpportunity, QuoteProposal, SowDocumentData } from '../types';
++import { NewBusinessOpportunity, QuoteProposal, SowDocumentData, ClientProfile } from '../types';
+ import { formatCurrency } from '../../../utils/formatters';
+ import {
+   CompanyLegalSignerConfig,
+@@ -38,6 +38,9 @@ import {
+ } from 'lucide-react';
+ 
+ interface SOWModalProps {
++  client?: ClientProfile;
++  documentVersion?: string;
++  onChangeDocumentVersion?: (version: string) => void;
+   isOpen: boolean;
+   opportunity: NewBusinessOpportunity;
+   quote: QuoteProposal;
+@@ -47,6 +50,9 @@ interface SOWModalProps {
+ }
+ 
+ export const SOWModal: React.FC<SOWModalProps> = ({
++  client,
++  documentVersion = '1.0',
++  onChangeDocumentVersion,
+   isOpen,
+   opportunity,
+   quote,
+@@ -54,7 +60,10 @@ export const SOWModal: React.FC<SOWModalProps> = ({
+   onSaveSOWData,
+   companyLegalConfig = DEFAULT_UHURA_LEGAL_SIGNER
+ }) => {
+-  const clientName = opportunity.prospectAccountName || 'Cliente';
++  const taxEntities = client?.taxEntities || [];
++  const taxEntity = taxEntities.find((entity) => entity.id === opportunity.selectedTaxEntityId) ||
++    taxEntities.find((entity) => entity.isPrimary) || (taxEntities.length === 1 ? taxEntities[0] : undefined);
++  const clientName = client?.name || opportunity.prospectAccountName || 'Cliente';
+   const serviceTitle = opportunity.title || 'Servicio de Desarrollo & Producto Digital';
+   const currency = quote.currency || 'COP';
+   const totalValue =
+@@ -78,7 +87,7 @@ export const SOWModal: React.FC<SOWModalProps> = ({
+   const [activeTab, setActiveTab] = useState<'preview' | 'clauses'>('preview');
+ 
+   // Metadatos Formales
+-  const [clientNit, setClientNit] = useState<string>(opportunity.sowData?.clientNit || '');
++  const [clientNit, setClientNit] = useState<string>(opportunity.sowData?.clientNit || taxEntity?.nit || '');
+   const [orderNumber, setOrderNumber] = useState<string>(opportunity.sowData?.orderNumber || '');
+   const [supervisorClient, setSupervisorClient] = useState<string>(opportunity.sowData?.supervisorClient || '');
+   const [supervisorClientRole, setSupervisorClientRole] = useState<string>(opportunity.sowData?.supervisorClientRole || '');
+@@ -88,10 +97,10 @@ export const SOWModal: React.FC<SOWModalProps> = ({
+ 
+   // Representación Legal Cliente
+   const [clientRepresentative, setClientRepresentative] = useState<string>(
+-    opportunity.sowData?.clientRepresentative || opportunity.contactName || ''
++    opportunity.sowData?.clientRepresentative || taxEntity?.legalRepresentativeName || opportunity.contactName || ''
+   );
+   const [clientRepresentativeId, setClientRepresentativeId] = useState<string>(
+-    opportunity.sowData?.clientRepresentativeId || ''
++    opportunity.sowData?.clientRepresentativeId || taxEntity?.legalRepresentativeId || ''
+   );
+   const [clientRepresentativeRole, setClientRepresentativeRole] = useState<string>(
+     opportunity.sowData?.clientRepresentativeRole || 'Representante Legal / Gerente General'
+@@ -143,6 +152,7 @@ export const SOWModal: React.FC<SOWModalProps> = ({
+   const generatedHtml = useMemo(() => {
+     return buildSowHtml({
+       opportunity,
++      documentVersion,
+       quote,
+       clientNit,
+       orderNumber,
+@@ -165,6 +175,7 @@ export const SOWModal: React.FC<SOWModalProps> = ({
+     });
+   }, [
+     opportunity,
++    documentVersion,
+     quote,
+     clientNit,
+     orderNumber,
+@@ -185,6 +196,7 @@ export const SOWModal: React.FC<SOWModalProps> = ({
+   const generatedPlain = useMemo(() => {
+     return buildSowPlainText({
+       opportunity,
++      documentVersion,
+       quote,
+       clientNit,
+       orderNumber,
+@@ -207,6 +219,7 @@ export const SOWModal: React.FC<SOWModalProps> = ({
+     });
+   }, [
+     opportunity,
++    documentVersion,
+     quote,
+     clientNit,
+     orderNumber,
+@@ -327,7 +340,7 @@ export const SOWModal: React.FC<SOWModalProps> = ({
+                 </h3>
+               </div>
+               <p className="text-xs text-slate-300 font-medium mt-0.5">
+-                {clientName} · {serviceTitle} ({quote.versionLabel})
++                {clientName} · {serviceTitle}
+               </p>
+             </div>
+           </div>
+@@ -436,9 +449,12 @@ export const SOWModal: React.FC<SOWModalProps> = ({
+                   <div className="text-left sm:text-right text-[11px] space-y-0.5 text-[#64748b]">
+                     <span className="font-black text-[#501f92] text-xs block">UHURA S.A.S.</span>
+                     <span>NIT: 901.093.070-2</span>
+-                    <span className="block font-mono text-[#0f172a] font-bold">
+-                      Versión: {quote.versionLabel || '1.0 – Final para Firma'}
+-                    </span>
++                    <label className="block font-bold text-[#501f92]">
++                      Versión documental del SOW
++                      <input aria-label="Versión documental del SOW" value={documentVersion}
++                        onChange={(event) => onChangeDocumentVersion?.(event.target.value)}
++                        className="ml-2 w-24 border border-[#cbd5e1] rounded px-2 py-1" />
++                    </label>
+                     <span>Fecha: {new Date().toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                   </div>
+                 </div>
+diff --git a/src/components/taskflow/newbusiness/sowTemplates.ts b/src/components/taskflow/newbusiness/sowTemplates.ts
+index 3a017c4..b150788 100644
+--- a/src/components/taskflow/newbusiness/sowTemplates.ts
++++ b/src/components/taskflow/newbusiness/sowTemplates.ts
+@@ -208,6 +208,7 @@ export function renderPlaceholder(value: string | undefined | null, fieldLabel:
+  * Generador de contenido completo estructurado en formato TEXTO / MARKDOWN
+  */
+ export function buildSowPlainText(params: {
++  documentVersion?: string;
+   opportunity: NewBusinessOpportunity;
+   quote: QuoteProposal;
+   clientNit?: string;
+@@ -289,7 +290,7 @@ PROVEEDOR: ${providerCompany}
+ NIT PROVEEDOR: ${providerNit}
+ FECHA DE EMISIÓN: ${new Date().toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' })}
+ ORDEN DE COMPRA: ${ocText}
+-VERSIÓN DEL SOW: ${quote.versionLabel || '1.0 – Final para Firma'}
++VERSIÓN DEL SOW: ${params.documentVersion || '1.0'}
+ SUPERVISOR CLIENTE: ${supervisorClientText}
+ SUPERVISOR PROVEEDOR: ${supervisorProviderText}
+ ================================================================================
+@@ -396,6 +397,7 @@ Fecha: ____ / ____ / ________                 Fecha: ____ / ____ / ________
+  * manteniendo tablas, encabezados púrpuras y callouts limpios.
+  */
+ export function buildSowHtml(params: {
++  documentVersion?: string;
+   opportunity: NewBusinessOpportunity;
+   quote: QuoteProposal;
+   clientNit?: string;
+@@ -506,7 +508,7 @@ export function buildSowHtml(params: {
+   </tr>
+   <tr>
+     <td><strong>VERSIÓN DEL SOW:</strong></td>
+-    <td>${quote.versionLabel || '1.0 – Final para Firma'}</td>
++    <td>${params.documentVersion || '1.0'}</td>
+     <td><strong>TIPO DE PROYECTO:</strong></td>
+     <td>${archetype === 'ecommerce_shopify' ? 'Ecommerce Shopify' : archetype === 'web_wordpress' ? 'Portal Web WordPress' : 'Desarrollo a Medida'}</td>
+   </tr>
+diff --git a/src/components/taskflow/templates/CloneToQuoteModal.tsx b/src/components/taskflow/templates/CloneToQuoteModal.tsx
+index 9f83c2a..1e2ffc4 100644
+--- a/src/components/taskflow/templates/CloneToQuoteModal.tsx
++++ b/src/components/taskflow/templates/CloneToQuoteModal.tsx
+@@ -1,5 +1,7 @@
+ import React, { useState } from 'react';
++import { isEligibleScopingLeader } from '../newbusiness/teamCandidates';
+ import {
++  UserItem,
+   ProductBacklogTemplate,
+   QuoteProposal,
+   QuoteDeliverable,
+@@ -38,6 +40,7 @@ import {
+ } from 'lucide-react';
+ 
+ interface CloneToQuoteModalProps {
++  users?: UserItem[];
+   isOpen: boolean;
+   templates: ProductBacklogTemplate[];
+   opportunities?: NewBusinessOpportunity[];
+@@ -50,6 +53,7 @@ interface CloneToQuoteModalProps {
+     opportunityData: {
+       title: string;
+       prospectAccountName?: string;
++      leadUserId: string;
+       leadUserName?: string;
+     },
+     quote: QuoteProposal
+@@ -57,6 +61,7 @@ interface CloneToQuoteModalProps {
+ }
+ 
+ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
++  users = [],
+   isOpen,
+   templates,
+   opportunities = [],
+@@ -83,12 +88,11 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
+   const [selectedOpportunityId, setSelectedOpportunityId] = useState<string>(
+     preselectedOpportunityId || opportunities[0]?.id || ''
+   );
++  const [newLeadUserId, setNewLeadUserId] = useState('');
++  const [creationError, setCreationError] = useState('');
+   const [newOpportunityTitle, setNewOpportunityTitle] = useState<string>('');
+   const [newProspectAccountName, setNewProspectAccountName] = useState<string>('');
+ 
+-  // Etiqueta de la cotización
+-  const [versionLabel, setVersionLabel] = useState<string>('Opción A: Alcance Recomendado');
+-
+   // Paso 2: Vista de personalización de la copia independiente clonada
+   const [clonedQuote, setClonedQuote] = useState<QuoteProposal | null>(null);
+   const [expandedDelId, setExpandedDelId] = useState<string | null>(null);
+@@ -115,6 +119,11 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
+ 
+   // ACCIÓN: CLONAR HACIA COPIA INDEPENDIENTE CON OPPORTUNITY ID RESUELTO
+   const handleGenerateClone = () => {
++    if (targetOpportunityMode === 'new' && !users.some((user) => user.id === newLeadUserId && isEligibleScopingLeader(user))) {
++      setCreationError('Selecciona un Líder principal de Scoping activo.');
++      return;
++    }
++    setCreationError('');
+     // Resolver opportunityId legítimo
+     const resolvedOppId =
+       targetOpportunityMode === 'existing' && selectedOpportunityId
+@@ -125,12 +134,10 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
+     if (mode === 'template' && selectedTemplate) {
+       quote = cloneTemplateToQuote(selectedTemplate, {
+         opportunityId: resolvedOppId,
+-        versionLabel: versionLabel.trim() || `Opción: ${selectedTemplate.name}`
+       });
+     } else {
+       quote = createBlankCustomQuote({
+         opportunityId: resolvedOppId,
+-        versionLabel: versionLabel.trim() || 'Cotización a la Medida (Desde Cero)'
+       });
+     }
+ 
+@@ -271,6 +278,11 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
+   // Guardar cotización en la oportunidad correspondiente
+   const handleFinalizeQuote = () => {
+     if (!clonedQuote) return;
++    if (targetOpportunityMode === 'new' && !users.some((user) => user.id === newLeadUserId && isEligibleScopingLeader(user))) {
++      setCreationError('Selecciona un Líder principal de Scoping activo.');
++      return;
++    }
++
+ 
+     if (targetOpportunityMode === 'existing' && selectedOpportunityId) {
+       if (onSaveToOpportunity) {
+@@ -283,9 +295,9 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
+       if (onCreateOpportunityWithQuote) {
+         onCreateOpportunityWithQuote(
+           {
+-            title: newOpportunityTitle.trim() || `Oportunidad: ${clonedQuote.versionLabel}`,
+-            prospectAccountName: newProspectAccountName.trim() || 'Nuevo Prospecto',
+-            leadUserName: 'Comercial Lead'
++            leadUserId: newLeadUserId,
++            title: newOpportunityTitle.trim() || 'Nueva oportunidad',
++            prospectAccountName: newProspectAccountName.trim() || 'Nuevo Prospecto'
+           },
+           clonedQuote
+         );
+@@ -434,22 +446,9 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
+                         ))}
+                       </select>
+                     </div>
+-
+-                    <div>
+-                      <label className="block text-xs font-semibold text-[#334155] mb-1">
+-                        Etiqueta de la Cotización / Opción
+-                      </label>
+-                      <input
+-                        type="text"
+-                        value={versionLabel}
+-                        onChange={(e) => setVersionLabel(e.target.value)}
+-                        placeholder="Ej: Opción A: Alcance Recomendado"
+-                        className="w-full px-3 py-2 text-xs rounded-lg border border-[#cbd5e1] focus:ring-2 focus:ring-[#8a4dff] focus:border-transparent outline-hidden bg-white text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal"
+-                      />
+-                    </div>
+                   </div>
+                 ) : (
+-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
++                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                     <div>
+                       <label className="block text-xs font-semibold text-[#334155] mb-1">
+                         Título de la Nueva Oportunidad
+@@ -475,21 +474,14 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
+                         className="w-full px-3 py-2 text-xs rounded-lg border border-[#cbd5e1] focus:ring-2 focus:ring-[#8a4dff] focus:border-transparent outline-hidden bg-white text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal"
+                       />
+                     </div>
+-
+-                    <div>
+-                      <label className="block text-xs font-semibold text-[#334155] mb-1">
+-                        Etiqueta de la Cotización
+-                      </label>
+-                      <input
+-                        type="text"
+-                        value={versionLabel}
+-                        onChange={(e) => setVersionLabel(e.target.value)}
+-                        placeholder="Ej: Opción A: Alcance Recomendado"
+-                        className="w-full px-3 py-2 text-xs rounded-lg border border-[#cbd5e1] focus:ring-2 focus:ring-[#8a4dff] focus:border-transparent outline-hidden bg-white text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal"
+-                      />
+-                    </div>
++                    <label className="block text-xs font-semibold text-[#334155]">Líder principal de Scoping
++                      <select aria-label="Líder principal de Scoping" required value={newLeadUserId} onChange={(event) => { setNewLeadUserId(event.target.value); setCreationError(''); }} className="mt-1 w-full border border-[#cbd5e1] rounded-lg p-2 bg-white">
++                        <option value="">Seleccionar líder...</option>{users.filter(isEligibleScopingLeader).map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
++                      </select>
++                    </label>
+                   </div>
+                 )}
++                {creationError && <p role="alert" className="text-xs text-red-700">{creationError}</p>}
+               </div>
+ 
+               {/* Si es modo plantilla: Selector y Previsualización */}
+@@ -643,9 +635,9 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
+                   <span className="text-xs font-bold text-[#0f172a]">{displayOpportunityName}</span>
+                 </div>
+                 <div className="text-right">
+-                  <span className="text-[11px] text-[#64748b] block">Etiqueta:</span>
++                  <span className="text-[11px] text-[#64748b] block">Destino:</span>
+                   <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#8a4dff]/10 text-[#8a4dff]">
+-                    {clonedQuote.versionLabel}
++                    Alcance de la oportunidad
+                   </span>
+                 </div>
+               </div>
+@@ -858,6 +850,7 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
+             {clonedQuote && (
+               <button
+                 type="button"
++                disabled={targetOpportunityMode === 'new' && !users.some((user) => user.id === newLeadUserId && isEligibleScopingLeader(user))}
+                 onClick={handleFinalizeQuote}
+                 className="inline-flex items-center gap-2 px-5 py-2 text-xs font-bold text-white bg-[#10b981] hover:bg-[#059669] rounded-lg shadow-sm transition-colors cursor-pointer"
+               >
+diff --git a/src/components/taskflow/templates/TemplateLibraryView.tsx b/src/components/taskflow/templates/TemplateLibraryView.tsx
+index 0795505..cc8a999 100644
+--- a/src/components/taskflow/templates/TemplateLibraryView.tsx
++++ b/src/components/taskflow/templates/TemplateLibraryView.tsx
+@@ -34,6 +34,7 @@ import {
+ } from 'lucide-react';
+ 
+ interface TemplateLibraryViewProps {
++  users?: UserItem[];
+   templates: ProductBacklogTemplate[];
+   onUpdateTemplates: (templates: ProductBacklogTemplate[]) => void;
+   opportunities?: NewBusinessOpportunity[];
+@@ -42,6 +43,7 @@ interface TemplateLibraryViewProps {
+     opportunityData: {
+       title: string;
+       prospectAccountName?: string;
++      leadUserId: string;
+       leadUserName?: string;
+     },
+     quote: QuoteProposal
+@@ -52,6 +54,7 @@ interface TemplateLibraryViewProps {
+ }
+ 
+ export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
++  users = [],
+   templates,
+   onUpdateTemplates,
+   opportunities = [],
+@@ -225,7 +228,7 @@ export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
+       onQuoteCreated(quote);
+     }
+     triggerFeedback(
+-      `Cotización "${quote.versionLabel}" generada (${quote.totalHoursRollup}h). La plantilla maestra permanece intacta.`
++      `Cotización de la oportunidad generada (${quote.totalHoursRollup}h). La plantilla maestra permanece intacta.`
+     );
+   };
+ 
+@@ -800,6 +803,7 @@ export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
+       {/* MODAL DE CLONADO / CREAR COTIZACIÓN */}
+       {isCloneModalOpen && (
+         <CloneToQuoteModal
++          users={users}
+           isOpen={isCloneModalOpen}
+           templates={templates}
+           opportunities={opportunities}
+@@ -812,7 +816,7 @@ export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
+               onQuoteCreated(quote);
+             }
+             triggerFeedback(
+-              `Cotización "${quote.versionLabel}" guardada en la oportunidad (${quote.totalHoursRollup}h).`
++              `Contenido agregado al alcance actual (${quote.totalHoursRollup}h).`
+             );
+           }}
+           onCreateOpportunityWithQuote={(oppData, quote) => {
+@@ -822,7 +826,7 @@ export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
+               onQuoteCreated(quote);
+             }
+             triggerFeedback(
+-              `Nueva oportunidad "${oppData.title}" creada con la cotización "${quote.versionLabel}" (${quote.totalHoursRollup}h).`
++              `Nueva oportunidad "${oppData.title}" creada con el alcance inicial (${quote.totalHoursRollup}h).`
+             );
+           }}
+           onQuoteCreated={handleQuoteCreatedInternal}
+diff --git a/src/components/taskflow/templates/templateEngine.ts b/src/components/taskflow/templates/templateEngine.ts
+index cde7ece..8ee0aad 100644
+--- a/src/components/taskflow/templates/templateEngine.ts
++++ b/src/components/taskflow/templates/templateEngine.ts
+@@ -117,7 +117,6 @@ export function cloneTemplateToQuote(
+   template: ProductBacklogTemplate,
+   options?: {
+     opportunityId?: string;
+-    versionLabel?: string;
+     order?: number;
+   }
+ ): QuoteProposal {
+@@ -177,7 +176,7 @@ export function cloneTemplateToQuote(
+   return {
+     id: quoteId,
+     opportunityId,
+-    versionLabel: options?.versionLabel || `Opción A: ${template.name}`,
++    versionLabel: '', // Campo legacy del contrato; sin versionado operativo
+     order: options?.order || 1,
+     templateId: template.id, // Referencia de trazabilidad histórica sin acoplamiento
+     status: 'draft',
+@@ -194,7 +193,6 @@ export function cloneTemplateToQuote(
+  */
+ export function createBlankCustomQuote(options?: {
+   opportunityId?: string;
+-  versionLabel?: string;
+   order?: number;
+ }): QuoteProposal {
+   const timestamp = Date.now();
+@@ -243,7 +241,7 @@ export function createBlankCustomQuote(options?: {
+   return {
+     id: quoteId,
+     opportunityId,
+-    versionLabel: options?.versionLabel || 'Cotización a la Medida (Desde Cero)',
++    versionLabel: '', // Campo legacy del contrato; sin versionado operativo
+     order: options?.order || 1,
+     templateId: null, // Sin plantilla base
+     status: 'draft',
+diff --git a/src/sections/TaskFlowPrototype.tsx b/src/sections/TaskFlowPrototype.tsx
+index 1659343..e8a3fdb 100644
+--- a/src/sections/TaskFlowPrototype.tsx
++++ b/src/sections/TaskFlowPrototype.tsx
+@@ -9,6 +9,7 @@ import {
+   TaskStatus,
+   TaskPriority,
+   ClientProfile,
++  ClientProjectHistoryItem,
+   ProjectType,
+   TaskRework,
+   ProjectReworkRound,
+@@ -18,6 +19,10 @@ import {
+   NewBusinessOpportunity,
+   TeamAbsenceEvent
+ } from '../components/taskflow/types';
++import type { ScopeServiceDraft } from '../components/taskflow/newbusiness/BacklogScoper';
++import { SOWModal } from '../components/taskflow/newbusiness/SOWModal';
++import { isEligibleScopingLeader } from '../components/taskflow/newbusiness/teamCandidates';
++import { getOperationalQuote, withOperationalQuote } from '../components/taskflow/newbusiness/quoteRules';
+ import { INITIAL_PRODUCT_BACKLOG_TEMPLATES } from '../components/taskflow/templates/templateData';
+ import { TemplateLibraryView } from '../components/taskflow/templates/TemplateLibraryView';
+ import {
+@@ -706,6 +711,11 @@ export const TaskFlowPrototype: React.FC = () => {
+   const [timeLogs, setTimeLogs] = useState<TimeLog[]>(initialTimeLogs);
+   const [productTemplates, setProductTemplates] = useState<ProductBacklogTemplate[]>(INITIAL_PRODUCT_BACKLOG_TEMPLATES);
+   const [opportunities, setOpportunities] = useState<NewBusinessOpportunity[]>(INITIAL_NEW_BUSINESS_OPPORTUNITIES);
++  // Estado de demostración del frontend; no agrega campos al contrato de datos.
++  const [scopeUi, setScopeUi] = useState<Record<string, { saved: boolean; services: ScopeServiceDraft[] }>>({});
++  const [savedQuotes, setSavedQuotes] = useState<Record<string, string>>({});
++  const [sowOpportunityId, setSowOpportunityId] = useState<string | null>(null);
++  const [sowVersions, setSowVersions] = useState<Record<string, string>>({});
+   const [absenceEvents, setAbsenceEvents] = useState<TeamAbsenceEvent[]>(initialAbsenceEvents);
+ 
+   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+@@ -1784,6 +1794,8 @@ export const TaskFlowPrototype: React.FC = () => {
+     selectedQuote: QuoteProposal;
+     projectName: string;
+     projectType: ProjectType;
++    leadUserId: string;
++    specialistUserIds?: string[];
+     leadName: string;
+     startDate: string;
+     endDate?: string;
+@@ -1791,6 +1803,13 @@ export const TaskFlowPrototype: React.FC = () => {
+     const opp = payload.opportunity;
+     const quote = payload.selectedQuote;
+ 
++    // Solo colaboradores activos del equipo canónico pueden incorporarse a la conversión.
++    const activeTeam = users.filter((user) => user.status === 'Active');
++    const assignedLeadUser = activeTeam.find((user) => user.id === payload.leadUserId);
++    if (!assignedLeadUser) return;
++    const leadId = assignedLeadUser.id;
++    const leadName = assignedLeadUser.name;
++
+     // 1. Resolver ID de Proyecto y elemento histórico para el Cliente
+     const newProjectId = `prj-${Date.now()}`;
+     const rawSoldValue = quote.totalQuotedValue || quote.totalQuotedValueCOP || quote.financialSummary?.finalPriceWithTaxCOP || quote.financialSummary?.subtotalBeforeTaxCOP || 0;
+@@ -1799,7 +1818,8 @@ export const TaskFlowPrototype: React.FC = () => {
+     const soldValueCOP = quoteCurrency === 'COP' && rawSoldValue > 0 ? rawSoldValue : undefined;
+ 
+     // 2. Resolver o registrar el Cliente en Orbit
+-    let resolvedClientId = opp.clientId;
++    if (opp.clientId && !clients.some((client) => client.id === opp.clientId)) return;
++    let resolvedClientId = opp.clientId || undefined;
+     let resolvedClientName = opp.prospectAccountName || 'Cliente';
+     const effectiveTaxEntityId = opp.selectedTaxEntityId || null;
+ 
+@@ -1914,16 +1934,6 @@ export const TaskFlowPrototype: React.FC = () => {
+       progressPercentage: 0
+     }));
+ 
+-    // Resolver líder real entre los usuarios de Orbit
+-    const assignedLeadUser =
+-      users.find((u) => u.id === (payload as any).leadUserId) ||
+-      users.find((u) => u.name.toLowerCase() === payload.leadName?.toLowerCase()) ||
+-      users.find((u) => u.id === opp.leadUserId) ||
+-      users[0] ||
+-      null;
+-
+-    const leadId = assignedLeadUser ? assignedLeadUser.id : 'usr-lead';
+-    const leadName = assignedLeadUser ? assignedLeadUser.name : (payload.leadName || opp.leadUserName || 'Líder Operativo');
+     const leadRole = assignedLeadUser?.officialRole || assignedLeadUser?.professionalRole || assignedLeadUser?.role || 'Líder de Proyecto';
+     const leadAvatarBg = assignedLeadUser?.avatarBg || 'bg-[#501f92]';
+     const leadInitials = assignedLeadUser?.initials || leadName.slice(0, 2).toUpperCase();
+@@ -1941,9 +1951,9 @@ export const TaskFlowPrototype: React.FC = () => {
+     ];
+ 
+     // Asignar especialistas opcionales si fueron seleccionados
+-    if ((payload as any).specialistUserIds && Array.isArray((payload as any).specialistUserIds)) {
+-      (payload as any).specialistUserIds.forEach((specId: string) => {
+-        const specUser = users.find((u) => u.id === specId);
++    if (payload.specialistUserIds && Array.isArray(payload.specialistUserIds)) {
++      payload.specialistUserIds.forEach((specId: string) => {
++        const specUser = activeTeam.find((u) => u.id === specId);
+         if (specUser && specUser.id !== leadId) {
+           resolvedCoreTeam.push({
+             id: specUser.id,
+@@ -2069,17 +2079,32 @@ export const TaskFlowPrototype: React.FC = () => {
+ 
+   // Guardar cotización en oportunidad existente de New Business
+   const handleSaveQuoteToOpportunity = (opportunityId: string, quote: QuoteProposal) => {
++    const current = getOperationalQuote(opportunities.find((item) => item.id === opportunityId));
++    const targetQuoteId = current?.id || quote.id;
++    const service = { id: quote.id, name: productTemplates.find((item) => item.id === quote.templateId)?.name || 'Servicio importado',
++      deliverableIds: quote.deliverables.map((_, index) => `qdel-import-${quote.id}-${index}`), weeks: '', saved: false };
++    setScopeUi((previous) => ({ ...previous, [targetQuoteId]: { saved: false,
++      services: [...(previous[targetQuoteId]?.services || []).filter((item) => item.id !== service.id), service] } }));
+     setOpportunities((prev) =>
+       prev.map((opp) => {
+         if (opp.id === opportunityId) {
+-          const existingQuotes = opp.quotes || [];
+-          const quoteExists = existingQuotes.some((q) => q.id === quote.id);
+-          const updatedQuotes = quoteExists
+-            ? existingQuotes.map((q) => (q.id === quote.id ? quote : q))
+-            : [quote, ...existingQuotes];
++          const current = getOperationalQuote(opp);
++          const imported = quote.deliverables.map((del, index) => {
++            const id = `qdel-import-${quote.id}-${index}`;
++            return { ...del, id, quoteId: current?.id || quote.id,
++              order: (current?.deliverables.length || 0) + index + 1,
++              roleBudgets: del.roleBudgets.map((budget, budgetIndex) => ({ ...budget,
++                id: `${id}-rb-${budgetIndex}`, quoteDeliverableId: id })),
++              backlogItems: del.backlogItems.map((activity, activityIndex) => ({ ...activity,
++                id: `${id}-act-${activityIndex}`, quoteDeliverableId: id, order: activityIndex + 1,
++                suggestedUserId: null, suggestedUserName: null })) };
++          });
++          const deliverables = [...(current?.deliverables || []), ...imported];
++          const updatedQuote: QuoteProposal = { ...(current || quote), deliverables,
++            totalHoursRollup: deliverables.reduce((total, del) => total + del.backlogItems.reduce((sum, activity) => sum + activity.estimatedHours, 0), 0),
++            updatedAt: new Date().toISOString() };
+           return {
+-            ...opp,
+-            quotes: updatedQuotes,
++            ...withOperationalQuote(opp, updatedQuote),
+             updatedAt: new Date().toISOString()
+           };
+         }
+@@ -2093,28 +2118,37 @@ export const TaskFlowPrototype: React.FC = () => {
+     opportunityData: {
+       title: string;
+       prospectAccountName?: string;
++      leadUserId: string;
+       leadUserName?: string;
+     },
+     quote: QuoteProposal
+   ) => {
++    const mainLead = users.find((user) => user.id === opportunityData.leadUserId && isEligibleScopingLeader(user));
++    if (!mainLead) return;
+     const newOpportunityId = quote.opportunityId || `opp-${Date.now()}`;
+     const finalizedQuote: QuoteProposal = {
+       ...quote,
+       opportunityId: newOpportunityId
+     };
+ 
++    if (quote.templateId) {
++      setScopeUi((previous) => ({ ...previous, [finalizedQuote.id]: { saved: false, services: [{
++        id: quote.id, name: productTemplates.find((item) => item.id === quote.templateId)?.name || 'Servicio importado',
++        deliverableIds: quote.deliverables.map((item) => item.id), weeks: '', saved: false
++      }] } }));
++    }
+     const newOpp: NewBusinessOpportunity = {
+       id: newOpportunityId,
+       title: opportunityData.title,
+       type: 'new_client',
+       prospectAccountName: opportunityData.prospectAccountName || 'Prospecto New Business',
+-      leadUserId: 'usr-paola',
+-      leadUserName: opportunityData.leadUserName || 'Product Lead',
++      leadUserId: mainLead.id,
++      leadUserName: mainLead.name,
+       status: 'quoting',
+       quotes: [finalizedQuote],
+       createdAt: new Date().toISOString().split('T')[0],
+       updatedAt: new Date().toISOString().split('T')[0],
+-      briefSummary: `Oportunidad generada desde plantilla ${quote.versionLabel || ''}.`
++      briefSummary: 'Oportunidad generada desde plantilla.'
+     };
+ 
+     setOpportunities((prev) => [newOpp, ...prev]);
+@@ -2215,8 +2249,20 @@ export const TaskFlowPrototype: React.FC = () => {
+     }
+   };
+ 
++  const sowOpportunity = opportunities.find((item) => item.id === sowOpportunityId);
++  const sowQuote = getOperationalQuote(sowOpportunity);
++  const sowClient = clients.find((client) => client.id === sowOpportunity?.clientId);
++
+   return (
+     <div className="orbit-saas-root min-h-screen bg-[#0d0718] text-white selection:bg-[#ddd6fe] selection:text-[#0f172a] flex flex-col flex-1">
++      {sowOpportunity && sowQuote && (
++        <SOWModal key={sowOpportunity.id} isOpen opportunity={sowOpportunity} quote={sowQuote}
++          client={sowClient} documentVersion={sowVersions[sowOpportunity.id] || '1.0'}
++          onChangeDocumentVersion={(version) => setSowVersions((previous) => ({ ...previous, [sowOpportunity.id]: version }))}
++          onClose={() => setSowOpportunityId(null)}
++          onSaveSOWData={(sowData) => setOpportunities((previous) => previous.map((item) =>
++            item.id === sowOpportunity.id ? { ...item, sowData: { ...item.sowData, ...sowData }, updatedAt: new Date().toISOString() } : item))} />
++      )}
+       {/* SaaS Live Demo Utility Bar (Compact single header) */}
+       <section className="bg-gradient-to-r from-[#1b0d33] to-[#0d0718] py-2.5 px-4 sm:px-6 lg:px-8 border-b border-[#261845]/60">
+         <div className="max-w-[1880px] w-full mx-auto flex items-center justify-between gap-4">
+@@ -2538,6 +2584,11 @@ export const TaskFlowPrototype: React.FC = () => {
+                 {currentView === 'clientes' && (
+                   <ClientsView
+                     clients={clients}
++                    onViewProjectSow={(projectId) => {
++                      const opportunity = opportunities.find((item) => item.convertedProjectId === projectId);
++                      if (opportunity) setSowOpportunityId(opportunity.id);
++                    }}
++                    sowProjectIds={opportunities.flatMap((item) => item.convertedProjectId ? [item.convertedProjectId] : [])}
+                     currentUser={currentUser}
+                     selectedClientId={selectedClientId}
+                     onSelectClient={(id) => setSelectedClientId(id)}
+@@ -2565,6 +2616,7 @@ export const TaskFlowPrototype: React.FC = () => {
+                 {/* 6.5. BIBLIOTECA DE PLANTILLAS MAESTRAS DE PRODUCTO */}
+                 {currentView === 'plantillas-producto' && (
+                   <TemplateLibraryView
++                    users={users}
+                     templates={productTemplates}
+                     onUpdateTemplates={setProductTemplates}
+                     opportunities={opportunities}
+@@ -2589,6 +2641,16 @@ export const TaskFlowPrototype: React.FC = () => {
+                 {/* 6.7. NEW BUSINESS & SCOPING OPERATIVO (FASE 1) */}
+                 {currentView === 'new-business' && (
+                   <NewBusinessView
++                    scopeUi={scopeUi}
++                    onChangeScopeUi={(quoteId, state) => setScopeUi((previous) => ({ ...previous, [quoteId]: state }))}
++                    onOpenSow={setSowOpportunityId}
++                    savedQuotes={savedQuotes}
++                    onSetQuoteSaved={(quoteId, signature) => setSavedQuotes((previous) => {
++                      const next = { ...previous };
++                      if (signature) next[quoteId] = signature;
++                      else delete next[quoteId];
++                      return next;
++                    })}
+                     opportunities={opportunities}
+                     clients={clients}
+                     templates={productTemplates}
+@@ -2615,11 +2677,11 @@ export const TaskFlowPrototype: React.FC = () => {
+                       };
+ 
+                       // Dynamic Leader resolution from users
+-                      const assignedUser = users.find(
+-                        (u) =>
+-                          u.id === newOpp.leadUserId ||
+-                          (newOpp.leadUserName && u.name.toLowerCase().includes(newOpp.leadUserName.split('·')[0].trim().toLowerCase()))
+-                      ) || users.find((u) => u.id === 'u-2') || users[0];
++                      const assignedUser = users.find((user) => user.status === 'Active' && user.id === newOpp.leadUserId);
++                      if (!assignedUser) {
++                        setOpportunities((prev) => [oppWithTask, ...prev]);
++                        return;
++                      }
+ 
+                       // Resolución dinámica del proyecto interno de preventa (UHURA Group -> Comercial & Prospección New Business)
+                       const matchedProject = projectsList.find(
+diff --git a/src/components/taskflow/newbusiness/quoteRules.ts b/src/components/taskflow/newbusiness/quoteRules.ts
+new file mode 100644
+index 0000000..a80c3de
+--- /dev/null
++++ b/src/components/taskflow/newbusiness/quoteRules.ts
+@@ -0,0 +1,35 @@
++import type { NewBusinessOpportunity, QuoteProposal, UserItem } from '../types';
++
++/** La calculadora admite enlaces web válidos, incluidos Sheets y enlaces compartidos. */
++export const isValidFinanceSheetUrl = (value?: string): boolean => {
++  try {
++    const url = new URL(value?.trim() || '');
++    return ['https:', 'http:'].includes(url.protocol) && Boolean(url.hostname) && !url.username && !url.password;
++  } catch { return false; }
++};
++
++export const quoteSignature = (value: number, url: string): string => JSON.stringify([value, url.trim()]);
++export const quoteMissingRequirements = (value: number, url: string): string[] => [
++  ...(!Number.isFinite(value) || value <= 0 ? ['Falta un valor mayor que cero.'] : []),
++  ...(!url.trim() ? ['Falta el enlace de la calculadora.'] : !isValidFinanceSheetUrl(url) ? ['El enlace de la calculadora no es válido: usa una URL http o https completa.'] : [])
++];
++
++// Los datos legacy sin referencia explícita conservan el primer alcance como hasta ahora.
++// La lectura mantiene el orden existente y no migra ni elimina históricos.
++export const getOperationalQuote = (opportunity?: NewBusinessOpportunity): QuoteProposal | undefined =>
++  opportunity?.quotes[0];
++
++export const withOperationalQuote = (
++  opportunity: NewBusinessOpportunity,
++  quote: QuoteProposal
++): NewBusinessOpportunity => ({
++  ...opportunity,
++  quotes: opportunity.quotes.some((existing) => existing.id === quote.id)
++    ? opportunity.quotes.map((existing) => existing.id === quote.id ? quote : existing)
++    : [...opportunity.quotes, quote]
++});
++
++export const getCommercialOwnerName = (opportunity: NewBusinessOpportunity, users: UserItem[]): string => {
++  const owner = users.find((user) => user.id === opportunity.commercialOwner || user.name === opportunity.commercialOwner);
++  return owner?.status === 'Active' ? owner.name : 'Sin asignar';
++};
+diff --git a/src/components/taskflow/newbusiness/teamCandidates.ts b/src/components/taskflow/newbusiness/teamCandidates.ts
+new file mode 100644
+index 0000000..81e9a37
+--- /dev/null
++++ b/src/components/taskflow/newbusiness/teamCandidates.ts
+@@ -0,0 +1,40 @@
++import type { UserItem, QuoteProposal } from '../types';
++
++// Usa el equipo canónico recibido; excluye registros de prueba identificados en su identidad.
++export const isEligibleTeamMember = (user: UserItem): boolean => user.status === 'Active' &&
++  !/(^|[\s._@-])(demo|qa|legacy|test|prueba)(?=$|[\s._@-])/i.test(`${user.id} ${user.name} ${user.email}`);
++
++const normalized = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
++export const matchesQuotedRole = (user: UserItem, role: string): boolean =>
++  [...(user.officialRoles || []), ...(user.professionalRoles || []), user.officialRole, user.professionalRole]
++    .some((assigned) => Boolean(assigned) && normalized(assigned!) === normalized(role));
++
++export const searchActiveTeam = (users: UserItem[], query: string): UserItem[] => {
++  const term = query.trim().toLocaleLowerCase();
++  return term ? users.filter(isEligibleTeamMember).filter((user) =>
++    [user.name, user.email, user.jobTitle, user.officialRole, user.professionalRole,
++      ...(user.officialRoles || []), ...(user.professionalRoles || [])].some((value) => value?.toLocaleLowerCase().includes(term))).slice(0, 5) : [];
++};
++
++// Elegibilidad visual basada en Access Levels existentes; no otorga permisos nuevos.
++// Exclusión solicitada para Scoping; conserva el perfil canónico y sus permisos.
++export const isEligibleScopingLeader = (user: UserItem): boolean => user.id !== 'u-19' && isEligibleTeamMember(user) &&
++  ['leader', 'executive', 'system_admin'].includes(user.accessLevel || 'pending');
++
++export const serviceValidationMessages = (service: { weeks: string }): string[] => {
++  const weeks = Number(service.weeks);
++  return [
++    ...(!service.weeks.trim() || !Number.isFinite(weeks) || weeks < 1 ? ['Define la duración estimada del servicio.'] : [])
++  ];
++};
++
++export const isScopeReadyForReview = (
++  quote: QuoteProposal,
++  services: { weeks: string; saved?: boolean }[]
++): boolean => {
++  const weeks = Number(quote.estimatedWeeks ?? quote.financialConfig?.projectDurationWeeks);
++  return Boolean(quote.commercialProposalUrl?.trim() && quote.commercialProposalUrl.trim().length > 5) &&
++    Number.isFinite(weeks) && weeks >= 1 && quote.totalHoursRollup > 0 &&
++    quote.deliverables.some((deliverable) => deliverable.backlogItems.some((activity) => activity.estimatedHours > 0)) &&
++    services.every((service) => service.saved === true && serviceValidationMessages(service).length === 0);
++};

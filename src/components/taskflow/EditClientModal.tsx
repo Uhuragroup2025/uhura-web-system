@@ -435,6 +435,24 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
                           className="w-full px-2.5 py-1.5 rounded-lg border border-[#cbd5e1] bg-white text-[#0f172a] font-mono text-xs placeholder:text-[#7C8AA0] placeholder:font-normal placeholder:font-sans focus:outline-none focus:border-[#501f92]"
                         />
                       </div>
+
+                      {([
+                        ['rutUrl', 'RUT actualizado (enlace)', 'url'],
+                        ['legalRepresentativeId', 'Cédula del representante legal', 'text'],
+                        ['billingEmail', 'Correo de facturación', 'email']
+                      ] as const).map(([field, label, type]) => (
+                        <label key={field} className="block text-[11px] font-semibold text-[#475569]">
+                          {label}
+                          <input type={type} value={tax[field] || ''}
+                            onChange={(event) => handleUpdateTaxEntity(tax.id, field, event.target.value)}
+                            className="mt-1 w-full px-2.5 py-1.5 rounded-lg border border-[#cbd5e1] bg-white text-[#0f172a] text-xs" />
+                        </label>
+                      ))}
+                      <label className="flex items-center gap-2 text-xs text-[#475569]">
+                        <input type="checkbox" checked={tax.alegraCreated || false}
+                          onChange={(event) => handleUpdateTaxEntity(tax.id, 'alegraCreated', event.target.checked)} />
+                        Creado en Alegra
+                      </label>
                     </div>
                   </div>
                 ))}

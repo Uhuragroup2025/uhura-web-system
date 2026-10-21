@@ -208,6 +208,7 @@ export function renderPlaceholder(value: string | undefined | null, fieldLabel: 
  * Generador de contenido completo estructurado en formato TEXTO / MARKDOWN
  */
 export function buildSowPlainText(params: {
+  documentVersion?: string;
   opportunity: NewBusinessOpportunity;
   quote: QuoteProposal;
   clientNit?: string;
@@ -289,7 +290,7 @@ PROVEEDOR: ${providerCompany}
 NIT PROVEEDOR: ${providerNit}
 FECHA DE EMISIÓN: ${new Date().toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' })}
 ORDEN DE COMPRA: ${ocText}
-VERSIÓN DEL SOW: ${quote.versionLabel || '1.0 – Final para Firma'}
+VERSIÓN DEL SOW: ${params.documentVersion || '1.0'}
 SUPERVISOR CLIENTE: ${supervisorClientText}
 SUPERVISOR PROVEEDOR: ${supervisorProviderText}
 ================================================================================
@@ -396,6 +397,7 @@ Fecha: ____ / ____ / ________                 Fecha: ____ / ____ / ________
  * manteniendo tablas, encabezados púrpuras y callouts limpios.
  */
 export function buildSowHtml(params: {
+  documentVersion?: string;
   opportunity: NewBusinessOpportunity;
   quote: QuoteProposal;
   clientNit?: string;
@@ -506,7 +508,7 @@ export function buildSowHtml(params: {
   </tr>
   <tr>
     <td><strong>VERSIÓN DEL SOW:</strong></td>
-    <td>${quote.versionLabel || '1.0 – Final para Firma'}</td>
+    <td>${params.documentVersion || '1.0'}</td>
     <td><strong>TIPO DE PROYECTO:</strong></td>
     <td>${archetype === 'ecommerce_shopify' ? 'Ecommerce Shopify' : archetype === 'web_wordpress' ? 'Portal Web WordPress' : 'Desarrollo a Medida'}</td>
   </tr>
