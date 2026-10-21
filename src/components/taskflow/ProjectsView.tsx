@@ -9,6 +9,7 @@ import { ProjectDeliverablesTab } from './projects/ProjectDeliverablesTab';
 import { ProjectSettingsTab } from './projects/ProjectSettingsTab';
 import { ProjectTeamTab } from './projects/ProjectTeamTab';
 import { ProjectTasksTab } from './projects/ProjectTasksTab';
+import { ScheduleProjectModal } from './ScheduleProjectModal';
 import { initialUsers } from './mockData';
 import { UserAvatar } from './UserAvatar';
 import {
@@ -61,7 +62,8 @@ import {
   ArrowDown,
   MoreVertical,
   Archive,
-  Trash2
+  Trash2,
+  X
 } from 'lucide-react';
 
 interface ProjectsViewProps {
@@ -84,6 +86,7 @@ interface ProjectsViewProps {
   onImportTasksToProject?: (importedTasks: Partial<TaskItem>[]) => void;
   onArchiveProject?: (projectId: string) => void;
   onDeleteProject?: (projectId: string) => void;
+  onUpdateAllTasks?: (updatedTasks: TaskItem[]) => void;
   currentUser?: UserItem;
   users?: UserItem[];
 }
@@ -111,12 +114,18 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   onImportTasksToProject,
   onArchiveProject,
   onDeleteProject,
+  onUpdateAllTasks,
   currentUser,
   users
 }) => {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(initialSelectedProjectId);
   const [activeProjectMenu, setActiveProjectMenu] = useState<string | null>(null);
   const [projectPendingDelete, setProjectPendingDelete] = useState<ProjectSummaryItem | null>(null);
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [scheduleSuccessMessage, setScheduleSuccessMessage] = useState<string | null>(null);
+  const [scheduleKickoffDate, setScheduleKickoffDate] = useState<string>('');
+  const [scheduleDurationWeeks, setScheduleDurationWeeks] = useState<number>(4);
+  const [scheduleRecalculateTasks, setScheduleRecalculateTasks] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'fee_monthly' | 'fixed_project' | 'internal_non_billable' | 'risk'>('all');
   const [filterClient, setFilterClient] = useState<string>('all');
@@ -521,6 +530,95 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
     });
   };
 
+  useEffect(() => {
+    if (currentProject) {
+      setScheduleKickoffDate(currentProject.startDate || new Date().toISOString().slice(0, 10));
+      if (currentProject.startDate && currentProject.endDate) {
+        const start = new Date(currentProject.startDate).getTime();
+        const end = new Date(currentProject.endDate).getTime();
+        const diffWeeks = Math.max(1, Math.round((end - start) / (1000 * 60 * 60 * 24 * 7)));
+        setScheduleDurationWeeks(diffWeeks);
+      } else {
+        const estWeeks = Math.max(1, Math.round((currentProject.budgetedHours || 20) / 20));
+        setScheduleDurationWeeks(estWeeks);
+      }
+    }
+  }, [currentProject?.id, isScheduleModalOpen]);
+
+  const calculatedEndDate = useMemo(() => {
+    if (!scheduleKickoffDate) return '';
+    const d = new Date(scheduleKickoffDate);
+    d.setDate(d.getDate() + (scheduleDurationWeeks * 7));
+    return d.toISOString().slice(0, 10);
+  }, [scheduleKickoffDate, scheduleDurationWeeks]);
+
+  const handleConfirmKickoff = () => {
+    if (!currentProject || !scheduleKickoffDate) return;
+    const finalEndDate = calculatedEndDate;
+
+    const updatedDeliverables = (currentProject.deliverables || []).map((d, dIdx, allDels) => {
+      const totalSpanDays = scheduleDurationWeeks * 7;
+      const daysPerDel = allDels.length > 0 ? totalSpanDays / allDels.length : totalSpanDays;
+      const delStartDayOffset = Math.round(dIdx * daysPerDel);
+      const delEndDayOffset = Math.round((dIdx + 1) * daysPerDel);
+
+      const dStartDate = new Date(scheduleKickoffDate);
+      dStartDate.setDate(dStartDate.getDate() + delStartDayOffset);
+
+      const dEndDate = new Date(scheduleKickoffDate);
+      dEndDate.setDate(dEndDate.getDate() + delEndDayOffset);
+
+      return {
+        ...d,
+        startDate: dStartDate.toISOString().slice(0, 10),
+        endDate: dEndDate.toISOString().slice(0, 10)
+      };
+    });
+
+    const updatedProject: ProjectSummaryItem = {
+      ...currentProject,
+      status: 'Activo',
+      startDate: scheduleKickoffDate,
+      endDate: finalEndDate,
+      deliverables: updatedDeliverables,
+      healthNote: `Proyecto iniciado formalmente el ${scheduleKickoffDate} con cronograma alineado.`
+    };
+
+    if (onUpdateProject) {
+      onUpdateProject(updatedProject);
+    }
+
+    if (scheduleRecalculateTasks && onUpdateAllTasks) {
+      const projectTasks = tasks.filter((t) => t.projectId === currentProject.id);
+      if (projectTasks.length > 0) {
+        const updatedAllTasks = tasks.map((t) => {
+          if (t.projectId !== currentProject.id) return t;
+          const taskIdx = projectTasks.findIndex((pt) => pt.id === t.id);
+          const totalDays = scheduleDurationWeeks * 7;
+          const dayOffset = Math.max(1, Math.round(((taskIdx + 1) / projectTasks.length) * totalDays));
+          const taskDueDate = new Date(scheduleKickoffDate);
+          taskDueDate.setDate(taskDueDate.getDate() + dayOffset);
+          const formattedDueDate = taskDueDate.toISOString().slice(0, 10);
+
+          return {
+            ...t,
+            date: t.date || scheduleKickoffDate,
+            dueDate: formattedDueDate,
+            dueText: `Deadline: ${formattedDueDate}`,
+            dueStatus: 'normal' as const
+          };
+        });
+        onUpdateAllTasks(updatedAllTasks);
+      }
+    }
+
+    setIsScheduleModalOpen(false);
+    setScheduleSuccessMessage(
+      `🚀 ¡Proyecto "${currentProject.name}" iniciado formalmente el ${scheduleKickoffDate}! Cronograma alineado y deadlines sincronizados.`
+    );
+    setTimeout(() => setScheduleSuccessMessage(null), 6000);
+  };
+
   // --- PROJECT DETAIL VIEW ---
   if (currentProject) {
     const percentHours = currentProject.budgetedHours > 0
@@ -529,6 +627,22 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
     return (
       <div className="space-y-6 animate-in fade-in duration-200">
+        {scheduleSuccessMessage && (
+          <div className="p-4 rounded-2xl bg-[#ecfdf5] border border-[#a7f3d0] text-[#065f46] flex items-center justify-between gap-3 shadow-xs animate-in slide-in-from-top-2">
+            <div className="flex items-center gap-2.5">
+              <CheckCircle2 className="w-5 h-5 text-[#10b981] shrink-0" />
+              <span className="text-xs font-bold">{scheduleSuccessMessage}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setScheduleSuccessMessage(null)}
+              className="text-xs text-[#065f46] hover:underline cursor-pointer"
+            >
+              Cerrar
+            </button>
+          </div>
+        )}
+
         {/* Navigation Breadcrumb & Project Actions */}
         <div className="flex items-center justify-between gap-2">
           {/* Breadcrumbs Estandarizadas */}
@@ -651,13 +765,38 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
               )}
             </div>
 
-            {/* Health Box */}
-            <div className="flex items-center gap-3 bg-[#f8fafc] px-3.5 py-2.5 rounded-2xl border border-[#e2e8f0] shrink-0">
-              <div className="text-right">
-                <span className="text-[10px] font-bold uppercase text-[#64748b] block">Salud</span>
-                <span className="text-xs font-semibold text-[#94a3b8] block mt-0.5">
-                  Pendiente de datos
-                </span>
+            {/* Health Box & Schedule Kickoff Action */}
+            <div className="flex items-center gap-2.5 flex-wrap">
+              {(!currentProject.startDate || currentProject.status === 'Planificación' || currentProject.status === 'draft') ? (
+                <button
+                  type="button"
+                  onClick={() => setIsScheduleModalOpen(true)}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-[#d4ff4a] hover:bg-[#bceb34] text-[#0f172a] text-xs font-black shadow-sm transition-all hover:scale-[1.02] cursor-pointer animate-pulse"
+                  title="Fijar fecha oficial de arranque y sincronizar automáticamente los deadlines de las actividades del equipo"
+                >
+                  <Play className="w-3.5 h-3.5 fill-current" />
+                  <span>Programar Inicio de Proyecto 🚀</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsScheduleModalOpen(true)}
+                  className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#cbd5e1] text-[#0f172a] text-xs font-bold transition-colors cursor-pointer shadow-2xs"
+                  title="Ajustar fecha de inicio o recalcular cronograma de entrega"
+                >
+                  <Calendar className="w-3.5 h-3.5 text-[#501f92]" />
+                  <span>Inicio: {currentProject.startDate}</span>
+                  <span className="text-[10px] text-[#64748b]">· Fin: {currentProject.endDate || 'Por definir'}</span>
+                </button>
+              )}
+
+              <div className="flex items-center gap-3 bg-[#f8fafc] px-3.5 py-2.5 rounded-2xl border border-[#e2e8f0] shrink-0">
+                <div className="text-right">
+                  <span className="text-[10px] font-bold uppercase text-[#64748b] block">Estado</span>
+                  <span className="text-xs font-semibold text-[#047857] block mt-0.5">
+                    {currentProject.status === 'Activo' ? 'En ejecución' : (currentProject.status || 'Por iniciar')}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -1707,6 +1846,171 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             }
           }}
         />
+
+        {/* Modal: Programar Inicio de Proyecto / Kick-off Operativo */}
+        {isScheduleModalOpen && (
+          <div
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setIsScheduleModalOpen(false);
+            }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+          >
+            <div className="bg-white rounded-3xl max-w-lg w-full border border-[#e2e8f0] shadow-2xl p-6 sm:p-7 space-y-5 animate-in zoom-in-95">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-[#501f92]/10 text-[#501f92] flex items-center justify-center shrink-0">
+                    <Play className="w-6 h-6 fill-current" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-base sm:text-lg text-[#0f172a]">
+                      Programar Inicio de Proyecto 🚀
+                    </h3>
+                    <p className="text-xs text-[#64748b]">
+                      {currentProject.clientName} · <strong>{currentProject.name}</strong>
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsScheduleModalOpen(false)}
+                  className="p-1 rounded-lg text-[#94a3b8] hover:text-[#0f172a] hover:bg-[#f1f5f9] transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4 text-xs">
+                {/* 1. Fecha de Inicio (Kick-off) */}
+                <div className="space-y-1.5">
+                  <label className="font-bold text-[#334155] flex items-center justify-between">
+                    <span>Fecha Oficial de Arranque / Kick-off:</span>
+                    <span className="text-[10px] text-[#64748b]">Alineación del equipo</span>
+                  </label>
+                  <div className="relative flex items-center">
+                    <input
+                      type="date"
+                      value={scheduleKickoffDate}
+                      onChange={(e) => setScheduleKickoffDate(e.target.value)}
+                      className="w-full p-2.5 rounded-xl border border-[#cbd5e1] font-semibold text-xs text-[#0f172a] focus:ring-2 focus:ring-[#501f92] bg-white"
+                    />
+                  </div>
+                </div>
+
+                {/* 2. Duración en Semanas & Fecha de Fin */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-[#334155]">
+                      Duración Estimada (Semanas):
+                    </label>
+                    <div className="flex items-center gap-1">
+                      {[2, 4, 6, 8, 12].map((w) => (
+                        <button
+                          key={w}
+                          type="button"
+                          onClick={() => setScheduleDurationWeeks(w)}
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors cursor-pointer ${
+                            scheduleDurationWeeks === w
+                              ? 'bg-[#501f92] text-white'
+                              : 'bg-[#f1f5f9] text-[#64748b] hover:bg-[#e2e8f0]'
+                          }`}
+                        >
+                          {w}s
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <input
+                    type="number"
+                    min="1"
+                    max="52"
+                    value={scheduleDurationWeeks}
+                    onChange={(e) => setScheduleDurationWeeks(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                    className="w-full p-2.5 rounded-xl border border-[#cbd5e1] font-semibold text-xs text-[#0f172a] focus:ring-2 focus:ring-[#501f92]"
+                  />
+
+                  {/* Banner de fecha de entrega calculada */}
+                  {calculatedEndDate && (
+                    <div className="p-3 rounded-xl bg-[#faf5ff] border border-[#e9d5ff] flex items-center justify-between text-xs mt-2">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-[#501f92] shrink-0" />
+                        <div>
+                          <span className="text-[10.5px] text-[#64748b] block">Fecha proyectada de cierre:</span>
+                          <strong className="text-[#501f92] font-bold text-xs">{calculatedEndDate}</strong>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-semibold text-[#64748b] bg-white px-2 py-1 rounded-md border border-[#e9d5ff]">
+                        ~{scheduleDurationWeeks * 5} días hábiles
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* 3. Recálculo automático de Deadlines */}
+                <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-2">
+                  <label className="flex items-start gap-2.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={scheduleRecalculateTasks}
+                      onChange={(e) => setScheduleRecalculateTasks(e.target.checked)}
+                      className="mt-0.5 rounded text-[#501f92] focus:ring-[#501f92] cursor-pointer"
+                    />
+                    <div className="space-y-0.5">
+                      <span className="font-bold text-[#0f172a] block text-xs">
+                        Recalcular y sugerir deadlines de entrega automáticamente
+                      </span>
+                      <p className="text-[10.5px] text-[#64748b] leading-relaxed">
+                        Distribuye cronológicamente los {currentProject.deliverables?.length || 0} entregables y las actividades del backlog del alcance según la fecha de inicio seleccionada.
+                      </p>
+                    </div>
+                  </label>
+                </div>
+
+                {/* 4. Equipo a alinear */}
+                <div className="p-3 bg-[#f8fafc] rounded-xl border border-[#e2e8f0] space-y-1.5">
+                  <span className="text-[10.5px] uppercase font-bold text-[#64748b] block">
+                    Equipo Responsable Asignado:
+                  </span>
+                  <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                    {currentProject.coreTeam && currentProject.coreTeam.length > 0 ? (
+                      currentProject.coreTeam.map((m, idx) => (
+                        <span
+                          key={idx}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-white border border-[#cbd5e1] text-[11px] font-semibold text-[#0f172a]"
+                        >
+                          <span className={`w-2 h-2 rounded-full ${m.isLead ? 'bg-[#501f92]' : 'bg-[#10b981]'}`} />
+                          <span>{m.name}</span>
+                          <span className="text-[9.5px] text-[#64748b]">({m.isLead ? 'Líder' : m.role})</span>
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-[#0f172a] font-semibold">{currentProject.leadName || 'Líder de Proyecto'}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Botones de acción */}
+              <div className="pt-2 flex items-center justify-end gap-2.5 border-t border-[#f1f5f9]">
+                <button
+                  type="button"
+                  onClick={() => setIsScheduleModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl border border-[#e2e8f0] bg-white hover:bg-[#f8fafc] text-xs font-semibold text-[#64748b] transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  disabled={!scheduleKickoffDate}
+                  onClick={handleConfirmKickoff}
+                  className="px-5 py-2.5 rounded-xl bg-[#501f92] hover:bg-[#3d1572] disabled:opacity-50 text-white text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-2 active:scale-95"
+                >
+                  <Play className="w-3.5 h-3.5 fill-current" />
+                  <span>Confirmar Inicio & Sincronizar Cronograma 🚀</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

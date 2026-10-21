@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { ClientProfile, ClientProjectHistoryItem, ClientTaxEntity, ClientContact } from './types';
+import React, { useState, useMemo } from 'react';
+import { ClientProfile, ClientProjectHistoryItem, ClientTaxEntity, ClientContact, ProjectSummaryItem } from './types';
 import { ClientRadarChart } from './ClientRadarChart';
 import {
   Building2,
@@ -32,6 +32,7 @@ import {
 
 interface ClientDetailViewProps {
   client: ClientProfile;
+  projects?: ProjectSummaryItem[];
   onBack: () => void;
   onNavigateToDashboard?: () => void;
   onNavigateToProject?: (projectName: string) => void;
@@ -42,6 +43,7 @@ interface ClientDetailViewProps {
 
 export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
   client,
+  projects = [],
   onBack,
   onNavigateToDashboard,
   onNavigateToProject,
@@ -51,6 +53,32 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
 }) => {
   const [portalActive, setPortalActive] = useState(client.portalActive);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Dynamic projects resolution: Combines stored history with real projects in projectsList
+  const effectiveProjects = useMemo(() => {
+    const list: ClientProjectHistoryItem[] = [...(client.projectsHistory || [])];
+    if (projects && projects.length > 0) {
+      projects.forEach((p) => {
+        const isMatch =
+          p.clientId === client.id ||
+          (p.clientName && p.clientName.toLowerCase() === client.name.toLowerCase()) ||
+          (p.brand && p.brand.toLowerCase() === client.name.toLowerCase());
+        if (isMatch && !list.some((existing) => existing.id === p.id || existing.name === p.name)) {
+          list.unshift({
+            id: p.id,
+            name: p.name,
+            brand: p.brand || client.name,
+            tag: p.projectType === 'fee_monthly' ? 'FEE' : 'PRJ',
+            status: p.status === 'Archivado' ? 'Cerrado' : 'Activo',
+            quotedValueCOP: p.soldValue ? `$${p.soldValue.toLocaleString('es-CO')} ${p.soldCurrency || 'COP'}` : 'Por definir',
+            realMarginPercent: null,
+            trafficLight: 'verde'
+          });
+        }
+      });
+    }
+    return list;
+  }, [client.projectsHistory, client.id, client.name, projects]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -616,7 +644,7 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-[#f1f5f9]">
           <div>
             <h3 className="font-bold text-base text-[#0f172a]">
-              Proyectos de la Cuenta ({client.projectsHistory?.length || 0})
+              Proyectos de la Cuenta ({effectiveProjects.length})
             </h3>
             <span className="text-xs text-[#64748b]">
               Presupuestos, rentabilidad y semáforo de ejecución en tiempo real
@@ -634,7 +662,7 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
         </div>
 
         {/* Projects Table */}
-        {(!client.projectsHistory || client.projectsHistory.length === 0) ? (
+        {effectiveProjects.length === 0 ? (
           <div className="p-8 rounded-xl bg-[#f8fafc] border border-dashed border-[#cbd5e1] text-center text-[#64748b] text-xs">
             <Briefcase className="w-6 h-6 mx-auto mb-2 text-[#94a3b8]" />
             <p className="font-bold text-[#0f172a]">Esta cuenta no tiene proyectos asignados aún.</p>
@@ -654,7 +682,7 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#f1f5f9]">
-                {client.projectsHistory.map((prj) => (
+                {effectiveProjects.map((prj) => (
                   <tr
                     key={prj.id}
                     onClick={() => {

@@ -1374,6 +1374,7 @@ export interface QuoteBacklogItem {
   dependencies?: string[];
   // DECISIÓN 5: Por defecto null/vacío al convertir. Solo si hubo acuerdo explícito:
   suggestedUserId?: string | null;
+  suggestedUserName?: string | null;
 }
 
 /**

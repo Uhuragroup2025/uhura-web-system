@@ -12,7 +12,7 @@ export interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({ activeSection, onSelectSection }) => {
   const navItems: { id: NavigationSection; label: string; icon: React.ReactNode }[] = [
     { id: 'overview', label: 'Overview', icon: <Layers className="w-4 h-4" /> },
-    { id: 'taskflow-prototype', label: '✨ TaskFlow SaaS', icon: <LayoutGrid className="w-4 h-4 text-[#d4ff4a]" /> },
+    { id: 'taskflow-prototype', label: '✨ Orbit', icon: <LayoutGrid className="w-4 h-4 text-[#d4ff4a]" /> },
     { id: 'foundations', label: 'Foundations', icon: <Palette className="w-4 h-4" /> },
     { id: 'liquid-glass', label: 'Liquid Glass', icon: <Sparkles className="w-4 h-4" /> },
     { id: 'components', label: 'Components', icon: <Box className="w-4 h-4" /> },

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { ClientProfile, ClientStatus, UserItem } from './types';
+import { ClientProfile, ClientStatus, UserItem, ProjectSummaryItem } from './types';
 import { ClientDetailView } from './ClientDetailView';
 import { EditClientModal } from './EditClientModal';
 import { CreateClientModal } from './CreateClientModal';
@@ -19,6 +19,7 @@ import {
 
 interface ClientsViewProps {
   clients: ClientProfile[];
+  projects?: ProjectSummaryItem[];
   currentUser?: UserItem;
   selectedClientId?: string | null;
   onSelectClient?: (clientId: string | null) => void;
@@ -31,6 +32,7 @@ interface ClientsViewProps {
 
 export const ClientsView: React.FC<ClientsViewProps> = ({
   clients,
+  projects = [],
   currentUser,
   selectedClientId: initialSelectedClientId = null,
   onSelectClient,
@@ -129,6 +131,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
       <>
         <ClientDetailView
           client={selectedClient}
+          projects={projects}
           onBack={handleBackToList}
           onNavigateToDashboard={onNavigateToDashboard}
           onNavigateToProject={onNavigateToProject}
@@ -417,15 +420,23 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                     </div>
                   </div>
 
-                  {/* Fila 2: Contacto principal · Proyectos */}
-                  <div className="text-xs text-[#475569] flex items-center justify-between gap-2">
-                    <span className="truncate font-medium">
-                      {primaryContact ? primaryContact.name : (cli.commercialInfo?.contactName || 'Sin contacto')}
-                    </span>
-                    <span className="text-[11px] text-[#64748b] font-semibold shrink-0">
-                      {cli.projectsCount || 0} {cli.projectsCount === 1 ? 'proyecto' : 'proyectos'}
-                    </span>
-                  </div>
+                    {/* Fila 2: Contacto principal · Proyectos */}
+                    <div className="text-xs text-[#475569] flex items-center justify-between gap-2">
+                      <span className="truncate font-medium">
+                        {primaryContact ? primaryContact.name : (cli.commercialInfo?.contactName || 'Sin contacto')}
+                      </span>
+                      {(() => {
+                        const matchedCount = projects.filter(
+                          (p) => p.clientId === cli.id || (p.clientName && p.clientName.toLowerCase() === cli.name.toLowerCase())
+                        ).length;
+                        const totalCount = Math.max(matchedCount, cli.projectsHistory?.length || 0, cli.projectsCount || 0);
+                        return (
+                          <span className="text-[11px] text-[#64748b] font-semibold shrink-0">
+                            {totalCount} {totalCount === 1 ? 'proyecto' : 'proyectos'}
+                          </span>
+                        );
+                      })()}
+                    </div>
 
                   {/* Fila 3: Marcas (tags compactos) */}
                   {cli.commercialInfo?.brands && cli.commercialInfo.brands.length > 0 && (

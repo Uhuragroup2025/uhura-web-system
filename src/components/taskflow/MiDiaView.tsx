@@ -1128,33 +1128,6 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                       <div className="mt-3 text-[11px] text-[#78350f] leading-relaxed bg-white/70 p-2.5 rounded-xl border border-[#fde68a]">
                         💡 <strong>Para tener en cuenta:</strong> {vac.userName.split(' ')[0]} saldrá a vacaciones pronto. Si tienes tareas, dudas o temas de clientes con ella, coordina entregas y handoffs antes de su salida.
                       </div>
-
-                      {/* Botones de acción directa */}
-                      <div className="grid grid-cols-2 gap-2 mt-3">
-                        {isLuisa && (
-                          <button
-                            type="button"
-                            onClick={() => setIsLuisaHandoffModalOpen(true)}
-                            className="w-full px-2.5 py-1.5 rounded-xl bg-[#b45309] hover:bg-[#92400e] text-white text-[11px] font-bold transition-colors cursor-pointer flex items-center justify-center gap-1 shadow-2xs"
-                          >
-                            <span>📋 Ver cuentas</span>
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedTeamUserId(vac.userId);
-                            setIsHumanProfileModalOpen(true);
-                          }}
-                          className={`w-full px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition-colors cursor-pointer flex items-center justify-center gap-1 ${
-                            isLuisa
-                              ? 'bg-white text-[#78350f] border border-[#fde68a] hover:bg-[#fffbeb]'
-                              : 'col-span-2 bg-[#501f92] text-white hover:bg-[#381566]'
-                          }`}
-                        >
-                          <span>🦫 Ver ficha</span>
-                        </button>
-                      </div>
                     </div>
                   );
                 })}
@@ -1193,16 +1166,9 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                       </div>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedTeamUserId(item.user.id);
-                        setIsHumanProfileModalOpen(true);
-                      }}
-                      className="px-2.5 py-1 rounded-lg bg-white border border-[#fecdd3] text-[#db2777] hover:bg-[#ffe4e6] text-[10px] font-bold shrink-0 cursor-pointer transition-colors"
-                    >
-                      Gustos
-                    </button>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white text-[#db2777] border border-[#fecdd3]">
+                      🎉 {item.daysRemaining === 0 ? 'Hoy' : `${item.daysRemaining}d`}
+                    </span>
                   </div>
                 ))}
               </div>

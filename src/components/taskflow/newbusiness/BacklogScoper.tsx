@@ -16,6 +16,9 @@ import {
   Sparkles,
   ChevronDown,
   ChevronRight,
+  ChevronUp,
+  ArrowUp,
+  ArrowDown,
   Info,
   Clock,
   CheckCircle2,
@@ -24,7 +27,8 @@ import {
   ArrowRight,
   TrendingUp,
   AlertTriangle,
-  FolderPlus
+  FolderPlus,
+  GripVertical
 } from 'lucide-react';
 
 interface BacklogScoperProps {
@@ -40,6 +44,7 @@ interface BacklogScoperProps {
   onMarkScopeReady?: (totalHours: number) => void;
   opportunityStatus?: string;
   commercialOwner?: string;
+  users?: UserItem[];
 }
 
 // Role badge styling configuration for 12 canonical Uhura roles
@@ -73,7 +78,8 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
   onGoToCalculator,
   onMarkScopeReady,
   opportunityStatus,
-  commercialOwner
+  commercialOwner,
+  users = []
 }) => {
   const [collapsedDeliverables, setCollapsedDeliverables] = useState<Record<string, boolean>>({});
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -164,8 +170,47 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
     onUpdateQuote(recomputeQuoteRollups(updated));
   };
 
+  const handleMoveDeliverable = (delId: string, direction: 'up' | 'down') => {
+    const idx = quote.deliverables.findIndex((d) => d.id === delId);
+    if (idx === -1) return;
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= quote.deliverables.length) return;
+
+    const list = [...quote.deliverables];
+    const temp = list[idx];
+    list[idx] = list[targetIdx];
+    list[targetIdx] = temp;
+
+    // Actualizar órdenes relativos
+    const reordered = list.map((d, index) => ({ ...d, order: index + 1 }));
+    onUpdateQuote(recomputeQuoteRollups(reordered));
+  };
+
+  const handleMoveActivity = (delId: string, actId: string, direction: 'up' | 'down') => {
+    const updated = quote.deliverables.map((d) => {
+      if (d.id !== delId) return d;
+      const actIdx = d.backlogItems.findIndex((a) => a.id === actId);
+      if (actIdx === -1) return d;
+      const targetActIdx = direction === 'up' ? actIdx - 1 : actIdx + 1;
+      if (targetActIdx < 0 || targetActIdx >= d.backlogItems.length) return d;
+
+      const actList = [...d.backlogItems];
+      const temp = actList[actIdx];
+      actList[actIdx] = actList[targetActIdx];
+      actList[targetActIdx] = temp;
+
+      return {
+        ...d,
+        backlogItems: actList.map((a, i) => ({ ...a, order: i + 1 }))
+      };
+    });
+
+    onUpdateQuote(recomputeQuoteRollups(updated));
+  };
+
   // Activity (Backlog Item) Operations
   const handleAddActivity = (delId: string) => {
+    const defaultUser = users[0];
     const newAct: QuoteBacklogItem = {
       id: `act-${Date.now()}`,
       quoteDeliverableId: delId,
@@ -173,6 +218,8 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
       roleId: 'Front-End Dev',
       roleName: 'Front-End Dev',
       estimatedHours: 8,
+      suggestedUserId: defaultUser?.id || null,
+      suggestedUserName: defaultUser?.name || null,
       order: 99
     };
 
@@ -269,16 +316,27 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
 
     const importedDeliverables: QuoteDeliverable[] = tpl.deliverables.map((td, dIdx) => {
       const delId = `qdel-imported-${Date.now()}-${dIdx}`;
-      const backlogItems: QuoteBacklogItem[] = td.activities.map((act, aIdx) => ({
-        id: `act-imp-${Date.now()}-${dIdx}-${aIdx}`,
-        quoteDeliverableId: delId,
-        title: act.title,
-        description: act.description,
-        roleId: act.roleName,
-        roleName: act.roleName,
-        estimatedHours: act.estimatedHours,
-        order: aIdx + 1
-      }));
+      const backlogItems: QuoteBacklogItem[] = td.activities.map((act, aIdx) => {
+        // Encontrar persona sugerida por coincidencia de rol o rotación del equipo
+        const matchedUser = users.find((u) => {
+          const uRole = (u.officialRole || u.professionalRole || u.jobTitle || u.role || '').toLowerCase();
+          const aRole = (act.roleName || '').toLowerCase();
+          return uRole.includes(aRole) || aRole.includes(uRole);
+        }) || (users.length > 0 ? users[aIdx % users.length] : null);
+
+        return {
+          id: `act-imp-${Date.now()}-${dIdx}-${aIdx}`,
+          quoteDeliverableId: delId,
+          title: act.title,
+          description: act.description,
+          roleId: act.roleName,
+          roleName: act.roleName,
+          estimatedHours: act.estimatedHours,
+          suggestedUserId: matchedUser?.id || null,
+          suggestedUserName: matchedUser?.name || null,
+          order: aIdx + 1
+        };
+      });
 
       return {
         id: delId,
@@ -399,6 +457,7 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
                           <ChevronDown className="w-4 h-4" />
                         )}
                       </button>
+                      <GripVertical className="w-4 h-4 text-[#94a3b8] cursor-grab active:cursor-grabbing shrink-0 opacity-70 hover:opacity-100" />
                       <span className="w-6 h-6 rounded-full bg-[#501f92]/10 text-[#501f92] text-xs font-bold flex items-center justify-center shrink-0">
                         {delIdx + 1}
                       </span>
@@ -421,6 +480,35 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
                         <span className="text-xs font-bold font-mono text-[#501f92]">
                           {delTotalHours}h
                         </span>
+                      </div>
+
+                      <div className="flex items-center gap-0.5">
+                        <button
+                          type="button"
+                          disabled={delIdx === 0}
+                          onClick={() => handleMoveDeliverable(del.id, 'up')}
+                          className={`p-1 rounded hover:bg-white transition-colors ${
+                            delIdx === 0
+                              ? 'text-[#cbd5e1] cursor-not-allowed'
+                              : 'text-[#64748b] hover:text-[#501f92] cursor-pointer'
+                          }`}
+                          title="Mover entregable hacia arriba"
+                        >
+                          <ArrowUp className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={delIdx === quote.deliverables.length - 1}
+                          onClick={() => handleMoveDeliverable(del.id, 'down')}
+                          className={`p-1 rounded hover:bg-white transition-colors ${
+                            delIdx === quote.deliverables.length - 1
+                              ? 'text-[#cbd5e1] cursor-not-allowed'
+                              : 'text-[#64748b] hover:text-[#501f92] cursor-pointer'
+                          }`}
+                          title="Mover entregable hacia abajo"
+                        >
+                          <ArrowDown className="w-3.5 h-3.5" />
+                        </button>
                       </div>
 
                       <button
@@ -467,8 +555,9 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
                                   key={act.id}
                                   className="px-3 py-2 flex items-center justify-between gap-2.5 hover:bg-[#f8fafc] transition-colors group"
                                 >
-                                  {/* Left: Index & Title */}
-                                  <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+                                  {/* Left: Drag Handle, Index & Title */}
+                                  <div className="flex items-center gap-1.5 flex-1 min-w-[200px]">
+                                    <GripVertical className="w-3.5 h-3.5 text-[#94a3b8] cursor-grab active:cursor-grabbing shrink-0 opacity-40 group-hover:opacity-100 transition-opacity" />
                                     <span className="text-[11px] font-mono text-[#94a3b8] w-4 shrink-0 text-center">
                                       {actIdx + 1}.
                                     </span>
@@ -496,10 +585,32 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
                                         )
                                       }
                                       className={`text-[11px] font-semibold px-2 py-0.5 rounded-md border border-transparent hover:border-[#cbd5e1] ${badgeStyle.bg} ${badgeStyle.text} focus:ring-1 focus:ring-[#501f92] cursor-pointer outline-hidden transition-colors`}
+                                      title="Rol presupuestado"
                                     >
                                       {STANDARD_UHURA_ROLES.map((role) => (
                                         <option key={role} value={role} className="bg-white text-[#0f172a]">
                                           {role}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+
+                                  {/* Responsable de Ejecución */}
+                                  <div className="shrink-0">
+                                    <select
+                                      value={act.suggestedUserId || ''}
+                                      onChange={(e) => {
+                                        const selUser = users.find((u) => u.id === e.target.value);
+                                        handleUpdateActivity(del.id, act.id, 'suggestedUserId', e.target.value || null);
+                                        handleUpdateActivity(del.id, act.id, 'suggestedUserName', selUser?.name || null);
+                                      }}
+                                      className="text-[11px] font-medium px-2 py-0.5 rounded-md border border-[#e2e8f0] bg-white text-[#334155] hover:border-[#cbd5e1] focus:ring-1 focus:ring-[#501f92] cursor-pointer outline-hidden transition-colors max-w-[130px] truncate"
+                                      title="Persona responsable de ejecutar la actividad"
+                                    >
+                                      <option value="">👤 (Sin responsable)</option>
+                                      {users.map((u) => (
+                                        <option key={u.id} value={u.id} className="text-[#0f172a]">
+                                          {u.name}
                                         </option>
                                       ))}
                                     </select>
@@ -528,6 +639,32 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
 
                                     {/* Botones de acción discretos: visibles al pasar el cursor */}
                                     <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <button
+                                        type="button"
+                                        disabled={actIdx === 0}
+                                        onClick={() => handleMoveActivity(del.id, act.id, 'up')}
+                                        className={`p-1 rounded hover:bg-white transition-colors ${
+                                          actIdx === 0
+                                            ? 'text-[#e2e8f0] cursor-not-allowed'
+                                            : 'text-[#94a3b8] hover:text-[#501f92] cursor-pointer'
+                                        }`}
+                                        title="Subir actividad"
+                                      >
+                                        <ArrowUp className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        disabled={actIdx === del.backlogItems.length - 1}
+                                        onClick={() => handleMoveActivity(del.id, act.id, 'down')}
+                                        className={`p-1 rounded hover:bg-white transition-colors ${
+                                          actIdx === del.backlogItems.length - 1
+                                            ? 'text-[#e2e8f0] cursor-not-allowed'
+                                            : 'text-[#94a3b8] hover:text-[#501f92] cursor-pointer'
+                                        }`}
+                                        title="Bajar actividad"
+                                      >
+                                        <ArrowDown className="w-3.5 h-3.5" />
+                                      </button>
                                       <button
                                         type="button"
                                         onClick={() => handleDuplicateActivity(del.id, act.id)}
@@ -581,7 +718,7 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
             className="w-full py-3.5 rounded-2xl border-2 border-dashed border-[#cbd5e1] hover:border-[#501f92] bg-white hover:bg-[#501f92]/5 text-xs font-bold text-[#501f92] flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs"
           >
             <Plus className="w-4 h-4" />
-            <span>Agregar servicio</span>
+            <span>Agregar entregable</span>
           </button>
         </div>
 
@@ -678,44 +815,6 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
                 })}
               </div>
             </div>
-          </div>
-
-          {/* Bucky Beaver Quality & Scoping Insights */}
-          <div className="p-4 bg-linear-to-br from-[#501f92]/5 to-[#7c3aed]/5 rounded-2xl border border-[#501f92]/20 space-y-2.5">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">🦫</span>
-              <h4 className="text-xs font-bold text-[#501f92]">
-                Copiloto Bucky · Auditoría del Backlog
-              </h4>
-            </div>
-            <p className="text-[11px] text-[#475569] leading-relaxed">
-              {totalHours > 0 ? (
-                <>
-                  Has estructurado <strong>{totalHours}h</strong> de esfuerzo técnico en{' '}
-                  <strong>{allBacklogItems.length} actividades</strong>. El frente con mayor peso es{' '}
-                  <strong className="text-[#501f92]">
-                    {quote.deliverables[0]?.name || 'el primer entregable'}
-                  </strong>.
-                </>
-              ) : (
-                'Comienza añadiendo horas a las actividades para calcular el esfuerzo de cada rol.'
-              )}
-            </p>
-            <div className="pt-1 flex items-center gap-1.5 text-[10px] text-[#059669] font-bold">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Rollup de horas consolidado para propuesta comercial</span>
-            </div>
-
-            {onGoToCalculator && (
-              <button
-                type="button"
-                onClick={onGoToCalculator}
-                className="w-full mt-2 py-2 px-3 rounded-xl bg-white border border-[#501f92]/30 text-xs font-bold text-[#501f92] hover:bg-[#501f92]/5 transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
-              >
-                <span>Ir a Cotización & Pricing</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            )}
           </div>
         </div>
       </div>

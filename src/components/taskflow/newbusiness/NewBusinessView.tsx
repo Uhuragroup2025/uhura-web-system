@@ -59,7 +59,10 @@ import {
   X,
   Trophy,
   Lock,
-  Info
+  Info,
+  Pencil,
+  Edit3,
+  ThumbsDown
 } from 'lucide-react';
 
 interface NewBusinessViewProps {
@@ -131,6 +134,11 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
   const [copiedNotification, setCopiedNotification] = useState<string | null>(null);
   const [wonCelebrationOpp, setWonCelebrationOpp] = useState<NewBusinessOpportunity | null>(null);
   const [isQuoteSavedFeedback, setIsQuoteSavedFeedback] = useState<boolean>(false);
+  const [isEditingQuoteFields, setIsEditingQuoteFields] = useState<boolean>(false);
+  const [isEditingBrief, setIsEditingBrief] = useState<boolean>(false);
+  const [isLostModalOpen, setIsLostModalOpen] = useState<boolean>(false);
+  const [lostReason, setLostReason] = useState<string>('precio');
+  const [lostNotes, setLostNotes] = useState<string>('');
 
   // Fanfarria triunfal Web Audio para celebrar propuesta ganada
   const playWonFanfare = () => {
@@ -236,6 +244,43 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
   const activeQuote =
     activeOpp?.quotes.find((q) => q.id === activeQuoteId) || activeOpp?.quotes[0];
 
+  // Controlled Draft State for Cotización (prevents premature locking on keystroke)
+  const [quoteValueDraft, setQuoteValueDraft] = useState<string>('');
+  const [quoteCurrencyDraft, setQuoteCurrencyDraft] = useState<'COP' | 'USD'>('COP');
+  const [quoteSheetUrlDraft, setQuoteSheetUrlDraft] = useState<string>('');
+  const [quoteNotesDraft, setQuoteNotesDraft] = useState<string>('');
+
+  // Controlled Draft State for Resumen Discovery Brief
+  const [briefDraft, setBriefDraft] = useState<string>('');
+
+  // Sync draft states when quote changes
+  useEffect(() => {
+    if (activeQuote) {
+      const val = activeQuote.totalQuotedValue ?? activeQuote.totalQuotedValueCOP ?? 0;
+      setQuoteValueDraft(val > 0 ? String(val) : '');
+      setQuoteCurrencyDraft(activeQuote.currency || 'COP');
+      setQuoteSheetUrlDraft(activeQuote.externalFinanceSheetUrl || '');
+      setQuoteNotesDraft(activeQuote.commercialNotes || '');
+      setIsEditingQuoteFields(!val && !activeQuote.externalFinanceSheetUrl);
+    }
+  }, [activeQuote?.id]);
+
+  // Sync brief draft when opportunity changes
+  useEffect(() => {
+    if (activeOpp) {
+      const bText = activeOpp.briefSummary || activeOpp.discoveryNotes || '';
+      setBriefDraft(bText);
+      setIsEditingBrief(!bText);
+    }
+  }, [activeOpp?.id]);
+
+  // Helper: ¿La cotización ya fue guardada con monto por comercial?
+  const isQuoteDiligenciada = Boolean(
+    ((activeQuote?.totalQuotedValue && activeQuote.totalQuotedValue > 0) ||
+     (activeQuote?.totalQuotedValueCOP && activeQuote.totalQuotedValueCOP > 0)) &&
+    !isEditingQuoteFields
+  );
+
   // Scoping task and preventa hours calculation
   const scopingTask = tasks.find(
     (t) =>
@@ -298,7 +343,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
   const downPaymentGatePassed = !isDownPaymentRequired || isDownPaymentReceived;
 
   const isFormalizationGatesMet = contractGatePassed && downPaymentGatePassed;
-  const canConvertToProject = isWon && isFormalizationGatesMet;
+  const canConvertToProject = isWon;
 
   // Handle updating administrative checklist directly
   const handleUpdateAdminChecklist = (patch: Partial<AdministrativeChecklist>) => {
@@ -454,7 +499,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
 
     setIsConvertModalOpen(false);
     setBannerNotification({
-      message: `🎉 ¡"${payload.projectName}" ha sido aprobado y formalizado exitosamente como Proyecto en Orbit!`,
+      message: `🎉 ¡"${payload.projectName}" ha sido aprobado y formalizado exitosamente como Proyecto y Cliente!`,
       showProjectLink: true
     });
     setTimeout(() => {
@@ -509,13 +554,22 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                 </button>
               )}
               {bannerNotification.showProjectLink && onNavigateToView && (
-                <button
-                  type="button"
-                  onClick={() => onNavigateToView('proyectos', activeOpp?.convertedProjectId || undefined)}
-                  className="px-3 py-1.5 rounded-lg bg-[#10b981] hover:bg-[#059669] text-white text-xs font-bold transition-colors cursor-pointer shrink-0 shadow-2xs"
-                >
-                  Ver en Proyectos →
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => onNavigateToView('clientes', activeOpp?.clientId || undefined)}
+                    className="px-3 py-1.5 rounded-lg bg-white border border-[#a7f3d0] hover:bg-[#d1fae5] text-[#065f46] text-xs font-bold transition-colors cursor-pointer shrink-0 shadow-2xs"
+                  >
+                    Ver Cliente →
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onNavigateToView('proyectos', activeOpp?.convertedProjectId || undefined)}
+                    className="px-3 py-1.5 rounded-lg bg-[#10b981] hover:bg-[#059669] text-white text-xs font-bold transition-colors cursor-pointer shrink-0 shadow-2xs"
+                  >
+                    Ver en Proyectos →
+                  </button>
+                </div>
               )}
               <button
                 type="button"
@@ -1063,13 +1117,22 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
               </button>
             )}
             {bannerNotification.showProjectLink && onNavigateToView && (
-              <button
-                type="button"
-                onClick={() => onNavigateToView('proyectos', activeOpp.convertedProjectId || undefined)}
-                className="px-3 py-1.5 rounded-lg bg-[#10b981] hover:bg-[#059669] text-white text-xs font-bold transition-colors cursor-pointer shrink-0 shadow-2xs"
-              >
-                Ver en Proyectos →
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => onNavigateToView('clientes', activeOpp.clientId || undefined)}
+                  className="px-3 py-1.5 rounded-lg bg-white border border-[#a7f3d0] hover:bg-[#d1fae5] text-[#065f46] text-xs font-bold transition-colors cursor-pointer shrink-0 shadow-2xs"
+                >
+                  Ver Cliente →
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onNavigateToView('proyectos', activeOpp.convertedProjectId || undefined)}
+                  className="px-3 py-1.5 rounded-lg bg-[#10b981] hover:bg-[#059669] text-white text-xs font-bold transition-colors cursor-pointer shrink-0 shadow-2xs"
+                >
+                  Ver en Proyectos →
+                </button>
+              </div>
             )}
             <button
               type="button"
@@ -1295,76 +1358,102 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
             </a>
           )}
 
-
+          {/* Timer Preventa sutil en la barra superior (Líder, Catalina, Luisa) */}
+          {scopingTask && onStartTimer && (
+            <button
+              type="button"
+              onClick={() => {
+                if (isScopingTimerRunning && onStopTimer) {
+                  onStopTimer();
+                } else {
+                  onStartTimer(scopingTask);
+                }
+              }}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs border ${
+                isScopingTimerRunning
+                  ? 'bg-[#ef4444] text-white border-[#dc2626] animate-pulse'
+                  : 'bg-white hover:bg-[#f8fafc] text-[#0f172a] border-[#e2e8f0]'
+              }`}
+              title="Registrar tiempo de preventa invertido por Líder, Catalina o Luisa"
+            >
+              <Play className={`w-3 h-3 ${isScopingTimerRunning ? 'fill-current' : 'text-[#501f92]'}`} />
+              <span>
+                {isScopingTimerRunning ? 'Detener Timer' : 'Timer Preventa'}
+              </span>
+              <span className={`text-[10.5px] font-mono px-1.5 py-0.2 rounded font-bold ${
+                isScopingTimerRunning ? 'bg-white/20 text-white' : 'bg-[#501f92]/10 text-[#501f92]'
+              }`}>
+                {preventaHoursLogged > 0 ? `${preventaHoursLogged.toFixed(1)}h` : '0h'}
+              </span>
+            </button>
+          )}
 
           {activeOpp.convertedProjectId ? (
-            onNavigateToView && (
-              <button
-                type="button"
-                onClick={() => onNavigateToView('proyectos', activeOpp.convertedProjectId)}
-                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#f1f5f9] hover:bg-[#e2e8f0] text-xs font-bold text-[#0f172a] transition-colors cursor-pointer"
-              >
-                <FolderPlus className="w-4 h-4 text-[#10b981]" />
-                <span>Ver en Proyectos →</span>
-              </button>
-            )
+            <div className="flex items-center gap-2">
+              {onNavigateToView && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => onNavigateToView('clientes', activeOpp.clientId || undefined)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-[#f8fafc] text-xs font-bold text-[#501f92] border border-[#e2e8f0] transition-colors cursor-pointer shadow-2xs"
+                    title="Ver ficha del Cliente en el Directorio"
+                  >
+                    <Building2 className="w-4 h-4 text-[#501f92]" />
+                    <span>Ver Cliente</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onNavigateToView('proyectos', activeOpp.convertedProjectId)}
+                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#f1f5f9] hover:bg-[#e2e8f0] text-xs font-bold text-[#0f172a] transition-colors cursor-pointer"
+                    title="Ver proyecto operativo en el módulo de Proyectos"
+                  >
+                    <FolderPlus className="w-4 h-4 text-[#10b981]" />
+                    <span>Ver en Proyectos →</span>
+                  </button>
+                </>
+              )}
+            </div>
           ) : (
             <div className="flex items-center gap-2 flex-wrap">
               {!isWon ? (
                 <>
-                  <span
-                    className="text-[10px] text-[#64748b] bg-[#f8fafc] px-2.5 py-1.5 rounded-xl border border-[#cbd5e1] font-medium flex items-center gap-1.5"
-                    title="La conversión a Proyecto requiere que el Deal alcance el estado Cerrado Ganado en HubSpot"
+                  <button
+                    type="button"
+                    disabled={!isQuoteDiligenciada}
+                    onClick={() => handleMarkOpportunityWon(activeOpp)}
+                    className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-xs ${
+                      isQuoteDiligenciada
+                        ? 'bg-[#10b981] hover:bg-[#059669] active:bg-[#047857] text-white cursor-pointer active:scale-95'
+                        : 'bg-[#f1f5f9] text-[#94a3b8] border border-[#e2e8f0] cursor-not-allowed'
+                    }`}
+                    title={
+                      isQuoteDiligenciada
+                        ? 'Marcar propuesta aprobada formalmente por el cliente'
+                        : 'Diligencia y guarda primero la pestaña Cotización (Valor y Sheet) para habilitar'
+                    }
                   >
-                    <Lock className="w-3 h-3 text-[#94a3b8]" />
-                    <span>HubSpot: Pendiente Cerrado Ganado</span>
-                  </span>
+                    <Trophy className={`w-3.5 h-3.5 ${isQuoteDiligenciada ? 'text-[#d4ff4a]' : 'text-[#cbd5e1]'}`} />
+                    <span>Marcar como ganada 🏆</span>
+                  </button>
 
-                  {canSimulateWon && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const updated: NewBusinessOpportunity = {
-                          ...activeOpp,
-                          status: 'won',
-                          hubspotDealStage: 'closedwon',
-                          updatedAt: new Date().toISOString()
-                        };
-                        onUpdateOpportunity(updated);
-                        setBannerNotification({
-                          message: 'ℹ️ Simulación (Fallback Demo): Deal actualizado localmente a "Cerrado Ganado". Ahora puedes convertir la oportunidad a Proyecto.',
-                          showProjectLink: false
-                        });
-                        setTimeout(() => setBannerNotification(null), 6000);
-                      }}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-[#f8fafc] border border-[#cbd5e1] text-xs font-semibold text-[#475569] transition-all cursor-pointer shadow-2xs"
-                      title="Acción exclusiva de demo/entornos no productivos: simula la sincronización de HubSpot como 'Cerrado Ganado'"
-                    >
-                      <Trophy className="w-3.5 h-3.5 text-[#10b981]" />
-                      <span>Simular Cerrado Ganado (Demo)</span>
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => setIsLostModalOpen(true)}
+                    className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-white hover:bg-[#fef2f2] text-[#dc2626] border border-[#fecaca] text-xs font-semibold transition-all cursor-pointer shadow-2xs"
+                    title="Registrar que el cliente no aprobó la propuesta"
+                  >
+                    <span>No ganada</span>
+                  </button>
                 </>
               ) : (
                 <button
                   type="button"
                   onClick={() => setIsConvertModalOpen(true)}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-xs bg-[#10b981] hover:bg-[#059669] text-white cursor-pointer shadow-sm hover:scale-[1.02]"
-                  title="Convertir propuesta formalizada a Proyecto y tareas operativas en Orbit"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-xs bg-[#501f92] hover:bg-[#3d1572] text-white cursor-pointer shadow-md animate-pulse hover:scale-[1.02]"
+                  title="Convertir esta propuesta ganada a Cliente y Proyecto en Operación"
                 >
-                  <CheckCircle2 className="w-4 h-4 text-white" />
-                  <span>Convertir a Proyecto</span>
-                </button>
-              )}
-
-              {isWon && !isFormalizationGatesMet && (
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('documentos')}
-                  className="text-[10px] text-[#c2410c] bg-[#fff7ed] hover:bg-[#ffedd5] px-2 py-1 rounded-lg border border-[#fed7aa] font-bold cursor-pointer"
-                  title="Revisar condiciones de inicio en Documentos"
-                >
-                  ⚠️ Condiciones ({[!contractGatePassed ? 'Contrato' : null, !downPaymentGatePassed ? 'Anticipo' : null].filter(Boolean).join(' + ')})
+                  <FolderPlus className="w-4 h-4 text-[#d4ff4a]" />
+                  <span>Convertir a Cliente & Proyecto →</span>
                 </button>
               )}
             </div>
@@ -1445,162 +1534,53 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
       {/* ========================================================================= */}
       {activeTab === 'resumen' && activeQuote && (
         <div className="space-y-5 animate-in fade-in duration-150">
-          {/* Tarjeta de Preventa & Time Tracking Interno (UHURA Group / New Business) */}
-          <div className="bg-gradient-to-br from-[#140b24] via-[#241142] to-[#501f92] text-white rounded-2xl p-5 shadow-sm space-y-4">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-white/10 text-[#d4ff4a] flex items-center justify-center shrink-0">
-                  <Clock className="w-5 h-5" />
-                </div>
-                <div>
+          {/* Fila 1: Resumen Ejecutivo 360° de la Oportunidad */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            {/* Columna Izquierda: Información del Prospecto & Brief Discovery (7 cols) */}
+            <div className="lg:col-span-7 space-y-4">
+              {/* Card 1: Ficha del Prospecto & Contacto */}
+              <div className="bg-white rounded-2xl border border-[#e2e8f0] p-5 shadow-2xs space-y-3.5">
+                <div className="flex items-center justify-between pb-2.5 border-b border-[#f1f5f9]">
                   <div className="flex items-center gap-2">
-                    <h4 className="font-extrabold text-sm text-white">Tiempo de Preventa & Scoping</h4>
-                    <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-[#d4ff4a] text-[#0f172a]">
-                      UHURA Group / New Business
+                    <span className="p-1.5 rounded-lg bg-[#501f92]/10 text-[#501f92]">
+                      <Building2 className="w-4 h-4" />
+                    </span>
+                    <div>
+                      <h3 className="text-sm font-bold text-[#0f172a]">
+                        Información del Prospecto
+                      </h3>
+                      <p className="text-[11px] text-[#64748b]">Datos comerciales de entrada y contacto</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#f1f5f9] text-[#475569]">
+                    ID: {activeOpp.id}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="p-3 bg-[#f8fafc] rounded-xl border border-[#e2e8f0]">
+                    <span className="text-[10px] uppercase font-bold text-[#64748b] block">Nombre del Prospecto</span>
+                    <strong className="text-sm font-extrabold text-[#0f172a] block truncate mt-0.5">
+                      {activeOpp.prospectAccountName}
+                    </strong>
+                    <span className="text-[10px] text-[#64748b] block mt-0.5">
+                      {activeOpp.projectType === 'fee_monthly' ? 'Fee Mensual Recurrente' : 'Proyecto Único'}
                     </span>
                   </div>
-                  <p className="text-xs text-white/75">
-                    Imputación interna de horas al proyecto de prospección comercial
-                  </p>
-                </div>
-              </div>
 
-              {scopingTask && onStartTimer && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (isScopingTimerRunning && onStopTimer) {
-                      onStopTimer();
-                    } else {
-                      onStartTimer(scopingTask);
-                    }
-                  }}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shadow-xs ${
-                    isScopingTimerRunning
-                      ? 'bg-[#ef4444] hover:bg-[#dc2626] text-white animate-pulse'
-                      : 'bg-[#d4ff4a] hover:bg-[#bceb34] text-[#0f172a]'
-                  }`}
-                  title="Grabar horas de preventa imputadas a UHURA Group / New Business"
-                >
-                  <Play className={`w-3.5 h-3.5 ${isScopingTimerRunning ? 'fill-current' : ''}`} />
-                  <span>{isScopingTimerRunning ? 'Detener Timer Preventa' : 'Iniciar Timer Preventa'}</span>
-                </button>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-              <div className="p-3 bg-white/10 rounded-xl backdrop-blur-xs">
-                <span className="text-[10px] uppercase font-semibold text-white/70 block">Tarea Interna Ligada</span>
-                <span className="font-bold text-xs text-white truncate block" title={scopingTask?.title || `Scoping · ${activeOpp.prospectAccountName} · ${activeOpp.title}`}>
-                  {scopingTask?.title || `Scoping · ${activeOpp.prospectAccountName} · ${activeOpp.title}`}
-                </span>
-                <span className="text-[10px] text-[#d4ff4a] font-mono">Proyecto: Comercial & Prospección</span>
-              </div>
-
-              <div className="p-3 bg-white/10 rounded-xl backdrop-blur-xs">
-                <span className="text-[10px] uppercase font-semibold text-white/70 block">Líder de Alcance</span>
-                <span className="font-bold text-xs text-white block">
-                  {currentLeadDisplayName}
-                </span>
-                <span className="text-[10px] text-white/70">SLA Handoff: ~{activeOpp.handoffHours || 36}h</span>
-              </div>
-
-              <div className="p-3 bg-white/10 rounded-xl backdrop-blur-xs">
-                <span className="text-[10px] uppercase font-semibold text-white/70 block">Horas Preventa Invertidas</span>
-                <span className="text-xl font-extrabold text-[#d4ff4a] block font-mono">
-                  {preventaHoursLogged.toFixed(1)} h
-                </span>
-                <span className="text-[10px] text-white/70">Costo interno de adquisición</span>
-              </div>
-            </div>
-
-            <details className="group rounded-xl bg-white/5 border border-white/10 text-xs text-white/80 p-2.5 transition-all">
-              <summary className="flex items-center justify-between cursor-pointer list-none select-none text-[11px] font-semibold text-white/90">
-                <span className="flex items-center gap-1.5">
-                  <Info className="w-3.5 h-3.5 text-[#d4ff4a]" />
-                  <span>¿Qué actividades cubre esta tarea de preventa?</span>
-                </span>
-                <span className="text-[10px] text-[#d4ff4a] font-mono group-open:rotate-180 transition-transform">
-                  ▼
-                </span>
-              </summary>
-              <div className="pt-2.5 space-y-2 text-[10.5px]">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-white/75">
-                  <div className="flex items-center gap-1.5"><span>•</span><span>1. Revisar brief y Drive</span></div>
-                  <div className="flex items-center gap-1.5"><span>•</span><span>2. Discovery con cliente</span></div>
-                  <div className="flex items-center gap-1.5"><span>•</span><span>3. Agente de propuestas</span></div>
-                  <div className="flex items-center gap-1.5"><span>•</span><span>4. Pulir presentación comercial</span></div>
-                  <div className="flex items-center gap-1.5"><span>•</span><span>5. Scoping backlog y horas</span></div>
-                  <div className="flex items-center gap-1.5"><span>•</span><span>6. Revisión interna comercial</span></div>
-                  <div className="flex items-center gap-1.5"><span>•</span><span>7. Presentación al cliente</span></div>
-                  <div className="flex items-center gap-1.5"><span>•</span><span>8. Negociación y versión V2</span></div>
-                </div>
-                <div className="pt-1.5 border-t border-white/10 text-[10px] text-[#d4ff4a] flex items-center justify-between flex-wrap gap-1">
-                  <span>
-                    🔒 <strong>Separación estricta de costos:</strong> Las horas de preventa se imputan a UHURA Group y nunca se descuentan del proyecto.
-                  </span>
-                  {activeOpp.status === 'won' && (
-                    <span className="font-bold bg-white/15 px-2 py-0.5 rounded text-white">
-                      Métrica: {preventaHoursLogged.toFixed(1)}h preventa / {activeQuote.totalHoursRollup}h vendidas
+                  <div className="p-3 bg-[#f8fafc] rounded-xl border border-[#e2e8f0]">
+                    <span className="text-[10px] uppercase font-bold text-[#64748b] block">Contacto Principal</span>
+                    <span className="font-bold text-xs text-[#0f172a] block truncate mt-0.5">
+                      {activeOpp.contactName || 'No especificado'}
                     </span>
-                  )}
-                </div>
-              </div>
-            </details>
-          </div>
-
-          {/* Fila 1: Tarjeta de Información General y Enlaces Externos */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {/* Columna Izquierda: Datos del Prospecto & Contacto */}
-            <div className="lg:col-span-2 bg-white rounded-2xl border border-[#e2e8f0] p-6 shadow-2xs space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-bold text-[#0f172a] uppercase tracking-wider">
-                    Información del Prospecto
-                  </h3>
-                  <p className="text-xs text-[#64748b]">
-                    Entrada comercial registrada para dimensionamiento
-                  </p>
-                </div>
-                <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-[#f1f5f9] text-[#475569]">
-                  ID: {activeOpp.id}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-2">
-                <div className="p-3 bg-[#f8fafc] rounded-xl border border-[#e2e8f0]">
-                  <span className="text-[10px] uppercase font-bold text-[#64748b] block">Empresa</span>
-                  <span className="font-bold text-xs text-[#0f172a] truncate block">{activeOpp.prospectAccountName}</span>
+                    <span className="text-[11px] text-[#64748b] block truncate">
+                      {activeOpp.contactEmail || activeOpp.contactPhone || 'Sin datos de contacto'}
+                    </span>
+                  </div>
                 </div>
 
-                <div className="p-3 bg-[#f8fafc] rounded-xl border border-[#e2e8f0]">
-                  <span className="text-[10px] uppercase font-bold text-[#64748b] block">Contacto</span>
-                  <span className="font-medium text-xs text-[#0f172a] truncate block">
-                    {activeOpp.contactName || 'No asignado'}
-                  </span>
-                </div>
-
-                <div className="p-3 bg-[#f8fafc] rounded-xl border border-[#e2e8f0]">
-                  <span className="text-[10px] uppercase font-bold text-[#64748b] block">Líder de Alcance</span>
-                  <span className="font-bold text-xs text-[#501f92] truncate block">
-                    {activeOpp.leadUserName || 'Product Lead'}
-                  </span>
-                </div>
-
-                <div className="p-3 bg-[#f8fafc] rounded-xl border border-[#e2e8f0]">
-                  <span className="text-[10px] uppercase font-bold text-[#64748b] block">Responsable Comercial</span>
-                  <span className="font-bold text-xs text-[#0f172a] truncate block">
-                    {activeOpp.commercialOwner || 'Comercial'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Links de Integración Externa (HubSpot, Drive, Brief) */}
-              <div className="pt-2 space-y-2">
-                <span className="text-[11px] font-bold text-[#475569] block">
-                  Conexiones & Archivos Externos:
-                </span>
-                <div className="flex items-center gap-2 flex-wrap">
+                {/* Identificadores & Enlaces Externos */}
+                <div className="pt-2 flex items-center gap-2 flex-wrap text-xs">
                   {activeOpp.hubspotDealUrl ? (
                     <a
                       href={activeOpp.hubspotDealUrl}
@@ -1609,375 +1589,266 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#fff7ed] border border-[#fed7aa] text-xs font-bold text-[#c2410c] hover:bg-[#ffedd5] transition-colors"
                     >
                       <ExternalLink className="w-3.5 h-3.5" />
-                      <span>Ver Deal en HubSpot</span>
+                      <span>Deal HubSpot: {activeOpp.hubspotDealId || 'Ver en CRM'}</span>
                     </a>
                   ) : activeOpp.hubspotDealId ? (
-                    <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] text-xs font-mono text-[#0284c7]">
+                    <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] text-xs font-mono text-[#c2410c] font-bold">
                       HubSpot ID: {activeOpp.hubspotDealId}
                     </span>
                   ) : (
-                    <span className="text-[11px] text-[#94a3b8] italic">
-                      Sin enlace a HubSpot registrado
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#f8fafc] border border-[#e2e8f0] text-[11px] text-[#94a3b8]">
+                      HubSpot ID: Pendiente de sincronización
                     </span>
                   )}
 
-                  {activeOpp.briefUrl && (
+                  {activeOpp.driveFolderUrl && (
                     <a
-                      href={activeOpp.briefUrl}
+                      href={activeOpp.driveFolderUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#eff6ff] border border-[#bfdbfe] text-xs font-bold text-[#1d4ed8] hover:bg-[#dbeafe] transition-colors"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#501f92]/10 border border-[#501f92]/20 text-xs font-bold text-[#501f92] hover:bg-[#501f92]/20 transition-colors"
                     >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                      <span>Ver Brief en Google Drive</span>
+                      <Folder className="w-3.5 h-3.5" />
+                      <span>Carpeta Drive</span>
                     </a>
                   )}
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('documentos')}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#faf5ff] border border-[#e9d5ff] text-xs font-bold text-[#501f92] hover:bg-[#f3e8ff] transition-colors cursor-pointer"
-                  >
-                    <Folder className="w-3.5 h-3.5" />
-                    <span>Ver Carpeta de Documentos</span>
-                  </button>
                 </div>
               </div>
 
-              {/* Resumen del Brief & Requerimientos */}
-              <div className="pt-2 border-t border-[#e2e8f0] space-y-2">
-                <span className="text-xs font-bold text-[#0f172a] block">
-                  Resumen de Requerimientos / Discovery:
-                </span>
-                <div className="p-4 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] text-xs text-[#334155] leading-relaxed whitespace-pre-wrap">
-                  {activeOpp.briefSummary || activeOpp.discoveryNotes || 'Sin notas registradas aún. El líder técnico puede comenzar el scoping en la pestaña "Alcance & Backlog".'}
-                </div>
-              </div>
-            </div>
-
-            {/* Columna Derecha: Condiciones para Iniciar & Flujo de Formalización */}
-            <div className="bg-white rounded-2xl border border-[#e2e8f0] p-6 shadow-2xs space-y-4 flex flex-col justify-between">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-bold text-[#0f172a] uppercase tracking-wider flex items-center gap-1.5">
-                    <ShieldCheck className="w-4 h-4 text-[#501f92]" />
-                    <span>Condiciones para Iniciar</span>
-                  </h3>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#f1f5f9] text-[#475569]">
-                    Gates de Entrada
-                  </span>
-                </div>
-
-                <p className="text-xs text-[#64748b]">
-                  Configurables por proyecto. Evitan bloqueos arbitrarios si es fee mensual o si la facturación en Alegra se realiza después.
-                </p>
-
-                {/* Checklist interactivo de condiciones */}
-                <div className="space-y-2.5 pt-1 text-xs">
-                  {/* Gate 1: SOW / Contrato firmado */}
-                  <label className="p-3 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] flex items-center justify-between gap-2 cursor-pointer hover:bg-white transition-colors">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={activeOpp.startConditions?.contractSignedCompleted || false}
-                        onChange={(e) =>
-                          handleUpdateStartConditions({ contractSignedCompleted: e.target.checked })
-                        }
-                        className="rounded text-[#501f92] focus:ring-[#501f92]"
-                      />
-                      <div>
-                        <span className="font-bold text-[#0f172a] block">SOW / Contrato Firmado</span>
-                        <span className="text-[10px] text-[#64748b]">Obligatorio antes de arrancar</span>
-                      </div>
-                    </div>
-                    {activeOpp.startConditions?.contractSignedCompleted ? (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#10b981]/15 text-[#10b981]">
-                        Listo
-                      </span>
-                    ) : (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#f59e0b]/15 text-[#b45309]">
-                        Pendiente
-                      </span>
-                    )}
-                  </label>
-
-                  {/* Gate 2: Anticipo recibido */}
-                  <label className="p-3 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] flex items-center justify-between gap-2 cursor-pointer hover:bg-white transition-colors">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={activeOpp.startConditions?.downPaymentReceived || false}
-                        onChange={(e) =>
-                          handleUpdateStartConditions({ downPaymentReceived: e.target.checked })
-                        }
-                        className="rounded text-[#501f92] focus:ring-[#501f92]"
-                      />
-                      <div>
-                        <span className="font-bold text-[#0f172a] block">Anticipo Recibido</span>
-                        <span className="text-[10px] text-[#64748b]">
-                          {activeOpp.startConditions?.downPaymentRequired === 'required'
-                            ? '50% para proyectos de alcance cerrado'
-                            : 'No aplica / Fee mensual'}
-                        </span>
-                      </div>
-                    </div>
-                    {activeOpp.startConditions?.downPaymentReceived ? (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#10b981]/15 text-[#10b981]">
-                        Recibido
-                      </span>
-                    ) : (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#f59e0b]/15 text-[#b45309]">
-                        Por cobrar
-                      </span>
-                    )}
-                  </label>
-
-                  {/* Gate 3: Docs Fiscales */}
-                  <div className="p-3 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] flex items-center justify-between gap-2">
-                    <div>
-                      <span className="font-bold text-[#0f172a] block">Documentación Fiscal (Alegra)</span>
-                      <span className="text-[10px] text-[#64748b]">
-                        RUT y Cédula (no frenan kick-off operativo)
-                      </span>
-                    </div>
-                    <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                        activeOpp.administrativeChecklist?.rutStatus === 'received'
-                          ? 'bg-[#10b981]/15 text-[#10b981]'
-                          : 'bg-[#64748b]/15 text-[#64748b]'
-                      }`}
-                    >
-                      {activeOpp.administrativeChecklist?.rutStatus === 'received' ? 'Recibidos' : 'En trámite'}
+              {/* Card 2: Resumen de Requerimientos / Discovery (Brief con guardado seguro sin congelado) */}
+              <div className="bg-white rounded-2xl border border-[#e2e8f0] p-5 shadow-2xs space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-[#f1f5f9]">
+                  <div className="flex items-center gap-2">
+                    <span className="p-1.5 rounded-lg bg-[#10b981]/10 text-[#10b981]">
+                      <FileText className="w-4 h-4" />
                     </span>
+                    <h3 className="text-sm font-bold text-[#0f172a]">
+                      Resumen de Requerimientos / Discovery
+                    </h3>
                   </div>
-
-                  {/* Gate 4: Onboarding inicial */}
-                  <label className="p-3 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] flex items-center justify-between gap-2 cursor-pointer hover:bg-white transition-colors">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={activeOpp.startConditions?.onboardingCompleted || false}
-                        onChange={(e) =>
-                          handleUpdateStartConditions({ onboardingCompleted: e.target.checked })
-                        }
-                        className="rounded text-[#501f92] focus:ring-[#501f92]"
-                      />
-                      <div>
-                        <span className="font-bold text-[#0f172a] block">Onboarding Realizado</span>
-                        <span className="text-[10px] text-[#64748b]">Kick-off con el equipo y cliente</span>
-                      </div>
-                    </div>
-                    {activeOpp.startConditions?.onboardingCompleted ? (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#10b981]/15 text-[#10b981]">
-                        Hecho
-                      </span>
-                    ) : (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#64748b]/15 text-[#64748b]">
-                        Pendiente
-                      </span>
-                    )}
-                  </label>
-                </div>
-              </div>
-
-              {/* Botones de acción rápida */}
-              <div className="pt-3 border-t border-[#e2e8f0] space-y-2">
-
-                {activeOpp.convertedProjectId ? (
-                  onNavigateToView && (
+                  {!isEditingBrief && (activeOpp.briefSummary || activeOpp.discoveryNotes) && (
                     <button
                       type="button"
-                      onClick={() => onNavigateToView('proyectos', activeOpp.convertedProjectId)}
-                      className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[#0f172a] text-xs font-bold transition-colors cursor-pointer"
+                      onClick={() => setIsEditingBrief(true)}
+                      className="inline-flex items-center gap-1 text-[11px] font-bold text-[#501f92] hover:underline cursor-pointer"
                     >
-                      <FolderPlus className="w-4 h-4 text-[#10b981]" />
-                      <span>Ver Proyecto en Orbit</span>
+                      <Pencil className="w-3 h-3" />
+                      <span>Editar Brief</span>
                     </button>
-                  )
-                ) : isWon ? (
-                  <button
-                    type="button"
-                    onClick={() => setIsConvertModalOpen(true)}
-                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-colors shadow-xs bg-[#10b981] hover:bg-[#059669] text-white cursor-pointer"
-                    title="Convertir propuesta ganada a Proyecto y tareas operativas en Orbit"
-                  >
-                    <CheckCircle2 className="w-4 h-4 text-white" />
-                    <span>Convertir a Cliente & Proyecto</span>
-                  </button>
+                  )}
+                </div>
+
+                {!isEditingBrief && (activeOpp.briefSummary || activeOpp.discoveryNotes) ? (
+                  <div className="p-4 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] text-xs text-[#334155] leading-relaxed whitespace-pre-wrap">
+                    {activeOpp.briefSummary || activeOpp.discoveryNotes}
+                  </div>
                 ) : (
-                  <div className="p-3 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] text-center space-y-2">
-                    <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-[#475569]">
-                      <Lock className="w-3.5 h-3.5 text-[#94a3b8]" />
-                      <span>Conversión sujeta a cierre comercial</span>
-                    </div>
-                    <p className="text-[11px] text-[#64748b] leading-tight">
-                      HubSpot es la fuente de verdad comercial. La conversión a Proyecto se habilita al pasar el Deal a <strong>Cerrado Ganado</strong>.
-                    </p>
-                    {canSimulateWon ? (
+                  <div className="space-y-2.5">
+                    <textarea
+                      rows={4}
+                      value={briefDraft}
+                      onChange={(e) => setBriefDraft(e.target.value)}
+                      placeholder="Escribe o actualiza los requerimientos comerciales y notas de discovery del cliente..."
+                      className="w-full p-3 rounded-xl border border-[#cbd5e1] text-xs text-[#0f172a] placeholder:text-[#94a3b8] focus:ring-2 focus:ring-[#501f92] bg-white transition-all"
+                    />
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-[#64748b]">
+                        El texto permanecerá editable hasta hacer clic en Guardar Brief.
+                      </span>
                       <button
                         type="button"
                         onClick={() => {
-                          const updated: NewBusinessOpportunity = {
+                          onUpdateOpportunity({
                             ...activeOpp,
-                            status: 'won',
-                            hubspotDealStage: 'closedwon',
+                            briefSummary: briefDraft,
+                            discoveryNotes: briefDraft,
                             updatedAt: new Date().toISOString()
-                          };
-                          onUpdateOpportunity(updated);
-                          setConversionSuccessMessage(
-                            'ℹ️ Simulación (Fallback Demo): Deal actualizado a "Cerrado Ganado". Ahora puedes convertir la oportunidad a Proyecto.',
-                            { timeoutMs: 6000 }
-                          );
+                          });
+                          setIsEditingBrief(false);
+                          setConversionSuccessMessage('Brief de Discovery guardado correctamente.');
+                          setTimeout(() => setConversionSuccessMessage(null), 3000);
                         }}
-                        className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-[#f1f5f9] border border-[#cbd5e1] text-[11px] font-semibold text-[#475569] transition-all cursor-pointer shadow-2xs"
-                        title="Acción exclusiva de demo/entornos no productivos: simula el cierre ganado de HubSpot"
+                        className="px-4 py-1.5 rounded-lg bg-[#501f92] hover:bg-[#3d1572] text-white text-xs font-bold transition-colors cursor-pointer shadow-2xs"
                       >
-                        <Trophy className="w-3.5 h-3.5 text-[#10b981]" />
-                        <span>Simular 'Cerrado Ganado' en HubSpot (Demo)</span>
+                        Guardar Brief
                       </button>
-                    ) : isHubspotRealConnected ? (
-                      <p className="text-[10px] text-[#047857] bg-[#ecfdf5] p-2 rounded-lg border border-[#a7f3d0]">
-                        Sincronización activa con HubSpot: el estado cambiará automáticamente cuando el deal sea marcado como Closed Won en el CRM.
-                      </p>
-                    ) : null}
+                    </div>
                   </div>
                 )}
               </div>
             </div>
-          </div>
 
-          {/* Bloque de Negociación y Resultado de Propuesta */}
-          <div className="bg-white rounded-2xl border border-[#e2e8f0] p-6 shadow-2xs space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <span className="p-2 rounded-xl bg-[#501f92]/10 text-[#501f92]">
-                  <TrendingUp className="w-5 h-5" />
-                </span>
-                <div>
-                  <h3 className="text-sm font-bold text-[#0f172a] uppercase tracking-wider">
-                    Presentación & Negociación Comercial
-                  </h3>
-                  <p className="text-xs text-[#64748b]">
-                    Gobernanza del ciclo: Líder presenta solución técnica, Comercial comunica precio y condiciones
-                  </p>
-                </div>
-              </div>
-              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-[#f1f5f9] text-[#475569]">
-                {activeQuote.versionLabel} · {activeQuote.totalHoursRollup}h cotizadas
-              </span>
-            </div>
-
-            <div className="p-4 bg-[#f8fafc] rounded-2xl border border-[#e2e8f0] flex flex-col md:flex-row md:items-center justify-between gap-4 text-xs">
-              <div className="space-y-1">
-                <span className="text-[11px] text-[#64748b] block font-medium">Estado Comercial Actual:</span>
-                <span className="font-extrabold text-sm text-[#0f172a]">
-                  {activeOpp.status === 'won'
-                    ? '✅ Propuesta Ganada (Lista para formalizar y crear proyecto)'
-                    : activeOpp.status === 'negotiation'
-                    ? '🟡 En Negociación con el Cliente'
-                    : activeOpp.status === 'proposal_sent'
-                    ? '📤 Propuesta Presentada · Esperando respuesta del cliente'
-                    : activeOpp.status === 'internal_review'
-                    ? '🔍 Alcance listo · En revisión de pricing y margen'
-                    : '📝 En Scoping Técnico (Líder dimensionando backlog)'}
-                </span>
-              </div>
-
-              {/* Acciones de Negociación */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const updated: NewBusinessOpportunity = {
-                      ...activeOpp,
-                      status: 'proposal_sent',
-                      updatedAt: new Date().toISOString()
-                    };
-                    onUpdateOpportunity(updated);
-                    setConversionSuccessMessage('Propuesta marcada como presentada al cliente.');
-                    setTimeout(() => setConversionSuccessMessage(null), 3500);
-                  }}
-                  className="px-3 py-2 rounded-xl border border-[#cbd5e1] bg-white hover:bg-[#f1f5f9] text-xs font-bold text-[#475569] transition-colors cursor-pointer"
-                >
-                  Esperando respuesta
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setShowAdjustmentsModal(true)}
-                  className="px-3 py-2 rounded-xl border border-[#fed7aa] bg-[#fff7ed] hover:bg-[#ffedd5] text-xs font-bold text-[#c2410c] transition-colors cursor-pointer shadow-2xs"
-                  title="Abre confirmación para crear V2 clonando V1 o mantener en negociación"
-                >
-                  Solicitó ajustes
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleMarkOpportunityWon(activeOpp)}
-                  className="px-3.5 py-2 rounded-xl bg-[#10b981] hover:bg-[#059669] text-white text-xs font-bold shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
-                >
-                  <Trophy className="w-4 h-4 text-[#d4ff4a]" />
-                  <span>Ganada</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setLossModalOpen(true)}
-                  className="px-3 py-2 rounded-xl border border-[#fecaca] bg-[#fef2f2] hover:bg-[#fee2e2] text-xs font-bold text-[#dc2626] transition-colors cursor-pointer"
-                >
-                  Perdida
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Fila 2: Resumen rápido de la cotización actual */}
-          <div className="bg-white rounded-2xl border border-[#e2e8f0] p-6 shadow-2xs space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-bold text-[#0f172a] uppercase tracking-wider">
-                  Dimensionamiento Actual ({activeQuote.versionLabel})
-                </h3>
-                <p className="text-xs text-[#64748b]">
-                  {activeQuote.deliverables.length} servicio(s) · {activeQuote.totalHoursRollup} horas presupuestadas
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('scoping')}
-                  className="px-3 py-1.5 rounded-lg bg-[#f1f5f9] hover:bg-[#e2e8f0] text-xs font-bold text-[#0f172a] transition-colors cursor-pointer"
-                >
-                  Editar Alcance →
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('cotizacion')}
-                  className="px-3 py-1.5 rounded-lg bg-[#501f92] hover:bg-[#3d1572] text-xs font-bold text-white transition-colors cursor-pointer flex items-center gap-1.5"
-                >
-                  <DollarSign className="w-3.5 h-3.5 text-[#d4ff4a]" />
-                  <span>Ver Cotización & Pricing →</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
-              {activeQuote.deliverables.map((del) => {
-                const totalH = del.backlogItems.reduce(
-                  (s, it) => s + (Number(it.estimatedHours) || 0),
-                  0
-                );
-                return (
-                  <div key={del.id} className="p-3 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-1">
-                    <span className="font-bold text-xs text-[#0f172a] block truncate">{del.name}</span>
-                    <div className="flex items-center justify-between text-[11px] text-[#64748b]">
-                      <span>{del.backlogItems.length} actividades</span>
-                      <span className="font-mono font-bold text-[#501f92]">{totalH}h</span>
+            {/* Columna Derecha: Dimensionamiento, Pricing Acordado & Herramientas (5 cols) */}
+            <div className="lg:col-span-5 space-y-4">
+              {/* Card 3: Resumen Económico & Solución (Lo que llenaron Líder y Comercial) */}
+              <div className="bg-white rounded-2xl border border-[#e2e8f0] p-5 shadow-2xs space-y-4">
+                <div className="flex items-center justify-between pb-2 border-b border-[#f1f5f9]">
+                  <div className="flex items-center gap-2">
+                    <span className="p-1.5 rounded-lg bg-[#501f92]/10 text-[#501f92]">
+                      <DollarSign className="w-4 h-4 text-[#501f92]" />
+                    </span>
+                    <div>
+                      <h3 className="text-sm font-bold text-[#0f172a]">
+                        Acuerdo Comercial & Pricing
+                      </h3>
+                      <p className="text-[11px] text-[#64748b]">Diligenciado por Comercial</p>
                     </div>
                   </div>
-                );
-              })}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('cotizacion')}
+                    className="text-[11px] font-bold text-[#501f92] hover:underline cursor-pointer"
+                  >
+                    Ir a Cotización →
+                  </button>
+                </div>
+
+                {/* Precio Acordado */}
+                <div className="p-4 rounded-xl bg-gradient-to-br from-[#faf5ff] to-[#f5f3ff] border border-[#e9d5ff] space-y-2">
+                  <span className="text-[10px] uppercase font-bold text-[#64748b] block">
+                    Precio / Valor Cotizado Acordado
+                  </span>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-black text-[#0f172a]">
+                      {activeQuote.totalQuotedValue || activeQuote.totalQuotedValueCOP
+                        ? formatCurrency(activeQuote.totalQuotedValue ?? activeQuote.totalQuotedValueCOP ?? 0, activeQuote.currency || 'COP')
+                        : 'Pendiente cotizar'}
+                    </span>
+                    <span className="text-xs font-bold text-[#501f92]">{activeQuote.currency || 'COP'}</span>
+                  </div>
+
+                  {Boolean(activeQuote.totalQuotedValue || activeQuote.totalQuotedValueCOP) && (
+                    <div className="pt-2 border-t border-[#e9d5ff]/80 text-[11px] text-[#64748b] space-y-1">
+                      <div className="flex justify-between">
+                        <span>Anticipo 50%:</span>
+                        <strong className="text-[#501f92]">
+                          {formatCurrency(Math.round(((activeQuote.totalQuotedValue ?? activeQuote.totalQuotedValueCOP ?? 0)) / 2), activeQuote.currency || 'COP')}
+                        </strong>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Total con IVA 19%:</span>
+                        <span className="text-[#0f172a] font-medium">
+                          {formatCurrency(Math.round(((activeQuote.totalQuotedValue ?? activeQuote.totalQuotedValueCOP ?? 0)) * 1.19), activeQuote.currency || 'COP')}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Alcance Técnico & Esfuerzo */}
+                <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] uppercase font-bold text-[#64748b]">
+                      Horas de Alcance & Entrega
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('scoping')}
+                      className="text-[10.5px] font-bold text-[#501f92] hover:underline"
+                    >
+                      Ver Entregables →
+                    </button>
+                  </div>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-xl font-extrabold font-mono text-[#501f92]">
+                      {activeQuote.totalHoursRollup}h
+                    </span>
+                    <span className="text-[11px] text-[#64748b]">
+                      en {activeQuote.deliverables.length} entregable(s) · {activeQuote.estimatedWeeks ?? activeQuote.financialConfig?.projectDurationWeeks ?? 0} sem
+                    </span>
+                  </div>
+                </div>
+
+                {/* Enlaces a Herramientas Oficiales (Calculadora + Presentación PPT) */}
+                <div className="space-y-2 pt-1 text-xs">
+                  <span className="text-[10.5px] font-bold text-[#475569] uppercase tracking-wider block">
+                    Fuentes de Verdad & Enlaces:
+                  </span>
+
+                  {/* 1. Calculadora / Sheet */}
+                  <div className="p-2.5 rounded-xl bg-white border border-[#e2e8f0] flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-base shrink-0">📊</span>
+                      <div className="min-w-0">
+                        <span className="font-bold text-[#0f172a] block truncate text-xs">Calculadora Finanzas (Google Sheets)</span>
+                        <span className="text-[10px] text-[#64748b] block truncate">
+                          {activeQuote.externalFinanceSheetUrl ? 'Planilla oficial vinculada' : 'Sin registrar aún'}
+                        </span>
+                      </div>
+                    </div>
+                    {activeQuote.externalFinanceSheetUrl ? (
+                      <a
+                        href={activeQuote.externalFinanceSheetUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#501f92]/10 hover:bg-[#501f92]/20 text-[11px] font-bold text-[#501f92] transition-colors shrink-0"
+                      >
+                        <span>Abrir</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('cotizacion')}
+                        className="text-[10.5px] font-semibold text-[#501f92] hover:underline shrink-0"
+                      >
+                        + Vincular
+                      </button>
+                    )}
+                  </div>
+
+                  {/* 2. Presentación PPT */}
+                  <div className="p-2.5 rounded-xl bg-white border border-[#e2e8f0] flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-base shrink-0">📑</span>
+                      <div className="min-w-0">
+                        <span className="font-bold text-[#0f172a] block truncate text-xs">Presentación / Propuesta PPT</span>
+                        <span className="text-[10px] text-[#64748b] block truncate">
+                          {activeQuote.commercialProposalUrl ? 'Presentación de Drive vinculada' : 'Sin registrar por líder'}
+                        </span>
+                      </div>
+                    </div>
+                    {activeQuote.commercialProposalUrl ? (
+                      <a
+                        href={activeQuote.commercialProposalUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#501f92]/10 hover:bg-[#501f92]/20 text-[11px] font-bold text-[#501f92] transition-colors shrink-0"
+                      >
+                        <span>Abrir</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('scoping')}
+                        className="text-[10.5px] font-semibold text-[#501f92] hover:underline shrink-0"
+                      >
+                        + Vincular
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Equipo Responsable & Horas Preventa Invertidas */}
+                <div className="p-3 bg-[#f8fafc] rounded-xl border border-[#e2e8f0] space-y-1.5 text-[11px]">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[#64748b]">Líder de Alcance:</span>
+                    <strong className="text-[#501f92] font-bold">{activeOpp.leadUserName || 'Diego Cadavid'}</strong>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[#64748b]">Owner Comercial:</span>
+                    <strong className="text-[#0f172a] font-bold">{activeOpp.commercialOwner || 'Catalina / Luisa'}</strong>
+                  </div>
+                  <div className="flex items-center justify-between pt-1 border-t border-[#e2e8f0]">
+                    <span className="text-[#64748b]">Horas Preventa Invertidas:</span>
+                    <span className="font-mono font-bold text-[#501f92]">
+                      {preventaHoursLogged > 0 ? `${preventaHoursLogged.toFixed(1)}h` : '0h'}{' '}
+                      <span className="text-[10px] font-normal text-[#64748b]">(no cobrables)</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -2105,28 +1976,15 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
 
             {/* Fila 3: Barra de acciones pulida */}
             <div className="pt-3 border-t border-[#f1f5f9] flex items-center justify-between flex-wrap gap-2.5">
-              {/* Selector de Versión de Cotización */}
-              <div className="flex items-center gap-1.5">
-                <span className="text-[11px] text-[#64748b]">Versión:</span>
-                <select
-                  value={activeQuote.id}
-                  onChange={(e) => setActiveQuoteId(e.target.value)}
-                  className="text-xs font-bold text-[#0f172a] bg-[#f8fafc] border border-[#cbd5e1] rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-[#501f92] cursor-pointer"
-                >
-                  {activeOpp.quotes.map((q) => (
-                    <option key={q.id} value={q.id}>
-                      {q.versionLabel} ({q.totalHoursRollup}h)
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  onClick={() => handleCreateNewQuoteVersion(activeQuote)}
-                  className="p-1.5 rounded-lg border border-[#cbd5e1] bg-white hover:bg-[#f8fafc] text-[#475569] hover:text-[#501f92] transition-colors cursor-pointer"
-                  title="Duplicar este alcance para crear una versión alternativa"
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                </button>
+              {/* Alcance Técnico Directamente Editable */}
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#501f92]/10 text-[#501f92] font-bold text-xs border border-[#501f92]/20">
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>Alcance Técnico Oficial ({activeQuote.totalHoursRollup}h)</span>
+                </span>
+                <span className="text-[11px] text-[#64748b] hidden sm:inline">
+                  Editable directamente · Las horas se recalculan en tiempo real
+                </span>
               </div>
 
               {/* Acciones: Guardar y Marcar alcance listo */}
@@ -2148,6 +2006,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                   const isWeeksFilled = activeOpp.projectType === 'fee_monthly' || Boolean((activeQuote.estimatedWeeks ?? activeQuote.financialConfig?.projectDurationWeeks ?? 0) > 0);
                   const isScopeFilled = activeQuote.totalHoursRollup > 0 && activeQuote.deliverables.length > 0;
                   const isReadyToMark = isPptFilled && isWeeksFilled && isScopeFilled;
+                  const isAlreadyMarked = activeOpp.status === 'internal_review' || activeOpp.status === 'proposal_sent' || activeOpp.status === 'negotiation' || activeOpp.status === 'won';
 
                   return (
                     <button
@@ -2160,27 +2019,35 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                         };
                         onUpdateOpportunity(updatedOpp);
                         setConversionSuccessMessage(
-                          `Alcance técnico listo (${activeQuote.totalHoursRollup}h). Notificación enviada a Comercial.`,
+                          `✓ Alcance técnico listo (${activeQuote.totalHoursRollup}h). Notificación enviada a Comercial.`,
                           {
                             showProjectLink: false,
                             timeoutMs: 7000
                           }
                         );
                       }}
-                      disabled={!isReadyToMark}
-                      className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                        isReadyToMark
-                          ? 'bg-[#501f92] hover:bg-[#3d1572] text-white shadow-xs cursor-pointer'
-                          : 'bg-[#f1f5f9] text-[#94a3b8] border border-[#e2e8f0] cursor-not-allowed'
+                      disabled={!isReadyToMark && !isAlreadyMarked}
+                      className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs ${
+                        isAlreadyMarked
+                          ? 'bg-[#059669] text-white ring-2 ring-[#a7f3d0] cursor-pointer'
+                          : isReadyToMark
+                            ? 'bg-[#501f92] hover:bg-[#3d1572] active:bg-[#2e0e57] text-white cursor-pointer active:scale-95'
+                            : 'bg-[#f1f5f9] text-[#94a3b8] border border-[#e2e8f0] cursor-not-allowed'
                       }`}
                       title={
-                        isReadyToMark
-                          ? 'Marcar que el dimensionamiento técnico está listo para Comercial'
-                          : 'Diligencia Propuesta (Drive), Semanas y Alcance para habilitar'
+                        isAlreadyMarked
+                          ? 'El alcance técnico ya fue marcado como listo para Comercial'
+                          : isReadyToMark
+                            ? 'Marcar que el dimensionamiento técnico está listo para Comercial'
+                            : 'Diligencia Propuesta (Drive), Semanas y Alcance para habilitar'
                       }
                     >
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>Marcar alcance listo ({activeQuote.totalHoursRollup}h)</span>
+                      <CheckCircle2 className={`w-3.5 h-3.5 ${isAlreadyMarked ? 'text-[#d4ff4a]' : 'text-white'}`} />
+                      <span>
+                        {isAlreadyMarked
+                          ? `✓ Alcance marcado como listo (${activeQuote.totalHoursRollup}h)`
+                          : `Marcar alcance listo (${activeQuote.totalHoursRollup}h)`}
+                      </span>
                     </button>
                   );
                 })()}
@@ -2219,6 +2086,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
             onSelectQuoteVersion={(quoteId) => setActiveQuoteId(quoteId)}
             onCreateNewQuoteVersion={(baseQuote) => handleCreateNewQuoteVersion(baseQuote)}
             templates={templates}
+            users={users}
             onUpdateQuote={handleUpdateQuote}
             onGoToCalculator={() => setActiveTab('cotizacion')}
             onMarkScopeReady={(totalHours) => {
@@ -2321,190 +2189,244 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
             </div>
 
             {/* Grid Principal: Valor Acordado + Fuentes de Verdad */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 pt-1 text-xs">
-              {/* Columna Izquierda: Pricing Acordado (5 cols) */}
-              <div className="lg:col-span-5 p-4 rounded-xl bg-gradient-to-br from-[#faf5ff] to-[#f5f3ff] border border-[#e9d5ff] space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="font-extrabold text-[#501f92] text-xs">
-                    Valor Cotizado Acordado: <span className="text-red-500">*</span>
-                  </label>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-white text-[#501f92] border border-[#d8b4fe]">
-                    Monto Oficial
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <div className="relative flex-1">
-                    <input
-                      type="number"
-                      min="0"
-                      step="1000"
-                      value={activeQuote.totalQuotedValue ?? activeQuote.totalQuotedValueCOP ?? ''}
-                      onChange={(e) => {
-                        const val = Math.max(0, Number(e.target.value) || 0);
-                        handleUpdateQuote({
-                          ...activeQuote,
-                          totalQuotedValue: val,
-                          totalQuotedValueCOP: activeQuote.currency === 'USD' ? 0 : val
-                        });
-                      }}
-                      placeholder="0"
-                      className="w-full px-3 py-2.5 rounded-xl border border-[#cbd5e1] font-black text-base text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal focus:ring-2 focus:ring-[#501f92] bg-white shadow-xs"
-                    />
-                  </div>
-                  <select
-                    value={activeQuote.currency || 'COP'}
-                    onChange={(e) => {
-                      const curr = e.target.value as 'COP' | 'USD';
-                      const val = activeQuote.totalQuotedValue ?? activeQuote.totalQuotedValueCOP ?? 0;
-                      handleUpdateQuote({
-                        ...activeQuote,
-                        currency: curr,
-                        totalQuotedValue: val,
-                        totalQuotedValueCOP: curr === 'USD' ? 0 : val
-                      });
-                    }}
-                    className="p-2.5 rounded-xl border border-[#cbd5e1] font-bold text-xs bg-white text-[#501f92] focus:ring-2 focus:ring-[#501f92] cursor-pointer shadow-xs"
-                  >
-                    <option value="COP">COP ($)</option>
-                    <option value="USD">USD ($)</option>
-                  </select>
-                </div>
-
-                {/* Desglose visual automático */}
-                {(() => {
-                  const val = activeQuote.totalQuotedValue ?? activeQuote.totalQuotedValueCOP ?? 0;
-                  const curr = activeQuote.currency || 'COP';
-                  const half = Math.round(val / 2);
-                  const iva = Math.round(val * 0.19);
-                  const total = Math.round(val * 1.19);
-                  return (
-                    <div className="space-y-1.5 pt-2 border-t border-[#e9d5ff]/80 text-[11px]">
-                      <div className="flex items-center justify-between text-[#64748b]">
-                        <span>Subtotal antes de IVA:</span>
-                        <strong className="text-[#0f172a] font-bold">{formatCurrency(val, curr)}</strong>
-                      </div>
-                      <div className="flex items-center justify-between text-[#64748b]">
-                        <span>Esquema estándar (50% / 50%):</span>
-                        <span className="font-semibold text-[#501f92]">{formatCurrency(half, curr)} c/u</span>
-                      </div>
-                      <div className="flex items-center justify-between text-[#64748b]">
-                        <span>Total con IVA 19%:</span>
-                        <span className="text-[#0f172a] font-medium">{formatCurrency(total, curr)}</span>
-                      </div>
+            {!isEditingQuoteFields && (activeQuote.totalQuotedValue || activeQuote.externalFinanceSheetUrl) ? (
+              /* Modo Lectura / Congelado (Guardado con éxito) */
+              <div className="p-4 rounded-2xl bg-[#faf5ff] border border-[#e9d5ff] space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-[#e9d5ff]/70 flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="p-1.5 rounded-lg bg-[#501f92]/10 text-[#501f92]">
+                      <CheckCircle2 className="w-4 h-4 text-[#10b981]" />
+                    </span>
+                    <div>
+                      <h4 className="font-bold text-xs text-[#0f172a]">Cotización Registrada & Consolidada</h4>
+                      <p className="text-[11px] text-[#64748b]">Valores económicos validados por Comercial</p>
                     </div>
-                  );
-                })()}
-              </div>
-
-              {/* Columna Derecha: Fuentes de Verdad (7 cols) */}
-              <div className="lg:col-span-7 space-y-3">
-                {/* Sheet oficial de Finanzas */}
-                <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <label className="font-bold text-[#475569] text-xs">
-                      Sheet oficial de Finanzas: <span className="text-red-500">*</span>
-                    </label>
-                    {activeQuote.externalFinanceSheetUrl && (
-                      <a
-                        href={activeQuote.externalFinanceSheetUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 text-[11px] font-bold text-[#501f92] hover:underline"
-                      >
-                        <span>Abrir Sheet</span>
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
-                    )}
                   </div>
-                  <input
-                    type="url"
-                    value={activeQuote.externalFinanceSheetUrl || ''}
-                    onChange={(e) => {
-                      handleUpdateQuote({
-                        ...activeQuote,
-                        externalFinanceSheetUrl: e.target.value
-                      });
-                    }}
-                    placeholder="https://docs.google.com/spreadsheets/d/..."
-                    className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs font-mono text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-sans placeholder:font-normal focus:ring-2 focus:ring-[#501f92] bg-white"
-                  />
-                  <p className="text-[10px] text-[#64748b]">
-                    Planilla de Google Sheets donde Catalina/Luisa calculan el pricing con semanas y horas.
-                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingQuoteFields(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-[#cbd5e1] hover:border-[#501f92] text-xs font-bold text-[#501f92] transition-colors cursor-pointer shadow-2xs"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                    <span>Editar Cotización</span>
+                  </button>
                 </div>
 
-                {/* Presentación Comercial / Propuesta */}
-                <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <label className="font-bold text-[#475569] text-xs">
-                      Propuesta / Presentación (PPT):
-                    </label>
-                    {activeQuote.commercialProposalUrl && (
-                      <a
-                        href={activeQuote.commercialProposalUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 text-[11px] font-bold text-[#501f92] hover:underline"
-                      >
-                        <span>Ver Propuesta</span>
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Bloque Izquierdo: Monto y Desglose */}
+                  <div className="p-3.5 rounded-xl bg-white border border-[#e9d5ff] space-y-2">
+                    <span className="text-[10px] uppercase font-bold text-[#64748b] block">Monto Total Acordado</span>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-2xl font-black text-[#0f172a]">
+                        {formatCurrency(activeQuote.totalQuotedValue ?? activeQuote.totalQuotedValueCOP ?? 0, activeQuote.currency || 'COP')}
+                      </span>
+                      <span className="text-xs font-bold text-[#501f92]">{activeQuote.currency || 'COP'}</span>
+                    </div>
+
+                    {/* Desglose 50/50 e IVA */}
+                    {(() => {
+                      const val = activeQuote.totalQuotedValue ?? activeQuote.totalQuotedValueCOP ?? 0;
+                      const curr = activeQuote.currency || 'COP';
+                      const half = Math.round(val / 2);
+                      const totalWithIva = Math.round(val * 1.19);
+                      return (
+                        <div className="pt-2 border-t border-[#f1f5f9] space-y-1 text-[11px] text-[#64748b]">
+                          <div className="flex justify-between">
+                            <span>Esquema estándar (50% / 50%):</span>
+                            <strong className="text-[#501f92]">{formatCurrency(half, curr)} c/u</strong>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Total estimado con IVA (19%):</span>
+                            <span className="text-[#0f172a] font-medium">{formatCurrency(totalWithIva, curr)}</span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Bloque Derecho: Sheet Oficial */}
+                  <div className="p-3.5 rounded-xl bg-white border border-[#e9d5ff] space-y-2">
+                    <span className="text-[10px] uppercase font-bold text-[#64748b] block">Sheet Oficial de Finanzas</span>
+                    {activeQuote.externalFinanceSheetUrl ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-mono font-medium text-[#0f172a] truncate max-w-[280px]">
+                            {activeQuote.externalFinanceSheetUrl}
+                          </span>
+                        </div>
+                        <a
+                          href={activeQuote.externalFinanceSheetUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#501f92]/10 hover:bg-[#501f92]/20 text-xs font-bold text-[#501f92] transition-colors"
+                        >
+                          <span>Abrir Planilla en Google Sheets</span>
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-[#94a3b8] italic">Sin enlace de Google Sheets registrado</span>
+                    )}
+
+                    {activeQuote.commercialNotes && (
+                      <div className="pt-2 border-t border-[#f1f5f9] text-[11px] text-[#475569]">
+                        <strong>Condiciones:</strong> {activeQuote.commercialNotes}
+                      </div>
                     )}
                   </div>
-                  <input
-                    type="url"
-                    value={activeQuote.commercialProposalUrl || ''}
-                    onChange={(e) => {
-                      handleUpdateQuote({
-                        ...activeQuote,
-                        commercialProposalUrl: e.target.value
-                      });
-                    }}
-                    placeholder="https://docs.google.com/presentation/d/..."
-                    className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs font-mono text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-sans placeholder:font-normal focus:ring-2 focus:ring-[#501f92] bg-white"
-                  />
-                  <p className="text-[10px] text-[#64748b]">
-                    Enlace al documento o presentación entregada al cliente.
-                  </p>
                 </div>
               </div>
-            </div>
+            ) : (
+              /* Modo Edición / Formulario */
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 pt-1 text-xs">
+                  {/* Columna Izquierda: Pricing Acordado (5 cols) */}
+                  <div className="lg:col-span-5 p-4 rounded-xl bg-gradient-to-br from-[#faf5ff] to-[#f5f3ff] border border-[#e9d5ff] space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="font-extrabold text-[#501f92] text-xs">
+                        Valor Cotizado Acordado: <span className="text-red-500">*</span>
+                      </label>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-white text-[#501f92] border border-[#d8b4fe]">
+                        Monto Oficial
+                      </span>
+                    </div>
 
-            {/* Condiciones comerciales o notas */}
-            <div className="space-y-1 text-xs pt-1">
-              <label className="font-bold text-[#475569] block">
-                Notas / Condiciones comerciales (Términos de pago, vigencia, supuestos):
-              </label>
-              <textarea
-                rows={2}
-                value={activeQuote.commercialNotes || ''}
-                onChange={(e) => {
-                  handleUpdateQuote({
-                    ...activeQuote,
-                    commercialNotes: e.target.value
-                  });
-                }}
-                placeholder="Ej: 50% anticipo al kick-off y 50% contra entrega final; vigencia de oferta 15 días calendario; insumos requeridos en sprint 1."
-                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal focus:ring-2 focus:ring-[#501f92]"
-              />
-            </div>
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <input
+                          type="number"
+                          min="0"
+                          step="1000"
+                          value={quoteValueDraft}
+                          onChange={(e) => setQuoteValueDraft(e.target.value)}
+                          placeholder="0"
+                          className="w-full px-3 py-2.5 rounded-xl border border-[#cbd5e1] font-black text-base text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal focus:ring-2 focus:ring-[#501f92] bg-white shadow-xs"
+                        />
+                      </div>
+                      <select
+                        value={quoteCurrencyDraft}
+                        onChange={(e) => setQuoteCurrencyDraft(e.target.value as 'COP' | 'USD')}
+                        className="p-2.5 rounded-xl border border-[#cbd5e1] font-bold text-xs bg-white text-[#501f92] focus:ring-2 focus:ring-[#501f92] cursor-pointer shadow-xs"
+                      >
+                        <option value="COP">COP ($)</option>
+                        <option value="USD">USD ($)</option>
+                      </select>
+                    </div>
 
-            {/* Footer con CTA Guardar cambios y Acciones de Avance */}
+                    {/* Desglose visual automático */}
+                    {(() => {
+                      const val = Math.max(0, Number(quoteValueDraft) || 0);
+                      const curr = quoteCurrencyDraft || 'COP';
+                      const half = Math.round(val / 2);
+                      const iva = Math.round(val * 0.19);
+                      const total = Math.round(val * 1.19);
+                      return (
+                        <div className="space-y-1.5 pt-2 border-t border-[#e9d5ff]/80 text-[11px]">
+                          <div className="flex items-center justify-between text-[#64748b]">
+                            <span>Subtotal antes de IVA:</span>
+                            <strong className="text-[#0f172a] font-bold">{formatCurrency(val, curr)}</strong>
+                          </div>
+                          <div className="flex items-center justify-between text-[#64748b]">
+                            <span>Esquema estándar (50% / 50%):</span>
+                            <span className="font-semibold text-[#501f92]">{formatCurrency(half, curr)} c/u</span>
+                          </div>
+                          <div className="flex items-center justify-between text-[#64748b]">
+                            <span>Total con IVA 19%:</span>
+                            <span className="text-[#0f172a] font-medium">{formatCurrency(total, curr)}</span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Columna Derecha: Sheet Oficial (7 cols) */}
+                  <div className="lg:col-span-7 space-y-3">
+                    <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="font-bold text-[#475569] text-xs">
+                          Sheet oficial de Finanzas: <span className="text-red-500">*</span>
+                        </label>
+                        {quoteSheetUrlDraft.trim().length > 5 && (
+                          <a
+                            href={quoteSheetUrlDraft}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 text-[11px] font-bold text-[#501f92] hover:underline"
+                          >
+                            <span>Abrir Sheet</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        )}
+                      </div>
+                      <input
+                        type="url"
+                        value={quoteSheetUrlDraft}
+                        onChange={(e) => setQuoteSheetUrlDraft(e.target.value)}
+                        placeholder="https://docs.google.com/spreadsheets/d/..."
+                        className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs font-mono text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-sans placeholder:font-normal focus:ring-2 focus:ring-[#501f92] bg-white"
+                      />
+                      <p className="text-[10px] text-[#64748b]">
+                        Planilla de Google Sheets donde Catalina/Luisa calculan el pricing con semanas y horas.
+                      </p>
+                    </div>
+
+                    <div className="space-y-1 text-xs">
+                      <label className="font-bold text-[#475569] block">
+                        Notas / Condiciones comerciales (Términos de pago, vigencia, supuestos):
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={quoteNotesDraft}
+                        onChange={(e) => setQuoteNotesDraft(e.target.value)}
+                        placeholder="Ej: 50% anticipo al kick-off y 50% contra entrega final; vigencia de oferta 15 días calendario."
+                        className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal focus:ring-2 focus:ring-[#501f92]"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Footer con CTA Guardar cambios a la derecha como primer botón */}
             <div className="pt-3 border-t border-[#f1f5f9] flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-2">
+              <div className="text-xs text-[#64748b]">
+                {isQuoteSavedFeedback && (
+                  <span className="text-[#059669] font-bold flex items-center gap-1">
+                    <CheckCircle2 className="w-4 h-4 text-[#10b981]" />
+                    <span>Cotización guardada exitosamente. Botón 'Marcar como ganada 🏆' habilitado arriba.</span>
+                  </span>
+                )}
+                {!isQuoteSavedFeedback && !isQuoteDiligenciada && (
+                  <span className="text-[11px] text-[#b45309]">
+                    * Ingresa el monto y el link del Sheet, luego haz clic en Guardar Cotización para habilitar 'Marcar como ganada' arriba.
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap ml-auto">
+                {/* Botón principal a la derecha como primer botón */}
                 <button
                   type="button"
                   onClick={() => {
-                    handleUpdateQuote(activeQuote);
+                    const numVal = Math.max(0, Number(quoteValueDraft) || 0);
+                    const updatedQuote: QuoteProposal = {
+                      ...activeQuote,
+                      totalQuotedValue: numVal,
+                      totalQuotedValueCOP: quoteCurrencyDraft === 'USD' ? 0 : numVal,
+                      currency: quoteCurrencyDraft,
+                      externalFinanceSheetUrl: quoteSheetUrlDraft.trim(),
+                      commercialNotes: quoteNotesDraft.trim()
+                    };
+                    handleUpdateQuote(updatedQuote);
                     setIsQuoteSavedFeedback(true);
-                    setConversionSuccessMessage('✅ Cotización comercial guardada correctamente.');
+                    setIsEditingQuoteFields(false);
+                    setConversionSuccessMessage('✅ Cotización comercial guardada correctamente. Ahora puedes marcar como ganada arriba.');
                     setTimeout(() => {
                       setIsQuoteSavedFeedback(false);
                       setConversionSuccessMessage(null);
-                    }, 3000);
+                    }, 4000);
                   }}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5 active:scale-95 ${
+                  className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5 active:scale-95 ${
                     isQuoteSavedFeedback
                       ? 'bg-[#059669] text-white ring-2 ring-[#a7f3d0]'
                       : 'bg-[#501f92] hover:bg-[#3d1572] active:bg-[#2e0e57] text-white'
@@ -2520,29 +2442,29 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                     <span>Guardar cotización</span>
                   )}
                 </button>
-              </div>
 
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (activeOpp.status !== 'won') {
-                      handleMarkOpportunityWon(activeOpp);
-                    } else {
-                      setWonCelebrationOpp(activeOpp);
-                      playWonFanfare();
-                    }
-                  }}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 ${
-                    activeOpp.status === 'won'
-                      ? 'bg-[#ecfdf5] hover:bg-[#d1fae5] active:bg-[#a7f3d0] text-[#047857] border border-[#a7f3d0]'
-                      : 'bg-[#10b981] hover:bg-[#059669] active:bg-[#047857] text-white'
-                  }`}
-                  title={activeOpp.status === 'won' ? 'Ver celebración de la propuesta ganada con Bucky' : 'Marcar que el cliente aprobó la propuesta comercial'}
-                >
-                  <Trophy className="w-4 h-4 text-[#d4ff4a]" />
-                  <span>{activeOpp.status === 'won' ? 'Propuesta Ganada (Ver Bucky 🎉)' : 'Marcar como ganada 🏆'}</span>
-                </button>
+                {activeOpp.status === 'won' && !activeOpp.convertedProjectId && (
+                  <button
+                    type="button"
+                    onClick={() => setIsConvertModalOpen(true)}
+                    className="px-4 py-2.5 rounded-xl text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer bg-[#10b981] hover:bg-[#059669] text-white animate-pulse"
+                    title="Convertir esta oportunidad a Cliente en el directorio y Proyecto en Operación"
+                  >
+                    <FolderPlus className="w-4 h-4 text-[#d4ff4a]" />
+                    <span>Convertir a Cliente & Proyecto →</span>
+                  </button>
+                )}
+
+                {activeOpp.convertedProjectId && onNavigateToView && (
+                  <button
+                    type="button"
+                    onClick={() => onNavigateToView('proyectos', activeOpp.convertedProjectId)}
+                    className="px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[#0f172a] border border-[#cbd5e1]"
+                  >
+                    <FolderPlus className="w-4 h-4 text-[#10b981]" />
+                    <span>Ver Proyecto en Operación ➔</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -2700,6 +2622,19 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
               </span>
             </div>
 
+            {/* Aviso explicativo de no-bloqueo y gestión contable */}
+            <div className="p-3 rounded-xl bg-[#f0fdf4] border border-[#bbf7d0] text-xs text-[#166534] flex items-start gap-2.5">
+              <span className="text-base shrink-0">💡</span>
+              <div className="space-y-0.5">
+                <p className="font-bold">
+                  Documentación fiscal independiente del cierre comercial:
+                </p>
+                <p className="text-[11px] text-[#15803d] leading-relaxed">
+                  RUT, Cédula de Representante Legal y Tercero en Alegra son gestionados por Vivian para emitir la factura. Pertenecen formalmente a la ficha del Cliente en <strong>Clientes & Facturación</strong> y <strong>NO bloquean marcar la propuesta como ganada ni el inicio operativo del proyecto</strong>.
+                </p>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
               {/* RUT */}
               <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] flex flex-col justify-between space-y-2.5">
@@ -2827,23 +2762,20 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
       {/* ========================================================================= */}
       {activeTab === 'historial' && (
         <div className="bg-white rounded-2xl border border-[#e2e8f0] p-6 shadow-2xs space-y-6 animate-in fade-in duration-150">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <div>
               <h3 className="text-base font-bold text-[#0f172a]">
                 Historial de Versiones & Cotizaciones
               </h3>
               <p className="text-xs text-[#64748b]">
-                Explora, duplica o compara alternativas de alcance y precio
+                Versión oficial activa de la propuesta. Edita directamente el alcance y la cotización para actualizar valores y horas.
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => handleCreateNewQuoteVersion(activeQuote)}
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#501f92] hover:bg-[#3d1572] text-xs font-bold text-white shadow-xs transition-colors cursor-pointer"
-            >
-              <Plus className="w-4 h-4 text-[#d4ff4a]" />
-              <span>+ Duplicar como Nueva Versión</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold px-3 py-1.5 rounded-xl bg-[#501f92]/10 text-[#501f92] border border-[#501f92]/20">
+                Versión actual: {activeQuote.versionLabel}
+              </span>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -3058,6 +2990,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
           opportunity={activeOpp}
           activeQuote={activeQuote}
           users={users}
+          clients={clients}
           onClose={() => setIsConvertModalOpen(false)}
           onConfirm={handleConfirmConversion}
         />
@@ -3231,19 +3164,116 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
               )}
             </div>
 
-            {/* Botón único de acción: Ir a Documentos para preparar el SOW */}
+            {/* Botón único de acción tras ganar la propuesta */}
             <div className="mt-6 flex items-center justify-center relative z-10">
               <button
                 type="button"
                 onClick={() => {
                   setWonCelebrationOpp(null);
-                  setActiveTab('documentos');
+                  setIsConvertModalOpen(true);
                 }}
-                className="w-full sm:w-auto px-7 py-3 rounded-xl bg-[#d4ff4a] hover:bg-[#bceb34] text-[#0f172a] text-xs font-black shadow-lg shadow-[#d4ff4a]/25 transition-all hover:scale-[1.02] cursor-pointer flex items-center justify-center gap-2"
+                className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-[#d4ff4a] hover:bg-[#bceb34] text-[#0f172a] text-sm font-black shadow-lg shadow-[#d4ff4a]/25 transition-all hover:scale-[1.02] cursor-pointer flex items-center justify-center gap-2.5 animate-pulse"
               >
-                <span>Ir a Documentos</span>
-                <span className="text-[11px] font-bold text-[#0f172a]/75">(Preparar SOW)</span>
-                <ArrowRight className="w-4 h-4 text-[#0f172a]" />
+                <FolderPlus className="w-4 h-4 text-[#0f172a]" />
+                <span>Convertir a Cliente & Proyecto →</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Marcar Oportunidad como No Ganada (Closed-Lost) */}
+      {isLostModalOpen && (
+        <div
+          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150"
+          onClick={() => setIsLostModalOpen(false)}
+        >
+          <div
+            className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-[#e2e8f0] p-6 space-y-4 animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-[#f1f5f9]">
+              <div className="flex items-center gap-2 text-[#dc2626]">
+                <ThumbsDown className="w-5 h-5" />
+                <h3 className="text-sm font-bold text-[#0f172a]">
+                  Marcar como No Ganada
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsLostModalOpen(false)}
+                className="p-1 rounded-lg text-[#94a3b8] hover:text-[#0f172a] hover:bg-[#f1f5f9] transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-[#64748b] leading-relaxed">
+              Registra el motivo por el cual el cliente no aprobó la propuesta. La oportunidad quedará archivada en New Business y se podrá reactivar en el futuro si el cliente retoma el proyecto.
+            </p>
+
+            <div className="space-y-3 text-xs">
+              <div className="space-y-1">
+                <label className="font-bold text-[#475569] block">
+                  Motivo Principal:
+                </label>
+                <select
+                  value={lostReason}
+                  onChange={(e) => setLostReason(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-[#cbd5e1] font-medium text-[#0f172a] bg-white focus:ring-2 focus:ring-[#501f92]"
+                >
+                  <option value="precio">Precio / Fuera de presupuesto del cliente</option>
+                  <option value="tiempos">Tiempos de entrega / Urgencia no alineada</option>
+                  <option value="competencia">Eligieron a otra agencia o proveedor</option>
+                  <option value="cancelado_cliente">Proyecto postergado o cancelado internamente</option>
+                  <option value="sin_respuesta">Cliente no respondió / Stand-by prolongado</option>
+                  <option value="otro">Otro motivo</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-[#475569] block">
+                  Notas de Aprendizaje / Feedback Comercial:
+                </label>
+                <textarea
+                  rows={3}
+                  value={lostNotes}
+                  onChange={(e) => setLostNotes(e.target.value)}
+                  placeholder="Ej: El cliente recortó presupuesto para marketing este trimestre, prometieron evaluar de nuevo en Q3..."
+                  className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] placeholder:text-[#94a3b8] focus:ring-2 focus:ring-[#501f92]"
+                />
+              </div>
+            </div>
+
+            <div className="pt-2 flex items-center justify-end gap-2 border-t border-[#f1f5f9]">
+              <button
+                type="button"
+                onClick={() => setIsLostModalOpen(false)}
+                className="px-4 py-2 text-xs font-semibold text-[#64748b] hover:bg-[#f1f5f9] rounded-xl transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const updated: NewBusinessOpportunity = {
+                    ...activeOpp,
+                    status: 'lost',
+                    lossReason: lostReason,
+                    lossNotes: lostNotes,
+                    updatedAt: new Date().toISOString()
+                  };
+                  onUpdateOpportunity(updated);
+                  setIsLostModalOpen(false);
+                  setBannerNotification({
+                    message: `ℹ️ Oportunidad "${activeOpp.title}" marcada como no ganada. Queda archivada para reactivación futura.`,
+                    showProjectLink: false
+                  });
+                  setTimeout(() => setBannerNotification(null), 6000);
+                }}
+                className="px-4 py-2 text-xs font-bold text-white bg-[#dc2626] hover:bg-[#b91c1c] rounded-xl shadow-xs transition-colors cursor-pointer"
+              >
+                Confirmar No Ganada
               </button>
             </div>
           </div>

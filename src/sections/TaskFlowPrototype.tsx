@@ -1791,10 +1791,28 @@ export const TaskFlowPrototype: React.FC = () => {
     const opp = payload.opportunity;
     const quote = payload.selectedQuote;
 
-    // 1. Resolver o registrar el Cliente en Orbit
+    // 1. Resolver ID de Proyecto y elemento histórico para el Cliente
+    const newProjectId = `prj-${Date.now()}`;
+    const rawSoldValue = quote.totalQuotedValue || quote.totalQuotedValueCOP || quote.financialSummary?.finalPriceWithTaxCOP || quote.financialSummary?.subtotalBeforeTaxCOP || 0;
+    const quoteCurrency = quote.currency || 'COP';
+    const soldValue = rawSoldValue > 0 ? rawSoldValue : undefined;
+    const soldValueCOP = quoteCurrency === 'COP' && rawSoldValue > 0 ? rawSoldValue : undefined;
+
+    // 2. Resolver o registrar el Cliente en Orbit
     let resolvedClientId = opp.clientId;
     let resolvedClientName = opp.prospectAccountName || 'Cliente';
     const effectiveTaxEntityId = opp.selectedTaxEntityId || null;
+
+    const newProjectHistoryItem: ClientProjectHistoryItem = {
+      id: newProjectId,
+      name: payload.projectName,
+      brand: resolvedClientName,
+      tag: payload.projectType === 'fee_monthly' ? 'FEE' : 'PRJ',
+      status: 'Activo',
+      quotedValueCOP: rawSoldValue > 0 ? `$${rawSoldValue.toLocaleString('es-CO')} ${quoteCurrency}` : 'Por definir',
+      realMarginPercent: null,
+      trafficLight: 'verde'
+    };
 
     if (!resolvedClientId) {
       resolvedClientId = `cli-${Date.now()}`;
@@ -1804,6 +1822,9 @@ export const TaskFlowPrototype: React.FC = () => {
         status: 'active',
         type: payload.projectType === 'fee_monthly' ? 'Fee mensual' : 'Proyecto único',
         hubspotCompanyId: opp.hubspotCompanyId || undefined,
+        projectsCount: 1,
+        activeProjectsCount: 1,
+        projectsHistory: [newProjectHistoryItem],
         taxEntities: effectiveTaxEntityId ? [
           {
             id: effectiveTaxEntityId,
@@ -1852,12 +1873,18 @@ export const TaskFlowPrototype: React.FC = () => {
                   isPrimary: updatedTaxEntities.length === 0
                 });
               }
+              const currentHistory = c.projectsHistory || [];
+              const updatedHistory = currentHistory.some(p => p.id === newProjectId)
+                ? currentHistory
+                : [newProjectHistoryItem, ...currentHistory];
+
               return {
                 ...c,
                 hubspotCompanyId: c.hubspotCompanyId || opp.hubspotCompanyId || undefined,
                 taxEntities: updatedTaxEntities,
                 projectsCount: (c.projectsCount || 0) + 1,
-                activeProjectsCount: (c.activeProjectsCount || 0) + 1
+                activeProjectsCount: (c.activeProjectsCount || 0) + 1,
+                projectsHistory: updatedHistory
               };
             }
             return c;
@@ -1866,14 +1893,8 @@ export const TaskFlowPrototype: React.FC = () => {
       }
     }
 
-    // 2. Crear Proyecto en projectsList con sus entregables
-    const newProjectId = `prj-${Date.now()}`;
+    // 3. Crear Proyecto en projectsList con sus entregables
     const codePrefix = payload.projectName.slice(0, 3).toUpperCase().replace(/[^A-Z]/g, 'PRJ') || 'PRJ';
-    const rawSoldValue = quote.totalQuotedValue || quote.totalQuotedValueCOP || quote.financialSummary?.finalPriceWithTaxCOP || quote.financialSummary?.subtotalBeforeTaxCOP || 0;
-    const quoteCurrency = quote.currency || 'COP';
-    const soldValue = rawSoldValue > 0 ? rawSoldValue : undefined;
-    // soldValueCOP representa estrictamente COP real. Si la cotización fue en USD, se mantiene undefined (nunca 0 ficticio ni conversión inventada).
-    const soldValueCOP = quoteCurrency === 'COP' && rawSoldValue > 0 ? rawSoldValue : undefined;
 
     const newProjectDeliverables = quote.deliverables.map((qd, idx) => ({
       id: `del-${newProjectId}-${idx + 1}`,
@@ -2535,6 +2556,7 @@ export const TaskFlowPrototype: React.FC = () => {
                       setNewProjectPreselectedClientId(clientId);
                       setIsNewProjectModalOpen(true);
                     }}
+                    projects={projectsList}
                     onUpdateClient={handleUpdateClient}
                     onCreateClient={handleCreateClient}
                   />
