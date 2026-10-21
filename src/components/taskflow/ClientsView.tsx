@@ -25,6 +25,8 @@ interface ClientsViewProps {
   onSelectClient?: (clientId: string | null) => void;
   onNavigateToDashboard?: () => void;
   onNavigateToProject?: (projectName: string) => void;
+  onViewProjectSow?: (projectId: string) => void;
+  sowProjectIds?: string[];
   onOpenNewProjectForClient?: (clientId: string) => void;
   onUpdateClient?: (updatedClient: ClientProfile) => void;
   onCreateClient?: (newClient: ClientProfile) => void;
@@ -38,6 +40,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   onSelectClient,
   onNavigateToDashboard,
   onNavigateToProject,
+  onViewProjectSow,
+  sowProjectIds = [],
   onOpenNewProjectForClient,
   onUpdateClient,
   onCreateClient
@@ -135,6 +139,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
           onBack={handleBackToList}
           onNavigateToDashboard={onNavigateToDashboard}
           onNavigateToProject={onNavigateToProject}
+          onViewProjectSow={onViewProjectSow}
+          sowProjectIds={sowProjectIds}
           onOpenNewProject={() => {
             if (onOpenNewProjectForClient) onOpenNewProjectForClient(selectedClient.id);
           }}

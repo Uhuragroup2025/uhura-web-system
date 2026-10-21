@@ -117,7 +117,6 @@ export function cloneTemplateToQuote(
   template: ProductBacklogTemplate,
   options?: {
     opportunityId?: string;
-    versionLabel?: string;
     order?: number;
   }
 ): QuoteProposal {
@@ -177,7 +176,7 @@ export function cloneTemplateToQuote(
   return {
     id: quoteId,
     opportunityId,
-    versionLabel: options?.versionLabel || `Opción A: ${template.name}`,
+    versionLabel: '', // Campo legacy del contrato; sin versionado operativo
     order: options?.order || 1,
     templateId: template.id, // Referencia de trazabilidad histórica sin acoplamiento
     status: 'draft',
@@ -194,7 +193,6 @@ export function cloneTemplateToQuote(
  */
 export function createBlankCustomQuote(options?: {
   opportunityId?: string;
-  versionLabel?: string;
   order?: number;
 }): QuoteProposal {
   const timestamp = Date.now();
@@ -243,7 +241,7 @@ export function createBlankCustomQuote(options?: {
   return {
     id: quoteId,
     opportunityId,
-    versionLabel: options?.versionLabel || 'Cotización a la Medida (Desde Cero)',
+    versionLabel: '', // Campo legacy del contrato; sin versionado operativo
     order: options?.order || 1,
     templateId: null, // Sin plantilla base
     status: 'draft',

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
+import { isEligibleScopingLeader } from '../newbusiness/teamCandidates';
 import {
+  UserItem,
   ProductBacklogTemplate,
   QuoteProposal,
   QuoteDeliverable,
@@ -38,6 +40,7 @@ import {
 } from 'lucide-react';
 
 interface CloneToQuoteModalProps {
+  users?: UserItem[];
   isOpen: boolean;
   templates: ProductBacklogTemplate[];
   opportunities?: NewBusinessOpportunity[];
@@ -50,6 +53,7 @@ interface CloneToQuoteModalProps {
     opportunityData: {
       title: string;
       prospectAccountName?: string;
+      leadUserId: string;
       leadUserName?: string;
     },
     quote: QuoteProposal
@@ -57,6 +61,7 @@ interface CloneToQuoteModalProps {
 }
 
 export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
+  users = [],
   isOpen,
   templates,
   opportunities = [],
@@ -83,11 +88,10 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
   const [selectedOpportunityId, setSelectedOpportunityId] = useState<string>(
     preselectedOpportunityId || opportunities[0]?.id || ''
   );
+  const [newLeadUserId, setNewLeadUserId] = useState('');
+  const [creationError, setCreationError] = useState('');
   const [newOpportunityTitle, setNewOpportunityTitle] = useState<string>('');
   const [newProspectAccountName, setNewProspectAccountName] = useState<string>('');
-
-  // Etiqueta de la cotización
-  const [versionLabel, setVersionLabel] = useState<string>('Opción A: Alcance Recomendado');
 
   // Paso 2: Vista de personalización de la copia independiente clonada
   const [clonedQuote, setClonedQuote] = useState<QuoteProposal | null>(null);
@@ -115,6 +119,11 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
 
   // ACCIÓN: CLONAR HACIA COPIA INDEPENDIENTE CON OPPORTUNITY ID RESUELTO
   const handleGenerateClone = () => {
+    if (targetOpportunityMode === 'new' && !users.some((user) => user.id === newLeadUserId && isEligibleScopingLeader(user))) {
+      setCreationError('Selecciona un Líder principal de Scoping activo.');
+      return;
+    }
+    setCreationError('');
     // Resolver opportunityId legítimo
     const resolvedOppId =
       targetOpportunityMode === 'existing' && selectedOpportunityId
@@ -125,12 +134,10 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
     if (mode === 'template' && selectedTemplate) {
       quote = cloneTemplateToQuote(selectedTemplate, {
         opportunityId: resolvedOppId,
-        versionLabel: versionLabel.trim() || `Opción: ${selectedTemplate.name}`
       });
     } else {
       quote = createBlankCustomQuote({
         opportunityId: resolvedOppId,
-        versionLabel: versionLabel.trim() || 'Cotización a la Medida (Desde Cero)'
       });
     }
 
@@ -271,6 +278,11 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
   // Guardar cotización en la oportunidad correspondiente
   const handleFinalizeQuote = () => {
     if (!clonedQuote) return;
+    if (targetOpportunityMode === 'new' && !users.some((user) => user.id === newLeadUserId && isEligibleScopingLeader(user))) {
+      setCreationError('Selecciona un Líder principal de Scoping activo.');
+      return;
+    }
+
 
     if (targetOpportunityMode === 'existing' && selectedOpportunityId) {
       if (onSaveToOpportunity) {
@@ -283,9 +295,9 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
       if (onCreateOpportunityWithQuote) {
         onCreateOpportunityWithQuote(
           {
-            title: newOpportunityTitle.trim() || `Oportunidad: ${clonedQuote.versionLabel}`,
-            prospectAccountName: newProspectAccountName.trim() || 'Nuevo Prospecto',
-            leadUserName: 'Comercial Lead'
+            leadUserId: newLeadUserId,
+            title: newOpportunityTitle.trim() || 'Nueva oportunidad',
+            prospectAccountName: newProspectAccountName.trim() || 'Nuevo Prospecto'
           },
           clonedQuote
         );
@@ -434,22 +446,9 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                         ))}
                       </select>
                     </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-[#334155] mb-1">
-                        Etiqueta de la Cotización / Opción
-                      </label>
-                      <input
-                        type="text"
-                        value={versionLabel}
-                        onChange={(e) => setVersionLabel(e.target.value)}
-                        placeholder="Ej: Opción A: Alcance Recomendado"
-                        className="w-full px-3 py-2 text-xs rounded-lg border border-[#cbd5e1] focus:ring-2 focus:ring-[#8a4dff] focus:border-transparent outline-hidden bg-white text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal"
-                      />
-                    </div>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-semibold text-[#334155] mb-1">
                         Título de la Nueva Oportunidad
@@ -475,21 +474,14 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                         className="w-full px-3 py-2 text-xs rounded-lg border border-[#cbd5e1] focus:ring-2 focus:ring-[#8a4dff] focus:border-transparent outline-hidden bg-white text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal"
                       />
                     </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-[#334155] mb-1">
-                        Etiqueta de la Cotización
-                      </label>
-                      <input
-                        type="text"
-                        value={versionLabel}
-                        onChange={(e) => setVersionLabel(e.target.value)}
-                        placeholder="Ej: Opción A: Alcance Recomendado"
-                        className="w-full px-3 py-2 text-xs rounded-lg border border-[#cbd5e1] focus:ring-2 focus:ring-[#8a4dff] focus:border-transparent outline-hidden bg-white text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal"
-                      />
-                    </div>
+                    <label className="block text-xs font-semibold text-[#334155]">Líder principal de Scoping
+                      <select aria-label="Líder principal de Scoping" required value={newLeadUserId} onChange={(event) => { setNewLeadUserId(event.target.value); setCreationError(''); }} className="mt-1 w-full border border-[#cbd5e1] rounded-lg p-2 bg-white">
+                        <option value="">Seleccionar líder...</option>{users.filter(isEligibleScopingLeader).map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
+                      </select>
+                    </label>
                   </div>
                 )}
+                {creationError && <p role="alert" className="text-xs text-red-700">{creationError}</p>}
               </div>
 
               {/* Si es modo plantilla: Selector y Previsualización */}
@@ -643,9 +635,9 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                   <span className="text-xs font-bold text-[#0f172a]">{displayOpportunityName}</span>
                 </div>
                 <div className="text-right">
-                  <span className="text-[11px] text-[#64748b] block">Etiqueta:</span>
+                  <span className="text-[11px] text-[#64748b] block">Destino:</span>
                   <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#8a4dff]/10 text-[#8a4dff]">
-                    {clonedQuote.versionLabel}
+                    Alcance de la oportunidad
                   </span>
                 </div>
               </div>
@@ -858,6 +850,7 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
             {clonedQuote && (
               <button
                 type="button"
+                disabled={targetOpportunityMode === 'new' && !users.some((user) => user.id === newLeadUserId && isEligibleScopingLeader(user))}
                 onClick={handleFinalizeQuote}
                 className="inline-flex items-center gap-2 px-5 py-2 text-xs font-bold text-white bg-[#10b981] hover:bg-[#059669] rounded-lg shadow-sm transition-colors cursor-pointer"
               >

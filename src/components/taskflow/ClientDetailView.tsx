@@ -36,6 +36,8 @@ interface ClientDetailViewProps {
   onBack: () => void;
   onNavigateToDashboard?: () => void;
   onNavigateToProject?: (projectName: string) => void;
+  onViewProjectSow?: (projectId: string) => void;
+  sowProjectIds?: string[];
   onOpenNewProject?: () => void;
   onEditClient?: (client: ClientProfile) => void;
   onUpdateClient?: (client: ClientProfile) => void;
@@ -47,6 +49,8 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
   onBack,
   onNavigateToDashboard,
   onNavigateToProject,
+  onViewProjectSow,
+  sowProjectIds = [],
   onOpenNewProject,
   onEditClient,
   onUpdateClient
@@ -389,6 +393,12 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
                       {tax.notes}
                     </div>
                   )}
+                  <dl className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-[#475569]">
+                    <div><dt className="font-semibold">RUT actualizado</dt><dd>{tax.rutUrl ? <a href={tax.rutUrl} target="_blank" rel="noreferrer" className="text-[#501f92] underline">Ver RUT</a> : 'Pendiente'}</dd></div>
+                    <div><dt className="font-semibold">Cédula del representante legal</dt><dd>{tax.legalRepresentativeId || 'Pendiente'}</dd></div>
+                    <div><dt className="font-semibold">Correo de facturación</dt><dd>{tax.billingEmail || 'Pendiente'}</dd></div>
+                    <div><dt className="font-semibold">Creado en Alegra</dt><dd>{tax.alegraCreated ? 'Sí' : 'Pendiente'}</dd></div>
+                  </dl>
                   {tax.alegraContactId && (
                     <div className="text-[10px] font-mono text-[#501f92] mt-1">
                       ID Alegra: {tax.alegraContactId}
@@ -697,6 +707,12 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
                         <span className="font-bold text-[#0f172a] group-hover:text-[#501f92] transition-colors">
                           {prj.name}
                         </span>
+                        {onViewProjectSow && sowProjectIds.includes(prj.id) && (
+                          <button type="button" className="text-[#501f92] underline text-xs"
+                            onClick={(event) => { event.stopPropagation(); onViewProjectSow(prj.id); }}>
+                            Ver SOW
+                          </button>
+                        )}
                         {prj.tag && (
                           <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded bg-[#f2ecfb] text-[#501f92]">
                             {prj.tag}

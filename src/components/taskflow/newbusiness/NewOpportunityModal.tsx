@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   NewBusinessOpportunity,
   OpportunityType,
@@ -7,7 +7,7 @@ import {
   QuoteProposal,
   UserItem
 } from '../types';
-import { initialUsers } from '../mockData';
+import { isEligibleScopingLeader, isEligibleTeamMember } from './teamCandidates';
 import {
   Target,
   X,
@@ -31,7 +31,7 @@ import {
 interface NewOpportunityModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSaveOpportunity: (newOpp: NewBusinessOpportunity) => void;
+  onSaveOpportunity: (newOpp: NewBusinessOpportunity, commercialUserIds?: string[]) => void;
   existingClients: ClientProfile[];
   templates?: ProductBacklogTemplate[];
   initialMode?: 'hubspot' | 'manual';
@@ -49,7 +49,6 @@ const HUBSPOT_DEMO_DEALS = [
     contactPhone: '+57 (311) 889-0012',
     dealUrl: 'https://app.hubspot.com/contacts/8821940/deal/1049281',
     commercialOwner: 'Cata · Directora Comercial',
-    suggestedLeadUserId: 'u-2', // Paola Monsalve / Product Lead
     driveFolderUrl: 'https://drive.google.com/drive/folders/1Danone-Bonafont-Ecommerce-2026'
   },
   {
@@ -61,7 +60,6 @@ const HUBSPOT_DEMO_DEALS = [
     contactPhone: '+57 (314) 776-5544',
     dealUrl: 'https://app.hubspot.com/contacts/8821940/deal/2098144',
     commercialOwner: 'Cata · Directora Comercial',
-    suggestedLeadUserId: 'u-4', // Diego Cadavid / Creative Strategy Lead
     driveFolderUrl: 'https://drive.google.com/drive/folders/1GeoTours-Plataforma-2026'
   },
   {
@@ -73,7 +71,6 @@ const HUBSPOT_DEMO_DEALS = [
     contactPhone: '+57 (300) 443-1289',
     dealUrl: 'https://app.hubspot.com/contacts/8821940/deal/3829105',
     commercialOwner: 'Cata · Directora Comercial',
-    suggestedLeadUserId: 'u-5', // Esmeralda Duque Ramírez / Growth Manager
     driveFolderUrl: 'https://drive.google.com/drive/folders/1Bambu-Performance-Q4'
   }
 ];
@@ -84,35 +81,28 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
   onSaveOpportunity,
   existingClients,
   initialMode = 'hubspot',
-  users = initialUsers
+  users = []
 }) => {
   const [entryMode, setEntryMode] = useState<'hubspot' | 'manual'>(initialMode);
+  useEffect(() => { if (isOpen) setEntryMode(initialMode); }, [isOpen, initialMode]);
 
   // Available leaders for assignment (filtered from users)
-  const availableUsers = users && users.length > 0 ? users : initialUsers;
-  const eligibleLeaders = availableUsers.filter(
-    (u) =>
-      u.accessLevel === 'leader' ||
-      u.accessLevel === 'executive' ||
-      u.accessLevel === 'system_admin' ||
-      u.role === 'Admin' ||
-      (u.jobTitle && (u.jobTitle.includes('Lead') || u.jobTitle.includes('Manager') || u.jobTitle.includes('CEO') || u.jobTitle.includes('Director'))) ||
-      true // fallback to any member if list is short
-  );
+  const availableUsers = users.filter((user) => user.status === 'Active');
+  const eligibleLeaders = availableUsers.filter(isEligibleScopingLeader);
 
   // Commercial team members filtered strictly by functional capacity 'commercial'
   const commercialUsers: UserItem[] = useMemo(() => {
-    const list = availableUsers.filter(
+    const list = availableUsers.filter(isEligibleTeamMember).filter(
       (u: UserItem) =>
-        u.accessLevel === 'commercial' ||
+        u.accessLevel === 'commercial' || u.accessLevel === 'client_relationship' ||
         (u.department && u.department.toLowerCase().includes('comercial')) ||
         (u.jobTitle && u.jobTitle.toLowerCase().includes('comercial'))
     );
-    return list.length > 0 ? list : availableUsers;
+    return list;
   }, [availableUsers]);
 
-  // Helper to map HubSpot owner string (or deal owner) to an Orbit user name
-  const resolveCommercialUserName = (rawOwner?: string) => {
+  // Resolver el owner de HubSpot a un ID canónico activo de Orbit
+  const resolveCommercialUserId = (rawOwner?: string) => {
     if (!rawOwner || !rawOwner.trim()) return '';
     const q = rawOwner.toLowerCase().trim();
     // Check exact or partial match with commercialUsers
@@ -122,8 +112,8 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
         q.includes(u.name.toLowerCase()) ||
         (u.email && u.email.toLowerCase() === q)
     );
-    if (matched) return matched.name;
-    return rawOwner;
+    if (matched) return matched.id;
+    return '';
   };
 
   // HubSpot Fetch State
@@ -138,25 +128,29 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [prospectName, setProspectName] = useState<string>('');
   const [title, setTitle] = useState<string>('');
+  const [brief, setBrief] = useState('');
   const [contactName, setContactName] = useState<string>('');
   const [contactEmail, setContactEmail] = useState<string>('');
   const [contactPhone, setContactPhone] = useState<string>('');
   
-  // Dynamic Leader Assignment (defaults to first leader or u-2)
-  const defaultLeader = eligibleLeaders.find((u) => u.id === 'u-2') || eligibleLeaders[0];
-  const [selectedLeadUserId, setSelectedLeadUserId] = useState<string>(defaultLeader?.id || 'u-2');
-  // Commercial owner: do not assume default hardcoded owner; start empty or first commercial user if single
-  const [commercialOwner, setCommercialOwner] = useState<string>(
-    commercialUsers.length === 1 ? commercialUsers[0].name : ''
-  );
-  
+  // Comercial elige explícitamente un ID del equipo activo existente.
+  const [selectedLeadUserIds, setSelectedLeadUserIds] = useState<string[]>([]);
+  const [commercialUserIds, setCommercialUserIds] = useState<string[]>([]);
+  const [commercialOpen, setCommercialOpen] = useState(false);
+  const setCommercialOwner = (id: string) => setCommercialUserIds(id ? [id] : []);
+
   const [hubspotDealId, setHubspotDealId] = useState<string>('');
   const [hubspotDealUrl, setHubspotDealUrl] = useState<string>('');
   const [driveFolderUrl, setDriveFolderUrl] = useState<string>('');
   
-  // SLA editable with 36h default
-  const [handoffHours, setHandoffHours] = useState<number>(36);
-  const [isCustomHandoff, setIsCustomHandoff] = useState<boolean>(false);
+  const toLocalDateTime = (time: number) => {
+    const date = new Date(time);
+    return new Date(time - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  };
+  const [deliveryDate, setDeliveryDate] = useState(() => toLocalDateTime(Date.now() + 36 * 3600000));
+  const [deliveryError, setDeliveryError] = useState('');
+  const [leadersOpen, setLeadersOpen] = useState(false);
+  useEffect(() => { if (isOpen) { setDeliveryDate(toLocalDateTime(Date.now() + 36 * 3600000)); setDeliveryError(''); setLeadersOpen(false); setCommercialOpen(false); } }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -185,10 +179,7 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
         setContactPhone(matched.contactPhone);
         setHubspotDealId(matched.id);
         setHubspotDealUrl(matched.dealUrl);
-        setCommercialOwner(resolveCommercialUserName(matched.commercialOwner));
-        if (matched.suggestedLeadUserId) {
-          setSelectedLeadUserId(matched.suggestedLeadUserId);
-        }
+        setCommercialOwner(resolveCommercialUserId(matched.commercialOwner));
         setDriveFolderUrl(matched.driveFolderUrl);
       } else {
         // Real-world fallback: Parse entered URL or treat string as deal ID
@@ -228,10 +219,7 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
     setContactPhone(deal.contactPhone);
     setHubspotDealId(deal.id);
     setHubspotDealUrl(deal.dealUrl);
-    setCommercialOwner(resolveCommercialUserName(deal.commercialOwner));
-    if (deal.suggestedLeadUserId) {
-      setSelectedLeadUserId(deal.suggestedLeadUserId);
-    }
+    setCommercialOwner(resolveCommercialUserId(deal.commercialOwner));
     setDriveFolderUrl(deal.driveFolderUrl);
     setHubspotFetched(true);
   };
@@ -244,24 +232,30 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
       : prospectName.trim() || 'Nuevo Prospecto';
 
     const oppId = `opp-${Date.now()}`;
-    const defaultQuoteId = `quote-${oppId}-v1`;
+    const defaultQuoteId = `quote-${oppId}`;
 
     const userEnteredDriveFolder = driveFolderUrl.trim();
     const resolvedDriveFolder = userEnteredDriveFolder || undefined;
 
-    // Calculate SLA deadline based on editable handoff hours
-    const safeHandoffHours = Math.max(1, Number(handoffHours) || 36);
-    const deadlineTimestamp = new Date(Date.now() + safeHandoffHours * 3600 * 1000).toISOString();
+    const deliveryTime = new Date(deliveryDate).getTime();
+    const remaining = deliveryTime - Date.now();
+    if (!Number.isFinite(deliveryTime) || remaining <= 0 || remaining > 36 * 3600000) {
+      setDeliveryError('Selecciona una fecha futura dentro de las próximas 36 horas.');
+      return;
+    }
+    const safeHandoffHours = remaining / 3600000;
+    const deadlineTimestamp = new Date(deliveryTime).toISOString();
 
     // Resolve assigned leader dynamically
-    const assignedUser = eligibleLeaders.find((u) => u.id === selectedLeadUserId) || eligibleLeaders[0];
+    const assignedUser = eligibleLeaders.find((u) => selectedLeadUserIds.includes(u.id));
+    if (!assignedUser) return;
     const resolvedLeadUserId = assignedUser.id;
     const resolvedLeadUserName = `${assignedUser.name} · ${assignedUser.officialRole || assignedUser.jobTitle || assignedUser.professionalRole || assignedUser.role || 'Líder de Proyecto'}`;
 
     const initialQuote: QuoteProposal = {
       id: defaultQuoteId,
       opportunityId: oppId,
-      versionLabel: 'V1 - Alcance Inicial',
+      versionLabel: '', // Compatibilidad con el contrato existente
       order: 1,
       status: 'draft',
       totalHoursRollup: 0,
@@ -283,8 +277,9 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
       contactEmail: contactEmail.trim() || undefined,
       contactPhone: contactPhone.trim() || undefined,
       leadUserId: resolvedLeadUserId,
+      leadUserIds: eligibleLeaders.filter((user) => selectedLeadUserIds.includes(user.id)).map((user) => user.id),
       leadUserName: resolvedLeadUserName,
-      commercialOwner: commercialOwner.trim() || undefined,
+      commercialOwner: commercialUsers.find((user) => commercialUserIds.includes(user.id))?.name,
       handoffHours: safeHandoffHours,
       handoffDeadline: deadlineTimestamp,
       hubspotDealId: hubspotDealId.trim() || (entryMode === 'hubspot' ? 'hs-deal-manual' : null),
@@ -304,14 +299,8 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
           }
         : undefined,
       status: 'discovery', // Fresh handoff ready for sizing in Alcance
+      briefSummary: brief.trim() || undefined,
       quotes: [initialQuote],
-      administrativeChecklist: {
-        rutStatus: 'pending',
-        idCardStatus: 'pending',
-        billingEmail: contactEmail.trim() || '',
-        alegraCreated: false,
-        responsibleName: 'Vivian'
-      },
       startConditions: {
         contractSignedRequired: true,
         contractSignedCompleted: false,
@@ -326,7 +315,7 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
       updatedAt: new Date().toISOString()
     };
 
-    onSaveOpportunity(newOpp);
+    onSaveOpportunity(newOpp, commercialUsers.filter((user) => commercialUserIds.includes(user.id)).map((user) => user.id));
     onClose();
   };
 
@@ -479,7 +468,7 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
           )}
 
           {/* SECCIÓN 2: CUENTA & OPORTUNIDAD */}
-          {entryMode === 'manual' && (
+          {(
             <div className="p-3 bg-[#f8fafc] rounded-2xl border border-[#e2e8f0] space-y-2">
               <span className="font-bold text-[#0f172a] block">Tipo de Cuenta:</span>
               <div className="flex items-center gap-4">
@@ -491,7 +480,7 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
                     onChange={() => setIsExistingClient(false)}
                     className="text-[#501f92] focus:ring-[#501f92]"
                   />
-                  <span>Nuevo Prospecto (sin NIT todavía)</span>
+                  <span>Cliente nuevo</span>
                 </label>
 
                 <label className="flex items-center gap-2 cursor-pointer font-medium text-[#475569]">
@@ -502,24 +491,31 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
                     onChange={() => setIsExistingClient(true)}
                     className="text-[#501f92] focus:ring-[#501f92]"
                   />
-                  <span>Cliente Operativo Existente</span>
+                  <span>Cliente existente</span>
                 </label>
               </div>
             </div>
           )}
 
           {/* Cuenta */}
-          {entryMode === 'manual' && isExistingClient ? (
+          {isExistingClient ? (
             <div className="space-y-1">
-              <label className="font-bold text-[#475569] block">
+              <label className="font-bold text-[#475569] block min-h-6">
                 Selecciona el Cliente Existente: <span className="text-red-500">*</span>
               </label>
               <select
                 required
                 value={selectedClientId}
-                onChange={(e) => setSelectedClientId(e.target.value)}
+                onChange={(event) => {
+                  setSelectedClientId(event.target.value);
+                  const client = existingClients.find((item) => item.id === event.target.value);
+                  const contact = client?.contacts?.find((item) => item.isPrimary) || client?.contacts?.[0];
+                  setContactName(contact?.name || client?.commercialInfo?.contactName || '');
+                  setContactEmail(contact?.email || client?.commercialInfo?.contactEmail || '');
+                  setContactPhone(contact?.phone || client?.commercialInfo?.contactPhone || '');
+                }}
                 data-empty={!selectedClientId}
-                className={`w-full p-2.5 rounded-xl border border-[#cbd5e1] bg-white focus:ring-2 focus:ring-[#501f92] transition-colors ${
+                className={`w-full h-11 min-w-0 px-3 rounded-xl border border-[#cbd5e1] bg-white focus:ring-2 focus:ring-[#501f92] transition-colors ${
                   !selectedClientId ? 'text-[#64748b] font-normal' : 'text-[#0f172a] font-semibold'
                 }`}
               >
@@ -533,7 +529,7 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
             </div>
           ) : (
             <div className="space-y-1">
-              <label className="font-bold text-[#475569] block">
+              <label className="font-bold text-[#475569] block min-h-6">
                 Empresa o Cuenta: <span className="text-red-500">*</span>
               </label>
               <input
@@ -547,9 +543,22 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
             </div>
           )}
 
+          {isExistingClient && selectedClientId && (
+            <div className="p-3 rounded-xl border border-[#e2e8f0] text-xs text-[#475569] space-y-2">
+              <strong>Datos fiscales del Cliente (se reutilizan sin copiarlos a la oportunidad)</strong>
+              {(existingClients.find((client) => client.id === selectedClientId)?.taxEntities || []).map((entity) => (
+                <div key={entity.id} className="space-y-1">
+                  <p>{entity.businessName} · NIT: {entity.nit || 'Pendiente'}</p>
+                  <p>RUT: {entity.rutUrl ? 'Registrado' : 'Pendiente'} · Cédula: {entity.legalRepresentativeId || 'Pendiente'}</p>
+                  <p>Facturación: {entity.billingEmail || 'Pendiente'} · Alegra: {entity.alegraCreated ? 'Creado' : 'Pendiente'}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Oportunidad */}
           <div className="space-y-1">
-            <label className="font-bold text-[#475569] block">
+            <label className="font-bold text-[#475569] block min-h-6">
               Nombre de la Oportunidad / Requerimiento: <span className="text-red-500">*</span>
             </label>
             <input
@@ -562,10 +571,17 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
             />
           </div>
 
+          <label className="block space-y-1 font-bold text-[#475569]">
+            Brief (opcional)
+            <textarea value={brief} onChange={(event) => setBrief(event.target.value)}
+              className="w-full p-2.5 rounded-xl border border-[#cbd5e1] bg-white text-[#0f172a] font-normal"
+              placeholder="Contexto y requerimiento recibido del cliente" />
+          </label>
+
           {/* Contacto Principal (Nombre & Email) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="font-bold text-[#475569] block">Contacto Principal:</label>
+              <label className="font-bold text-[#475569] block min-h-6">Contacto Principal:</label>
               <input
                 type="text"
                 placeholder="Ej: Carlos Mendoza"
@@ -576,7 +592,7 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
             </div>
 
             <div className="space-y-1">
-              <label className="font-bold text-[#475569] block">Email de Contacto:</label>
+              <label className="font-bold text-[#475569] block min-h-6">Email de Contacto:</label>
               <input
                 type="email"
                 placeholder="carlos@empresa.com"
@@ -588,98 +604,48 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
           </div>
 
           {/* SECCIÓN 3: ROLES (LÍDER DE ALCANCE & RESPONSABLE COMERCIAL) & SLA */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-start">
             <div className="space-y-1">
-              <label className="font-bold text-[#475569] block">
+              <label className="font-bold text-[#475569] block min-h-6">
                 Líder de alcance: <span className="text-red-500">*</span>
               </label>
-              <select
-                value={selectedLeadUserId}
-                onChange={(e) => setSelectedLeadUserId(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-semibold bg-white focus:ring-2 focus:ring-[#501f92]"
-              >
-                {eligibleLeaders.map((leader) => (
-                  <option key={leader.id} value={leader.id}>
-                    {leader.name} ({leader.officialRole || leader.jobTitle || leader.role})
-                  </option>
-                ))}
-              </select>
-              <span className="text-[10px] text-[#64748b] block">
-                Responsable técnico del dimensionamiento
-              </span>
+              <div className="relative" onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setLeadersOpen(false); }}>
+                <button type="button" aria-label="Líder de alcance" aria-expanded={leadersOpen} onClick={() => setLeadersOpen(!leadersOpen)} onKeyDown={(event) => { if (event.key === 'Escape') setLeadersOpen(false); }} className="w-full h-11 min-w-0 text-left px-3 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-semibold bg-white flex justify-between items-center gap-2">
+                  <span className="truncate">{selectedLeadUserIds.length ? eligibleLeaders.filter((leader) => selectedLeadUserIds.includes(leader.id)).map((leader) => leader.name).join(', ') : 'Seleccionar líderes…'}</span><span aria-hidden="true">⌄</span>
+                </button>
+                {leadersOpen && <div className="absolute z-40 top-full mt-1 w-full max-h-48 overflow-y-auto space-y-2 rounded-xl border border-[#cbd5e1] p-3 bg-white shadow-lg">
+                  {eligibleLeaders.map((leader) => <label key={leader.id} className="flex items-center gap-2 text-xs">
+                    <input type="checkbox" checked={selectedLeadUserIds.includes(leader.id)} onChange={(event) => { const checked = event.target.checked; setSelectedLeadUserIds((ids) => checked ? [...ids, leader.id] : ids.filter((id) => id !== leader.id)); }} />{leader.name}
+                  </label>)}
+                </div>}
+              </div>
+              {!selectedLeadUserIds.length && <span className="text-[10px] text-[#b45309]">Selecciona al menos un líder de scoping.</span>}
             </div>
 
             <div className="space-y-1">
-              <label className="font-bold text-[#475569] block">
+              <label className="font-bold text-[#475569] block min-h-6">
                 Responsable comercial:
               </label>
-              <select
-                value={commercialOwner}
-                onChange={(e) => setCommercialOwner(e.target.value)}
-                data-empty={!commercialOwner}
-                className={`w-full p-2.5 rounded-xl border border-[#cbd5e1] bg-white focus:ring-2 focus:ring-[#501f92] transition-colors ${
-                  !commercialOwner ? 'text-[#64748b] font-normal' : 'text-[#0f172a] font-semibold'
-                }`}
-              >
-                <option value="">Seleccionar responsable comercial...</option>
-                {commercialUsers.map((user: UserItem) => (
-                  <option key={user.id} value={user.name} className="text-[#0f172a] font-medium">
-                    {user.name} ({user.officialRole || user.jobTitle || user.role})
-                  </option>
-                ))}
-              </select>
+              <div className="relative" onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setCommercialOpen(false); }}>
+                <button type="button" aria-label="Responsable comercial" aria-expanded={commercialOpen} onClick={() => setCommercialOpen(!commercialOpen)} onKeyDown={(event) => { if (event.key === 'Escape') setCommercialOpen(false); }} className="w-full h-11 min-w-0 text-left px-3 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-semibold bg-white flex justify-between items-center gap-2">
+                  <span className="truncate">{commercialUserIds.length ? commercialUsers.filter((user) => commercialUserIds.includes(user.id)).map((user) => user.name).join(', ') : 'Seleccionar responsables…'}</span><span aria-hidden="true">⌄</span>
+                </button>
+                {commercialOpen && <div className="absolute z-40 top-full mt-1 w-full max-h-48 overflow-y-auto space-y-2 rounded-xl border border-[#cbd5e1] p-3 bg-white shadow-lg">
+                  {commercialUsers.map((user) => <label key={user.id} className="flex items-start gap-2 text-xs">
+                    <input type="checkbox" checked={commercialUserIds.includes(user.id)} onChange={(event) => { const checked = event.target.checked; setCommercialUserIds((ids) => checked ? [...ids, user.id] : ids.filter((id) => id !== user.id)); }} /><span>{user.name}<span className="block text-[10px] text-[#64748b]">{user.officialRole || user.jobTitle || user.role}</span></span>
+                  </label>)}
+                </div>}
+              </div>
               <span className="text-[10px] text-[#64748b] block">
                 Relación de cuenta y negociación
               </span>
             </div>
 
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <label className="font-bold text-[#475569] block">Deadline de Handoff (SLA):</label>
-                <span className="text-[10px] text-[#501f92] font-semibold">Predeterminado 36h</span>
-              </div>
-              
-              {!isCustomHandoff ? (
-                <div className="flex gap-1.5">
-                  <select
-                    value={handoffHours}
-                    onChange={(e) => {
-                      if (e.target.value === 'custom') {
-                        setIsCustomHandoff(true);
-                      } else {
-                        setHandoffHours(Number(e.target.value));
-                      }
-                    }}
-                    className="flex-1 p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-medium bg-white focus:ring-2 focus:ring-[#501f92]"
-                  >
-                    <option value={24}>24 horas (urgente)</option>
-                    <option value={36}>36 horas (estándar Uhura)</option>
-                    <option value={48}>48 horas</option>
-                    <option value={72}>72 horas (complejo)</option>
-                    <option value="custom">✏️ Personalizado en horas...</option>
-                  </select>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    min={1}
-                    max={240}
-                    value={handoffHours}
-                    onChange={(e) => setHandoffHours(Math.max(1, Number(e.target.value)))}
-                    className="flex-1 p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-bold bg-white focus:ring-2 focus:ring-[#501f92]"
-                    placeholder="Ej: 36"
-                  />
-                  <span className="text-xs text-[#64748b] font-medium">horas</span>
-                  <button
-                    type="button"
-                    onClick={() => setIsCustomHandoff(false)}
-                    className="text-[11px] text-[#501f92] font-bold hover:underline cursor-pointer"
-                  >
-                    Presets
-                  </button>
-                </div>
-              )}
+            <div className="space-y-1 min-w-0">
+              <label htmlFor="opportunity-delivery-date" className="font-bold text-[#475569] block min-h-6">Fecha Max. de entrega</label>
+              <input id="opportunity-delivery-date" type="datetime-local" required value={deliveryDate} min={toLocalDateTime(Date.now() + 60000)} max={toLocalDateTime(Date.now() + 36 * 3600000)} onInput={(event) => { setDeliveryDate(event.currentTarget.value); setDeliveryError(''); }} onChange={(event) => { setDeliveryDate(event.target.value); setDeliveryError(''); }} className="w-full min-w-0 h-11 px-3 rounded-xl border border-[#cbd5e1] text-[#0f172a] bg-white text-xs" />
+              <p className="text-[10px] text-[#64748b]">Dentro de las próximas 36 horas.</p>
+              {deliveryError && <p role="alert" className="text-xs text-red-600">{deliveryError}</p>}
             </div>
           </div>
 

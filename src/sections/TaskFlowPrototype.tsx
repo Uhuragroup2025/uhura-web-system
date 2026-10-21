@@ -9,6 +9,7 @@ import {
   TaskStatus,
   TaskPriority,
   ClientProfile,
+  ClientProjectHistoryItem,
   ProjectType,
   TaskRework,
   ProjectReworkRound,
@@ -18,6 +19,10 @@ import {
   NewBusinessOpportunity,
   TeamAbsenceEvent
 } from '../components/taskflow/types';
+import type { ScopeServiceDraft } from '../components/taskflow/newbusiness/BacklogScoper';
+import { SOWModal } from '../components/taskflow/newbusiness/SOWModal';
+import { isEligibleScopingLeader } from '../components/taskflow/newbusiness/teamCandidates';
+import { getOperationalQuote, withOperationalQuote } from '../components/taskflow/newbusiness/quoteRules';
 import { INITIAL_PRODUCT_BACKLOG_TEMPLATES } from '../components/taskflow/templates/templateData';
 import { TemplateLibraryView } from '../components/taskflow/templates/TemplateLibraryView';
 import {
@@ -706,6 +711,11 @@ export const TaskFlowPrototype: React.FC = () => {
   const [timeLogs, setTimeLogs] = useState<TimeLog[]>(initialTimeLogs);
   const [productTemplates, setProductTemplates] = useState<ProductBacklogTemplate[]>(INITIAL_PRODUCT_BACKLOG_TEMPLATES);
   const [opportunities, setOpportunities] = useState<NewBusinessOpportunity[]>(INITIAL_NEW_BUSINESS_OPPORTUNITIES);
+  // Estado de demostración del frontend; no agrega campos al contrato de datos.
+  const [scopeUi, setScopeUi] = useState<Record<string, { saved: boolean; services: ScopeServiceDraft[] }>>({});
+  const [savedQuotes, setSavedQuotes] = useState<Record<string, string>>({});
+  const [sowOpportunityId, setSowOpportunityId] = useState<string | null>(null);
+  const [sowVersions, setSowVersions] = useState<Record<string, string>>({});
   const [absenceEvents, setAbsenceEvents] = useState<TeamAbsenceEvent[]>(initialAbsenceEvents);
 
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
@@ -1784,12 +1794,21 @@ export const TaskFlowPrototype: React.FC = () => {
     selectedQuote: QuoteProposal;
     projectName: string;
     projectType: ProjectType;
+    leadUserId: string;
+    specialistUserIds?: string[];
     leadName: string;
     startDate: string;
     endDate?: string;
   }) => {
     const opp = payload.opportunity;
     const quote = payload.selectedQuote;
+
+    // Solo colaboradores activos del equipo canónico pueden incorporarse a la conversión.
+    const activeTeam = users.filter((user) => user.status === 'Active');
+    const assignedLeadUser = activeTeam.find((user) => user.id === payload.leadUserId);
+    if (!assignedLeadUser) return;
+    const leadId = assignedLeadUser.id;
+    const leadName = assignedLeadUser.name;
 
     // 1. Resolver ID de Proyecto y elemento histórico para el Cliente
     const newProjectId = `prj-${Date.now()}`;
@@ -1799,7 +1818,8 @@ export const TaskFlowPrototype: React.FC = () => {
     const soldValueCOP = quoteCurrency === 'COP' && rawSoldValue > 0 ? rawSoldValue : undefined;
 
     // 2. Resolver o registrar el Cliente en Orbit
-    let resolvedClientId = opp.clientId;
+    if (opp.clientId && !clients.some((client) => client.id === opp.clientId)) return;
+    let resolvedClientId = opp.clientId || undefined;
     let resolvedClientName = opp.prospectAccountName || 'Cliente';
     const effectiveTaxEntityId = opp.selectedTaxEntityId || null;
 
@@ -1914,16 +1934,6 @@ export const TaskFlowPrototype: React.FC = () => {
       progressPercentage: 0
     }));
 
-    // Resolver líder real entre los usuarios de Orbit
-    const assignedLeadUser =
-      users.find((u) => u.id === (payload as any).leadUserId) ||
-      users.find((u) => u.name.toLowerCase() === payload.leadName?.toLowerCase()) ||
-      users.find((u) => u.id === opp.leadUserId) ||
-      users[0] ||
-      null;
-
-    const leadId = assignedLeadUser ? assignedLeadUser.id : 'usr-lead';
-    const leadName = assignedLeadUser ? assignedLeadUser.name : (payload.leadName || opp.leadUserName || 'Líder Operativo');
     const leadRole = assignedLeadUser?.officialRole || assignedLeadUser?.professionalRole || assignedLeadUser?.role || 'Líder de Proyecto';
     const leadAvatarBg = assignedLeadUser?.avatarBg || 'bg-[#501f92]';
     const leadInitials = assignedLeadUser?.initials || leadName.slice(0, 2).toUpperCase();
@@ -1941,9 +1951,9 @@ export const TaskFlowPrototype: React.FC = () => {
     ];
 
     // Asignar especialistas opcionales si fueron seleccionados
-    if ((payload as any).specialistUserIds && Array.isArray((payload as any).specialistUserIds)) {
-      (payload as any).specialistUserIds.forEach((specId: string) => {
-        const specUser = users.find((u) => u.id === specId);
+    if (payload.specialistUserIds && Array.isArray(payload.specialistUserIds)) {
+      payload.specialistUserIds.forEach((specId: string) => {
+        const specUser = activeTeam.find((u) => u.id === specId);
         if (specUser && specUser.id !== leadId) {
           resolvedCoreTeam.push({
             id: specUser.id,
@@ -2069,17 +2079,32 @@ export const TaskFlowPrototype: React.FC = () => {
 
   // Guardar cotización en oportunidad existente de New Business
   const handleSaveQuoteToOpportunity = (opportunityId: string, quote: QuoteProposal) => {
+    const current = getOperationalQuote(opportunities.find((item) => item.id === opportunityId));
+    const targetQuoteId = current?.id || quote.id;
+    const service = { id: quote.id, name: productTemplates.find((item) => item.id === quote.templateId)?.name || 'Servicio importado',
+      deliverableIds: quote.deliverables.map((_, index) => `qdel-import-${quote.id}-${index}`), weeks: '', saved: false };
+    setScopeUi((previous) => ({ ...previous, [targetQuoteId]: { saved: false,
+      services: [...(previous[targetQuoteId]?.services || []).filter((item) => item.id !== service.id), service] } }));
     setOpportunities((prev) =>
       prev.map((opp) => {
         if (opp.id === opportunityId) {
-          const existingQuotes = opp.quotes || [];
-          const quoteExists = existingQuotes.some((q) => q.id === quote.id);
-          const updatedQuotes = quoteExists
-            ? existingQuotes.map((q) => (q.id === quote.id ? quote : q))
-            : [quote, ...existingQuotes];
+          const current = getOperationalQuote(opp);
+          const imported = quote.deliverables.map((del, index) => {
+            const id = `qdel-import-${quote.id}-${index}`;
+            return { ...del, id, quoteId: current?.id || quote.id,
+              order: (current?.deliverables.length || 0) + index + 1,
+              roleBudgets: del.roleBudgets.map((budget, budgetIndex) => ({ ...budget,
+                id: `${id}-rb-${budgetIndex}`, quoteDeliverableId: id })),
+              backlogItems: del.backlogItems.map((activity, activityIndex) => ({ ...activity,
+                id: `${id}-act-${activityIndex}`, quoteDeliverableId: id, order: activityIndex + 1,
+                suggestedUserId: null, suggestedUserName: null })) };
+          });
+          const deliverables = [...(current?.deliverables || []), ...imported];
+          const updatedQuote: QuoteProposal = { ...(current || quote), deliverables,
+            totalHoursRollup: deliverables.reduce((total, del) => total + del.backlogItems.reduce((sum, activity) => sum + activity.estimatedHours, 0), 0),
+            updatedAt: new Date().toISOString() };
           return {
-            ...opp,
-            quotes: updatedQuotes,
+            ...withOperationalQuote(opp, updatedQuote),
             updatedAt: new Date().toISOString()
           };
         }
@@ -2093,28 +2118,37 @@ export const TaskFlowPrototype: React.FC = () => {
     opportunityData: {
       title: string;
       prospectAccountName?: string;
+      leadUserId: string;
       leadUserName?: string;
     },
     quote: QuoteProposal
   ) => {
+    const mainLead = users.find((user) => user.id === opportunityData.leadUserId && isEligibleScopingLeader(user));
+    if (!mainLead) return;
     const newOpportunityId = quote.opportunityId || `opp-${Date.now()}`;
     const finalizedQuote: QuoteProposal = {
       ...quote,
       opportunityId: newOpportunityId
     };
 
+    if (quote.templateId) {
+      setScopeUi((previous) => ({ ...previous, [finalizedQuote.id]: { saved: false, services: [{
+        id: quote.id, name: productTemplates.find((item) => item.id === quote.templateId)?.name || 'Servicio importado',
+        deliverableIds: quote.deliverables.map((item) => item.id), weeks: '', saved: false
+      }] } }));
+    }
     const newOpp: NewBusinessOpportunity = {
       id: newOpportunityId,
       title: opportunityData.title,
       type: 'new_client',
       prospectAccountName: opportunityData.prospectAccountName || 'Prospecto New Business',
-      leadUserId: 'usr-paola',
-      leadUserName: opportunityData.leadUserName || 'Product Lead',
+      leadUserId: mainLead.id,
+      leadUserName: mainLead.name,
       status: 'quoting',
       quotes: [finalizedQuote],
       createdAt: new Date().toISOString().split('T')[0],
       updatedAt: new Date().toISOString().split('T')[0],
-      briefSummary: `Oportunidad generada desde plantilla ${quote.versionLabel || ''}.`
+      briefSummary: 'Oportunidad generada desde plantilla.'
     };
 
     setOpportunities((prev) => [newOpp, ...prev]);
@@ -2215,8 +2249,20 @@ export const TaskFlowPrototype: React.FC = () => {
     }
   };
 
+  const sowOpportunity = opportunities.find((item) => item.id === sowOpportunityId);
+  const sowQuote = getOperationalQuote(sowOpportunity);
+  const sowClient = clients.find((client) => client.id === sowOpportunity?.clientId);
+
   return (
     <div className="orbit-saas-root min-h-screen bg-[#0d0718] text-white selection:bg-[#ddd6fe] selection:text-[#0f172a] flex flex-col flex-1">
+      {sowOpportunity && sowQuote && (
+        <SOWModal key={sowOpportunity.id} isOpen opportunity={sowOpportunity} quote={sowQuote}
+          client={sowClient} documentVersion={sowVersions[sowOpportunity.id] || '1.0'}
+          onChangeDocumentVersion={(version) => setSowVersions((previous) => ({ ...previous, [sowOpportunity.id]: version }))}
+          onClose={() => setSowOpportunityId(null)}
+          onSaveSOWData={(sowData) => setOpportunities((previous) => previous.map((item) =>
+            item.id === sowOpportunity.id ? { ...item, sowData: { ...item.sowData, ...sowData }, updatedAt: new Date().toISOString() } : item))} />
+      )}
       {/* SaaS Live Demo Utility Bar (Compact single header) */}
       <section className="bg-gradient-to-r from-[#1b0d33] to-[#0d0718] py-2.5 px-4 sm:px-6 lg:px-8 border-b border-[#261845]/60">
         <div className="max-w-[1880px] w-full mx-auto flex items-center justify-between gap-4">
@@ -2538,6 +2584,11 @@ export const TaskFlowPrototype: React.FC = () => {
                 {currentView === 'clientes' && (
                   <ClientsView
                     clients={clients}
+                    onViewProjectSow={(projectId) => {
+                      const opportunity = opportunities.find((item) => item.convertedProjectId === projectId);
+                      if (opportunity) setSowOpportunityId(opportunity.id);
+                    }}
+                    sowProjectIds={opportunities.flatMap((item) => item.convertedProjectId ? [item.convertedProjectId] : [])}
                     currentUser={currentUser}
                     selectedClientId={selectedClientId}
                     onSelectClient={(id) => setSelectedClientId(id)}
@@ -2565,6 +2616,7 @@ export const TaskFlowPrototype: React.FC = () => {
                 {/* 6.5. BIBLIOTECA DE PLANTILLAS MAESTRAS DE PRODUCTO */}
                 {currentView === 'plantillas-producto' && (
                   <TemplateLibraryView
+                    users={users}
                     templates={productTemplates}
                     onUpdateTemplates={setProductTemplates}
                     opportunities={opportunities}
@@ -2589,6 +2641,16 @@ export const TaskFlowPrototype: React.FC = () => {
                 {/* 6.7. NEW BUSINESS & SCOPING OPERATIVO (FASE 1) */}
                 {currentView === 'new-business' && (
                   <NewBusinessView
+                    scopeUi={scopeUi}
+                    onChangeScopeUi={(quoteId, state) => setScopeUi((previous) => ({ ...previous, [quoteId]: state }))}
+                    onOpenSow={setSowOpportunityId}
+                    savedQuotes={savedQuotes}
+                    onSetQuoteSaved={(quoteId, signature) => setSavedQuotes((previous) => {
+                      const next = { ...previous };
+                      if (signature) next[quoteId] = signature;
+                      else delete next[quoteId];
+                      return next;
+                    })}
                     opportunities={opportunities}
                     clients={clients}
                     templates={productTemplates}
@@ -2615,11 +2677,11 @@ export const TaskFlowPrototype: React.FC = () => {
                       };
 
                       // Dynamic Leader resolution from users
-                      const assignedUser = users.find(
-                        (u) =>
-                          u.id === newOpp.leadUserId ||
-                          (newOpp.leadUserName && u.name.toLowerCase().includes(newOpp.leadUserName.split('·')[0].trim().toLowerCase()))
-                      ) || users.find((u) => u.id === 'u-2') || users[0];
+                      const assignedUser = users.find((user) => user.status === 'Active' && user.id === newOpp.leadUserId);
+                      if (!assignedUser) {
+                        setOpportunities((prev) => [oppWithTask, ...prev]);
+                        return;
+                      }
 
                       // Resolución dinámica del proyecto interno de preventa (UHURA Group -> Comercial & Prospección New Business)
                       const matchedProject = projectsList.find(
