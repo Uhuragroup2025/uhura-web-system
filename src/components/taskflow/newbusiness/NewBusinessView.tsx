@@ -14,7 +14,7 @@ import {
 } from '../types';
 import { getOperationalQuote, withOperationalQuote, getCommercialOwnerName, isValidFinanceSheetUrl, quoteSignature, quoteMissingRequirements } from './quoteRules';
 import { can } from '../auth/permissions';
-import { serviceValidationMessages, isScopeReadyForReview, isEligibleScopingLeader } from './teamCandidates';
+import { serviceValidationMessages, isScopeReadyForReview, isEligibleScopingLeader, getScopeWeeks } from './teamCandidates';
 import { BacklogScoper, type ScopeServiceDraft } from './BacklogScoper';
 import { NewOpportunityModal } from './NewOpportunityModal';
 import { ConvertOpportunityModal } from './ConvertOpportunityModal';
@@ -101,7 +101,6 @@ interface NewBusinessViewProps {
 export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
   scopeUi,
   onChangeScopeUi,
-  onOpenSow,
   savedQuotes,
   onSetQuoteSaved,
   opportunities,
@@ -128,7 +127,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
   const canEditOpp = can(currentUser, 'edit', 'new-business') || isNotCollaboratorOrPending;
 
   const [selectedOppId, setSelectedOppId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'resumen' | 'scoping' | 'cotizacion' | 'documentos'>('resumen');
+  const [activeTab, setActiveTab] = useState<'resumen' | 'scoping' | 'cotizacion'>('resumen');
   const [isNewOppModalOpen, setIsNewOppModalOpen] = useState<boolean>(false);
   const [oppModalMode, setOppModalMode] = useState<'hubspot' | 'manual'>('hubspot');
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
@@ -250,7 +249,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
   const scopeState = activeQuote ? scopeUi[activeQuote.id] || { saved: false, services: [] } : { saved: false, services: [] };
   const allServicesValid = scopeState.services.every((service) => serviceValidationMessages(service).length === 0);
   const allServicesPrepared = allServicesValid && scopeState.services.every((service) => service.saved === true);
-  const isScopeReadOnly = scopeState.saved && allServicesValid;
+  const isScopeReadOnly = scopeState.saved && allServicesPrepared;
 
   // Controlled Draft State for Cotización (prevents premature locking on keystroke)
   const [quoteValueDraft, setQuoteValueDraft] = useState<string>('');
@@ -511,7 +510,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
               New Business
             </h1>
             <p className="text-xs sm:text-sm text-[#64748b] mt-1">
-              Dimensionamiento técnico, cotizaciones, SOW y transición a proyectos
+              Dimensionamiento técnico, cotizaciones y transición a proyectos
             </p>
           </div>
 
@@ -547,7 +546,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                     </button>
                   </div>
                   <p className="text-[11.5px] text-white/90 leading-relaxed bg-white/5 p-2.5 rounded-xl border border-white/10 mb-3">
-                    El espacio donde los líderes dimensionan técnicamente las oportunidades recibidas de Comercial (briefs), construyen entregables y actividades, generan cotizaciones, gestionan el SOW formal y habilitan la transición a Proyectos.
+                    El espacio donde los líderes dimensionan técnicamente las oportunidades recibidas de Comercial (briefs), construyen entregables y actividades, generan cotizaciones y habilitan la transición a Proyectos. El SOW se gestiona desde el Cliente, dentro del proyecto correspondiente.
                   </p>
                   <div className="space-y-2.5 text-[11px] text-white/85 leading-relaxed">
                     <div className="flex items-start gap-2">
@@ -748,7 +747,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                 <thead>
                   <tr className="bg-[#f8fafc] border-b border-[#e2e8f0] text-[#64748b] font-bold text-[11px] uppercase tracking-wider">
                     <th className="py-3 px-4">Cuenta / Oportunidad</th>
-                    <th className="py-3 px-4">Líder de Alcance</th>
+                    <th className="py-3 px-4">Responsable de alcance</th>
                     <th className="py-3 px-4">Estado</th>
                     <th className="py-3 px-4">Tiempo / SLA</th>
                     <th className="py-3 px-4">Próxima Acción</th>
@@ -976,7 +975,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                     <div className="pt-2 border-t border-[#f1f5f9] space-y-1 text-xs text-[#64748b]">
                       <div className="flex items-center gap-1.5">
                         <User className="w-3.5 h-3.5 text-[#501f92]" />
-                        <span>Líder de alcance: <strong className="text-[#0f172a]">{users.find((user) => user.id === opp.leadUserId)?.name || 'Sin asignar'}</strong></span>
+                        <span>Responsable de alcance: <strong className="text-[#0f172a]">{users.find((user) => user.id === opp.leadUserId)?.name || 'Sin asignar'}</strong></span>
                       </div>
                       {opp.contactName && (
                         <div className="flex items-center gap-1.5 text-[11px] text-[#64748b] truncate">
@@ -1114,7 +1113,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
             <div className="flex items-center gap-1 relative">
               <User className="w-3.5 h-3.5 text-[#501f92]" />
               <span>
-                Líder de alcance:{' '}
+                Responsable de alcance:{' '}
                 <strong className="text-[#0f172a]">{currentLeadDisplayName}</strong>
               </span>
               {canEditOpp && users.length > 0 && (
@@ -1122,7 +1121,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                   type="button"
                   onClick={() => setIsReassigningLead(!isReassigningLead)}
                   className="text-[10px] text-[#501f92] hover:underline font-bold ml-1 cursor-pointer"
-                  title="Reasignar líder de alcance"
+                  title="Reasignar responsable de alcance"
                 >
                   (Reasignar)
                 </button>
@@ -1133,7 +1132,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                 <div className="absolute top-6 left-0 z-30 bg-white rounded-xl shadow-xl border border-[#cbd5e1] p-3 w-64 space-y-2">
                   <div className="flex items-center justify-between pb-1 border-b border-[#f1f5f9]">
                     <span className="text-[11px] font-bold text-[#0f172a] block">
-                      Reasignar Líder de Alcance:
+                      Reasignar Responsable de alcance:
                     </span>
                     <button
                       type="button"
@@ -1144,7 +1143,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                     </button>
                   </div>
                   <p className="text-[10px] text-[#64748b]">
-                    Selecciona el líder de alcance responsable del dimensionamiento:
+                    Selecciona las personas responsables del alcance:
                   </p>
                   <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
                     {users.filter(isEligibleScopingLeader).map((u) => {
@@ -1423,18 +1422,6 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
           <span>Cotización</span>
         </button>
 
-        <button
-          type="button"
-          onClick={() => setActiveTab('documentos')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
-            activeTab === 'documentos'
-              ? 'bg-white text-[#501f92] shadow-xs'
-              : 'text-[#64748b] hover:text-[#0f172a]'
-          }`}
-        >
-          <Folder className="w-3.5 h-3.5" />
-          <span>Documentos</span>
-        </button>
 
       </div>
 
@@ -1742,7 +1729,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                 {/* Equipo Responsable & Horas Preventa Invertidas */}
                 <div className="p-3 bg-[#f8fafc] rounded-xl border border-[#e2e8f0] space-y-1.5 text-[11px]">
                   <div className="flex items-center justify-between">
-                    <span className="text-[#64748b]">Líder de Alcance:</span>
+                    <span className="text-[#64748b]">Responsable de alcance:</span>
                     <strong className="text-[#501f92] font-bold">{currentLeadDisplayName}</strong>
                   </div>
                   <div className="flex items-center justify-between">
@@ -1769,139 +1756,12 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
       {activeTab === 'scoping' && activeQuote && (
         <div className="space-y-6 animate-in fade-in duration-150">
           {/* Panel Superior del Líder Asignado: Limpio, minimalista y sin ruido visual */}
-          <div className="bg-white rounded-2xl border border-[#e2e8f0] p-4 sm:p-5 shadow-2xs space-y-4">
-            {/* Encabezado con Identificación del Líder y Tipo de Proyecto */}
-            <div className="flex items-center justify-between pb-3 border-b border-[#f1f5f9] flex-wrap gap-2">
-              <div className="flex items-center gap-2">
-                <span className="p-1.5 rounded-lg bg-[#501f92]/10 text-[#501f92]">
-                  <Layers className="w-4 h-4" />
-                </span>
-                <h3 className="text-sm font-bold text-[#0f172a]">
-                  Alcance Técnico & Estimación
-                </h3>
+          <div className="bg-white rounded-2xl border border-[#e2e8f0] p-4 shadow-2xs space-y-3">
+            <div className="flex items-center justify-between gap-3 flex-wrap border-b border-[#e2e8f0] pb-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Layers className="w-4 h-4 text-[#501f92]" /><h3 className="text-base font-bold text-[#0f172a]">Alcance técnico</h3>
+                <span className="rounded-full bg-[#f5f3ff] px-2 py-1 text-[11px] font-semibold text-[#501f92]">{scopeState.saved && isScopeReadyForReview(activeQuote, scopeState.services) && ['internal_review', 'proposal_sent', 'negotiation', 'won'].includes(activeOpp.status) ? 'Listo para cotizar' : 'En elaboración'}</span>
               </div>
-
-              {/* Selector de Tipo de Proyecto (Proyecto Único vs Fee Mensual) */}
-              <div className="flex items-center gap-1.5 text-xs text-[#64748b]">
-                <span>Modelo:</span>
-                {isScopeReadOnly ? <strong>{activeOpp.projectType === 'fee_monthly' ? 'Fee mensual' : 'Proyecto único'}</strong> : <select
-                  value={activeOpp.projectType || 'fixed_project'}
-                  onChange={(e) => {
-                    const newType = e.target.value as ProjectType;
-                    onUpdateOpportunity({
-                      ...activeOpp,
-                      projectType: newType,
-                      updatedAt: new Date().toISOString()
-                    });
-                  }}
-                  className="font-bold text-[#0f172a] bg-[#f8fafc] border border-[#cbd5e1] rounded-lg px-2.5 py-1 text-xs cursor-pointer outline-hidden hover:border-[#501f92] transition-colors"
-                >
-                  <option value="fixed_project">Proyecto Único (One-Shot)</option>
-                  <option value="fee_monthly">Fee Mensual Recurrente</option>
-                </select>}
-              </div>
-            </div>
-
-            {isScopeReadOnly ? (
-              <div className="space-y-2 text-xs text-[#334155]" aria-label="Datos generales del alcance guardado">
-                <p>Presentación / propuesta técnica general: {activeQuote.commercialProposalUrl ? <a className="underline text-[#501f92]" href={activeQuote.commercialProposalUrl} target="_blank" rel="noreferrer">Abrir presentación</a> : 'Pendiente'}</p>
-                <p>Duración general estimada del proyecto: {activeQuote.estimatedWeeks || 'Pendiente'} semanas</p>
-                <p>La duración general se define manualmente; los servicios pueden ejecutarse en paralelo.</p>
-              </div>
-            ) : (<>
-            {/* Insumos del Líder: 1. Propuesta/Presentación (PPT de Drive) + 2. Duración en Semanas */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5 text-xs">
-              {/* 1. Propuesta / Presentación (Google Drive / Slides) */}
-              <div className="md:col-span-7 space-y-1">
-                <label className="font-semibold text-[#475569] flex items-center justify-between">
-                  <span>Presentación / Propuesta (Drive)</span>
-                </label>
-                <div className="relative flex items-center">
-                  <input
-                    type="url"
-                    value={activeQuote.commercialProposalUrl || ''}
-                    onChange={(e) => {
-                      handleUpdateQuote({
-                        ...activeQuote,
-                        commercialProposalUrl: e.target.value
-                      });
-                    }}
-                    placeholder="https://docs.google.com/presentation/d/... o enlace a Drive"
-                    className="w-full pl-3 pr-10 py-2 rounded-xl border border-[#cbd5e1] text-xs font-mono text-[#0f172a] placeholder:text-[#94a3b8] placeholder:font-sans focus:ring-1 focus:ring-[#501f92] focus:border-[#501f92] transition-colors"
-                  />
-                  {activeQuote.commercialProposalUrl && (
-                    <a
-                      href={activeQuote.commercialProposalUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="absolute right-2 p-1.5 text-[#501f92] hover:bg-[#501f92]/10 rounded-lg transition-colors cursor-pointer"
-                      title="Abrir presentación en Google Drive"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
-                  )}
-                </div>
-              </div>
-
-              {/* Sugerencia por servicio más largo; admite ajuste por dependencias. */}
-              <div className="md:col-span-5 space-y-1">
-                  <>
-                    <label className="font-semibold text-[#475569] flex items-center justify-between">
-                      <span>Duración general estimada del proyecto</span>
-                      {(activeQuote.estimatedWeeks ?? activeQuote.financialConfig?.projectDurationWeeks) ? (
-                        <span className="text-[10px] font-medium text-[#047857] bg-[#ecfdf5] px-2 py-0.5 rounded-md border border-[#a7f3d0]">
-                          ~{((activeQuote.estimatedWeeks ?? activeQuote.financialConfig?.projectDurationWeeks ?? 0) * 5)} días hábiles
-                        </span>
-                      ) : null}
-                    </label>
-                    <div className="relative flex items-center">
-                      <input
-                        type="number"
-                        min="1"
-                        max="52"
-                        step="1"
-                        aria-label="Duración general estimada del proyecto"
-                        value={activeQuote.estimatedWeeks ?? activeQuote.financialConfig?.projectDurationWeeks ?? ''}
-                        onChange={(e) => {
-                          const val = Math.max(0, parseInt(e.target.value, 10) || 0);
-                          handleUpdateQuote({
-                            ...activeQuote,
-                            estimatedWeeks: val,
-                            financialConfig: {
-                              ...activeQuote.financialConfig,
-                              projectDurationWeeks: val
-                            }
-                          });
-                        }}
-                        placeholder="Ej: 4"
-                        className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] font-bold text-xs text-[#0f172a] placeholder:text-[#94a3b8] placeholder:font-normal focus:ring-1 focus:ring-[#501f92] focus:border-[#501f92]"
-                      />
-                      <span className="absolute right-3 text-xs text-[#64748b]">
-                        semanas
-                      </span>
-                    </div>
-                  </>
-
-              </div>
-            </div>
-
-            </>)}
-
-            {/* Fila 3: Barra de acciones pulida */}
-            <div className="pt-3 border-t border-[#f1f5f9] flex items-center justify-between flex-wrap gap-2.5">
-              {/* Alcance Técnico Directamente Editable */}
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#501f92]/10 text-[#501f92] font-bold text-xs border border-[#501f92]/20">
-                  <Layers className="w-3.5 h-3.5" />
-                  <span>Alcance Técnico Oficial ({activeQuote.totalHoursRollup}h)</span>
-                </span>
-                <span className="text-[11px] text-[#64748b] hidden sm:inline">
-                  Editable directamente · Las horas se recalculan en tiempo real
-                </span>
-              </div>
-
-              <p className="text-xs text-[#64748b]">Duración sugerida según el servicio más largo; ajustable si hay dependencias. No se suman servicios en paralelo.</p>
-              {/* Acciones: Guardar y Marcar alcance listo */}
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -1915,7 +1775,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                       setConversionSuccessMessage(invalidServices.map((service) => `${service.name}: ${serviceValidationMessages(service).join(' ')}`).join(' '));
                       return;
                     }
-                    handleUpdateQuote(activeQuote);
+                    handleUpdateQuote({ ...activeQuote, estimatedWeeks: getScopeWeeks(activeQuote, scopeState.services) });
                     onChangeScopeUi(activeQuote.id, { ...scopeState, saved: true, services: scopeState.services });
                     setConversionSuccessMessage('Alcance técnico guardado.');
                     setTimeout(() => setConversionSuccessMessage(null), 3000);
@@ -1930,7 +1790,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                   const projectWeeks = Number(activeQuote.estimatedWeeks ?? activeQuote.financialConfig?.projectDurationWeeks);
                   const isWeeksFilled = Number.isFinite(projectWeeks) && projectWeeks >= 1;
                   const isScopeFilled = activeQuote.totalHoursRollup > 0 && activeQuote.deliverables.some((deliverable) => deliverable.backlogItems.some((activity) => activity.estimatedHours > 0));
-                  const isReadyToMark = isScopeReadyForReview(activeQuote, scopeState.services);
+                  const isReadyToMark = scopeState.saved && isScopeReadyForReview(activeQuote, scopeState.services);
                   const isAlreadyMarked = isReadyToMark && (activeOpp.status === 'internal_review' || activeOpp.status === 'proposal_sent' || activeOpp.status === 'negotiation' || activeOpp.status === 'won');
 
                   return (
@@ -1971,14 +1831,63 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                       <CheckCircle2 className={`w-3.5 h-3.5 ${isAlreadyMarked ? 'text-[#d4ff4a]' : 'text-white'}`} />
                       <span>
                         {isAlreadyMarked
-                          ? `✓ Alcance marcado como listo (${activeQuote.totalHoursRollup}h)`
-                          : `Marcar alcance listo (${activeQuote.totalHoursRollup}h)`}
+                          ? 'Listo para cotizar'
+                          : 'Marcar como listo'}
                       </span>
                     </button>
                   );
                 })()}
               </div>
             </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div><p className="text-[#64748b]">Esfuerzo estimado</p><strong className="text-lg text-[#0f172a]">{activeQuote.totalHoursRollup.toLocaleString('es-CO')} h</strong></div>
+              <div><p className="text-[#64748b]">Semanas totales</p><strong className="text-lg text-[#0f172a]">{getScopeWeeks(activeQuote, scopeState.services) || 'Pendiente'} semanas</strong></div>
+
+            </div>
+            {isScopeReadOnly ? (
+              <div className="space-y-2 text-xs text-[#334155]" aria-label="Datos generales del alcance guardado">
+                <p>Presentación / propuesta técnica general: {activeQuote.commercialProposalUrl ? <a className="underline text-[#501f92]" href={activeQuote.commercialProposalUrl} target="_blank" rel="noreferrer">Abrir presentación</a> : 'Pendiente'}</p>
+
+
+              </div>
+            ) : (<>
+            {/* Insumos del Líder: 1. Propuesta/Presentación (PPT de Drive) + 2. Duración en Semanas */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5 text-xs">
+              {/* 1. Propuesta / Presentación (Google Drive / Slides) */}
+              <div className="md:col-span-12 space-y-1">
+                <label className="font-semibold text-[#475569] flex items-center justify-between">
+                  <span>Presentación / Propuesta (Drive)</span>
+                </label>
+                <div className="relative flex items-center">
+                  <input
+                    type="url"
+                    value={activeQuote.commercialProposalUrl || ''}
+                    onChange={(e) => {
+                      handleUpdateQuote({
+                        ...activeQuote,
+                        commercialProposalUrl: e.target.value
+                      });
+                    }}
+                    placeholder="https://docs.google.com/presentation/d/... o enlace a Drive"
+                    className="w-full pl-3 pr-10 py-2 rounded-xl border border-[#cbd5e1] text-xs font-mono text-[#0f172a] placeholder:text-[#94a3b8] placeholder:font-sans focus:ring-1 focus:ring-[#501f92] focus:border-[#501f92] transition-colors"
+                  />
+                  {activeQuote.commercialProposalUrl && (
+                    <a
+                      href={activeQuote.commercialProposalUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="absolute right-2 p-1.5 text-[#501f92] hover:bg-[#501f92]/10 rounded-lg transition-colors cursor-pointer"
+                      title="Abrir presentación en Google Drive"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  )}
+                </div>
+              </div>
+
+            </div>
+
+            </>)}
 
             {/* Hint sutil solo si falta algo */}
             {(() => {
@@ -1986,7 +1895,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
               const projectWeeks = Number(activeQuote.estimatedWeeks ?? activeQuote.financialConfig?.projectDurationWeeks);
                   const isWeeksFilled = Number.isFinite(projectWeeks) && projectWeeks >= 1;
               const isScopeFilled = activeQuote.totalHoursRollup > 0 && activeQuote.deliverables.some((deliverable) => deliverable.backlogItems.some((activity) => activity.estimatedHours > 0));
-              const isReadyToMark = isScopeReadyForReview(activeQuote, scopeState.services);
+              const isReadyToMark = scopeState.saved && isScopeReadyForReview(activeQuote, scopeState.services);
 
               if (isReadyToMark) return null;
 
@@ -1995,6 +1904,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                   <AlertCircle className="w-3.5 h-3.5 text-[#d97706] shrink-0" />
                   <span>
                     Pendiente para marcar listo:{' '}
+                    {!scopeState.saved && <span className="font-semibold mr-1">• Guardar datos generales</span>}
                     {!isPptFilled && <span className="font-semibold mr-1">• Link Drive</span>}
                     {!isWeeksFilled && <span className="font-semibold mr-1">• Semanas</span>}
                     {!isScopeFilled && <span className="font-semibold mr-1">• Horas en alcance</span>}
@@ -2013,10 +1923,9 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
             services={scopeState.services}
             onChangeServices={(services) => {
               onChangeScopeUi(activeQuote.id, { saved: false, services });
-              const previousSuggested = Math.max(0, ...scopeState.services.map((service) => Number(service.weeks) || 0));
-              const suggested = Math.max(0, ...services.map((service) => Number.isFinite(Number(service.weeks)) ? Number(service.weeks) : 0));
-              const current = Number(activeQuote.estimatedWeeks ?? activeQuote.financialConfig?.projectDurationWeeks) || 0;
-              if (suggested > 0 && (!current || current === previousSuggested)) handleUpdateQuote({ ...activeQuote, estimatedWeeks: suggested });
+              const previousSuggested = getScopeWeeks(activeQuote, scopeState.services);
+              const suggested = getScopeWeeks(activeQuote, services);
+              if (suggested !== previousSuggested) handleUpdateQuote({ ...activeQuote, estimatedWeeks: suggested });
             }}
             opportunityTitle={activeOpp.title}
             prospectName={activeOpp.prospectAccountName}
@@ -2033,7 +1942,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
             }}
             onGoToCalculator={() => setActiveTab('cotizacion')}
             onMarkScopeReady={(totalHours) => {
-              if (!isScopeReadyForReview(activeQuote, scopeState.services) || !window.confirm('¿Confirmas que no faltan servicios y que la PPT incluye la propuesta completa?')) return;
+              if (!scopeState.saved || !isScopeReadyForReview(activeQuote, scopeState.services) || !window.confirm('¿Confirmas que no faltan servicios y que la PPT incluye la propuesta completa?')) return;
               const updatedOpp: NewBusinessOpportunity = {
                 ...activeOpp,
                 status: 'internal_review',
@@ -2094,7 +2003,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
             <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] flex items-center justify-between flex-wrap gap-3 text-xs">
               <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[11px] text-[#64748b]">Líder de Alcance:</span>
+                  <span className="text-[11px] text-[#64748b]">Responsable de alcance:</span>
                   <strong className="text-[#0f172a] font-bold">{currentLeadDisplayName}</strong>
                 </div>
                 <span className="text-[#cbd5e1] hidden sm:inline">•</span>
@@ -2427,142 +2336,6 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 4: DOCUMENTOS (Google Drive oficial + Propuesta + SOW) */}
-      {/* ========================================================================= */}
-      {activeTab === 'documentos' && activeQuote && (
-        <div className="space-y-5 animate-in fade-in duration-150 text-xs">
-          {/* Header de Documentos & Repositorio Oficial (3 cards simplificadas con tooltips) */}
-          <div className="bg-white rounded-2xl border border-[#cbd5e1] p-6 shadow-2xs space-y-4">
-            <div className="flex items-start justify-between flex-wrap gap-2">
-              <div>
-                <h3 className="text-base font-extrabold text-[#0f172a]">
-                  Documentos & Repositorio Oficial
-                </h3>
-                <p className="text-xs text-[#64748b] mt-0.5">
-                  Google Drive es la fuente documental oficial de Uhura. Orbit enlaza y sincroniza las referencias para evitar duplicidad.
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
-              {/* 1. Carpeta Drive */}
-              <div className="p-4 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] flex flex-col justify-between space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <span className="p-2 rounded-xl bg-[#501f92]/10 text-[#501f92]">
-                      <Folder className="w-5 h-5" />
-                    </span>
-                    <div>
-                      <h4 className="font-bold text-xs text-[#0f172a]">Carpeta Google Drive</h4>
-                      <span className="text-[10px] text-[#64748b]">Repositorio del prospecto</span>
-                    </div>
-                  </div>
-                  <div
-                    className="text-[#94a3b8] hover:text-[#501f92] p-1 rounded-md cursor-help transition-colors"
-                    title="Brief, propuesta, insumos y grabaciones de discovery en su ubicación oficial en Google Drive."
-                  >
-                    <Info className="w-4 h-4" />
-                  </div>
-                </div>
-
-                {activeOpp.driveFolderUrl ? (
-                  <a
-                    href={activeOpp.driveFolderUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#501f92] hover:bg-[#3d1572] text-white font-bold text-xs transition-colors shadow-2xs"
-                  >
-                    <span>Ver Carpeta en Drive</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                ) : (
-                  <span className="text-[11px] text-[#94a3b8] italic py-1 text-center">Sin carpeta vinculada</span>
-                )}
-              </div>
-
-              {/* 2. Propuesta Comercial */}
-              <div className="p-4 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] flex flex-col justify-between space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <span className="p-2 rounded-xl bg-[#8a4dff]/10 text-[#8a4dff]">
-                      <FileText className="w-5 h-5" />
-                    </span>
-                    <div>
-                      <h4 className="font-bold text-xs text-[#0f172a]">Presentación PPT</h4>
-                      <span className="text-[10px] text-[#64748b]">Alcance de la oportunidad</span>
-                    </div>
-                  </div>
-                  <div
-                    className="text-[#94a3b8] hover:text-[#501f92] p-1 rounded-md cursor-help transition-colors"
-                    title="Presentación comercial oficial elaborada con el cliente y pulida por el líder."
-                  >
-                    <Info className="w-4 h-4" />
-                  </div>
-                </div>
-
-                {activeQuote.commercialProposalUrl ? (
-                  <a
-                    href={activeQuote.commercialProposalUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-[#cbd5e1] hover:bg-[#f1f5f9] active:bg-[#e2e8f0] active:scale-95 text-[#475569] font-bold text-xs transition-colors cursor-pointer shadow-2xs"
-                  >
-                    <span>Ver Propuesta</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('scoping')}
-                    className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-[#cbd5e1] hover:bg-[#f1f5f9] active:bg-[#e2e8f0] active:scale-95 text-[#475569] font-bold text-xs transition-colors cursor-pointer shadow-2xs"
-                  >
-                    <span>Ver Propuesta</span>
-                  </button>
-                )}
-              </div>
-
-              {/* 3. SOW Contractual */}
-              <div className="p-4 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] flex flex-col justify-between space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <span className="p-2 rounded-xl bg-[#10b981]/10 text-[#10b981]">
-                      <FileCheck className="w-5 h-5" />
-                    </span>
-                    <div>
-                      <h4 className="font-bold text-xs text-[#0f172a]">Statement of Work (SOW)</h4>
-                      <span className="text-[10px] font-bold text-emerald-600">
-                        {activeOpp.sowData?.status === 'signed'
-                          ? 'Firmado'
-                          : activeOpp.sowData?.status === 'ready_for_review'
-                          ? 'Generado'
-                          : 'Listo para firma'}
-                      </span>
-                    </div>
-                  </div>
-                  <div
-                    className="text-[#94a3b8] hover:text-[#501f92] p-1 rounded-md cursor-help transition-colors"
-                    title="Gobernanza de Alcance Exterior: El SOW incluye objetivos, entregables, actividades formales, cronograma, exclusiones y valor comercial acordado. Las horas y tarifas internas por perfil quedan reservadas exclusivamente para la operación interna de Uhura."
-                  >
-                    <Info className="w-4 h-4" />
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => onOpenSow(activeOpp.id)}
-                  className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-[#cbd5e1] hover:bg-[#f1f5f9] active:bg-[#e2e8f0] active:scale-95 text-[#475569] font-bold text-xs transition-colors cursor-pointer shadow-2xs"
-                  title="Gobernanza de Alcance Exterior: El SOW incluye objetivos, entregables, actividades formales, cronograma, exclusiones y valor comercial acordado. Las horas y tarifas internas por perfil quedan reservadas exclusivamente para la operación interna de Uhura."
-                >
-                  <FileText className="w-3.5 h-3.5 text-current" />
-                  <span>Abrir / Preparar SOW Formal</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      )}
-
       {/* Modal de Creación de Nueva Oportunidad */}
       <NewOpportunityModal
         isOpen={isNewOppModalOpen}

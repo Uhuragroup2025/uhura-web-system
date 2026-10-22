@@ -6,7 +6,7 @@ import {
   UserItem,
   ClientProfile
 } from '../types';
-import { isEligibleTeamMember, matchesQuotedRole, searchActiveTeam } from './teamCandidates';
+import { isEligibleTeamMember } from './teamCandidates';
 import { formatCurrency } from '../../../utils/formatters';
 import {
   CheckCircle2,
@@ -65,20 +65,6 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
   }, [clients, opportunity]);
 
   // Roles y horas dimensionados por el líder técnico en el backlog
-  const scopedRoles = useMemo(() => {
-    const roleMap: Record<string, number> = {};
-    activeQuote.deliverables.forEach((d) => {
-      d.backlogItems.forEach((b) => {
-        const role = b.roleName || 'Front-End Dev';
-        roleMap[role] = (roleMap[role] || 0) + (Number(b.estimatedHours) || 0);
-      });
-    });
-    return Object.entries(roleMap).map(([roleName, hours]) => ({
-      roleName,
-      hours
-    }));
-  }, [activeQuote]);
-
   // Resolver usuarios elegibles como líderes
   const eligibleLeaders = useMemo(() => {
     if (users.length === 0) return [];
@@ -107,18 +93,11 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
   const [projectName, setProjectName] = useState<string>(
     opportunity.title || `Proyecto ${opportunity.prospectAccountName}`
   );
-  const [projectType, setProjectType] = useState<ProjectType>(
-    opportunity.projectType || 'fixed_project'
-  );
+  const projectType: ProjectType = opportunity.projectType || 'fixed_project';
   const [selectedLeadId, setSelectedLeadId] = useState<string>(
     initialLeadUser?.id || ''
   );
-  const [selectedByRole, setSelectedByRole] = useState<Record<string, string[]>>({});
-  const [searchRole, setSearchRole] = useState<string | null>(null);
-  const [query, setQuery] = useState('');
-  const [showExtraSearch, setShowExtraSearch] = useState(false);
-  const [extraRole, setExtraRole] = useState('');
-  const selectedSpecialistIds = Array.from(new Set(Object.values(selectedByRole).flat()));
+  const selectedSpecialistIds = Array.from(new Set(activeQuote.deliverables.flatMap((deliverable) => deliverable.backlogItems.flatMap((activity) => activity.suggestedUserId ? [activity.suggestedUserId] : []))));
   const [startDate, setStartDate] = useState<string>(
     new Date().toISOString().slice(0, 10)
   );
@@ -173,20 +152,6 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
       }
     });
   };
-
-  const toggleSpecialist = (role: string, id: string) => {
-    if (!users.some((user) => user.id === id)) return;
-    setSelectedByRole((previous) => {
-      const ids = previous[role] || [];
-      return { ...previous, [role]: ids.includes(id) ? ids.filter((item) => item !== id) : [...ids, id] };
-    });
-  };
-
-  const selectedPeople = (role: string) => (selectedByRole[role] || []).flatMap((id) => {
-    const user = users.find((item) => item.id === id);
-    return user ? [<button key={id} type="button" aria-label={`Quitar ${user.name} de ${role}`} onClick={() => toggleSpecialist(role, id)}
-      className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-[#ede9fe] text-[#501f92] text-xs">{user.name}<X className="w-3 h-3" /></button>] : [];
-  });
 
   return (
     <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
@@ -282,7 +247,7 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
           </div>
 
           {/* Campos Principales del Proyecto */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+          <div className="grid grid-cols-1 gap-4 pt-1">
             <div className="space-y-1">
               <label className="font-bold text-[#475569] block">
                 Nombre del Proyecto: <span className="text-red-500">*</span>
@@ -296,19 +261,6 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
               />
             </div>
 
-            <div className="space-y-1">
-              <label className="font-bold text-[#475569] block">
-                Modalidad del Proyecto: <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={projectType}
-                onChange={(e) => setProjectType(e.target.value as ProjectType)}
-                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-medium bg-white focus:ring-2 focus:ring-[#501f92] shadow-2xs"
-              >
-                <option value="fixed_project">Proyecto Único (Entregables fijos)</option>
-                <option value="fee_monthly">Fee Mensual Recurrente</option>
-              </select>
-            </div>
           </div>
 
           {/* Líder Operativo & Fechas */}
@@ -378,47 +330,6 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
             </div>
           </div>
 
-          <section className="p-4 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-3" aria-label="Asignación de especialistas">
-            <div className="flex items-center justify-between gap-2"><h4 className="font-bold text-[#0f172a]">Equipo sugerido según los roles del alcance</h4><span className="text-xs text-[#64748b]">{selectedSpecialistIds.length} seleccionados</span></div>
-            <p className="text-xs text-[#64748b]">Estas personas se incorporarán al equipo inicial del proyecto. La asignación específica de tareas se conserva desde el Alcance o se completa durante la planificación.</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {scopedRoles.map((role) => {
-              const matches = users.filter((user) => matchesQuotedRole(user, role.roleName));
-              const candidates = matches.filter((user) => searchRole !== role.roleName || !query.trim() || searchActiveTeam([user], query).length > 0).slice(0, 3);
-              return <div key={role.roleName} className="rounded-lg border border-[#e2e8f0] bg-white p-3 space-y-2">
-                <div className="flex justify-between gap-2"><strong className="text-xs">{role.roleName}</strong><span className="text-xs text-[#501f92]">{Number(role.hours.toFixed(2))}h</span></div>
-                <div className="flex flex-wrap gap-1">{selectedPeople(role.roleName)}</div>
-                <div className="flex flex-wrap gap-1">{candidates.filter((user) => !(selectedByRole[role.roleName] || []).includes(user.id)).map((user) =>
-                  <button key={user.id} type="button" aria-label={`Agregar ${user.name} a ${role.roleName}`} onClick={() => toggleSpecialist(role.roleName, user.id)}
-                    className="px-2 py-1 border border-[#cbd5e1] rounded-md text-xs text-[#475569] hover:border-[#501f92]">+ {user.name}</button>)}</div>
-                {matches.length === 0 && <p className="text-xs text-[#64748b]">Sin candidatos activos con este rol.</p>}
-                <button type="button" onClick={() => { setSearchRole(searchRole === role.roleName ? null : role.roleName); setQuery(''); }} className="text-[11px] text-[#501f92] underline">Buscar candidatos de {role.roleName}</button>
-                {searchRole === role.roleName && <input aria-label={`Buscar candidatos de ${role.roleName}`} placeholder="Buscar por nombre o rol" value={query} onChange={(event) => setQuery(event.target.value)} className="block w-full p-2 border border-[#cbd5e1] rounded-lg text-xs" />}
-              </div>;
-            })}
-            </div>
-            <div className="border-t border-[#e2e8f0] pt-2 space-y-2">
-              <div className="flex flex-wrap gap-1">{selectedPeople('__additional__')}</div>
-              <button type="button" onClick={() => { setShowExtraSearch(!showExtraSearch); setQuery(''); setSearchRole(null); }} className="text-xs font-medium text-[#501f92]">+ Agregar otro integrante</button>
-              {showExtraSearch && <div className="space-y-2">
-                <label className="block text-xs">Agrupar sugerencia en
-                  <select aria-label="Rol de destino del integrante adicional" value={extraRole} onChange={(event) => setExtraRole(event.target.value)} className="ml-2 border border-[#cbd5e1] rounded p-1">
-                    <option value="">Equipo adicional</option>{scopedRoles.map((role) => <option key={role.roleName} value={role.roleName}>{role.roleName}</option>)}
-                  </select>
-                </label>
-                <input role="combobox" aria-label="Buscar otro integrante activo" aria-expanded={Boolean(query.trim())} aria-controls="extra-team-results" aria-autocomplete="list"
-                  placeholder="Escribe un nombre o rol" value={query} onChange={(event) => setQuery(event.target.value)} className="w-full p-2 border border-[#cbd5e1] rounded-lg text-xs" />
-                {query.trim() && <div role="listbox" id="extra-team-results" className="max-h-36 overflow-y-auto space-y-1">
-                  {searchActiveTeam(users, query).map((user) => <button role="option" aria-selected={(selectedByRole[extraRole || '__additional__'] || []).includes(user.id)} type="button" key={user.id}
-                    onClick={() => { toggleSpecialist(extraRole || '__additional__', user.id); setQuery(''); }} className="w-full text-left rounded p-2 hover:bg-[#ede9fe] text-xs">
-                    {user.name} · {user.officialRole || user.professionalRole || user.jobTitle}
-                  </button>)}
-                  {searchActiveTeam(users, query).length === 0 && <p className="text-xs text-[#64748b]">Sin coincidencias en el equipo activo.</p>}
-                </div>}
-              </div>}
-            </div>
-          </section>
-
           {/* Nota de gobernanza: la formalización legal y fiscal no bloquea la creación */}
           <div className="p-3 rounded-xl bg-[#f0fdf4] border border-[#bbf7d0] text-[11px] text-[#166534] flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-[#16a34a] shrink-0" />
@@ -442,7 +353,7 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
               className="px-5 py-2.5 text-xs font-bold text-white bg-[#501f92] hover:bg-[#3d1572] rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-2 hover:scale-[1.01]"
             >
               <CheckCircle2 className="w-4 h-4 text-[#d4ff4a]" />
-              <span>Confirmar Alta y Crear Proyecto en Operación →</span>
+              <span>Confirmar →</span>
             </button>
           </div>
         </form>
