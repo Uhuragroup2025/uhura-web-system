@@ -607,19 +607,18 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-start">
             <div className="space-y-1">
               <label className="font-bold text-[#475569] block min-h-6">
-                Líder de alcance: <span className="text-red-500">*</span>
+                Responsables del alcance: <span className="text-red-500">*</span>
               </label>
               <div className="relative" onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setLeadersOpen(false); }}>
-                <button type="button" aria-label="Líder de alcance" aria-expanded={leadersOpen} onClick={() => setLeadersOpen(!leadersOpen)} onKeyDown={(event) => { if (event.key === 'Escape') setLeadersOpen(false); }} className="w-full h-11 min-w-0 text-left px-3 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-semibold bg-white flex justify-between items-center gap-2">
-                  <span className="truncate">{selectedLeadUserIds.length ? eligibleLeaders.filter((leader) => selectedLeadUserIds.includes(leader.id)).map((leader) => leader.name).join(', ') : 'Seleccionar líderes…'}</span><span aria-hidden="true">⌄</span>
+                <button type="button" aria-label="Responsables del alcance" aria-expanded={leadersOpen} onClick={() => setLeadersOpen(!leadersOpen)} onKeyDown={(event) => { if (event.key === 'Escape') setLeadersOpen(false); }} className="w-full h-11 min-w-0 text-left px-3 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-semibold bg-white flex justify-between items-center gap-2">
+                  <span className="truncate">{selectedLeadUserIds.length ? eligibleLeaders.filter((leader) => selectedLeadUserIds.includes(leader.id)).map((leader) => leader.name).join(', ') : 'Seleccionar responsables…'}</span><span aria-hidden="true">⌄</span>
                 </button>
                 {leadersOpen && <div className="absolute z-40 top-full mt-1 w-full max-h-48 overflow-y-auto space-y-2 rounded-xl border border-[#cbd5e1] p-3 bg-white shadow-lg">
-                  {eligibleLeaders.map((leader) => <label key={leader.id} className="flex items-center gap-2 text-xs">
+                  {eligibleLeaders.map((leader) => <label key={leader.id} onMouseDown={(event) => event.preventDefault()} className="flex items-center gap-2 text-xs cursor-pointer rounded-lg p-2 hover:bg-[#f3effa]">
                     <input type="checkbox" checked={selectedLeadUserIds.includes(leader.id)} onChange={(event) => { const checked = event.target.checked; setSelectedLeadUserIds((ids) => checked ? [...ids, leader.id] : ids.filter((id) => id !== leader.id)); }} />{leader.name}
                   </label>)}
                 </div>}
               </div>
-              {!selectedLeadUserIds.length && <span className="text-[10px] text-[#b45309]">Selecciona al menos un líder de scoping.</span>}
             </div>
 
             <div className="space-y-1">
@@ -631,18 +630,15 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
                   <span className="truncate">{commercialUserIds.length ? commercialUsers.filter((user) => commercialUserIds.includes(user.id)).map((user) => user.name).join(', ') : 'Seleccionar responsables…'}</span><span aria-hidden="true">⌄</span>
                 </button>
                 {commercialOpen && <div className="absolute z-40 top-full mt-1 w-full max-h-48 overflow-y-auto space-y-2 rounded-xl border border-[#cbd5e1] p-3 bg-white shadow-lg">
-                  {commercialUsers.map((user) => <label key={user.id} className="flex items-start gap-2 text-xs">
+                  {commercialUsers.map((user) => <label key={user.id} onMouseDown={(event) => event.preventDefault()} className="flex items-start gap-2 text-xs cursor-pointer rounded-lg p-2 hover:bg-[#f3effa]">
                     <input type="checkbox" checked={commercialUserIds.includes(user.id)} onChange={(event) => { const checked = event.target.checked; setCommercialUserIds((ids) => checked ? [...ids, user.id] : ids.filter((id) => id !== user.id)); }} /><span>{user.name}<span className="block text-[10px] text-[#64748b]">{user.officialRole || user.jobTitle || user.role}</span></span>
                   </label>)}
                 </div>}
               </div>
-              <span className="text-[10px] text-[#64748b] block">
-                Relación de cuenta y negociación
-              </span>
             </div>
 
             <div className="space-y-1 min-w-0">
-              <label htmlFor="opportunity-delivery-date" className="font-bold text-[#475569] block min-h-6">Fecha Max. de entrega</label>
+              <label htmlFor="opportunity-delivery-date" className="font-bold text-[#475569] block min-h-6">Fecha max. de entrega</label>
               <input id="opportunity-delivery-date" type="datetime-local" required value={deliveryDate} min={toLocalDateTime(Date.now() + 60000)} max={toLocalDateTime(Date.now() + 36 * 3600000)} onInput={(event) => { setDeliveryDate(event.currentTarget.value); setDeliveryError(''); }} onChange={(event) => { setDeliveryDate(event.target.value); setDeliveryError(''); }} className="w-full min-w-0 h-11 px-3 rounded-xl border border-[#cbd5e1] text-[#0f172a] bg-white text-xs" />
               <p className="text-[10px] text-[#64748b]">Dentro de las próximas 36 horas.</p>
               {deliveryError && <p role="alert" className="text-xs text-red-600">{deliveryError}</p>}

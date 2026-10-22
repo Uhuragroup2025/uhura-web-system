@@ -21,7 +21,7 @@ import {
 } from '../components/taskflow/types';
 import type { ScopeServiceDraft } from '../components/taskflow/newbusiness/BacklogScoper';
 import { SOWModal } from '../components/taskflow/newbusiness/SOWModal';
-import { isEligibleScopingLeader } from '../components/taskflow/newbusiness/teamCandidates';
+import { isEligibleScopingLeader, suggestActivityOwners } from '../components/taskflow/newbusiness/teamCandidates';
 import { getOperationalQuote, withOperationalQuote } from '../components/taskflow/newbusiness/quoteRules';
 import { INITIAL_PRODUCT_BACKLOG_TEMPLATES } from '../components/taskflow/templates/templateData';
 import { TemplateLibraryView } from '../components/taskflow/templates/TemplateLibraryView';
@@ -2012,6 +2012,7 @@ export const TaskFlowPrototype: React.FC = () => {
     quote.deliverables.forEach((qd, dIdx) => {
       const parentDelId = `del-${newProjectId}-${dIdx + 1}`;
       qd.backlogItems.forEach((bItem, bIdx) => {
+        const activityUser = activeTeam.find((user) => user.id === bItem.suggestedUserId);
         newTasksToCreate.push({
           id: `task-${newProjectId}-${dIdx + 1}-${bIdx + 1}`,
           title: bItem.title,
@@ -2033,14 +2034,14 @@ export const TaskFlowPrototype: React.FC = () => {
           completed: false,
           budgetedRole: bItem.roleName,
           budgetedRoleId: bItem.roleId,
-          // Compatibilidad temporal del contrato frontend:
-          // TaskItem requiere objeto assignee para evitar excepciones en vistas que leen task.assignee.name.
-          // Para tareas sin responsable real asignado:
-          // - assignee.id es undefined (NUNCA un string vacío ni un usuario ficticio).
-          // - assigneeIds es [] (garantiza que NUNCA se interprete ni persista como User en backend).
-          // - El rol requerido se preserva de forma canónica e independiente en budgetedRole y budgetedRoleId.
-          assigneeIds: [],
-          assignee: {
+          assigneeIds: activityUser ? [activityUser.id] : [],
+          assignee: activityUser ? {
+            id: activityUser.id,
+            name: activityUser.name,
+            role: bItem.roleName,
+            avatarBg: activityUser.avatarBg || 'bg-[#501f92]',
+            initials: activityUser.initials || activityUser.name.slice(0, 2).toUpperCase()
+          } : {
             id: undefined,
             name: `Sin asignar (${bItem.roleName})`,
             role: bItem.roleName,
@@ -2089,7 +2090,8 @@ export const TaskFlowPrototype: React.FC = () => {
       prev.map((opp) => {
         if (opp.id === opportunityId) {
           const current = getOperationalQuote(opp);
-          const imported = quote.deliverables.map((del, index) => {
+          const suggested = suggestActivityOwners(quote.deliverables, users, current?.deliverables || []);
+          const imported = suggested.map((del, index) => {
             const id = `qdel-import-${quote.id}-${index}`;
             return { ...del, id, quoteId: current?.id || quote.id,
               order: (current?.deliverables.length || 0) + index + 1,
@@ -2097,7 +2099,7 @@ export const TaskFlowPrototype: React.FC = () => {
                 id: `${id}-rb-${budgetIndex}`, quoteDeliverableId: id })),
               backlogItems: del.backlogItems.map((activity, activityIndex) => ({ ...activity,
                 id: `${id}-act-${activityIndex}`, quoteDeliverableId: id, order: activityIndex + 1,
-                suggestedUserId: null, suggestedUserName: null })) };
+                suggestedUserId: activity.suggestedUserId, suggestedUserName: activity.suggestedUserName })) };
           });
           const deliverables = [...(current?.deliverables || []), ...imported];
           const updatedQuote: QuoteProposal = { ...(current || quote), deliverables,
@@ -2128,6 +2130,7 @@ export const TaskFlowPrototype: React.FC = () => {
     const newOpportunityId = quote.opportunityId || `opp-${Date.now()}`;
     const finalizedQuote: QuoteProposal = {
       ...quote,
+      deliverables: quote.templateId ? suggestActivityOwners(quote.deliverables, users) : quote.deliverables,
       opportunityId: newOpportunityId
     };
 
