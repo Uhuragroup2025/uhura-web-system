@@ -1,7 +1,7 @@
 # Orbit · Guía de Arquitectura Evolutiva: People Master
 
-> **ESTADO DE ESTE DOCUMENTO:** Documento de Arquitectura y Visión de Producto Futura.  
-> **DESTINATARIO TÉCNICO:** Indunova (Backend Django REST Framework / PostgreSQL) y Equipo de Producto Uhura Group.  
+> **ESTADO DE ESTE DOCUMENTO:** Documento de Arquitectura y Visión de Producto Futura.
+> **DESTINATARIO TÉCNICO:** Indunova (Backend Django REST Framework / PostgreSQL) y Equipo de Producto Uhura Group.
 > **ALCANCE Y BLOQUEO:** Este documento define el modelo conceptual hacia el cual evolucionará la gestión de personas en Orbit en fases posteriores. **NO hace parte del alcance actual y NO bloquea la integración frontend ↔ backend del core operativo en curso.**
 
 ---
@@ -12,8 +12,8 @@ Orbit se encuentra cerrando la integración técnica de su core operativo (Proye
 
 A partir del análisis de la base administrativa de gestión humana de Uhura Group, se identifica la oportunidad de evolucionar a futuro hacia un **People Master** integral. Sin embargo, para preservar la agilidad, la estabilidad de los contratos de API y la privacidad de datos sensibles, se adopta la siguiente directriz arquitectónica:
 
-> **PRINCIPIO DE AISLAMIENTO DE DOMINIOS:**  
-> `UserProfile` no es ni será una "mega-tabla de RRHH".  
+> **PRINCIPIO DE AISLAMIENTO DE DOMINIOS:**
+> `UserProfile` no es ni será una "mega-tabla de RRHH".
 > La identidad operativa actual permanece estable y cerrada en su contrato v1. Los futuros dominios administrativos (compensación, contratos legales, dotación, seguridad y salud en el trabajo) se estructurarán en entidades satélite desacopladas cuando sea requerida su implementación.
 
 ---
@@ -34,7 +34,8 @@ El modelo actual representa exclusivamente al colaborador como actor operativo d
 - **`city`:** Ciudad de residencia para visibilidad de equipo distribuido.
 - **`birthDate`:** Fecha de nacimiento en formato ISO `YYYY-MM-DD`.
 - **`fecha_ingreso` / `joinedDate`:** Fecha contractual de vinculación laboral en formato ISO `YYYY-MM-DD` (Hire Date; de edición restringida; antigüedad y aniversario se derivan de ella).
-- **`capacityHours`:** Capacidad semanal contractual en horas (base para el motor de capacidad).
+- **`capacityHours` / `weeklyCapacityHours`:** Capacidad semanal base en horas (42 horas semanales predeterminadas para todo el equipo; editable solo por `system_admin`).
+- **`workCalendar`:** Calendario laboral canónico explícito (`colombia` o `mexico`; no inferido por ciudad).
 - **`status`:** Estado de cuenta (`Active` | `Inactive` | `Invited`).
 - **`avatar_url` / `avatarUrl`:** URL de la fotografía de perfil.
 
@@ -123,15 +124,15 @@ Los siguientes datos tienen carácter confidencial y restringido:
 
 ### 6.2. Reglas Mandatorias de Gobernanza:
 1. **Prohibición en Repositorios:** Ningún dato confidencial real de personas debe versionarse en Git ni dejarse almacenado en mocks o archivos estáticos de frontend.
-2. **Los 7 Niveles Canónicos RBAC Permanecen Intactos:**  
+2. **Los 7 Niveles Canónicos RBAC Permanecen Intactos:**
    No se creará un rol `hr_admin` dentro del enum `accessLevel`. La matriz RBAC de 7 niveles (`collaborator`, `leader`, `client_relationship`, `commercial`, `administrative`, `executive`, `system_admin`) se mantiene sin alteraciones.
-3. **Gobierno por Capacidades / Permisos Específicos:**  
+3. **Gobierno por Capacidades / Permisos Específicos:**
    La futura visibilidad y edición de datos sensibles de People se gobernará mediante permisos o capacidades funcionales específicas e independientes del `accessLevel` (por ejemplo: `people.hr.read`, `people.hr.write`, `people.compensation.read`, `people.compensation.write`, `people.sst.read`, `people.assets.manage` —nombres referenciales).
-4. **Aislamiento Técnico para `system_admin`:**  
+4. **Aislamiento Técnico para `system_admin`:**
    El rol `system_admin` es un perfil técnico de gestión de plataforma y seguridad de sistemas; **no tiene acceso automático ni por defecto a información salarial, contractual o médica** de los colaboradores.
-5. **Protección en Reposo y Auditoría:**  
+5. **Protección en Reposo y Auditoría:**
    Los datos sensibles deberán contar con controles reforzados de acceso, auditoría y protección en reposo. La estrategia técnica definitiva de persistencia y cifrado se definirá de manera concertada con los equipos de backend e infraestructura antes de iniciar la implementación de People Master.
-6. **Criterio de Necesidad Funcional en SST:**  
+6. **Criterio de Necesidad Funcional en SST:**
    No se debe asumir que toda la información existente en las bases administrativas actuales deba migrarse a Orbit. La inclusión futura de datos de SST o registros ocupacionales dependerá de una justificación funcional clara, de la legislación aplicable y de las políticas de privacidad de Uhura Group.
 
 ---

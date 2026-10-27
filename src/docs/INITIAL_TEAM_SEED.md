@@ -1,143 +1,120 @@
 # Guía de Carga Inicial y Seeding de Colaboradores (Uhura Group / Orbit)
 
-> **Documento Complementario a `ORBIT_PRODUCT_STATUS.md`**  
-> Este documento define la estructura y el dataset base para la inicialización (seeding, fixtures o scripts de migración) del equipo en la base de datos relacional de Orbit desarrollada por Indunova.
+> **Documento Complementario a `ORBIT_PRODUCT_STATUS.md`**
+> Este documento define la estructura y el dataset base referencial para la inicialización (seeding, fixtures o scripts de migración) del equipo en la base de datos relacional de Orbit desarrollada por Indunova.
+> **Fecha de Actualización:** 26 de octubre de 2026 — Alineación con decisiones confirmadas de producto y política de privacidad de repositorios públicos.
+
+> **AVISO DE PRIVACIDAD Y GOBERNANZA:**
+> La documentación pública define reglas, estructuras y comportamientos. La identidad nominal de colaboradores, correos, relaciones de reporte, calendarios individuales y crosswalk con backend se administra exclusivamente mediante **Equipo Canónico Privado**.
 
 ---
 
-## 1. Política de Protección de Datos Sensibles y Gobernanza
+## 1. Política de Protección de Datos Sensibles y Gobernanza de la Matriz Privada
 
-1. **Desacople de Datos Sensibles:**  
-   Los datos de carácter reservado o confidencial —tales como **números de documentos de identidad, salarios y compensaciones, copias de contratos laborales, direcciones residenciales o correos electrónicos personales**— **NO** deben versionarse en archivos markdown públicos o repositorios accesibles fuera del canal de infraestructura.
-2. **Canal de Suministro Controlado:**  
-   La información contractual y salarial oficial para poblar tablas paramétricas (como `RoleRate` o datos de nómina) será entregada a Indunova a través de canales administrativos seguros por parte de **Laura Viviana Salazar (Administrativa & RRHH)** y **Finanzas de Uhura Group**.
-3. **Estabilidad de la Especificación Funcional:**  
-   La especificación funcional maestra (`ORBIT_PRODUCT_STATUS.md`) define el comportamiento, reglas de negocio y contratos de API. Este archivo (`INITIAL_TEAM_SEED.md`) concentra los datos de contexto del equipo actual para su inicialización sin alterar la definición funcional si el equipo rota.
-
----
-
-## 2. Dataset Base: Perfiles Operativos de los 19 Colaboradores
-
-La siguiente tabla consolida los perfiles operativos del equipo Uhura Group al corte de Septiembre 2026, vinculando sus roles en el Catálogo de Servicios, niveles de autorización RBAC y fechas fundacionales de ingreso:
-
-| Nombre Completo | Nombres | Apellidos | Correo Corporativo | Cargo Operativo (`jobTitle`) | Rol Canónico (`StandardUhuraRole`) | Nivel RBAC (`accessLevel`) | Rol Sistema (`role`) | Fecha Ingreso (`fecha_ingreso`) | Líder Directo (`reportsTo`) | Fotografía Canónica (`avatar_url`) |
-|---|---|---|---|---|---|---|---|---|---|---|
-| **Ana María Giraldo Restrepo** | Ana María | Giraldo Restrepo | `ana.giraldo@uhuragroup.com` | Dirección General / CEO | Perfil Interno Dirección | `DIRECTOR` | `admin` | `2020-06-01` | Dirección General (N/A) | `ana-maria-giraldo.webp` |
-| **Nayeliz Paola Brunal Correa** | Nayeliz Paola | Brunal Correa | `nayeliz.brunal@uhuragroup.com` | Digital Content Specialist | `Digital Content Specialist` | `OPERATIVO` | `member` | `2022-02-14` | Camilo Vélez Henao | `nayeliz-brunal.webp` |
-| **Luisa Fernanda Urazan Prieto** | Luisa Fernanda | Urazan Prieto | `luisa.urazan@uhuragroup.com` | Operaciones & Cuentas | `Project / Operations Manager` | `LIDER` | `admin` | `2022-04-04` | Catalina Tejada Castaño | `luisa-fernanda-urazan.webp` |
-| **Laura Viviana Salazar Perez** | Laura Viviana | Salazar Perez | `laura.salazar@uhuragroup.com` | Administrativa & RRHH | Perfil Interno Soporte | `ADMINISTRATIVO` | `admin` | `2022-03-19` | Ana María Giraldo | `laura-viviana-salazar.webp` |
-| **Paola Andrea Monsalve Giron** | Paola Andrea | Monsalve Giron | `paola.monsalve@uhuragroup.com` | Product Lead / Dirección Producto | `Digital Product Strategist` | `DIRECTOR` | `admin` | `2022-07-05` | Ana María Giraldo | `paola-monsalve.webp` |
-| **Juan Sebastian Caicedo Correa** | Juan Sebastian | Caicedo Correa | `sebastian.caicedo@uhuragroup.com` | Traffic & Performance Specialist | `Traffic Specialist` | `OPERATIVO` | `member` | `2023-04-12` | Camilo Vélez Henao | `juan-sebastian-caicedo.webp` |
-| **Jenny Esmeralda Duque Ramírez** | Jenny Esmeralda | Duque Ramírez | `jenny.duque@uhuragroup.com` | Digital Designer | `Digital Designer` | `OPERATIVO` | `member` | `2023-06-05` | Diego Cadavid Díaz | `esmeralda-duque.webp` |
-| **Laura Isabel Gomez Agudelo** | Laura Isabel | Gomez Agudelo | `laura.gomez@uhuragroup.com` | Digital Designer | `Digital Designer` | `OPERATIVO` | `member` | `2023-06-05` | Paola Andrea Monsalve Giron | `laura-isabel-gomez.webp` |
-| **Diego Cadavid Díaz** | Diego | Cadavid Díaz | `diego.cadavid@uhuragroup.com` | Creative & Copy Lead | `Creative Strategist` | `LIDER` | `member` | `2023-11-16` | Ana María Giraldo | `diego-cadavid.webp` |
-| **Álvaro Antonio Gómez Machuca** | Álvaro Antonio | Gómez Machuca | `alvaro.gomez@uhuragroup.com` | Representante Legal / Dirección | Perfil Interno Dirección | `DIRECTOR` | `admin` | `2024-01-26` | Dirección General (N/A) | *`null` (Fallback `AG`)* |
-| **Juan Camilo Torres Ocampo** | Juan Camilo | Torres Ocampo | `camilo.torres@uhuragroup.com` | Creative Strategist | `Creative Strategist` | `OPERATIVO` | `member` | `2024-02-01` | Diego Cadavid Díaz | `juan-camilo-torres.webp` |
-| **Catalina Tejada Castaño** | Catalina | Tejada Castaño | `catalina.tejada@uhuragroup.com` | Dirección Comercial | Perfil Interno Comercial | `LIDER` | `admin` | `2024-04-18` | Ana María Giraldo | `catalina-tejada.webp` |
-| **Camilo Vélez Henao** | Camilo | Vélez Henao | `camilo.velez@uhuragroup.com` | Growth Lead / Tech | `Tech / Solutions Lead` | `LIDER` | `admin` | `2024-07-01` | Ana María Giraldo | `camilo-velez.webp` |
-| **Oscar Iván Cerpa Peñates** | Oscar Iván | Cerpa Peñates | `oscar.cerpa@uhuragroup.com` | Front-End Dev / Fullstack | `Front-End Dev` | `OPERATIVO` | `member` | `2024-09-01` | Paola Andrea Monsalve Giron | `oscar-cerpa.webp` |
-| **Sara Rivera Echeverry** | Sara | Rivera Echeverry | `sara.rivera@uhuragroup.com` | Operations & Process | `Project / Operations Manager` | `OPERATIVO` | `member` | `2025-01-20` | Diego Cadavid Díaz | `sara-rivera.webp` |
-| **Simón Vélez Henao** | Simón | Vélez Henao | `simon.velez@uhuragroup.com` | Traffic Specialist | `Traffic Specialist` | `OPERATIVO` | `member` | `2025-05-15` | Camilo Vélez Henao | `simon-velez.webp` |
-| **Melisa Gil Gómez** | Melisa | Gil Gómez | `melisa.gil@uhuragroup.com` | Community & Content | `Community Manager` | `OPERATIVO` | `member` | `2025-08-04` | Diego Cadavid Díaz | `melisa-gil.webp` |
-| **Sara María Lagos Obando** *(Sarimar)* | Sara María | Lagos Obando | `sara.lagos@uhuragroup.com` | Creative Specialist | `Digital Content Specialist` | `OPERATIVO` | `member` | `2026-02-12` | Diego Cadavid Díaz | `sara-maria-lagos.webp` |
-| **Diego Alejandro Flores Vargas** | Diego Alejandro | Flores Vargas | `diego.flores@uhuragroup.com` | Media & Design | `Motion / Multimedia Designer` | `OPERATIVO` | `member` | `2026-01-26` | Diego Cadavid Díaz | `diego-alejandro-flores.webp` |
-
-*\*Nota: Las fechas de nacimiento (`birthDate`) oficiales se inyectarán desde el formulario de Equipo & Accesos o mediante el fixture seguro de RRHH al momento de la siembra en producción.*
+1. **Protección de Datos en Repositorio Público:**
+   En estricto cumplimiento de las políticas de privacidad y seguridad para repositorios públicos, este documento **no publica nombres de personas, apellidos, correos electrónicos corporativos ni personales, números de identificación, direcciones domiciliarias, fechas de nacimiento, fechas de ingreso, ciudades, salarios ni Backend User IDs**.
+2. **Canal de Suministro Seguro a Indunova:**
+   La información sensible requerida para el crosswalk técnico y la creación de credenciales de acceso es administrada de forma reservada por el área administrativa y entregada a Indunova por canales administrativos seguros y cifrados.
+3. **Contraste con la Matriz de Equipo Canónico Privado:**
+   Todos los cargos, roles oficiales, niveles de acceso y dependencias de reporte están rigurosamente contrastados contra la matriz autoritativa privada (*Equipo Canónico Privado*).
+4. **Validación del Universo de Colaboradores (18 Activos):**
+   El universo canónico vigente de Orbit está formalmente cerrado y confirmado en **exactamente 18 colaboradores activos**. La referencia histórica preliminar a 19 colaboradores ha sido corregida y descartada en la matriz autoritativa.
+5. **Gobernanza del Perfil Ejecutivo (`executive`):**
+   El perfil `executive` adicional definido en Equipo Canónico Privado forma parte de los 18 colaboradores activos y debe contar con usuario Orbit. Su asociación con Backend User ID se resolverá durante el crosswalk con Indunova.
+6. **Gobernanza de Perfiles `system_admin`:**
+   Existen dos usuarios iniciales con Access Level `system_admin` con idénticos permisos técnicos en plataforma. La diferenciación funcional y operativa (soporte técnico / producto digital vs. soporte administrativo y configuración de capacidades/calendarios) corresponde a su rol en la organización, según se define en Equipo Canónico Privado, sin exponer identidades nominales en la documentación pública.
 
 ---
 
-## 3. Ejemplo Estructurado de Fixture para Seeding (JSON)
+## 2. Estructura y Distribución de Colaboradores Activos del Equipo Canónico (18 Puestos)
 
-Para orientar a Indunova en la preparación de scripts de migración o fixtures de Django (`python manage.py loaddata`), se propone la siguiente estructura de entidad:
+La siguiente tabla resume la distribución estructural y operativa de los **18 colaboradores activos** del equipo canónico según su nivel RBAC, área funcional, rol oficial del Catálogo de Servicios, calendario laboral asignado y capacidad semanal base (42 horas):
+
+| Puestos Activos | Nivel RBAC (`accessLevel`) | Área Operativa | Rol Canónico Oficial | Calendario Laboral | Capacidad Semanal Base |
+|:---:|---|---|---|:---:|:---:|
+| 2 | `executive` | Dirección General / Administrativo | CEO | Colombia (2) | 42h |
+| 2 | `system_admin` | Producto Digital / Administrativo | Product Lead / Administrativa | Colombia (2) | 42h |
+| 1 | `commercial` | Comercial | Directora Comercial | México (1) | 42h |
+| 1 | `client_relationship` | Comercial | Client Relationship Strategist | Colombia (1) | 42h |
+| 2 | `leader` | Creatividad / Growth | Creative Strategy Lead / Growth Manager | Colombia (1) / México (1) | 42h |
+| 10 | `collaborator` | Creatividad / Growth / Producto Digital | Diseñadores, Creadores de Contenido, Dev Front-End, Traffickers Media | Colombia (7) / México (3) | 42h |
+| **18** | **Total Colaboradores Activos** | — | — | **Colombia (13) / México (5)** | **42h por persona** |
+
+> *Nota:* La correspondencia nominal exacta, correos corporativos, cargos operativos, líderes directos de reporte (`reportsTo`), calendarios laborales individuales y crosswalk con Backend User ID se mantienen exclusivamente en la matriz privada **Equipo Canónico Privado** y el canal administrativo seguro con Indunova.
+
+---
+
+## 3. Cuentas duplicadas e históricas identificadas para conciliación por Indunova
+
+Los pares de cuentas duplicadas y los perfiles históricos que requieren conciliación están identificados en Equipo Canónico Privado. Indunova deberá aplicar la inactivación lógica preservando todas las relaciones e historial.
+
+### Reglas Técnicas de Conciliación en Base de Datos:
+1. **Conservación de Cuentas Activas Canónicas:** Conservar activo únicamente el perfil canónico oficial (`is_active = True`) de cada uno de los 18 colaboradores activos.
+2. **Inactivación Lógica Obligatoria:** Inactivar los registros duplicados y perfiles históricos identificados en la matriz privada (`is_active = False` / `status: 'Inactive'`).
+3. **Preservación Íntegra de Historial:** Preservar íntegramente las tareas, horas registradas (`TimeLog`), proyectos pasados y el historial de relaciones asociadas a los perfiles inactivados.
+4. **Exclusión de Selectores y Filtros Operativos:** Excluir automáticamente los perfiles inactivos de los selectores activos de asignación de tareas, responsables de entregables y filtros de planificación de capacidad.
+5. **Prohibición de Borrado Físico:** Bajo ninguna circunstancia se ejecutarán borrados físicos (`DELETE`) en base de datos.
+
+---
+
+## 4. Reglas Canónicas de Capacidad y Calendarios
+
+1. **Capacidad Semanal Base:**
+   - Predeterminada en **42 horas semanales** por persona para todos los colaboradores activos.
+   - Editable individualmente en *Equipo & Accesos* exclusivamente por usuarios con nivel `system_admin`.
+   - El estado "Sin configurar" solo debe presentarse si en base de datos el valor no existe (`null`).
+2. **Calendarios Laborales (Colombia y México):**
+   - Configurados explícitamente por persona (`colombia` o `mexico`).
+   - La ciudad de residencia es informativa y **nunca determina el calendario laboral**.
+   - Los festivos se calculan estrictamente según el calendario asignado (Ley Emiliani para Colombia vs. Ley Federal del Trabajo para México).
+   - **No retroactividad:** Las modificaciones de calendario o capacidad entran en vigor a partir de su fecha de vigencia y no alteran semanas históricas cerradas.
+3. **Rol de Google Calendar:**
+   > Google Calendar puede apoyar la sincronización de ausencias y vacaciones, pero no reemplaza el calendario laboral Colombia o México configurado explícitamente en Equipo & Accesos.
+4. **Fórmula Canónica de Capacidad Neta Semanal:**
+   $$\text{Capacidad Neta Semanal} = \text{Capacidad Semanal Base} - \text{Horas Festivos del Calendario} - \text{Ausencias Aprobadas}$$
+5. **Distribución Diaria Referencial:**
+   No se asumen 8 horas fijas por día; se deriva dinámicamente como $\frac{\text{Capacidad Base}}{5}$ para semanas hábiles estándar de 5 días (8.4 horas/día sobre 42h).
+
+---
+
+## 5. Estructura Referencial de Fixture para Seeding (JSON)
+
+> **Posible implementación técnica, sujeta a validación de Indunova.**
+> Los siguientes fixtures utilizan datos enteramente ficticios para ilustrar el esquema relacional esperado sin exponer identidades reales ni dejar claves foráneas colgantes.
 
 ```json
 [
   {
     "model": "orbit_core.userprofile",
-    "pk": "usr-ana-001",
+    "pk": "usr-ejemplo-001",
     "fields": {
-      "email": "ana.giraldo@uhuragroup.com",
-      "first_name": "Ana María",
-      "last_name": "Giraldo Restrepo",
-      "job_title": "Dirección General / CEO",
-      "official_role": null,
-      "role": "admin",
-      "access_level": "DIRECTOR",
-      "fecha_ingreso": "2020-06-01",
-      "birth_date": null,
+      "first_name": "Usuario",
+      "last_name": "Ejemplo 1",
+      "job_title": "Rol de ejemplo 1",
+      "official_role": "Rol cotizable de ejemplo 1",
+      "access_level": "collaborator",
+      "work_calendar": "colombia",
+      "weekly_capacity_hours": 42.0,
+      "calendar_effective_date": "2026-10-26",
       "reports_to": null,
-      "avatar_url": null,
       "is_active": true
     }
   },
   {
     "model": "orbit_core.userprofile",
-    "pk": "usr-oscar-014",
+    "pk": "usr-ejemplo-002",
     "fields": {
-      "email": "oscar.cerpa@uhuragroup.com",
-      "first_name": "Oscar Iván",
-      "last_name": "Cerpa Peñates",
-      "job_title": "Front-End Dev / Fullstack",
-      "official_role": "Front-End Dev",
-      "role": "member",
-      "access_level": "OPERATIVO",
-      "fecha_ingreso": "2024-09-01",
-      "birth_date": null,
-      "reports_to": "usr-camilo-013",
-      "avatar_url": null,
+      "first_name": "Usuario",
+      "last_name": "Ejemplo 2",
+      "job_title": "Rol de ejemplo 2",
+      "official_role": "Rol cotizable de ejemplo 2",
+      "access_level": "collaborator",
+      "work_calendar": "mexico",
+      "weekly_capacity_hours": 42.0,
+      "calendar_effective_date": "2026-10-26",
+      "reports_to": "usr-ejemplo-001",
       "is_active": true
     }
   }
 ]
 ```
-
----
-
-## 4. Reglas de Cálculo en la Carga Inicial
-
-1. **`fecha_ingreso` (Hire Date):** Se almacena como fecha civil pura (`YYYY-MM-DD`). No debe incluir marcas de tiempo (horas/minutos) para evitar problemas de conversión horaria.
-2. **Cálculo Derivado de Aniversario:**  
-   El backend y el frontend calculan el aniversario anual y los años de antigüedad al momento de consultar el perfil:
-   ```python
-   # Lógica conceptual de aniversario
-   years_completed = current_date.year - user.fecha_ingreso.year
-   current_year_anniversary = user.fecha_ingreso.replace(year=current_date.year)
-   ```
-3. **Asignación de Capacidad Base Inicial:**  
-   Cada colaborador debe inicializarse con su capacidad semanal contractual configurada en su perfil (`UserProfile.capacityHours`, por defecto 40h semanales según su jornada laboral legal). La capacidad base de una persona es una cantidad semanal pura; no se aplican deducciones fijas artificiales ni reservas automáticas de horas internas (ej. prohibida la equivalencia automática de 32h productivas + 8h internas). Los rituales, capacitaciones o trabajos internos se registran contra proyectos/tareas de tipo `internal_non_billable`, mientras que los seguimientos y gestiones atribuibles a un cliente se imputan a su proyecto correspondiente.
-
----
-
-## 5. Mapeo Canónico de Fotografías de Perfil para Seeding de Medios (Indunova)
-
-### 5.1 Convención de Nomenclatura para el Almacenamiento en Bucket / CDN
-Cuando Indunova aprovisione el bucket de almacenamiento (GCS / S3 / CDN), las 18 imágenes validadas del equipo deberán cargarse bajo la ruta convenida (e.g. `team/` o `avatars/`) con los siguientes nombres canónicos normalizados (kebab-case en formato WebP):
-
-1. **`ana-maria-giraldo.webp`** — Ana María Giraldo (CEO)
-2. **`paola-monsalve.webp`** — Paola Andrea Monsalve (Product Lead)
-3. **`luisa-fernanda-urazan.webp`** — Luisa Fernanda Urazán (Operaciones & Cuentas)
-4. **`diego-cadavid.webp`** — Diego Cadavid (Creative & Copy Lead)
-5. **`esmeralda-duque.webp`** — Jenny Esmeralda Duque Ramírez (Content Creator)
-6. **`nayeliz-brunal.webp`** — Nayeliz Paola Brunal Correa (Digital Content Specialist)
-7. **`laura-isabel-gomez.webp`** — Laura Isabel Gómez Agudelo (Digital Designer)
-8. **`catalina-tejada.webp`** — Catalina Tejada Castaño (Directora Comercial)
-9. **`juan-sebastian-caicedo.webp`** — Juan Sebastián Caicedo Correa (Traffic & Performance Specialist)
-10. **`oscar-cerpa.webp`** — Oscar Iván Cerpa Peñates (Front-End Dev / Fullstack)
-11. **`sara-rivera.webp`** — Sara Rivera Echeverry (Community Manager)
-12. **`simon-velez.webp`** — Simón Vélez Henao (Trafficker y DigiOps)
-13. **`melisa-gil.webp`** — Melisa Gil Gómez (Creative Designer)
-14. **`camilo-velez.webp`** — Camilo Vélez Henao (Growth Lead / Tech)
-15. **`juan-camilo-torres.webp`** — Juan Camilo Torres Ocampo (Creative Strategist)
-16. **`diego-alejandro-flores.webp`** — Diego Alejandro Flores Vargas (Media & Design)
-17. **`sara-maria-lagos.webp`** — Sara María Lagos Obando / Sarimar (Creative Specialist)
-18. **`laura-viviana-salazar.webp`** — Laura Viviana Salazar Pérez (Administrativa & RRHH)
-
-### 5.2 Colaborador sin Fotografía (Fallback Canónico)
-* **Álvaro Antonio Gómez Machuca** (`u-19`, Representante Legal / Dirección General):  
-  No cuenta con fotografía en el lote inicial. Su valor en base de datos debe ser `avatar_url = null`.  
-  El frontend de Orbit renderiza automáticamente su fallback canónico: iniciales **`AG`** sobre color institucional **`bg-[#1e293b]`**.
-
-### 5.3 Regla de Desacople de Almacenamiento y Fuente Temporal para Prototipo
-* **Arquitectura Definitiva:** El frontend de Orbit consume exclusivamente la URL absoluta expuesta en el campo `avatar_url` de la API de colaboradores (`backend -> avatar_url -> UserAvatar`).
-* **Fuente Temporal de Frontend:** Mientras Indunova implementa la persistencia y almacenamiento definitivo en bucket/CDN, las 18 imágenes validadas se encuentran copiadas en `public/assets/team/` y referenciadas temporalmente en `mockData.ts` (e.g. `/assets/team/paola-monsalve.webp`) para efectos de prototipado y QA visual de las interfaces.
-* **Sustitución en Producción:** Una vez el backend de Indunova exponga las URLs reales desde su CDN/Cloud Storage, las rutas locales serán sustituidas de forma transparente por la respuesta del API sin requerir ningún cambio en `UserAvatar` ni en los componentes consumidores.

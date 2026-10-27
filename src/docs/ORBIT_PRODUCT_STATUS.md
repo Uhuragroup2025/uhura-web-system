@@ -1,10 +1,19 @@
 # ORBIT — Especificación Funcional Maestra de Producto y Arquitectura de Dominio
 
-> **Documento:** Especificación Funcional Maestra para Portabilidad, Backend y Modelo de Datos  
-> **Destinatario Técnico Principal:** Indunova (Backend Django REST Framework / PostgreSQL) y Equipo de Producto Uhura Group  
-> **Fecha de Actualización:** Octubre 2026  
-> **Versión:** 3.2.0 (Master Functional Freeze & UAT Reconciliation)  
-> **Estado:** Especificación Maestra Canónica Reconciliada — Fuente de Verdad Funcional de Orbit  
+> **Documento:** Especificación Funcional Maestra para Portabilidad, Backend y Modelo de Datos
+> **Destinatario Técnico Principal:** Indunova (Backend Django REST Framework / PostgreSQL) y Equipo de Producto Uhura Group
+> **Fecha de Actualización:** 26 de octubre de 2026
+> **Versión:** 3.3.0 (Master Functional Freeze & Canonical Decision Alignment)
+> **Estado:** Especificación Maestra Canónica Reconciliada — Fuente de Verdad Funcional de Orbit
+>
+> **Convención de Estados de Implementación:**
+> - 🟢 **Decisión funcional aprobada:** Definición canónica cerrada y acordada por Producto Uhura.
+> - 🟣 **Implementado en prototipo:** Experiencia interactiva y validaciones visuales operativas en frontend React.
+> - 🔵 **Implementado por Indunova:** Persistencia en PostgreSQL y endpoints REST en Django DRF completados en backend.
+> - 🟡 **Pendiente de implementación o validación:** Requerimiento formalizado en espera de desarrollo o validación operativa.
+
+> **AVISO DE PRIVACIDAD Y GOBERNANZA:**
+> La documentación pública define reglas, estructuras y comportamientos. La identidad nominal de colaboradores, correos, relaciones de reporte, calendarios individuales y crosswalk con backend se administra exclusivamente mediante **Equipo Canónico Privado**.
 
 ---
 
@@ -47,7 +56,7 @@
 Este documento constituye la **especificación funcional y de arquitectura de dominio maestra** de Orbit, reconciliada directamente con el prototipo de producto y la experiencia aprobada en pruebas UAT. Ha sido estructurado específicamente para que el equipo de backend e infraestructura (**Indunova**) disponga del diseño relacional, reglas invariantes, contratos de transferencia y fronteras de integración necesarios para construir la persistencia en PostgreSQL y los servicios REST en Django.
 
 ### Definición de Freeze Funcional
-> **El "Freeze Funcional" NO significa que todas las pantallas estén visualmente terminadas o que no puedan pulirse detalles estéticos de UI.**  
+> **El "Freeze Funcional" NO significa que todas las pantallas estén visualmente terminadas o que no puedan pulirse detalles estéticos de UI.**
 > Significa que **la topología de entidades, las relaciones, las reglas de negocio, los estados de transición, la persistencia requerida y las fronteras con sistemas externos quedan congelados y formalizados**. Ningún cambio posterior alterará la lógica de datos aquí establecida sin un proceso formal de control de versiones.
 > **Regla de oro de UAT:** Un defecto puntual de implementación en staging no cambia la especificación funcional; documenta el comportamiento esperado aprobado de Orbit frente a las discrepancias.
 
@@ -147,10 +156,10 @@ SISTEMA / ADMINISTRACIÓN
   └─ Equipo & Accesos (Directorio de Colaboradores, Invitaciones y Matriz RBAC Unificada)
 ```
 
-> **DECISIONES DE CONSOLIDACIÓN Y REDUCCIÓN DE RUIDO:**  
-> 1. **Horas / Time Tracking:** Se retiró `Horas` de la navegación primaria. Mi Día absorbió el cronómetro (timer), la carga rápida/manual y el registro de horas de hoy. La consulta histórica de Timesheets se accede de forma secundaria contextual.  
-> 2. **Cotizador:** NO existe como módulo independiente en el sidebar. La cotización es una fase interna dentro de la oportunidad en **New Business**.  
-> 3. **Finanzas y El Muro:** Se retiraron del sidebar de navegación diaria para preservar el foco operativo.  
+> **DECISIONES DE CONSOLIDACIÓN Y REDUCCIÓN DE RUIDO:**
+> 1. **Horas / Time Tracking:** Se retiró `Horas` de la navegación primaria. Mi Día absorbió el cronómetro (timer), la carga rápida/manual y el registro de horas de hoy. La consulta histórica de Timesheets se accede de forma secundaria contextual.
+> 2. **Cotizador:** NO existe como módulo independiente en el sidebar. La cotización es una fase interna dentro de la oportunidad en **New Business**.
+> 3. **Finanzas y El Muro:** Se retiraron del sidebar de navegación diaria para preservar el foco operativo.
 > 4. **Equipo & Accesos:** Centraliza en una experiencia tabulada el directorio del equipo, invitaciones y la matriz RBAC.
 
 ---
@@ -163,10 +172,10 @@ El flujo lineal de la información y los handoffs entre roles a través de Orbit
 [1. HUBSPOT: Brief Recibido & Oportunidad Comercial]
          │
          ▼
-[2. COMERCIAL EN ORBIT (Catalina / Luisa)]
+[2. COMERCIAL EN ORBIT (Commercial / Client Relationship)]
          │ • Crea Oportunidad en New Business
          │ • Registra prospecto, brief y contacto
-         │ • Asigna Líder de Alcance (ej. Paola Monsalve / Diego Cadavid)
+         │ • Asigna Líder de Alcance (ej. Product Lead / Creative Strategy Lead)
          │
          ▼ (Handoff 1: Notificación en campana y acción en Mi Día del Líder)
 [3. LÍDER DE ALCANCE EN ORBIT (Product Lead / Creative Lead)]
@@ -237,7 +246,7 @@ El flujo lineal de la información y los handoffs entre roles a través de Orbit
          ▼
 [9. CONTROL DE CAPACIDAD Y FACTURACIÓN FISCAL]
          ├─ Capacidad: Disponibilidad semanal neta (descontando festivos y ausencias)
-         └─ Alegra: Facturación electrónica DIAN a través de Vivian y Terceros fiscales
+         └─ Alegra: Facturación electrónica DIAN a través del Área Administrativa y Terceros fiscales
 ```
 
 ---
@@ -264,14 +273,14 @@ El journey punta a punta de New Business está estructurado en 10 pasos coordina
 3. **Líder recibe la oportunidad:** Mi Día y la campana de notificaciones alertan al Líder con una acción prioritaria en su bandeja.
 4. **Líder trabaja el Alcance Técnico:** Ingresa a la pestaña *Alcance y propuesta*, estructura los entregables y actividades (desde catálogo o desde cero), asigna roles oficiales (`StandardUhuraRole`), horas estimadas, colaboradores tentativos, diligencia las semanas productivas y adjunta el enlace a la presentación de propuesta técnica (PPT/Drive).
 5. **Líder marca "Alcance listo / Notificar a Comercial":** Al pulsar el botón `Marcar alcance listo (X h)`, el sistema valida que estén diligenciados: (a) Enlace a la propuesta técnica/PPT en Drive, (b) Semanas productivas de entrega (para proyectos únicos), y (c) Horas técnicas en el alcance. La oportunidad pasa automáticamente a estado `internal_review` (*"Alcance listo · En revisión de pricing y margen"*).
-6. **Comercial recibe el handoff:** Mi Día y la campana alertan a Comercial (Catalina / Luisa) que la oportunidad está lista para cotización financiera.
+6. **Comercial recibe el handoff:** Mi Día y la campana alertan a Comercial que la oportunidad está lista para cotización financiera.
 7. **Comercial realiza cálculo financiero externo:** Abre el **Google Sheet Oficial / Calculadora Comercial** de Uhura Group y calcula el pricing, salarios, overhead, margen comercial e impuestos.
 8. **Comercial registra el resultado comercial en Orbit:** Registra en la cotización el monto total cotizado final, la moneda (`COP` o `USD`), la versión, la URL del Google Sheet de Finanzas y la URL del PDF/PPT de la propuesta comercial.
 9. **Cliente aprueba la propuesta:** Tras presentar la propuesta formal, el cliente manifiesta su aprobación técnica y económica. HubSpot refleja el estado Cerrado Ganado (`won`). Comercial actualiza el estado a Ganada en Orbit.
 10. **Conversión a Proyecto Operativo:** Comercial o Líder ejecuta `Convertir a Proyecto Operativo`, transfiriendo el alcance y las horas aprobadas a la ejecución.
 
 #### 1.3 Estado Actual
-**Implementado en Frontend / Parcial para Backend.**  
+**Implementado en Frontend / Parcial para Backend.**
 La navegación por pestañas (`Resumen`, `Alcance y propuesta`, `Documentos`) está operativa con reactividad en estado local. Falta persistencia en base de datos.
 
 #### 1.4 Entidades y Campos Principales
@@ -281,7 +290,7 @@ La navegación por pestañas (`Resumen`, `Alcance y propuesta`, `Documentos`) es
   - `prospectAccountName`: String (Nombre de la empresa prospecto).
   - `clientId`: UUID (Opcional, si el cliente ya existe en Orbit).
   - `leadUserId` / `leadUserName`: String (Líder asignado canónico: *Product Lead, Creative Strategy Lead, Growth Manager, CEO, Directora Comercial*).
-  - `commercialOwner`: String (Comercial asignada: Catalina Tejada, Luisa Urazán, etc.).
+  - `commercialOwner`: String (Usuario comercial o de relación con cliente asignado).
   - `leadUserIds`: Array de UUIDs (Opcional, preparación interna desacoplada para asignación múltiple concurrente 1..N).
   - `contactName`, `contactEmail`, `contactPhone`: String.
   - `hubspotDealId`, `hubspotDealUrl`: String (Identificador en HubSpot).
@@ -351,6 +360,12 @@ Fuente: *"FORMATO DE PROCESO DE ÁREA UHURA (2026) - PRODUCTO DIGITAL"*
 2. **Flujo "Usar en New Business" y Asociación Previa Obligatoria:** La plantilla no genera cotizaciones huérfanas en el vacío ni en estados paralelos. La oportunidad debe existir previamente antes de persistir la cotización: el usuario selecciona una oportunidad existente en New Business o crea una nueva a partir de un Brief/prospecto, asignando `opportunityId` antes de finalizar la cotización.
 3. **Roles Estándar Obligatorios:** Las plantillas solo pueden construirse con roles del catálogo oficial de Uhura (`STANDARD_UHURA_ROLES`). Nombres informales (*"diseñador web"*, *"redactor"*, *"developer"*, *"tracfiker"*) han sido normalizados a sus respectivos 13 roles canónicos (*"Digital Designer"*, *"Digital Content Specialist"*, *"Front-End Dev"*, *"Client Relationship Strategist"*, *"Trafficker Media"*).
 4. **Cálculo Recursivo de Horas:** Toda plantilla recalcula automáticamente sus horas por actividad, horas acumuladas por entregable y total de horas por rol usando [`recalculateTemplateHours`](../components/taskflow/templates/templateEngine.ts).
+5. **Gobernanza de Plantillas por Rol `leader` (🟢 Decisión funcional aprobada):** Los usuarios con Access Level `leader` están plenamente facultados para:
+   - Crear nuevas plantillas del Catálogo de Servicios.
+   - Editar plantillas existentes (horas, entregables, actividades y roles).
+   - Duplicar plantillas para generar variantes de servicio.
+   - Archivar plantillas en desuso (sin borrado físico ni afectación a cotizaciones ya emitidas).
+   - Preparar y guardar alcances técnicos.
 
 ---
 
@@ -407,10 +422,10 @@ Entregable (Servicio / Frente Operativo)
 #### 4.1 Regla Arquitectónica Vigente: Desacoplamiento de Responsabilidades
 En Orbit rige la siguiente división estricta de dominios:
 
-> **Finanzas / Google Sheet Oficial = Fuente de verdad del cálculo financiero y pricing.**  
+> **Finanzas / Google Sheet Oficial = Fuente de verdad del cálculo financiero y pricing.**
 > Finanzas gobierna y evoluciona externamente la estructura salarial, costos de nómina, multiplicadores prestacionales, overhead operativo, bandas de margen comercial, tratamiento tributario (IVA) y TRM oficial. **Orbit no calcula tarifas, márgenes, IVA, bandas financieras ni fórmulas salariales internas.**
 
-> **Orbit = Alcance Técnico + Horas por Rol + Registro del Acuerdo Comercial Cotizado**  
+> **Orbit = Alcance Técnico + Horas por Rol + Registro del Acuerdo Comercial Cotizado**
 > Orbit es la plataforma operativa y de gestión de entrega. Los líderes estructuran entregables, actividades y roles requeridos; el rollup consolidado de horas alimenta el análisis de Finanzas; y Comercial registra en Orbit el resultado comercial cotizado final acordado (monto cotizado, moneda, versión, enlaces al Google Sheet y PDF/PPT de propuesta, condiciones comerciales y trazabilidad hacia la creación del proyecto operativo).
 
 #### 4.2 Retiro del Motor Financiero Interno de Orbit
@@ -497,8 +512,8 @@ Generador de la plantilla contractual técnica entre Uhura Group y el Cliente, e
   - **Tipos de Datos:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`SowDocumentData`)
 
 #### 7.2 Regla de Oro de Confidencialidad Operativa
-> **REGLA ESTRICTA DE GOBERNANZA:**  
-> **El SOW NUNCA debe exponer horas internas por rol ni tarifas salariales al cliente.**  
+> **REGLA ESTRICTA DE GOBERNANZA:**
+> **El SOW NUNCA debe exponer horas internas por rol ni tarifas salariales al cliente.**
 > El SOW expone: Objetivos, Entregables Formales, Actividades Contempladas, Cronograma en Semanas, Exclusiones Expresas, Inversión Total y Esquema de Pagos. El desglose de horas por rol y costo de nómina es secreto industrial y operativo exclusivo de Uhura.
 
 #### 7.3 Entidad y Campos (`SowDocumentData`)
@@ -524,42 +539,39 @@ Asegurar una transición ordenada y atómica entre la oportunidad comercial apro
   - **Modal Checklist Administrativo:** [`src/components/taskflow/newbusiness/AdministrativeChecklistModal.tsx`](../components/taskflow/newbusiness/AdministrativeChecklistModal.tsx)
   - **Tipos de Dominio:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`StartConditionsConfig`, `AdministrativeChecklist`, `FormalizationStatus`)
 
-#### 8.2 Reglas Invariantes de la Conversión a Proyecto Operativo
-Al convertir una oportunidad ganada a proyecto (`handleConvertOpportunityToProject`), el sistema ejecuta las siguientes reglas determinísticas:
-1. **Creación Atómica del Proyecto:** Se genera la entidad `ProjectSummaryItem` con código único (e.g. `ECO-42`, `PRJ-01`), asignando el tipo de proyecto (`fixed_project` o `fee_monthly`), cliente, fechas y líder operativo.
-2. **Traslado de Entregables:** Los entregables cotizados en la propuesta aprobada (`QuoteDeliverable`) se transforman 1:1 en `ProjectDeliverable`, preservando su orden, descripción y desglose de horas cotizadas por rol (`budgetByRole`).
-3. **Traslado de Tareas Atómicas:** Cada actividad del backlog cotizado (`QuoteBacklogItem`) se transforma en una tarea operativa (`TaskItem`) con:
-   - `status: 'todo'`
-   - `budgetedHours = item.estimatedHours`
-   - `budgetedRole = item.roleName` y `budgetedRoleId = item.roleId`
-   - `deliverableId = parentDeliverable.id`
-   - Si la oportunidad traía actividades detalladas, se preservan 1:1; si contenía entregables macro, el proyecto arranca con esas unidades estructurales para que el equipo no empiece desde una hoja en blanco.
-4. **Presupuesto Canónico de Horas:** `project.soldHours` hereda de forma inmutable el total de horas cotizadas de la propuesta (`quote.totalHoursRollup`).
-5. **Trazabilidad Integral:** Se transfieren los enlaces y referencias clave: `commercialOwner`, `leadUserId`, `clientId`, `hubspotDealId`, `hubspotDealUrl`, `driveFolderUrl`, `driveFolderId`, y la referencia fiscal inicial `taxEntityId`.
+#### 8.2 Reglas Invariantes de la Conversión Operativa Vigente (🟢 Decisión funcional aprobada)
 
-#### 8.3 Estados de Transición hacia Operación
-```text
-[Cotización Aprobada]
-         │
-         ▼
-[Estado: Pendiente de Formalización] ──► (El proyecto ya existe en Orbit para configuración)
-         │
-         ├─ Gate 1: SOW / Contrato Firmado (Obligatorio)
-         ├─ Gate 2: Anticipo Bancario Recibido (Configurable: Requerido en proyectos cerrados / No aplica en fees)
-         │
-         ▼ (Se cumplen Gates 1 y 2)
-[Estado: Listo para Onboarding / Kick-off]
-         │
-         ├─ Gate 3: Documentación Fiscal (RUT/Cédula) ──► NO BLOQUEA OPERACIÓN (Trámite paralelo con Vivian)
-         ├─ Gate 4: Sesión de Onboarding Realizada
-         │
-         ▼
-[Estado: Activo] ──► (El equipo registra tiempo y ejecuta tareas con normalidad)
-```
+1. **Conversión Atómica de Oportunidad a Proyecto:**
+   - Una oportunidad comercial en estado Ganada (`won`) se convierte en Cliente y Proyecto operativo mediante `ConvertOpportunityModal`.
+   - Se trasladan automáticamente:
+     - Entregables cotizados 1:1 (`ProjectDeliverable`) con su presupuesto de horas por rol.
+     - Actividades cotizadas transformadas en tareas operativas (`TaskItem`).
+     - Trazabilidad comercial: cliente asociado, enlaces a briefs, propuesta y referencias a HubSpot.
+2. **Autorización de Conversión:**
+   - La acción de conversión está habilitada para perfiles con Access Level `commercial` y `client_relationship`.
 
-#### 8.4 Invariantes de Negocio
-- **El RUT y la Cédula NO son bloqueantes para el inicio operativo:** Son gestionados por Vivian antes de emitir la factura legal en Alegra, pero el equipo técnico puede iniciar discovery y diseño.
-- **Anticipo configurable:** En proyectos únicos cerrados es usualmente el 50%; en contratos de fee mensual se define como *No Aplica*.
+#### 8.3 Propuesta Funcional en Evaluación: Activación en Dos Fases y Gobernanza del Cronograma (⚠️ Propuesta funcional pendiente de aprobación e implementación)
+
+> **NOTA DE ALCANCE Y DESACOPLE:**
+> Los siguientes conceptos corresponden a una **propuesta funcional en evaluación para una fase posterior**.
+> **NO hacen parte de las decisiones cerradas de esta actualización, NO están implementados en el prototipo vigente y NO deben considerarse contratos consolidados:**
+> - Separación entre "Convertir" e "Iniciar Proyecto".
+> - Nuevos estados de proyecto como `Pendiente de inicio` o `En planificación`.
+> - Creación de tareas con `dueDate: null` o estado transitorio `unscheduled`.
+> - Conceptos de capacidad pendiente, tentativa y comprometida.
+> - Selección obligatoria de Project Lead en un flujo de inicio posterior.
+> - Aprobación formal de línea base de cronograma y reforecast.
+> - Diferenciación entre Proyecto Único y Fee Mensual en el flujo de activación.
+> Esta épica se desarrollará, prototipará y validará en una **rama y ticket técnico independientes**.
+
+##### Resumen de la Propuesta en Evaluación:
+- **Fase 1 (Conversión):** Crearía el proyecto en un estado preliminar sin computar capacidad ni fechas definitivas hasta tener confirmación operativa.
+- **Fase 2 (Inicio manual):** Un usuario `commercial` o `client_relationship` ejecutaría manualmente "Iniciar Proyecto", fijando fecha de kick-off y asignando al Project Lead.
+- **Línea Base y Reforecast:** El Project Lead validaría las fechas tentativas proyectadas por Orbit antes de consolidar la línea base operativa.
+- **Estados Conceptuales Propuestos:**
+  - Oportunidad: *Borrador*, *En alcance*, *Lista para cotizar*, *Cotizada*, *Ganada*, *Convertida*.
+  - Proyecto (en evaluación): *Pendiente de inicio*, *En planificación*, *Activo*, *Cerrado*.
+  - Salud del Proyecto: *Saludable*, *Atención*, *En riesgo* (vectores de salud, no estados de flujo).
 
 ---
 
@@ -585,6 +597,24 @@ Entidad que representa la cuenta comercial, operativa y de marca sombrilla con l
 - **Cliente Especial Protegido:**
   - `UHURA Group` existe como cliente interno de sistema (`id: 'client-uhura-internal'`), donde se cargan proyectos de preventa, I+D, operaciones internas y administración. No puede ser borrado.
 
+#### 9.3 Gobernanza Comercial, Eliminación y Fuentes de Verdad (🟢 Decisión funcional aprobada)
+1. **Frente Comercial Unificado (`commercial` y `client_relationship`):**
+   - Ambos roles forman parte integral del frente comercial. Para este ticket, están autorizados únicamente para:
+     - Acceder a todos los Clientes y New Business.
+     - Crear y editar Clientes.
+     - Crear, editar y archivar oportunidades.
+     - Convertir oportunidades en Cliente y Proyecto.
+     - Eliminar únicamente borradores sin trazabilidad posterior.
+   - *Aclaración:* El ajuste de fechas del cronograma o reforecast pertenece a la propuesta futura de planificación y queda expresamente fuera de este alcance.
+2. **Reglas Estrictas de Eliminación vs. Archivo:**
+   - **Eliminación permitida:** Únicamente sobre borradores huérfanos que no posean proyectos vinculados, tareas, horas computadas ni relaciones posteriores en la cadena de valor.
+   - **Archivo obligatorio:** Si existe cualquier rastro de trazabilidad operativa, comercial o histórica, el registro NO se elimina: debe transicionar al estado `archived`.
+   - **Eliminación definitiva controlada:** Queda reservada con carácter exclusivo para usuarios con nivel `system_admin`.
+3. **Fuentes de Verdad e Integraciones Futuras:**
+   - **HubSpot:** Fuente de verdad del estado comercial (empresas, contactos, pipeline y cierre de deals).
+   - **Alegra:** Fuente de verdad fiscal y tributaria (terceros, NIT/RUT validado, facturas electrónicas e impuestos).
+   - **Orbit:** Centro de gravedad operativo que preserva la trazabilidad mediante identificadores externos (`hubspotDealId`, `alegraContactId`). Los cambios o bajas en los sistemas fuente se reflejarán bajo reglas de sincronización auditadas sin alterar el histórico de ejecución.
+
 ---
 
 ### Módulo 10: Administración Fiscal y Frontera con Alegra
@@ -593,11 +623,11 @@ Entidad que representa la cuenta comercial, operativa y de marca sombrilla con l
 Gestión de datos de facturación electrónica y articulación con el sistema contable Alegra.
 - **Referencias de Código:**
   - **Modal de Entidades Fiscales y Facturación:** [`src/components/taskflow/clients/ClientTaxEntitiesModal.tsx`](../components/taskflow/clients/ClientTaxEntitiesModal.tsx)
-  - **Checklist Administrativo Vivian:** [`src/components/taskflow/newbusiness/AdministrativeChecklistModal.tsx`](../components/taskflow/newbusiness/AdministrativeChecklistModal.tsx)
+  - **Checklist Administrativo:** [`src/components/taskflow/newbusiness/AdministrativeChecklistModal.tsx`](../components/taskflow/newbusiness/AdministrativeChecklistModal.tsx)
   - **Tipos Fiscales:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`ClientTaxEntity`, `AdministrativeChecklist`)
 
 #### 10.2 Responsable y Flujo de Trabajo
-- **Responsable en Uhura:** Vivian (Administración & Finanzas).
+- **Responsable en Uhura:** Área Administrativa (Administración & Finanzas).
 - **Checklist Administrativo (`AdministrativeChecklist`):**
   - `rutStatus`: Enum (`pending` | `received` | `verified`).
   - `idCardStatus`: Enum (`pending` | `received` | `verified`).
@@ -634,7 +664,7 @@ La ficha de proyecto se organiza en la siguiente estructura de pestañas oficial
 7. Configuración: Parámetros del proyecto, fechas oficiales y estados de formalización.
 ```
 
-> **DECISIÓN DE DISEÑO Y REDUCCIÓN DE RUIDO VISUAL (PESTAÑA RESUMEN):**  
+> **DECISIÓN DE DISEÑO Y REDUCCIÓN DE RUIDO VISUAL (PESTAÑA RESUMEN):**
 > Para evitar saturación y duplicidad cognitiva, la pestaña **Resumen** se optimizó radicalmente:
 > 1. **Eliminación de KPI Cards Duplicadas:** Las 4 tarjetas de resumen ("Presupuesto", "Ejecución", "Entregables", "Cronograma") fueron retiradas del cuerpo de Resumen porque ya se muestran de manera destacada y siempre visible en la tarjeta superior del encabezado del proyecto.
 > 2. **Eliminación de la Sección de Reworks Global:** Se retiró el bloque "Rondas de Ajuste & Retrabajos" del cuerpo de Resumen, dado que los retrabajos se auditan formalmente a nivel atómico en cada tarea y su límite contractual se visibiliza en la gobernanza.
@@ -700,6 +730,17 @@ Entidad persistente para insumos, accesos o gates que condicionan la ruta críti
 - `note`: String (Justificación obligatoria).
 - `createdAt`: DateTime inmutable.
 
+#### 11.7 Propuesta de Protocolo de Cierre del Proyecto (⚠️ Propuesta funcional pendiente de aprobación e implementación)
+
+> **NOTA DE ALCANCE:**
+> Las reglas detalladas de cierre vinculadas a la nueva propuesta de activación, estados de capacidad y líneas base corresponden a una **propuesta funcional en evaluación para una fase posterior**.
+> **NO hacen parte de las decisiones cerradas de esta actualización ni están implementadas en el core vigente**. Se trabajarán en un ticket y prototipo independientes.
+
+##### Aspectos Conceptuales en Evaluación:
+- **Preservación Inmutable del Histórico:** Las horas registradas históricamente (`TimeLog`) y las asignaciones pasadas se conservan para auditoría y rentabilidad.
+- **Resolución de Tareas:** Las tareas pendientes se resuelven o cancelan formalmente antes de consolidar el cierre.
+- **Trazabilidad:** Almacenar usuario autor, fecha/hora y motivo de cierre.
+
 ---
 
 ### Módulo 12: Entregables
@@ -735,9 +776,9 @@ Unidad atómica de trabajo ejecutable por el equipo con ciclo de vida completo d
   - **Tipos de Dominio:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`TaskItem`, `TaskStatus`, `TaskPriority`, `TaskRework`, `TaskDeliverable`)
 
 #### 13.2 Visualización en Pestaña Tareas: Entregables Plegados y Dependencias
-1. **Entregables Plegados por Defecto (Chips Cerrados):**  
+1. **Entregables Plegados por Defecto (Chips Cerrados):**
    Para evitar la saturación visual al abrir un proyecto con decenas de tareas, los bloques de entregables inician cerrados/colapsados por defecto (`expandedDeliverables = {}`). Cada bloque muestra su chip de resumen con conteo de tareas y horas. El usuario puede expandir o colapsar individualmente cualquier entregable o usar los botones de acción rápida *Expandir todo* / *Colapsar todo*.
-2. **Dependencias e Insumos Arriba de la Lista:**  
+2. **Dependencias e Insumos Arriba de la Lista:**
    La sección `ProjectDependenciesSection` vive en la parte superior de la pestaña Tareas, permitiendo a los líderes y colaboradores visualizar de un vistazo si existen insumos o accesos pendientes de cliente antes de iniciar tareas bloqueadas.
 
 #### 13.3 Detalle de Tarea: Flujo Operativo en `TaskDetailModal`
@@ -817,37 +858,95 @@ Visibilidad matemática de la disponibilidad real del equipo para asumir nuevos 
   - **Vista de Capacidad de Equipo:** [`src/components/taskflow/capacity/TeamCapacityView.tsx`](../components/taskflow/capacity/TeamCapacityView.tsx)
   - **Tipos de Capacidad:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`TeamMemberCapacity`)
 
-#### 15.2 Reglas Fundamentales de Capacidad
-1. **Capacidad Semanal Configurable por Perfil:** La capacidad base de un colaborador es una cantidad semanal pura definida en su perfil (`UserProfile.capacityHours`, ej. 40h semanales según jornada contractual legal). No se aplican deducciones fijas artificiales, fórmulas de `h/mes ÷ 4` ni reservas universales de horas internas (ej. prohibida la equivalencia automática `40h contractuales = 32h productivas + 8h internas`).
-2. **Imputación Real de Trabajos Internos y de Cliente:** Los rituales, ceremonias, capacitaciones y gestiones internas reales se registran cuando ocurren contra proyectos y tareas de tipo `internal_non_billable`. Los seguimientos, reuniones y actividades atribuibles a un cliente se imputan al proyecto correspondiente del cliente.
-3. **Ecuación Canónica de Capacidad:**
-   $$\text{Capacidad Libre} = \text{Capacidad Semanal Configurada} - \text{Festivos Aplicables} - \text{Ausencias Aprobadas} - \text{Carga Planificada de Staffing}$$
-   - **Base Diaria de Cálculo:** Para una semana estándar laboral de lunes a viernes, la capacidad diaria para efectos de festivos o ausencias se deriva estrictamente como:
-     $$\text{Capacidad Diaria} = \frac{\text{capacityHours}}{5}$$
-4. **Fines de Semana y Festivos:** No se consideran en la disponibilidad proyectada. Cada festivo oficial colombiano en día hábil resta su equivalente diario (`capacityHours / 5`) a la capacidad base de esa semana. Si alguien registra horas en sábado o domingo, se computa como ejecución real, pero nunca como disponibilidad planificada.
-5. **Impacto Directo de Ausencias y Vacaciones (`TeamAbsenceEvent`):** Las ausencias activas/aprobadas descuentan horas de los días hábiles coincidentes:
-   $$\text{Disponibilidad Neta} = \max(0, (\text{Capacidad Semanal Configurada} - \text{Festivos}) - \sum \text{Deducción Ausencias Aprobadas})$$
-   Si un colaborador tiene vacaciones aprobadas durante toda la semana hábil, su capacidad neta disponible es 0h y la carga planificada no computa como sobrecarga ni penaliza la salud operativa.
+#### 15.2 Reglas Fundamentales de Capacidad (🟢 Decisión funcional aprobada)
+
+##### 1. Capacidad Semanal Base vs. Capacidad Neta Semanal
+- **Capacidad Base Predeterminada:** **42 horas semanales por persona** para todo el equipo Uhura, independientemente del país o calendario asignado.
+- **Configuración Individual:** Es editable de forma individual en el perfil del colaborador en *Equipo & Accesos*.
+- **Permiso Exclusivo:** **Únicamente `system_admin`** puede modificar la capacidad semanal o el calendario laboral.
+- **Estado "Sin configurar":** Solo debe mostrarse en la interfaz si en la base de datos realmente no existe un valor configurado (`capacityHours == null`).
+- **No asumir jornada fija de 8 horas diarias:** La distribución horaria parte de la capacidad semanal base configurada. Para efectos de cómputo en semanas estándar de 5 días hábiles (L-V), el valor de referencia diario se deriva como:
+  $$\text{Valor Diario Referencial} = \frac{\text{capacidadSemanalBase}}{5} \quad (\text{ej. } 42\text{h} / 5 = 8.4\text{h/día})$$
+- **Distinción Conceptual Crítica:**
+  - **Capacidad Semanal Base:** Cantidad contractual configurada en el perfil del usuario (ej. 42h).
+  - **Capacidad Neta Semanal:** Disponibilidad real efectiva tras deducir festivos y ausencias.
+
+  $$\text{Capacidad Neta Semanal} = \text{Capacidad Semanal Base} - \text{Horas Festivos del Calendario} - \text{Ausencias Aprobadas}$$
+
+##### 2. Calendario Laboral por Persona (Colombia y México)
+En **Equipo & Accesos**, cada colaborador debe tener configurado explícitamente:
+- **Capacidad semanal base:** 42 horas predeterminadas (*Posible implementación técnica, sujeta a validación de Indunova: `weekly_capacity_hours`*).
+- **Calendario laboral asignado:** Colombia o México (*Posible implementación técnica, sujeta a validación de Indunova: `work_calendar = 'colombia' | 'mexico'`*).
+- **Fecha de vigencia:** Fecha a partir de la cual entra en vigencia el calendario o cualquier modificación (*Posible implementación técnica, sujeta a validación de Indunova: `calendar_effective_date`*).
+- **Reglas Mandatorias:**
+  - **La ciudad NO determina el calendario laboral.** No se infiere por ubicación geográfica ni por el campo de ciudad.
+  - **Días festivos aplicables:** Se calculan exclusivamente según el calendario laboral asignado al colaborador (festivos de Colombia con traslados de Ley Emiliani vs. feriados oficiales de la LFT de México).
+  - **Ausencias aprobadas:** Se descuentan adicionalmente sobre la capacidad neta.
+  - **Irretroactividad:** Un cambio de calendario o de capacidad semanal entra en vigencia desde la fecha definida y **no recalcula ni altera silenciosamente periodos históricos cerrados**.
+  - **Google Calendar:**
+    > Google Calendar puede apoyar la sincronización de ausencias y vacaciones, pero no reemplaza el calendario laboral Colombia o México configurado explícitamente en Equipo & Accesos.
+- **Asignación Actual de Calendarios (Corte Canónico):**
+  - **Calendario México:** 5 colaboradores activos (detallados en Equipo Canónico Privado).
+  - **Calendario Colombia:** 13 colaboradores activos (detallados en Equipo Canónico Privado).
+
+##### 3. Propuesta Funcional en Evaluación: Estados de Capacidad Derivados del Cronograma (⚠️ Propuesta funcional pendiente de aprobación e implementación)
+
+> **NOTA DE ALCANCE:**
+> La diferenciación entre los tres estados de capacidad (*Demanda ganada pendiente de programar*, *Capacidad tentativa con alertas de sobreasignación futura* y *Capacidad comprometida*) hace parte de la nueva propuesta de activación y gobernanza del cronograma.
+> **NO hace parte de las decisiones cerradas de este ticket ni está implementada en el core vigente**. Se evaluará e implementará en el ticket y prototipo independientes de cronograma.
+
+- **Demanda Ganada Pendiente de Programar (Propuesta):** Proyectos convertidos pendientes de inicio; 0% descuento de capacidad oficial.
+- **Capacidad Tentativa (Propuesta):** Proyección multivariable con alertas preventivas de sobrecarga antes de aprobar la línea base.
+- **Capacidad Comprometida (Propuesta):** Tareas con línea base consolidada que descuentan capacidad disponible.
 
 ---
 
-### Módulo 16: Time Tracking (Registro de Tiempo)
+### Módulo 16: Time Tracking (Registro y Corrección de Tiempo)
 
 #### 16.1 Propósito
-Captura fidedigna y sin fricción de las horas realmente invertidas por el equipo en la ejecución de las tareas.
+Captura fidedigna, sin fricción y auditable de las horas realmente invertidas por el equipo en la ejecución de las tareas.
 
-#### 16.2 Reglas Invariantes del Cronómetro
-- **Referencias de Código:** [`src/components/taskflow/timer/GlobalTimerContext.tsx`](../components/taskflow/timer/GlobalTimerContext.tsx), [`src/components/taskflow/tasks/TaskCard.tsx`](../components/taskflow/tasks/TaskCard.tsx) y [`src/components/taskflow/timetracking/TimeTrackingView.tsx`](../components/taskflow/timetracking/TimeTrackingView.tsx).
+#### 16.2 Reglas Invariantes de Registro y Corrección (🟢 Decisión funcional aprobada)
 
-1. **Todo TimeLog pertenece obligatoriamente a una Tarea:** No existe registro de tiempo "huérfano" en el vacío.
-2. **Un Solo Timer Activo por Usuario:** El sistema solo permite tener un cronómetro activo o en pausa a la vez a nivel global. Si el usuario intenta iniciar un timer en la Tarea B mientras hay uno corriendo o pausado en la Tarea A, el sistema le exige detener o guardar el timer de la Tarea A.
-3. **Ciclo de Vida Canónico del Timer (`Start ➔ Pause ↔ Resume ➔ Stop`):**
-   - **Start:** Inicia el conteo de tiempo efectivo sobre la tarea seleccionada.
-   - **Pause ↔ Resume:** El usuario puede pausar temporalmente el cronómetro ante interrupciones (reuniones rápidas, llamadas, almuerzo) y reanudarlo cuando retome la actividad.
-   - **Regla Estricta de Pausa:** El tiempo transcurrido en estado `PAUSED` **NO suma ni cuenta como tiempo efectivo**. Al momento de guardar (`Stop`), solo se computan los segmentos de tiempo transcurridos en estado activo `RUNNING`.
-   - **Stop:** Detiene el temporizador, calcula la sumatoria exacta de segundos efectivos, solicita una breve descripción del trabajo realizado y persiste el `TimeLog` en el backend.
-4. **Registro Manual Retroactivo:** Siempre disponible para ingresos manuales (Tarea, Horas, Minutos, Fecha y Descripción obligatoria del trabajo realizado).
-5. **Soporte Ad-hoc:** Una persona que no esté en el staffing oficial de un proyecto puede registrar un TimeLog en una tarea si prestó auxilio técnico puntual, sin romper las asignaciones estructurales.
+1. **Validez Inmediata sin Aprobación Previa:**
+   - Cualquier usuario activo puede registrar su propio tiempo sobre las tareas asignadas o frentes en los que colabore.
+   - Las horas registradas **quedan válidas inmediatamente** sin requerir un flujo de aprobación previa.
+   - Impactan en tiempo real el consumo de la tarea, el presupuesto del Proyecto y la capacidad disponible del colaborador.
+2. **Historial Completo y Transparente en Tarea:**
+   - Cada tarea debe mostrar en su detalle el historial completo de imputaciones:
+     - Colaborador que ejecutó el trabajo.
+     - Fecha civil del registro (`loggedDate`).
+     - Duración registrada (horas y minutos).
+     - Origen: Manual o Cronómetro (Timer).
+     - Comentario / notas de la actividad realizada.
+     - Estado del registro.
+     - Acción para editar o anular.
+3. **Ventana de Corrección y Cierre Semanal:**
+   - **Durante la semana en curso:** Cada colaborador puede **corregir o anular libremente sus propios registros de tiempo**.
+   - **Después del cierre semanal:** La ventana de autocorrección se bloquea. Únicamente pueden corregir o anular registros cerrados los usuarios con rol:
+     - `leader` (Project Lead del proyecto).
+     - `administrative` (Área Administrativa).
+     - `executive` (Dirección General / Representación Legal).
+     - `system_admin` (Administradores de Sistema).
+4. **Prohibición de Borrado Físico (Auditoría Inmutable):**
+   - Los registros de tiempo **no se eliminan físicamente de la base de datos**.
+   - Toda corrección o anulación (soft delete) conserva:
+     - Valor original.
+     - Valor corregido.
+     - Usuario responsable que ejecutó la modificación.
+     - Fecha y hora exacta (timestamp ISO UTC).
+     - Motivo o justificación de la anulación o corrección.
+   - *Posible implementación técnica, sujeta a validación de Indunova:* modelo `TimeLogAuditEntry` o tabla de eventos de auditoría inmutable.
+5. **Recálculo Automático en Cascada:**
+   - Cada modificación o anulación de horas recalcula automáticamente:
+     - Horas ejecutadas totales de la tarea (`consumedHours`).
+     - Horas disponibles restantes de la tarea.
+     - Horas acumuladas del Proyecto (`Project.consumedHours`).
+     - Carga ejecutada y capacidad libre del colaborador en el módulo de Capacidad.
+     - Reportes y métricas de rentabilidad asociados.
+6. **Reglas del Cronómetro (Timer Activo):**
+   - Un solo temporizador activo o pausado por usuario a nivel global.
+   - El tiempo en pausa (`PAUSED`) **bajo ninguna circunstancia cuenta como tiempo efectivo de trabajo**. Únicamente los segmentos en estado activo `RUNNING` computan al momento de guardar (`Stop`).
 
 ---
 
@@ -867,7 +966,7 @@ Pantalla principal de inicio para todo usuario de Orbit, diseñada como una band
 #### 17.2 Perspectivas y Handoffs Contextuales por Rol
 Mi Día adapta dinámicamente sus secciones de atención según el rol activo del usuario:
 
-- **1. Comercial (Catalina Tejada / Luisa Urazán / Equipo Comercial):**
+- **1. Comercial (Access Level `commercial` / `client_relationship`):**
   - **Asignación de Líder:** Detecta oportunidades comerciales creadas que aún no tienen líder de alcance asignado.
   - **Registro de Cotización Externa (Handoff de Alcance Listo):** Detecta oportunidades en estado `internal_review` donde el Líder ya marcó el alcance técnico como listo (`Marcar alcance listo`). Muestra la acción para realizar el cálculo financiero en el Google Sheet oficial y registrar el valor cotizado en Orbit.
   - **Formalización Administrativa:** Detecta oportunidades ganadas que requieren checklist de facturación (RUT, correo de facturación) o conversión formal a proyecto operativo.
@@ -895,7 +994,7 @@ Mi Día adapta dinámicamente sus secciones de atención según el rol activo de
 #### 17.3 Articulación entre Mi Día y la Campana de Notificaciones
 Orbit utiliza un modelo complementario de comunicación:
 - **Mi Día:** Es la **bandeja de trabajo estructurada** donde el usuario encuentra sus tareas prioritarias, pendientes de revisión y handoffs accionables organizados por jerarquía.
-- **Campana de Notificaciones (In-App):** Es el **canal de eventos inmediatos** que notifica en tiempo real cuando ocurre un handoff (ej. *"Comercial te asignó la oportunidad X"*, *"Paola marcó el alcance listo para la oportunidad Y"*, *"Diego solicitó revisión en la tarea Z"*). Ambos sistemas consumen el mismo modelo de eventos sin duplicar lógica de negocio.
+- **Campana de Notificaciones (In-App):** Es el **canal de eventos inmediatos** que notifica en tiempo real cuando ocurre un handoff (ej. *"Comercial te asignó la oportunidad X"*, *"Líder de alcance marcó el alcance listo para la oportunidad Y"*, *"Colaborador solicitó revisión en la tarea Z"*). Ambos sistemas consumen el mismo modelo de eventos sin duplicar lógica de negocio.
 
 #### 17.4 Eventos de Equipo en Mi Día (Cumpleaños, Aniversarios y Ausencias)
 Mi Día puede mostrar de forma discreta y no invasiva:
@@ -917,9 +1016,9 @@ Mi Día puede mostrar de forma discreta y no invasiva:
      - 🌸 **Jardín de Nenúfares (Derecha):** Portal directo a Reflejos de Nenúfar (15s).
      - 🔭 **Observatorio Orbital (Arriba):** Portal directo al Ranking semanal (#2 esta semana).
   2. **Bucky como Host Activo & Narrador Emocional:** Bucky guía emocionalmente convirtiendo los datos fríos en narrativa viva:
-     - Si hay un reto recibido: *"Oscar te dejó 85 puntos en Torre de Cedro 👀"* -> Botón primario: `[ SUPERAR A OSCAR · 15s ]`.
-     - Si no hay retos: *"Diego sigue arriba con 120. ¿Probamos una?"* -> Botón primario: `[ JUGAR TORRE DE CEDRO · 15s ]`.
-     - Si acaba de jugar: *"106 👀 Te faltaron 14 para alcanzar a Diego."* -> `[ RETAR A ALGUIEN ]` / `[ OTRA RONDA ]`.
+     - Si hay un reto recibido: *"Un compañero te dejó 85 puntos en Torre de Cedro 👀"* -> Botón primario: `[ SUPERAR RETO · 15s ]`.
+     - Si no hay retos: *"El récord semanal está en 120. ¿Probamos una?"* -> Botón primario: `[ JUGAR TORRE DE CEDRO · 15s ]`.
+     - Si acaba de jugar: *"106 👀 Te faltaron 14 para alcanzar el récord."* -> `[ RETAR A ALGUIEN ]` / `[ OTRA RONDA ]`.
   3. **Una Sola Acción Primaria por Estado:** La interfaz detecta la acción más relevante y la sitúa en el centro del hábitat con máxima jerarquía, reduciendo la fatiga de decisiones.
   4. **Retos como Inbox Social (No Tabla):** Bandeja directa tipo mensajes de juego (retos recibidos con botón `[ Jugar ]`, esperando respuesta de compañeros, e historial de revanchas).
   5. **Ranking Visual, Aspiracional y Humano:** Podio con Top 3 y pin de posición del usuario sin tablas densas corporativas.
@@ -934,29 +1033,29 @@ Mi Día puede mostrar de forma discreta y no invasiva:
 
 #### 18.2 Directrices Técnicas para Backend y Consumo Contextual (Cierre de Checkpoint)
 - Bucky y La Colonia son componentes **Evolutivos / No Bloqueantes**.
-- **1. Persistencia de Prototipo vs. Backend Autoritativo (Retos Asíncronos):**  
+- **1. Persistencia de Prototipo vs. Backend Autoritativo (Retos Asíncronos):**
   La persistencia local actual en `localStorage` (`GameResult`, `ColonyChallenge` y `WeeklyLeaderboardEntry`) es **exclusivamente de prototipo frontend** para validar la experiencia lúdica y social. En producción, el backend (Django REST Framework / PostgreSQL) será la **fuente de verdad autoritativa** que permitirá orquestar retos asíncronos entre usuarios físicos de la organización y generar un ranking semanal compartido unificado.
-- **2. Fuente Canónica para "Retar a Alguien":**  
+- **2. Fuente Canónica para "Retar a Alguien":**
   El selector de rivales en los retos consume directamente los colaboradores activos desde la fuente canónica de **Equipo & Accesos** (`users: UserItem[]`), excluyendo de forma estricta al usuario activo en sesión (`currentUser.id`) y a colaboradores en estado inactivo. **Queda terminantemente prohibido hardcodear listas de compañeros o mantener un segundo directorio de personas en La Colonia.**
-- **3. Historial Mínimo Estricto (Sin Competitividad Compleja):**  
+- **3. Historial Mínimo Estricto (Sin Competitividad Compleja):**
   El historial de retos se mantiene única y exclusivamente como una **vista mínima de retos recientes y completados con opción de revancha inmediata**. No se crearán estadísticas históricas acumulativas, ligas, temporadas, rankings históricos ni perfiles competitivos de jugadores.
-- **4. Contratos Mínimos de Backend y Read Model Derivado:**  
-  - **`GameResult` (Tabla canónica de eventos de juego):**  
+- **4. Contratos Mínimos de Backend y Read Model Derivado:**
+  - **`GameResult` (Tabla canónica de eventos de juego):**
     `id` (UUID), `userId` (FK a User), `userName` (String), `gameId` (`'torre'` | `'nenufar'`), `score` (Integer), `createdAt` (Timestamp).
-  - **`ColonyChallenge` (Tabla canónica de retos asíncronos 1-a-1):**  
+  - **`ColonyChallenge` (Tabla canónica de retos asíncronos 1-a-1):**
     `id` (UUID), `gameId` (`'torre'` | `'nenufar'`), `challengerUserId` (FK a User), `challengerScore` (Integer), `challengedUserId` (FK a User), `challengedScore` (Integer, opcional hasta resolución), `status` (`'pending'` | `'completed'`), `winnerUserId` (FK a User, opcional / derivado a partir de la comparación de puntuaciones; no debe introducir persistencia redundante obligatoria en base de datos), `createdAt` (Timestamp), `completedAt` (Timestamp, opcional).
-  - **`WeeklyLeaderboardEntry` (Read Model Proyectado / No Requiere Tabla Propia):**  
+  - **`WeeklyLeaderboardEntry` (Read Model Proyectado / No Requiere Tabla Propia):**
     Funciona como una estructura derivada / consulta agregada sobre `GameResult` filtrada por la semana civil en curso (`weekStartDate` a `weekEndDate`) calculando `MAX(score)` agrupado por `userId`. **Indunova no debe asumir que requiere una tabla física con persistencia propia en PostgreSQL.**
-- **5. Conexión con Sistema de Notificaciones de Orbit:**  
+- **5. Conexión con Sistema de Notificaciones de Orbit:**
   Los avisos de reto ("Te han retado en La Torre de Cedro / Reflejos de Nenúfar", "Han superado tu marca", "Reto completado") deberán conectarse al **sistema central de notificaciones de Orbit** (in-app / campana) como requisito funcional una vez el backend esté disponible. Las notificaciones push quedan como capacidad evolutiva futura, no como dependencia actual.
 - **No deben frenar la portabilidad ni la construcción del backend transaccional de Indunova.**
 - Bucky consume eventos emitidos por el core (ej. `EVENT_TIMER_EXCEEDED_4H`, `EVENT_PROJECT_OVER_BUDGET`), no debe inventar lógica de negocio aislada.
-- **Consumo Contextual de Datos de Equipo:**  
+- **Consumo Contextual de Datos de Equipo:**
   Bucky puede consumir:
   - `birthDate` (dato persistido del perfil)
   - `fecha_ingreso` (dato persistido del perfil)
   - `TeamAbsenceEvent` (ausencias y vacaciones aprobadas)
-  - Opcionalmente `hobbies` e intereses ya existentes en el perfil (`UserItem.hobbies`)  
+  - Opcionalmente `hobbies` e intereses ya existentes en el perfil (`UserItem.hobbies`)
   para generar mensajes contextuales oportunos y cercanos.
   - *Ejemplos conceptuales:*
     - Felicitación de cumpleaños ("¡Hoy está de cumpleaños [Nombre]! 🎉").
@@ -982,7 +1081,7 @@ Mi Día puede mostrar de forma discreta y no invasiva:
 │ Drive       │ (pegar link)      │ `briefUrl`           │ Prospecto crea  │ carpetas si │
 │             │                   │                      │ las 4 carpetas  │ no hay bot  │
 ├─────────────┼───────────────────┼──────────────────────┼─────────────────┼─────────────┤
-│ Alegra      │ Manual Vivian     │ `alegraContactId`    │ Paso a "Activo" │ Crear NIT   │
+│ Alegra      │ Manual Adm.       │ `alegraContactId`    │ Paso a "Activo" │ Crear NIT   │
 │ (ERP DIAN)  │ (checkboxes/ID)   │ `billingEmail`       │ o primer hito   │ duplicado   │
 │             │                   │ `rutStatus`          │ crea tercero    │ en Alegra   │
 └─────────────┴───────────────────┴──────────────────────┴─────────────────┴─────────────┘
@@ -1012,7 +1111,7 @@ Mi Día puede mostrar de forma discreta y no invasiva:
 | **Time Tracking** | Preparado (Frontend) | Completa | Completa | PostgreSQL | Modelo `TimeLog`, Locks | Tareas, Usuarios | **SÍ (Core)** |
 | **Mi Día** | Refactor UX | Completa | Completa | Vistas agregadas| Queries agrupadas | Tareas, TimeLogs | NO (Frontend View) |
 | **Documentos / Drive** | Manual | Completa | 30% (Manual) | Links en DB | Integración Google Drive API | Ninguna | NO (Evolutivo) |
-| **Alegra / Fiscal** | Manual Vivian | Completa | Manual | IDs en DB | Integración Alegra API | Clientes | NO (Evolutivo) |
+| **Alegra / Fiscal** | Manual Adm. | Completa | Manual | IDs en DB | Integración Alegra API | Clientes | NO (Evolutivo) |
 | **Bucky / La Colonia** | Prototipo | Completa | Frontend | State opcional | Modelos GameResult / Challenge (Asíncronos) | Ninguna | NO (Evolutivo) |
 
 ---
@@ -1021,31 +1120,31 @@ Mi Día puede mostrar de forma discreta y no invasiva:
 
 Durante la auditoría end-to-end de UAT se detectaron y reconciliaron las siguientes inconsistencias funcionales:
 
-1. **`initialStatus` ignorado en conversión:**  
+1. **`initialStatus` ignorado en conversión:**
    El modal de conversión permite seleccionar si el proyecto arranca en `Pendiente de Formalización` o `Activo`. En el controlador del prototipo estaba forzándose siempre a `'Activo'`. **Regla:** Debe respetarse el valor seleccionado por el líder.
-2. **`startConditionsConfig` no persistido en proyecto:**  
+2. **`startConditionsConfig` no persistido en proyecto:**
    Las condiciones de formalización (si el anticipo aplica o si fue recibido) se enviaban en el evento pero no se almacenaban en la entidad del proyecto creado.
-3. **Datos fiscales no propagados:**  
-   El checklist de Vivian (RUT recibido, correo facturación) se guardaba en la oportunidad pero no se inyectaba a la entidad `ClientTaxEntity` del cliente recién creado.
-4. **Desconexión con SOW Histórico:**  
+3. **Datos fiscales no propagados:**
+   El checklist administrativo (RUT recibido, correo facturación) se guardaba en la oportunidad pero no se inyectaba a la entidad `ClientTaxEntity` del cliente recién creado.
+4. **Desconexión con SOW Histórico:**
    Si el líder editaba los textos del SOW en New Business, estos se guardaban en la oportunidad, pero el proyecto recién creado no quedaba con un puntero directo a ese SOW aprobado.
-5. **Staffing Automático Vacío y Tareas no en Blanco:**  
+5. **Staffing Automático Vacío y Tareas no en Blanco:**
    Las tareas se crean correctamente a partir de las actividades cotizadas con su presupuesto de horas y su rol cotizado correspondiente (`budgetedRole`, `budgetedRoleId`). Nacen con `assigneeAllocations = []` (sin persona física asignada) pero listas para la ejecución operativa; el equipo no empieza desde cero.
-6. **Desacoplamiento de Cálculos Salariales:**  
+6. **Desacoplamiento de Cálculos Salariales:**
    Los cálculos salariales, prestaciones y márgenes de pricing están desacoplados de Orbit y gobernados por Finanzas externamente; Orbit no mantiene tarifas hardcodeadas ni calcula márgenes.
-7. **Regla de Cronómetro / Timer en Pausa:**  
+7. **Regla de Cronómetro / Timer en Pausa:**
    El tiempo transcurrido con el cronómetro en estado `PAUSED` **bajo ninguna circunstancia cuenta como tiempo efectivo de trabajo**. Únicamente los lapsos en estado activo `RUNNING` suman a la duración total del `TimeLog` al momento de hacer `Stop`.
-8. **Disparador Canónico de New Business (Brief + Scoping):**  
+8. **Disparador Canónico de New Business (Brief + Scoping):**
    New Business no se inicia cuando un deal se marca como "ganado" en el CRM ni sustituye la prospección comercial en frío. Se dispara exclusivamente cuando **se recibe un brief comercial calificado desde HubSpot que exige dimensionamiento técnico de entregables (scoping) y costeo operativo**.
-9. **Desacoplamiento Financiero y Fuente de Verdad Económica:**  
+9. **Desacoplamiento Financiero y Fuente de Verdad Económica:**
    La fuente de verdad financiera de Uhura Group es el **Google Sheet oficial de Finanzas**. Orbit desacopló y retiró su motor financiero interno (`financialEngine.ts`, constantes salariales y calculadora de márgenes). Orbit estructura el alcance técnico y las horas por rol, y registra con fidelidad el resultado comercial acordado externamente.
-10. **Eliminación de Cotizaciones Huérfanas y Única Fuente de Verdad:**  
+10. **Eliminación de Cotizaciones Huérfanas y Única Fuente de Verdad:**
     En el prototipo existía un contenedor huérfano (`createdQuotes`) y una vista independiente (`cotizador`) desconectada de las oportunidades. **Corrección de dominio:** Se eliminó la vista y el estado paralelo. Toda cotización (`QuoteProposal`) debe existir y persistirse exclusivamente dentro de una `NewBusinessOpportunity`. En el flujo "Usar en New Business" del catálogo de plantillas, la oportunidad debe existir previamente antes de fijar y persistir el snapshot de cotización.
-11. **Detalle de Tarea y Ciclo Operativo (`TaskDetailModal`):**  
+11. **Detalle de Tarea y Ciclo Operativo (`TaskDetailModal`):**
     En UAT se detectó que el detalle de tarea difería entre staging y el prototipo. **Reconciliación oficial:** La experiencia aprobada incluye: franja superior con próximo paso operativo (`Iniciar tarea` ➔ `Solicitar revisión ->` ➔ `Aprobar y Completar / Devolver`), prioridad (`Urgente` a `Baja`), barra de consumo de horas (estimadas, ejecutadas, disponibles), cronograma (inicio y entrega), responsables (Project Lead, asignado, colaboradores y rol cotizado) y registro formal auditado de retrabajos (número de ronda, causa raíz, horas y solicitante).
-12. **Reducción de Ruido en Resumen de Proyecto y Entregables Plegados:**  
+12. **Reducción de Ruido en Resumen de Proyecto y Entregables Plegados:**
     En la vista de Proyectos, Resumen se depuró eliminando la duplicación de KPIs que ya están en el encabezado y el bloque redundante de retrabajos. La sección de dependencias de cliente se reubicó en la parte superior de la pestaña Tareas, y los entregables inician plegados (chips cerrados) para evitar sobrecarga visual.
-13. **Consolidación de Matriz de Horas y Servicios:**  
+13. **Consolidación de Matriz de Horas y Servicios:**
     Se consolidó la información presupuestal dentro de la pestaña `Matriz Horas`, ofreciendo visibilidad integrada tanto por Rol como por Servicio/Entregable, eliminando pestañas duplicadas en el proyecto.
 
 ---
@@ -1070,31 +1169,31 @@ Durante la auditoría end-to-end de UAT se detectaron y reconciliaron las siguie
 Para asegurar una frontera limpia de trabajo entre Producto (Uhura) y la Fábrica de Software (Indunova), se establece la siguiente separación explícita:
 
 #### A. Comportamiento Funcional Esperado (Definido por Producto - No Negociable):
-1. **Reflejo Oportuno de Ausencias en Capacidad:**  
+1. **Reflejo Oportuno de Ausencias en Capacidad:**
    Las ausencias y vacaciones programadas y aprobadas en Google Calendar deben reflejarse oportunamente en la disponibilidad del módulo de Capacidad, impidiendo la sobreasignación de colaboradores en periodos no hábiles.
-2. **Integridad de Fechas Calendario:**  
+2. **Integridad de Fechas Calendario:**
    Fechas como `fecha_ingreso`, `birthDate` y los rangos de vacaciones (`startDate`, `endDate`) deben mantenerse íntegras en el día calendario civil correspondiente, sin desplazamientos o corrimientos de fecha provocados por conversiones de huso horario entre cliente y servidor.
-3. **Fidelidad del Registro Comercial y Horas Cotizadas:**  
+3. **Fidelidad del Registro Comercial y Horas Cotizadas:**
    Orbit debe preservar íntegramente el rollup de horas técnicas por rol presupuestadas, el monto cotizado, la moneda (`COP` o `USD`) y los enlaces a los documentos oficiales de soporte (Google Sheet de Finanzas y propuesta formal presentada).
-4. **Atomicidad en la Conversión de Oportunidades:**  
+4. **Atomicidad en la Conversión de Oportunidades:**
    La creación de cliente, proyecto, entregables y tareas a partir de una oportunidad ganada debe ser atómica (todo o nada), garantizando que jamás existan estados a medias o proyectos sin entregables por fallos en la operación.
-5. **Exclusividad del Cronómetro:**  
+5. **Exclusividad del Cronómetro:**
    Un colaborador nunca debe tener más de un cronómetro de trabajo en ejecución activa simultáneamente.
 
 #### B. Decisiones Técnicas de Arquitectura (Autonomía y Responsabilidad de Indunova):
-1. **Estrategia de Sincronización con Google Calendar API:**  
+1. **Estrategia de Sincronización con Google Calendar API:**
    Indunova definirá libremente el mecanismo técnico que considere más robusto, escalable y mantenible (ej. push notifications/webhooks, tareas asíncronas periódicas o sincronización bajo demanda al consultar la vista).
-2. **Modelado Físico y Tipos de Datos en Base de Datos:**  
+2. **Modelado Físico y Tipos de Datos en Base de Datos:**
    Indunova definirá los tipos de columnas SQL en PostgreSQL, la precisión decimal numérica, las claves primarias/foráneas, los índices y las restricciones de integridad relacional.
-3. **Mecanismos de Transaccionalidad y Concurrencia:**  
+3. **Mecanismos de Transaccionalidad y Concurrencia:**
    Indunova seleccionará e implementará las herramientas de control transaccional (ej. transacciones atómicas del ORM, bloqueos a nivel de fila o restricciones de base de datos) para cumplir con el comportamiento esperado.
-4. **Serialización y Manejo Técnico de Zonas Horarias:**  
+4. **Serialización y Manejo Técnico de Zonas Horarias:**
    Indunova implementará el parseo, serialización y almacenamiento de fechas/horas en Django REST Framework para garantizar la fidelidad del día calendario sin prescripciones tecnológicas desde Producto.
 
 #### C. Coordinación y Gestión de Dependencias entre Uhura e Indunova:
-1. **Desacoplamiento con Finanzas:**  
+1. **Desacoplamiento con Finanzas:**
    El backend no implementa cálculos de salarios ni márgenes en la API. El backend de Orbit únicamente persiste y expone los campos comerciales de `QuoteProposal` (horas rollup, valor cotizado, moneda, estado y URLs de soporte).
-2. **Acceso a Google Calendar:**  
+2. **Acceso a Google Calendar:**
    Cuando Indunova defina el mecanismo técnico de integración, deberá indicar a Uhura qué calendario, permisos y credenciales necesita para staging/producción. Uhura facilitará el acceso correspondiente al calendario corporativo gestionado por Administrativa.
 
 ---
@@ -1102,8 +1201,8 @@ Para asegurar una frontera limpia de trabajo entre Producto (Uhura) y la Fábric
 ## 10. Roles, Niveles de Acceso y Matriz de Permisos (RBAC)
 
 ### 10.1. Principio Arquitectónico Fundamental de Seguridad
-> **"Ocultar botones en React NO constituye seguridad."**  
-> Toda regla de visibilidad, creación, edición, aprobación o administración aquí definida es de cumplimiento obligatorio y vinculante para el backend de Indunova (Django REST Framework / PostgreSQL).  
+> **"Ocultar botones en React NO constituye seguridad."**
+> Toda regla de visibilidad, creación, edición, aprobación o administración aquí definida es de cumplimiento obligatorio y vinculante para el backend de Indunova (Django REST Framework / PostgreSQL).
 > La interfaz web de Orbit adapta dinámicamente sus menús, controles y vistas según el usuario activo, pero **cada endpoint de la API REST (`/api/...`) debe validar de manera estricta la identidad del usuario (`request.user`), su rol profesional, su nivel de acceso (`OrbitAccessLevel`) y el alcance territorial/operativo autorizado (`AccessScope`)** mediante `PermissionClasses` o decoradores a nivel de vista y filtrado estricto de QuerySets en el ORM.
 
 ### 10.2. Taxonomía de Identidad: Roles Canónicos vs. Perfiles de Sistema
@@ -1131,11 +1230,11 @@ Un colaborador puede tener **uno o más roles profesionales/cotizables**. Esta r
 #### 2. Perfiles Internos de Sistema (`InternalSystemRole`):
 Roles operativos no cotizables para tareas operativas estándar:
 1. `CEO` (Dirección General y Visión Estratégica)
-2. `Administrativa` (Vivian: Datos fiscales, RUT, facturación en Alegra y cartera)
+2. `Administrativa` (Datos fiscales, RUT, facturación en Alegra y cartera)
 3. `Admin de Sistema` (TI y gobernanza de plataforma)
 
 ### 10.3. Responsabilidades Operativas Clave por Rol en los Journeys Aprobados
-- **Comercial (Catalina Tejada / Luisa Urazán / Equipo Comercial):**
+- **Comercial (Access Level `commercial` / `client_relationship`):**
   - Creación de oportunidades en New Business a partir de briefs.
   - Asignación formal del Líder de Alcance.
   - Recepción del handoff de alcance listo (`internal_review`) en Mi Día.
@@ -1143,7 +1242,7 @@ Roles operativos no cotizables para tareas operativas estándar:
   - Registro del resultado comercial en Orbit (monto cotizado, moneda, versión y URLs).
   - Marcación de oportunidad como Ganada (`won`) tras aprobación del cliente.
   - Ejecución de la conversión a proyecto operativo.
-- **Líder de Alcance / Project Lead (Paola Monsalve / Diego Cadavid / Líderes de Área):**
+- **Líder de Alcance / Project Lead (Product Lead / Creative Strategy Lead / Líderes de Área):**
   - Estructuración del dimensionamiento técnico (entregables, actividades, roles y horas).
   - Estimación de semanas productivas de entrega y anclaje de propuesta técnica (Drive/PPT).
   - Notificación de alcance listo a Comercial (`Marcar alcance listo`).
@@ -1154,28 +1253,71 @@ Roles operativos no cotizables para tareas operativas estándar:
   - Visualización contextual de tareas asignadas para hoy en Mi Día.
   - Ejecución activa con cronómetro (timer) o registro manual de horas.
   - Solicitud formal de revisión al finalizar entregables (`Solicitar revisión ->`).
-- **Dirección Ejecutiva (CEO / Ana Giraldo):**
+- **Dirección Ejecutiva (Access Level `executive`):**
   - Supervisión transversal del portafolio y salud de proyectos.
   - Monitoreo de capacidad global del equipo semana a semana.
   - Aprobación de excepciones de cronograma (reforecasts oficiales) y condiciones especiales.
 
 ### 10.4. Pendientes de Decisión de Producto
-1. **[Pendiente de decisión de Producto] Tipologías de Tarea Exentas de Revisión:**  
+1. **[Pendiente de decisión de Producto] Tipologías de Tarea Exentas de Revisión:**
    Se requiere formalizar si ciertas tipologías de tareas operativas menores o no cotizables (ej. rituales internos de equipo, standups de 15 minutos, soporte ad-hoc) pueden auto-completarse directamente por el colaborador sin transicionar obligatoriamente por el estado `Review` del Líder.
-2. **[Pendiente de decisión de Producto] Parametrización Multi-NIT por Proyecto:**  
+2. **[Pendiente de decisión de Producto] Parametrización Multi-NIT por Proyecto:**
    Definir con la Dirección General y Administración si la facturación de un proyecto distribuido entre más de una entidad fiscal (`ClientTaxEntity`) se parametriza una sola vez a nivel global del proyecto o si puede variar por hito/factura emitida, y si se calcula mediante porcentajes, montos fijos o ambas modalidades.
 
 ---
 
 ### 10.3. Niveles de Acceso Canónicos (`CanonicalOrbitAccessLevel`)
 La experiencia de usuario y la autorización relacional se rigen por **7 niveles de acceso funcionales canónicos**:
-- `collaborator`: Especialistas técnicos y creativos (Front-End, Diseñadores, Community Managers, etc.). Foco en ejecución personal y registro de tiempo. **Sin acceso al Catálogo de Servicios, New Business, Clientes ni Administración.**
-- `leader`: Líderes de área y proyectos (Product Lead, Creative Strategy Lead, Growth Manager). Foco en scoping técnico, asignaciones, revisiones de calidad (QA) y seguimiento de equipo.
-- `client_relationship`: Estrategas de relación con clientes (Account Leads). Foco en satisfacción, seguimiento de cuentas asignadas y enlace operativo.
-- `commercial`: Dirección Comercial. Foco exclusivo en New Business, pricing, condiciones contractuales y cotizaciones.
-- `administrative`: Administración y Finanzas operativas. Foco en información fiscal, RUT, sincronización con Alegra y cartera.
-- `executive`: Dirección Ejecutiva (CEO). Supervisión transversal, aprobación de cotizaciones y analítica de rentabilidad de alto nivel.
-- `system_admin`: Gobernanza integral de usuarios, roles y configuración de la plataforma.
+
+1. **`collaborator`:**
+   - Especialistas técnicos y creativos (Front-End, Diseñadores, Community Managers, etc.).
+   - Foco en ejecución personal, avance de tareas, registro de horas, comentarios y reporte de bloqueos.
+   - Sin acceso al Catálogo de Servicios, New Business, Clientes ni Administración.
+
+2. **`leader`:**
+   - Líderes de área y proyectos (Product Lead, Creative Strategy Lead, Growth Manager).
+   - Foco en scoping técnico, estructuración de alcances y gestión integral de plantillas en el Catálogo de Servicios (crear, editar, duplicar y archivar).
+   - Asignaciones, revisiones de calidad (QA) y seguimiento de equipo.
+   - *Pendiente de definición funcional:* **alcance de visibilidad de capacidad para planificación entre equipos**.
+
+3. **`client_relationship` & `commercial` (Frente Comercial Unificado):**
+   - Dirección Comercial y Estrategas de Cuentas (roles comercial y relación con cliente).
+   - Para este ticket, están autorizadas únicamente para:
+     - Acceder a todos los Clientes y New Business.
+     - Crear y editar Clientes.
+     - Crear, editar y archivar oportunidades.
+     - Convertir oportunidades en Cliente y Proyecto.
+     - Eliminar únicamente borradores sin trazabilidad posterior.
+   - *Aclaración:* El ajuste de fechas de cronograma pertenece a la propuesta futura de planificación y queda fuera de este alcance.
+
+4. **`administrative`:**
+   - Administración y Finanzas operativas (Área Administrativa).
+   - Foco en información fiscal, RUT, sincronización con Alegra, cartera y soporte de facturación.
+
+5. **`executive`:**
+   - Dirección General y Representación Legal (perfiles con Access Level `executive`, detallados en Equipo Canónico Privado).
+   - **Pueden:**
+     - Visualizar toda la operación.
+     - Crear y editar Clientes, New Business, Proyectos y Tareas.
+     - Consultar Horas y Capacidad global.
+     - Archivar registros.
+     - Gestionar usuarios.
+     - Cambiar Access Levels.
+   - **No pueden:**
+     - Eliminar definitivamente.
+     - Ejecutar migraciones o conciliaciones.
+     - Modificar integraciones.
+     - Administrar credenciales o variables de entorno.
+     - Modificar configuración técnica.
+     - Eliminar definitivamente información fiscal.
+
+6. **`system_admin`:**
+   - Existen dos usuarios iniciales con Access Level `system_admin` con idénticos permisos técnicos en plataforma.
+   - Un usuario administra cotidianamente usuarios, accesos, capacidad y ausencias.
+   - El otro usuario conserva la responsabilidad funcional del producto digital.
+   - **La diferencia es organizacional y operativa, no de permisos técnicos.**
+   - No se describe a producto digital como responsable principal de infraestructura técnica.
+   - La asignación nominal de estos perfiles se gestiona exclusivamente en *Equipo Canónico Privado*.
 
 #### Estado Transitorio de Usuario: `pending`
 - **`pending` NO es un nivel funcional de la matriz canónica.**
@@ -1219,35 +1361,35 @@ Solo existen 5 alcances autorizados:
 
 ### 10.6. Reglas de Negocio de Autorización Específica
 
-1. **Scoping Operativo en New Business:**  
-   - La Directora Comercial crea oportunidades y briefs.  
-   - El Product Lead (o Leader asignado) realiza el dimensionamiento técnico (Backlog, Entregables y Horas por Rol).  
+1. **Scoping Operativo en New Business:**
+   - La Directora Comercial crea oportunidades y briefs.
+   - El Product Lead (o Leader asignado) realiza el dimensionamiento técnico (Backlog, Entregables y Horas por Rol).
    - Los colaboradores técnicos no tienen acceso al módulo New Business para evitar filtración de propuestas comerciales tempranas.
-2. **Pricing y Márgenes:**  
+2. **Pricing y Márgenes:**
    - La edición de costos base, margen esperado (%) y valor final de la cotización es **exclusiva de la Directora Comercial** con visibilidad del CEO. Los líderes operativos proponen horas, no precios de venta.
-3. **Formalización y Datos Fiscales:**  
-   - La carga del RUT, verificación en Alegra y datos de facturación electrónica es potestad de la **Administrativa (Vivian)** y la Directora Comercial.
-4. **Time Tracking e Inmutabilidad de Horas:**  
-   - Un usuario solo puede registrar tiempo en su propio nombre (`own`).  
-   - Se prohíbe tener dos cronómetros activos concurrentes.  
-   - El tiempo en pausa (`PAUSED`) no suma horas computadas.  
+3. **Formalización y Datos Fiscales:**
+   - La carga del RUT, verificación en Alegra y datos de facturación electrónica es potestad de la **Administrativa** y la Directora Comercial.
+4. **Time Tracking e Inmutabilidad de Horas:**
+   - Un usuario solo puede registrar tiempo en su propio nombre (`own`).
+   - Se prohíbe tener dos cronómetros activos concurrentes.
+   - El tiempo en pausa (`PAUSED`) no suma horas computadas.
    - Ningún usuario puede eliminar logs históricos validados sin rol de administración.
 
 ### 10.7. Requerimientos de Implementación en Backend (Django REST Framework)
 
-> **PRINCIPIO ARQUITECTÓNICO FUNDAMENTAL:**  
-> **Los controles de interfaz en React son UX, NO seguridad.**  
+> **PRINCIPIO ARQUITECTÓNICO FUNDAMENTAL:**
+> **Los controles de interfaz en React son UX, NO seguridad.**
 > Ocultar botones o proteger rutas en el frontend solo sirve para ofrecer una experiencia fluida. El backend de Indunova en Django REST Framework **debe repetir y hacer cumplir de manera estricta e independiente todas las reglas de autorización**, sin confiar jamás en las peticiones del cliente:
 > 1. **Autorización estricta por cada request HTTP**: Comprobación obligatoria de la identidad del usuario (`request.user`) y su nivel de acceso (`user.access_level`) en cada vista y APIView mediante `permission_classes`.
 > 2. **Filtros de QuerySet según Scope en el ORM**: Todo ViewSet debe sobreescribir `get_queryset(self)` para restringir los registros recuperados según el `AccessScope` correspondiente (`own`, `assigned`, `team`, `accounts`, `all`).
 > 3. **Validación de permisos a nivel de objeto**: Implementar `check_object_permissions(request, obj)` en operaciones de detalle para garantizar que un usuario con acceso al módulo no pueda modificar ni ver objetos que no le correspondan.
 > 4. **Respuestas 403 Forbidden para acciones prohibidas**: Denegar inmediatamente cualquier intento de lectura, creación, edición, aprobación o eliminación fuera del alcance permitido con código HTTP 403.
 
-1. **Autenticación Basada en Token / JWT:**  
+1. **Autenticación Basada en Token / JWT:**
    Inyección del usuario en `request.user` con claves foráneas a `Profile`, `RoleDefinition` y `AccessLevel`.
-2. **Clases de Permiso Reutilizables:**  
+2. **Clases de Permiso Reutilizables:**
    - `IsCollaboratorOrAbove`, `IsProjectLeader`, `IsCommercialLead`, `IsAdminOrCEO`.
-3. **Filtrado de Consultas en ORM (QuerySet Scoping):**  
+3. **Filtrado de Consultas en ORM (QuerySet Scoping):**
    Implementar `get_queryset(self)` en ViewSets de Django para aplicar el filtro de `AccessScope`:
    ```python
    def get_queryset(self):
@@ -1261,7 +1403,7 @@ Solo existen 5 alcances autorizados:
        # deny-by-default para pending o estados sin mapeo
        return Task.objects.none()
    ```
-4. **Respuestas de Error Uniformes (403 Forbidden):**  
+4. **Respuestas de Error Uniformes (403 Forbidden):**
    Cuando un usuario intente acceder a un objeto o ejecutar una acción no autorizada, la API debe responder `403 Forbidden` con detalle estructurado:
    ```json
    {
@@ -1276,7 +1418,7 @@ Solo existen 5 alcances autorizados:
 
 ### 10.8. Definición Funcional y Gobernanza: Perfil del Colaborador (Equipo & Accesos)
 
-> **CIERRE DE DEFINICIÓN FUNCIONAL (EQUIPO & ACCESOS → PERFIL DEL COLABORADOR):**  
+> **CIERRE DE DEFINICIÓN FUNCIONAL (EQUIPO & ACCESOS → PERFIL DEL COLABORADOR):**
 > Se formaliza la separación estricta entre **identidad profesional**, **nivel RBAC funcional** y **compatibilidad técnica secundaria**, garantizando que la matriz RBAC permanezca cerrada y con una única fuente de verdad.
 
 #### 1. Separación Conceptual de Atributos:
@@ -1316,7 +1458,7 @@ El backend debe persistir en base de datos como mínimo los siguientes campos de
 - **Fallback Automático Resiliente:** Si el campo es `null`, vacío o si la imagen falla al cargar (`onError`), el componente automáticamente muestra las iniciales del colaborador sobre el color temático asignado (`avatarBg`).
 
 #### 5. Auditoría de Cambios Sensibles en Backend:
-> **REGLA DE GOBERNANZA DE AUDITORÍA:**  
+> **REGLA DE GOBERNANZA DE AUDITORÍA:**
 > `UserProfileAuditEntry` en frontend es **únicamente representación / previsualización en interfaz**. La auditoría autoritativa **debe generarse y persistirse en backend (Indunova) al guardar el cambio transaccional**. El frontend **no debe ser fuente de verdad del historial**.
 
 Para modificaciones sobre campos sensibles que impactan la seguridad, jerarquía o nómina, el backend deberá registrar un historial de auditoría bajo la siguiente estructura canónica:
@@ -1348,8 +1490,8 @@ Para la separación estricta entre la identidad operativa actual de `UserProfile
 ## 11. Arquitectura de Interoperabilidad Estructural (Bloque 4)
 
 ### 11.1. Principio Rector: Integraciones Silenciosas e Invisibles
-> **PRINCIPIO ARQUITECTÓNICO DE UHURA:**  
-> **"Las integraciones deben sentirse casi invisibles."**  
+> **PRINCIPIO ARQUITECTÓNICO DE UHURA:**
+> **"Las integraciones deben sentirse casi invisibles."**
 > En Orbit no existen botones de "Sincronizar ahora", pantallas de configuración de tokens para usuarios finales, ni paneles que emulen dashboards de APIs externas. Orbit es un sistema de gestión operativa enfocado en la claridad del trabajo. La interoperabilidad ocurre a nivel de modelo de dominio y claves foráneas canónicas, permitiendo que la capa de backend (Indunova) orqueste workers y webhooks sin obligar al frontend a rediseñar sus pantallas ni sus entidades principales.
 
 ---
@@ -1367,8 +1509,8 @@ Para la separación estricta entre la identidad operativa actual de `UserProfile
 ---
 
 ### 11.3. Regla Canónica de Disparo: Cuándo se Activa New Business
-> **CORRECCIÓN CRÍTICA DE GOBERNANZA:**  
-> **New Business NO se activa con "Deal Won" en HubSpot.**  
+> **CORRECCIÓN CRÍTICA DE GOBERNANZA:**
+> **New Business NO se activa con "Deal Won" en HubSpot.**
 > - **El Disparador Real:** New Business se activa en Orbit tan pronto como existe un **Brief Comercial Calificado** que requiere **Dimensionamiento Técnico Operativo (Scoping)**.
 > - **Razón:** Para poder cotizar y ganar el Deal en HubSpot, la Directora Comercial necesita que el Product Lead / Líder de Área desglose el alcance en entregables, actividades y horas por rol en Orbit.
 > - **Ciclo de Vida:**
@@ -1380,25 +1522,25 @@ Para la separación estricta entre la identidad operativa actual de `UserProfile
 
 ### 11.4. Perfil de Usuario: Ingreso, Cumpleaños, Aniversario y Datos Personales
 
-> **REGLAS CANÓNICAS DE IDENTIDAD Y PERFIL:**  
-> 1. **`fecha_ingreso` / Hire Date (`joinedDate` en `UserItem`):**  
+> **REGLAS CANÓNICAS DE IDENTIDAD Y PERFIL:**
+> 1. **`fecha_ingreso` / Hire Date (`joinedDate` en `UserItem`):**
 >    - Es un **dato persistido canónico del perfil del colaborador** en base de datos.
 >    - Constituye la fecha fundacional del vínculo laboral del colaborador con Uhura Group.
 >    - **Regla de Gobernanza:** **NO debe documentarse como inmutable**. Es un dato canónico de **edición restringida a perfiles administrativos autorizados** (`administrative`, `system_admin`, `executive`). La antigüedad y el aniversario se derivan de él; no se crean campos independientes.
-> 2. **`birthDate` (Fecha de Cumpleaños):**  
+> 2. **`birthDate` (Fecha de Cumpleaños):**
 >    - Es un **dato persistido canónico del perfil del colaborador** en formato ISO `YYYY-MM-DD` (ej. `'1993-09-18'`).
 >    - Debe poder visualizarse y administrarse de manera centralizada desde el módulo **Equipo & Accesos** (Directorio de Colaboradores).
-> 3. **El Aniversario NO se Almacena como un Evento Independiente (No Duplicidad):**  
+> 3. **El Aniversario NO se Almacena como un Evento Independiente (No Duplicidad):**
 >    - El aniversario **no requiere persistirse en una tabla o campo redundante**: se deriva matemáticamente en tiempo de ejecución o consumo directamente a partir de `fecha_ingreso`:
 >      - Se calcula la fecha anual correspondiente proyectando el mes y día de `fecha_ingreso` al año corriente.
 >      - Se calculan los años de antigüedad cumplidos en Uhura Group ($\text{Años Cumplidos} = \text{Año Actual} - \text{Año de Ingreso}$, ponderado según la fecha del año).
-> 4. **Consumo por Mi Día y Bucky:**  
+> 4. **Consumo por Mi Día y Bucky:**
 >    - **Cumpleaños próximos:** Se calculan evaluando la proximidad de `birthDate` contra la fecha del sistema.
 >    - **Aniversarios próximos:** Se calculan evaluando la proximidad de la fecha anual derivada de `fecha_ingreso`.
 >    - Mi Día y Bucky consumen directamente estos campos estructurados del perfil para visibilidad de equipo y avisos contextuales, sin requerir llamadas externas a servicios terceros.
-> 5. **Hobbies y Mascotas (`hobbies?: string`, `petNames?: string`):**  
+> 5. **Hobbies y Mascotas (`hobbies?: string`, `petNames?: string`):**
 >    - Campos opcionales del perfil en Orbit para enriquecimiento de experiencia y contexto de Bucky. **No forman parte del contrato obligatorio de interoperabilidad técnica**.
-> 6. **Google Calendar NO es la Fuente de Cumpleaños ni Aniversarios:**  
+> 6. **Google Calendar NO es la Fuente de Cumpleaños ni Aniversarios:**
 >    - La privacidad de fechas de nacimiento y datos contractuales reside exclusivamente en la base de datos interna de Orbit (`UserItem`). Google Calendar se reserva de forma estricta para la programación operacional de ausencias y licencias.
 
 #### Estructura y Reglas Canónicas del Perfil del Colaborador
@@ -1410,13 +1552,16 @@ El perfil del colaborador en Orbit define la identidad funcional, contractual y 
    - **`email`:** Correo electrónico corporativo oficial (`@uhuragroup.com`) (string, obligatorio, identificador único de cuenta y acceso).
    - **`fecha_ingreso` / `joinedDate`:** Fecha fundacional de vinculación laboral en formato ISO `YYYY-MM-DD` (Date, obligatorio; dato canónico de edición restringida a perfiles autorizados [Administrativa / RRHH / Dirección General]. Antigüedad y aniversario se derivan directamente de él; no debe documentarse como inmutable).
    - **`birthDate`:** Fecha de nacimiento en formato ISO `YYYY-MM-DD` (Date, obligatorio para colaboradores activos; administrable y visualizable en *Equipo & Accesos*).
+   - **`weeklyCapacityHours`:** Capacidad semanal base en horas (Integer/Decimal, predeterminada en 42h para todos; editable individualmente exclusivamente por `system_admin`).
+   - **`workCalendar`:** Calendario laboral asignado (`'colombia'` | `'mexico'`, obligatorio; no inferido por ciudad; editable exclusivamente por `system_admin`).
+   - **`calendarEffectiveDate`:** Fecha de vigencia del calendario o capacidad (ISO Date `YYYY-MM-DD`; no recalcula retroactivamente periodos cerrados).
    - **`jobTitle`:** Cargo operativo o denominación funcional visible (string, obligatorio).
    - **`officialRoles` (`StandardUhuraRole[]`):** Uno o más de los 13 roles oficiales del Catálogo de Servicios (obligatorio para todo perfil que cotice o ejecute horas en proyectos).
    - **`accessLevel` (`OrbitAccessLevel`):** Nivel de autorización gobernado exclusivamente por la matriz canónica RBAC (`collaborator`, `leader`, `client_relationship`, `commercial`, `administrative`, `executive`, `system_admin`, más estado transitorio `pending`).
    - **`role` (`UserRole`):** Atributo técnico secundario de compatibilidad heredada (`Admin` | `Member` | `Viewer`). **NO** gobierna permisos funcionales.
    - **`department`:** Área o departamento operativo (string, obligatorio para colaboradores activos).
    - **`leaderId` / `reportsTo`:** Identificador del líder directo del área para cadenas de reporte y jerarquía operativa.
-   - **`city`:** Ciudad de residencia del colaborador (string, obligatorio para gestión de equipo distribuido).
+   - **`city`:** Ciudad de residencia del colaborador (string, obligatorio para visibilidad de equipo distribuido; no determina el calendario laboral).
    - **`status` (`UserStatus`):** Estado de la cuenta en plataforma (`Active` | `Inactive` | `Invited`).
    - **`hobbies` / `petNames`:** Intereses personales, pasiones o mascotas (strings libres opcionales para contextualización de Bucky; no requeridos para interoperabilidad core).
 
@@ -1426,21 +1571,35 @@ El perfil del colaborador en Orbit define la identidad funcional, contractual y 
    - **Cumpleaños Próximos:** Se calculan evaluando la proximidad temporal del mes y día de `birthDate` respecto a la fecha actual del sistema.
 
 3. **Visibilidad, Privacidad y Gobernanza de Datos:**
-   - La administración de estos campos se realiza desde el módulo **Equipo & Accesos** exclusivamente por usuarios con permisos autorizados (Dirección / RRHH).
+   - La administración de estos campos se realiza desde el módulo **Equipo & Accesos** exclusivamente por usuarios con permisos autorizados (`system_admin` para accesos, capacidad y calendarios; `executive` y `administrative` para datos de contacto y fichas).
    - Mi Día y Bucky consumen estos datos para avisos discretos y contextuales, preservando la sobriedad visual del sistema.
 
-4. **Política de Seeding y Carga Inicial Separada:**
-   > **REGLA DE GOBERNANZA:**  
-   > **La carga inicial de colaboradores se realizará a partir de la fuente administrativa vigente suministrada por Uhura. Los datos concretos de seeding se mantienen separados de la especificación funcional.**  
-   > Esta separación garantiza que `ORBIT_PRODUCT_STATUS.md` permanezca estable como fuente funcional maestra frente a cambios o rotaciones del equipo, y protege la privacidad de datos sensibles (documentos de identidad, salarios, contratos, direcciones, etc.), los cuales **NO** deben versionarse en la especificación funcional pública, sino canalizarse mediante fixtures o mecanismos controlados de migración por Indunova y RRHH.  
-   > Para la estructura de inicialización y el dataset base de perfiles operativos, consultar el documento complementario: [`src/docs/INITIAL_TEAM_SEED.md`](./INITIAL_TEAM_SEED.md).
+4. **Gobernanza del Equipo Canónico y Cuentas identificadas para conciliación por Indunova (🟢 Decisión funcional aprobada):**
+   > **AVISO DE PRIVACIDAD Y GOBERNANZA:**
+   > La documentación pública define reglas, estructuras y comportamientos. La identidad nominal de colaboradores, correos, relaciones de reporte, calendarios individuales y crosswalk con backend se administra exclusivamente mediante **Equipo Canónico Privado**.
+
+   - **Universo Canónico Vigente:**
+     La matriz **Equipo Canónico Privado** continúa siendo la fuente autoritativa para colaboradores activos, `accessLevel`, roles y relación con el backend. El universo canónico vigente queda formalmente cerrado y confirmado en **exactamente 18 colaboradores activos**. La referencia anterior a 19 colaboradores ha sido corregida y descartada en la fuente autoritativa.
+   - **Gobernanza del Perfil Ejecutivo (`executive`):**
+     El perfil `executive` adicional definido en Equipo Canónico Privado forma parte de los 18 colaboradores activos y debe contar con usuario Orbit. Su asociación con Backend User ID se resolverá durante el crosswalk con Indunova.
+   - **Gobernanza de `system_admin`:**
+     Existen dos usuarios iniciales con Access Level `system_admin` con idénticos permisos técnicos en plataforma. La diferenciación funcional y operativa (soporte técnico / producto digital vs. soporte administrativo y configuración de capacidades/calendarios) corresponde a su rol en la organización, según se define en Equipo Canónico Privado.
+   - **Cuentas Duplicadas e Históricas identificadas para conciliación por Indunova:**
+     Los pares de cuentas duplicadas y los perfiles históricos que requieren conciliación están identificados en Equipo Canónico Privado. Indunova deberá aplicar la inactivación lógica preservando todas las relaciones e historial.
+     Indunova deberá implementar en sus scripts de conciliación el estado esperado sin ejecutar borrados físicos (`DELETE`) en base de datos:
+     - Conservar activo únicamente el perfil canónico oficial (`is_active = True`) de cada uno de los 18 colaboradores activos.
+     - Inactivar el registro duplicado o perfil histórico (`is_active = False` / `status: 'Inactive'`).
+     - Preservar tareas, horas registradas (`TimeLog`), proyectos e historial de relaciones asociadas.
+     - Excluir perfiles inactivos de los selectores activos y filtros de planificación.
+   - **Principio de No Inferencia:** Queda estrictamente prohibido inferir o fusionar identidades de colaboradores por similitud de nombres o cargos. Toda resolución responde a la correspondencia unívoca con la matriz canónica privada.
+   - **Carga Inicial Separada:** Para la estructura de inicialización y el dataset base de perfiles operativos, consultar el documento complementario: [`src/docs/INITIAL_TEAM_SEED.md`](./INITIAL_TEAM_SEED.md).
 
 ---
 
 ### 11.4.1. Frontera Arquitectónica: Perfil Operativo (`UserProfile`) vs. Evolución People Master
 
-> **DECISIÓN ARQUITECTÓNICA Y DE PRODUCTO (FRONTERA DE GESTIÓN DE PERSONAS):**  
-> Se formaliza la frontera estricta entre la **identidad operativa y de acceso actual (`UserProfile` / `UserItem`)** y la futura evolución hacia un **People Master administrativo integral**.  
+> **DECISIÓN ARQUITECTÓNICA Y DE PRODUCTO (FRONTERA DE GESTIÓN DE PERSONAS):**
+> Se formaliza la frontera estricta entre la **identidad operativa y de acceso actual (`UserProfile` / `UserItem`)** y la futura evolución hacia un **People Master administrativo integral**.
 > **Esta definición NO amplía el alcance actual ni bloquea la integración frontend ↔ backend con Indunova.**
 
 #### 1. Alcance Actual: `UserProfile` como Identidad Operativa y de Acceso
@@ -1468,7 +1627,7 @@ El modelo actual de colaborador en Orbit (`UserProfile` en backend Django / `Use
   5. *Seguridad & RBAC:* Control de acceso estricto y alcance de vistas según los 7 niveles canónicos.
 
 #### 2. Principio Rector: Prohibición de la "Mega-Tabla" de RRHH
-`UserProfile` **NO debe convertirse en una tabla monolítica** que absorba indiscriminadamente atributos administrativos, laborales, médicos o fiscales.  
+`UserProfile` **NO debe convertirse en una tabla monolítica** que absorba indiscriminadamente atributos administrativos, laborales, médicos o fiscales.
 A futuro, los dominios administrativos de personas deberán residir en entidades satélite desacopladas y relacionadas conceptualmente con el colaborador:
 
 ```text
@@ -1490,7 +1649,7 @@ La **Ficha Humana** (`TeamHumanProfileModal`) es una experiencia visual de cerca
 - **Gobernanza:** Queda terminantemente prohibido incorporar datos contractuales, salariales, de dotación o confidenciales dentro de la Ficha Humana. La fuente sigue siendo el perfil y la Ficha Humana es únicamente otra experiencia de presentación.
 
 #### 4. Evolución de Equipo & Accesos (Visión 360 No Inmediata)
-A futuro, el módulo de **Equipo & Accesos** podrá evolucionar para permitir la administración 360 del colaborador mediante pestañas organizadas (*Perfil*, *Trabajo*, *Accesos*, *Administración*, *Activos*, *Vacaciones*).  
+A futuro, el módulo de **Equipo & Accesos** podrá evolucionar para permitir la administración 360 del colaborador mediante pestañas organizadas (*Perfil*, *Trabajo*, *Accesos*, *Administración*, *Activos*, *Vacaciones*).
 **Regla de alcance:** Esta estructura tabulada extendida **NO se implementa en la fase actual** y queda diferida para iteraciones posteriores a la estabilización del core operativo.
 
 #### 5. Privacidad y Gobernanza de Datos Sensibles de RRHH
@@ -1527,20 +1686,20 @@ A futuro, el módulo de **Equipo & Accesos** podrá evolucionar para permitir la
 El flujo corporativo vigente para la solicitud y programación de vacaciones o ausencias opera por fuera de la capa transaccional de Orbit a través de los siguientes 5 pasos estrictos:
 1. **Solicitud Inicial:** El colaborador solicita formalmente la ausencia o periodo de vacaciones a su líder directo de área.
 2. **Aprobación del Líder:** El líder de área evalúa la disponibilidad del equipo y aprueba la solicitud.
-3. **Escalamiento por Rol:** Si quien solicita la ausencia es un **líder de área**, la aprobación corresponde de manera exclusiva a **Ana María Giraldo (Dirección General)**.
-4. **Formalización Administrativa:** Una vez obtenida la aprobación del líder (o de Ana María), la novedad se formaliza mediante correo electrónico remitido a **Laura Viviana Salazar (Administrativa & RRHH)**, con copia obligatoria al líder de área correspondiente.
-5. **Programación en Calendario Corporativo:** Laura Viviana registra y programa formalmente la ausencia en el Google Calendar corporativo oficial de Uhura Group (ej. `ausencias@uhuragroup.com`).
+3. **Escalamiento por Rol:** Si quien solicita la ausencia es un **líder de área**, la aprobación corresponde de manera exclusiva a la **Dirección General (Access Level `executive`)**.
+4. **Formalización Administrativa:** Una vez obtenida la aprobación del líder (o de la Dirección General), la novedad se formaliza mediante correo electrónico remitido al **Área Administrativa (Administrativa & RRHH)**, con copia obligatoria al líder de área correspondiente.
+5. **Programación en Calendario Corporativo:** El Área Administrativa registra y programa formalmente la ausencia en el Google Calendar corporativo oficial de Uhura Group (ej. `ausencias@uhuragroup.com`).
 
 #### Decisiones de Producto y Arquitectura Orbit:
-- **Orbit NO Requiere Crear un Workflow Interno de Aprobación:**  
-  En esta fase, Orbit no implementa un motor transaccional de solicitudes ni bandejas de aprobación burocrática de vacaciones. El proceso operativo existente por canales corporativos (Líder / Ana María ➔ Correo Laura Viviana ➔ Google Calendar) funciona eficientemente.
-- **Google Calendar como Fuente Operacional Externa:**  
-  El Google Calendar corporativo administrado por Laura Viviana actúa como la **fuente de verdad operacional de las ausencias ya aprobadas y programadas**.
-- **Consumo Unificado vía `TeamAbsenceEvent`:**  
+- **Orbit NO Requiere Crear un Workflow Interno de Aprobación:**
+  En esta fase, Orbit no implementa un motor transaccional de solicitudes ni bandejas de aprobación burocrática de vacaciones. El proceso operativo existente por canales corporativos (Líder / Dirección General ➔ Correo Área Administrativa ➔ Google Calendar) funciona eficientemente.
+- **Google Calendar como Fuente Operacional Externa:**
+  El Google Calendar corporativo administrado por el Área Administrativa actúa como la **fuente de verdad operacional de las ausencias ya aprobadas y programadas**.
+- **Consumo Unificado vía `TeamAbsenceEvent`:**
   Orbit sincroniza y consume estas ausencias a través de la entidad canónica `TeamAbsenceEvent`. Se prohíbe taxativamente crear modelos paralelos de ausencias en el backend de Indunova.
-- **Afectación Estricta a Capacidad:**  
+- **Afectación Estricta a Capacidad:**
   **Únicamente las ausencias aprobadas y programadas en `TeamAbsenceEvent` descuentan capacidad/disponibilidad operativa.** Ausencias en borrador, tentativas no formalizadas o eventos de otra índole jamás descuentan horas.
-- **Frontera de Google Calendar:**  
+- **Frontera de Google Calendar:**
   Google Calendar se utiliza **exclusivamente** para:
   - Vacaciones de ley (`type: 'vacation'`).
   - Licencias médicas, incapacidades o ausencias personales aprobadas (`type: 'sick_leave' | 'personal_leave' | 'other'`).
@@ -1613,7 +1772,7 @@ Al ejecutarse la conversión de una Oportunidad a Proyecto (`handleConvertOpport
    - **`ClientTaxEntity.id`**: Identificador real de la entidad fiscal (fuente canónica de verdad para `businessName`, `nit`, `billingEmail`, `alegraContactId`, `alegraContactUrl`, `alegraCreated`).
    - **`opp.selectedTaxEntityId` → `Project.taxEntityId` (Selección Inicial, No Excluyente):** Al convertir la oportunidad, `Project` recibe `taxEntityId` como referencia inicial de facturación. **No debe asumirse que esta selección representa necesariamente la estructura fiscal definitiva ni única del proyecto.**
    - **Frontera de Dominio Multi-NIT (Confirmada):** Un mismo proyecto **puede ser facturado a más de una entidad fiscal**. Por lo tanto, el backend **NO debe implementar una restricción de integridad de dominio que obligue a un único NIT por proyecto** ni cerrar el modelo relacional asumiendo que una FK singular es suficiente para todos los casos.
-   - **Pendiente de Validación con Ana / Administración:** Queda explícitamente pendiente definir con la Dirección General y Administración:
+   - **Pendiente de Validación con Dirección General / Administración:** Queda explícitamente pendiente definir con la Dirección General y Administración:
      1. Si la distribución multi-NIT se define una sola vez a nivel global del proyecto o si puede variar por factura/hito;
      2. Si dicha distribución se parametriza mediante porcentajes, montos fijos en moneda, o admite ambas modalidades.
      *(Hasta cerrar esta definición con Administración, se mantiene `taxEntityId` como referencia inicial compatible sin imponer restricción mononit en backend).*

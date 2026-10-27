@@ -1,9 +1,9 @@
 # Catálogo Oficial de Servicios y Gobernanza de Plantillas — UHURA GROUP 2026
 
-> **Fuente Primaria de Verificación:** *INSTRUCTIVO DILIGENCIAMIENTO, SEGUIMIENTO Y EVALUACIÓN DE ACTIVIDADES & FORMATO DE PROCESO DE ÁREA UHURA (2026)*  
-> **Área Gobernadora:** Dirección General, Producto Digital y Operaciones  
-> **Fecha de Actualización:** Septiembre 2026  
-> **Versión del Catálogo:** 2026.1  
+> **Fuente Primaria de Verificación:** *INSTRUCTIVO DILIGENCIAMIENTO, SEGUIMIENTO Y EVALUACIÓN DE ACTIVIDADES & FORMATO DE PROCESO DE ÁREA UHURA (2026)*
+> **Área Gobernadora:** Dirección General, Producto Digital y Operaciones
+> **Fecha de Actualización:** 26 de octubre de 2026
+> **Versión del Catálogo:** 2026.2 (Gobernanza Canónica de Plantillas)
 > **Implementación en Código:**
 > - Definiciones y Datos Maestros: [`src/components/taskflow/templates/templateData.ts`](../components/taskflow/templates/templateData.ts)
 > - Motor de Clonación y Cálculo: [`src/components/taskflow/templates/templateEngine.ts`](../components/taskflow/templates/templateEngine.ts)
@@ -11,6 +11,9 @@
 > - Cálculo Financiero: Google Sheet oficial de Finanzas (desacoplado de Orbit)
 > - Interfaz de Biblioteca: [`src/components/taskflow/templates/TemplateLibraryView.tsx`](../components/taskflow/templates/TemplateLibraryView.tsx)
 > - Modal de Clonación e Integración con New Business: [`src/components/taskflow/templates/CloneToQuoteModal.tsx`](../components/taskflow/templates/CloneToQuoteModal.tsx)
+
+> **AVISO DE PRIVACIDAD Y GOBERNANZA:**
+> La documentación pública define reglas, estructuras y comportamientos. La identidad nominal de colaboradores, correos, relaciones de reporte, calendarios individuales y crosswalk con backend se administra exclusivamente mediante **Equipo Canónico Privado**.
 
 ---
 
@@ -45,7 +48,12 @@ Orbit implementa un modelo de datos robusto para la evolución del catálogo:
 
 1. **Evolución por Versionamiento:** Cuando un líder autorizado edita una plantilla maestra para optimizar un proceso, el sistema genera o actualiza una nueva versión de la plantilla (ej. de `2026.1` a `2026.2`).
 2. **Inmutabilidad de Cotizaciones Históricas:** La modificación de una plantilla maestra **nunca altera ni retroalimenta cotizaciones, presupuestos o proyectos ya creados**. Cada cotización en New Business opera sobre una copia profunda y desacoplada del alcance vigente al momento de su creación.
-3. **Gobierno Multiarea Abierto:** La interfaz de Orbit permite que los líderes autorizados de cada departamento (Producto Digital, Growth, Creativa, Comercial) gestionen y evolucionen sus propias plantillas a medida que sus servicios se paquetizan y maduran.
+3. **Gobierno Multiarea Abierto y Facultades de `leader` (🟢 Decisión funcional aprobada):** Los usuarios con Access Level `leader` (y `system_admin`) están formalmente autorizados para:
+   - **Crear** nuevas plantillas maestras en el Catálogo de Servicios.
+   - **Editar** plantillas maestras existentes (horas, entregables, actividades y roles).
+   - **Duplicar** plantillas existentes para construir variantes de servicio.
+   - **Archivar** plantillas en desuso sin eliminar su trazabilidad histórica ni alterar cotizaciones previas.
+   - **Preparar y guardar** alcances técnicos derivados para New Business.
 
 ---
 
@@ -74,16 +82,15 @@ Orbit estandariza los perfiles requeridos para la ejecución técnica y comercia
 
 ### 3.2 Asignación de múltiples roles
 
-Un colaborador puede tener **uno o más roles profesionales/cotizables** sin duplicar su usuario. Por ejemplo, Simón Vélez tiene los roles `Trafficker Media` y `DigiOps Specialist`, porque distribuye su dedicación entre ambas funciones. El `accessLevel` se define por separado y no se deriva de estos roles.
+Un colaborador puede tener **uno o más roles profesionales/cotizables** sin duplicar su usuario. Por ejemplo, un colaborador puede tener asignados simultáneamente los roles `Trafficker Media` y `DigiOps Specialist`, distribuyendo su dedicación entre ambas funciones según el proyecto. El `accessLevel` se define por separado y no se deriva de estos roles.
 
-### 3.3 Tratamiento de Personas Reales Detectadas en la Fuente
+### 3.3 Tratamiento de Referencias Nominales de la Fuente Original
 
-Siguiendo el principio de **"interpretar la función y no convertir personas en roles"**, las personas identificadas en los formatos primarios son normalizadas de la siguiente manera:
+Siguiendo el principio de **"interpretar la función y no convertir personas en roles"**, cualquier referencia nominal identificada en la documentación operativa previa es normalizada hacia roles canónicos operativos:
 
-- **Ana María Giraldo (CEO & Founder):** Aparece en la columna "Responsable Calidad" en los formatos de Producto Digital. Se mantiene como **referencia de sign-off y gobernanza ejecutiva**. En las actividades operativas del catálogo, el QA se desacopla y asigna al rol funcional correspondiente (`Product Lead` para calidad técnica; `Client Relationship Strategist` para validación con el cliente).
-- **Sebastián / "Sebas":** Aparece como responsable en la tabla de Gestión y Optimización de Pauta en Growth. Se normaliza según la función específica: **`Trafficker Media`** para las tareas operativas de revisión de alertas, pujas, audiencias y costos; y **`Growth Manager`** para el desarrollo de la planeación estratégica mensual.
-- **Catalina Tejada:** Aparece como responsable de calidad y autora de notas en el Área Comercial. Se normaliza según la naturaleza de la actividad: **`Directora Comercial`** en negociación, pricing, presentaciones de propuesta y seguimiento comercial; y **`Client Relationship Strategist`** en gestión de cuentas, actas y relación con el cliente.
-- **Luisa:** Mencionada en notas de seguimiento comercial ("En esta reunión estamos Luisa y yo"). Se asigna funcionalmente a **`Client Relationship Strategist`**.
+- **Dirección General:** En las actividades operativas del catálogo, el aseguramiento de calidad se desacopla y asigna al rol funcional correspondiente (`Product Lead` para calidad técnica; `Client Relationship Strategist` para validación con el cliente). La Dirección General se reserva exclusivamente como referencia de sign-off y gobernanza ejecutiva.
+- **Gestión Operativa de Pauta:** Se normaliza según la función específica: **`Trafficker Media`** para las tareas operativas de revisión de alertas, pujas, audiencias y costos; y **`Growth Manager`** para el desarrollo de la planeación estratégica mensual.
+- **Área Comercial y Cuentas:** Se normaliza según la naturaleza de la actividad: **`Directora Comercial`** en negociación, pricing, presentaciones de propuesta y seguimiento comercial; y **`Client Relationship Strategist`** en gestión de cuentas, actas y relación con el cliente.
 
 ---
 
@@ -119,25 +126,25 @@ Servicios paquetizados con alcance comercializable cerrado, horas y actividades 
 7. `tmpl-digital-shelf`: **Digital Shelf (Optimización PDPs)** (5.5 hrs) — *🟢 Base operativa confirmada*
 
 #### B. Área Growth (3 Servicios Canónicos)
-8. `tmpl-seo-one-shot`: **SEO (One Shot) o Primer Mes** (46.96 hrs) — *🟢 Base operativa confirmada*  
+8. `tmpl-seo-one-shot`: **SEO (One Shot) o Primer Mes** (46.96 hrs) — *🟢 Base operativa confirmada*
    *Diagnóstico inicial, keyword research, auditoría SEO técnica/on-page y estrategia integral para clientes nuevos.*
-9. `tmpl-pauta-gestion-mensual`: **Gestión & Optimización Mensual de Pauta** (52.0 hrs/mes) — *🟢 Base operativa confirmada*  
+9. `tmpl-pauta-gestion-mensual`: **Gestión & Optimización Mensual de Pauta** (52.0 hrs/mes) — *🟢 Base operativa confirmada*
    *Servicio recurrente mensual de monitoreo de alertas, calibración de pujas, audiencias, pacing y planeación estratégica.*
-10. `tmpl-auditoria-crm-hubspot`: **Auditoría CRM & Email - HubSpot** (70.0 hrs) — *🟢 Base operativa confirmada*  
+10. `tmpl-auditoria-crm-hubspot`: **Auditoría CRM & Email - HubSpot** (70.0 hrs) — *🟢 Base operativa confirmada*
    *Diagnóstico integral de la instancia de HubSpot: calidad de contactos, segmentación, flujos de automatización y roadmap.*
 
 #### C. Área Creativa (4 Servicios Canónicos)
-11. `tmpl-diseno-de-marca`: **Diseño de Marca & Identidad (Branding Completo)** (81.4 hrs) — *🟢 Base operativa confirmada*  
+11. `tmpl-diseno-de-marca`: **Diseño de Marca & Identidad (Branding Completo)** (81.4 hrs) — *🟢 Base operativa confirmada*
    *Servicio integral de branding: buyer persona, arquitectura de marca, naming, narrativa, Key Visual, manual y manifiesto.*
-12. `tmpl-redes-sociales-mensual`: **Contenido para Redes Sociales (Mensual)** (42.4 hrs/mes) — *🟢 Base operativa confirmada*  
+12. `tmpl-redes-sociales-mensual`: **Contenido para Redes Sociales (Mensual)** (42.4 hrs/mes) — *🟢 Base operativa confirmada*
    *Parrilla mensual de 12 publicaciones, producción de video corto UGC, diseño gráfico/animado, publicación y reporte.*
-13. `tmpl-creatividad-campanas`: **Creatividad & Campañas** (41.4 hrs) — *🟢 Base operativa confirmada*  
+13. `tmpl-creatividad-campanas`: **Creatividad & Campañas** (41.4 hrs) — *🟢 Base operativa confirmada*
    *Campaña publicitaria: benchmark, concepto creativo central, textos persuasivos, diseño de Key Visual (2 rutas) y presentación.*
-14. `tmpl-creativos-pauta`: **Creativos de Pauta Digital** (11.0 hrs) — *🟢 Base operativa confirmada*  
+14. `tmpl-creativos-pauta`: **Creativos de Pauta Digital** (11.0 hrs) — *🟢 Base operativa confirmada*
    *Pack publicitario: redacción de copies y diseño de piezas estáticas y animadas adaptadas para A/B testing en pauta.*
 
 #### D. Propuesta Técnica Abierta (1 Plantilla Modular)
-15. `tmpl-custom-blank`: **Proyecto a la Medida (Scoping Abierto)** (12.0 hrs base) — *🔵 Propuesta técnica*  
+15. `tmpl-custom-blank`: **Proyecto a la Medida (Scoping Abierto)** (12.0 hrs base) — *🔵 Propuesta técnica*
    *Estructura modular flexible para dimensionar alcances especiales en New Business sin alterar las plantillas canónicas fijas.*
 
 ---
@@ -425,7 +432,7 @@ Micro-actividades que se integran dentro de los servicios comercializables pero 
   2. *Optimización de Campañas:* 24.0 hrs/mes (`Trafficker Media` — 8h pujas + 8h audiencias + 8h rotación de anuncios)
   3. *Seguimiento & Trabajo Colaborativo:* 12.0 hrs/mes (`Trafficker Media` — 6h feedback/métricas + 6h trabajo con Creativa/Cuentas)
   4. *Planeación Estratégica Mensual:* 4.0 hrs/mes (`Growth Manager` — 4h planeación de medios y forecast)
-- **Notas de Gobernanza:** Roles normalizados desde la fuente: "Sebastián" / "Tracfiker" se normaliza a `Trafficker Media` para tareas tácticas y a `Growth Manager` para la planeación mensual.
+- **Notas de Gobernanza:** Roles normalizados desde la fuente: Las notas operativas de "Tracfiker" se normalizan a `Trafficker Media` para tareas tácticas y a `Growth Manager` para la planeación mensual.
 
 ---
 
