@@ -5,7 +5,6 @@ import {
   Button,
   Badge,
   TaskStatusBadge,
-  RoleChip,
   Input,
   Tooltip
 } from '../ui';
@@ -422,12 +421,8 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
                       {task.title}
                     </h4>
 
-                    {/* Due Date & Assignee & Role */}
+                    {/* Due Date & Assignee */}
                     <div className="flex flex-wrap items-center gap-2 mt-1 text-[11px] text-[#64748b]">
-                      {task.budgetedRole && (
-                        <RoleChip role={task.budgetedRole} size="xs" />
-                      )}
-
                       {task.dueDate && (
                         <div
                           className={`flex items-center gap-1 font-medium ${
@@ -542,7 +537,6 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
                     )}
                   </div>
                 </th>
-                <th className="py-2.5 px-3 font-semibold w-28">ROL COTIZADO</th>
                 <th className="py-2.5 px-3 font-semibold text-center w-16">TIMER</th>
                 <th className="py-2.5 px-3 font-semibold w-32">HORAS</th>
                 {viewMode === 'team' && (
@@ -555,7 +549,7 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
               {filteredTasks.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={viewMode === 'team' ? 7 : 6}
+                    colSpan={viewMode === 'team' ? 6 : 5}
                     className="py-12 text-center text-[#94a3b8]"
                   >
                     No se encontraron tareas con los filtros seleccionados.
@@ -663,12 +657,7 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
                         </div>
                       </td>
 
-                      {/* 3. ROL COTIZADO */}
-                      <td className="py-2.5 px-3">
-                        <RoleChip role={task.budgetedRole || 'Especialista'} size="xs" />
-                      </td>
-
-                      {/* 4. UNIVERSAL PLAY / STOP BUTTON */}
+                      {/* 3. UNIVERSAL PLAY / STOP BUTTON */}
                       <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
                         {isRunning ? (
                           <Button

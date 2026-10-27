@@ -58,6 +58,7 @@ import { MiDiaView } from '../components/taskflow/MiDiaView';
 import { LaColoniaView } from '../components/taskflow/colonia/LaColoniaView';
 import { FloatingBeaverWidget } from '../components/taskflow/FloatingBeaverWidget';
 import { TimerSummaryModal, TimerSummaryData } from '../components/taskflow/TimerSummaryModal';
+import { StopTimerRegisterModal } from '../components/taskflow/time/StopTimerRegisterModal';
 import { AssistedTimerRecoveryModal } from '../components/taskflow/time/AssistedTimerRecoveryModal';
 import { ConflictTimerModal } from '../components/taskflow/time/ConflictTimerModal';
 import {
@@ -757,7 +758,11 @@ export const TaskFlowPrototype: React.FC = () => {
     }
   };
 
-  // Timer Summary Modal State
+  // Modal para detener y registrar el timer (Revisión antes de registrar)
+  const [isStopTimerModalOpen, setIsStopTimerModalOpen] = useState(false);
+  const [stopTimerInitialSeconds, setStopTimerInitialSeconds] = useState(0);
+
+  // Timer Summary Modal State (Confirmación posterior al registro)
   const [isTimerSummaryOpen, setIsTimerSummaryOpen] = useState(false);
   const [timerSummaryData, setTimerSummaryData] = useState<TimerSummaryData | null>(null);
 
@@ -922,22 +927,12 @@ export const TaskFlowPrototype: React.FC = () => {
 
     setTimeLogs((prev) => [newLog, ...prev]);
 
-    // 3. Abrir resumen del tiempo registrado
-    setTimerSummaryData({
-      taskId: targetTask.id,
-      taskTitle: targetTask.title,
-      clientName: targetTask.clientName || 'Cliente',
-      projectName: targetTask.projectName || targetTask.board,
-      sessionSeconds,
-      totalConsumedSeconds,
-      budgetedHours
-    });
-    setIsTimerSummaryOpen(true);
-
+    // Finalizar sesión y cerrar sin doble confirmación
+    setIsStopTimerModalOpen(false);
     setActiveTimer(null);
   };
 
-  // Stop Timer and Log (Verifica si amerita recuperación asistida > 10h)
+  // Stop Timer: Pausar timer y abrir modal de revisión previa al registro
   const handleStopTimer = () => {
     if (!activeTimer) return;
 
@@ -947,7 +942,28 @@ export const TaskFlowPrototype: React.FC = () => {
       return;
     }
 
-    commitTimerLog(activeTimer.elapsedSeconds);
+    // Pausar timer y abrir modal de revisión
+    setActiveTimer((prev) => (prev ? { ...prev, isPaused: true } : null));
+    setStopTimerInitialSeconds(activeTimer.elapsedSeconds);
+    setIsStopTimerModalOpen(true);
+  };
+
+  // Seguir trabajando: cierra modal y reanuda el timer conservando el tiempo acumulado
+  const handleResumeTimerFromModal = () => {
+    setIsStopTimerModalOpen(false);
+    setActiveTimer((prev) => (prev ? { ...prev, isPaused: false } : null));
+  };
+
+  // Descartar sesión: acción destructiva confirmada que limpia el timer sin registrar horas
+  const handleDiscardTimerSession = () => {
+    setIsStopTimerModalOpen(false);
+    setActiveTimer(null);
+  };
+
+  // Aceptar: detiene definitivamente la sesión y guarda un único registro
+  const handleConfirmTimerRegistration = (finalSeconds: number, isAdjusted: boolean) => {
+    setIsStopTimerModalOpen(false);
+    commitTimerLog(finalSeconds, isAdjusted, isAdjusted ? stopTimerInitialSeconds : undefined);
   };
 
   // Manejo de la decisión de recuperación asistida
@@ -2935,7 +2951,17 @@ export const TaskFlowPrototype: React.FC = () => {
         onCancel={handleCancelSwitchTimer}
       />
 
-      {/* Timer Summary Modal on Stop */}
+      {/* Modal para detener y registrar el timer (Revisión y ajuste previo) */}
+      <StopTimerRegisterModal
+        isOpen={isStopTimerModalOpen}
+        activeTimer={activeTimer}
+        task={activeTimer ? tasks.find((t) => t.id === activeTimer.taskId) || null : null}
+        onCloseAndResume={handleResumeTimerFromModal}
+        onDiscardSession={handleDiscardTimerSession}
+        onConfirmRegistration={handleConfirmTimerRegistration}
+      />
+
+      {/* Timer Summary Modal on Stop (Confirmación posterior al registro) */}
       <TimerSummaryModal
         isOpen={isTimerSummaryOpen}
         onClose={() => setIsTimerSummaryOpen(false)}

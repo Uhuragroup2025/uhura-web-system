@@ -470,7 +470,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
 
                     <button
                       onClick={() => onOpenTaskDetail(t.id)}
-                      className="px-3 py-1.5 rounded-xl bg-[#501f92] text-white font-bold hover:bg-[#381566] transition-colors self-start sm:self-auto cursor-pointer"
+                      className="px-3 py-1.5 rounded-xl bg-[#f5f3ff] text-[#501f92] border border-[#ddd6fe] hover:bg-[#ede9fe] font-semibold text-xs transition-colors self-start sm:self-auto cursor-pointer"
                     >
                       Revisar pieza
                     </button>
@@ -524,7 +524,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                         onClick={() => {
                           if (onNavigateToView) onNavigateToView('proyectos');
                         }}
-                        className="px-3 py-1.5 rounded-xl bg-[#501f92] text-white font-bold hover:bg-[#381566] transition-colors cursor-pointer"
+                        className="px-3 py-1.5 rounded-xl bg-[#f1f5f9] text-[#334155] border border-[#e2e8f0] font-semibold text-xs hover:bg-[#e2e8f0] hover:text-[#0f172a] transition-colors cursor-pointer"
                       >
                         Ver en proyecto
                       </button>
@@ -658,7 +658,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                         {onNavigateToView && (
                           <button
                             onClick={() => onNavigateToView('new-business')}
-                            className="px-3.5 py-1.5 rounded-xl bg-[#501f92] text-white font-bold hover:bg-[#3d1572] transition-colors cursor-pointer shadow-2xs"
+                            className="px-3.5 py-1.5 rounded-xl bg-[#f5f3ff] text-[#501f92] border border-[#ddd6fe] hover:bg-[#ede9fe] font-semibold text-xs transition-colors cursor-pointer"
                           >
                             Abrir oportunidad →
                           </button>
@@ -886,9 +886,9 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => onOpenManualLog()}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold shadow-xs transition-all cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-[#cbd5e1] hover:border-[#501f92] text-[#334155] hover:text-[#501f92] text-xs font-semibold shadow-2xs transition-all cursor-pointer"
                   >
-                    <Plus className="w-3.5 h-3.5" />
+                    <Plus className="w-3.5 h-3.5 text-[#501f92]" />
                     <span>Cargar horas</span>
                   </button>
                 </div>
