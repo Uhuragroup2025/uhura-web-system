@@ -1415,6 +1415,31 @@ export interface QuoteProposalSnapshot {
 }
 
 /**
+ * Modalidad comercial por servicio en Cotización
+ */
+export type ServiceCommercialModality = 'fixed_project' | 'fee_monthly';
+
+/**
+ * Tipo general de la propuesta calculado automáticamente por Orbit
+ */
+export type ProposalCommercialType = 'fixed_project' | 'fee_monthly' | 'mixed';
+
+/**
+ * Estructura comercial por servicio definida en Cotización
+ */
+export interface ServiceCommercialItem {
+  serviceId: string;
+  serviceName: string;
+  modality: ServiceCommercialModality;
+  weeksRef: number;               // Semanas definidas en el alcance como referencia
+  totalValue?: number;            // Proyecto único: valor total del servicio
+  monthlyValue?: number;          // Fee mensual: valor mensual
+  monthsDuration?: number;        // Fee mensual: vigencia en meses
+  approved?: boolean;             // Confirmación de aprobación del cliente tras ganar
+  deliverableIds?: string[];      // IDs de entregables que componen este servicio
+}
+
+/**
  * Cotización (Quote Proposal)
  * Cada oportunidad puede tener 1..N cotizaciones simultáneas (Decisión 2)
  */
@@ -1434,6 +1459,11 @@ export interface QuoteProposal {
   commercialProposalUrl?: string;   // Enlace o PDF de la propuesta comercial enviada
   estimatedWeeks?: number;          // Duración estimada en semanas por el Líder (solo proyectos únicos)
   commercialNotes?: string;         // Supuestos y condiciones comerciales breves
+  commercialStructure?: ServiceCommercialItem[]; // Estructura comercial por servicio (modalidad, valores, vigencia)
+  commercialProposalType?: ProposalCommercialType; // 'fixed_project' | 'fee_monthly' | 'mixed'
+  commercialTotalOneOff?: number;   // Total acumulado proyectos únicos
+  commercialTotalMonthlyFee?: number; // Total acumulado fee mensual
+  commercialEstimatedContractValue?: number; // Valor estimado del contrato
   financialConfig?: QuoteFinancialConfig; // Deprecado: conservado para compatibilidad
   financialSummary?: QuoteFinancialSummary; // Deprecado: conservado para compatibilidad
   approvalNotes?: string;

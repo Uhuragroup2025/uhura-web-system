@@ -431,15 +431,43 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
     </section>;
   };
 
+  const totalWeeks = services.reduce((acc, s) => acc + (parseInt(s.weeks, 10) || 0), 0);
+
   const hoursSummary = <aside aria-label="Resumen de horas del alcance" className="lg:col-span-4 lg:sticky lg:top-4 p-5 rounded-2xl border border-[#e2e8f0] bg-white space-y-4">
     <h3 className="font-bold text-[#0f172a]">Resumen del alcance</h3>
-    <div className="border-b border-[#e2e8f0] pb-4"><strong className="text-4xl font-bold text-[#501f92]">{totalHours.toLocaleString('es-CO')} h</strong><p className="text-xs text-[#64748b] mt-1">Esfuerzo total estimado</p></div>
+    <div className="border-b border-[#e2e8f0] pb-4 grid grid-cols-2 gap-4">
+      <div>
+        <strong className="text-3xl font-bold text-[#501f92]">{totalHours.toLocaleString('es-CO')} h</strong>
+        <p className="text-xs text-[#64748b] mt-1">Esfuerzo total estimado</p>
+      </div>
+      <div>
+        <strong className="text-3xl font-bold text-[#501f92]">{totalWeeks} Sem.</strong>
+        <p className="text-xs text-[#64748b] mt-1">Semanas totales</p>
+      </div>
+    </div>
     <h3 className="font-bold text-[#0f172a]">Horas por rol</h3>
     <div className="divide-y divide-[#f1f5f9]">{globalRoleRollup.map((role) => <div key={role.roleId} className="flex justify-between gap-3 text-xs py-2"><span>{role.roleName}</span><strong className="whitespace-nowrap">{role.quotedHours.toLocaleString('es-CO')} h</strong></div>)}</div>
-    <h3 className="font-bold text-[#0f172a] border-t border-[#e2e8f0] pt-3">Horas por servicio</h3>
-    <div className="divide-y divide-[#f1f5f9]">{services.map((service) => <div key={service.id} className="flex justify-between gap-3 text-xs py-2"><span>{service.name}</span><strong className="whitespace-nowrap">{quote.deliverables.filter((item) => service.deliverableIds.includes(item.id)).flatMap((item) => item.backlogItems).reduce((sum, item) => sum + item.estimatedHours, 0).toLocaleString('es-CO')} h</strong></div>)}</div>
-    <div className="border-t border-[#e2e8f0] pt-3 flex justify-between gap-3"><h3 className="font-bold text-[#0f172a]">Semanas totales</h3><strong className="text-[#501f92]">{getScopeWeeks(quote, services) || 'Pendiente'}</strong></div>
-    <p className="text-xs text-[#64748b]">Duración del servicio más largo. Los servicios pueden ejecutarse en paralelo.</p>
+    {/* Semanas por servicio */}
+    <div className="border-t border-[#e2e8f0] pt-3 space-y-2">
+      <h3 className="font-bold text-[#0f172a]">Semanas por servicio</h3>
+      <div className="divide-y divide-[#f1f5f9]">
+        {services.length === 0 ? (
+          <p className="text-xs text-[#94a3b8] py-1">Sin servicios incorporados</p>
+        ) : (
+          services.map((service) => {
+            const w = Math.max(0, parseInt(service.weeks, 10) || 0);
+            return (
+              <div key={service.id} className="flex justify-between gap-3 text-xs py-1.5">
+                <span className="text-[#334155]">{service.name}</span>
+                <strong className="text-[#0f172a] whitespace-nowrap">
+                  {w} {w === 1 ? 'semana' : 'semanas'}
+                </strong>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
   </aside>;
 
   const readingDeliverable = (deliverable: QuoteDeliverable) => <article className="bg-white border border-[#e2e8f0] rounded-xl overflow-hidden">

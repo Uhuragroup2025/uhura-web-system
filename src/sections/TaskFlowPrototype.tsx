@@ -1804,63 +1804,502 @@ export const TaskFlowPrototype: React.FC = () => {
     setClients((prev) => [newClient, ...prev]);
   };
 
-  // Convert New Business Opportunity to Client & Active Project
   const handleConvertOpportunityToProject = (payload: {
     opportunity: NewBusinessOpportunity;
     selectedQuote: QuoteProposal;
     projectName: string;
     projectType: ProjectType;
     leadUserId: string;
+    leadUserIds?: string[];
     specialistUserIds?: string[];
     leadName: string;
     startDate: string;
     endDate?: string;
+    initialFormalizationStatus?: 'pendiente_formalizacion' | 'activo';
+    startConditionsConfig?: any;
+    approvedServiceIds?: string[];
+    isMixed?: boolean;
+    fixedProjectName?: string;
+    feeProjectName?: string;
   }) => {
     const opp = payload.opportunity;
     const quote = payload.selectedQuote;
 
     // Solo colaboradores activos del equipo canónico pueden incorporarse a la conversión.
     const activeTeam = users.filter((user) => user.status === 'Active');
-    const assignedLeadUser = activeTeam.find((user) => user.id === payload.leadUserId);
+    const leadIds = payload.leadUserIds && payload.leadUserIds.length > 0
+      ? payload.leadUserIds
+      : [payload.leadUserId];
+
+    const leadUsers = activeTeam.filter((u) => leadIds.includes(u.id));
+    const assignedLeadUser = leadUsers[0] || activeTeam.find((user) => user.id === payload.leadUserId);
     if (!assignedLeadUser) return;
     const leadId = assignedLeadUser.id;
-    const leadName = assignedLeadUser.name;
+    const leadName = leadUsers.length > 1
+      ? leadUsers.map((u) => u.name).join(', ')
+      : assignedLeadUser.name;
+    const leadRole = assignedLeadUser?.officialRole || assignedLeadUser?.professionalRole || assignedLeadUser?.role || 'Líder de Proyecto';
+    const leadAvatarBg = assignedLeadUser?.avatarBg || 'bg-[#501f92]';
+    const leadInitials = assignedLeadUser?.initials || leadName.slice(0, 2).toUpperCase();
 
-    // 1. Resolver ID de Proyecto y elemento histórico para el Cliente
-    const newProjectId = `prj-${Date.now()}`;
-    const rawSoldValue = quote.totalQuotedValue || quote.totalQuotedValueCOP || quote.financialSummary?.finalPriceWithTaxCOP || quote.financialSummary?.subtotalBeforeTaxCOP || 0;
+    const resolvedCoreTeam: any[] = leadUsers.map((lUser) => ({
+      id: lUser.id,
+      name: lUser.name,
+      role: lUser.officialRole || lUser.professionalRole || lUser.role || 'Líder de Proyecto',
+      avatarBg: lUser.avatarBg || 'bg-[#501f92]',
+      initials: lUser.initials || lUser.name.slice(0, 2).toUpperCase(),
+      isLead: true,
+      weeklyAllocatedHours: 4
+    }));
+
+    if (payload.specialistUserIds && Array.isArray(payload.specialistUserIds)) {
+      payload.specialistUserIds.forEach((specId: string) => {
+        const specUser = activeTeam.find((u) => u.id === specId);
+        if (specUser && specUser.id !== leadId) {
+          resolvedCoreTeam.push({
+            id: specUser.id,
+            name: specUser.name,
+            role: specUser.officialRole || specUser.professionalRole || specUser.role || 'Especialista',
+            avatarBg: specUser.avatarBg || 'bg-[#7839ee]',
+            initials: specUser.initials || specUser.name.slice(0, 2).toUpperCase(),
+            isLead: false,
+            weeklyAllocatedHours: 8
+          });
+        }
+      });
+    }
+
+    // Resolver servicios y entregables aprobados
+    const commercialItems = quote.commercialStructure || [];
+    const isDeliverableApproved = (qd: any) => {
+      if (!payload.approvedServiceIds || payload.approvedServiceIds.length === 0) return true;
+      if (commercialItems.length === 0) return true;
+      const parent = commercialItems.find((ci) =>
+        (ci.deliverableIds && ci.deliverableIds.includes(qd.id)) ||
+        ci.serviceId === qd.id ||
+        ci.serviceName.toLowerCase() === qd.name.toLowerCase()
+      );
+      if (!parent) return true;
+      return payload.approvedServiceIds.includes(parent.serviceId);
+    };
+
+    const getDeliverableModality = (qd: any): 'fixed_project' | 'fee_monthly' => {
+      const parent = commercialItems.find((ci) =>
+        (ci.deliverableIds && ci.deliverableIds.includes(qd.id)) ||
+        ci.serviceId === qd.id ||
+        ci.serviceName.toLowerCase() === qd.name.toLowerCase()
+      );
+      if (parent) return parent.modality;
+      return payload.projectType === 'fee_monthly' ? 'fee_monthly' : 'fixed_project';
+    };
+
     const quoteCurrency = quote.currency || 'COP';
-    const soldValue = rawSoldValue > 0 ? rawSoldValue : undefined;
-    const soldValueCOP = quoteCurrency === 'COP' && rawSoldValue > 0 ? rawSoldValue : undefined;
+    const effectiveTaxEntityId = opp.selectedTaxEntityId || null;
 
-    // 2. Resolver o registrar el Cliente en Orbit
+    // Regla estricta: NO reconciliar ni reutilizar Clientes mediante coincidencias por nombre:
+    // - si existe clientId, reutilizar exactamente ese Cliente;
+    // - si no existe clientId, crear un nuevo Cliente.
     if (opp.clientId && !clients.some((client) => client.id === opp.clientId)) return;
     let resolvedClientId = opp.clientId || undefined;
     let resolvedClientName = opp.prospectAccountName || 'Cliente';
-    const effectiveTaxEntityId = opp.selectedTaxEntityId || null;
 
-    const newProjectHistoryItem: ClientProjectHistoryItem = {
-      id: newProjectId,
-      name: payload.projectName,
-      brand: resolvedClientName,
-      tag: payload.projectType === 'fee_monthly' ? 'FEE' : 'PRJ',
-      status: 'Activo',
-      quotedValueCOP: rawSoldValue > 0 ? `$${rawSoldValue.toLocaleString('es-CO')} ${quoteCurrency}` : 'Por definir',
-      realMarginPercent: null,
-      trafficLight: 'verde'
-    };
+    const isMixed = Boolean(payload.isMixed);
 
+    // Preparar los proyectos a crear
+    const projectsToCreate: ProjectSummaryItem[] = [];
+    const historyItemsToCreate: ClientProjectHistoryItem[] = [];
+    const newTasksToCreate: TaskItem[] = [];
+
+    if (isMixed) {
+      // Caso C: Propuesta mixta (2 proyectos: 1 Proyecto único + 1 Proyecto fee)
+      const fixedProjectId = `prj-${Date.now()}-1`;
+      const feeProjectId = `prj-${Date.now()}-2`;
+
+      // Entregables para el Proyecto Único (aprobados y de modalidad fixed_project)
+      const fixedDeliverables = quote.deliverables
+        .filter(isDeliverableApproved)
+        .filter((qd) => getDeliverableModality(qd) === 'fixed_project');
+
+      // Entregables para el Proyecto Fee (aprobados y de modalidad fee_monthly)
+      const feeDeliverables = quote.deliverables
+        .filter(isDeliverableApproved)
+        .filter((qd) => getDeliverableModality(qd) === 'fee_monthly');
+
+      const fixedApprovedCommercial = commercialItems
+        .filter((ci) => (payload.approvedServiceIds || []).includes(ci.serviceId))
+        .filter((ci) => ci.modality === 'fixed_project');
+
+      const feeApprovedCommercial = commercialItems
+        .filter((ci) => (payload.approvedServiceIds || []).includes(ci.serviceId))
+        .filter((ci) => ci.modality === 'fee_monthly');
+
+      const fixedSoldValue = fixedApprovedCommercial.reduce((sum, ci) => sum + (ci.totalValue || 0), 0);
+      const feeSoldMonthly = feeApprovedCommercial.reduce((sum, ci) => sum + (ci.monthlyValue || 0), 0);
+      const feeSoldTotal = feeApprovedCommercial.reduce((sum, ci) => sum + ((ci.monthlyValue || 0) * (ci.monthsDuration || 0)), 0);
+
+      const fixedName = payload.fixedProjectName || `${payload.projectName} · Proyectos Únicos`;
+      const feeName = payload.feeProjectName || `${payload.projectName} · Fee Mensual`;
+
+      // 1. Proyecto Único
+      const newProjectDeliverablesFixed = fixedDeliverables.map((qd, idx) => ({
+        id: `del-${fixedProjectId}-${idx + 1}`,
+        projectId: fixedProjectId,
+        name: qd.name,
+        description: qd.description,
+        order: qd.order || idx + 1,
+        status: 'pending' as const,
+        roleBudgets: qd.roleBudgets.map((rb) => ({
+          id: `rb-${fixedProjectId}-${rb.id}`,
+          roleId: rb.roleId,
+          roleName: rb.roleName,
+          quotedHours: rb.quotedHours
+        })),
+        totalQuotedHours: qd.totalHoursRollup || 0,
+        totalExecutedHours: 0,
+        progressPercentage: 0
+      }));
+
+      const newPrjFixed: ProjectSummaryItem = {
+        id: fixedProjectId,
+        code: `PRJ-${Math.floor(10 + Math.random() * 90)}`,
+        name: fixedName,
+        clientId: resolvedClientId || '',
+        clientName: resolvedClientName,
+        taxEntityId: effectiveTaxEntityId || (clients.find(c => c.id === resolvedClientId)?.taxEntities?.[0]?.id) || null,
+        brand: resolvedClientName,
+        leadName,
+        leadAvatarBg,
+        leadRole,
+        projectType: 'fixed_project',
+        serviceBase: 'Desarrollo & Proyectos Puntuales',
+        budgetedHours: fixedDeliverables.reduce((sum, d) => sum + (d.totalHoursRollup || 0), 0),
+        soldHours: fixedDeliverables.reduce((sum, d) => sum + (d.totalHoursRollup || 0), 0),
+        soldValue: fixedSoldValue > 0 ? fixedSoldValue : undefined,
+        soldValueCOP: quoteCurrency === 'COP' && fixedSoldValue > 0 ? fixedSoldValue : undefined,
+        soldCurrency: quoteCurrency,
+        startDate: payload.startDate,
+        endDate: payload.endDate,
+        brief: opp.briefSummary || opp.discoveryNotes,
+        briefUrl: opp.briefUrl || null,
+        deliverables: newProjectDeliverablesFixed,
+        coreTeam: resolvedCoreTeam,
+        originOpportunityId: opp.id,
+        originQuoteIds: [quote.id],
+        hubspotDealId: opp.hubspotDealId || null,
+        hubspotDealUrl: opp.hubspotDealUrl || null,
+        alegraContactId: opp.administrativeChecklist?.alegraContactId || null,
+        driveFolderId: opp.driveFolderId || null,
+        driveFolderUrl: opp.driveFolderUrl || null,
+        status: 'Activo',
+        healthStatus: 'verde',
+        healthNote: 'Proyecto puntual de propuesta mixta ganado en New Business'
+      };
+
+      // 2. Proyecto Fee
+      const newProjectDeliverablesFee = feeDeliverables.map((qd, idx) => ({
+        id: `del-${feeProjectId}-${idx + 1}`,
+        projectId: feeProjectId,
+        name: qd.name,
+        description: qd.description,
+        order: qd.order || idx + 1,
+        status: 'pending' as const,
+        roleBudgets: qd.roleBudgets.map((rb) => ({
+          id: `rb-${feeProjectId}-${rb.id}`,
+          roleId: rb.roleId,
+          roleName: rb.roleName,
+          quotedHours: rb.quotedHours
+        })),
+        totalQuotedHours: qd.totalHoursRollup || 0,
+        totalExecutedHours: 0,
+        progressPercentage: 0
+      }));
+
+      const newPrjFee: ProjectSummaryItem = {
+        id: feeProjectId,
+        code: `FEE-${Math.floor(10 + Math.random() * 90)}`,
+        name: feeName,
+        clientId: resolvedClientId || '',
+        clientName: resolvedClientName,
+        taxEntityId: effectiveTaxEntityId || (clients.find(c => c.id === resolvedClientId)?.taxEntities?.[0]?.id) || null,
+        brand: resolvedClientName,
+        leadName,
+        leadAvatarBg,
+        leadRole,
+        projectType: 'fee_monthly',
+        serviceBase: 'Servicios Recurrentes & Fee Mensual',
+        budgetedHours: feeDeliverables.reduce((sum, d) => sum + (d.totalHoursRollup || 0), 0),
+        soldHours: feeDeliverables.reduce((sum, d) => sum + (d.totalHoursRollup || 0), 0),
+        soldValue: feeSoldTotal > 0 ? feeSoldTotal : undefined,
+        soldValueCOP: quoteCurrency === 'COP' && feeSoldTotal > 0 ? feeSoldTotal : undefined,
+        soldCurrency: quoteCurrency,
+        startDate: payload.startDate,
+        endDate: payload.endDate,
+        brief: opp.briefSummary || opp.discoveryNotes,
+        briefUrl: opp.briefUrl || null,
+        deliverables: newProjectDeliverablesFee,
+        coreTeam: resolvedCoreTeam,
+        originOpportunityId: opp.id,
+        originQuoteIds: [quote.id],
+        hubspotDealId: opp.hubspotDealId || null,
+        hubspotDealUrl: opp.hubspotDealUrl || null,
+        alegraContactId: opp.administrativeChecklist?.alegraContactId || null,
+        driveFolderId: opp.driveFolderId || null,
+        driveFolderUrl: opp.driveFolderUrl || null,
+        status: 'Activo',
+        healthStatus: 'verde',
+        healthNote: 'Proyecto fee mensual de propuesta mixta ganado en New Business'
+      };
+
+      projectsToCreate.push(newPrjFixed, newPrjFee);
+
+      historyItemsToCreate.push({
+        id: fixedProjectId,
+        name: fixedName,
+        brand: resolvedClientName,
+        tag: 'PRJ',
+        status: 'Activo',
+        quotedValueCOP: fixedSoldValue > 0 ? `$${fixedSoldValue.toLocaleString('es-CO')} ${quoteCurrency}` : 'Por definir',
+        realMarginPercent: null,
+        trafficLight: 'verde'
+      });
+
+      historyItemsToCreate.push({
+        id: feeProjectId,
+        name: feeName,
+        brand: resolvedClientName,
+        tag: 'FEE',
+        status: 'Activo',
+        quotedValueCOP: feeSoldMonthly > 0 ? `$${feeSoldMonthly.toLocaleString('es-CO')} ${quoteCurrency} / mes` : 'Por definir',
+        realMarginPercent: null,
+        trafficLight: 'verde'
+      });
+
+      // Crear tareas para ambos proyectos
+      fixedDeliverables.forEach((qd, dIdx) => {
+        const parentDelId = `del-${fixedProjectId}-${dIdx + 1}`;
+        qd.backlogItems.forEach((bItem, bIdx) => {
+          const activityUser = activeTeam.find((user) => user.id === bItem.suggestedUserId);
+          newTasksToCreate.push({
+            id: `task-${fixedProjectId}-${dIdx + 1}-${bIdx + 1}`,
+            title: bItem.title,
+            status: 'todo',
+            priority: 'Medium',
+            projectId: fixedProjectId,
+            projectName: fixedName,
+            clientName: resolvedClientName,
+            deliverableId: parentDelId,
+            frente: qd.name,
+            board: fixedName,
+            department: 'Operaciones',
+            date: new Date().toISOString().slice(0, 10),
+            dueDate: payload.endDate || new Date().toISOString().slice(0, 10),
+            dueStatus: 'normal',
+            dueText: 'Planificado en Scoping',
+            budgetedHours: bItem.estimatedHours || 0,
+            consumedSeconds: 0,
+            completed: false,
+            budgetedRole: bItem.roleName,
+            budgetedRoleId: bItem.roleId,
+            assigneeIds: activityUser ? [activityUser.id] : [],
+            assignee: activityUser ? {
+              id: activityUser.id,
+              name: activityUser.name,
+              role: bItem.roleName,
+              avatarBg: activityUser.avatarBg || 'bg-[#501f92]',
+              initials: activityUser.initials || activityUser.name.slice(0, 2).toUpperCase()
+            } : {
+              id: undefined,
+              name: `Sin asignar (${bItem.roleName})`,
+              role: bItem.roleName,
+              avatarBg: 'bg-[#94a3b8]',
+              initials: '--'
+            }
+          });
+        });
+      });
+
+      feeDeliverables.forEach((qd, dIdx) => {
+        const parentDelId = `del-${feeProjectId}-${dIdx + 1}`;
+        qd.backlogItems.forEach((bItem, bIdx) => {
+          const activityUser = activeTeam.find((user) => user.id === bItem.suggestedUserId);
+          newTasksToCreate.push({
+            id: `task-${feeProjectId}-${dIdx + 1}-${bIdx + 1}`,
+            title: bItem.title,
+            status: 'todo',
+            priority: 'Medium',
+            projectId: feeProjectId,
+            projectName: feeName,
+            clientName: resolvedClientName,
+            deliverableId: parentDelId,
+            frente: qd.name,
+            board: feeName,
+            department: 'Operaciones',
+            date: new Date().toISOString().slice(0, 10),
+            dueDate: payload.endDate || new Date().toISOString().slice(0, 10),
+            dueStatus: 'normal',
+            dueText: 'Planificado en Scoping',
+            budgetedHours: bItem.estimatedHours || 0,
+            consumedSeconds: 0,
+            completed: false,
+            budgetedRole: bItem.roleName,
+            budgetedRoleId: bItem.roleId,
+            assigneeIds: activityUser ? [activityUser.id] : [],
+            assignee: activityUser ? {
+              id: activityUser.id,
+              name: activityUser.name,
+              role: bItem.roleName,
+              avatarBg: activityUser.avatarBg || 'bg-[#501f92]',
+              initials: activityUser.initials || activityUser.name.slice(0, 2).toUpperCase()
+            } : {
+              id: undefined,
+              name: `Sin asignar (${bItem.roleName})`,
+              role: bItem.roleName,
+              avatarBg: 'bg-[#94a3b8]',
+              initials: '--'
+            }
+          });
+        });
+      });
+    } else {
+      // Caso A o B: Todos los servicios aprobados son de la misma modalidad
+      const newProjectId = `prj-${Date.now()}`;
+      const approvedDeliverables = quote.deliverables.filter(isDeliverableApproved);
+      const codePrefix = payload.projectName.slice(0, 3).toUpperCase().replace(/[^A-Z]/g, 'PRJ') || 'PRJ';
+
+      const approvedCommercial = commercialItems.filter((ci) => (payload.approvedServiceIds || []).includes(ci.serviceId));
+      const rawSoldValue = approvedCommercial.length > 0
+        ? approvedCommercial.reduce((sum, ci) => sum + (ci.modality === 'fixed_project' ? (ci.totalValue || 0) : ((ci.monthlyValue || 0) * (ci.monthsDuration || 0))), 0)
+        : (quote.totalQuotedValue || quote.totalQuotedValueCOP || 0);
+
+      const soldValue = rawSoldValue > 0 ? rawSoldValue : undefined;
+      const soldValueCOP = quoteCurrency === 'COP' && rawSoldValue > 0 ? rawSoldValue : undefined;
+
+      const newProjectDeliverables = approvedDeliverables.map((qd, idx) => ({
+        id: `del-${newProjectId}-${idx + 1}`,
+        projectId: newProjectId,
+        name: qd.name,
+        description: qd.description,
+        order: qd.order || idx + 1,
+        status: 'pending' as const,
+        roleBudgets: qd.roleBudgets.map((rb) => ({
+          id: `rb-${newProjectId}-${rb.id}`,
+          roleId: rb.roleId,
+          roleName: rb.roleName,
+          quotedHours: rb.quotedHours
+        })),
+        totalQuotedHours: qd.totalHoursRollup || 0,
+        totalExecutedHours: 0,
+        progressPercentage: 0
+      }));
+
+      const newPrj: ProjectSummaryItem = {
+        id: newProjectId,
+        code: `${codePrefix}-${Math.floor(10 + Math.random() * 90)}`,
+        name: payload.projectName,
+        clientId: resolvedClientId || '',
+        clientName: resolvedClientName,
+        taxEntityId: effectiveTaxEntityId || (clients.find(c => c.id === resolvedClientId)?.taxEntities?.[0]?.id) || null,
+        brand: resolvedClientName,
+        leadName,
+        leadAvatarBg,
+        leadRole,
+        projectType: payload.projectType,
+        serviceBase: payload.projectType === 'fee_monthly' ? 'Servicios Recurrentes' : 'Desarrollo & Estrategia',
+        budgetedHours: approvedDeliverables.reduce((sum, d) => sum + (d.totalHoursRollup || 0), 0),
+        soldHours: approvedDeliverables.reduce((sum, d) => sum + (d.totalHoursRollup || 0), 0),
+        soldValue,
+        soldValueCOP,
+        soldCurrency: quoteCurrency,
+        startDate: payload.startDate,
+        endDate: payload.endDate,
+        brief: opp.briefSummary || opp.discoveryNotes,
+        briefUrl: opp.briefUrl || null,
+        deliverables: newProjectDeliverables,
+        coreTeam: resolvedCoreTeam,
+        originOpportunityId: opp.id,
+        originQuoteIds: [quote.id],
+        hubspotDealId: opp.hubspotDealId || null,
+        hubspotDealUrl: opp.hubspotDealUrl || null,
+        alegraContactId: opp.administrativeChecklist?.alegraContactId || null,
+        driveFolderId: opp.driveFolderId || null,
+        driveFolderUrl: opp.driveFolderUrl || null,
+        status: 'Activo',
+        healthStatus: 'verde',
+        healthNote: 'Proyecto recién ganado y aprobado en New Business'
+      };
+
+      projectsToCreate.push(newPrj);
+
+      historyItemsToCreate.push({
+        id: newProjectId,
+        name: payload.projectName,
+        brand: resolvedClientName,
+        tag: payload.projectType === 'fee_monthly' ? 'FEE' : 'PRJ',
+        status: 'Activo',
+        quotedValueCOP: rawSoldValue > 0 ? `$${rawSoldValue.toLocaleString('es-CO')} ${quoteCurrency}` : 'Por definir',
+        realMarginPercent: null,
+        trafficLight: 'verde'
+      });
+
+      // Crear tareas para los entregables aprobados
+      approvedDeliverables.forEach((qd, dIdx) => {
+        const parentDelId = `del-${newProjectId}-${dIdx + 1}`;
+        qd.backlogItems.forEach((bItem, bIdx) => {
+          const activityUser = activeTeam.find((user) => user.id === bItem.suggestedUserId);
+          newTasksToCreate.push({
+            id: `task-${newProjectId}-${dIdx + 1}-${bIdx + 1}`,
+            title: bItem.title,
+            status: 'todo',
+            priority: 'Medium',
+            projectId: newProjectId,
+            projectName: payload.projectName,
+            clientName: resolvedClientName,
+            deliverableId: parentDelId,
+            frente: qd.name,
+            board: payload.projectName,
+            department: 'Operaciones',
+            date: new Date().toISOString().slice(0, 10),
+            dueDate: payload.endDate || new Date().toISOString().slice(0, 10),
+            dueStatus: 'normal',
+            dueText: 'Planificado en Scoping',
+            budgetedHours: bItem.estimatedHours || 0,
+            consumedSeconds: 0,
+            completed: false,
+            budgetedRole: bItem.roleName,
+            budgetedRoleId: bItem.roleId,
+            assigneeIds: activityUser ? [activityUser.id] : [],
+            assignee: activityUser ? {
+              id: activityUser.id,
+              name: activityUser.name,
+              role: bItem.roleName,
+              avatarBg: activityUser.avatarBg || 'bg-[#501f92]',
+              initials: activityUser.initials || activityUser.name.slice(0, 2).toUpperCase()
+            } : {
+              id: undefined,
+              name: `Sin asignar (${bItem.roleName})`,
+              role: bItem.roleName,
+              avatarBg: 'bg-[#94a3b8]',
+              initials: '--'
+            }
+          });
+        });
+      });
+    }
+
+    // Actualizar Cliente en Orbit
     if (!resolvedClientId) {
       resolvedClientId = `cli-${Date.now()}`;
+      projectsToCreate.forEach((p) => { p.clientId = resolvedClientId!; });
+
       const newClient: ClientProfile = {
         id: resolvedClientId,
         name: resolvedClientName,
         status: 'active',
-        type: payload.projectType === 'fee_monthly' ? 'Fee mensual' : 'Proyecto único',
+        type: isMixed ? 'Proyecto único' : (payload.projectType === 'fee_monthly' ? 'Fee mensual' : 'Proyecto único'),
         hubspotCompanyId: opp.hubspotCompanyId || undefined,
-        projectsCount: 1,
-        activeProjectsCount: 1,
-        projectsHistory: [newProjectHistoryItem],
+        projectsCount: projectsToCreate.length,
+        activeProjectsCount: projectsToCreate.length,
+        projectsHistory: historyItemsToCreate,
         taxEntities: effectiveTaxEntityId ? [
           {
             id: effectiveTaxEntityId,
@@ -1893,6 +2332,7 @@ export const TaskFlowPrototype: React.FC = () => {
       const existing = clients.find((c) => c.id === resolvedClientId);
       if (existing) {
         resolvedClientName = existing.name;
+        projectsToCreate.forEach((p) => { p.clientName = existing.name; });
         setClients((prev) =>
           prev.map((c) => {
             if (c.id === resolvedClientId) {
@@ -1910,16 +2350,14 @@ export const TaskFlowPrototype: React.FC = () => {
                 });
               }
               const currentHistory = c.projectsHistory || [];
-              const updatedHistory = currentHistory.some(p => p.id === newProjectId)
-                ? currentHistory
-                : [newProjectHistoryItem, ...currentHistory];
+              const updatedHistory = [...historyItemsToCreate, ...currentHistory];
 
               return {
                 ...c,
                 hubspotCompanyId: c.hubspotCompanyId || opp.hubspotCompanyId || undefined,
                 taxEntities: updatedTaxEntities,
-                projectsCount: (c.projectsCount || 0) + 1,
-                activeProjectsCount: (c.activeProjectsCount || 0) + 1,
+                projectsCount: (c.projectsCount || 0) + projectsToCreate.length,
+                activeProjectsCount: (c.activeProjectsCount || 0) + projectsToCreate.length,
                 projectsHistory: updatedHistory
               };
             }
@@ -1929,159 +2367,34 @@ export const TaskFlowPrototype: React.FC = () => {
       }
     }
 
-    // 3. Crear Proyecto en projectsList con sus entregables
-    const codePrefix = payload.projectName.slice(0, 3).toUpperCase().replace(/[^A-Z]/g, 'PRJ') || 'PRJ';
+    // Agregar proyectos a la lista
+    setProjectsList((prev) => [...projectsToCreate, ...prev]);
 
-    const newProjectDeliverables = quote.deliverables.map((qd, idx) => ({
-      id: `del-${newProjectId}-${idx + 1}`,
-      projectId: newProjectId,
-      name: qd.name,
-      description: qd.description,
-      order: qd.order || idx + 1,
-      status: 'pending' as const,
-      roleBudgets: qd.roleBudgets.map((rb) => ({
-        id: `rb-${newProjectId}-${rb.id}`,
-        roleId: rb.roleId,
-        roleName: rb.roleName,
-        quotedHours: rb.quotedHours
-      })),
-      totalQuotedHours: qd.totalHoursRollup || 0,
-      totalExecutedHours: 0,
-      progressPercentage: 0
-    }));
-
-    const leadRole = assignedLeadUser?.officialRole || assignedLeadUser?.professionalRole || assignedLeadUser?.role || 'Líder de Proyecto';
-    const leadAvatarBg = assignedLeadUser?.avatarBg || 'bg-[#501f92]';
-    const leadInitials = assignedLeadUser?.initials || leadName.slice(0, 2).toUpperCase();
-
-    const resolvedCoreTeam: any[] = [
-      {
-        id: leadId,
-        name: leadName,
-        role: leadRole,
-        avatarBg: leadAvatarBg,
-        initials: leadInitials,
-        isLead: true,
-        weeklyAllocatedHours: 4
-      }
-    ];
-
-    // Asignar especialistas opcionales si fueron seleccionados
-    if (payload.specialistUserIds && Array.isArray(payload.specialistUserIds)) {
-      payload.specialistUserIds.forEach((specId: string) => {
-        const specUser = activeTeam.find((u) => u.id === specId);
-        if (specUser && specUser.id !== leadId) {
-          resolvedCoreTeam.push({
-            id: specUser.id,
-            name: specUser.name,
-            role: specUser.officialRole || specUser.professionalRole || specUser.role || 'Especialista',
-            avatarBg: specUser.avatarBg || 'bg-[#7839ee]',
-            initials: specUser.initials || specUser.name.slice(0, 2).toUpperCase(),
-            isLead: false,
-            weeklyAllocatedHours: 8
-          });
-        }
-      });
-    }
-
-    const newPrj: ProjectSummaryItem = {
-      id: newProjectId,
-      code: `${codePrefix}-${Math.floor(10 + Math.random() * 90)}`,
-      name: payload.projectName,
-      clientId: resolvedClientId,
-      clientName: resolvedClientName,
-      taxEntityId: effectiveTaxEntityId || (clients.find(c => c.id === resolvedClientId)?.taxEntities?.[0]?.id) || null,
-      brand: resolvedClientName,
-      leadName,
-      leadAvatarBg,
-      leadRole,
-      projectType: payload.projectType,
-      serviceBase: 'Desarrollo & Estrategia',
-      budgetedHours: quote.totalHoursRollup || 0,
-      soldHours: quote.totalHoursRollup || 0,
-      soldValue,
-      soldValueCOP,
-      soldCurrency: quoteCurrency,
-      startDate: payload.startDate,
-      endDate: payload.endDate,
-      brief: opp.briefSummary || opp.discoveryNotes,
-      briefUrl: opp.briefUrl || null,
-      deliverables: newProjectDeliverables,
-      coreTeam: resolvedCoreTeam,
-      // Propagación de interoperabilidad canónica (HubSpot, Drive, Alegra)
-      originOpportunityId: opp.id,
-      originQuoteIds: [quote.id],
-      hubspotDealId: opp.hubspotDealId || null,
-      hubspotDealUrl: opp.hubspotDealUrl || null,
-      alegraContactId: opp.administrativeChecklist?.alegraContactId || null,
-      driveFolderId: opp.driveFolderId || null,
-      driveFolderUrl: opp.driveFolderUrl || null,
-      status: 'Activo',
-      healthStatus: 'verde',
-      healthNote: 'Proyecto recién ganado y aprobado en New Business'
-    };
-
-    setProjectsList((prev) => [newPrj, ...prev]);
-
-    // 3. Crear tareas operativas en `tasks` a partir de las actividades del backlog
-    const newTasksToCreate: TaskItem[] = [];
-    quote.deliverables.forEach((qd, dIdx) => {
-      const parentDelId = `del-${newProjectId}-${dIdx + 1}`;
-      qd.backlogItems.forEach((bItem, bIdx) => {
-        const activityUser = activeTeam.find((user) => user.id === bItem.suggestedUserId);
-        newTasksToCreate.push({
-          id: `task-${newProjectId}-${dIdx + 1}-${bIdx + 1}`,
-          title: bItem.title,
-          status: 'todo',
-          priority: 'Medium',
-          projectId: newProjectId,
-          projectName: payload.projectName,
-          clientName: resolvedClientName,
-          deliverableId: parentDelId,
-          frente: qd.name,
-          board: payload.projectName,
-          department: 'Operaciones',
-          date: new Date().toISOString().slice(0, 10),
-          dueDate: payload.endDate || new Date().toISOString().slice(0, 10),
-          dueStatus: 'normal',
-          dueText: 'Planificado en Scoping',
-          budgetedHours: bItem.estimatedHours || 0,
-          consumedSeconds: 0,
-          completed: false,
-          budgetedRole: bItem.roleName,
-          budgetedRoleId: bItem.roleId,
-          assigneeIds: activityUser ? [activityUser.id] : [],
-          assignee: activityUser ? {
-            id: activityUser.id,
-            name: activityUser.name,
-            role: bItem.roleName,
-            avatarBg: activityUser.avatarBg || 'bg-[#501f92]',
-            initials: activityUser.initials || activityUser.name.slice(0, 2).toUpperCase()
-          } : {
-            id: undefined,
-            name: `Sin asignar (${bItem.roleName})`,
-            role: bItem.roleName,
-            avatarBg: 'bg-[#94a3b8]',
-            initials: '--'
-          }
-        });
-      });
-    });
-
+    // Agregar tareas operativas
     if (newTasksToCreate.length > 0) {
       setTasks((prev) => [...newTasksToCreate, ...prev]);
     }
 
-    // 4. Actualizar estado de la oportunidad a ganada y vinculada al nuevo proyecto
+    // Actualizar oportunidad a ganada y vincularla a los proyectos
+    const mainCreatedProjectId = projectsToCreate[0]?.id || `prj-${Date.now()}`;
+
     const updatedOpp: NewBusinessOpportunity = {
       ...opp,
       status: 'won',
-      convertedProjectId: newProjectId,
+      convertedProjectId: mainCreatedProjectId,
       convertedAt: new Date().toISOString(),
       clientId: resolvedClientId,
       quotes: opp.quotes.map((q) =>
         q.id === quote.id
-          ? { ...q, status: 'approved', convertedToProjectId: newProjectId }
+          ? {
+              ...q,
+              status: 'approved',
+              convertedToProjectId: mainCreatedProjectId,
+              commercialStructure: q.commercialStructure?.map((item) => ({
+                ...item,
+                approved: (payload.approvedServiceIds || []).includes(item.serviceId)
+              }))
+            }
           : q
       )
     };
@@ -2090,8 +2403,7 @@ export const TaskFlowPrototype: React.FC = () => {
       prev.map((o) => (o.id === opp.id ? updatedOpp : o))
     );
 
-    // Pre-seleccionar el nuevo proyecto para que al hacer clic en "Ver en Proyectos" abra directamente este proyecto
-    setSelectedProjectIdForView(newProjectId);
+    setSelectedProjectIdForView(mainCreatedProjectId);
   };
 
   // Guardar cotización en oportunidad existente de New Business

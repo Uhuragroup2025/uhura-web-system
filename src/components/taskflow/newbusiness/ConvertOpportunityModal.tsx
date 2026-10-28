@@ -1,10 +1,12 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   NewBusinessOpportunity,
   QuoteProposal,
   ProjectType,
   UserItem,
-  ClientProfile
+  ClientProfile,
+  ServiceCommercialItem,
+  ServiceCommercialModality
 } from '../types';
 import { isEligibleTeamMember } from './teamCandidates';
 import { formatCurrency } from '../../../utils/formatters';
@@ -21,7 +23,9 @@ import {
   FolderOpen,
   ArrowRight,
   ShieldCheck,
-  Check
+  Check,
+  Sliders,
+  AlertCircle
 } from 'lucide-react';
 
 interface ConvertOpportunityModalProps {
@@ -35,12 +39,17 @@ interface ConvertOpportunityModalProps {
     projectName: string;
     projectType: ProjectType;
     leadUserId: string;
+    leadUserIds?: string[];
     leadName: string;
     specialistUserIds?: string[];
     startDate: string;
     endDate?: string;
     initialFormalizationStatus?: 'pendiente_formalizacion' | 'activo';
     startConditionsConfig?: any;
+    approvedServiceIds: string[];
+    isMixed: boolean;
+    fixedProjectName?: string;
+    feeProjectName?: string;
   }) => void;
 }
 
@@ -55,7 +64,9 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
 }) => {
   const users = teamUsers.filter(isEligibleTeamMember);
 
-  // Resolver si la cuenta ya existe en Clientes
+  // Regla estricta: NO reconciliar por coincidencia difusa de nombres.
+  // Si existe opportunity.clientId, reutilizar ese cliente.
+  // Si no existe, crear un nuevo Cliente.
   const matchedExistingClient = useMemo(() => {
     if (!clients || clients.length === 0) return null;
     if (opportunity.clientId) {
@@ -64,7 +75,99 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
     return null;
   }, [clients, opportunity]);
 
-  // Roles y horas dimensionados por el líder técnico en el backlog
+  const clientName = matchedExistingClient
+    ? matchedExistingClient.name
+    : opportunity.prospectAccountName || 'Cliente';
+  const opportunityTitle = opportunity.title || 'Propuesta Comercial';
+
+  // Servicios cotizados provenientes de la estructura comercial de Cotización
+  const quotedServices: ServiceCommercialItem[] = useMemo(() => {
+    if (activeQuote.commercialStructure && activeQuote.commercialStructure.length > 0) {
+      return activeQuote.commercialStructure;
+    }
+    return activeQuote.deliverables.map((d) => ({
+      serviceId: d.id,
+      serviceName: d.name,
+      modality: (opportunity.projectType || 'fixed_project') as ServiceCommercialModality,
+      weeksRef: activeQuote.estimatedWeeks || 0,
+      totalValue: activeQuote.totalQuotedValue || 0,
+      deliverableIds: [d.id]
+    }));
+  }, [activeQuote, opportunity.projectType]);
+
+  // Si existe un solo servicio, se considera aprobado automáticamente
+  const isSingleService = quotedServices.length === 1;
+
+  // Selección de servicios aprobados por el cliente (por defecto todos aprobados)
+  const [approvedServiceIds, setApprovedServiceIds] = useState<string[]>(() =>
+    quotedServices.map((s) => s.serviceId)
+  );
+
+  useEffect(() => {
+    if (quotedServices.length > 0) {
+      setApprovedServiceIds(quotedServices.map((s) => s.serviceId));
+    }
+  }, [quotedServices]);
+
+  const toggleServiceApproval = (serviceId: string) => {
+    if (isSingleService) return; // Si es servicio único, queda aprobado automáticamente
+    setApprovedServiceIds((prev) => {
+      if (prev.includes(serviceId)) {
+        if (prev.length <= 1) return prev; // Debe existir al menos un servicio aprobado
+        return prev.filter((id) => id !== serviceId);
+      }
+      return [...prev, serviceId];
+    });
+  };
+
+  const approvedServices = useMemo(() => {
+    return quotedServices.filter((s) => approvedServiceIds.includes(s.serviceId));
+  }, [quotedServices, approvedServiceIds]);
+
+  const fixedServices = useMemo(
+    () => approvedServices.filter((s) => s.modality === 'fixed_project'),
+    [approvedServices]
+  );
+  const feeServices = useMemo(
+    () => approvedServices.filter((s) => s.modality === 'fee_monthly'),
+    [approvedServices]
+  );
+  const isMixedApproved = fixedServices.length > 0 && feeServices.length > 0;
+  const hasApprovedFee = feeServices.length > 0;
+
+  // Regla para sugerir el nombre:
+  // - Proyecto con un solo servicio: [Nombre del servicio] — [Nombre del cliente]
+  // - Proyecto con varios servicios agrupados: [Nombre de la oportunidad] — [Nombre del cliente]
+  const getSuggestedNameForServices = (servicesList: ServiceCommercialItem[]): string => {
+    if (servicesList.length === 1) {
+      return `${servicesList[0].serviceName} — ${clientName}`;
+    }
+    return `${opportunityTitle} — ${clientName}`;
+  };
+
+  // Nombres de los proyectos sugeridos y editables, manteniendo ediciones manuales del usuario
+  const [projectNames, setProjectNames] = useState<{ [key: string]: string }>({});
+  const [editedManually, setEditedManually] = useState<{ [key: string]: boolean }>({});
+
+  useEffect(() => {
+    setProjectNames((prev) => {
+      const next = { ...prev };
+      if (isMixedApproved) {
+        if (!editedManually['fixed']) {
+          next['fixed'] = getSuggestedNameForServices(fixedServices);
+        }
+        if (!editedManually['fee']) {
+          next['fee'] = getSuggestedNameForServices(feeServices);
+        }
+      } else {
+        if (!editedManually['single']) {
+          next['single'] = getSuggestedNameForServices(approvedServices);
+        }
+      }
+      return next;
+    });
+  }, [fixedServices, feeServices, approvedServices, isMixedApproved, clientName, opportunityTitle, editedManually]);
+
   // Resolver usuarios elegibles como líderes
   const eligibleLeaders = useMemo(() => {
     if (users.length === 0) return [];
@@ -87,17 +190,24 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
       const match = users.find((u) => u.id === opportunity.leadUserId);
       if (match) return match;
     }
-    return null;
+    return eligibleLeaders[0] || null;
   }, [opportunity, users, eligibleLeaders]);
 
-  const [projectName, setProjectName] = useState<string>(
-    opportunity.title || `Proyecto ${opportunity.prospectAccountName}`
+  // Selección múltiple de líderes operativos
+  const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>(() =>
+    initialLeadUser ? [initialLeadUser.id] : []
   );
-  const projectType: ProjectType = opportunity.projectType || 'fixed_project';
-  const [selectedLeadId, setSelectedLeadId] = useState<string>(
-    initialLeadUser?.id || ''
+
+  const selectedSpecialistIds = Array.from(
+    new Set(
+      activeQuote.deliverables.flatMap((deliverable) =>
+        deliverable.backlogItems.flatMap((activity) =>
+          activity.suggestedUserId ? [activity.suggestedUserId] : []
+        )
+      )
+    )
   );
-  const selectedSpecialistIds = Array.from(new Set(activeQuote.deliverables.flatMap((deliverable) => deliverable.backlogItems.flatMap((activity) => activity.suggestedUserId ? [activity.suggestedUserId] : []))));
+
   const [startDate, setStartDate] = useState<string>(
     new Date().toISOString().slice(0, 10)
   );
@@ -110,41 +220,37 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
 
   if (!isOpen) return null;
 
-  const totalHours = activeQuote.totalHoursRollup || 0;
   const currency = activeQuote.currency || 'COP';
-  const totalQuotedValue =
-    activeQuote.totalQuotedValue ||
-    activeQuote.totalQuotedValueCOP ||
-    activeQuote.financialSummary?.finalPriceWithTaxCOP ||
-    activeQuote.financialSummary?.subtotalBeforeTaxCOP ||
-    0;
-
-  const totalActivities = activeQuote.deliverables.reduce(
-    (sum, d) => sum + d.backlogItems.length,
-    0
-  );
-  const clientName = opportunity.prospectAccountName || 'Cliente';
-  const currentSelectedLead = users.find((u) => u.id === selectedLeadId);
+  const selectedLeadUsers = users.filter((u) => selectedLeadIds.includes(u.id));
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const finalLead = currentSelectedLead;
-    if (!finalLead || (opportunity.clientId && !matchedExistingClient)) return;
+    if (selectedLeadUsers.length === 0 || (opportunity.clientId && !matchedExistingClient)) return;
+    if (approvedServices.length === 0) return;
+
+    const finalFixedName = (projectNames['fixed'] || getSuggestedNameForServices(fixedServices)).trim();
+    const finalFeeName = (projectNames['fee'] || getSuggestedNameForServices(feeServices)).trim();
+    const finalSingleName = (projectNames['single'] || getSuggestedNameForServices(approvedServices)).trim();
 
     onConfirm({
-      projectName: projectName.trim(),
-      projectType,
-      leadUserId: finalLead.id,
-      leadName: finalLead.name,
+      projectName: isMixedApproved ? finalFixedName : finalSingleName,
+      projectType: isMixedApproved ? 'fixed_project' : (hasApprovedFee ? 'fee_monthly' : 'fixed_project'),
+      leadUserId: selectedLeadUsers[0].id,
+      leadUserIds: selectedLeadIds,
+      leadName: selectedLeadUsers.map((u) => u.name).join(', '),
       specialistUserIds: selectedSpecialistIds.filter((id) => users.some((user) => user.id === id)),
       startDate,
       endDate: endDate || undefined,
       initialFormalizationStatus: 'pendiente_formalizacion',
+      approvedServiceIds,
+      isMixed: isMixedApproved,
+      fixedProjectName: finalFixedName,
+      feeProjectName: finalFeeName,
       startConditionsConfig: {
         contractSignedRequired: true,
         contractSignedCompleted: false,
-        downPaymentRequired: projectType === 'fee_monthly' ? 'not_applicable' : 'required',
-        downPaymentPercentage: projectType === 'fee_monthly' ? 0 : 50,
+        downPaymentRequired: (!isMixedApproved && hasApprovedFee) ? 'not_applicable' : 'required',
+        downPaymentPercentage: (!isMixedApproved && hasApprovedFee) ? 0 : 50,
         downPaymentReceived: false,
         fiscalDocsRequiredBeforeBilling: true,
         fiscalDocsCompleted: false,
@@ -218,115 +324,371 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
             </div>
           )}
 
-          {/* Tarjeta de Resumen Económico & Operativo Heredado */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-[11px]">
-            <div className="p-2.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
-              <span className="text-[#64748b] block text-[10px] font-medium">Valor Aprobado</span>
-              <span className="font-extrabold text-[#059669] text-xs block">
-                {formatCurrency(totalQuotedValue, currency)}
+          {/* Servicios cotizados y confirmación de aprobación */}
+          <div className="space-y-2 p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
+            <div className="flex items-center justify-between">
+              <label className="font-extrabold text-[#0f172a] text-xs flex items-center gap-1.5">
+                <Layers className="w-4 h-4 text-[#501f92]" />
+                <span>Servicios cotizados y aprobación del cliente:</span>
+                <span className="text-red-500">*</span>
+              </label>
+              <span className="text-[10px] text-[#64748b]">
+                {approvedServices.length} de {quotedServices.length} aprobados
               </span>
             </div>
-            <div className="p-2.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
-              <span className="text-[#64748b] block text-[10px] font-medium">Horas Técnicas</span>
-              <span className="font-extrabold text-[#501f92] text-xs block font-mono">
-                {totalHours}h totales
-              </span>
-            </div>
-            <div className="p-2.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
-              <span className="text-[#64748b] block text-[10px] font-medium">Entregables Scoped</span>
-              <span className="font-bold text-[#0f172a] text-xs block">
-                {activeQuote.deliverables.length} entregable(s)
-              </span>
-            </div>
-            <div className="p-2.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
-              <span className="text-[#64748b] block text-[10px] font-medium">Líder Scoping</span>
-              <span className="font-bold text-[#501f92] text-xs block truncate" title={users.find((user) => user.id === opportunity.leadUserId)?.name || 'Sin asignar'}>
-                {users.find((user) => user.id === opportunity.leadUserId)?.name || 'Sin asignar'}
-              </span>
+            <p className="text-[11px] text-[#64748b]">
+              {isSingleService
+                ? 'Al existir un solo servicio en la propuesta, se considera aprobado automáticamente para su conversión.'
+                : 'Confirma cuáles servicios fueron aprobados formalmente por el cliente. Solo los aprobados se convertirán en proyectos y tareas.'}
+            </p>
+
+            <div className="space-y-2 pt-1">
+              {quotedServices.map((service) => {
+                const isApproved = approvedServiceIds.includes(service.serviceId);
+                const isFixed = service.modality === 'fixed_project';
+                return (
+                  <div
+                    key={service.serviceId}
+                    onClick={() => toggleServiceApproval(service.serviceId)}
+                    className={`p-3 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+                      isSingleService
+                        ? 'bg-white border-[#501f92]/40 shadow-2xs cursor-default'
+                        : isApproved
+                        ? 'bg-white border-[#501f92]/40 shadow-2xs cursor-pointer'
+                        : 'bg-[#f1f5f9]/60 border-[#e2e8f0] opacity-60 cursor-pointer'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <input
+                        type="checkbox"
+                        checked={isApproved}
+                        onChange={() => toggleServiceApproval(service.serviceId)}
+                        disabled={isSingleService || (isApproved && approvedServiceIds.length === 1)}
+                        className="w-4 h-4 rounded text-[#501f92] focus:ring-[#501f92] cursor-pointer"
+                      />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-[#0f172a] text-xs truncate">
+                            {service.serviceName}
+                          </span>
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                              isFixed
+                                ? 'bg-[#501f92]/10 text-[#501f92]'
+                                : 'bg-[#059669]/10 text-[#047857]'
+                            }`}
+                          >
+                            {isFixed ? 'Proyecto único' : 'Fee mensual'}
+                          </span>
+                          <span className="text-[10px] text-[#64748b]">
+                            {service.weeksRef || 0} {service.weeksRef === 1 ? 'semana' : 'semanas'}
+                          </span>
+                          {isSingleService && (
+                            <span className="text-[10px] font-semibold text-[#059669] bg-[#ecfdf5] px-1.5 py-0.5 rounded">
+                              Aprobado automáticamente
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      {isFixed ? (
+                        <span className="font-black text-[#0f172a] text-xs">
+                          {formatCurrency(service.totalValue || 0, currency)}
+                        </span>
+                      ) : (
+                        <div className="text-right">
+                          <span className="font-black text-[#059669] text-xs block">
+                            {formatCurrency(service.monthlyValue || 0, currency)} / mes
+                          </span>
+                          <span className="text-[10px] text-[#64748b]">
+                            {service.monthsDuration || 0} meses
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
-          {/* Campos Principales del Proyecto */}
-          <div className="grid grid-cols-1 gap-4 pt-1">
-            <div className="space-y-1">
-              <label className="font-bold text-[#475569] block">
-                Nombre del Proyecto: <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                value={projectName}
-                onChange={(e) => setProjectName(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-medium focus:ring-2 focus:ring-[#501f92] bg-white shadow-2xs"
-              />
+          {/* Vista previa de la conversión: Tarjeta por cada proyecto que se creará */}
+          <div className="p-4 rounded-xl bg-[#faf5ff] border border-[#e9d5ff] space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-[#e9d5ff]/70">
+              <span className="text-xs font-extrabold text-[#501f92] uppercase tracking-wider flex items-center gap-1.5">
+                <FolderOpen className="w-4 h-4 text-[#501f92]" />
+                <span>Vista previa de la conversión</span>
+              </span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white text-[#501f92] border border-[#d8b4fe]">
+                {isMixedApproved
+                  ? 'Propuesta mixta (2 Proyectos)'
+                  : hasApprovedFee
+                  ? 'Fee mensual (1 Proyecto)'
+                  : 'Proyecto único (1 Proyecto)'}
+              </span>
             </div>
 
-          </div>
+            {/* Tarjetas de Proyectos que se crearán */}
+            <div className="space-y-3">
+              {isMixedApproved ? (
+                <>
+                  {/* Tarjeta 1: Proyecto Único */}
+                  <div className="p-3.5 rounded-xl bg-white border border-[#e2e8f0] shadow-2xs space-y-3">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-2">
+                        <FolderOpen className="w-4 h-4 text-[#501f92]" />
+                        <span className="font-extrabold text-xs text-[#0f172a]">
+                          Proyecto 1: Proyecto único
+                        </span>
+                      </div>
+                      <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-md bg-[#501f92]/10 text-[#501f92]">
+                        Proyecto único
+                      </span>
+                    </div>
 
-          {/* Líder Operativo & Fechas */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="space-y-1 sm:col-span-1">
-              <label className="font-bold text-[#475569] block">
-                Líder Operativo: <span className="text-red-500">*</span>
-              </label>
-              {eligibleLeaders.length > 0 ? (
-                <select
-                  required
-                  value={selectedLeadId}
-                  onChange={(e) => setSelectedLeadId(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-medium bg-white focus:ring-2 focus:ring-[#501f92] shadow-2xs"
-                >
-                  <option value="">Sin asignar</option>
-                    {eligibleLeaders.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name} ({u.officialRole || u.role || 'Líder'})
-                    </option>
-                  ))}
-                </select>
+                    <div className="space-y-1">
+                      <label className="font-bold text-[#475569] block text-[11px]">
+                        Nombre del proyecto: <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={projectNames['fixed'] ?? getSuggestedNameForServices(fixedServices)}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setEditedManually((prev) => ({ ...prev, fixed: true }));
+                          setProjectNames((prev) => ({ ...prev, fixed: val }));
+                        }}
+                        placeholder="Nombre del proyecto puntual"
+                        className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] text-xs font-bold focus:ring-2 focus:ring-[#501f92] bg-white shadow-2xs"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5 pt-1 border-t border-[#f1f5f9]">
+                      <span className="text-[10.5px] uppercase font-bold text-[#64748b] block">
+                        {fixedServices.length === 1 ? 'Servicio incluido:' : `Servicios incluidos (${fixedServices.length}):`}
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {fixedServices.map((s) => (
+                          <span
+                            key={s.serviceId}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#f8fafc] border border-[#e2e8f0] text-xs font-semibold text-[#334155]"
+                          >
+                            <span>{s.serviceName}</span>
+                            <span className="text-[10px] text-[#64748b]">({s.weeksRef || 0} sem)</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Tarjeta 2: Fee Mensual */}
+                  <div className="p-3.5 rounded-xl bg-white border border-[#e2e8f0] shadow-2xs space-y-3">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-2">
+                        <FolderOpen className="w-4 h-4 text-[#059669]" />
+                        <span className="font-extrabold text-xs text-[#0f172a]">
+                          Proyecto 2: Fee mensual
+                        </span>
+                      </div>
+                      <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-md bg-[#059669]/10 text-[#047857]">
+                        Fee mensual
+                      </span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="font-bold text-[#475569] block text-[11px]">
+                        Nombre del proyecto: <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={projectNames['fee'] ?? getSuggestedNameForServices(feeServices)}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setEditedManually((prev) => ({ ...prev, fee: true }));
+                          setProjectNames((prev) => ({ ...prev, fee: val }));
+                        }}
+                        placeholder="Nombre del proyecto fee mensual"
+                        className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] text-xs font-bold focus:ring-2 focus:ring-[#059669] bg-white shadow-2xs"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5 pt-1 border-t border-[#f1f5f9]">
+                      <span className="text-[10.5px] uppercase font-bold text-[#64748b] block">
+                        {feeServices.length === 1 ? 'Servicio recurrente incluido:' : `Servicios recurrentes incluidos (${feeServices.length}):`}
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {feeServices.map((s) => (
+                          <span
+                            key={s.serviceId}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#f0fdf4] border border-[#bbf7d0] text-xs font-semibold text-[#166534]"
+                          >
+                            <span>{s.serviceName}</span>
+                            <span className="text-[10px] text-[#059669]">({s.monthsDuration || 0} meses)</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </>
               ) : (
-                <div className="p-2.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] font-medium text-[#0f172a]">
-                  Sin asignar
+                /* Un solo proyecto (sea puntual o fee) */
+                <div className="p-3.5 rounded-xl bg-white border border-[#e2e8f0] shadow-2xs space-y-3">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <FolderOpen className={`w-4 h-4 ${hasApprovedFee ? 'text-[#059669]' : 'text-[#501f92]'}`} />
+                      <span className="font-extrabold text-xs text-[#0f172a]">
+                        {hasApprovedFee ? 'Proyecto Fee mensual' : 'Proyecto único'}
+                      </span>
+                    </div>
+                    <span
+                      className={`text-[10.5px] font-bold px-2 py-0.5 rounded-md ${
+                        hasApprovedFee
+                          ? 'bg-[#059669]/10 text-[#047857]'
+                          : 'bg-[#501f92]/10 text-[#501f92]'
+                      }`}
+                    >
+                      {hasApprovedFee ? 'Fee mensual' : 'Proyecto único'}
+                    </span>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-bold text-[#475569] block text-[11px]">
+                      Nombre del proyecto: <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={projectNames['single'] ?? getSuggestedNameForServices(approvedServices)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setEditedManually((prev) => ({ ...prev, single: true }));
+                        setProjectNames((prev) => ({ ...prev, single: val }));
+                      }}
+                      placeholder="Nombre del proyecto sugerido"
+                      className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] text-xs font-bold focus:ring-2 focus:ring-[#501f92] bg-white shadow-2xs"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5 pt-1 border-t border-[#f1f5f9]">
+                    <span className="text-[10.5px] uppercase font-bold text-[#64748b] block">
+                      {approvedServices.length === 1 ? 'Servicio incluido:' : `Servicios incluidos (${approvedServices.length}):`}
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {approvedServices.map((s) => (
+                        <span
+                          key={s.serviceId}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#f8fafc] border border-[#e2e8f0] text-xs font-semibold text-[#334155]"
+                        >
+                          <span>{s.serviceName}</span>
+                          <span className="text-[10px] text-[#64748b]">
+                            {s.modality === 'fee_monthly'
+                              ? `(${s.monthsDuration || 0} meses)`
+                              : `(${s.weeksRef || 0} sem)`}
+                          </span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
+          </div>
 
-            <div className="space-y-1">
-              <label className="font-bold text-[#475569] block">
-                Fecha Inicio: <span className="text-red-500">*</span>
+          {/* Líderes Operativos & Fechas */}
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <label className="font-bold text-[#475569] block text-xs">
+                Líder(es) Operativo(s): <span className="text-red-500">*</span>
               </label>
-              <input
-                type="date"
-                required
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-medium bg-white focus:ring-2 focus:ring-[#501f92] shadow-2xs"
-              />
+              <p className="text-[11px] text-[#64748b]">
+                Selecciona uno o varios líderes para la gestión y asignación operativa del proyecto:
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-44 overflow-y-auto p-2 rounded-xl bg-white border border-[#cbd5e1]">
+                {eligibleLeaders.map((u) => {
+                  const isSelected = selectedLeadIds.includes(u.id);
+                  return (
+                    <label
+                      key={u.id}
+                      className={`flex items-center gap-2 p-2 rounded-lg border transition-all cursor-pointer text-xs ${
+                        isSelected
+                          ? 'bg-[#501f92]/10 border-[#501f92]/40 text-[#0f172a] font-bold shadow-2xs'
+                          : 'bg-[#f8fafc] border-transparent hover:border-[#cbd5e1] text-[#475569]'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => {
+                          setSelectedLeadIds((prev) => {
+                            if (prev.includes(u.id)) {
+                              if (prev.length <= 1) return prev; // Mantener al menos 1 líder
+                              return prev.filter((id) => id !== u.id);
+                            }
+                            return [...prev, u.id];
+                          });
+                        }}
+                        className="w-4 h-4 rounded text-[#501f92] focus:ring-[#501f92] cursor-pointer"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-semibold text-[#0f172a]">{u.name}</p>
+                        <p className="text-[10.5px] text-[#64748b] truncate font-normal">
+                          {u.officialRole || u.professionalRole || u.role || 'Líder'}
+                        </p>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+              {selectedLeadIds.length === 0 && (
+                <p className="text-[11px] text-red-500 font-bold">
+                  Selecciona al menos un líder operativo.
+                </p>
+              )}
             </div>
 
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div className="space-y-1">
                 <label className="font-bold text-[#475569] block">
-                  Fecha Entrega:
+                  Fecha Inicio estimada: <span className="text-red-500">*</span>
                 </label>
-                {!isEndDateCustomized && (
-                  <span className="text-[10px] font-semibold text-[#501f92] bg-[#f2ecfb] px-1.5 py-0.2 rounded">
-                    Sugerida
-                  </span>
-                )}
+                <input
+                  type="date"
+                  required
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-medium bg-white focus:ring-2 focus:ring-[#501f92] shadow-2xs"
+                />
               </div>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => {
-                  setEndDate(e.target.value);
-                  setIsEndDateCustomized(true);
-                }}
-                className={`w-full p-2.5 rounded-xl border transition-colors focus:ring-2 focus:ring-[#501f92] shadow-2xs ${
-                  !isEndDateCustomized
-                    ? 'bg-[#faf5ff] border-[#d8b4fe] text-[#475569] font-medium'
-                    : 'bg-white border-[#cbd5e1] text-[#0f172a] font-medium'
-                }`}
-              />
+
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-[#475569] block">
+                    Fecha Entrega:
+                  </label>
+                  {!isEndDateCustomized && (
+                    <span className="text-[10px] font-semibold text-[#501f92] bg-[#f2ecfb] px-1.5 py-0.2 rounded">
+                      Sugerida
+                    </span>
+                  )}
+                </div>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => {
+                    setEndDate(e.target.value);
+                    setIsEndDateCustomized(true);
+                  }}
+                  className={`w-full p-2.5 rounded-xl border transition-colors focus:ring-2 focus:ring-[#501f92] shadow-2xs ${
+                    !isEndDateCustomized
+                      ? 'bg-[#faf5ff] border-[#d8b4fe] text-[#475569] font-medium'
+                      : 'bg-white border-[#cbd5e1] text-[#0f172a] font-medium'
+                  }`}
+                />
+              </div>
             </div>
           </div>
 
@@ -349,7 +711,7 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
             </button>
             <button
               type="submit"
-              disabled={!currentSelectedLead || Boolean(opportunity.clientId && !matchedExistingClient)}
+              disabled={selectedLeadUsers.length === 0 || Boolean(opportunity.clientId && !matchedExistingClient)}
               className="px-5 py-2.5 text-xs font-bold text-white bg-[#501f92] hover:bg-[#3d1572] rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-2 hover:scale-[1.01]"
             >
               <CheckCircle2 className="w-4 h-4 text-[#d4ff4a]" />

@@ -10,9 +10,21 @@ import {
   UserItem,
   TaskItem,
   TimeLog,
-  ActiveTimerState
+  ActiveTimerState,
+  ServiceCommercialItem,
+  ServiceCommercialModality,
+  ProposalCommercialType
 } from '../types';
-import { getOperationalQuote, withOperationalQuote, getCommercialOwnerName, isValidFinanceSheetUrl, quoteSignature, quoteMissingRequirements } from './quoteRules';
+import {
+  getOperationalQuote,
+  withOperationalQuote,
+  getCommercialOwnerName,
+  isValidFinanceSheetUrl,
+  quoteSignature,
+  quoteMissingRequirements,
+  commercialStructureSignature,
+  validateCommercialStructure
+} from './quoteRules';
 import { can } from '../auth/permissions';
 import { serviceValidationMessages, isScopeReadyForReview, isEligibleScopingLeader, getScopeWeeks } from './teamCandidates';
 import { BacklogScoper, type ScopeServiceDraft } from './BacklogScoper';
@@ -82,12 +94,17 @@ interface NewBusinessViewProps {
     projectName: string;
     projectType: ProjectType;
     leadUserId: string;
+    leadUserIds?: string[];
     specialistUserIds?: string[];
     leadName: string;
     startDate: string;
     endDate?: string;
     initialFormalizationStatus?: 'pendiente_formalizacion' | 'activo';
     startConditionsConfig?: any;
+    approvedServiceIds?: string[];
+    isMixed?: boolean;
+    fixedProjectName?: string;
+    feeProjectName?: string;
   }) => void;
   currentUser?: UserItem;
   users?: UserItem[];
@@ -256,11 +273,42 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
   const [quoteCurrencyDraft, setQuoteCurrencyDraft] = useState<'COP' | 'USD'>('COP');
   const [quoteSheetUrlDraft, setQuoteSheetUrlDraft] = useState<string>('');
   const [quoteNotesDraft, setQuoteNotesDraft] = useState<string>('');
+  const [commercialStructureDraft, setCommercialStructureDraft] = useState<ServiceCommercialItem[]>([]);
+  const [hasAttemptedSaveQuote, setHasAttemptedSaveQuote] = useState<boolean>(false);
 
   // Controlled Draft State for Resumen Discovery Brief
   const [briefDraft, setBriefDraft] = useState<string>('');
 
-  // Sync draft states when quote changes
+  // Servicios activos en el alcance (de scopeState o deliverables de la cotización)
+  const currentScopeServices = useMemo(() => {
+    if (scopeState.services.length > 0) {
+      return scopeState.services.map((s) => ({
+        id: s.id,
+        name: s.name,
+        weeks: Number(s.weeks) || 0,
+        deliverableIds: s.deliverableIds || []
+      }));
+    }
+    if (activeQuote?.commercialStructure && activeQuote.commercialStructure.length > 0) {
+      return activeQuote.commercialStructure.map((cs) => ({
+        id: cs.serviceId,
+        name: cs.serviceName,
+        weeks: cs.weeksRef || 0,
+        deliverableIds: cs.deliverableIds || []
+      }));
+    }
+    if (activeQuote?.deliverables && activeQuote.deliverables.length > 0) {
+      return activeQuote.deliverables.map((d) => ({
+        id: d.id,
+        name: d.name,
+        weeks: activeQuote.estimatedWeeks || 0,
+        deliverableIds: [d.id]
+      }));
+    }
+    return [];
+  }, [scopeState.services, activeQuote]);
+
+  // Sync draft states when quote changes or services change
   useEffect(() => {
     if (activeQuote) {
       const val = activeQuote.totalQuotedValue ?? activeQuote.totalQuotedValueCOP ?? 0;
@@ -270,8 +318,43 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
       setQuoteNotesDraft(activeQuote.commercialNotes || '');
       setIsEditingQuoteFields(!savedQuotes[activeQuote.id]);
       setIsQuoteSavedFeedback(false);
+
+      // Reconciliar estructura comercial con los servicios del alcance
+      const savedStructure = activeQuote.commercialStructure || [];
+      setCommercialStructureDraft((prevDraft) => {
+        return currentScopeServices.map((svc) => {
+          const inPrev = prevDraft.find((item) => item.serviceId === svc.id);
+          if (inPrev) {
+            return {
+              ...inPrev,
+              serviceName: svc.name,
+              weeksRef: svc.weeks,
+              deliverableIds: svc.deliverableIds
+            };
+          }
+          const inSaved = savedStructure.find((item) => item.serviceId === svc.id);
+          if (inSaved) {
+            return {
+              ...inSaved,
+              serviceName: svc.name,
+              weeksRef: svc.weeks,
+              deliverableIds: svc.deliverableIds
+            };
+          }
+          return {
+            serviceId: svc.id,
+            serviceName: svc.name,
+            weeksRef: svc.weeks,
+            modality: 'fixed_project',
+            totalValue: undefined,
+            monthlyValue: undefined,
+            monthsDuration: undefined,
+            deliverableIds: svc.deliverableIds
+          };
+        });
+      });
     }
-  }, [activeQuote?.id]);
+  }, [activeQuote?.id, currentScopeServices]);
 
   // Sync brief draft when opportunity changes
   useEffect(() => {
@@ -282,16 +365,76 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
     }
   }, [activeOpp?.id]);
 
-  // Helper: ¿La cotización ya fue guardada con monto por comercial?
+  // Orbit determina automáticamente el tipo general de la propuesta:
+  // - todos los servicios son proyecto único → Proyecto único
+  // - todos son fee mensual → Fee mensual
+  // - existen servicios de ambas modalidades → Propuesta mixta
+  const derivedProposalType: ProposalCommercialType = useMemo(() => {
+    if (commercialStructureDraft.length === 0) return 'fixed_project';
+    const hasFixed = commercialStructureDraft.some((item) => item.modality === 'fixed_project');
+    const hasFee = commercialStructureDraft.some((item) => item.modality === 'fee_monthly');
+    if (hasFixed && hasFee) return 'mixed';
+    if (hasFee) return 'fee_monthly';
+    return 'fixed_project';
+  }, [commercialStructureDraft]);
+
+  // Resumen comercial:
+  // - Total proyectos únicos
+  // - Fee mensual total
+  // - Valor estimado del contrato = proyectos únicos + (fee mensual × vigencia)
+  const commercialTotals = useMemo(() => {
+    let totalOneOff = 0;
+    let totalMonthlyFee = 0;
+    let estimatedContractValue = 0;
+
+    commercialStructureDraft.forEach((item) => {
+      if (item.modality === 'fixed_project') {
+        const val = Number(item.totalValue) || 0;
+        totalOneOff += val;
+        estimatedContractValue += val;
+      } else if (item.modality === 'fee_monthly') {
+        const monthly = Number(item.monthlyValue) || 0;
+        const months = Number(item.monthsDuration) || 0;
+        totalMonthlyFee += monthly;
+        estimatedContractValue += (monthly * months);
+      }
+    });
+
+    return { totalOneOff, totalMonthlyFee, estimatedContractValue };
+  }, [commercialStructureDraft]);
+
+  // Firma determinista y validación de estructura comercial
+  const currentCommercialSignature = useMemo(() => {
+    return commercialStructureSignature(commercialStructureDraft, quoteSheetUrlDraft);
+  }, [commercialStructureDraft, quoteSheetUrlDraft]);
+
+  const commercialValidationErrors = useMemo(() => {
+    return validateCommercialStructure(currentScopeServices, commercialStructureDraft, quoteSheetUrlDraft);
+  }, [currentScopeServices, commercialStructureDraft, quoteSheetUrlDraft]);
+
+  // Helper: ¿La cotización ya fue guardada con su estructura comercial completa?
   const isQuoteDiligenciada = Boolean(
-    activeQuote && savedQuotes[activeQuote.id] === quoteSignature(activeQuote.totalQuotedValue ?? activeQuote.totalQuotedValueCOP ?? 0, activeQuote.externalFinanceSheetUrl || '') &&
-    isValidFinanceSheetUrl(activeQuote.externalFinanceSheetUrl) &&
-    (activeQuote.totalQuotedValue ?? activeQuote.totalQuotedValueCOP ?? 0) > 0 &&
+    activeQuote &&
+    savedQuotes[activeQuote.id] &&
+    savedQuotes[activeQuote.id] === currentCommercialSignature &&
+    isValidFinanceSheetUrl(quoteSheetUrlDraft) &&
+    commercialStructureDraft.length > 0 &&
+    commercialValidationErrors.length === 0 &&
     !isEditingQuoteFields
   );
 
-  const missingQuoteFields = quoteMissingRequirements(Number(quoteValueDraft), quoteSheetUrlDraft);
-  const quotePendingMessage = missingQuoteFields.length ? missingQuoteFields.join(' ') : 'Falta guardar la cotización para habilitar Marcar como ganada.';
+  const quotePendingMessage = useMemo(() => {
+    if (currentScopeServices.length === 0) {
+      return 'Falta definir servicios en el alcance.';
+    }
+    if (commercialValidationErrors.length > 0) {
+      return commercialValidationErrors[0];
+    }
+    if (savedQuotes[activeQuote?.id || ''] !== currentCommercialSignature || isEditingQuoteFields) {
+      return 'Falta guardar la cotización para habilitar Marcar como ganada.';
+    }
+    return '';
+  }, [currentScopeServices.length, commercialValidationErrors, savedQuotes, activeQuote?.id, currentCommercialSignature, isEditingQuoteFields]);
 
   // Scoping task and preventa hours calculation
   const scopingTask = tasks.find(
@@ -395,10 +538,17 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
     projectName: string;
     projectType: ProjectType;
     leadUserId: string;
+    leadUserIds?: string[];
     specialistUserIds?: string[];
     leadName: string;
     startDate: string;
     endDate?: string;
+    initialFormalizationStatus?: 'pendiente_formalizacion' | 'activo';
+    startConditionsConfig?: any;
+    approvedServiceIds?: string[];
+    isMixed?: boolean;
+    fixedProjectName?: string;
+    feeProjectName?: string;
   }) => {
     if (!activeOpp || !activeQuote || !users.some((user) => user.id === payload.leadUserId)) return;
     if (onConvertOpportunityToProject) {
@@ -418,8 +568,11 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
     }
 
     setIsConvertModalOpen(false);
+    const namesNotice = payload.isMixed
+      ? `"${payload.fixedProjectName || payload.projectName}" y "${payload.feeProjectName}"`
+      : `"${payload.projectName}"`;
     setBannerNotification({
-      message: `🎉 ¡"${payload.projectName}" se ha convertido a Cliente y Proyecto! La formalización fiscal continúa en la ficha del Cliente.`,
+      message: `🎉 ¡${namesNotice} se ha convertido a Cliente y Proyecto(s)! La formalización fiscal continúa en la ficha del Cliente.`,
       showProjectLink: true
     });
     setTimeout(() => {
@@ -1776,28 +1929,28 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                       return;
                     }
                     handleUpdateQuote({ ...activeQuote, estimatedWeeks: getScopeWeeks(activeQuote, scopeState.services) });
-                    onChangeScopeUi(activeQuote.id, { ...scopeState, saved: true, services: scopeState.services });
+                    onChangeScopeUi(activeQuote.id, {
+                      ...scopeState,
+                      saved: true,
+                      services: scopeState.services.map((s) => ({ ...s, saved: true }))
+                    });
                     setConversionSuccessMessage('Alcance técnico guardado.');
                     setTimeout(() => setConversionSuccessMessage(null), 3000);
                   }}
                   className="px-3.5 py-1.5 rounded-lg border border-[#cbd5e1] bg-white hover:bg-[#f8fafc] text-xs font-semibold text-[#475569] transition-colors cursor-pointer"
                 >
-                  {isScopeReadOnly ? <span className="inline-flex items-center gap-1"><Pencil className="w-3 h-3" />Editar alcance</span> : 'Guardar datos generales'}
+                  {isScopeReadOnly ? <span className="inline-flex items-center gap-1"><Pencil className="w-3 h-3" />Editar alcance</span> : 'Guardar'}
                 </button>
 
                 {(() => {
-                  const isPptFilled = Boolean(activeQuote.commercialProposalUrl && activeQuote.commercialProposalUrl.trim().length > 5);
-                  const projectWeeks = Number(activeQuote.estimatedWeeks ?? activeQuote.financialConfig?.projectDurationWeeks);
-                  const isWeeksFilled = Number.isFinite(projectWeeks) && projectWeeks >= 1;
-                  const isScopeFilled = activeQuote.totalHoursRollup > 0 && activeQuote.deliverables.some((deliverable) => deliverable.backlogItems.some((activity) => activity.estimatedHours > 0));
-                  const isReadyToMark = scopeState.saved && isScopeReadyForReview(activeQuote, scopeState.services);
-                  const isAlreadyMarked = isReadyToMark && (activeOpp.status === 'internal_review' || activeOpp.status === 'proposal_sent' || activeOpp.status === 'negotiation' || activeOpp.status === 'won');
+                  const isReadyToMark = Boolean(scopeState.saved);
+                  const isAlreadyMarked = activeOpp.status === 'internal_review' || activeOpp.status === 'proposal_sent' || activeOpp.status === 'negotiation' || activeOpp.status === 'won';
 
                   return (
                     <button
                       type="button"
                       onClick={() => {
-                        if (!isReadyToMark || !window.confirm('¿Confirmas que no faltan servicios y que la PPT incluye la propuesta completa?')) return;
+                        if (!isReadyToMark) return;
                         const updatedOpp: NewBusinessOpportunity = {
                           ...activeOpp,
                           status: 'internal_review',
@@ -1805,12 +1958,9 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                         };
                         onUpdateOpportunity(updatedOpp);
                         setConversionSuccessMessage(
-                          `✓ Alcance técnico listo (${activeQuote.totalHoursRollup}h). Notificación enviada a Comercial.`,
-                          {
-                            showProjectLink: false,
-                            timeoutMs: 7000
-                          }
+                          `✓ Alcance técnico listo (${activeQuote.totalHoursRollup}h). Notificación enviada a Comercial para cotizar.`
                         );
+                        setTimeout(() => setConversionSuccessMessage(null), 6000);
                       }}
                       disabled={!isReadyToMark && !isAlreadyMarked}
                       className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs ${
@@ -1825,7 +1975,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                           ? 'El alcance técnico ya fue marcado como listo para Comercial'
                           : isReadyToMark
                             ? 'Marcar que el dimensionamiento técnico está listo para Comercial'
-                            : 'Diligencia Propuesta (Drive), Semanas y Alcance para habilitar'
+                            : 'Guarda el alcance para habilitar'
                       }
                     >
                       <CheckCircle2 className={`w-3.5 h-3.5 ${isAlreadyMarked ? 'text-[#d4ff4a]' : 'text-white'}`} />
@@ -1838,11 +1988,6 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                   );
                 })()}
               </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-              <div><p className="text-[#64748b]">Esfuerzo estimado</p><strong className="text-lg text-[#0f172a]">{activeQuote.totalHoursRollup.toLocaleString('es-CO')} h</strong></div>
-              <div><p className="text-[#64748b]">Semanas totales</p><strong className="text-lg text-[#0f172a]">{getScopeWeeks(activeQuote, scopeState.services) || 'Pendiente'} semanas</strong></div>
-
             </div>
             {isScopeReadOnly ? (
               <div className="space-y-2 text-xs text-[#334155]" aria-label="Datos generales del alcance guardado">
@@ -1999,251 +2144,402 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
               </div>
             </div>
 
-            {/* Cinta compacta de Insumos Técnicos del Líder */}
-            <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] flex items-center justify-between flex-wrap gap-3 text-xs">
-              <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[11px] text-[#64748b]">Responsable de alcance:</span>
-                  <strong className="text-[#0f172a] font-bold">{currentLeadDisplayName}</strong>
-                </div>
-                <span className="text-[#cbd5e1] hidden sm:inline">•</span>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[11px] text-[#64748b]">Esfuerzo:</span>
-                  <span className="px-2 py-0.5 rounded-md bg-[#501f92]/10 text-[#501f92] font-black">
-                    {activeQuote.totalHoursRollup}h
+
+
+            {/* Bloque de Tipo General de la Propuesta (determinado automáticamente por Orbit) */}
+            <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] flex items-center justify-between flex-wrap gap-2 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-bold text-[#64748b]">Tipo general de la propuesta:</span>
+                <span className={`px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wider flex items-center gap-1.5 ${
+                  derivedProposalType === 'mixed'
+                    ? 'bg-[#7839ee]/15 text-[#6d28d9] border border-[#d8b4fe]'
+                    : derivedProposalType === 'fee_monthly'
+                    ? 'bg-[#059669]/15 text-[#047857] border border-[#a7f3d0]'
+                    : 'bg-[#501f92]/10 text-[#501f92] border border-[#e9d5ff]'
+                }`}>
+                  <Sliders className="w-3.5 h-3.5" />
+                  <span>
+                    {derivedProposalType === 'mixed'
+                      ? 'Propuesta mixta'
+                      : derivedProposalType === 'fee_monthly'
+                      ? 'Fee mensual'
+                      : 'Proyecto único'}
                   </span>
-                  <span className="text-[10px] text-[#64748b]">
-                    ({activeQuote.deliverables.reduce((acc, d) => acc + d.backlogItems.length, 0)} actividades)
-                  </span>
-                </div>
-                <span className="text-[#cbd5e1] hidden sm:inline">•</span>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[11px] text-[#64748b]">Duración:</span>
-                  <strong className="text-[#0f172a] font-bold">
-                    {activeQuote.estimatedWeeks ?? activeQuote.financialConfig?.projectDurationWeeks ?? 0} sem
-                  </strong>
-                  <span className="text-[10px] text-[#64748b]">
-                    (~{((activeQuote.estimatedWeeks ?? activeQuote.financialConfig?.projectDurationWeeks ?? 0) * 5)} días hábiles)
-                  </span>
-                </div>
-                <span className="text-[#cbd5e1] hidden sm:inline">•</span>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[11px] text-[#64748b]">Modelo:</span>
-                  <span className="font-semibold text-[#0f172a]">
-                    {activeOpp.projectType === 'fee_monthly' ? 'Fee Mensual' : 'Proyecto Único'}
-                  </span>
-                </div>
-                <span className="text-[#cbd5e1] hidden sm:inline">•</span>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[11px] text-[#64748b]">Owner Comercial:</span>
-                  <strong className="text-[#501f92] font-bold">{getCommercialOwnerName(activeOpp, users)}</strong>
-                </div>
+                </span>
+                <span className="text-[10.5px] text-[#64748b] hidden md:inline">
+                  {derivedProposalType === 'mixed'
+                    ? '(Combina servicios de proyecto único y fee recurrente)'
+                    : derivedProposalType === 'fee_monthly'
+                    ? '(Todos los servicios son de modalidad recurrente)'
+                    : '(Todos los servicios son de ejecución única)'}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-[#64748b]">Moneda:</span>
+                <select
+                  disabled={!isEditingQuoteFields}
+                  value={quoteCurrencyDraft}
+                  onChange={(e) => setQuoteCurrencyDraft(e.target.value as 'COP' | 'USD')}
+                  className="px-2 py-1 rounded-lg border border-[#cbd5e1] text-xs font-bold bg-white text-[#501f92] focus:ring-2 focus:ring-[#501f92] disabled:bg-[#f1f5f9] disabled:text-[#64748b]"
+                >
+                  <option value="COP">COP ($)</option>
+                  <option value="USD">USD ($)</option>
+                </select>
               </div>
             </div>
 
-            {/* Grid Principal: Valor Acordado + Fuentes de Verdad */}
-            {!isEditingQuoteFields && (activeQuote.totalQuotedValue || activeQuote.externalFinanceSheetUrl) ? (
-              /* Modo Lectura / Congelado (Guardado con éxito) */
-              <div className="p-4 rounded-2xl bg-[#faf5ff] border border-[#e9d5ff] space-y-4">
-                <div className="flex items-center justify-between pb-3 border-b border-[#e9d5ff]/70 flex-wrap gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="p-1.5 rounded-lg bg-[#501f92]/10 text-[#501f92]">
-                      <CheckCircle2 className="w-4 h-4 text-[#10b981]" />
+            {/* Estructura comercial de la propuesta */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <h4 className="font-extrabold text-sm text-[#0f172a] flex items-center gap-2">
+                    <span>Estructura comercial de la propuesta</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#501f92]/10 text-[#501f92]">
+                      {commercialStructureDraft.length} servicio(s)
                     </span>
-                    <div>
-                      <h4 className="font-bold text-xs text-[#0f172a]">Cotización Registrada & Consolidada</h4>
-                      <p className="text-[11px] text-[#64748b]">Valores económicos validados por Comercial</p>
-                    </div>
-                  </div>
+                  </h4>
+                  <p className="text-[11px] text-[#64748b]">
+                    Por cada servicio del alcance, selecciona su modalidad comercial y define los valores acordados.
+                  </p>
+                </div>
+
+                {!isEditingQuoteFields && isQuoteDiligenciada && (
                   <button
                     type="button"
                     onClick={() => {
                       setIsEditingQuoteFields(true);
                       setIsQuoteSavedFeedback(false);
                       setConversionSuccessMessage(null);
-                      onSetQuoteSaved(activeQuote.id);
+                      onSetQuoteSaved(activeQuote.id); // Invalida el guardado anterior para exigir Guardar cotización de nuevo
                     }}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-[#cbd5e1] hover:border-[#501f92] text-xs font-bold text-[#501f92] transition-colors cursor-pointer shadow-2xs"
                   >
                     <Pencil className="w-3.5 h-3.5" />
-                    <span>Editar Cotización</span>
+                    <span>Editar cotización</span>
                   </button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Bloque Izquierdo: Monto y Desglose */}
-                  <div className="p-3.5 rounded-xl bg-white border border-[#e9d5ff] space-y-2">
-                    <span className="text-[10px] uppercase font-bold text-[#64748b] block">Monto Total Acordado</span>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-2xl font-black text-[#0f172a]">
-                        {formatCurrency(activeQuote.totalQuotedValue ?? activeQuote.totalQuotedValueCOP ?? 0, activeQuote.currency || 'COP')}
-                      </span>
-                      <span className="text-xs font-bold text-[#501f92]">{activeQuote.currency || 'COP'}</span>
-                    </div>
-
-                    {/* Desglose 50/50 e IVA */}
-                    {(() => {
-                      const val = activeQuote.totalQuotedValue ?? activeQuote.totalQuotedValueCOP ?? 0;
-                      const curr = activeQuote.currency || 'COP';
-                      const half = Math.round(val / 2);
-                      const totalWithIva = Math.round(val * 1.19);
-                      return (
-                        <div className="pt-2 border-t border-[#f1f5f9] space-y-1 text-[11px] text-[#64748b]">
-                          <div className="flex justify-between">
-                            <span>Esquema estándar (50% / 50%):</span>
-                            <strong className="text-[#501f92]">{formatCurrency(half, curr)} c/u</strong>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Total estimado con IVA (19%):</span>
-                            <span className="text-[#0f172a] font-medium">{formatCurrency(totalWithIva, curr)}</span>
-                          </div>
-                        </div>
-                      );
-                    })()}
-                  </div>
-
-                  {/* Bloque Derecho: Sheet Oficial */}
-                  <div className="p-3.5 rounded-xl bg-white border border-[#e9d5ff] space-y-2">
-                    <span className="text-[10px] uppercase font-bold text-[#64748b] block">Sheet Oficial de Finanzas</span>
-                    {activeQuote.externalFinanceSheetUrl ? (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-mono font-medium text-[#0f172a] truncate max-w-[280px]">
-                            {activeQuote.externalFinanceSheetUrl}
-                          </span>
-                        </div>
-                        <a
-                          href={activeQuote.externalFinanceSheetUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#501f92]/10 hover:bg-[#501f92]/20 text-xs font-bold text-[#501f92] transition-colors"
-                        >
-                          <span>Abrir Planilla en Google Sheets</span>
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </a>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-[#94a3b8] italic">Sin enlace de Google Sheets registrado</span>
-                    )}
-
-                    {activeQuote.commercialNotes && (
-                      <div className="pt-2 border-t border-[#f1f5f9] text-[11px] text-[#475569]">
-                        <strong>Condiciones:</strong> {activeQuote.commercialNotes}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                )}
               </div>
-            ) : (
-              /* Modo Edición / Formulario */
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 pt-1 text-xs">
-                  {/* Columna Izquierda: Pricing Acordado (5 cols) */}
-                  <div className="lg:col-span-5 p-4 rounded-xl bg-gradient-to-br from-[#faf5ff] to-[#f5f3ff] border border-[#e9d5ff] space-y-3">
-                    <div className="flex items-center justify-between">
-                      <label className="font-extrabold text-[#501f92] text-xs">
-                        Valor Cotizado Acordado: <span className="text-red-500">*</span>
-                      </label>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-white text-[#501f92] border border-[#d8b4fe]">
-                        Monto Oficial
-                      </span>
-                    </div>
 
-                    <div className="flex items-center gap-2">
-                      <div className="relative flex-1">
-                        <input
-                          type="number"
-                          min="0"
-                          step="1000"
-                          value={quoteValueDraft}
-                          onChange={(e) => setQuoteValueDraft(e.target.value)}
-                          placeholder="0"
-                          className="w-full px-3 py-2.5 rounded-xl border border-[#cbd5e1] font-black text-base text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal focus:ring-2 focus:ring-[#501f92] bg-white shadow-xs"
-                        />
-                      </div>
-                      <select
-                        value={quoteCurrencyDraft}
-                        onChange={(e) => setQuoteCurrencyDraft(e.target.value as 'COP' | 'USD')}
-                        className="p-2.5 rounded-xl border border-[#cbd5e1] font-bold text-xs bg-white text-[#501f92] focus:ring-2 focus:ring-[#501f92] cursor-pointer shadow-xs"
-                      >
-                        <option value="COP">COP ($)</option>
-                        <option value="USD">USD ($)</option>
-                      </select>
-                    </div>
+              {/* Lista de servicios con su modalidad y pricing */}
+              {commercialStructureDraft.length === 0 ? (
+                <div className="p-4 rounded-xl bg-[#fffbeb] border border-[#fef3c7] text-xs text-[#b45309] flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-[#d97706]" />
+                  <span>No hay servicios definidos en el alcance. Configúralos en la pestaña "Alcance" primero.</span>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {commercialStructureDraft.map((item, idx) => {
+                    const isFixed = item.modality === 'fixed_project';
+                    const isFee = item.modality === 'fee_monthly';
 
-                    {/* Desglose visual automático */}
-                    {(() => {
-                      const val = Math.max(0, Number(quoteValueDraft) || 0);
-                      const curr = quoteCurrencyDraft || 'COP';
-                      const half = Math.round(val / 2);
-                      const iva = Math.round(val * 0.19);
-                      const total = Math.round(val * 1.19);
+                    if (!isEditingQuoteFields && isQuoteDiligenciada) {
+                      /* Modo lectura */
                       return (
-                        <div className="space-y-1.5 pt-2 border-t border-[#e9d5ff]/80 text-[11px]">
-                          <div className="flex items-center justify-between text-[#64748b]">
-                            <span>Subtotal antes de IVA:</span>
-                            <strong className="text-[#0f172a] font-bold">{formatCurrency(val, curr)}</strong>
+                        <div
+                          key={item.serviceId || idx}
+                          className="p-4 rounded-xl bg-white border border-[#e2e8f0] shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs"
+                        >
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-extrabold text-[#0f172a] text-sm">{item.serviceName}</span>
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#f1f5f9] text-[#475569]">
+                                Referencia: {item.weeksRef || 0} {item.weeksRef === 1 ? 'semana' : 'semanas'}
+                              </span>
+                              <span
+                                className={`text-[10.5px] font-bold px-2 py-0.5 rounded-md ${
+                                  isFixed
+                                    ? 'bg-[#501f92]/10 text-[#501f92]'
+                                    : 'bg-[#059669]/10 text-[#047857]'
+                                }`}
+                              >
+                                {isFixed ? 'Proyecto único' : 'Fee mensual'}
+                              </span>
+                            </div>
                           </div>
-                          <div className="flex items-center justify-between text-[#64748b]">
-                            <span>Esquema estándar (50% / 50%):</span>
-                            <span className="font-semibold text-[#501f92]">{formatCurrency(half, curr)} c/u</span>
-                          </div>
-                          <div className="flex items-center justify-between text-[#64748b]">
-                            <span>Total con IVA 19%:</span>
-                            <span className="text-[#0f172a] font-medium">{formatCurrency(total, curr)}</span>
+
+                          <div className="flex items-center gap-4 flex-wrap">
+                            {isFixed ? (
+                              <div className="text-right">
+                                <span className="text-[10px] uppercase font-bold text-[#64748b] block">Valor total del servicio</span>
+                                <span className="text-sm font-black text-[#0f172a]">
+                                  {formatCurrency(item.totalValue || 0, quoteCurrencyDraft)}
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-4 text-right">
+                                <div>
+                                  <span className="text-[10px] uppercase font-bold text-[#64748b] block">Valor mensual</span>
+                                  <span className="text-sm font-black text-[#059669]">
+                                    {formatCurrency(item.monthlyValue || 0, quoteCurrencyDraft)} / mes
+                                  </span>
+                                </div>
+                                <div className="border-l border-[#e2e8f0] pl-4">
+                                  <span className="text-[10px] uppercase font-bold text-[#64748b] block">Vigencia</span>
+                                  <span className="text-xs font-bold text-[#0f172a]">
+                                    {item.monthsDuration || 0} meses
+                                  </span>
+                                </div>
+                                <div className="border-l border-[#e2e8f0] pl-4">
+                                  <span className="text-[10px] uppercase font-bold text-[#64748b] block">Total estimado fee</span>
+                                  <span className="text-xs font-extrabold text-[#501f92]">
+                                    {formatCurrency((item.monthlyValue || 0) * (item.monthsDuration || 0), quoteCurrencyDraft)}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
-                    })()}
-                  </div>
+                    }
 
-                  {/* Columna Derecha: Sheet Oficial (7 cols) */}
-                  <div className="lg:col-span-7 space-y-3">
-                    <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <label className="font-bold text-[#475569] text-xs">
-                          Sheet oficial de Finanzas: <span className="text-red-500">*</span>
-                        </label>
-                        {quoteSheetUrlDraft.trim().length > 5 && (
-                          <a
-                            href={quoteSheetUrlDraft}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1 text-[11px] font-bold text-[#501f92] hover:underline"
-                          >
-                            <span>Abrir Sheet</span>
-                            <ExternalLink className="w-3 h-3" />
-                          </a>
+                    /* Modo edición */
+                    return (
+                      <div
+                        key={item.serviceId || idx}
+                        className="p-4 rounded-xl bg-white border border-[#cbd5e1] hover:border-[#94a3b8] transition-colors shadow-2xs space-y-3 text-xs"
+                      >
+                        <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-[#f1f5f9]">
+                          <div className="flex items-center gap-2">
+                            <span className="font-extrabold text-[#0f172a] text-sm">{item.serviceName}</span>
+                            <span className="text-[10.5px] font-bold px-2 py-0.5 rounded bg-[#f1f5f9] text-[#64748b]">
+                              Semanas en alcance: {item.weeksRef || 0} {item.weeksRef === 1 ? 'semana' : 'semanas'}
+                            </span>
+                          </div>
+
+                          {/* Selector de Modalidad Comercial */}
+                          <div className="flex items-center gap-1 p-0.5 rounded-lg bg-[#f1f5f9] border border-[#e2e8f0]">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCommercialStructureDraft((prev) =>
+                                  prev.map((s) =>
+                                    s.serviceId === item.serviceId
+                                      ? { ...s, modality: 'fixed_project' }
+                                      : s
+                                  )
+                                );
+                              }}
+                              className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                                isFixed
+                                  ? 'bg-[#501f92] text-white shadow-2xs'
+                                  : 'text-[#64748b] hover:text-[#0f172a]'
+                              }`}
+                            >
+                              Proyecto único
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCommercialStructureDraft((prev) =>
+                                  prev.map((s) =>
+                                    s.serviceId === item.serviceId
+                                      ? { ...s, modality: 'fee_monthly', monthsDuration: s.monthsDuration || 6 }
+                                      : s
+                                  )
+                                );
+                              }}
+                              className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                                isFee
+                                  ? 'bg-[#059669] text-white shadow-2xs'
+                                  : 'text-[#64748b] hover:text-[#0f172a]'
+                              }`}
+                            >
+                              Fee mensual
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Campos específicos según modalidad */}
+                        {isFixed ? (
+                          <div className="space-y-1">
+                            <label className="font-bold text-[#475569] block text-[11px]">
+                              Valor total del servicio ({quoteCurrencyDraft}): <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              placeholder="0"
+                              value={item.totalValue !== undefined && item.totalValue !== null ? item.totalValue.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') : ''}
+                              onChange={(e) => {
+                                const raw = e.target.value.replace(/\D/g, '');
+                                const val = raw === '' ? undefined : parseInt(raw, 10);
+                                setCommercialStructureDraft((prev) =>
+                                  prev.map((s) => (s.serviceId === item.serviceId ? { ...s, totalValue: val } : s))
+                                );
+                              }}
+                              className="w-full max-w-sm p-2.5 rounded-xl border border-[#cbd5e1] font-bold text-sm text-[#0f172a] focus:ring-2 focus:ring-[#501f92] bg-white"
+                            />
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
+                            <div className="space-y-1">
+                              <label className="font-bold text-[#475569] block text-[11px]">
+                                Valor mensual ({quoteCurrencyDraft}): <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                placeholder="0"
+                                value={item.monthlyValue !== undefined && item.monthlyValue !== null ? item.monthlyValue.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') : ''}
+                                onChange={(e) => {
+                                  const raw = e.target.value.replace(/\D/g, '');
+                                  const val = raw === '' ? undefined : parseInt(raw, 10);
+                                  setCommercialStructureDraft((prev) =>
+                                    prev.map((s) => (s.serviceId === item.serviceId ? { ...s, monthlyValue: val } : s))
+                                  );
+                                }}
+                                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] font-bold text-sm text-[#059669] focus:ring-2 focus:ring-[#059669] bg-white"
+                              />
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="font-bold text-[#475569] block text-[11px]">
+                                Vigencia en meses: <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                type="number"
+                                min="1"
+                                max="60"
+                                placeholder="6"
+                                value={item.monthsDuration !== undefined ? item.monthsDuration : ''}
+                                onChange={(e) => {
+                                  const val = e.target.value === '' ? undefined : Number(e.target.value);
+                                  setCommercialStructureDraft((prev) =>
+                                    prev.map((s) => (s.serviceId === item.serviceId ? { ...s, monthsDuration: val } : s))
+                                  );
+                                }}
+                                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] font-bold text-sm text-[#0f172a] focus:ring-2 focus:ring-[#501f92] bg-white"
+                              />
+                            </div>
+                          </div>
                         )}
                       </div>
-                      <input
-                        type="url"
-                        value={quoteSheetUrlDraft}
-                        onChange={(e) => setQuoteSheetUrlDraft(e.target.value)}
-                        placeholder="https://docs.google.com/spreadsheets/d/..."
-                        className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs font-mono text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-sans placeholder:font-normal focus:ring-2 focus:ring-[#501f92] bg-white"
-                      />
-                      <p className="text-[10px] text-[#64748b]">
-                        Planilla de Google Sheets donde Finanzas calcula el pricing con semanas y horas.
-                      </p>
-                    </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
 
-                    <div className="space-y-1 text-xs">
-                      <label className="font-bold text-[#475569] block">
-                        Notas / Condiciones comerciales (Términos de pago, vigencia, supuestos):
-                      </label>
-                      <textarea
-                        rows={2}
-                        value={quoteNotesDraft}
-                        onChange={(e) => setQuoteNotesDraft(e.target.value)}
-                        placeholder="Ej: 50% anticipo al kick-off y 50% contra entrega final; vigencia de oferta 15 días calendario."
-                        className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal focus:ring-2 focus:ring-[#501f92]"
-                      />
-                    </div>
+            {/* Resumen comercial */}
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-[#faf5ff] to-[#f5f3ff] border border-[#e9d5ff] space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs uppercase font-extrabold text-[#501f92] tracking-wider block">
+                  Resumen Comercial de la Propuesta
+                </span>
+                <span className="text-[10px] text-[#64748b]">
+                  Proyección consolidada de proyectos y recurrencias
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* 1. Total proyectos únicos */}
+                <div className="p-3.5 rounded-xl bg-white border border-[#e9d5ff] space-y-1">
+                  <span className="text-[10px] uppercase font-bold text-[#64748b] block">Total proyectos únicos</span>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-xl font-black text-[#0f172a]">
+                      {formatCurrency(commercialTotals.totalOneOff, quoteCurrencyDraft)}
+                    </span>
                   </div>
+                  <p className="text-[10px] text-[#64748b]">Suma de servicios de ejecución puntual</p>
+                </div>
+
+                {/* 2. Fee mensual total */}
+                <div className="p-3.5 rounded-xl bg-white border border-[#e9d5ff] space-y-1">
+                  <span className="text-[10px] uppercase font-bold text-[#64748b] block">Fee mensual total</span>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-xl font-black text-[#059669]">
+                      {formatCurrency(commercialTotals.totalMonthlyFee, quoteCurrencyDraft)}
+                    </span>
+                    <span className="text-[11px] font-bold text-[#059669]">/ mes</span>
+                  </div>
+                  <p className="text-[10px] text-[#64748b]">Facturación recurrente mensual acumulada</p>
+                </div>
+
+                {/* 3. Valor estimado del contrato */}
+                <div className="p-3.5 rounded-xl bg-white border-2 border-[#501f92]/30 space-y-1 shadow-xs">
+                  <span className="text-[10px] uppercase font-extrabold text-[#501f92] block">Valor estimado del contrato</span>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-xl font-black text-[#501f92]">
+                      {formatCurrency(commercialTotals.estimatedContractValue, quoteCurrencyDraft)}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-[#501f92]/80 font-medium">Proyectos únicos + (Fee mensual × vigencia)</p>
                 </div>
               </div>
-            )}
+            </div>
+
+            {/* Planilla de Finanzas / Calculadora Google Sheet */}
+            <div className="p-4 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <label className="font-bold text-[#475569] text-xs flex items-center gap-1.5">
+                  <Calculator className="w-4 h-4 text-[#501f92]" />
+                  <span>Enlace de la calculadora / Google Sheet oficial:</span>
+                  <span className="text-red-500">*</span>
+                </label>
+                {quoteSheetUrlDraft.trim().length > 5 && (
+                  <a
+                    href={quoteSheetUrlDraft}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-[11px] font-bold text-[#501f92] hover:underline"
+                  >
+                    <span>Abrir Sheet en Google Drive</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                )}
+              </div>
+
+              {isEditingQuoteFields ? (
+                <div className="space-y-1.5">
+                  <input
+                    type="url"
+                    value={quoteSheetUrlDraft}
+                    onChange={(e) => {
+                      setQuoteSheetUrlDraft(e.target.value);
+                      if (hasAttemptedSaveQuote && e.target.value.trim().length > 0) {
+                        setHasAttemptedSaveQuote(false);
+                      }
+                    }}
+                    placeholder="https://docs.google.com/spreadsheets/d/..."
+                    className={`w-full p-2.5 rounded-xl text-xs font-mono text-[#0f172a] placeholder:font-sans placeholder:font-normal focus:ring-2 bg-white transition-all ${
+                      hasAttemptedSaveQuote && (!quoteSheetUrlDraft.trim() || !isValidFinanceSheetUrl(quoteSheetUrlDraft))
+                        ? 'border-2 border-red-500 ring-2 ring-red-400/50 bg-red-50/20 placeholder:text-red-400'
+                        : 'border border-[#cbd5e1] placeholder:text-[#7C8AA0] focus:ring-[#501f92]'
+                    }`}
+                  />
+                  {hasAttemptedSaveQuote && (!quoteSheetUrlDraft.trim() || !isValidFinanceSheetUrl(quoteSheetUrlDraft)) && (
+                    <p className="text-[11px] text-red-600 font-bold flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                      <span>Falta ingresar el enlace obligatorio de la calculadora oficial (Google Sheet).</span>
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="p-2.5 rounded-lg bg-white border border-[#cbd5e1] text-xs font-mono text-[#0f172a] truncate">
+                  {quoteSheetUrlDraft || <span className="text-[#94a3b8] italic">Sin enlace registrado</span>}
+                </div>
+              )}
+
+              {/* Notas comerciales */}
+              <div className="space-y-1 text-xs pt-1 border-t border-[#e2e8f0]">
+                <label className="font-bold text-[#475569] block text-[11px]">
+                  Notas y supuestos comerciales:
+                </label>
+                {isEditingQuoteFields ? (
+                  <textarea
+                    rows={2}
+                    value={quoteNotesDraft}
+                    onChange={(e) => setQuoteNotesDraft(e.target.value)}
+                    placeholder="Ej: Términos de pago, vigencia de oferta 15 días, entregables sujetos a insumos."
+                    className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal focus:ring-2 focus:ring-[#501f92] bg-white"
+                  />
+                ) : (
+                  <p className="text-xs text-[#475569] italic">
+                    {quoteNotesDraft || 'Sin condiciones adicionales registradas.'}
+                  </p>
+                )}
+              </div>
+            </div>
 
             {/* Footer con CTA Guardar cambios a la derecha como primer botón */}
             <div className="pt-3 border-t border-[#f1f5f9] flex items-center justify-between flex-wrap gap-2">
@@ -2263,49 +2559,64 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
 
               <div className="flex items-center gap-2 flex-wrap ml-auto">
                 {/* Solo se guarda mientras los campos están en edición. */}
-                {isEditingQuoteFields && <button
-                  type="button"
-                  onClick={() => {
-                    const numVal = Math.max(0, Number(quoteValueDraft) || 0);
-                    if (!Number.isFinite(numVal) || numVal <= 0 || !isValidFinanceSheetUrl(quoteSheetUrlDraft)) {
-                      setIsQuoteSavedFeedback(false);
-                      setConversionSuccessMessage(quoteMissingRequirements(numVal, quoteSheetUrlDraft).join(' '));
-                      return;
-                    }
-                    const updatedQuote: QuoteProposal = {
-                      ...activeQuote,
-                      totalQuotedValue: numVal,
-                      totalQuotedValueCOP: quoteCurrencyDraft === 'USD' ? 0 : numVal,
-                      currency: quoteCurrencyDraft,
-                      externalFinanceSheetUrl: quoteSheetUrlDraft.trim(),
-                      commercialNotes: quoteNotesDraft.trim()
-                    };
-                    handleUpdateQuote(updatedQuote);
-                    onSetQuoteSaved(activeQuote.id, quoteSignature(numVal, quoteSheetUrlDraft));
-                    setIsQuoteSavedFeedback(true);
-                    setIsEditingQuoteFields(false);
-                    setConversionSuccessMessage('✅ Cotización comercial guardada correctamente. Ahora puedes marcar como ganada arriba.');
-                    setTimeout(() => {
-                      setIsQuoteSavedFeedback(false);
-                      setConversionSuccessMessage(null);
-                    }, 4000);
-                  }}
-                  className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5 active:scale-95 ${
-                    isQuoteSavedFeedback
-                      ? 'bg-[#059669] text-white ring-2 ring-[#a7f3d0]'
-                      : 'bg-[#501f92] hover:bg-[#3d1572] active:bg-[#2e0e57] text-white'
-                  }`}
-                  title="Guardar los valores económicos y condiciones de esta cotización"
-                >
-                  {isQuoteSavedFeedback ? (
-                    <>
-                      <CheckCircle2 className="w-3.5 h-3.5 text-[#d4ff4a]" />
-                      <span>¡Cotización guardada!</span>
-                    </>
-                  ) : (
-                    <span>Guardar cotización</span>
-                  )}
-                </button>}
+                {isEditingQuoteFields && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHasAttemptedSaveQuote(true);
+                      const errors = validateCommercialStructure(
+                        currentScopeServices,
+                        commercialStructureDraft,
+                        quoteSheetUrlDraft
+                      );
+                      if (errors.length > 0) {
+                        setIsQuoteSavedFeedback(false);
+                        setConversionSuccessMessage(errors.join(' '));
+                        return;
+                      }
+
+                      const sig = commercialStructureSignature(commercialStructureDraft, quoteSheetUrlDraft);
+                      const updatedQuote: QuoteProposal = {
+                        ...activeQuote,
+                        commercialStructure: commercialStructureDraft,
+                        commercialProposalType: derivedProposalType,
+                        commercialTotalOneOff: commercialTotals.totalOneOff,
+                        commercialTotalMonthlyFee: commercialTotals.totalMonthlyFee,
+                        commercialEstimatedContractValue: commercialTotals.estimatedContractValue,
+                        totalQuotedValue: commercialTotals.estimatedContractValue,
+                        totalQuotedValueCOP: quoteCurrencyDraft === 'USD' ? 0 : commercialTotals.estimatedContractValue,
+                        currency: quoteCurrencyDraft,
+                        externalFinanceSheetUrl: quoteSheetUrlDraft.trim(),
+                        commercialNotes: quoteNotesDraft.trim(),
+                        updatedAt: new Date().toISOString()
+                      };
+                      handleUpdateQuote(updatedQuote);
+                      onSetQuoteSaved(activeQuote.id, sig);
+                      setIsQuoteSavedFeedback(true);
+                      setIsEditingQuoteFields(false);
+                      setConversionSuccessMessage('✅ Cotización comercial guardada correctamente. Ahora puedes marcar como ganada arriba.');
+                      setTimeout(() => {
+                        setIsQuoteSavedFeedback(false);
+                        setConversionSuccessMessage(null);
+                      }, 4000);
+                    }}
+                    className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5 active:scale-95 ${
+                      isQuoteSavedFeedback
+                        ? 'bg-[#059669] text-white ring-2 ring-[#a7f3d0]'
+                        : 'bg-[#501f92] hover:bg-[#3d1572] active:bg-[#2e0e57] text-white'
+                    }`}
+                    title="Guardar los valores económicos y condiciones de esta cotización"
+                  >
+                    {isQuoteSavedFeedback ? (
+                      <>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[#d4ff4a]" />
+                        <span>¡Cotización guardada!</span>
+                      </>
+                    ) : (
+                      <span>Guardar cotización</span>
+                    )}
+                  </button>
+                )}
 
                 {activeOpp.status === 'won' && !activeOpp.convertedProjectId && (
                   <button
