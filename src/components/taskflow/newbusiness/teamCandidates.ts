@@ -5,9 +5,58 @@ export const isEligibleTeamMember = (user: UserItem): boolean => user.status ===
   !/(^|[\s._@-])(demo|qa|legacy|test|prueba)(?=$|[\s._@-])/i.test(`${user.id} ${user.name} ${user.email}`);
 
 const normalized = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
-export const matchesQuotedRole = (user: UserItem, role: string): boolean =>
-  [...(user.officialRoles || []), ...(user.professionalRoles || []), user.officialRole, user.professionalRole]
-    .some((assigned) => Boolean(assigned) && normalized(assigned!) === normalized(role));
+
+export const matchesQuotedRole = (user: UserItem, role: string): boolean => {
+  const normTarget = normalized(role);
+  const userRoles = [
+    ...(user.officialRoles || []),
+    ...(user.professionalRoles || []),
+    user.officialRole,
+    user.professionalRole,
+    user.role,
+    user.jobTitle
+  ].filter(Boolean) as string[];
+
+  return userRoles.some((assigned) => {
+    const normAssigned = normalized(assigned);
+    if (normAssigned === normTarget) return true;
+    if (normTarget.includes('front') && normAssigned.includes('front')) return true;
+    if ((normTarget.includes('design') || normTarget.includes('disen')) && (normAssigned.includes('design') || normAssigned.includes('disen'))) return true;
+    if (normTarget.includes('product') && normAssigned.includes('product')) return true;
+    if (normTarget.includes('content') && (normAssigned.includes('content') || normAssigned.includes('redac'))) return true;
+    if (normTarget.includes('comercial') && normAssigned.includes('comercial')) return true;
+    if (normTarget.includes('trafficker') && normAssigned.includes('trafficker')) return true;
+    if (normTarget.includes('community') && normAssigned.includes('community')) return true;
+    if (normTarget.includes('growth') && normAssigned.includes('growth')) return true;
+    if (normTarget.includes('client') && normAssigned.includes('client')) return true;
+    return false;
+  });
+};
+
+export const findBestCandidateForRole = (
+  role: string,
+  users: UserItem[],
+  proposedHours?: Map<string, number>
+): UserItem | null => {
+  const activeEligible = users.filter(isEligibleTeamMember);
+  const matching = activeEligible.filter((u) => matchesQuotedRole(u, role));
+  const pool = matching.length > 0 ? matching : activeEligible;
+
+  if (pool.length === 0) return null;
+
+  // Person with highest available capacity has the lowest utilized percent / pressure
+  const sorted = [...pool].sort((a, b) => {
+    const aUtil = typeof a.utilizedPercent === 'number' && Number.isFinite(a.utilizedPercent) ? a.utilizedPercent : 50;
+    const bUtil = typeof b.utilizedPercent === 'number' && Number.isFinite(b.utilizedPercent) ? b.utilizedPercent : 50;
+    const aExtra = proposedHours ? (proposedHours.get(a.id) || 0) : 0;
+    const bExtra = proposedHours ? (proposedHours.get(b.id) || 0) : 0;
+    const aTotal = aUtil + (a.capacityHours && a.capacityHours > 0 ? (aExtra / a.capacityHours) * 100 : aExtra);
+    const bTotal = bUtil + (b.capacityHours && b.capacityHours > 0 ? (bExtra / b.capacityHours) * 100 : bExtra);
+    return aTotal - bTotal || a.name.localeCompare(b.name);
+  });
+
+  return sorted[0] || null;
+};
 
 export const searchActiveTeam = (users: UserItem[], query: string): UserItem[] => {
   const term = query.trim().toLocaleLowerCase();
@@ -36,11 +85,11 @@ export const isScopeReadyForReview = (
   return Boolean(quote.commercialProposalUrl?.trim() && quote.commercialProposalUrl.trim().length > 5) &&
     Number.isFinite(weeks) && weeks >= 1 && quote.totalHoursRollup > 0 &&
     quote.deliverables.some((deliverable) => deliverable.backlogItems.some((activity) => activity.estimatedHours > 0)) &&
+    services.length > 0 &&
     services.every((service) => service.saved === true && serviceValidationMessages(service).length === 0);
 };
 
-// Sugerencias del prototipo: carga registrada + horas ya propuestas en este alcance.
-// La disponibilidad por semana requiere datos de planificación de backend.
+// Sugerencias del prototipo: según rol y menor carga (mayor capacidad disponible).
 export const suggestActivityOwners = (
   deliverables: QuoteProposal['deliverables'],
   users: UserItem[],
@@ -50,24 +99,22 @@ export const suggestActivityOwners = (
   for (const activity of [...existing, ...deliverables].flatMap((item) => item.backlogItems)) {
     if (activity.suggestedUserId) proposed.set(activity.suggestedUserId, (proposed.get(activity.suggestedUserId) || 0) + activity.estimatedHours);
   }
-  const pressure = (user: UserItem): number => {
-    if (typeof user.utilizedPercent !== 'number' || !Number.isFinite(user.utilizedPercent)) return Infinity;
-    const hours = proposed.get(user.id) || 0;
-    return user.utilizedPercent + (user.capacityHours && user.capacityHours > 0 ? hours / user.capacityHours * 100 : 0);
-  };
-  return deliverables.map((deliverable) => ({ ...deliverable, backlogItems: deliverable.backlogItems.map((activity) => {
-    if (activity.suggestedUserId) return activity;
-    const candidate = users.filter(isEligibleTeamMember).filter((user) => matchesQuotedRole(user, activity.roleName))
-      .sort((a, b) => pressure(a) - pressure(b) || a.id.localeCompare(b.id))[0];
-    if (!candidate) return activity;
-    proposed.set(candidate.id, (proposed.get(candidate.id) || 0) + activity.estimatedHours);
-    return { ...activity, suggestedUserId: candidate.id, suggestedUserName: candidate.name };
-  }) }));
+
+  return deliverables.map((deliverable) => ({
+    ...deliverable,
+    backlogItems: deliverable.backlogItems.map((activity) => {
+      if (activity.suggestedUserId) return activity;
+      const candidate = findBestCandidateForRole(activity.roleName, users, proposed);
+      if (!candidate) return activity;
+      proposed.set(candidate.id, (proposed.get(candidate.id) || 0) + activity.estimatedHours);
+      return { ...activity, suggestedUserId: candidate.id, suggestedUserName: candidate.name };
+    })
+  }));
 };
 
 export const effectiveAssigneeRole = (user: UserItem, currentRole: string): string => {
   if (matchesQuotedRole(user, currentRole)) return currentRole;
-  return user.officialRole || user.professionalRole || user.officialRoles?.[0] || user.professionalRoles?.[0] || currentRole;
+  return user.officialRole || user.professionalRole || user.officialRoles?.[0] || user.professionalRoles?.[0] || user.jobTitle || user.role || currentRole;
 };
 
 export const getScopeWeeks = (quote: QuoteProposal, services: { weeks: string }[]): number => {

@@ -8,7 +8,14 @@ import {
   UserItem,
   ProductBacklogTemplate
 } from '../types';
-import { serviceValidationMessages, isEligibleTeamMember, suggestActivityOwners, effectiveAssigneeRole, getScopeWeeks } from './teamCandidates';
+import {
+  serviceValidationMessages,
+  isEligibleTeamMember,
+  suggestActivityOwners,
+  effectiveAssigneeRole,
+  findBestCandidateForRole,
+  getScopeWeeks
+} from './teamCandidates';
 import { computeRoleBudgetsFromActivities, computeTotalHoursFromRoleBudgets } from '../templates/templateEngine';
 import {
   Plus,
@@ -185,6 +192,14 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
   const handleRemoveDeliverable = (delId: string) => {
     const updated = quote.deliverables.filter((d) => d.id !== delId);
     onUpdateQuote(recomputeQuoteRollups(updated));
+    // Prune deliverable ID from services and remove services that have no remaining deliverables
+    const nextServices = services
+      .map((s) => ({
+        ...s,
+        deliverableIds: s.deliverableIds.filter((id) => id !== delId)
+      }))
+      .filter((s) => s.deliverableIds.length > 0);
+    onChangeServices(nextServices);
   };
 
   const handleDrop = (event: React.DragEvent, deliverableId: string, activityId?: string) => {
@@ -217,15 +232,17 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
 
   // Activity (Backlog Item) Operations
   const handleAddActivity = (delId: string) => {
+    const defaultRole = 'Front-End Dev';
+    const suggestedUser = findBestCandidateForRole(defaultRole, users);
     const newAct: QuoteBacklogItem = {
       id: `act-${Date.now()}`,
       quoteDeliverableId: delId,
       title: '',
-      roleId: 'Front-End Dev',
-      roleName: 'Front-End Dev',
+      roleId: defaultRole,
+      roleName: defaultRole,
       estimatedHours: 8,
-      suggestedUserId: null,
-      suggestedUserName: null,
+      suggestedUserId: suggestedUser?.id || null,
+      suggestedUserName: suggestedUser?.name || null,
       order: (quote.deliverables.find((del) => del.id === delId)?.backlogItems.length || 0) + 1
     };
 
@@ -252,13 +269,28 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
         if (act.id !== actId) return act;
         if (field === 'suggestedUserId') {
           const user = users.find((u) => u.id === value && isEligibleTeamMember(u));
-          const role = user ? effectiveAssigneeRole(user, act.roleName) : act.roleName;
-          return { ...act, suggestedUserId: user?.id || null, suggestedUserName: user?.name || null, roleName: role, roleId: role };
+          if (!user) {
+            return { ...act, suggestedUserId: null, suggestedUserName: null };
+          }
+          const role = effectiveAssigneeRole(user, act.roleName);
+          return {
+            ...act,
+            suggestedUserId: user.id,
+            suggestedUserName: user.name,
+            roleName: role,
+            roleId: role
+          };
         }
         if (field === 'roleName') {
-          const currentUser = users.find((user) => user.id === act.suggestedUserId && isEligibleTeamMember(user));
-          const keepAssignee = currentUser && effectiveAssigneeRole(currentUser, value) === value;
-          return { ...act, roleName: value, roleId: value, suggestedUserId: keepAssignee ? act.suggestedUserId : null, suggestedUserName: keepAssignee ? act.suggestedUserName : null };
+          // When leader changes role, auto-suggest the candidate with highest available capacity for that role
+          const bestCandidate = findBestCandidateForRole(value, users);
+          return {
+            ...act,
+            roleName: value,
+            roleId: value,
+            suggestedUserId: bestCandidate?.id || null,
+            suggestedUserName: bestCandidate?.name || null
+          };
         }
         if (field === 'estimatedHours') {
           return { ...act, estimatedHours: Math.max(0, parseFloat(value) || 0) };
@@ -490,7 +522,6 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
 
   return (
     <div className="space-y-6">
-      <p className="text-xs text-[#64748b]">Responsables sugeridos por rol y menor carga registrada; editables antes de guardar. La carga no refleja disponibilidad semanal. Cambiar la persona actualiza el rol cotizado.</p>
       {/* Main Scoping Grid: Left = Deliverables & Activities / Right = Real-Time Rollup Engine */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Column: Entregables y Actividades (8 cols) */}
@@ -517,7 +548,7 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
                     className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 text-xs font-bold text-[#501f92] bg-[#501f92]/10 hover:bg-[#501f92]/20 border border-[#501f92]/30 rounded-2xl transition-colors cursor-pointer shadow-2xs"
                   >
                     <BookOpen className="w-4 h-4 text-[#501f92]" />
-                    <span>Agregar plantilla</span>
+                    <span>Agregar alcance</span>
                   </button>
                 )}
                 <button
@@ -797,7 +828,7 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
               className="w-full py-3.5 rounded-2xl border-2 border-dashed border-[#a78bfa] bg-white hover:bg-[#f5f3ff] text-xs font-bold text-[#501f92] flex items-center justify-center gap-2 cursor-pointer"
             >
               <BookOpen className="w-4 h-4" />
-              Agregar plantilla
+              Agregar alcance
             </button>
           )}
 
@@ -823,11 +854,8 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
                 </span>
                 <div>
                   <h3 className="text-sm font-bold text-[#0f172a]">
-                    Importar desde Plantilla Maestra
+                    Importar desde plantillas de servicios
                   </h3>
-                  <p className="text-xs text-[#64748b]">
-                    Importa actividades, horas y responsables sugeridos por rol. Revisa y confirma las asignaciones.
-                  </p>
                 </div>
               </div>
               <button
@@ -842,7 +870,7 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
 
             <div className="space-y-2">
               <label className="text-xs font-bold text-[#475569] block">
-                Selecciona la Plantilla:
+                Seleccionar:
               </label>
               <select
                 value={selectedTemplateToImport}
@@ -890,7 +918,7 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
                 onClick={handleImportTemplate}
                 className="px-4 py-2 text-xs font-bold text-white bg-[#501f92] hover:bg-[#3d1572] disabled:opacity-40 rounded-xl transition-colors cursor-pointer shadow-xs"
               >
-                Importar al Backlog
+                Importar
               </button>
             </div>
           </div>

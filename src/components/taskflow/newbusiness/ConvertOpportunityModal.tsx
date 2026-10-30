@@ -6,27 +6,53 @@ import {
   UserItem,
   ClientProfile,
   ServiceCommercialItem,
-  ServiceCommercialModality
+  QuoteDeliverable
 } from '../types';
 import { isEligibleTeamMember } from './teamCandidates';
 import { formatCurrency } from '../../../utils/formatters';
 import {
   CheckCircle2,
   X,
-  Briefcase,
   Building2,
-  Layers,
   Calendar,
-  User,
   Sparkles,
-  Users,
   FolderOpen,
-  ArrowRight,
   ShieldCheck,
-  Check,
-  Sliders,
   AlertCircle
 } from 'lucide-react';
+
+export interface ConvertedProjectPlan {
+  serviceId: string;
+  serviceName: string;
+  projectName: string;
+  projectType: ProjectType;
+  hubspotDealId?: string | null;
+  hubspotDealStage?: string;
+  soldValue?: number;
+  soldMonthlyValue?: number;
+  monthsDuration?: number;
+  deliverableIds: string[];
+}
+
+export interface ConvertOpportunityPayload {
+  projects: ConvertedProjectPlan[];
+  leadUserId: string;
+  leadUserIds?: string[];
+  leadName: string;
+  specialistUserIds?: string[];
+  startDate: string;
+  endDate?: string;
+  initialFormalizationStatus?: 'pendiente_formalizacion' | 'activo';
+  startConditionsConfig?: any;
+
+  // Legacy fallback compatibility
+  projectName: string;
+  projectType: ProjectType;
+  approvedServiceIds: string[];
+  isMixed: boolean;
+  fixedProjectName?: string;
+  feeProjectName?: string;
+}
 
 interface ConvertOpportunityModalProps {
   isOpen: boolean;
@@ -35,22 +61,7 @@ interface ConvertOpportunityModalProps {
   users?: UserItem[];
   clients?: ClientProfile[];
   onClose: () => void;
-  onConfirm: (payload: {
-    projectName: string;
-    projectType: ProjectType;
-    leadUserId: string;
-    leadUserIds?: string[];
-    leadName: string;
-    specialistUserIds?: string[];
-    startDate: string;
-    endDate?: string;
-    initialFormalizationStatus?: 'pendiente_formalizacion' | 'activo';
-    startConditionsConfig?: any;
-    approvedServiceIds: string[];
-    isMixed: boolean;
-    fixedProjectName?: string;
-    feeProjectName?: string;
-  }) => void;
+  onConfirm: (payload: ConvertOpportunityPayload) => void;
 }
 
 export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = ({
@@ -64,9 +75,7 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
 }) => {
   const users = teamUsers.filter(isEligibleTeamMember);
 
-  // Regla estricta: NO reconciliar por coincidencia difusa de nombres.
-  // Si existe opportunity.clientId, reutilizar ese cliente.
-  // Si no existe, crear un nuevo Cliente.
+  // Cliente en cartera vs nuevo cliente
   const matchedExistingClient = useMemo(() => {
     if (!clients || clients.length === 0) return null;
     if (opportunity.clientId) {
@@ -78,95 +87,72 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
   const clientName = matchedExistingClient
     ? matchedExistingClient.name
     : opportunity.prospectAccountName || 'Cliente';
-  const opportunityTitle = opportunity.title || 'Propuesta Comercial';
 
-  // Servicios cotizados provenientes de la estructura comercial de Cotización
-  const quotedServices: ServiceCommercialItem[] = useMemo(() => {
+  // Obtener servicios comerciales de la cotización
+  const allServices: ServiceCommercialItem[] = useMemo(() => {
     if (activeQuote.commercialStructure && activeQuote.commercialStructure.length > 0) {
       return activeQuote.commercialStructure;
     }
     return activeQuote.deliverables.map((d) => ({
       serviceId: d.id,
       serviceName: d.name,
-      modality: (opportunity.projectType || 'fixed_project') as ServiceCommercialModality,
+      modality: (opportunity.projectType || 'fixed_project') as 'fixed_project' | 'fee_monthly',
       weeksRef: activeQuote.estimatedWeeks || 0,
       totalValue: activeQuote.totalQuotedValue || 0,
       deliverableIds: [d.id]
     }));
   }, [activeQuote, opportunity.projectType]);
 
-  // Si existe un solo servicio, se considera aprobado automáticamente
-  const isSingleService = quotedServices.length === 1;
-
-  // Selección de servicios aprobados por el cliente (por defecto todos aprobados)
-  const [approvedServiceIds, setApprovedServiceIds] = useState<string[]>(() =>
-    quotedServices.map((s) => s.serviceId)
-  );
-
-  useEffect(() => {
-    if (quotedServices.length > 0) {
-      setApprovedServiceIds(quotedServices.map((s) => s.serviceId));
-    }
-  }, [quotedServices]);
-
-  const toggleServiceApproval = (serviceId: string) => {
-    if (isSingleService) return; // Si es servicio único, queda aprobado automáticamente
-    setApprovedServiceIds((prev) => {
-      if (prev.includes(serviceId)) {
-        if (prev.length <= 1) return prev; // Debe existir al menos un servicio aprobado
-        return prev.filter((id) => id !== serviceId);
-      }
-      return [...prev, serviceId];
+  // Regla HubSpot: Solo los servicios en 'Cierre ganado' o 'Enviado para facturar'
+  // (o approved: true si se validó previamente) se aprueban para conversión.
+  // Los servicios en 'Cierre perdido' son expresamente excluidos.
+  const wonServices = useMemo(() => {
+    const won = allServices.filter((s) => {
+      if (s.hubspotDealStage === 'Cierre perdido') return false;
+      if (s.hubspotDealStage === 'Cierre ganado' || s.hubspotDealStage === 'Enviado para facturar') return true;
+      return s.approved === true;
     });
-  };
 
-  const approvedServices = useMemo(() => {
-    return quotedServices.filter((s) => approvedServiceIds.includes(s.serviceId));
-  }, [quotedServices, approvedServiceIds]);
-
-  const fixedServices = useMemo(
-    () => approvedServices.filter((s) => s.modality === 'fixed_project'),
-    [approvedServices]
-  );
-  const feeServices = useMemo(
-    () => approvedServices.filter((s) => s.modality === 'fee_monthly'),
-    [approvedServices]
-  );
-  const isMixedApproved = fixedServices.length > 0 && feeServices.length > 0;
-  const hasApprovedFee = feeServices.length > 0;
-
-  // Regla para sugerir el nombre:
-  // - Proyecto con un solo servicio: [Nombre del servicio] — [Nombre del cliente]
-  // - Proyecto con varios servicios agrupados: [Nombre de la oportunidad] — [Nombre del cliente]
-  const getSuggestedNameForServices = (servicesList: ServiceCommercialItem[]): string => {
-    if (servicesList.length === 1) {
-      return `${servicesList[0].serviceName} — ${clientName}`;
+    // Si ninguno está explícitamente ganado aún pero el usuario abrió el modal de conversión,
+    // mostrar todos los no perdidos
+    if (won.length === 0) {
+      return allServices.filter((s) => s.hubspotDealStage !== 'Cierre perdido');
     }
-    return `${opportunityTitle} — ${clientName}`;
+    return won;
+  }, [allServices]);
+
+  const lostServices = useMemo(() => {
+    return allServices.filter((s) => s.hubspotDealStage === 'Cierre perdido');
+  }, [allServices]);
+
+  // Mapear cada servicio a sus entregables correspondientes en activeQuote
+  const getDeliverablesForService = (service: ServiceCommercialItem): QuoteDeliverable[] => {
+    if (service.deliverableIds && service.deliverableIds.length > 0) {
+      const matched = activeQuote.deliverables.filter((d) => service.deliverableIds?.includes(d.id));
+      if (matched.length > 0) return matched;
+    }
+    // Fallback: match by service id or name
+    const byIdOrName = activeQuote.deliverables.filter(
+      (d) => d.id === service.serviceId || d.name.toLowerCase() === service.serviceName.toLowerCase()
+    );
+    if (byIdOrName.length > 0) return byIdOrName;
+    return activeQuote.deliverables;
   };
 
-  // Nombres de los proyectos sugeridos y editables, manteniendo ediciones manuales del usuario
-  const [projectNames, setProjectNames] = useState<{ [key: string]: string }>({});
-  const [editedManually, setEditedManually] = useState<{ [key: string]: boolean }>({});
+  // Nombres sugeridos y editables: [Nombre del servicio] — [Nombre del cliente]
+  const [projectNames, setProjectNames] = useState<Record<string, string>>({});
 
   useEffect(() => {
     setProjectNames((prev) => {
       const next = { ...prev };
-      if (isMixedApproved) {
-        if (!editedManually['fixed']) {
-          next['fixed'] = getSuggestedNameForServices(fixedServices);
+      wonServices.forEach((svc) => {
+        if (!next[svc.serviceId]) {
+          next[svc.serviceId] = `${svc.serviceName} — ${clientName}`;
         }
-        if (!editedManually['fee']) {
-          next['fee'] = getSuggestedNameForServices(feeServices);
-        }
-      } else {
-        if (!editedManually['single']) {
-          next['single'] = getSuggestedNameForServices(approvedServices);
-        }
-      }
+      });
       return next;
     });
-  }, [fixedServices, feeServices, approvedServices, isMixedApproved, clientName, opportunityTitle, editedManually]);
+  }, [wonServices, clientName]);
 
   // Resolver usuarios elegibles como líderes
   const eligibleLeaders = useMemo(() => {
@@ -184,7 +170,7 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
     return filtered.length > 0 ? filtered : users;
   }, [users]);
 
-  // Preseleccionar al líder que realizó el scoping
+  // Preseleccionar al líder del scoping
   const initialLeadUser = useMemo(() => {
     if (opportunity.leadUserId) {
       const match = users.find((u) => u.id === opportunity.leadUserId);
@@ -226,15 +212,31 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedLeadUsers.length === 0 || (opportunity.clientId && !matchedExistingClient)) return;
-    if (approvedServices.length === 0) return;
+    if (wonServices.length === 0) return;
 
-    const finalFixedName = (projectNames['fixed'] || getSuggestedNameForServices(fixedServices)).trim();
-    const finalFeeName = (projectNames['fee'] || getSuggestedNameForServices(feeServices)).trim();
-    const finalSingleName = (projectNames['single'] || getSuggestedNameForServices(approvedServices)).trim();
+    // Regla canónica 1:1:1:
+    // 1 servicio en Orbit = 1 negocio en HubSpot = 1 proyecto independiente en Orbit
+    const convertedProjects: ConvertedProjectPlan[] = wonServices.map((svc) => {
+      const customName = (projectNames[svc.serviceId] || `${svc.serviceName} — ${clientName}`).trim();
+      const serviceDeliverables = getDeliverablesForService(svc);
+      return {
+        serviceId: svc.serviceId,
+        serviceName: svc.serviceName,
+        projectName: customName,
+        projectType: svc.modality,
+        hubspotDealId: svc.hubspotDealId || null,
+        hubspotDealStage: svc.hubspotDealStage,
+        soldValue: svc.modality === 'fixed_project' ? svc.totalValue : undefined,
+        soldMonthlyValue: svc.modality === 'fee_monthly' ? svc.monthlyValue : undefined,
+        monthsDuration: svc.modality === 'fee_monthly' ? svc.monthsDuration : undefined,
+        deliverableIds: serviceDeliverables.map((d) => d.id)
+      };
+    });
+
+    const isMixed = wonServices.some((s) => s.modality === 'fixed_project') && wonServices.some((s) => s.modality === 'fee_monthly');
 
     onConfirm({
-      projectName: isMixedApproved ? finalFixedName : finalSingleName,
-      projectType: isMixedApproved ? 'fixed_project' : (hasApprovedFee ? 'fee_monthly' : 'fixed_project'),
+      projects: convertedProjects,
       leadUserId: selectedLeadUsers[0].id,
       leadUserIds: selectedLeadIds,
       leadName: selectedLeadUsers.map((u) => u.name).join(', '),
@@ -242,20 +244,23 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
       startDate,
       endDate: endDate || undefined,
       initialFormalizationStatus: 'pendiente_formalizacion',
-      approvedServiceIds,
-      isMixed: isMixedApproved,
-      fixedProjectName: finalFixedName,
-      feeProjectName: finalFeeName,
       startConditionsConfig: {
         contractSignedRequired: true,
         contractSignedCompleted: false,
-        downPaymentRequired: (!isMixedApproved && hasApprovedFee) ? 'not_applicable' : 'required',
-        downPaymentPercentage: (!isMixedApproved && hasApprovedFee) ? 0 : 50,
+        downPaymentRequired: 'required',
+        downPaymentPercentage: 50,
         downPaymentReceived: false,
         fiscalDocsRequiredBeforeBilling: true,
         fiscalDocsCompleted: false,
         onboardingCompleted: false
-      }
+      },
+      // Compatibilidad legacy
+      projectName: convertedProjects[0]?.projectName || `${clientName} — Proyecto`,
+      projectType: convertedProjects[0]?.projectType || 'fixed_project',
+      approvedServiceIds: wonServices.map((s) => s.serviceId),
+      isMixed,
+      fixedProjectName: convertedProjects.find((p) => p.projectType === 'fixed_project')?.projectName,
+      feeProjectName: convertedProjects.find((p) => p.projectType === 'fee_monthly')?.projectName
     });
   };
 
@@ -269,10 +274,12 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
               <Sparkles className="w-5 h-5 text-[#d4ff4a]" />
             </span>
             <div>
-              <h3 className="text-base font-bold">Convertir a Cliente & Proyecto Operativo</h3>
-              <p className="text-xs text-white/80">
-                Alta en Directorio de Clientes y creación del Proyecto con los entregables dimensionados
-              </p>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-bold">Convertir a Cliente & Proyecto(s)</h3>
+                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-white/20 text-[#d4ff4a]">
+                  1 Servicio = 1 Proyecto
+                </span>
+              </div>
             </div>
           </div>
           <button
@@ -284,7 +291,7 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
           </button>
         </div>
 
-        {/* Content Form */}
+        {/* Formulario */}
         <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-5 text-xs text-[#0f172a]">
           {/* Banner de Detección de Cliente Existente vs Nuevo */}
           {matchedExistingClient ? (
@@ -303,7 +310,7 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
                     </span>
                   </div>
                   <p className="text-[11px] text-[#047857] leading-relaxed">
-                    Se asociará el nuevo proyecto a esta cuenta existente en el directorio sin duplicar datos ni exigir RUT previo.
+                    Se asociarán los nuevos proyectos a esta cuenta existente en el directorio sin duplicar datos ni exigir RUT previo.
                   </p>
                 </div>
               </div>
@@ -324,130 +331,85 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
             </div>
           )}
 
-          {/* Servicios cotizados y confirmación de aprobación */}
-          <div className="space-y-2 p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
-            <div className="flex items-center justify-between">
-              <label className="font-extrabold text-[#0f172a] text-xs flex items-center gap-1.5">
-                <Layers className="w-4 h-4 text-[#501f92]" />
-                <span>Servicios cotizados y aprobación del cliente:</span>
-                <span className="text-red-500">*</span>
-              </label>
-              <span className="text-[10px] text-[#64748b]">
-                {approvedServices.length} de {quotedServices.length} aprobados
+          {/* Información de Servicios Ganados vs Perdidos */}
+          {lostServices.length > 0 && (
+            <div className="p-3 rounded-xl bg-[#fff1f2] border border-[#fecdd3] text-xs text-[#9f1239] flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-[#e11d48]" />
+              <span>
+                <strong>{lostServices.length} servicio(s) en Cierre perdido:</strong>{' '}
+                {lostServices.map((s) => s.serviceName).join(', ')}. Quedan excluidos de la conversión y no generarán proyectos ni tareas.
               </span>
             </div>
-            <p className="text-[11px] text-[#64748b]">
-              {isSingleService
-                ? 'Al existir un solo servicio en la propuesta, se considera aprobado automáticamente para su conversión.'
-                : 'Confirma cuáles servicios fueron aprobados formalmente por el cliente. Solo los aprobados se convertirán en proyectos y tareas.'}
-            </p>
+          )}
 
-            <div className="space-y-2 pt-1">
-              {quotedServices.map((service) => {
-                const isApproved = approvedServiceIds.includes(service.serviceId);
-                const isFixed = service.modality === 'fixed_project';
-                return (
-                  <div
-                    key={service.serviceId}
-                    onClick={() => toggleServiceApproval(service.serviceId)}
-                    className={`p-3 rounded-xl border transition-all flex items-center justify-between gap-3 ${
-                      isSingleService
-                        ? 'bg-white border-[#501f92]/40 shadow-2xs cursor-default'
-                        : isApproved
-                        ? 'bg-white border-[#501f92]/40 shadow-2xs cursor-pointer'
-                        : 'bg-[#f1f5f9]/60 border-[#e2e8f0] opacity-60 cursor-pointer'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <input
-                        type="checkbox"
-                        checked={isApproved}
-                        onChange={() => toggleServiceApproval(service.serviceId)}
-                        disabled={isSingleService || (isApproved && approvedServiceIds.length === 1)}
-                        className="w-4 h-4 rounded text-[#501f92] focus:ring-[#501f92] cursor-pointer"
-                      />
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-[#0f172a] text-xs truncate">
-                            {service.serviceName}
-                          </span>
-                          <span
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                              isFixed
-                                ? 'bg-[#501f92]/10 text-[#501f92]'
-                                : 'bg-[#059669]/10 text-[#047857]'
-                            }`}
-                          >
-                            {isFixed ? 'Proyecto único' : 'Fee mensual'}
-                          </span>
-                          <span className="text-[10px] text-[#64748b]">
-                            {service.weeksRef || 0} {service.weeksRef === 1 ? 'semana' : 'semanas'}
-                          </span>
-                          {isSingleService && (
-                            <span className="text-[10px] font-semibold text-[#059669] bg-[#ecfdf5] px-1.5 py-0.5 rounded">
-                              Aprobado automáticamente
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="text-right shrink-0">
-                      {isFixed ? (
-                        <span className="font-black text-[#0f172a] text-xs">
-                          {formatCurrency(service.totalValue || 0, currency)}
-                        </span>
-                      ) : (
-                        <div className="text-right">
-                          <span className="font-black text-[#059669] text-xs block">
-                            {formatCurrency(service.monthlyValue || 0, currency)} / mes
-                          </span>
-                          <span className="text-[10px] text-[#64748b]">
-                            {service.monthsDuration || 0} meses
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Vista previa de la conversión: Tarjeta por cada proyecto que se creará */}
+          {/* Vista previa de la conversión: Tarjeta editable por CADA servicio ganado */}
           <div className="p-4 rounded-xl bg-[#faf5ff] border border-[#e9d5ff] space-y-3">
             <div className="flex items-center justify-between pb-2 border-b border-[#e9d5ff]/70">
-              <span className="text-xs font-extrabold text-[#501f92] uppercase tracking-wider flex items-center gap-1.5">
+              <div className="flex items-center gap-2">
                 <FolderOpen className="w-4 h-4 text-[#501f92]" />
-                <span>Vista previa de la conversión</span>
-              </span>
+                <span className="text-xs font-extrabold text-[#501f92] uppercase tracking-wider">
+                  Proyectos a crear ({wonServices.length} independiente{wonServices.length === 1 ? '' : 's'})
+                </span>
+              </div>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white text-[#501f92] border border-[#d8b4fe]">
-                {isMixedApproved
-                  ? 'Propuesta mixta (2 Proyectos)'
-                  : hasApprovedFee
-                  ? 'Fee mensual (1 Proyecto)'
-                  : 'Proyecto único (1 Proyecto)'}
+                {wonServices.length} servicio{wonServices.length === 1 ? '' : 's'} ganado{wonServices.length === 1 ? '' : 's'} = {wonServices.length} proyecto{wonServices.length === 1 ? '' : 's'}
               </span>
             </div>
 
-            {/* Tarjetas de Proyectos que se crearán */}
+            <p className="text-[11px] text-[#64748b]">
+              Conforme a la regla 1:1, cada servicio ganado genera su propio proyecto operativo con sus entregables y horas exclusivas:
+            </p>
+
+            {/* Tarjetas de Proyectos independientes */}
             <div className="space-y-3">
-              {isMixedApproved ? (
-                <>
-                  {/* Tarjeta 1: Proyecto Único */}
-                  <div className="p-3.5 rounded-xl bg-white border border-[#e2e8f0] shadow-2xs space-y-3">
+              {wonServices.map((service, idx) => {
+                const isFixed = service.modality === 'fixed_project';
+                const serviceDeliverables = getDeliverablesForService(service);
+                const currentName = projectNames[service.serviceId] ?? `${service.serviceName} — ${clientName}`;
+
+                return (
+                  <div
+                    key={service.serviceId || idx}
+                    className="p-3.5 rounded-xl bg-white border border-[#cbd5e1] hover:border-[#94a3b8] transition-all shadow-2xs space-y-3"
+                  >
                     <div className="flex items-center justify-between flex-wrap gap-2">
                       <div className="flex items-center gap-2">
-                        <FolderOpen className="w-4 h-4 text-[#501f92]" />
-                        <span className="font-extrabold text-xs text-[#0f172a]">
-                          Proyecto 1: Proyecto único
+                        <span className="w-5 h-5 rounded-full bg-[#501f92]/10 text-[#501f92] flex items-center justify-center font-bold text-[10px]">
+                          {idx + 1}
+                        </span>
+                        <strong className="font-extrabold text-xs text-[#0f172a]">
+                          {service.serviceName}
+                        </strong>
+                      </div>
+
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {service.hubspotDealId && (
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#fff7ed] text-[#c2410c] border border-[#fed7aa]">
+                            Deal: {service.hubspotDealId}
+                          </span>
+                        )}
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                            service.hubspotDealStage === 'Enviado para facturar'
+                              ? 'bg-[#3b82f6]/10 text-[#1d4ed8] border border-[#bfdbfe]'
+                              : 'bg-[#059669]/10 text-[#047857] border border-[#a7f3d0]'
+                          }`}
+                        >
+                          {service.hubspotDealStage || 'Cierre ganado'}
+                        </span>
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                            isFixed
+                              ? 'bg-[#501f92]/10 text-[#501f92]'
+                              : 'bg-[#059669]/10 text-[#047857]'
+                          }`}
+                        >
+                          {isFixed ? 'Proyecto único' : 'Fee mensual'}
                         </span>
                       </div>
-                      <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-md bg-[#501f92]/10 text-[#501f92]">
-                        Proyecto único
-                      </span>
                     </div>
 
+                    {/* Input editable de Nombre del proyecto */}
                     <div className="space-y-1">
                       <label className="font-bold text-[#475569] block text-[11px]">
                         Nombre del proyecto: <span className="text-red-500">*</span>
@@ -455,146 +417,45 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
                       <input
                         type="text"
                         required
-                        value={projectNames['fixed'] ?? getSuggestedNameForServices(fixedServices)}
+                        value={currentName}
                         onChange={(e) => {
                           const val = e.target.value;
-                          setEditedManually((prev) => ({ ...prev, fixed: true }));
-                          setProjectNames((prev) => ({ ...prev, fixed: val }));
+                          setProjectNames((prev) => ({ ...prev, [service.serviceId]: val }));
                         }}
-                        placeholder="Nombre del proyecto puntual"
+                        placeholder={`Ej: ${service.serviceName} — ${clientName}`}
                         className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] text-xs font-bold focus:ring-2 focus:ring-[#501f92] bg-white shadow-2xs"
                       />
                     </div>
 
+                    {/* Entregables asignados exclusivamente a este proyecto */}
                     <div className="space-y-1.5 pt-1 border-t border-[#f1f5f9]">
-                      <span className="text-[10.5px] uppercase font-bold text-[#64748b] block">
-                        {fixedServices.length === 1 ? 'Servicio incluido:' : `Servicios incluidos (${fixedServices.length}):`}
-                      </span>
+                      <div className="flex items-center justify-between text-[10.5px]">
+                        <span className="uppercase font-bold text-[#64748b]">
+                          Entregables de este servicio ({serviceDeliverables.length}):
+                        </span>
+                        <span className="font-black text-[#0f172a]">
+                          {isFixed
+                            ? formatCurrency(service.totalValue || 0, currency)
+                            : `${formatCurrency(service.monthlyValue || 0, currency)}/mes (${service.monthsDuration || 0}m)`}
+                        </span>
+                      </div>
                       <div className="flex flex-wrap gap-1.5">
-                        {fixedServices.map((s) => (
+                        {serviceDeliverables.map((d) => (
                           <span
-                            key={s.serviceId}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#f8fafc] border border-[#e2e8f0] text-xs font-semibold text-[#334155]"
+                            key={d.id}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#f8fafc] border border-[#e2e8f0] text-[11px] font-medium text-[#334155]"
                           >
-                            <span>{s.serviceName}</span>
-                            <span className="text-[10px] text-[#64748b]">({s.weeksRef || 0} sem)</span>
+                            <span>{d.name}</span>
+                            <span className="text-[10px] text-[#64748b]">
+                              ({d.totalHoursRollup || d.backlogItems.reduce((acc, a) => acc + (a.estimatedHours || 0), 0)}h)
+                            </span>
                           </span>
                         ))}
                       </div>
                     </div>
                   </div>
-
-                  {/* Tarjeta 2: Fee Mensual */}
-                  <div className="p-3.5 rounded-xl bg-white border border-[#e2e8f0] shadow-2xs space-y-3">
-                    <div className="flex items-center justify-between flex-wrap gap-2">
-                      <div className="flex items-center gap-2">
-                        <FolderOpen className="w-4 h-4 text-[#059669]" />
-                        <span className="font-extrabold text-xs text-[#0f172a]">
-                          Proyecto 2: Fee mensual
-                        </span>
-                      </div>
-                      <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-md bg-[#059669]/10 text-[#047857]">
-                        Fee mensual
-                      </span>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="font-bold text-[#475569] block text-[11px]">
-                        Nombre del proyecto: <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={projectNames['fee'] ?? getSuggestedNameForServices(feeServices)}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setEditedManually((prev) => ({ ...prev, fee: true }));
-                          setProjectNames((prev) => ({ ...prev, fee: val }));
-                        }}
-                        placeholder="Nombre del proyecto fee mensual"
-                        className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] text-xs font-bold focus:ring-2 focus:ring-[#059669] bg-white shadow-2xs"
-                      />
-                    </div>
-
-                    <div className="space-y-1.5 pt-1 border-t border-[#f1f5f9]">
-                      <span className="text-[10.5px] uppercase font-bold text-[#64748b] block">
-                        {feeServices.length === 1 ? 'Servicio recurrente incluido:' : `Servicios recurrentes incluidos (${feeServices.length}):`}
-                      </span>
-                      <div className="flex flex-wrap gap-1.5">
-                        {feeServices.map((s) => (
-                          <span
-                            key={s.serviceId}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#f0fdf4] border border-[#bbf7d0] text-xs font-semibold text-[#166534]"
-                          >
-                            <span>{s.serviceName}</span>
-                            <span className="text-[10px] text-[#059669]">({s.monthsDuration || 0} meses)</span>
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                /* Un solo proyecto (sea puntual o fee) */
-                <div className="p-3.5 rounded-xl bg-white border border-[#e2e8f0] shadow-2xs space-y-3">
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <div className="flex items-center gap-2">
-                      <FolderOpen className={`w-4 h-4 ${hasApprovedFee ? 'text-[#059669]' : 'text-[#501f92]'}`} />
-                      <span className="font-extrabold text-xs text-[#0f172a]">
-                        {hasApprovedFee ? 'Proyecto Fee mensual' : 'Proyecto único'}
-                      </span>
-                    </div>
-                    <span
-                      className={`text-[10.5px] font-bold px-2 py-0.5 rounded-md ${
-                        hasApprovedFee
-                          ? 'bg-[#059669]/10 text-[#047857]'
-                          : 'bg-[#501f92]/10 text-[#501f92]'
-                      }`}
-                    >
-                      {hasApprovedFee ? 'Fee mensual' : 'Proyecto único'}
-                    </span>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="font-bold text-[#475569] block text-[11px]">
-                      Nombre del proyecto: <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={projectNames['single'] ?? getSuggestedNameForServices(approvedServices)}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setEditedManually((prev) => ({ ...prev, single: true }));
-                        setProjectNames((prev) => ({ ...prev, single: val }));
-                      }}
-                      placeholder="Nombre del proyecto sugerido"
-                      className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] text-xs font-bold focus:ring-2 focus:ring-[#501f92] bg-white shadow-2xs"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5 pt-1 border-t border-[#f1f5f9]">
-                    <span className="text-[10.5px] uppercase font-bold text-[#64748b] block">
-                      {approvedServices.length === 1 ? 'Servicio incluido:' : `Servicios incluidos (${approvedServices.length}):`}
-                    </span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {approvedServices.map((s) => (
-                        <span
-                          key={s.serviceId}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#f8fafc] border border-[#e2e8f0] text-xs font-semibold text-[#334155]"
-                        >
-                          <span>{s.serviceName}</span>
-                          <span className="text-[10px] text-[#64748b]">
-                            {s.modality === 'fee_monthly'
-                              ? `(${s.monthsDuration || 0} meses)`
-                              : `(${s.weeksRef || 0} sem)`}
-                          </span>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
+                );
+              })}
             </div>
           </div>
 
@@ -605,7 +466,7 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
                 Líder(es) Operativo(s): <span className="text-red-500">*</span>
               </label>
               <p className="text-[11px] text-[#64748b]">
-                Selecciona uno o varios líderes para la gestión y asignación operativa del proyecto:
+                Selecciona uno o varios líderes para la gestión y asignación operativa de los proyectos creados:
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-44 overflow-y-auto p-2 rounded-xl bg-white border border-[#cbd5e1]">
                 {eligibleLeaders.map((u) => {
@@ -692,11 +553,11 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
             </div>
           </div>
 
-          {/* Nota de gobernanza: la formalización legal y fiscal no bloquea la creación */}
+          {/* Nota de gobernanza */}
           <div className="p-3 rounded-xl bg-[#f0fdf4] border border-[#bbf7d0] text-[11px] text-[#166534] flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-[#16a34a] shrink-0" />
             <span>
-              El proyecto nacerá en estado <strong>Pendiente de Formalización</strong>. La recopilación de RUT, Cédula y creación en Alegra queda asignada a <strong>Finanzas</strong> en la ficha del Cliente sin bloquear la estructuración operativa.
+              Los proyectos nacerán en estado <strong>Pendiente de Formalización</strong>. La recopilación de RUT y formalización administrativa se gestiona en la ficha del Cliente sin bloquear la estructuración técnica.
             </span>
           </div>
 
@@ -711,11 +572,11 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
             </button>
             <button
               type="submit"
-              disabled={selectedLeadUsers.length === 0 || Boolean(opportunity.clientId && !matchedExistingClient)}
+              disabled={selectedLeadUsers.length === 0 || wonServices.length === 0 || Boolean(opportunity.clientId && !matchedExistingClient)}
               className="px-5 py-2.5 text-xs font-bold text-white bg-[#501f92] hover:bg-[#3d1572] rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-2 hover:scale-[1.01]"
             >
               <CheckCircle2 className="w-4 h-4 text-[#d4ff4a]" />
-              <span>Confirmar →</span>
+              <span>Confirmar y Crear {wonServices.length} Proyecto(s) →</span>
             </button>
           </div>
         </form>

@@ -1420,12 +1420,22 @@ export interface QuoteProposalSnapshot {
 export type ServiceCommercialModality = 'fixed_project' | 'fee_monthly';
 
 /**
+ * Etapas comerciales de un negocio en HubSpot (Fuente de verdad comercial)
+ */
+export type HubSpotDealStage =
+  | 'Presentación a cliente'
+  | 'Cierre ganado'
+  | 'Cierre perdido'
+  | 'Enviado para facturar';
+
+/**
  * Tipo general de la propuesta calculado automáticamente por Orbit
  */
 export type ProposalCommercialType = 'fixed_project' | 'fee_monthly' | 'mixed';
 
 /**
  * Estructura comercial por servicio definida en Cotización
+ * Relación 1:1: 1 servicio en Orbit = 1 negocio en HubSpot = 1 proyecto en Orbit si se gana
  */
 export interface ServiceCommercialItem {
   serviceId: string;
@@ -1435,8 +1445,45 @@ export interface ServiceCommercialItem {
   totalValue?: number;            // Proyecto único: valor total del servicio
   monthlyValue?: number;          // Fee mensual: valor mensual
   monthsDuration?: number;        // Fee mensual: vigencia en meses
-  approved?: boolean;             // Confirmación de aprobación del cliente tras ganar
+  approved?: boolean;             // Confirmación de aprobación (Cierre ganado o Enviado para facturar)
   deliverableIds?: string[];      // IDs de entregables que componen este servicio
+
+  // HubSpot Integration (1 servicio = 1 deal en HubSpot)
+  hubspotDealId?: string | null;      // ID único simulado del negocio en HubSpot
+  hubspotDealName?: string;           // Nombre del negocio: [Servicio] — [Cliente]
+  hubspotDealStage?: HubSpotDealStage; // Etapa actual en HubSpot
+  hubspotLastSyncedAt?: string;       // Timestamp de última sincronización
+  hubspotSyncedValue?: number;        // Valor económico sincronizado
+  hubspotSyncedCurrency?: string;     // Moneda sincronizada
+  hubspotSyncStatus?: 'idle' | 'syncing' | 'synced' | 'error'; // Estado en tiempo real del two-way sync
+  hubspotSyncError?: string;          // Mensaje de error para retry
+}
+
+/**
+ * Registro de trazabilidad y auditoría para sincronización bidireccional Orbit <-> HubSpot
+ */
+export interface HubSpotSyncAuditEntry {
+  id: string;
+  serviceId: string;
+  serviceName: string;
+  dealId?: string | null;
+  previousStage: HubSpotDealStage | string;
+  newStage: HubSpotDealStage;
+  userId: string;
+  userName: string;
+  timestamp: string;
+  origin: 'Orbit' | 'HubSpot';
+  syncStatus: 'success' | 'pending' | 'error';
+  errorMessage?: string;
+  syncedFields: {
+    dealName?: string;
+    companyName?: string;
+    contactName?: string;
+    commercialOwner?: string;
+    value?: number;
+    currency?: 'COP' | 'USD';
+    stage: HubSpotDealStage;
+  };
 }
 
 /**
@@ -1597,6 +1644,8 @@ export interface NewBusinessOpportunity {
   hubspotDealUrl?: string | null;     // URL directa al deal en HubSpot
   hubspotCompanyId?: string | null;   // Referencia a Empresa en HubSpot
   hubspotContactId?: string | null;   // Referencia a Contacto en HubSpot
+  hubspotBriefNoteId?: string | null; // Referencia a la Nota de Brief / Reunión en HubSpot
+  hubspotBriefNoteSnippet?: string;   // Fragmento de la nota de brief seleccionada
   hubspotDealStage?: string | null;   // Etapa del Deal en HubSpot (ej. 'closedwon', 'proposal_sent')
   isHubspotConnected?: boolean;       // True si la oportunidad está sincronizada activamente con la API real de HubSpot
 

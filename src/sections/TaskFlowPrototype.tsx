@@ -738,6 +738,8 @@ export const TaskFlowPrototype: React.FC = () => {
   const [selectedTaskForDetail, setSelectedTaskForDetail] = useState<TaskItem | null>(null);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
 
+  const [newBusinessResetSignal, setNewBusinessResetSignal] = useState(0);
+
   // Global view selection with automatic reset to section root (allows optional targetId)
   const handleSelectView = (view: OrbitView, targetId?: string | null) => {
     setCurrentView(view);
@@ -755,6 +757,9 @@ export const TaskFlowPrototype: React.FC = () => {
       } else {
         setSelectedClientId(null);
       }
+    }
+    if (view === 'new-business') {
+      setNewBusinessResetSignal((prev) => prev + 1);
     }
   };
 
@@ -1821,6 +1826,18 @@ export const TaskFlowPrototype: React.FC = () => {
     isMixed?: boolean;
     fixedProjectName?: string;
     feeProjectName?: string;
+    projects?: Array<{
+      serviceId: string;
+      serviceName: string;
+      projectName: string;
+      projectType: ProjectType;
+      hubspotDealId?: string | null;
+      hubspotDealStage?: string;
+      soldValue?: number;
+      soldMonthlyValue?: number;
+      monthsDuration?: number;
+      deliverableIds: string[];
+    }>;
   }) => {
     const opp = payload.opportunity;
     const quote = payload.selectedQuote;
@@ -1910,7 +1927,141 @@ export const TaskFlowPrototype: React.FC = () => {
     const historyItemsToCreate: ClientProjectHistoryItem[] = [];
     const newTasksToCreate: TaskItem[] = [];
 
-    if (isMixed) {
+    if (payload.projects && payload.projects.length > 0) {
+      // Regla 1:1:1: 1 servicio en Orbit = 1 negocio en HubSpot = 1 proyecto en Orbit si se gana.
+      payload.projects.forEach((projItem, pIdx) => {
+        const prjId = `prj-${Date.now()}-${pIdx + 1}`;
+        const serviceDeliverables = quote.deliverables.filter((qd) =>
+          (projItem.deliverableIds && projItem.deliverableIds.includes(qd.id)) ||
+          qd.id === projItem.serviceId ||
+          qd.name.toLowerCase() === projItem.serviceName.toLowerCase()
+        );
+
+        const deliverablesForProject = serviceDeliverables.length > 0
+          ? serviceDeliverables
+          : quote.deliverables;
+
+        const newProjectDeliverables = deliverablesForProject.map((qd, dIdx) => ({
+          id: `del-${prjId}-${dIdx + 1}`,
+          projectId: prjId,
+          name: qd.name,
+          description: qd.description,
+          order: qd.order || dIdx + 1,
+          status: 'pending' as const,
+          roleBudgets: qd.roleBudgets.map((rb) => ({
+            id: `rb-${prjId}-${rb.id}`,
+            roleId: rb.roleId,
+            roleName: rb.roleName,
+            quotedHours: rb.quotedHours
+          })),
+          totalQuotedHours: qd.totalHoursRollup || 0,
+          totalExecutedHours: 0,
+          progressPercentage: 0
+        }));
+
+        const totalHours = deliverablesForProject.reduce((sum, d) => sum + (d.totalHoursRollup || 0), 0);
+        const soldValue = projItem.projectType === 'fixed_project'
+          ? (projItem.soldValue || 0)
+          : ((projItem.soldMonthlyValue || 0) * (projItem.monthsDuration || 1));
+        const soldValueCOP = quoteCurrency === 'COP' && soldValue > 0 ? soldValue : undefined;
+        const codePrefix = projItem.projectType === 'fee_monthly' ? 'FEE' : 'PRJ';
+
+        const newPrj: ProjectSummaryItem = {
+          id: prjId,
+          code: `${codePrefix}-${Math.floor(10 + Math.random() * 90)}`,
+          name: projItem.projectName,
+          clientId: resolvedClientId || '',
+          clientName: resolvedClientName,
+          taxEntityId: effectiveTaxEntityId || (clients.find(c => c.id === resolvedClientId)?.taxEntities?.[0]?.id) || null,
+          brand: resolvedClientName,
+          leadName,
+          leadAvatarBg,
+          leadRole,
+          projectType: projItem.projectType,
+          serviceBase: projItem.serviceName,
+          budgetedHours: totalHours,
+          soldHours: totalHours,
+          soldValue: soldValue > 0 ? soldValue : undefined,
+          soldValueCOP,
+          soldCurrency: quoteCurrency,
+          startDate: payload.startDate,
+          endDate: payload.endDate,
+          brief: opp.briefSummary || opp.discoveryNotes,
+          briefUrl: opp.briefUrl || null,
+          deliverables: newProjectDeliverables,
+          coreTeam: resolvedCoreTeam,
+          originOpportunityId: opp.id,
+          originQuoteIds: [quote.id],
+          hubspotDealId: projItem.hubspotDealId || opp.hubspotDealId || null,
+          hubspotDealUrl: opp.hubspotDealUrl || null,
+          alegraContactId: opp.administrativeChecklist?.alegraContactId || null,
+          driveFolderId: opp.driveFolderId || null,
+          driveFolderUrl: opp.driveFolderUrl || null,
+          status: 'Activo',
+          healthStatus: 'verde',
+          healthNote: `Proyecto independiente creado a partir del servicio ganado "${projItem.serviceName}"`
+        };
+
+        projectsToCreate.push(newPrj);
+
+        historyItemsToCreate.push({
+          id: prjId,
+          name: projItem.projectName,
+          brand: resolvedClientName,
+          tag: projItem.projectType === 'fee_monthly' ? 'FEE' : 'PRJ',
+          status: 'Activo',
+          quotedValueCOP: projItem.projectType === 'fee_monthly'
+            ? `$${(projItem.soldMonthlyValue || 0).toLocaleString('es-CO')} ${quoteCurrency} / mes`
+            : `$${soldValue.toLocaleString('es-CO')} ${quoteCurrency}`,
+          realMarginPercent: null,
+          trafficLight: 'verde'
+        });
+
+        // Crear tareas para cada actividad del entregable de este proyecto
+        deliverablesForProject.forEach((qd, dIdx) => {
+          const parentDelId = `del-${prjId}-${dIdx + 1}`;
+          qd.backlogItems.forEach((bItem, bIdx) => {
+            const activityUser = activeTeam.find((user) => user.id === bItem.suggestedUserId);
+            newTasksToCreate.push({
+              id: `task-${prjId}-${dIdx + 1}-${bIdx + 1}`,
+              title: bItem.title,
+              status: 'todo',
+              priority: 'Medium',
+              projectId: prjId,
+              projectName: projItem.projectName,
+              clientName: resolvedClientName,
+              deliverableId: parentDelId,
+              frente: qd.name,
+              board: projItem.projectName,
+              department: 'Operaciones',
+              date: new Date().toISOString().slice(0, 10),
+              dueDate: payload.endDate || new Date().toISOString().slice(0, 10),
+              dueStatus: 'normal',
+              dueText: 'Planificado en Scoping',
+              budgetedHours: bItem.estimatedHours || 0,
+              consumedSeconds: 0,
+              completed: false,
+              budgetedRole: bItem.roleName,
+              budgetedRoleId: bItem.roleId,
+              assigneeIds: activityUser ? [activityUser.id] : [],
+              assignee: activityUser ? {
+                id: activityUser.id,
+                name: activityUser.name,
+                role: bItem.roleName,
+                avatarBg: activityUser.avatarBg || 'bg-[#501f92]',
+                initials: activityUser.initials || activityUser.name.slice(0, 2).toUpperCase()
+              } : {
+                id: undefined,
+                name: `Sin asignar (${bItem.roleName})`,
+                role: bItem.roleName,
+                avatarBg: 'bg-[#94a3b8]',
+                initials: '--'
+              }
+            });
+          });
+        });
+      });
+    } else if (isMixed) {
       // Caso C: Propuesta mixta (2 proyectos: 1 Proyecto único + 1 Proyecto fee)
       const fixedProjectId = `prj-${Date.now()}-1`;
       const feeProjectId = `prj-${Date.now()}-2`;
@@ -2972,6 +3123,7 @@ export const TaskFlowPrototype: React.FC = () => {
                 {/* 6.7. NEW BUSINESS & SCOPING OPERATIVO (FASE 1) */}
                 {currentView === 'new-business' && (
                   <NewBusinessView
+                    resetToOverviewSignal={newBusinessResetSignal}
                     scopeUi={scopeUi}
                     onChangeScopeUi={(quoteId, state) => setScopeUi((previous) => ({ ...previous, [quoteId]: state }))}
                     onOpenSow={setSowOpportunityId}

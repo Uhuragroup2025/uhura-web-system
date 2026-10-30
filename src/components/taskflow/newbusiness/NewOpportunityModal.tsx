@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   NewBusinessOpportunity,
   OpportunityType,
@@ -8,6 +8,13 @@ import {
   UserItem
 } from '../types';
 import { isEligibleScopingLeader, isEligibleTeamMember } from './teamCandidates';
+import {
+  HUBSPOT_SIMULATED_COMPANIES,
+  HubSpotCompanyItem,
+  HubSpotContactItem,
+  HubSpotMeetingNote,
+  searchHubspotCompanies
+} from './hubspotSimulatedData';
 import {
   Target,
   X,
@@ -25,7 +32,9 @@ import {
   Search,
   ArrowRight,
   Code2,
-  Sliders
+  Sliders,
+  AlertCircle,
+  FileText
 } from 'lucide-react';
 
 interface NewOpportunityModalProps {
@@ -38,268 +47,204 @@ interface NewOpportunityModalProps {
   users?: UserItem[];
 }
 
-// Preset realistic HubSpot deals for quick testing / dev simulation
-const HUBSPOT_DEMO_DEALS = [
-  {
-    id: 'hs-deal-1049281',
-    dealName: 'Rediseño ecommerce Bonafont',
-    accountName: 'Danone S.A.',
-    contactName: 'Carlos Mendoza',
-    contactEmail: 'carlos.mendoza@danone.com',
-    contactPhone: '+57 (311) 889-0012',
-    dealUrl: 'https://app.hubspot.com/contacts/8821940/deal/1049281',
-    commercialOwner: 'Cata · Directora Comercial',
-    driveFolderUrl: 'https://drive.google.com/drive/folders/1Danone-Bonafont-Ecommerce-2026'
-  },
-  {
-    id: 'hs-deal-2098144',
-    dealName: 'Plataforma Turística & Motor de Reservas',
-    accountName: 'GeoTours Colombia',
-    contactName: 'Mariana Restrepo',
-    contactEmail: 'mrestrepo@geotours.co',
-    contactPhone: '+57 (314) 776-5544',
-    dealUrl: 'https://app.hubspot.com/contacts/8821940/deal/2098144',
-    commercialOwner: 'Cata · Directora Comercial',
-    driveFolderUrl: 'https://drive.google.com/drive/folders/1GeoTours-Plataforma-2026'
-  },
-  {
-    id: 'hs-deal-3829105',
-    dealName: 'Campaña Digital Performance Q4',
-    accountName: 'Bambú BPO',
-    contactName: 'Felipe Jaramillo',
-    contactEmail: 'felipe@bambubpo.com',
-    contactPhone: '+57 (300) 443-1289',
-    dealUrl: 'https://app.hubspot.com/contacts/8821940/deal/3829105',
-    commercialOwner: 'Cata · Directora Comercial',
-    driveFolderUrl: 'https://drive.google.com/drive/folders/1Bambu-Performance-Q4'
-  }
-];
-
 export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
   isOpen,
   onClose,
   onSaveOpportunity,
   existingClients,
-  initialMode = 'hubspot',
   users = []
 }) => {
-  const [entryMode, setEntryMode] = useState<'hubspot' | 'manual'>(initialMode);
-  useEffect(() => { if (isOpen) setEntryMode(initialMode); }, [isOpen, initialMode]);
-
   // Available leaders for assignment (filtered from users)
   const availableUsers = users.filter((user) => user.status === 'Active');
   const eligibleLeaders = availableUsers.filter(isEligibleScopingLeader);
 
   // Commercial team members filtered strictly by functional capacity 'commercial'
   const commercialUsers: UserItem[] = useMemo(() => {
-    const list = availableUsers.filter(isEligibleTeamMember).filter(
+    return availableUsers.filter(isEligibleTeamMember).filter(
       (u: UserItem) =>
-        u.accessLevel === 'commercial' || u.accessLevel === 'client_relationship' ||
+        u.accessLevel === 'commercial' ||
+        u.accessLevel === 'client_relationship' ||
         (u.department && u.department.toLowerCase().includes('comercial')) ||
         (u.jobTitle && u.jobTitle.toLowerCase().includes('comercial'))
     );
-    return list;
   }, [availableUsers]);
 
-  // Resolver el owner de HubSpot a un ID canónico activo de Orbit
-  const resolveCommercialUserId = (rawOwner?: string) => {
-    if (!rawOwner || !rawOwner.trim()) return '';
-    const q = rawOwner.toLowerCase().trim();
-    // Check exact or partial match with commercialUsers
-    const matched = commercialUsers.find(
-      (u: UserItem) =>
-        u.name.toLowerCase().includes(q) ||
-        q.includes(u.name.toLowerCase()) ||
-        (u.email && u.email.toLowerCase() === q)
-    );
-    if (matched) return matched.id;
-    return '';
-  };
+  // HubSpot Search & Selected Entities State
+  const [companySearchQuery, setCompanySearchQuery] = useState<string>('');
+  const [selectedCompany, setSelectedCompany] = useState<HubSpotCompanyItem | null>(null);
+  const [isSearchingCompany, setIsSearchingCompany] = useState<boolean>(false);
+  const companyDropdownRef = useRef<HTMLDivElement>(null);
+  const [selectedContactId, setSelectedContactId] = useState<string>('');
+  const [selectedNoteId, setSelectedNoteId] = useState<string>('');
 
-  // HubSpot Fetch State
-  const [hubspotQuery, setHubspotQuery] = useState<string>('');
-  const [isFetchingHubspot, setIsFetchingHubspot] = useState<boolean>(false);
-  const [hubspotFetched, setHubspotFetched] = useState<boolean>(false);
-  const [selectedDemoIndex, setSelectedDemoIndex] = useState<number | null>(null);
-  const [showDemoSelector, setShowDemoSelector] = useState<boolean>(true);
-
-  // Common Fields
-  const [isExistingClient, setIsExistingClient] = useState<boolean>(false);
-  const [selectedClientId, setSelectedClientId] = useState<string>('');
-  const [prospectName, setProspectName] = useState<string>('');
+  // General fields
   const [title, setTitle] = useState<string>('');
-  const [brief, setBrief] = useState('');
-  const [contactName, setContactName] = useState<string>('');
-  const [contactEmail, setContactEmail] = useState<string>('');
-  const [contactPhone, setContactPhone] = useState<string>('');
-  
-  // Comercial elige explícitamente un ID del equipo activo existente.
+  const [briefText, setBriefText] = useState<string>('');
   const [selectedLeadUserIds, setSelectedLeadUserIds] = useState<string[]>([]);
   const [commercialUserIds, setCommercialUserIds] = useState<string[]>([]);
-  const [commercialOpen, setCommercialOpen] = useState(false);
-  const setCommercialOwner = (id: string) => setCommercialUserIds(id ? [id] : []);
-
-  const [hubspotDealId, setHubspotDealId] = useState<string>('');
-  const [hubspotDealUrl, setHubspotDealUrl] = useState<string>('');
-  const [driveFolderUrl, setDriveFolderUrl] = useState<string>('');
-  
-  const toLocalDateTime = (time: number) => {
-    const date = new Date(time);
-    return new Date(time - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-  };
-  const [deliveryDate, setDeliveryDate] = useState(() => toLocalDateTime(Date.now() + 36 * 3600000));
-  const [deliveryError, setDeliveryError] = useState('');
   const [leadersOpen, setLeadersOpen] = useState(false);
-  useEffect(() => { if (isOpen) { setDeliveryDate(toLocalDateTime(Date.now() + 36 * 3600000)); setDeliveryError(''); setLeadersOpen(false); setCommercialOpen(false); } }, [isOpen]);
+  const [commercialOpen, setCommercialOpen] = useState(false);
+
+  const toLocalDate = (time: number) => {
+    return new Date(time).toISOString().slice(0, 10);
+  };
+  const [deliveryDate, setDeliveryDate] = useState(() => toLocalDate(Date.now() + 3 * 86400000));
+  const [deliveryError, setDeliveryError] = useState('');
+
+  // Close company dropdown on outside click
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (companyDropdownRef.current && !companyDropdownRef.current.contains(event.target as Node)) {
+        setIsSearchingCompany(false);
+      }
+    };
+    if (isSearchingCompany) {
+      document.addEventListener('mousedown', handleOutsideClick);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, [isSearchingCompany]);
+
+  // Reset modal state on open
+  useEffect(() => {
+    if (isOpen) {
+      setCompanySearchQuery('');
+      setSelectedCompany(null);
+      setIsSearchingCompany(false);
+      setSelectedContactId('');
+      setSelectedNoteId('');
+      setTitle('');
+      setBriefText('');
+      setDeliveryDate(toLocalDate(Date.now() + 3 * 86400000));
+      setDeliveryError('');
+      setLeadersOpen(false);
+      setCommercialOpen(false);
+      if (commercialUsers.length > 0) {
+        setCommercialUserIds([commercialUsers[0].id]);
+      }
+      if (eligibleLeaders.length > 0) {
+        setSelectedLeadUserIds([eligibleLeaders[0].id]);
+      }
+    }
+  }, [isOpen]);
+
+  // Filtered HubSpot Companies
+  const matchingCompanies = useMemo(() => {
+    return searchHubspotCompanies(companySearchQuery);
+  }, [companySearchQuery]);
+
+  const hasNoCompanyMatch = useMemo(() => {
+    return companySearchQuery.trim().length > 0 && matchingCompanies.length === 0;
+  }, [companySearchQuery, matchingCompanies.length]);
+
+  // Handle selecting a company from HubSpot
+  const handleSelectCompany = (company: HubSpotCompanyItem) => {
+    setSelectedCompany(company);
+    setCompanySearchQuery(company.name);
+    setIsSearchingCompany(false);
+
+    // Auto-select primary contact
+    if (company.contacts.length > 0) {
+      setSelectedContactId(company.contacts[0].id);
+    } else {
+      setSelectedContactId('');
+    }
+
+    // Auto-select first brief note
+    if (company.notes.length > 0) {
+      setSelectedNoteId(company.notes[0].id);
+      setBriefText(company.notes[0].fullContent);
+    } else {
+      setSelectedNoteId('');
+      setBriefText('');
+    }
+
+    // Auto suggest opportunity title
+    if (!title) {
+      setTitle(`Propuesta ${company.name}`);
+    }
+  };
+
+  // Selected contact object
+  const currentContact: HubSpotContactItem | undefined = useMemo(() => {
+    if (!selectedCompany) return undefined;
+    return selectedCompany.contacts.find((c) => c.id === selectedContactId);
+  }, [selectedCompany, selectedContactId]);
+
+  // Selected brief note object
+  const currentNote: HubSpotMeetingNote | undefined = useMemo(() => {
+    if (!selectedCompany) return undefined;
+    return selectedCompany.notes.find((n) => n.id === selectedNoteId);
+  }, [selectedCompany, selectedNoteId]);
 
   if (!isOpen) return null;
-
-  // Handle Fetching Deal from HubSpot (simulated / parsed fallback)
-  const handleFetchFromHubspot = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!hubspotQuery.trim()) return;
-
-    setIsFetchingHubspot(true);
-
-    setTimeout(() => {
-      const queryLower = hubspotQuery.toLowerCase().trim();
-      const matched = HUBSPOT_DEMO_DEALS.find(
-        (d) =>
-          d.id.toLowerCase().includes(queryLower) ||
-          d.dealName.toLowerCase().includes(queryLower) ||
-          d.accountName.toLowerCase().includes(queryLower) ||
-          d.dealUrl.toLowerCase().includes(queryLower)
-      );
-
-      if (matched) {
-        setProspectName(matched.accountName);
-        setTitle(matched.dealName);
-        setContactName(matched.contactName);
-        setContactEmail(matched.contactEmail);
-        setContactPhone(matched.contactPhone);
-        setHubspotDealId(matched.id);
-        setHubspotDealUrl(matched.dealUrl);
-        setCommercialOwner(resolveCommercialUserId(matched.commercialOwner));
-        setDriveFolderUrl(matched.driveFolderUrl);
-      } else {
-        // Real-world fallback: Parse entered URL or treat string as deal ID
-        let parsedId = hubspotQuery.trim();
-        let parsedUrl = hubspotQuery.trim();
-
-        if (parsedUrl.includes('deal/')) {
-          const match = parsedUrl.match(/deal\/(\d+)/);
-          if (match && match[1]) {
-            parsedId = `hs-deal-${match[1]}`;
-          }
-        } else if (!parsedUrl.startsWith('http')) {
-          parsedId = parsedId.startsWith('hs-deal-') ? parsedId : `hs-deal-${parsedId}`;
-          parsedUrl = `https://app.hubspot.com/contacts/deal/${parsedId.replace('hs-deal-', '')}`;
-        }
-
-        setHubspotDealId(parsedId);
-        setHubspotDealUrl(parsedUrl);
-        // Leave title and prospect to be confirmed by user if not existing
-        if (!title) {
-          setTitle(`Oportunidad HubSpot #${parsedId}`);
-        }
-      }
-
-      setHubspotFetched(true);
-      setIsFetchingHubspot(false);
-    }, 400);
-  };
-
-  const handleSelectDemoDeal = (deal: typeof HUBSPOT_DEMO_DEALS[0], index: number) => {
-    setSelectedDemoIndex(index);
-    setHubspotQuery(deal.dealUrl);
-    setProspectName(deal.accountName);
-    setTitle(deal.dealName);
-    setContactName(deal.contactName);
-    setContactEmail(deal.contactEmail);
-    setContactPhone(deal.contactPhone);
-    setHubspotDealId(deal.id);
-    setHubspotDealUrl(deal.dealUrl);
-    setCommercialOwner(resolveCommercialUserId(deal.commercialOwner));
-    setDriveFolderUrl(deal.driveFolderUrl);
-    setHubspotFetched(true);
-  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const resolvedAccountName = isExistingClient
-      ? existingClients.find((c) => c.id === selectedClientId)?.name || 'Cliente Existente'
-      : prospectName.trim() || 'Nuevo Prospecto';
+    if (!selectedCompany) {
+      return;
+    }
 
     const oppId = `opp-${Date.now()}`;
     const defaultQuoteId = `quote-${oppId}`;
 
-    const userEnteredDriveFolder = driveFolderUrl.trim();
-    const resolvedDriveFolder = userEnteredDriveFolder || undefined;
+    const deliveryTime = new Date(`${deliveryDate}T18:00:00`).getTime();
+    const deadlineTimestamp = Number.isFinite(deliveryTime)
+      ? new Date(deliveryTime).toISOString()
+      : new Date(Date.now() + 3 * 86400000).toISOString();
+    const safeHandoffHours = Math.max(24, Math.round((new Date(deadlineTimestamp).getTime() - Date.now()) / 3600000));
 
-    const deliveryTime = new Date(deliveryDate).getTime();
-    const remaining = deliveryTime - Date.now();
-    if (!Number.isFinite(deliveryTime) || remaining <= 0 || remaining > 36 * 3600000) {
-      setDeliveryError('Selecciona una fecha futura dentro de las próximas 36 horas.');
-      return;
-    }
-    const safeHandoffHours = remaining / 3600000;
-    const deadlineTimestamp = new Date(deliveryTime).toISOString();
-
-    // Resolve assigned leader dynamically
-    const assignedUser = eligibleLeaders.find((u) => selectedLeadUserIds.includes(u.id));
+    const assignedUser = eligibleLeaders.find((u) => selectedLeadUserIds.includes(u.id)) || eligibleLeaders[0];
     if (!assignedUser) return;
     const resolvedLeadUserId = assignedUser.id;
     const resolvedLeadUserName = `${assignedUser.name} · ${assignedUser.officialRole || assignedUser.jobTitle || assignedUser.professionalRole || assignedUser.role || 'Líder de Proyecto'}`;
 
+    // Verify if company matches an existing Orbit client
+    const existingClientMatch = existingClients.find(
+      (c) =>
+        c.hubspotCompanyId === selectedCompany.id ||
+        c.name.toLowerCase().trim() === selectedCompany.name.toLowerCase().trim()
+    );
+
     const initialQuote: QuoteProposal = {
       id: defaultQuoteId,
       opportunityId: oppId,
-      versionLabel: '', // Compatibilidad con el contrato existente
+      versionLabel: 'V1 - Alcance Base',
       order: 1,
       status: 'draft',
+      deliverables: [],
       totalHoursRollup: 0,
-      totalQuotedValue: 0,
-      totalQuotedValueCOP: 0,
-      currency: 'COP',
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      deliverables: [] // Blank initial deliverables - the leader chooses template vs custom in "Alcance"
+      updatedAt: new Date().toISOString()
     };
 
     const newOpp: NewBusinessOpportunity = {
       id: oppId,
-      title: title.trim() || `Propuesta ${resolvedAccountName}`,
-      type: isExistingClient ? 'upsell' : 'new_client',
-      clientId: isExistingClient ? selectedClientId : null,
-      prospectAccountName: resolvedAccountName,
-      contactName: contactName.trim() || undefined,
-      contactEmail: contactEmail.trim() || undefined,
-      contactPhone: contactPhone.trim() || undefined,
+      title: title.trim() || `Propuesta ${selectedCompany.name}`,
+      type: existingClientMatch ? 'upsell' : 'new_client',
+      clientId: existingClientMatch ? existingClientMatch.id : null,
+      prospectAccountName: selectedCompany.name,
+      contactName: currentContact?.name,
+      contactEmail: currentContact?.email,
+      contactPhone: currentContact?.phone,
       leadUserId: resolvedLeadUserId,
       leadUserIds: eligibleLeaders.filter((user) => selectedLeadUserIds.includes(user.id)).map((user) => user.id),
       leadUserName: resolvedLeadUserName,
-      commercialOwner: commercialUsers.find((user) => commercialUserIds.includes(user.id))?.name,
+      commercialOwner: commercialUsers.find((user) => commercialUserIds.includes(user.id))?.name || 'Comercial Uhura',
       handoffHours: safeHandoffHours,
       handoffDeadline: deadlineTimestamp,
-      hubspotDealId: hubspotDealId.trim() || (entryMode === 'hubspot' ? 'hs-deal-manual' : null),
-      hubspotDealUrl: hubspotDealUrl.trim() || null,
-      hubspotCompanyId: isExistingClient
-        ? existingClients.find((c) => c.id === selectedClientId)?.hubspotCompanyId || null
-        : null,
-      briefUrl: resolvedDriveFolder,
-      driveFolderUrl: resolvedDriveFolder,
-      driveStandardFolders: resolvedDriveFolder
-        ? {
-            rootFolderUrl: resolvedDriveFolder,
-            briefFolderUrl: `${resolvedDriveFolder}/00-brief`,
-            proposalsFolderUrl: `${resolvedDriveFolder}/01-propuestas`,
-            adminDocsFolderUrl: `${resolvedDriveFolder}/02-documentos-administrativos`,
-            inputsFolderUrl: `${resolvedDriveFolder}/03-insumos`
-          }
-        : undefined,
-      status: 'discovery', // Fresh handoff ready for sizing in Alcance
-      briefSummary: brief.trim() || undefined,
+
+      // Guardar de forma simulada datos de HubSpot
+      hubspotCompanyId: selectedCompany.id,
+      hubspotContactId: currentContact?.id || null,
+      hubspotBriefNoteId: currentNote?.id || null,
+      hubspotBriefNoteSnippet: currentNote?.snippet || undefined,
+      hubspotDealStage: null, // Los negocios en HubSpot se crean posteriormente desde Cotización
+
+      status: 'discovery', // Inicia en discovery listo para dimensionamiento en Alcance
+      briefSummary: briefText.trim() || currentNote?.snippet || undefined,
       quotes: [initialQuote],
       startConditions: {
         contractSignedRequired: true,
@@ -315,30 +260,37 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
       updatedAt: new Date().toISOString()
     };
 
-    onSaveOpportunity(newOpp, commercialUsers.filter((user) => commercialUserIds.includes(user.id)).map((user) => user.id));
+    onSaveOpportunity(
+      newOpp,
+      commercialUsers.filter((user) => commercialUserIds.includes(user.id)).map((user) => user.id)
+    );
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl border border-[#e2e8f0] overflow-hidden flex flex-col max-h-[92vh]">
-        {/* Header con tabs de origen: HubSpot vs Manual */}
+    <div
+      className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white w-full max-w-xl rounded-3xl shadow-2xl border border-[#e2e8f0] overflow-hidden flex flex-col max-h-[92vh]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header con icono de alto contraste y diseño minimalista */}
         <div className="p-5 bg-gradient-to-r from-[#140b24] via-[#2a134a] to-[#501f92] text-white">
-          <div className="flex items-center justify-between pb-3">
-            <div className="flex items-center gap-2.5">
-              <span className="p-2 rounded-xl bg-white/10 text-[#d4ff4a]">
-                <Target className="w-5 h-5" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="p-2.5 rounded-xl bg-white text-[#501f92] shadow-sm flex items-center justify-center">
+                <Target className="w-5 h-5 stroke-[2.2]" />
               </span>
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="text-base font-extrabold tracking-tight">Nueva Oportunidad</h3>
-                  <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-[#d4ff4a]/20 text-[#d4ff4a]">
-                    Handoff Comercial
+                  <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-[#ff5c35]/25 text-[#fed7aa] border border-[#ff5c35]/40 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#ff5c35]" />
+                    HubSpot Sync
                   </span>
                 </div>
-                <p className="text-xs text-white/75">
-                  Cuando una oportunidad calificada requiere scoping de un líder, Orbit activa el SLA e inicia su tarea de preventa
-                </p>
               </div>
             </div>
             <button
@@ -349,342 +301,298 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
               <X className="w-5 h-5" />
             </button>
           </div>
-
-          {/* Mode Tabs */}
-          <div className="flex items-center p-1 bg-white/10 rounded-xl backdrop-blur-xs">
-            <button
-              type="button"
-              onClick={() => setEntryMode('hubspot')}
-              className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                entryMode === 'hubspot'
-                  ? 'bg-white text-[#ff5c35] shadow-xs'
-                  : 'text-white/80 hover:text-white'
-              }`}
-            >
-              <span className="w-2 h-2 rounded-full bg-[#ff5c35]" />
-              <span>Traer desde HubSpot</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setEntryMode('manual')}
-              className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                entryMode === 'manual'
-                  ? 'bg-white text-[#501f92] shadow-xs'
-                  : 'text-white/80 hover:text-white'
-              }`}
-            >
-              <span>Crear manualmente</span>
-            </button>
-          </div>
         </div>
 
-        {/* Formulario Simplificado */}
+        {/* Formulario */}
         <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1 text-xs">
-          {/* SECCIÓN 1: HUBSPOT DEAL IMPORT (Fallback Manual URL/ID con Mock Dev opcional) */}
-          {entryMode === 'hubspot' && (
-            <div className="p-3.5 bg-[#fff7ed] rounded-2xl border border-[#ffedd5] space-y-2.5">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-[#9a3412] flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-[#ff5c35]" />
-                  HubSpot Deal (URL o ID)
-                </span>
-                <span className="text-[10px] text-[#c2410c] font-medium">Source of truth comercial</span>
-              </div>
+          {/* 1. Empresa / cliente en HubSpot */}
+          <div className="p-3.5 bg-[#fff7ed] rounded-2xl border border-[#ffedd5] space-y-2.5">
+            <div className="flex items-center justify-between">
+              <label className="font-extrabold text-[#9a3412] text-xs flex items-center gap-1.5">
+                <Building2 className="w-4 h-4 text-[#ea580c]" />
+                <span>Empresa / cliente en HubSpot:</span>
+                <span className="text-red-500">*</span>
+              </label>
+              <span className="text-[10px] text-[#c2410c] font-medium">Búsqueda en directorio HubSpot</span>
+            </div>
 
-              <div className="flex gap-2">
+            <div className="relative" ref={companyDropdownRef}>
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 absolute left-3 top-3 text-[#9a3412]" />
                 <input
                   type="text"
-                  placeholder="Pegar URL o ID del deal (Ej: https://app.hubspot.com/... o 1049281)"
-                  value={hubspotQuery}
-                  onChange={(e) => setHubspotQuery(e.target.value)}
-                  className="flex-1 p-2.5 rounded-xl border border-[#fed7aa] bg-white text-[#0f172a] text-xs placeholder:text-[#7C8AA0] placeholder:font-normal focus:ring-2 focus:ring-[#ff5c35] focus:outline-none"
+                  required
+                  placeholder="Buscar empresa por nombre o dominio (ej: Danone, GeoTours, Bambú...)"
+                  value={companySearchQuery}
+                  onFocus={() => setIsSearchingCompany(true)}
+                  onChange={(e) => {
+                    setCompanySearchQuery(e.target.value);
+                    setIsSearchingCompany(true);
+                    if (selectedCompany && e.target.value !== selectedCompany.name) {
+                      setSelectedCompany(null);
+                      setSelectedContactId('');
+                      setSelectedNoteId('');
+                    }
+                  }}
+                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-[#fed7aa] bg-white text-[#0f172a] text-xs font-semibold focus:ring-2 focus:ring-[#ea580c] focus:outline-none placeholder:text-[#94a3b8] placeholder:font-normal"
                 />
-                <button
-                  type="button"
-                  onClick={() => handleFetchFromHubspot()}
-                  disabled={isFetchingHubspot || !hubspotQuery.trim()}
-                  className="px-3.5 py-2.5 rounded-xl bg-[#ff5c35] hover:bg-[#e0441e] text-white font-bold text-xs shadow-xs transition-colors cursor-pointer shrink-0 disabled:opacity-50 flex items-center gap-1"
-                >
-                  {isFetchingHubspot ? (
-                    <span>Obteniendo...</span>
-                  ) : (
-                    <>
-                      <span>Vincular</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </>
-                  )}
-                </button>
               </div>
 
-              {/* Selector de deals simulados (Exclusivo Mock / Dev) */}
-              <div className="pt-1 border-t border-[#fed7aa]/60">
-                <div className="flex items-center justify-between py-1">
-                  <span className="text-[10px] font-bold text-[#9a3412] flex items-center gap-1">
-                    <Code2 className="w-3 h-3 text-[#ff5c35]" />
-                    <span>Selector de prueba (Mock Dev):</span>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setShowDemoSelector(!showDemoSelector)}
-                    className="text-[10px] text-[#c2410c] hover:underline cursor-pointer"
-                  >
-                    {showDemoSelector ? 'Ocultar demos' : 'Mostrar deals de prueba'}
-                  </button>
-                </div>
-
-                {showDemoSelector && (
-                  <div className="space-y-1 mt-1">
-                    <span className="text-[9.5px] text-[#7c2d12] block">
-                      En producción la vinculación es por URL/ID real de HubSpot. En este prototipo puedes usar estos deals de muestra:
-                    </span>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 pt-0.5">
-                      {HUBSPOT_DEMO_DEALS.map((deal, idx) => (
-                        <button
-                          key={deal.id}
-                          type="button"
-                          onClick={() => handleSelectDemoDeal(deal, idx)}
-                          className={`p-2 rounded-xl border text-left transition-colors cursor-pointer text-[11px] ${
-                            selectedDemoIndex === idx
-                              ? 'bg-white border-[#ff5c35] text-[#9a3412] shadow-xs'
-                              : 'bg-white/70 hover:bg-white border-[#fed7aa] text-[#475569]'
-                          }`}
-                        >
-                          <p className="font-bold truncate">{deal.accountName}</p>
-                          <p className="text-[10px] text-[#64748b] truncate">{deal.dealName}</p>
-                        </button>
-                      ))}
+              {/* Dropdown de Empresas HubSpot */}
+              {isSearchingCompany && (
+                <div className="absolute left-0 right-0 top-full mt-1.5 bg-white rounded-xl border border-[#cbd5e1] shadow-xl z-20 max-h-52 overflow-y-auto divide-y divide-[#f1f5f9]">
+                  {matchingCompanies.map((c) => (
+                    <button
+                      type="button"
+                      key={c.id}
+                      onClick={() => handleSelectCompany(c)}
+                      className="w-full text-left p-2.5 hover:bg-[#fff7ed] transition-colors flex items-center justify-between cursor-pointer"
+                    >
+                      <div>
+                        <strong className="text-[#0f172a] block text-xs">{c.name}</strong>
+                        <span className="text-[10.5px] text-[#64748b]">
+                          {c.domain} · {c.industry}
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#f1f5f9] text-[#501f92]">
+                        ID: {c.id}
+                      </span>
+                    </button>
+                  ))}
+                  {matchingCompanies.length === 0 && (
+                    <div className="p-3 text-center text-xs text-[#64748b]">
+                      No se encontraron empresas con ese término.
                     </div>
-                  </div>
-                )}
-              </div>
-
-              {hubspotFetched && (
-                <div className="flex items-center gap-1.5 text-[11px] text-[#047857] font-semibold bg-[#ecfdf5] p-2 rounded-xl border border-[#a7f3d0]">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-[#10b981] shrink-0" />
-                  <span>Datos de HubSpot vinculados exitosamente ({hubspotDealId})</span>
+                  )}
                 </div>
               )}
             </div>
-          )}
 
-          {/* SECCIÓN 2: CUENTA & OPORTUNIDAD */}
-          {(
-            <div className="p-3 bg-[#f8fafc] rounded-2xl border border-[#e2e8f0] space-y-2">
-              <span className="font-bold text-[#0f172a] block">Tipo de Cuenta:</span>
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2 cursor-pointer font-medium text-[#475569]">
-                  <input
-                    type="radio"
-                    name="clientMode"
-                    checked={!isExistingClient}
-                    onChange={() => setIsExistingClient(false)}
-                    className="text-[#501f92] focus:ring-[#501f92]"
-                  />
-                  <span>Cliente nuevo</span>
-                </label>
-
-                <label className="flex items-center gap-2 cursor-pointer font-medium text-[#475569]">
-                  <input
-                    type="radio"
-                    name="clientMode"
-                    checked={isExistingClient}
-                    onChange={() => setIsExistingClient(true)}
-                    className="text-[#501f92] focus:ring-[#501f92]"
-                  />
-                  <span>Cliente existente</span>
-                </label>
+            {/* Mensaje obligatorio si la empresa no existe en HubSpot */}
+            {hasNoCompanyMatch && (
+              <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 flex items-start gap-2 animate-in fade-in">
+                <AlertCircle className="w-4 h-4 shrink-0 text-red-600 mt-0.5" />
+                <div className="text-[11px] leading-relaxed">
+                  <strong>Esta empresa no se encuentra registrada en HubSpot.</strong>
+                  <p className="mt-0.5 text-red-600">
+                    Primero debe crearse en HubSpot antes de abrir la oportunidad en Orbit. No se permite crear empresas ni contactos manuales desde este prototipo.
+                  </p>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Cuenta */}
-          {isExistingClient ? (
-            <div className="space-y-1">
-              <label className="font-bold text-[#475569] block min-h-6">
-                Selecciona el Cliente Existente: <span className="text-red-500">*</span>
-              </label>
+            {/* Empresa seleccionada pill */}
+            {selectedCompany && (
+              <div className="p-2.5 rounded-xl bg-white border border-[#fed7aa] flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-[#16a34a]" />
+                  <div>
+                    <span className="font-extrabold text-[#0f172a]">{selectedCompany.name}</span>
+                    <span className="text-[10px] text-[#64748b] ml-2">({selectedCompany.domain})</span>
+                  </div>
+                </div>
+                <span className="text-[10px] font-mono font-bold text-[#c2410c] bg-[#fff7ed] px-2 py-0.5 rounded border border-[#fed7aa]">
+                  {selectedCompany.id}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* 2. Contacto principal en HubSpot (habilitado tras seleccionar empresa) */}
+          <div className="space-y-1">
+            <label className="font-bold text-[#475569] block flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5 text-[#501f92]" />
+                <span>Contacto principal en HubSpot:</span>
+                <span className="text-red-500">*</span>
+              </span>
+              {selectedCompany && (
+                <span className="text-[10px] text-[#64748b]">
+                  {selectedCompany.contacts.length} contactos asociados
+                </span>
+              )}
+            </label>
+
+            {selectedCompany ? (
               <select
                 required
-                value={selectedClientId}
-                onChange={(event) => {
-                  setSelectedClientId(event.target.value);
-                  const client = existingClients.find((item) => item.id === event.target.value);
-                  const contact = client?.contacts?.find((item) => item.isPrimary) || client?.contacts?.[0];
-                  setContactName(contact?.name || client?.commercialInfo?.contactName || '');
-                  setContactEmail(contact?.email || client?.commercialInfo?.contactEmail || '');
-                  setContactPhone(contact?.phone || client?.commercialInfo?.contactPhone || '');
-                }}
-                data-empty={!selectedClientId}
-                className={`w-full h-11 min-w-0 px-3 rounded-xl border border-[#cbd5e1] bg-white focus:ring-2 focus:ring-[#501f92] transition-colors ${
-                  !selectedClientId ? 'text-[#64748b] font-normal' : 'text-[#0f172a] font-semibold'
-                }`}
+                value={selectedContactId}
+                onChange={(e) => setSelectedContactId(e.target.value)}
+                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] font-semibold text-[#0f172a] bg-white focus:ring-2 focus:ring-[#501f92] text-xs"
               >
-                <option value="">-- Elige un cliente existente --</option>
-                {existingClients.map((c) => (
-                  <option key={c.id} value={c.id} className="text-[#0f172a] font-medium">
-                    {c.name}
+                <option value="">Selecciona un contacto...</option>
+                {selectedCompany.contacts.map((cnt) => (
+                  <option key={cnt.id} value={cnt.id}>
+                    {cnt.name} ({cnt.role || 'Contacto'} · {cnt.email})
                   </option>
                 ))}
               </select>
-            </div>
-          ) : (
-            <div className="space-y-1">
-              <label className="font-bold text-[#475569] block min-h-6">
-                Empresa o Cuenta: <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="Ej: Danone S.A., GeoTours, BrandCo..."
-                value={prospectName}
-                onChange={(e) => setProspectName(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-medium placeholder:text-[#7C8AA0] placeholder:font-normal focus:ring-2 focus:ring-[#501f92]"
-              />
-            </div>
-          )}
+            ) : (
+              <div className="p-2.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] text-[#94a3b8] text-xs italic">
+                Selecciona primero una empresa en HubSpot para habilitar los contactos asociados.
+              </div>
+            )}
 
-          {isExistingClient && selectedClientId && (
-            <div className="p-3 rounded-xl border border-[#e2e8f0] text-xs text-[#475569] space-y-2">
-              <strong>Datos fiscales del Cliente (se reutilizan sin copiarlos a la oportunidad)</strong>
-              {(existingClients.find((client) => client.id === selectedClientId)?.taxEntities || []).map((entity) => (
-                <div key={entity.id} className="space-y-1">
-                  <p>{entity.businessName} · NIT: {entity.nit || 'Pendiente'}</p>
-                  <p>RUT: {entity.rutUrl ? 'Registrado' : 'Pendiente'} · Cédula: {entity.legalRepresentativeId || 'Pendiente'}</p>
-                  <p>Facturación: {entity.billingEmail || 'Pendiente'} · Alegra: {entity.alegraCreated ? 'Creado' : 'Pendiente'}</p>
-                </div>
-              ))}
-            </div>
-          )}
+            {currentContact && (
+              <div className="flex items-center gap-3 text-[11px] text-[#475569] pt-1 pl-1">
+                <span>📧 {currentContact.email}</span>
+                {currentContact.phone && <span>📞 {currentContact.phone}</span>}
+                <span className="text-[#94a3b8] font-mono text-[10px]">ID: {currentContact.id}</span>
+              </div>
+            )}
+          </div>
 
-          {/* Oportunidad */}
+          {/* 3. Brief / Nota de reunión en HubSpot */}
+          <div className="space-y-1.5">
+            <label className="font-bold text-[#475569] block flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <FileText className="w-3.5 h-3.5 text-[#501f92]" />
+                <span>Brief / nota de reunión en HubSpot:</span>
+                <span className="text-red-500">*</span>
+              </span>
+              <span className="text-[10px] text-[#64748b]">Texto copiado de notas HubSpot</span>
+            </label>
+
+            {selectedCompany ? (
+              <div className="space-y-2">
+                <select
+                  required
+                  value={selectedNoteId}
+                  onChange={(e) => {
+                    const noteId = e.target.value;
+                    setSelectedNoteId(noteId);
+                    const note = selectedCompany.notes.find((n) => n.id === noteId);
+                    if (note) {
+                      setBriefText(note.fullContent);
+                    }
+                  }}
+                  className="w-full p-2.5 rounded-xl border border-[#cbd5e1] font-medium text-[#0f172a] bg-white focus:ring-2 focus:ring-[#501f92] text-xs"
+                >
+                  <option value="">Selecciona una nota de reunión asociada...</option>
+                  {selectedCompany.notes.map((note) => (
+                    <option key={note.id} value={note.id}>
+                      [{note.date}] {note.author ? `${note.author} · ` : ''}{note.snippet.slice(0, 70)}...
+                    </option>
+                  ))}
+                </select>
+
+                {currentNote && (
+                  <div className="p-3 rounded-xl bg-[#faf5ff] border border-[#e9d5ff] space-y-1">
+                    <div className="flex items-center justify-between text-[10.5px]">
+                      <span className="font-bold text-[#501f92]">
+                        📅 {currentNote.date} · ✍️ {currentNote.author}
+                      </span>
+                      <span className="text-[#64748b] font-mono text-[10px]">ID: {currentNote.id}</span>
+                    </div>
+                    <p className="text-[11px] text-[#334155] leading-relaxed italic">
+                      "{currentNote.fullContent}"
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="p-2.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] text-[#94a3b8] text-xs italic">
+                Selecciona primero una empresa en HubSpot para consultar sus notas de brief.
+              </div>
+            )}
+          </div>
+
+          {/* 4. Título de la oportunidad */}
           <div className="space-y-1">
-            <label className="font-bold text-[#475569] block min-h-6">
-              Nombre de la Oportunidad / Requerimiento: <span className="text-red-500">*</span>
+            <label className="font-bold text-[#475569] block">
+              Título comercial de la oportunidad: <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               required
-              placeholder="Ej: Rediseño ecommerce Bonafont..."
+              placeholder="Ej: Rediseño Ecommerce Bonafont & Campaña Q4"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-medium placeholder:text-[#7C8AA0] placeholder:font-normal focus:ring-2 focus:ring-[#501f92]"
+              className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-bold focus:ring-2 focus:ring-[#501f92] text-xs bg-white"
             />
           </div>
 
-          <label className="block space-y-1 font-bold text-[#475569]">
-            Brief (opcional)
-            <textarea value={brief} onChange={(event) => setBrief(event.target.value)}
-              className="w-full p-2.5 rounded-xl border border-[#cbd5e1] bg-white text-[#0f172a] font-normal"
-              placeholder="Contexto y requerimiento recibido del cliente" />
-          </label>
-
-          {/* Contacto Principal (Nombre & Email) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* 5. Responsable de alcance y Owner comercial */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            {/* Responsable de Alcance (Líder asignado) */}
             <div className="space-y-1">
-              <label className="font-bold text-[#475569] block min-h-6">Contacto Principal:</label>
-              <input
-                type="text"
-                placeholder="Ej: Carlos Mendoza"
-                value={contactName}
-                onChange={(e) => setContactName(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-medium placeholder:text-[#7C8AA0] placeholder:font-normal focus:ring-2 focus:ring-[#501f92]"
-              />
+              <label className="font-bold text-[#475569] block">
+                Líder asignado para scoping: <span className="text-red-500">*</span>
+              </label>
+              <select
+                required
+                value={selectedLeadUserIds[0] || ''}
+                onChange={(e) => setSelectedLeadUserIds([e.target.value])}
+                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-semibold bg-white focus:ring-2 focus:ring-[#501f92] text-xs"
+              >
+                {eligibleLeaders.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name} ({u.officialRole || u.role || 'Líder'})
+                  </option>
+                ))}
+              </select>
             </div>
 
+            {/* Owner Comercial */}
             <div className="space-y-1">
-              <label className="font-bold text-[#475569] block min-h-6">Email de Contacto:</label>
-              <input
-                type="email"
-                placeholder="carlos@empresa.com"
-                value={contactEmail}
-                onChange={(e) => setContactEmail(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-medium placeholder:text-[#7C8AA0] placeholder:font-normal focus:ring-2 focus:ring-[#501f92]"
-              />
+              <label className="font-bold text-[#475569] block">
+                Owner Comercial en Uhura: <span className="text-red-500">*</span>
+              </label>
+              <select
+                required
+                value={commercialUserIds[0] || ''}
+                onChange={(e) => setCommercialUserIds([e.target.value])}
+                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-semibold bg-white focus:ring-2 focus:ring-[#501f92] text-xs"
+              >
+                {commercialUsers.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name} ({u.jobTitle || 'Comercial'})
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
-          {/* SECCIÓN 3: ROLES (LÍDER DE ALCANCE & RESPONSABLE COMERCIAL) & SLA */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-start">
-            <div className="space-y-1">
-              <label className="font-bold text-[#475569] block min-h-6">
-                Responsables del alcance: <span className="text-red-500">*</span>
+          {/* Fecha max. de entrega (sin hora) */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <label className="font-bold text-[#475569] block">
+                Fecha max. de entrega: <span className="text-red-500">*</span>
               </label>
-              <div className="relative" onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setLeadersOpen(false); }}>
-                <button type="button" aria-label="Responsables del alcance" aria-expanded={leadersOpen} onClick={() => setLeadersOpen(!leadersOpen)} onKeyDown={(event) => { if (event.key === 'Escape') setLeadersOpen(false); }} className="w-full h-11 min-w-0 text-left px-3 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-semibold bg-white flex justify-between items-center gap-2">
-                  <span className="truncate">{selectedLeadUserIds.length ? eligibleLeaders.filter((leader) => selectedLeadUserIds.includes(leader.id)).map((leader) => leader.name).join(', ') : 'Seleccionar responsables…'}</span><span aria-hidden="true">⌄</span>
-                </button>
-                {leadersOpen && <div className="absolute z-40 top-full mt-1 w-full max-h-48 overflow-y-auto space-y-2 rounded-xl border border-[#cbd5e1] p-3 bg-white shadow-lg">
-                  {eligibleLeaders.map((leader) => <label key={leader.id} onMouseDown={(event) => event.preventDefault()} className="flex items-center gap-2 text-xs cursor-pointer rounded-lg p-2 hover:bg-[#f3effa]">
-                    <input type="checkbox" checked={selectedLeadUserIds.includes(leader.id)} onChange={(event) => { const checked = event.target.checked; setSelectedLeadUserIds((ids) => checked ? [...ids, leader.id] : ids.filter((id) => id !== leader.id)); }} />{leader.name}
-                  </label>)}
-                </div>}
-              </div>
+              <span className="text-[10px] font-semibold text-[#501f92] bg-[#f5f3ff] px-2 py-0.5 rounded">
+                Fecha de entrega
+              </span>
             </div>
-
-            <div className="space-y-1">
-              <label className="font-bold text-[#475569] block min-h-6">
-                Responsable comercial:
-              </label>
-              <div className="relative" onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setCommercialOpen(false); }}>
-                <button type="button" aria-label="Responsable comercial" aria-expanded={commercialOpen} onClick={() => setCommercialOpen(!commercialOpen)} onKeyDown={(event) => { if (event.key === 'Escape') setCommercialOpen(false); }} className="w-full h-11 min-w-0 text-left px-3 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-semibold bg-white flex justify-between items-center gap-2">
-                  <span className="truncate">{commercialUserIds.length ? commercialUsers.filter((user) => commercialUserIds.includes(user.id)).map((user) => user.name).join(', ') : 'Seleccionar responsables…'}</span><span aria-hidden="true">⌄</span>
-                </button>
-                {commercialOpen && <div className="absolute z-40 top-full mt-1 w-full max-h-48 overflow-y-auto space-y-2 rounded-xl border border-[#cbd5e1] p-3 bg-white shadow-lg">
-                  {commercialUsers.map((user) => <label key={user.id} onMouseDown={(event) => event.preventDefault()} className="flex items-start gap-2 text-xs cursor-pointer rounded-lg p-2 hover:bg-[#f3effa]">
-                    <input type="checkbox" checked={commercialUserIds.includes(user.id)} onChange={(event) => { const checked = event.target.checked; setCommercialUserIds((ids) => checked ? [...ids, user.id] : ids.filter((id) => id !== user.id)); }} /><span>{user.name}<span className="block text-[10px] text-[#64748b]">{user.officialRole || user.jobTitle || user.role}</span></span>
-                  </label>)}
-                </div>}
-              </div>
-            </div>
-
-            <div className="space-y-1 min-w-0">
-              <label htmlFor="opportunity-delivery-date" className="font-bold text-[#475569] block min-h-6">Fecha max. de entrega</label>
-              <input id="opportunity-delivery-date" type="datetime-local" required value={deliveryDate} min={toLocalDateTime(Date.now() + 60000)} max={toLocalDateTime(Date.now() + 36 * 3600000)} onInput={(event) => { setDeliveryDate(event.currentTarget.value); setDeliveryError(''); }} onChange={(event) => { setDeliveryDate(event.target.value); setDeliveryError(''); }} className="w-full min-w-0 h-11 px-3 rounded-xl border border-[#cbd5e1] text-[#0f172a] bg-white text-xs" />
-              <p className="text-[10px] text-[#64748b]">Dentro de las próximas 36 horas.</p>
-              {deliveryError && <p role="alert" className="text-xs text-red-600">{deliveryError}</p>}
-            </div>
-          </div>
-
-          {/* SECCIÓN 4: GOOGLE DRIVE (SIMPLIFICADO A UN SOLO CAMPO LIMPIO) */}
-          <div className="p-3.5 bg-[#f8fafc] rounded-2xl border border-[#e2e8f0] space-y-1.5">
-            <label className="font-bold text-[#0f172a] flex items-center gap-1.5">
-              <Folder className="w-4 h-4 text-[#501f92]" />
-              <span>Carpeta Google Drive:</span>
-            </label>
             <input
-              type="text"
-              placeholder="https://drive.google.com/drive/folders/..."
-              value={driveFolderUrl}
-              onChange={(e) => setDriveFolderUrl(e.target.value)}
-              className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-medium focus:ring-2 focus:ring-[#501f92] bg-white"
+              type="date"
+              required
+              value={deliveryDate}
+              onChange={(e) => {
+                setDeliveryDate(e.target.value);
+                setDeliveryError('');
+              }}
+              className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-medium bg-white focus:ring-2 focus:ring-[#501f92] text-xs"
             />
-            <p className="text-[10px] text-[#64748b]">
-              Brief, propuesta y documentos relacionados. Repositorio documental oficial del prospecto.
-            </p>
+            {deliveryError && <p className="text-[11px] text-red-500 font-bold">{deliveryError}</p>}
           </div>
 
-          {/* Botones de Acción */}
-          <div className="pt-3 border-t border-[#e2e8f0] flex items-center justify-between">
-            <div className="text-[11px] text-[#64748b]">
-              El líder decidirá si usar plantilla o hacer a medida al abrir <strong>Alcance</strong>.
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-[#64748b] hover:bg-[#f1f5f9] transition-colors cursor-pointer"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                className="px-5 py-2.5 rounded-xl bg-[#501f92] hover:bg-[#3b156b] text-white text-xs font-bold shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
-              >
-                <CheckCircle2 className="w-4 h-4 text-[#d4ff4a]" />
-                <span>Crear oportunidad</span>
-              </button>
-            </div>
+          {/* Footer Actions */}
+          <div className="pt-3 border-t border-[#f1f5f9] flex items-center justify-end gap-2.5">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-xs font-semibold text-[#64748b] hover:bg-[#f1f5f9] rounded-xl transition-colors cursor-pointer"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={!selectedCompany || hasNoCompanyMatch || !selectedContactId}
+              className="px-5 py-2.5 text-xs font-bold text-white bg-[#501f92] hover:bg-[#3d1572] disabled:bg-[#cbd5e1] disabled:cursor-not-allowed rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-2 hover:scale-[1.01]"
+            >
+              <Sparkles className="w-4 h-4 text-[#d4ff4a]" />
+              <span>Crear Oportunidad →</span>
+            </button>
           </div>
         </form>
       </div>

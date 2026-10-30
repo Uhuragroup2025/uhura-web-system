@@ -13,7 +13,9 @@ import {
   ActiveTimerState,
   ServiceCommercialItem,
   ServiceCommercialModality,
-  ProposalCommercialType
+  ProposalCommercialType,
+  HubSpotDealStage,
+  HubSpotSyncAuditEntry
 } from '../types';
 import {
   getOperationalQuote,
@@ -30,6 +32,8 @@ import { serviceValidationMessages, isScopeReadyForReview, isEligibleScopingLead
 import { BacklogScoper, type ScopeServiceDraft } from './BacklogScoper';
 import { NewOpportunityModal } from './NewOpportunityModal';
 import { ConvertOpportunityModal } from './ConvertOpportunityModal';
+import { HubSpotCreateDealsModal } from './HubSpotCreateDealsModal';
+import { HubSpotSyncModal } from './HubSpotSyncModal';
 import { UHURA_LEGAL_SIGNER } from './slaEngine';
 import { formatCurrency, formatHours } from '../../../utils/formatters';
 import {
@@ -66,6 +70,7 @@ import {
   Copy,
   Printer,
   Play,
+  Square,
   Sliders,
   X,
   Trophy,
@@ -73,10 +78,13 @@ import {
   Info,
   Pencil,
   Edit3,
-  ThumbsDown
+  ThumbsDown,
+  RefreshCw,
+  History
 } from 'lucide-react';
 
 interface NewBusinessViewProps {
+  resetToOverviewSignal?: number;
   scopeUi: Record<string, { saved: boolean; services: ScopeServiceDraft[] }>;
   onChangeScopeUi: (quoteId: string, state: { saved: boolean; services: ScopeServiceDraft[] }) => void;
   onOpenSow: (opportunityId: string) => void;
@@ -105,6 +113,18 @@ interface NewBusinessViewProps {
     isMixed?: boolean;
     fixedProjectName?: string;
     feeProjectName?: string;
+    projects?: Array<{
+      serviceId: string;
+      serviceName: string;
+      projectName: string;
+      projectType: ProjectType;
+      hubspotDealId?: string | null;
+      hubspotDealStage?: string;
+      soldValue?: number;
+      soldMonthlyValue?: number;
+      monthsDuration?: number;
+      deliverableIds: string[];
+    }>;
   }) => void;
   currentUser?: UserItem;
   users?: UserItem[];
@@ -116,6 +136,7 @@ interface NewBusinessViewProps {
 }
 
 export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
+  resetToOverviewSignal,
   scopeUi,
   onChangeScopeUi,
   savedQuotes,
@@ -167,6 +188,22 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
   const [isLostModalOpen, setIsLostModalOpen] = useState<boolean>(false);
   const [lostReason, setLostReason] = useState<string>('precio');
   const [lostNotes, setLostNotes] = useState<string>('');
+  const [isHubspotCreateDealsOpen, setIsHubspotCreateDealsOpen] = useState<boolean>(false);
+  const [isHubspotSyncOpen, setIsHubspotSyncOpen] = useState<boolean>(false);
+
+  // Retorno a la pantalla principal de New Business al hacer clic en el sidebar
+  useEffect(() => {
+    if (resetToOverviewSignal && resetToOverviewSignal > 0) {
+      setSelectedOppId(null);
+    }
+  }, [resetToOverviewSignal]);
+
+  // Two-Way Sync Audit Trail & QA controls
+  const [syncAuditTrail, setSyncAuditTrail] = useState<HubSpotSyncAuditEntry[]>([]);
+  const [isAuditTrailOpen, setIsAuditTrailOpen] = useState<boolean>(false);
+  const [isQaSimulationOpen, setIsQaSimulationOpen] = useState<boolean>(false);
+  const [simulateSyncError, setSimulateSyncError] = useState<boolean>(false);
+  const [qaOverrideCommercialPermissions, setQaOverrideCommercialPermissions] = useState<boolean | null>(null);
 
   // Fanfarria triunfal Web Audio para celebrar propuesta ganada
   const playWonFanfare = () => {
@@ -263,7 +300,21 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
   const activeOpp = opportunities.find((o) => o.id === selectedOppId);
 
   const activeQuote = getOperationalQuote(activeOpp);
-  const scopeState = activeQuote ? scopeUi[activeQuote.id] || { saved: false, services: [] } : { saved: false, services: [] };
+  const rawScopeState = activeQuote ? scopeUi[activeQuote.id] || { saved: false, services: [] } : { saved: false, services: [] };
+  const activeDeliverableIds = useMemo(() => new Set(activeQuote?.deliverables.map((d) => d.id) || []), [activeQuote?.deliverables]);
+  const scopeState = useMemo(() => {
+    if (!activeQuote) return rawScopeState;
+    const sanitizedServices = rawScopeState.services
+      .map((s) => ({
+        ...s,
+        deliverableIds: (s.deliverableIds || []).filter((id) => activeDeliverableIds.has(id))
+      }))
+      .filter((s) => s.deliverableIds.length > 0);
+    return {
+      ...rawScopeState,
+      services: sanitizedServices
+    };
+  }, [rawScopeState, activeQuote, activeDeliverableIds]);
   const allServicesValid = scopeState.services.every((service) => serviceValidationMessages(service).length === 0);
   const allServicesPrepared = allServicesValid && scopeState.services.every((service) => service.saved === true);
   const isScopeReadOnly = scopeState.saved && allServicesPrepared;
@@ -423,6 +474,16 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
     !isEditingQuoteFields
   );
 
+  const hasAnyHubSpotDeals = useMemo(() => {
+    return commercialStructureDraft.some((s) => Boolean(s.hubspotDealId));
+  }, [commercialStructureDraft]);
+
+  const hasAnyWonServices = useMemo(() => {
+    return commercialStructureDraft.some(
+      (s) => s.hubspotDealStage === 'Cierre ganado' || s.hubspotDealStage === 'Enviado para facturar' || s.approved === true
+    );
+  }, [commercialStructureDraft]);
+
   const quotePendingMessage = useMemo(() => {
     if (currentScopeServices.length === 0) {
       return 'Falta definir servicios en el alcance.';
@@ -430,11 +491,22 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
     if (commercialValidationErrors.length > 0) {
       return commercialValidationErrors[0];
     }
-    if (savedQuotes[activeQuote?.id || ''] !== currentCommercialSignature || isEditingQuoteFields) {
-      return 'Falta guardar la cotización para habilitar Marcar como ganada.';
-    }
     return '';
-  }, [currentScopeServices.length, commercialValidationErrors, savedQuotes, activeQuote?.id, currentCommercialSignature, isEditingQuoteFields]);
+  }, [currentScopeServices.length, commercialValidationErrors]);
+
+  // Permisos comerciales para editar la etapa (Reglas 2 y 5)
+  const hasCommercialPermissions = useMemo(() => {
+    if (qaOverrideCommercialPermissions !== null) return qaOverrideCommercialPermissions;
+    if (!currentUser) return true;
+    return (
+      currentUser.accessLevel === 'commercial' ||
+      currentUser.accessLevel === 'system_admin' ||
+      currentUser.accessLevel === 'leader' ||
+      currentUser.role?.toLowerCase().includes('comercial') ||
+      currentUser.role?.toLowerCase().includes('lead') ||
+      currentUser.name === activeOpp?.commercialOwner
+    );
+  }, [currentUser, activeOpp?.commercialOwner, qaOverrideCommercialPermissions]);
 
   // Scoping task and preventa hours calculation
   const scopingTask = tasks.find(
@@ -549,6 +621,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
     isMixed?: boolean;
     fixedProjectName?: string;
     feeProjectName?: string;
+    projects?: any[];
   }) => {
     if (!activeOpp || !activeQuote || !users.some((user) => user.id === payload.leadUserId)) return;
     if (onConvertOpportunityToProject) {
@@ -568,16 +641,268 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
     }
 
     setIsConvertModalOpen(false);
-    const namesNotice = payload.isMixed
+    const count = payload.projects?.length || 1;
+    const namesNotice = payload.projects && payload.projects.length > 0
+      ? payload.projects.map((p) => `"${p.projectName}"`).join(', ')
+      : payload.isMixed
       ? `"${payload.fixedProjectName || payload.projectName}" y "${payload.feeProjectName}"`
       : `"${payload.projectName}"`;
     setBannerNotification({
-      message: `🎉 ¡${namesNotice} se ha convertido a Cliente y Proyecto(s)! La formalización fiscal continúa en la ficha del Cliente.`,
+      message: `🎉 ¡${namesNotice} se ha convertido a Cliente y ${count} Proyecto(s) independiente(s)! La formalización fiscal continúa en la ficha del Cliente.`,
       showProjectLink: true
     });
     setTimeout(() => {
       setBannerNotification(null);
     }, 10000);
+  };
+
+  // Manejo de creación de negocios en HubSpot (1 servicio = 1 negocio)
+  const handleConfirmCreateDeals = (updatedServices: ServiceCommercialItem[]) => {
+    if (!activeOpp || !activeQuote) return;
+    setCommercialStructureDraft(updatedServices);
+    const sig = commercialStructureSignature(updatedServices, quoteSheetUrlDraft);
+    const updatedQuote: QuoteProposal = {
+      ...activeQuote,
+      commercialStructure: updatedServices,
+      updatedAt: new Date().toISOString()
+    };
+    handleUpdateQuote(updatedQuote);
+    onSetQuoteSaved(activeQuote.id, sig);
+    setConversionSuccessMessage(`✅ Se crearon exitosamente ${updatedServices.length} negocio(s) en HubSpot (1 por servicio). Etapa inicial: Presentación a cliente.`, {
+      timeoutMs: 6000
+    });
+  };
+
+  // Manejo de sincronización de etapas desde HubSpot (origen: 'HubSpot')
+  const handleApplyHubspotSync = (updatedServices: ServiceCommercialItem[]) => {
+    if (!activeOpp || !activeQuote) return;
+    const nowIso = new Date().toISOString();
+
+    // Regla 8: Registrar trazabilidad por cada servicio que cambió de etapa
+    const newAuditEntries: HubSpotSyncAuditEntry[] = [];
+    updatedServices.forEach((s) => {
+      const prev = commercialStructureDraft.find((item) => item.serviceId === s.serviceId);
+      const prevStage = prev?.hubspotDealStage || 'Presentación a cliente';
+      const newStage = s.hubspotDealStage || 'Presentación a cliente';
+
+      if (prevStage !== newStage) {
+        newAuditEntries.push({
+          id: `audit-${Date.now()}-${s.serviceId}`,
+          serviceId: s.serviceId,
+          serviceName: s.serviceName,
+          dealId: s.hubspotDealId,
+          previousStage: prevStage,
+          newStage: newStage,
+          userId: 'hubspot-webhook',
+          userName: 'HubSpot CRM Webhook',
+          timestamp: nowIso,
+          origin: 'HubSpot',
+          syncStatus: 'success',
+          syncedFields: {
+            dealName: `${s.serviceName} — ${activeOpp.prospectAccountName}`,
+            companyName: activeOpp.prospectAccountName,
+            contactName: activeOpp.contactName,
+            commercialOwner: activeOpp.commercialOwner,
+            value: s.modality === 'fixed_project' ? s.totalValue : s.monthlyValue,
+            currency: quoteCurrencyDraft,
+            stage: newStage
+          }
+        });
+      }
+    });
+
+    if (newAuditEntries.length > 0) {
+      setSyncAuditTrail((prev) => [...newAuditEntries, ...prev]);
+    }
+
+    setCommercialStructureDraft(updatedServices);
+    const sig = commercialStructureSignature(updatedServices, quoteSheetUrlDraft);
+
+    const hasWonOrBilling = updatedServices.some(
+      (s) => s.hubspotDealStage === 'Cierre ganado' || s.hubspotDealStage === 'Enviado para facturar'
+    );
+    const allLost = updatedServices.length > 0 && updatedServices.every((s) => s.hubspotDealStage === 'Cierre perdido');
+
+    const updatedQuote: QuoteProposal = {
+      ...activeQuote,
+      commercialStructure: updatedServices,
+      updatedAt: nowIso
+    };
+
+    let updatedOpp: NewBusinessOpportunity = {
+      ...withOperationalQuote(activeOpp, updatedQuote),
+      updatedAt: nowIso
+    };
+
+    if (hasWonOrBilling) {
+      updatedOpp = {
+        ...updatedOpp,
+        status: 'won',
+        hubspotDealStage: 'closedwon'
+      };
+      playWonFanfare();
+    } else if (allLost) {
+      updatedOpp = {
+        ...updatedOpp,
+        status: 'lost',
+        lossReason: 'Cierre perdido en HubSpot para todos los servicios'
+      };
+    }
+
+    onUpdateOpportunity(updatedOpp);
+    onSetQuoteSaved(activeQuote.id, sig);
+
+    const wonCount = updatedServices.filter((s) => s.hubspotDealStage === 'Cierre ganado' || s.hubspotDealStage === 'Enviado para facturar').length;
+    const lostCount = updatedServices.filter((s) => s.hubspotDealStage === 'Cierre perdido').length;
+
+    let syncMessage = `Sincronización con HubSpot completada: `;
+    if (wonCount > 0 && lostCount > 0) {
+      syncMessage += `${wonCount} servicio(s) ganado(s) habilitado(s) para conversión, y ${lostCount} perdido(s) descartado(s).`;
+    } else if (wonCount > 0) {
+      syncMessage += `${wonCount} servicio(s) en Cierre ganado / Enviado para facturar. ¡Listos para convertir!`;
+    } else if (allLost) {
+      syncMessage += `Todos los servicios fueron registrados como Cierre perdido.`;
+    } else {
+      syncMessage += `Etapas actualizadas correctamente.`;
+    }
+
+    setConversionSuccessMessage(syncMessage, {
+      timeoutMs: 7000
+    });
+  };
+
+  // Cambiar etapa comercial directamente desde Orbit (Sincronización bidireccional Orbit -> HubSpot)
+  const handleUpdateStageFromOrbit = (serviceId: string, newStage: HubSpotDealStage) => {
+    if (!hasCommercialPermissions || !activeOpp || !activeQuote) return;
+    const targetService = commercialStructureDraft.find((s) => s.serviceId === serviceId);
+    if (!targetService) return;
+    if (targetService.hubspotDealStage === newStage) return; // Regla 9: Evita duplicados o ciclos
+
+    const prevStage = targetService.hubspotDealStage || 'Presentación a cliente';
+
+    // 1. Estado transitorio: Sincronizando con HubSpot...
+    setCommercialStructureDraft((prev) =>
+      prev.map((s) => s.serviceId === serviceId ? { ...s, hubspotSyncStatus: 'syncing', hubspotSyncError: undefined } : s)
+    );
+
+    // 2. Espera de confirmación simulada de HubSpot (850ms)
+    setTimeout(() => {
+      // Si la simulación QA tiene activo el error de red:
+      if (simulateSyncError) {
+        setCommercialStructureDraft((prev) =>
+          prev.map((s) => s.serviceId === serviceId ? {
+            ...s,
+            hubspotSyncStatus: 'error',
+            hubspotSyncError: 'Error 503: Timeout de conexión con HubSpot Deals API'
+          } : s)
+        );
+
+        const errorEntry: HubSpotSyncAuditEntry = {
+          id: `audit-${Date.now()}-${serviceId}`,
+          serviceId,
+          serviceName: targetService.serviceName,
+          dealId: targetService.hubspotDealId,
+          previousStage: prevStage,
+          newStage,
+          userId: currentUser?.id || 'u-pao',
+          userName: currentUser?.name || 'Paola Monsalve',
+          timestamp: new Date().toISOString(),
+          origin: 'Orbit',
+          syncStatus: 'error',
+          errorMessage: 'Error 503: Timeout de conexión con HubSpot Deals API',
+          syncedFields: {
+            dealName: `${targetService.serviceName} — ${activeOpp.prospectAccountName}`,
+            companyName: activeOpp.prospectAccountName,
+            contactName: activeOpp.contactName,
+            commercialOwner: activeOpp.commercialOwner,
+            value: targetService.modality === 'fixed_project' ? targetService.totalValue : targetService.monthlyValue,
+            currency: quoteCurrencyDraft,
+            stage: newStage
+          }
+        };
+        setSyncAuditTrail((prev) => [errorEntry, ...prev]);
+        return;
+      }
+
+      // Confirmación exitosa recibida de HubSpot
+      const nowIso = new Date().toISOString();
+      const isApproved = newStage === 'Cierre ganado' || newStage === 'Enviado para facturar';
+
+      let updatedList: ServiceCommercialItem[] = [];
+      setCommercialStructureDraft((prev) => {
+        updatedList = prev.map((s) => s.serviceId === serviceId ? {
+          ...s,
+          hubspotDealStage: newStage,
+          hubspotLastSyncedAt: nowIso,
+          hubspotSyncStatus: 'synced',
+          approved: isApproved
+        } : s);
+        return updatedList;
+      });
+
+      // Guardar en la cotización activa
+      const sig = commercialStructureSignature(updatedList, quoteSheetUrlDraft);
+      const updatedQuote: QuoteProposal = {
+        ...activeQuote,
+        commercialStructure: updatedList,
+        updatedAt: nowIso
+      };
+      handleUpdateQuote(updatedQuote);
+      onSetQuoteSaved(activeQuote.id, sig);
+
+      // Trazabilidad (Regla 8):
+      const auditEntry: HubSpotSyncAuditEntry = {
+        id: `audit-${Date.now()}-${serviceId}`,
+        serviceId,
+        serviceName: targetService.serviceName,
+        dealId: targetService.hubspotDealId,
+        previousStage: prevStage,
+        newStage,
+        userId: currentUser?.id || 'u-pao',
+        userName: currentUser?.name || 'Paola Monsalve',
+        timestamp: nowIso,
+        origin: 'Orbit',
+        syncStatus: 'success',
+        syncedFields: {
+          dealName: `${targetService.serviceName} — ${activeOpp.prospectAccountName}`,
+          companyName: activeOpp.prospectAccountName,
+          contactName: activeOpp.contactName,
+          commercialOwner: activeOpp.commercialOwner,
+          value: targetService.modality === 'fixed_project' ? targetService.totalValue : targetService.monthlyValue,
+          currency: quoteCurrencyDraft,
+          stage: newStage
+        }
+      };
+      setSyncAuditTrail((prev) => [auditEntry, ...prev]);
+
+      // Si el servicio pasó a Cierre ganado o Enviado para facturar, actualizar estado de la oportunidad a 'won'
+      if (isApproved) {
+        const updatedOpp: NewBusinessOpportunity = {
+          ...activeOpp,
+          status: 'won',
+          hubspotDealStage: 'closedwon',
+          updatedAt: nowIso
+        };
+        onUpdateOpportunity(updatedOpp);
+        playWonFanfare();
+      }
+
+      // Revertir badge 'synced' a 'idle' tras 3s
+      setTimeout(() => {
+        setCommercialStructureDraft((prev) =>
+          prev.map((s) => s.serviceId === serviceId && s.hubspotSyncStatus === 'synced' ? { ...s, hubspotSyncStatus: 'idle' } : s)
+        );
+      }, 3000);
+    }, 850);
+  };
+
+  // Reintentar sincronización fallida
+  const handleRetrySync = (serviceId: string) => {
+    setSimulateSyncError(false);
+    const targetService = commercialStructureDraft.find((s) => s.serviceId === serviceId);
+    if (!targetService) return;
+    const stage = targetService.hubspotDealStage || 'Presentación a cliente';
+    handleUpdateStageFromOrbit(serviceId, stage);
   };
 
   // Filter opportunities for catalog view
@@ -1231,56 +1556,56 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
         <span className="font-semibold text-[#0f172a] truncate max-w-xs">{activeOpp.title}</span>
       </nav>
 
-      {/* Active Opp Summary Header Banner */}
+      {/* Active Opp Summary Header Banner - Executive & Clean UI */}
       <div className="p-5 bg-white rounded-2xl border border-[#e2e8f0] shadow-2xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-lg font-extrabold text-[#0f172a]">
+        <div className="space-y-1.5 min-w-0">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <span className="text-lg font-extrabold text-[#0f172a] tracking-tight">
               {activeOpp.prospectAccountName}
             </span>
-            <span className="text-xs text-[#94a3b8]">·</span>
+            <span className="text-xs text-[#cbd5e1]">·</span>
             <span className="text-base font-semibold text-[#501f92]">
               {activeOpp.title}
             </span>
             {activeOpp.status === 'won' ? (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#10b981]/15 text-[#10b981] flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3" />
+              <span className="text-[10.5px] font-bold px-2.5 py-0.5 rounded-full bg-[#10b981]/15 text-[#059669] flex items-center gap-1 border border-[#10b981]/25">
+                <CheckCircle2 className="w-3.5 h-3.5" />
                 <span>Ganada · Proyecto en Orbit</span>
               </span>
             ) : activeOpp.status === 'internal_review' ? (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#f59e0b]/15 text-[#b45309]">
+              <span className="text-[10.5px] font-bold px-2.5 py-0.5 rounded-full bg-[#f59e0b]/15 text-[#b45309] border border-[#f59e0b]/25">
                 Cotización / Por Pricing
               </span>
             ) : activeOpp.status === 'proposal_sent' || activeOpp.status === 'negotiation' ? (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#8b5cf6]/15 text-[#6d28d9]">
+              <span className="text-[10.5px] font-bold px-2.5 py-0.5 rounded-full bg-[#8b5cf6]/15 text-[#6d28d9] border border-[#8b5cf6]/25">
                 En Negociación
               </span>
             ) : (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#501f92]/10 text-[#501f92]">
+              <span className="text-[10.5px] font-bold px-2.5 py-0.5 rounded-full bg-[#501f92]/10 text-[#501f92] border border-[#501f92]/20">
                 En Scoping
               </span>
             )}
           </div>
 
-          <div className="flex items-center gap-4 text-xs text-[#64748b] flex-wrap">
-            <div className="flex items-center gap-1 relative">
+          <div className="flex items-center gap-4 text-xs text-[#64748b] flex-wrap pt-0.5">
+            <div className="flex items-center gap-1.5 relative">
               <User className="w-3.5 h-3.5 text-[#501f92]" />
               <span>
                 Responsable de alcance:{' '}
-                <strong className="text-[#0f172a]">{currentLeadDisplayName}</strong>
+                <strong className="text-[#0f172a] font-semibold">{currentLeadDisplayName}</strong>
               </span>
               {canEditOpp && users.length > 0 && (
                 <button
                   type="button"
                   onClick={() => setIsReassigningLead(!isReassigningLead)}
-                  className="text-[10px] text-[#501f92] hover:underline font-bold ml-1 cursor-pointer"
+                  className="text-[11px] text-[#501f92] hover:underline font-bold ml-0.5 cursor-pointer"
                   title="Reasignar responsable de alcance"
                 >
                   (Reasignar)
                 </button>
               )}
 
-              {/* Popover reasignar líder (1 líder con persistencia real en leadUserId) */}
+              {/* Popover reasignar líder */}
               {isReassigningLead && (
                 <div className="absolute top-6 left-0 z-30 bg-white rounded-xl shadow-xl border border-[#cbd5e1] p-3 w-64 space-y-2">
                   <div className="flex items-center justify-between pb-1 border-b border-[#f1f5f9]">
@@ -1338,99 +1663,29 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
               )}
             </div>
 
-            <div className="flex items-center gap-1 relative">
-              <Clock className="w-3.5 h-3.5 text-[#501f92]" />
-              {commercialTeamUi[activeOpp.id]?.length > 0 && <span className="text-xs">Responsables comerciales: <strong>{users.filter((user) => commercialTeamUi[activeOpp.id].includes(user.id)).map((user) => user.name).join(', ')}</strong></span>}
-              <span>SLA Handoff: <strong className="text-[#0f172a]">~{Number((activeOpp.handoffHours || 36).toFixed(1))}h</strong></span>
-              {canEditOpp && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCustomSlaInput(activeOpp.handoffHours || 36);
-                    setIsEditingSla(!isEditingSla);
-                  }}
-                  className="text-[10px] text-[#501f92] hover:underline font-bold ml-1 cursor-pointer"
-                  title="Editar deadline de SLA"
-                >
-                  (Editar)
-                </button>
-              )}
-
-              {/* Popover editar SLA */}
-              {isEditingSla && (
-                <div className="absolute top-6 left-0 z-30 bg-white rounded-xl shadow-xl border border-[#cbd5e1] p-3 w-56 space-y-2.5">
-                  <span className="text-[11px] font-bold text-[#0f172a] block">Editar SLA de Handoff:</span>
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      type="number"
-                      min={1}
-                      max={240}
-                      value={customSlaInput}
-                      onChange={(e) => setCustomSlaInput(Math.max(1, Number(e.target.value)))}
-                      className="w-20 p-1.5 text-xs font-bold rounded-lg border border-[#cbd5e1] text-center"
-                    />
-                    <span className="text-xs text-[#64748b]">horas</span>
-                  </div>
-                  <div className="flex items-center justify-between gap-1 pt-1 border-t border-[#f1f5f9]">
-                    <button
-                      type="button"
-                      onClick={() => setIsEditingSla(false)}
-                      className="px-2 py-1 text-[10px] text-[#64748b] hover:bg-[#f1f5f9] rounded font-bold"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const safeHours = Math.max(1, customSlaInput);
-                        const deadlineIso = new Date(Date.now() + safeHours * 3600 * 1000).toISOString();
-                        const updated: NewBusinessOpportunity = {
-                          ...activeOpp,
-                          handoffHours: safeHours,
-                          handoffDeadline: deadlineIso,
-                          updatedAt: new Date().toISOString()
-                        };
-                        onUpdateOpportunity(updated);
-                        setIsEditingSla(false);
-                      }}
-                      className="px-3 py-1 bg-[#501f92] text-white text-[10px] font-bold rounded hover:bg-[#3d1572]"
-                    >
-                      Guardar SLA
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
             {activeOpp.contactName && (
-              <span className="flex items-center gap-1">
+              <span className="flex items-center gap-1.5">
                 <Building2 className="w-3.5 h-3.5 text-[#94a3b8]" />
-                <span>{activeOpp.contactName} {activeOpp.contactEmail ? `(${activeOpp.contactEmail})` : ''}</span>
+                <span>
+                  {activeOpp.contactName}
+                  {activeOpp.contactEmail && (
+                    <span className="text-[#64748b] font-normal ml-1">({activeOpp.contactEmail})</span>
+                  )}
+                </span>
               </span>
             )}
-            {activeOpp.hubspotDealId && (
-              <span className="text-[11px] font-mono text-[#ff5c35] font-semibold">
-                HubSpot: {activeOpp.hubspotDealId}
+
+            {activeOpp.hubspotCompanyId && (
+              <span className="text-[10.5px] font-mono text-[#c2410c] font-semibold bg-[#fff7ed] px-2 py-0.5 rounded border border-[#fed7aa]">
+                HubSpot: {activeOpp.hubspotCompanyId}
               </span>
             )}
           </div>
         </div>
 
-        {/* Acciones rápidas: HubSpot, Drive, Convertir */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {activeOpp.hubspotDealUrl && (
-            <a
-              href={activeOpp.hubspotDealUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-[#fed7aa] bg-[#fff7ed] text-[#c2410c] text-xs font-bold hover:bg-[#ffedd5] transition-colors"
-            >
-              <span>HubSpot</span>
-              <ExternalLink className="w-3 h-3" />
-            </a>
-          )}
-
-          {/* Timer Preventa sutil en la barra superior (Líder, Catalina, Luisa) */}
+        {/* Right side: Timer Preventa & Primary CTA (Conversion or HubSpot) */}
+        <div className="flex items-center gap-2.5 flex-wrap shrink-0">
+          {/* Timer estandarizado como en Tareas y Proyectos (Iniciar / Detener) */}
           {scopingTask && onStartTimer && (
             <button
               type="button"
@@ -1441,20 +1696,29 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                   onStartTimer(scopingTask);
                 }
               }}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs border ${
+              className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs border ${
                 isScopingTimerRunning
-                  ? 'bg-[#ef4444] text-white border-[#dc2626] animate-pulse'
-                  : 'bg-white hover:bg-[#f8fafc] text-[#0f172a] border-[#e2e8f0]'
+                  ? 'bg-[#ef4444] hover:bg-[#dc2626] text-white border-[#dc2626] animate-pulse'
+                  : 'bg-white hover:bg-[#f8fafc] text-[#0f172a] border-[#cbd5e1]'
               }`}
-              title="Registrar tiempo de preventa invertido por Líder, Catalina o Luisa"
+              title={isScopingTimerRunning ? 'Detener timer activo' : 'Iniciar timer para esta oportunidad'}
             >
-              <Play className={`w-3 h-3 ${isScopingTimerRunning ? 'fill-current' : 'text-[#501f92]'}`} />
-              <span>
-                {isScopingTimerRunning ? 'Detener Timer' : 'Timer Preventa'}
-              </span>
-              <span className={`text-[10.5px] font-mono px-1.5 py-0.2 rounded font-bold ${
-                isScopingTimerRunning ? 'bg-white/20 text-white' : 'bg-[#501f92]/10 text-[#501f92]'
-              }`}>
+              {isScopingTimerRunning ? (
+                <>
+                  <Square className="w-3.5 h-3.5 fill-current text-white" />
+                  <span>Detener</span>
+                </>
+              ) : (
+                <>
+                  <Play className="w-3.5 h-3.5 fill-current text-[#501f92]" />
+                  <span>Iniciar</span>
+                </>
+              )}
+              <span
+                className={`text-[10.5px] font-mono px-1.5 py-0.5 rounded font-bold ${
+                  isScopingTimerRunning ? 'bg-white/20 text-white' : 'bg-[#501f92]/10 text-[#501f92]'
+                }`}
+              >
                 {preventaHoursLogged > 0 ? `${preventaHoursLogged.toFixed(1)}h` : '0h'}
               </span>
             </button>
@@ -1467,70 +1731,35 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                   <button
                     type="button"
                     onClick={() => onNavigateToView('clientes', activeOpp.clientId || undefined)}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-[#f8fafc] text-xs font-bold text-[#501f92] border border-[#e2e8f0] transition-colors cursor-pointer shadow-2xs"
-                    title="Ver ficha del Cliente en el Directorio"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-[#f8fafc] text-xs font-bold text-[#501f92] border border-[#e2e8f0] transition-colors cursor-pointer shadow-2xs"
+                    title="Ver ficha del Cliente"
                   >
-                    <Building2 className="w-4 h-4 text-[#501f92]" />
+                    <Building2 className="w-3.5 h-3.5 text-[#501f92]" />
                     <span>Ver Cliente</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => onNavigateToView('proyectos', activeOpp.convertedProjectId)}
-                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#f1f5f9] hover:bg-[#e2e8f0] text-xs font-bold text-[#0f172a] transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#0f172a] hover:bg-[#1e293b] text-xs font-bold text-white transition-colors cursor-pointer shadow-xs"
                     title="Ver proyecto operativo en el módulo de Proyectos"
                   >
-                    <FolderPlus className="w-4 h-4 text-[#10b981]" />
+                    <FolderPlus className="w-3.5 h-3.5 text-[#10b981]" />
                     <span>Ver en Proyectos →</span>
                   </button>
                 </>
               )}
             </div>
-          ) : (
-            <div className="flex items-center gap-2 flex-wrap">
-              {!isWon ? (
-                <>
-                  <button
-                    type="button"
-                    disabled={!isQuoteDiligenciada}
-                    onClick={() => handleMarkOpportunityWon(activeOpp)}
-                    className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-xs ${
-                      isQuoteDiligenciada
-                        ? 'bg-[#10b981] hover:bg-[#059669] active:bg-[#047857] text-white cursor-pointer active:scale-95'
-                        : 'bg-[#f1f5f9] text-[#94a3b8] border border-[#e2e8f0] cursor-not-allowed'
-                    }`}
-                    title={
-                      isQuoteDiligenciada
-                        ? 'Marcar propuesta aprobada formalmente por el cliente'
-                        : quotePendingMessage
-                    }
-                  >
-                    <Trophy className={`w-3.5 h-3.5 ${isQuoteDiligenciada ? 'text-[#d4ff4a]' : 'text-[#cbd5e1]'}`} />
-                    <span>Marcar como ganada 🏆</span>
-                  </button>
-                  {!isQuoteDiligenciada && <span role="status" className="text-[11px] text-[#b45309] max-w-xs">{quotePendingMessage}</span>}
-
-                  <button
-                    type="button"
-                    onClick={() => setIsLostModalOpen(true)}
-                    className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-white hover:bg-[#fef2f2] text-[#dc2626] border border-[#fecaca] text-xs font-semibold transition-all cursor-pointer shadow-2xs"
-                    title="Registrar que el cliente no aprobó la propuesta"
-                  >
-                    <span>No ganada</span>
-                  </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setIsConvertModalOpen(true)}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-xs bg-[#501f92] hover:bg-[#3d1572] text-white cursor-pointer shadow-md animate-pulse hover:scale-[1.02]"
-                  title="Convertir esta propuesta ganada a Cliente y Proyecto en Operación"
-                >
-                  <FolderPlus className="w-4 h-4 text-[#d4ff4a]" />
-                  <span>Convertir a Cliente & Proyecto →</span>
-                </button>
-              )}
-            </div>
-          )}
+          ) : (hasAnyWonServices || activeOpp.status === 'won') ? (
+            <button
+              type="button"
+              onClick={() => setIsConvertModalOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-xs bg-[#501f92] hover:bg-[#3d1572] text-white cursor-pointer shadow-md animate-pulse hover:scale-[1.02]"
+              title="Convertir servicios ganados en proyectos operativos independientes"
+            >
+              <FolderPlus className="w-4 h-4 text-[#d4ff4a]" />
+              <span>Convertir a Cliente & Proyecto →</span>
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -1912,7 +2141,14 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
           <div className="bg-white rounded-2xl border border-[#e2e8f0] p-4 shadow-2xs space-y-3">
             <div className="flex items-center justify-between gap-3 flex-wrap border-b border-[#e2e8f0] pb-3">
               <div className="flex items-center gap-2 flex-wrap">
-                <Layers className="w-4 h-4 text-[#501f92]" /><h3 className="text-base font-bold text-[#0f172a]">Alcance técnico</h3>
+                <Layers className="w-4 h-4 text-[#501f92]" />
+                <h3 className="text-base font-bold text-[#0f172a]">Alcance técnico</h3>
+                <div className="relative group inline-flex items-center">
+                  <Info className="w-3.5 h-3.5 text-[#94a3b8] hover:text-[#501f92] cursor-help" />
+                  <div className="absolute left-0 bottom-full mb-1.5 hidden group-hover:block z-30 w-72 p-2.5 bg-[#0f172a] text-white text-[11px] rounded-xl shadow-xl leading-relaxed pointer-events-none">
+                    Responsables sugeridos por rol y menor carga registrada; editables antes de guardar. Cambiar la persona actualiza el rol cotizado.
+                  </div>
+                </div>
                 <span className="rounded-full bg-[#f5f3ff] px-2 py-1 text-[11px] font-semibold text-[#501f92]">{scopeState.saved && isScopeReadyForReview(activeQuote, scopeState.services) && ['internal_review', 'proposal_sent', 'negotiation', 'won'].includes(activeOpp.status) ? 'Listo para cotizar' : 'En elaboración'}</span>
               </div>
               <div className="flex items-center gap-2">
@@ -1943,7 +2179,10 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                 </button>
 
                 {(() => {
-                  const isReadyToMark = Boolean(scopeState.saved);
+                  const hasPresentation = Boolean(activeQuote.commercialProposalUrl?.trim() && activeQuote.commercialProposalUrl.trim().length > 5);
+                  const hasDeliverablesAndActivities = activeQuote.deliverables.length > 0 && activeQuote.deliverables.some((d) => d.backlogItems.length > 0 && d.backlogItems.some((a) => a.estimatedHours > 0));
+                  const hasValidServices = scopeState.services.length > 0 && scopeState.services.every((s) => Number(s.weeks) >= 1 && serviceValidationMessages(s).length === 0);
+                  const isReadyToMark = Boolean(scopeState.saved && hasPresentation && hasDeliverablesAndActivities && hasValidServices);
                   const isAlreadyMarked = activeOpp.status === 'internal_review' || activeOpp.status === 'proposal_sent' || activeOpp.status === 'negotiation' || activeOpp.status === 'won';
 
                   return (
@@ -1975,7 +2214,13 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                           ? 'El alcance técnico ya fue marcado como listo para Comercial'
                           : isReadyToMark
                             ? 'Marcar que el dimensionamiento técnico está listo para Comercial'
-                            : 'Guarda el alcance para habilitar'
+                            : !hasPresentation
+                              ? 'Falta ingresar el enlace de la presentación en Drive'
+                              : !hasDeliverablesAndActivities
+                                ? 'Falta importar o agregar al menos un servicio con actividades'
+                                : !scopeState.saved
+                                  ? 'Haz clic en Guardar antes de marcar como listo'
+                                  : 'Servicios pendientes de completar semanas'
                       }
                     >
                       <CheckCircle2 className={`w-3.5 h-3.5 ${isAlreadyMarked ? 'text-[#d4ff4a]' : 'text-white'}`} />
@@ -2033,31 +2278,6 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
             </div>
 
             </>)}
-
-            {/* Hint sutil solo si falta algo */}
-            {(() => {
-              const isPptFilled = Boolean(activeQuote.commercialProposalUrl && activeQuote.commercialProposalUrl.trim().length > 5);
-              const projectWeeks = Number(activeQuote.estimatedWeeks ?? activeQuote.financialConfig?.projectDurationWeeks);
-                  const isWeeksFilled = Number.isFinite(projectWeeks) && projectWeeks >= 1;
-              const isScopeFilled = activeQuote.totalHoursRollup > 0 && activeQuote.deliverables.some((deliverable) => deliverable.backlogItems.some((activity) => activity.estimatedHours > 0));
-              const isReadyToMark = scopeState.saved && isScopeReadyForReview(activeQuote, scopeState.services);
-
-              if (isReadyToMark) return null;
-
-              return (
-                <div className="text-[11px] text-[#b45309] bg-[#fffbeb] px-3 py-2 rounded-lg border border-[#fef3c7] flex items-center gap-1.5">
-                  <AlertCircle className="w-3.5 h-3.5 text-[#d97706] shrink-0" />
-                  <span>
-                    Pendiente para marcar listo:{' '}
-                    {!scopeState.saved && <span className="font-semibold mr-1">• Guardar datos generales</span>}
-                    {!isPptFilled && <span className="font-semibold mr-1">• Link Drive</span>}
-                    {!isWeeksFilled && <span className="font-semibold mr-1">• Semanas</span>}
-                    {!isScopeFilled && <span className="font-semibold mr-1">• Horas en alcance</span>}
-                    {!allServicesPrepared && <span className="font-semibold">• Servicios pendientes de duración o edición</span>}
-                  </span>
-                </div>
-              );
-            })()}
           </div>
 
           {/* Scoper Operativo de Backlog (Frentes, Entregables y Actividades) */}
@@ -2087,7 +2307,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
             }}
             onGoToCalculator={() => setActiveTab('cotizacion')}
             onMarkScopeReady={(totalHours) => {
-              if (!scopeState.saved || !isScopeReadyForReview(activeQuote, scopeState.services) || !window.confirm('¿Confirmas que no faltan servicios y que la PPT incluye la propuesta completa?')) return;
+              if (!scopeState.saved || !isScopeReadyForReview(activeQuote, scopeState.services)) return;
               const updatedOpp: NewBusinessOpportunity = {
                 ...activeOpp,
                 status: 'internal_review',
@@ -2095,7 +2315,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
               };
               onUpdateOpportunity(updatedOpp);
               setConversionSuccessMessage(
-                `Alcance técnico completado (${totalHours}h) · Listo para continuar con el proceso comercial.`,
+                `✅ Alcance técnico completado (${totalHours}h). Notificación enviada a Comercial para cotizar en la calculadora.`,
                 {
                   showProjectLink: false,
                   timeoutMs: 8000
@@ -2112,95 +2332,60 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
       {/* TAB 3: COTIZACIÓN COMERCIAL & PRICING (Diligenciado por Comercial) */}
       {/* ========================================================================= */}
       {activeTab === 'cotizacion' && activeQuote && (
-        <div className="space-y-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl border border-[#cbd5e1] p-6 shadow-sm space-y-5">
-            {/* Cabecera integrada con contexto y tags */}
-            <div className="flex items-start justify-between flex-wrap gap-3 pb-4 border-b border-[#f1f5f9]">
+        <div className="space-y-6 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl border border-[#e2e8f0] p-6 sm:p-7 shadow-xs space-y-6">
+            {/* Cabecera limpia e integrada: título, tipo de propuesta y controles en una sola línea */}
+            <div className="flex items-center justify-between flex-wrap gap-4 pb-5 border-b border-[#f1f5f9]">
               <div>
-                <div className="flex items-center gap-2">
-                  <span className="p-2 rounded-xl bg-[#501f92]/10 text-[#501f92]">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-[#501f92]/10 text-[#501f92] flex items-center justify-center shrink-0">
                     <DollarSign className="w-5 h-5" />
-                  </span>
+                  </div>
                   <div>
-                    <h3 className="text-base font-extrabold text-[#0f172a]">
-                      Cotización Comercial & Pricing Oficial
-                    </h3>
-                    <p className="text-xs text-[#64748b] mt-0.5">
-                      Finanzas / Google Sheet Oficial es la fuente de verdad del pricing para SOW y conversión.
-                    </p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-base font-bold text-[#0f172a]">
+                        Cotización Comercial & Pricing Oficial
+                      </h3>
+                      {/* Pill de Tipo de Propuesta sin caja contenedora extra */}
+                      <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-tight inline-flex items-center gap-1 ${
+                        derivedProposalType === 'mixed'
+                          ? 'bg-[#7839ee]/10 text-[#6d28d9]'
+                          : derivedProposalType === 'fee_monthly'
+                          ? 'bg-[#059669]/10 text-[#047857]'
+                          : 'bg-[#501f92]/10 text-[#501f92]'
+                      }`}>
+                        <Sliders className="w-3 h-3" />
+                        <span>
+                          {derivedProposalType === 'mixed'
+                            ? 'Propuesta mixta'
+                            : derivedProposalType === 'fee_monthly'
+                            ? 'Fee mensual'
+                            : 'Proyecto único'}
+                        </span>
+                      </span>
+                      {activeOpp.hubspotDealStage && (
+                        <span className="text-[10.5px] font-semibold px-2 py-0.5 rounded-full bg-[#fff7ed] text-[#c2410c] border border-[#fed7aa]">
+                          HubSpot: {activeOpp.hubspotDealStage}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-[#501f92]/10 text-[#501f92]">
-                  Alcance de la oportunidad
-                </span>
-                {activeOpp.hubspotDealStage && (
-                  <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg border bg-[#fff7ed] text-[#c2410c] border-[#fed7aa]">
-                    HubSpot: {activeOpp.hubspotDealStage}
-                  </span>
-                )}
-              </div>
-            </div>
-
-
-
-            {/* Bloque de Tipo General de la Propuesta (determinado automáticamente por Orbit) */}
-            <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] flex items-center justify-between flex-wrap gap-2 text-xs">
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold text-[#64748b]">Tipo general de la propuesta:</span>
-                <span className={`px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wider flex items-center gap-1.5 ${
-                  derivedProposalType === 'mixed'
-                    ? 'bg-[#7839ee]/15 text-[#6d28d9] border border-[#d8b4fe]'
-                    : derivedProposalType === 'fee_monthly'
-                    ? 'bg-[#059669]/15 text-[#047857] border border-[#a7f3d0]'
-                    : 'bg-[#501f92]/10 text-[#501f92] border border-[#e9d5ff]'
-                }`}>
-                  <Sliders className="w-3.5 h-3.5" />
-                  <span>
-                    {derivedProposalType === 'mixed'
-                      ? 'Propuesta mixta'
-                      : derivedProposalType === 'fee_monthly'
-                      ? 'Fee mensual'
-                      : 'Proyecto único'}
-                  </span>
-                </span>
-                <span className="text-[10.5px] text-[#64748b] hidden md:inline">
-                  {derivedProposalType === 'mixed'
-                    ? '(Combina servicios de proyecto único y fee recurrente)'
-                    : derivedProposalType === 'fee_monthly'
-                    ? '(Todos los servicios son de modalidad recurrente)'
-                    : '(Todos los servicios son de ejecución única)'}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] text-[#64748b]">Moneda:</span>
-                <select
-                  disabled={!isEditingQuoteFields}
-                  value={quoteCurrencyDraft}
-                  onChange={(e) => setQuoteCurrencyDraft(e.target.value as 'COP' | 'USD')}
-                  className="px-2 py-1 rounded-lg border border-[#cbd5e1] text-xs font-bold bg-white text-[#501f92] focus:ring-2 focus:ring-[#501f92] disabled:bg-[#f1f5f9] disabled:text-[#64748b]"
-                >
-                  <option value="COP">COP ($)</option>
-                  <option value="USD">USD ($)</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Estructura comercial de la propuesta */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div>
-                  <h4 className="font-extrabold text-sm text-[#0f172a] flex items-center gap-2">
-                    <span>Estructura comercial de la propuesta</span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#501f92]/10 text-[#501f92]">
-                      {commercialStructureDraft.length} servicio(s)
-                    </span>
-                  </h4>
-                  <p className="text-[11px] text-[#64748b]">
-                    Por cada servicio del alcance, selecciona su modalidad comercial y define los valores acordados.
-                  </p>
+              {/* Selector de Moneda y botón de edición */}
+              <div className="flex items-center gap-2.5 ml-auto">
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] text-xs">
+                  <span className="text-[11px] font-medium text-[#64748b]">Moneda:</span>
+                  <select
+                    disabled={!isEditingQuoteFields}
+                    value={quoteCurrencyDraft}
+                    onChange={(e) => setQuoteCurrencyDraft(e.target.value as 'COP' | 'USD')}
+                    className="font-bold text-xs bg-transparent text-[#501f92] focus:outline-none cursor-pointer disabled:cursor-not-allowed"
+                  >
+                    <option value="COP">COP ($)</option>
+                    <option value="USD">USD ($)</option>
+                  </select>
                 </div>
 
                 {!isEditingQuoteFields && isQuoteDiligenciada && (
@@ -2210,17 +2395,62 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                       setIsEditingQuoteFields(true);
                       setIsQuoteSavedFeedback(false);
                       setConversionSuccessMessage(null);
-                      onSetQuoteSaved(activeQuote.id); // Invalida el guardado anterior para exigir Guardar cotización de nuevo
+                      onSetQuoteSaved(activeQuote.id);
                     }}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-[#cbd5e1] hover:border-[#501f92] text-xs font-bold text-[#501f92] transition-colors cursor-pointer shadow-2xs"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#e2e8f0] hover:border-[#501f92] bg-white text-xs font-semibold text-[#501f92] transition-colors cursor-pointer"
                   >
                     <Pencil className="w-3.5 h-3.5" />
                     <span>Editar cotización</span>
                   </button>
                 )}
               </div>
+            </div>
 
-              {/* Lista de servicios con su modalidad y pricing */}
+            {/* Estructura comercial de la propuesta (apilado limpio y directo) */}
+            <div className="space-y-3.5">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <h4 className="font-bold text-sm text-[#0f172a] flex items-center gap-2">
+                    <span>Estructura comercial por servicio</span>
+                    <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-[#f1f5f9] text-[#64748b]">
+                      {commercialStructureDraft.length} {commercialStructureDraft.length === 1 ? 'servicio' : 'servicios'}
+                    </span>
+                  </h4>
+                  <p className="text-xs text-[#64748b]">
+                    Define la modalidad comercial y los valores para cada servicio del alcance técnico.
+                  </p>
+                </div>
+
+                {/* Acciones de Trazabilidad y Simulación QA */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => setIsAuditTrailOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[#fed7aa] bg-[#fff7ed] hover:bg-[#ffedd5] text-xs font-bold text-[#c2410c] transition-colors cursor-pointer"
+                    title="Ver registro de auditoría y trazabilidad de sincronización bidireccional Orbit ⇄ HubSpot"
+                  >
+                    <History className="w-3.5 h-3.5 text-[#ea580c]" />
+                    <span>Trazabilidad HubSpot</span>
+                    {syncAuditTrail.length > 0 && (
+                      <span className="px-1.5 py-0.2 rounded-full bg-[#ea580c] text-white text-[10px] font-mono font-bold">
+                        {syncAuditTrail.length}
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsQaSimulationOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] hover:bg-[#f1f5f9] text-xs font-semibold text-[#64748b] transition-colors cursor-pointer"
+                    title="Controles técnicos de simulación QA para probar estados de red y sincronización"
+                  >
+                    <Sliders className="w-3.5 h-3.5 text-[#64748b]" />
+                    <span>Simulación QA</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Lista de servicios */}
               {commercialStructureDraft.length === 0 ? (
                 <div className="p-4 rounded-xl bg-[#fffbeb] border border-[#fef3c7] text-xs text-[#b45309] flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 shrink-0 text-[#d97706]" />
@@ -2232,21 +2462,110 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                     const isFixed = item.modality === 'fixed_project';
                     const isFee = item.modality === 'fee_monthly';
 
+                    // Subcomponente de etapa bidireccional
+                    const renderTwoWayStage = () => {
+                      if (!item.hubspotDealId) {
+                        return (
+                          <span className="text-[10px] text-[#94a3b8] italic px-1.5 py-0.5 rounded bg-[#f8fafc]">
+                            Sin negocio en HubSpot
+                          </span>
+                        );
+                      }
+
+                      if (item.hubspotSyncStatus === 'syncing') {
+                        return (
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-[#eff6ff] text-[#1d4ed8] border border-[#bfdbfe] animate-pulse">
+                            <RefreshCw className="w-3 h-3 animate-spin text-[#1d4ed8]" />
+                            <span>Sincronizando con HubSpot...</span>
+                          </span>
+                        );
+                      }
+
+                      if (item.hubspotSyncStatus === 'error') {
+                        return (
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-[#fef2f2] text-[#b91c1c] border border-[#fecaca]">
+                            <AlertCircle className="w-3 h-3 text-red-500" />
+                            <span>Error de sincronización</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRetrySync(item.serviceId)}
+                              className="underline font-bold text-red-700 hover:text-red-900 cursor-pointer ml-0.5"
+                            >
+                              Reintentar
+                            </button>
+                          </span>
+                        );
+                      }
+
+                      if (item.hubspotSyncStatus === 'synced') {
+                        return (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-[#ecfdf5] text-[#047857] border border-[#a7f3d0]">
+                            <CheckCircle2 className="w-3 h-3 text-[#10b981]" />
+                            <span>Sincronizado</span>
+                          </span>
+                        );
+                      }
+
+                      if (hasCommercialPermissions) {
+                        return (
+                          <div className="flex items-center gap-1">
+                            <select
+                              value={item.hubspotDealStage || 'Presentación a cliente'}
+                              onChange={(e) => handleUpdateStageFromOrbit(item.serviceId, e.target.value as HubSpotDealStage)}
+                              className={`text-[10.5px] font-bold px-2 py-0.5 rounded-md border transition-all cursor-pointer focus:ring-1 focus:ring-[#ea580c] ${
+                                item.hubspotDealStage === 'Cierre ganado'
+                                  ? 'bg-[#ecfdf5] text-[#047857] border-[#a7f3d0]'
+                                  : item.hubspotDealStage === 'Enviado para facturar'
+                                  ? 'bg-[#eff6ff] text-[#1d4ed8] border-[#bfdbfe]'
+                                  : item.hubspotDealStage === 'Cierre perdido'
+                                  ? 'bg-[#fff1f2] text-[#be123c] border-[#fecdd3]'
+                                  : 'bg-[#fffbeb] text-[#b45309] border-[#fde68a]'
+                              }`}
+                              title="Cambiar etapa en Orbit y sincronizar con HubSpot"
+                            >
+                              <option value="Presentación a cliente">Presentación a cliente</option>
+                              <option value="Cierre ganado">Cierre ganado 🏆</option>
+                              <option value="Enviado para facturar">Enviado para facturar 📄</option>
+                              <option value="Cierre perdido">Cierre perdido ❌</option>
+                            </select>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 ${
+                            item.hubspotDealStage === 'Cierre ganado'
+                              ? 'bg-[#ecfdf5] text-[#047857] border border-[#a7f3d0]'
+                              : item.hubspotDealStage === 'Enviado para facturar'
+                              ? 'bg-[#eff6ff] text-[#1d4ed8] border border-[#bfdbfe]'
+                              : item.hubspotDealStage === 'Cierre perdido'
+                              ? 'bg-[#fff1f2] text-[#be123c] border border-[#fecdd3]'
+                              : 'bg-[#fffbeb] text-[#b45309] border border-[#fde68a]'
+                          }`}
+                          title="Solo usuarios con permisos comerciales pueden cambiar la etapa"
+                        >
+                          <Lock className="w-2.5 h-2.5 text-current/60" />
+                          <span>{item.hubspotDealStage || 'Presentación a cliente'}</span>
+                        </span>
+                      );
+                    };
+
                     if (!isEditingQuoteFields && isQuoteDiligenciada) {
-                      /* Modo lectura */
+                      /* Modo lectura limpio: fila horizontal despejada */
                       return (
                         <div
                           key={item.serviceId || idx}
-                          className="p-4 rounded-xl bg-white border border-[#e2e8f0] shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs"
+                          className="p-4 rounded-xl border border-[#e2e8f0] bg-white hover:border-[#cbd5e1] transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs"
                         >
                           <div className="space-y-1">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-extrabold text-[#0f172a] text-sm">{item.serviceName}</span>
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#f1f5f9] text-[#475569]">
-                                Referencia: {item.weeksRef || 0} {item.weeksRef === 1 ? 'semana' : 'semanas'}
+                              <span className="font-bold text-[#0f172a] text-sm">{item.serviceName}</span>
+                              <span className="text-[11px] px-2 py-0.5 rounded-md bg-[#f8fafc] text-[#64748b] border border-[#f1f5f9]">
+                                {item.weeksRef || 0} {item.weeksRef === 1 ? 'semana' : 'semanas'}
                               </span>
                               <span
-                                className={`text-[10.5px] font-bold px-2 py-0.5 rounded-md ${
+                                className={`text-[11px] font-semibold px-2 py-0.5 rounded-md ${
                                   isFixed
                                     ? 'bg-[#501f92]/10 text-[#501f92]'
                                     : 'bg-[#059669]/10 text-[#047857]'
@@ -2254,13 +2573,20 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                               >
                                 {isFixed ? 'Proyecto único' : 'Fee mensual'}
                               </span>
+                              {item.hubspotDealId && (
+                                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-[#fff7ed] text-[#c2410c] border border-[#fed7aa] font-semibold flex items-center gap-1">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-[#ea580c] inline-block" />
+                                  <span>Deal: {item.hubspotDealId}</span>
+                                </span>
+                              )}
+                              {renderTwoWayStage()}
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-4 flex-wrap">
+                          <div className="flex items-center gap-5 flex-wrap">
                             {isFixed ? (
                               <div className="text-right">
-                                <span className="text-[10px] uppercase font-bold text-[#64748b] block">Valor total del servicio</span>
+                                <span className="text-[10px] uppercase font-bold text-[#94a3b8] block">Valor del servicio</span>
                                 <span className="text-sm font-black text-[#0f172a]">
                                   {formatCurrency(item.totalValue || 0, quoteCurrencyDraft)}
                                 </span>
@@ -2268,19 +2594,19 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                             ) : (
                               <div className="flex items-center gap-4 text-right">
                                 <div>
-                                  <span className="text-[10px] uppercase font-bold text-[#64748b] block">Valor mensual</span>
+                                  <span className="text-[10px] uppercase font-bold text-[#94a3b8] block">Valor mensual</span>
                                   <span className="text-sm font-black text-[#059669]">
                                     {formatCurrency(item.monthlyValue || 0, quoteCurrencyDraft)} / mes
                                   </span>
                                 </div>
-                                <div className="border-l border-[#e2e8f0] pl-4">
-                                  <span className="text-[10px] uppercase font-bold text-[#64748b] block">Vigencia</span>
+                                <div className="border-l border-[#f1f5f9] pl-4">
+                                  <span className="text-[10px] uppercase font-bold text-[#94a3b8] block">Vigencia</span>
                                   <span className="text-xs font-bold text-[#0f172a]">
                                     {item.monthsDuration || 0} meses
                                   </span>
                                 </div>
-                                <div className="border-l border-[#e2e8f0] pl-4">
-                                  <span className="text-[10px] uppercase font-bold text-[#64748b] block">Total estimado fee</span>
+                                <div className="border-l border-[#f1f5f9] pl-4">
+                                  <span className="text-[10px] uppercase font-bold text-[#94a3b8] block">Total estimado</span>
                                   <span className="text-xs font-extrabold text-[#501f92]">
                                     {formatCurrency((item.monthlyValue || 0) * (item.monthsDuration || 0), quoteCurrencyDraft)}
                                   </span>
@@ -2292,22 +2618,28 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                       );
                     }
 
-                    /* Modo edición */
+                    /* Modo edición limpio */
                     return (
                       <div
                         key={item.serviceId || idx}
-                        className="p-4 rounded-xl bg-white border border-[#cbd5e1] hover:border-[#94a3b8] transition-colors shadow-2xs space-y-3 text-xs"
+                        className="p-4 rounded-xl border border-[#e2e8f0] bg-white hover:border-[#cbd5e1] transition-all space-y-3.5 text-xs"
                       >
-                        <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-[#f1f5f9]">
-                          <div className="flex items-center gap-2">
-                            <span className="font-extrabold text-[#0f172a] text-sm">{item.serviceName}</span>
-                            <span className="text-[10.5px] font-bold px-2 py-0.5 rounded bg-[#f1f5f9] text-[#64748b]">
-                              Semanas en alcance: {item.weeksRef || 0} {item.weeksRef === 1 ? 'semana' : 'semanas'}
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-[#0f172a] text-sm">{item.serviceName}</span>
+                            <span className="text-[11px] px-2 py-0.5 rounded-md bg-[#f8fafc] text-[#64748b] border border-[#f1f5f9]">
+                              {item.weeksRef || 0} {item.weeksRef === 1 ? 'semana' : 'semanas'} en alcance
                             </span>
+                            {item.hubspotDealId && (
+                              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#fff7ed] text-[#c2410c] border border-[#fed7aa] font-semibold">
+                                Deal: {item.hubspotDealId}
+                              </span>
+                            )}
+                            {renderTwoWayStage()}
                           </div>
 
-                          {/* Selector de Modalidad Comercial */}
-                          <div className="flex items-center gap-1 p-0.5 rounded-lg bg-[#f1f5f9] border border-[#e2e8f0]">
+                          {/* Segmented Pill Selector de Modalidad */}
+                          <div className="inline-flex items-center p-0.5 rounded-lg bg-[#f1f5f9] border border-[#e2e8f0]">
                             <button
                               type="button"
                               onClick={() => {
@@ -2319,7 +2651,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                                   )
                                 );
                               }}
-                              className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                              className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
                                 isFixed
                                   ? 'bg-[#501f92] text-white shadow-2xs'
                                   : 'text-[#64748b] hover:text-[#0f172a]'
@@ -2338,7 +2670,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                                   )
                                 );
                               }}
-                              className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                              className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
                                 isFee
                                   ? 'bg-[#059669] text-white shadow-2xs'
                                   : 'text-[#64748b] hover:text-[#0f172a]'
@@ -2349,10 +2681,10 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                           </div>
                         </div>
 
-                        {/* Campos específicos según modalidad */}
+                        {/* Inputs limpios según modalidad */}
                         {isFixed ? (
                           <div className="space-y-1">
-                            <label className="font-bold text-[#475569] block text-[11px]">
+                            <label className="font-semibold text-[#475569] block text-xs">
                               Valor total del servicio ({quoteCurrencyDraft}): <span className="text-red-500">*</span>
                             </label>
                             <input
@@ -2367,13 +2699,13 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                                   prev.map((s) => (s.serviceId === item.serviceId ? { ...s, totalValue: val } : s))
                                 );
                               }}
-                              className="w-full max-w-sm p-2.5 rounded-xl border border-[#cbd5e1] font-bold text-sm text-[#0f172a] focus:ring-2 focus:ring-[#501f92] bg-white"
+                              className="w-full max-w-sm p-2.5 rounded-xl border border-[#cbd5e1] font-bold text-sm text-[#0f172a] focus:ring-2 focus:ring-[#501f92] focus:border-[#501f92] bg-white transition-all"
                             />
                           </div>
                         ) : (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end max-w-xl">
                             <div className="space-y-1">
-                              <label className="font-bold text-[#475569] block text-[11px]">
+                              <label className="font-semibold text-[#475569] block text-xs">
                                 Valor mensual ({quoteCurrencyDraft}): <span className="text-red-500">*</span>
                               </label>
                               <input
@@ -2388,12 +2720,12 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                                     prev.map((s) => (s.serviceId === item.serviceId ? { ...s, monthlyValue: val } : s))
                                   );
                                 }}
-                                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] font-bold text-sm text-[#059669] focus:ring-2 focus:ring-[#059669] bg-white"
+                                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] font-bold text-sm text-[#059669] focus:ring-2 focus:ring-[#059669] focus:border-[#059669] bg-white transition-all"
                               />
                             </div>
 
                             <div className="space-y-1">
-                              <label className="font-bold text-[#475569] block text-[11px]">
+                              <label className="font-semibold text-[#475569] block text-xs">
                                 Vigencia en meses: <span className="text-red-500">*</span>
                               </label>
                               <input
@@ -2408,7 +2740,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                                     prev.map((s) => (s.serviceId === item.serviceId ? { ...s, monthsDuration: val } : s))
                                   );
                                 }}
-                                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] font-bold text-sm text-[#0f172a] focus:ring-2 focus:ring-[#501f92] bg-white"
+                                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] font-bold text-sm text-[#0f172a] focus:ring-2 focus:ring-[#501f92] focus:border-[#501f92] bg-white transition-all"
                               />
                             </div>
                           </div>
@@ -2420,109 +2752,104 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
               )}
             </div>
 
-            {/* Resumen comercial */}
-            <div className="p-4 rounded-2xl bg-gradient-to-br from-[#faf5ff] to-[#f5f3ff] border border-[#e9d5ff] space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs uppercase font-extrabold text-[#501f92] tracking-wider block">
-                  Resumen Comercial de la Propuesta
-                </span>
-                <span className="text-[10px] text-[#64748b]">
-                  Proyección consolidada de proyectos y recurrencias
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* Resumen Comercial: Strip ejecutivo horizontal sin cajas anidadas */}
+            <div className="rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-4 sm:p-5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-[#e2e8f0] gap-4 sm:gap-6">
                 {/* 1. Total proyectos únicos */}
-                <div className="p-3.5 rounded-xl bg-white border border-[#e9d5ff] space-y-1">
-                  <span className="text-[10px] uppercase font-bold text-[#64748b] block">Total proyectos únicos</span>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-xl font-black text-[#0f172a]">
-                      {formatCurrency(commercialTotals.totalOneOff, quoteCurrencyDraft)}
-                    </span>
+                <div className="sm:pr-4 space-y-1">
+                  <span className="text-[10.5px] uppercase font-bold text-[#64748b] tracking-wider block">
+                    Total proyectos únicos
+                  </span>
+                  <div className="text-xl font-black text-[#0f172a]">
+                    {formatCurrency(commercialTotals.totalOneOff, quoteCurrencyDraft)}
                   </div>
-                  <p className="text-[10px] text-[#64748b]">Suma de servicios de ejecución puntual</p>
+                  <p className="text-[11px] text-[#64748b]">Suma de servicios de ejecución puntual</p>
                 </div>
 
                 {/* 2. Fee mensual total */}
-                <div className="p-3.5 rounded-xl bg-white border border-[#e9d5ff] space-y-1">
-                  <span className="text-[10px] uppercase font-bold text-[#64748b] block">Fee mensual total</span>
+                <div className="pt-4 sm:pt-0 sm:px-6 space-y-1">
+                  <span className="text-[10.5px] uppercase font-bold text-[#047857] tracking-wider block">
+                    Fee mensual total
+                  </span>
                   <div className="flex items-baseline gap-1">
                     <span className="text-xl font-black text-[#059669]">
                       {formatCurrency(commercialTotals.totalMonthlyFee, quoteCurrencyDraft)}
                     </span>
-                    <span className="text-[11px] font-bold text-[#059669]">/ mes</span>
+                    <span className="text-xs font-bold text-[#059669]">/ mes</span>
                   </div>
-                  <p className="text-[10px] text-[#64748b]">Facturación recurrente mensual acumulada</p>
+                  <p className="text-[11px] text-[#64748b]">Facturación recurrente mensual</p>
                 </div>
 
                 {/* 3. Valor estimado del contrato */}
-                <div className="p-3.5 rounded-xl bg-white border-2 border-[#501f92]/30 space-y-1 shadow-xs">
-                  <span className="text-[10px] uppercase font-extrabold text-[#501f92] block">Valor estimado del contrato</span>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-xl font-black text-[#501f92]">
-                      {formatCurrency(commercialTotals.estimatedContractValue, quoteCurrencyDraft)}
-                    </span>
+                <div className="pt-4 sm:pt-0 sm:pl-6 space-y-1">
+                  <span className="text-[10.5px] uppercase font-bold text-[#501f92] tracking-wider block">
+                    Valor estimado del contrato
+                  </span>
+                  <div className="text-xl font-black text-[#501f92]">
+                    {formatCurrency(commercialTotals.estimatedContractValue, quoteCurrencyDraft)}
                   </div>
-                  <p className="text-[10px] text-[#501f92]/80 font-medium">Proyectos únicos + (Fee mensual × vigencia)</p>
+                  <p className="text-[11px] text-[#64748b]">Proyectos únicos + (Fee × vigencia)</p>
                 </div>
               </div>
             </div>
 
-            {/* Planilla de Finanzas / Calculadora Google Sheet */}
-            <div className="p-4 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-3">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <label className="font-bold text-[#475569] text-xs flex items-center gap-1.5">
-                  <Calculator className="w-4 h-4 text-[#501f92]" />
-                  <span>Enlace de la calculadora / Google Sheet oficial:</span>
-                  <span className="text-red-500">*</span>
-                </label>
-                {quoteSheetUrlDraft.trim().length > 5 && (
-                  <a
-                    href={quoteSheetUrlDraft}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 text-[11px] font-bold text-[#501f92] hover:underline"
-                  >
-                    <span>Abrir Sheet en Google Drive</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
+            {/* Planilla de Finanzas / Calculadora Google Sheet y Notas: Integradas directamente sin bordes anidados */}
+            <div className="space-y-4 pt-2">
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <label className="font-bold text-[#334155] text-xs flex items-center gap-1.5">
+                    <Calculator className="w-3.5 h-3.5 text-[#501f92]" />
+                    <span>Enlace de la calculadora / Google Sheet oficial:</span>
+                    <span className="text-red-500">*</span>
+                  </label>
+                  {quoteSheetUrlDraft.trim().length > 5 && (
+                    <a
+                      href={quoteSheetUrlDraft}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 text-[11px] font-bold text-[#501f92] hover:underline"
+                    >
+                      <span>Abrir Sheet en Google Drive</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
+                </div>
+
+                {isEditingQuoteFields ? (
+                  <div className="space-y-1">
+                    <input
+                      type="url"
+                      value={quoteSheetUrlDraft}
+                      onChange={(e) => {
+                        setQuoteSheetUrlDraft(e.target.value);
+                        if (hasAttemptedSaveQuote && e.target.value.trim().length > 0) {
+                          setHasAttemptedSaveQuote(false);
+                        }
+                      }}
+                      placeholder="https://docs.google.com/spreadsheets/d/..."
+                      className={`w-full p-2.5 rounded-xl text-xs font-mono text-[#0f172a] placeholder:font-sans placeholder:font-normal focus:ring-2 bg-white transition-all ${
+                        hasAttemptedSaveQuote && (!quoteSheetUrlDraft.trim() || !isValidFinanceSheetUrl(quoteSheetUrlDraft))
+                          ? 'border-2 border-red-500 ring-2 ring-red-400/50 bg-red-50/20 placeholder:text-red-400'
+                          : 'border border-[#cbd5e1] placeholder:text-[#94a3b8] focus:ring-[#501f92] focus:border-[#501f92]'
+                      }`}
+                    />
+                    {hasAttemptedSaveQuote && (!quoteSheetUrlDraft.trim() || !isValidFinanceSheetUrl(quoteSheetUrlDraft)) && (
+                      <p className="text-[11px] text-red-600 font-bold flex items-center gap-1">
+                        <AlertCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                        <span>Falta ingresar el enlace obligatorio de la calculadora oficial (Google Sheet).</span>
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="p-2.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] text-xs font-mono text-[#0f172a] truncate">
+                    {quoteSheetUrlDraft || <span className="text-[#94a3b8] italic">Sin enlace registrado</span>}
+                  </div>
                 )}
               </div>
 
-              {isEditingQuoteFields ? (
-                <div className="space-y-1.5">
-                  <input
-                    type="url"
-                    value={quoteSheetUrlDraft}
-                    onChange={(e) => {
-                      setQuoteSheetUrlDraft(e.target.value);
-                      if (hasAttemptedSaveQuote && e.target.value.trim().length > 0) {
-                        setHasAttemptedSaveQuote(false);
-                      }
-                    }}
-                    placeholder="https://docs.google.com/spreadsheets/d/..."
-                    className={`w-full p-2.5 rounded-xl text-xs font-mono text-[#0f172a] placeholder:font-sans placeholder:font-normal focus:ring-2 bg-white transition-all ${
-                      hasAttemptedSaveQuote && (!quoteSheetUrlDraft.trim() || !isValidFinanceSheetUrl(quoteSheetUrlDraft))
-                        ? 'border-2 border-red-500 ring-2 ring-red-400/50 bg-red-50/20 placeholder:text-red-400'
-                        : 'border border-[#cbd5e1] placeholder:text-[#7C8AA0] focus:ring-[#501f92]'
-                    }`}
-                  />
-                  {hasAttemptedSaveQuote && (!quoteSheetUrlDraft.trim() || !isValidFinanceSheetUrl(quoteSheetUrlDraft)) && (
-                    <p className="text-[11px] text-red-600 font-bold flex items-center gap-1">
-                      <AlertCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
-                      <span>Falta ingresar el enlace obligatorio de la calculadora oficial (Google Sheet).</span>
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <div className="p-2.5 rounded-lg bg-white border border-[#cbd5e1] text-xs font-mono text-[#0f172a] truncate">
-                  {quoteSheetUrlDraft || <span className="text-[#94a3b8] italic">Sin enlace registrado</span>}
-                </div>
-              )}
-
               {/* Notas comerciales */}
-              <div className="space-y-1 text-xs pt-1 border-t border-[#e2e8f0]">
-                <label className="font-bold text-[#475569] block text-[11px]">
+              <div className="space-y-1.5">
+                <label className="font-bold text-[#334155] block text-xs">
                   Notas y supuestos comerciales:
                 </label>
                 {isEditingQuoteFields ? (
@@ -2531,10 +2858,10 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                     value={quoteNotesDraft}
                     onChange={(e) => setQuoteNotesDraft(e.target.value)}
                     placeholder="Ej: Términos de pago, vigencia de oferta 15 días, entregables sujetos a insumos."
-                    className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal focus:ring-2 focus:ring-[#501f92] bg-white"
+                    className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs text-[#0f172a] placeholder:text-[#94a3b8] placeholder:font-normal focus:ring-2 focus:ring-[#501f92] focus:border-[#501f92] bg-white transition-all"
                   />
                 ) : (
-                  <p className="text-xs text-[#475569] italic">
+                  <p className="text-xs text-[#475569] italic bg-[#f8fafc] p-2.5 rounded-xl border border-[#e2e8f0]">
                     {quoteNotesDraft || 'Sin condiciones adicionales registradas.'}
                   </p>
                 )}
@@ -2548,11 +2875,6 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                   <span className="text-[#059669] font-bold flex items-center gap-1">
                     <CheckCircle2 className="w-4 h-4 text-[#10b981]" />
                     <span>Cotización guardada exitosamente. Botón 'Marcar como ganada 🏆' habilitado arriba.</span>
-                  </span>
-                )}
-                {!isQuoteSavedFeedback && !isQuoteDiligenciada && (
-                  <span className="text-[11px] text-[#b45309]">
-                    {quotePendingMessage}
                   </span>
                 )}
               </div>
@@ -2605,7 +2927,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                         ? 'bg-[#059669] text-white ring-2 ring-[#a7f3d0]'
                         : 'bg-[#501f92] hover:bg-[#3d1572] active:bg-[#2e0e57] text-white'
                     }`}
-                    title="Guardar los valores económicos y condiciones de esta cotización"
+                    title="Guardar los valores económicos y condiciones de esta cotización (obligatorio)"
                   >
                     {isQuoteSavedFeedback ? (
                       <>
@@ -2613,20 +2935,76 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                         <span>¡Cotización guardada!</span>
                       </>
                     ) : (
-                      <span>Guardar cotización</span>
+                      <span className="inline-flex items-center gap-1">
+                        <span>Guardar cotización</span>
+                        <span className="text-[#d4ff4a] font-black text-sm leading-none" title="Obligatorio">*</span>
+                      </span>
                     )}
                   </button>
                 )}
 
-                {activeOpp.status === 'won' && !activeOpp.convertedProjectId && (
+                {/* Acciones de HubSpot y Conversión (habilitadas cuando la cotización está guardada) */}
+                {!isEditingQuoteFields && isQuoteDiligenciada && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {/* Botón 1: Crear negocios en HubSpot (1 por cada servicio) */}
+                    <button
+                      type="button"
+                      onClick={() => setIsHubspotCreateDealsOpen(true)}
+                      className={`px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5 active:scale-95 ${
+                        hasAnyHubSpotDeals
+                          ? 'border border-[#fed7aa] bg-[#fff7ed] text-[#c2410c] hover:bg-[#ffedd5]'
+                          : 'bg-[#ea580c] hover:bg-[#c2410c] text-white'
+                      }`}
+                      title={
+                        hasAnyHubSpotDeals
+                          ? 'Los negocios ya fueron generados en HubSpot (puedes volver a abrir para revisar o recrear)'
+                          : 'Crear un negocio independiente en HubSpot por cada servicio del alcance'
+                      }
+                    >
+                      {hasAnyHubSpotDeals ? (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[#ea580c]" />
+                      ) : (
+                        <span className="w-2 h-2 rounded-full bg-white inline-block animate-pulse" />
+                      )}
+                      <span>{hasAnyHubSpotDeals ? 'Negocios en HubSpot ✓' : 'Crear negocios en HubSpot'}</span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold ${
+                        hasAnyHubSpotDeals ? 'bg-[#ffedd5] text-[#9a3412]' : 'bg-white/20 text-white'
+                      }`}>
+                        {commercialStructureDraft.length}
+                      </span>
+                    </button>
+
+                    {/* Botón 2: Actualizar desde HubSpot (CTA primario tras crear negocios) */}
+                    <button
+                      type="button"
+                      onClick={() => setIsHubspotSyncOpen(true)}
+                      disabled={!hasAnyHubSpotDeals}
+                      className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5 active:scale-95 ${
+                        hasAnyHubSpotDeals
+                          ? 'bg-[#ea580c] hover:bg-[#c2410c] text-white shadow-md'
+                          : 'border border-[#fed7aa] bg-[#fff7ed] text-[#c2410c] opacity-40 cursor-not-allowed'
+                      }`}
+                      title={
+                        hasAnyHubSpotDeals
+                          ? 'Sincronizar etapas comerciales desde HubSpot en tiempo real'
+                          : 'Crea primero los negocios en HubSpot para sincronizar etapas'
+                      }
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${hasAnyHubSpotDeals ? 'text-white' : 'text-[#ea580c]'}`} />
+                      <span>Actualizar desde HubSpot</span>
+                    </button>
+                  </div>
+                )}
+
+                {(hasAnyWonServices || activeOpp.status === 'won') && !activeOpp.convertedProjectId && (
                   <button
                     type="button"
                     onClick={() => setIsConvertModalOpen(true)}
-                    className="px-4 py-2.5 rounded-xl text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer bg-[#10b981] hover:bg-[#059669] text-white animate-pulse"
-                    title="Convertir esta oportunidad a Cliente en el directorio y Proyecto en Operación"
+                    className="px-4 py-2.5 rounded-xl text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer bg-[#059669] hover:bg-[#047857] text-white animate-pulse"
+                    title="Convertir servicios ganados en proyectos operativos independientes"
                   >
                     <FolderPlus className="w-4 h-4 text-[#d4ff4a]" />
-                    <span>Convertir a Cliente & Proyecto →</span>
+                    <span>Convertir servicios ganados a proyectos →</span>
                   </button>
                 )}
 
@@ -2723,6 +3101,31 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
           clients={clients}
           onClose={() => setIsConvertModalOpen(false)}
           onConfirm={handleConfirmConversion}
+        />
+      )}
+
+      {/* Modal Crear Negocios en HubSpot (1 servicio = 1 negocio) */}
+      {activeQuote && (
+        <HubSpotCreateDealsModal
+          isOpen={isHubspotCreateDealsOpen}
+          opportunity={activeOpp}
+          activeQuote={activeQuote}
+          commercialServices={commercialStructureDraft}
+          currency={quoteCurrencyDraft}
+          onClose={() => setIsHubspotCreateDealsOpen(false)}
+          onConfirmCreateDeals={handleConfirmCreateDeals}
+        />
+      )}
+
+      {/* Modal Sincronizar Etapas desde HubSpot */}
+      {activeQuote && (
+        <HubSpotSyncModal
+          isOpen={isHubspotSyncOpen}
+          services={commercialStructureDraft}
+          clientName={activeOpp.prospectAccountName || 'Cliente'}
+          currency={quoteCurrencyDraft}
+          onClose={() => setIsHubspotSyncOpen(false)}
+          onApplySync={handleApplyHubspotSync}
         />
       )}
 
@@ -2994,6 +3397,383 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
               >
                 Confirmar No Ganada
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Trazabilidad de Sincronización HubSpot (Auditoría Bidireccional) */}
+      {isAuditTrailOpen && (
+        <div
+          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+          onClick={() => setIsAuditTrailOpen(false)}
+        >
+          <div
+            className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl border border-[#cbd5e1] overflow-hidden flex flex-col max-h-[88vh] animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="p-5 border-b border-[#e2e8f0] bg-[#f8fafc] flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#501f92]/10 text-[#501f92] flex items-center justify-center">
+                  <History className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-bold text-[#0f172a]">
+                      Trazabilidad de Sincronización HubSpot
+                    </h3>
+                    <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-[#ea580c]/10 text-[#c2410c] border border-[#fed7aa]">
+                      Fuente primaria: HubSpot
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#64748b] mt-0.5">
+                    Historial de cambios de etapa y sincronizaciones bidireccionales entre Orbit y HubSpot Deals API.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAuditTrailOpen(false)}
+                className="p-1.5 rounded-lg text-[#94a3b8] hover:text-[#0f172a] hover:bg-[#e2e8f0] transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Banner de Garantía de Desacoplamiento */}
+            <div className="px-5 py-3 bg-[#f0fdf4] border-b border-[#bbf7d0] text-xs text-[#166534] flex items-start gap-2.5 shrink-0">
+              <ShieldCheck className="w-4 h-4 text-[#16a34a] shrink-0 mt-0.5" />
+              <div className="text-[11.5px] leading-relaxed">
+                <strong className="font-bold">Desacoplamiento garantizado:</strong> La sincronización bidireccional impacta exclusivamente datos comerciales del negocio (Etapa, Valor, Moneda, Nombre, Contacto y Comercial). Los campos operativos de Orbit (modalidad de contratación, duración en semanas, entregables, horas, enlace de cálculo y supuestos) se mantienen bajo estricto control interno y nunca son alterados ni sobreescritos por HubSpot.
+              </div>
+            </div>
+
+            {/* Listado de eventos de auditoría */}
+            <div className="p-5 overflow-y-auto space-y-3 flex-1 text-xs">
+              {syncAuditTrail.length === 0 ? (
+                <div className="text-center py-12 px-4 space-y-2 border-2 border-dashed border-[#e2e8f0] rounded-xl">
+                  <Clock className="w-8 h-8 text-[#94a3b8] mx-auto opacity-70" />
+                  <p className="font-bold text-[#475569]">Sin registros de sincronización aún</p>
+                  <p className="text-xs text-[#64748b] max-w-sm mx-auto">
+                    Los cambios de etapa efectuados desde Orbit o recibidos desde HubSpot se registrarán aquí automáticamente con fecha, usuario y campos transmitidos.
+                  </p>
+                </div>
+              ) : (
+                syncAuditTrail.map((entry) => {
+                  const isWonStage = entry.newStage === 'Cierre ganado' || entry.newStage === 'Enviado para facturar';
+                  const isLostStage = entry.newStage === 'Cierre perdido';
+                  const isOutbound = entry.origin === 'Orbit';
+
+                  return (
+                    <div
+                      key={entry.id}
+                      className={`p-4 rounded-xl border transition-all ${
+                        entry.syncStatus === 'error'
+                          ? 'bg-[#fef2f2] border-[#fecaca]'
+                          : 'bg-white border-[#e2e8f0] hover:border-[#cbd5e1] shadow-2xs'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between flex-wrap gap-2 mb-2 pb-2 border-b border-[#f1f5f9]">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[10.5px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 ${
+                            isOutbound
+                              ? 'bg-[#501f92]/10 text-[#501f92] border border-[#501f92]/20'
+                              : 'bg-[#ea580c]/10 text-[#c2410c] border border-[#fed7aa]'
+                          }`}>
+                            {isOutbound ? (
+                              <>
+                                <span>Orbit → HubSpot</span>
+                                <span className="text-[9px] font-normal opacity-75">(Saliente)</span>
+                              </>
+                            ) : (
+                              <>
+                                <span>HubSpot → Orbit</span>
+                                <span className="text-[9px] font-normal opacity-75">(Entrante)</span>
+                              </>
+                            )}
+                          </span>
+
+                          <span className="font-bold text-[#0f172a] text-xs">
+                            {entry.serviceName}
+                          </span>
+
+                          {entry.dealId && (
+                            <span className="font-mono text-[10.5px] text-[#64748b] bg-[#f1f5f9] px-2 py-0.5 rounded">
+                              {entry.dealId}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2 text-[11px] text-[#64748b]">
+                          <span className="font-medium">{entry.userName}</span>
+                          <span>•</span>
+                          <span className="font-mono">
+                            {new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Transición de Etapa */}
+                      <div className="flex items-center gap-2.5 my-2">
+                        <span className="text-[11px] font-medium text-[#64748b] bg-[#f8fafc] px-2.5 py-1 rounded-lg border border-[#e2e8f0]">
+                          {entry.previousStage}
+                        </span>
+                        <ArrowRight className="w-3.5 h-3.5 text-[#94a3b8] shrink-0" />
+                        <span className={`text-[11px] font-bold px-2.5 py-1 rounded-lg border flex items-center gap-1.5 ${
+                          isWonStage
+                            ? 'bg-[#dcfce7] text-[#15803d] border-[#86efac]'
+                            : isLostStage
+                            ? 'bg-[#fee2e2] text-[#b91c1c] border-[#fca5a5]'
+                            : 'bg-[#eff6ff] text-[#1d4ed8] border-[#bfdbfe]'
+                        }`}>
+                          {isWonStage && <span>🏆</span>}
+                          <span>{entry.newStage}</span>
+                        </span>
+
+                        {entry.syncStatus === 'success' ? (
+                          <span className="ml-auto inline-flex items-center gap-1 text-[11px] font-bold text-[#15803d]">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Confirmado por HubSpot</span>
+                          </span>
+                        ) : (
+                          <span className="ml-auto inline-flex items-center gap-1 text-[11px] font-bold text-[#b91c1c]">
+                            <AlertCircle className="w-3.5 h-3.5" />
+                            <span>Fallo de red / Error de sincronización</span>
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Resumen de campos transmitidos */}
+                      {entry.syncedFields && (
+                        <div className="mt-2 pt-2 border-t border-[#f1f5f9] grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10.5px]">
+                          <div className="bg-[#f8fafc] p-2 rounded-lg">
+                            <span className="text-[#64748b] block font-medium">Valor comercial:</span>
+                            <span className="font-bold text-[#0f172a]">
+                              {formatCurrency(entry.syncedFields.value, (entry.syncedFields.currency as 'COP' | 'USD') || 'COP')}
+                            </span>
+                          </div>
+                          <div className="bg-[#f8fafc] p-2 rounded-lg">
+                            <span className="text-[#64748b] block font-medium">Empresa:</span>
+                            <span className="font-bold text-[#0f172a] truncate block">
+                              {entry.syncedFields.companyName}
+                            </span>
+                          </div>
+                          <div className="bg-[#f8fafc] p-2 rounded-lg">
+                            <span className="text-[#64748b] block font-medium">Contacto:</span>
+                            <span className="font-bold text-[#0f172a] truncate block">
+                              {entry.syncedFields.contactName}
+                            </span>
+                          </div>
+                          <div className="bg-[#f8fafc] p-2 rounded-lg">
+                            <span className="text-[#64748b] block font-medium">Owner Comercial:</span>
+                            <span className="font-bold text-[#0f172a] truncate block">
+                              {entry.syncedFields.commercialOwner}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-[#e2e8f0] bg-[#f8fafc] flex items-center justify-between shrink-0">
+              <span className="text-[11px] text-[#64748b]">
+                Total de eventos registrados: <strong className="text-[#0f172a]">{syncAuditTrail.length}</strong>
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsAuditTrailOpen(false)}
+                className="px-4 py-2 rounded-xl bg-[#0f172a] hover:bg-[#1e293b] text-white text-xs font-bold transition-colors cursor-pointer"
+              >
+                Cerrar trazabilidad
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Simulación QA / Testing Técnico (Aislado y Etiquetado) */}
+      {isQaSimulationOpen && (
+        <div
+          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+          onClick={() => setIsQaSimulationOpen(false)}
+        >
+          <div
+            className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border-2 border-[#f97316] overflow-hidden flex flex-col animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header con Etiqueta Prominente QA */}
+            <div className="p-5 border-b border-[#fed7aa] bg-[#fff7ed] flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#ea580c]/15 text-[#ea580c] flex items-center justify-center">
+                  <Sliders className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] uppercase font-black tracking-wider px-2 py-0.5 rounded-full bg-[#ea580c] text-white">
+                      Simulación QA
+                    </span>
+                    <h3 className="text-sm font-bold text-[#0f172a]">
+                      Herramientas de Validación HubSpot
+                    </h3>
+                  </div>
+                  <p className="text-xs text-[#9a3412] mt-0.5">
+                    Ajustes de pruebas para verificar la resiliencia y permisos de la sincronización.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsQaSimulationOpen(false)}
+                className="p-1.5 rounded-lg text-[#94a3b8] hover:text-[#0f172a] hover:bg-[#ffedd5] transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Controles de Simulación */}
+            <div className="p-5 space-y-4 text-xs overflow-y-auto max-h-[75vh]">
+              {/* Control 1: Simular error de red 503 / Timeout */}
+              <div className="p-3.5 rounded-xl border border-[#cbd5e1] bg-[#f8fafc] space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="font-bold text-[#0f172a] block">
+                      Simular Fallo de Red / Error 503 en HubSpot API
+                    </span>
+                    <span className="text-[11px] text-[#64748b]">
+                      Prueba el estado de error y la acción de reintentar.
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSimulateSyncError((prev) => !prev)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      simulateSyncError
+                        ? 'bg-[#dc2626] text-white shadow-xs'
+                        : 'bg-white text-[#475569] border border-[#cbd5e1] hover:bg-[#f1f5f9]'
+                    }`}
+                  >
+                    {simulateSyncError ? 'Error Activado ⚠️' : 'Normal (200 OK)'}
+                  </button>
+                </div>
+                {simulateSyncError && (
+                  <p className="text-[11px] text-[#b91c1c] font-semibold bg-[#fee2e2] p-2 rounded-lg">
+                    ⚠️ Al cambiar la etapa de un servicio, HubSpot responderá con error para validar el badge rojo y el botón 'Reintentar'.
+                  </p>
+                )}
+              </div>
+
+              {/* Control 2: Permisos comerciales */}
+              <div className="p-3.5 rounded-xl border border-[#cbd5e1] bg-[#f8fafc] space-y-2">
+                <span className="font-bold text-[#0f172a] block">
+                  Simulación de Permisos de Usuario
+                </span>
+                <p className="text-[11px] text-[#64748b]">
+                  Regla 2 y 5: Sólo usuarios con permisos comerciales pueden cambiar la etapa desde Orbit. Los demás roles la ven como sólo lectura.
+                </p>
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setQaOverrideCommercialPermissions(true)}
+                    className={`p-2 rounded-lg font-bold text-xs text-center border cursor-pointer transition-all ${
+                      hasCommercialPermissions && qaOverrideCommercialPermissions === true
+                        ? 'bg-[#501f92] text-white border-[#501f92]'
+                        : 'bg-white text-[#334155] border-[#cbd5e1] hover:bg-[#f1f5f9]'
+                    }`}
+                  >
+                    Rol Comercial (Editable)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQaOverrideCommercialPermissions(false)}
+                    className={`p-2 rounded-lg font-bold text-xs text-center border cursor-pointer transition-all ${
+                      qaOverrideCommercialPermissions === false
+                        ? 'bg-[#0f172a] text-white border-[#0f172a]'
+                        : 'bg-white text-[#334155] border-[#cbd5e1] hover:bg-[#f1f5f9]'
+                    }`}
+                  >
+                    Sin Permiso (Solo Lectura 🔒)
+                  </button>
+                </div>
+              </div>
+
+              {/* Control 3: Simular Webhook entrante desde HubSpot */}
+              <div className="p-3.5 rounded-xl border border-[#cbd5e1] bg-[#f8fafc] space-y-2">
+                <span className="font-bold text-[#0f172a] block">
+                  Simular Evento Webhook Entrante (HubSpot → Orbit)
+                </span>
+                <p className="text-[11px] text-[#64748b]">
+                  Simula que un vendedor o directivo actualizó la etapa directamente en HubSpot.
+                </p>
+                {commercialStructureDraft.length > 0 ? (
+                  <div className="space-y-1.5 pt-1">
+                    {commercialStructureDraft.map((service) => (
+                      <div key={service.serviceId} className="flex items-center justify-between p-2 rounded-lg bg-white border border-[#e2e8f0]">
+                        <span className="font-medium text-[#0f172a] truncate max-w-[180px]">
+                          {service.serviceName}
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = commercialStructureDraft.map((s) =>
+                                s.serviceId === service.serviceId ? { ...s, hubspotDealStage: 'Cierre ganado' as HubSpotDealStage, approved: true } : s
+                              );
+                              handleApplyHubspotSync(updated);
+                              setIsQaSimulationOpen(false);
+                            }}
+                            className="px-2 py-1 rounded bg-[#dcfce7] hover:bg-[#bbf7d0] text-[#15803d] font-bold text-[10.5px] cursor-pointer"
+                          >
+                            Forzar Ganado
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = commercialStructureDraft.map((s) =>
+                                s.serviceId === service.serviceId ? { ...s, hubspotDealStage: 'Cierre perdido' as HubSpotDealStage, approved: false } : s
+                              );
+                              handleApplyHubspotSync(updated);
+                              setIsQaSimulationOpen(false);
+                            }}
+                            className="px-2 py-1 rounded bg-[#fee2e2] hover:bg-[#fecaca] text-[#b91c1c] font-bold text-[10.5px] cursor-pointer"
+                          >
+                            Forzar Perdido
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-[#94a3b8] italic">
+                    Agrega servicios en el alcance para simular eventos de webhook.
+                  </p>
+                )}
+              </div>
+
+              {/* Control 4: Limpiar historial */}
+              <div className="flex items-center justify-between pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSyncAuditTrail([]);
+                    setConversionSuccessMessage('Historial de auditoría reiniciado.');
+                  }}
+                  className="text-xs text-[#64748b] hover:text-[#b91c1c] underline font-medium cursor-pointer"
+                >
+                  Limpiar historial de auditoría ({syncAuditTrail.length} eventos)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsQaSimulationOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-[#ea580c] hover:bg-[#c2410c] text-white font-bold cursor-pointer"
+                >
+                  Listo
+                </button>
+              </div>
             </div>
           </div>
         </div>
