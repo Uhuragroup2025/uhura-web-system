@@ -56,16 +56,6 @@ export const HubSpotSyncModal: React.FC<HubSpotSyncModalProps> = ({
     }));
   };
 
-  const setAllStages = (stage: HubSpotDealStage) => {
-    setStageDrafts((prev) => {
-      const next = { ...prev };
-      services.forEach((s) => {
-        next[s.serviceId] = stage;
-      });
-      return next;
-    });
-  };
-
   const handleConfirmSync = () => {
     setIsSyncing(true);
     setTimeout(() => {
@@ -89,8 +79,14 @@ export const HubSpotSyncModal: React.FC<HubSpotSyncModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-[#e2e8f0] overflow-hidden flex flex-col max-h-[92vh]">
+    <div
+      className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-[#e2e8f0] overflow-hidden flex flex-col max-h-[92vh]"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="p-5 bg-gradient-to-r from-[#1c1917] via-[#292524] to-[#431407] text-white flex items-center justify-between border-b border-[#ff5c35]/30">
           <div className="flex items-center gap-2.5">
@@ -99,13 +95,13 @@ export const HubSpotSyncModal: React.FC<HubSpotSyncModalProps> = ({
             </span>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-extrabold tracking-tight">Actualizar desde HubSpot</h3>
+                <h3 className="text-base font-extrabold tracking-tight">Sincronizar con HubSpot</h3>
                 <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-[#ff5c35]/20 text-[#fed7aa] border border-[#ff5c35]/30">
                   CRM Source of Truth
                 </span>
               </div>
               <p className="text-xs text-white/75">
-                Simula la lectura de etapas comerciales en HubSpot para cada negocio independiente
+                Concilia y actualiza las etapas comerciales de cada negocio independiente en HubSpot
               </p>
             </div>
           </div>
@@ -120,44 +116,6 @@ export const HubSpotSyncModal: React.FC<HubSpotSyncModalProps> = ({
 
         {/* Content */}
         <div className="p-6 overflow-y-auto space-y-4 text-xs text-[#0f172a]">
-          {/* Quick presets */}
-          <div className="p-3 rounded-2xl bg-[#fafaf9] border border-[#e7e5e4] flex items-center justify-between flex-wrap gap-2">
-            <span className="text-[11px] font-bold text-[#78716c]">
-              Simular respuestas rápidas de HubSpot:
-            </span>
-            <div className="flex items-center gap-2 flex-wrap">
-              <button
-                type="button"
-                onClick={() => setAllStages('Cierre ganado')}
-                className="px-2.5 py-1 rounded-lg bg-[#059669]/10 text-[#047857] hover:bg-[#059669]/20 font-bold text-xs border border-[#a7f3d0] transition-colors cursor-pointer"
-              >
-                ✓ Todos Ganados
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setStageDrafts((prev) => {
-                    const next = { ...prev };
-                    services.forEach((s, idx) => {
-                      next[s.serviceId] = idx === services.length - 1 ? 'Cierre perdido' : 'Cierre ganado';
-                    });
-                    return next;
-                  });
-                }}
-                className="px-2.5 py-1 rounded-lg bg-[#501f92]/10 text-[#501f92] hover:bg-[#501f92]/20 font-bold text-xs border border-[#d8b4fe] transition-colors cursor-pointer"
-              >
-                ⚡ Caso Mixto (Ganados + Perdido)
-              </button>
-              <button
-                type="button"
-                onClick={() => setAllStages('Enviado para facturar')}
-                className="px-2.5 py-1 rounded-lg bg-[#3b82f6]/10 text-[#1d4ed8] hover:bg-[#3b82f6]/20 font-bold text-xs border border-[#bfdbfe] transition-colors cursor-pointer"
-              >
-                📄 Enviados para Facturar
-              </button>
-            </div>
-          </div>
-
           {/* Lista de negocios en HubSpot */}
           <div className="space-y-3">
             {services.map((svc, idx) => {

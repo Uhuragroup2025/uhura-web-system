@@ -48,6 +48,31 @@ export const HubSpotCreateDealsModal: React.FC<HubSpotCreateDealsModalProps> = (
   const contactName = opportunity.contactName || 'Contacto Comercial';
   const commercialOwnerName = opportunity.commercialOwner || 'Comercial Asignado';
 
+  // Selección con checkboxes: por defecto todos marcados
+  const [selectedServiceIds, setSelectedServiceIds] = React.useState<Set<string>>(() => {
+    return new Set(commercialServices.map((s) => s.serviceId));
+  });
+
+  const toggleServiceSelection = (serviceId: string) => {
+    setSelectedServiceIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(serviceId)) {
+        next.delete(serviceId);
+      } else {
+        next.add(serviceId);
+      }
+      return next;
+    });
+  };
+
+  const selectAllServices = () => {
+    setSelectedServiceIds(new Set(commercialServices.map((s) => s.serviceId)));
+  };
+
+  const deselectAllServices = () => {
+    setSelectedServiceIds(new Set());
+  };
+
   // Analizar cuáles servicios ya tienen deal creado vs cuáles son nuevos
   const servicesSummary = commercialServices.map((svc) => {
     const isExisting = Boolean(svc.hubspotDealId);
@@ -67,12 +92,20 @@ export const HubSpotCreateDealsModal: React.FC<HubSpotCreateDealsModalProps> = (
     };
   });
 
-  const newDealsCount = servicesSummary.filter((s) => !s.isExisting).length;
-  const existingDealsCount = servicesSummary.filter((s) => s.isExisting).length;
+  const selectedCount = selectedServiceIds.size;
+  const newDealsCount = servicesSummary.filter((s) => !s.isExisting && selectedServiceIds.has(s.service.serviceId)).length;
+  const existingDealsCount = servicesSummary.filter((s) => s.isExisting && selectedServiceIds.has(s.service.serviceId)).length;
 
   const handleConfirm = () => {
+    if (selectedCount === 0) return;
     const nowIso = new Date().toISOString();
     const updatedServices: ServiceCommercialItem[] = commercialServices.map((svc) => {
+      const isSelected = selectedServiceIds.has(svc.serviceId);
+      if (!isSelected) {
+        // No crear o dejar como está si ya tenía deal
+        return svc;
+      }
+
       const summary = servicesSummary.find((s) => s.service.serviceId === svc.serviceId);
       const dealId = svc.hubspotDealId || generateSimulatedDealId(svc.serviceName);
       const dealName = svc.hubspotDealName || `${svc.serviceName} — ${clientName}`;
@@ -95,8 +128,14 @@ export const HubSpotCreateDealsModal: React.FC<HubSpotCreateDealsModalProps> = (
   };
 
   return (
-    <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-[#e2e8f0] overflow-hidden flex flex-col max-h-[92vh]">
+    <div
+      className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-[#e2e8f0] overflow-hidden flex flex-col max-h-[92vh]"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header con branding HubSpot */}
         <div className="p-5 bg-gradient-to-r from-[#1c1917] via-[#292524] to-[#431407] text-white flex items-center justify-between border-b border-[#ff5c35]/30">
           <div className="flex items-center gap-2.5">
@@ -169,29 +208,60 @@ export const HubSpotCreateDealsModal: React.FC<HubSpotCreateDealsModalProps> = (
           </div>
 
           {/* Lista de negocios que se crearán / actualizarán */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-[#0f172a]">
-                Negocios a crear en HubSpot ({commercialServices.length}):
-              </span>
-              <span className="text-[10px] font-semibold text-[#64748b]">
-                {newDealsCount} nuevo(s) · {existingDealsCount} ya existente(s)
-              </span>
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-[#0f172a]">
+                  Negocios a crear en HubSpot ({selectedCount} de {commercialServices.length} seleccionados):
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-[11px]">
+                <button
+                  type="button"
+                  onClick={selectAllServices}
+                  className="font-semibold text-[#ea580c] hover:underline cursor-pointer"
+                >
+                  Marcar todos
+                </button>
+                <span className="text-[#cbd5e1]">·</span>
+                <button
+                  type="button"
+                  onClick={deselectAllServices}
+                  className="font-semibold text-[#64748b] hover:text-[#0f172a] cursor-pointer"
+                >
+                  Desmarcar todos
+                </button>
+              </div>
             </div>
 
             <div className="space-y-2.5">
               {servicesSummary.map((item, idx) => {
                 const isFixed = item.modality === 'fixed_project';
+                const isChecked = selectedServiceIds.has(item.service.serviceId);
+
                 return (
                   <div
                     key={item.service.serviceId}
-                    className="p-3.5 rounded-2xl bg-white border border-[#e2e8f0] shadow-2xs space-y-2"
+                    onClick={() => toggleServiceSelection(item.service.serviceId)}
+                    className={`p-3.5 rounded-2xl border transition-all cursor-pointer space-y-2 ${
+                      isChecked
+                        ? 'bg-white border-[#ea580c]/40 shadow-xs ring-1 ring-[#ea580c]/20'
+                        : 'bg-[#f8fafc] border-[#e2e8f0] opacity-60 hover:opacity-90'
+                    }`}
                   >
                     <div className="flex items-center justify-between flex-wrap gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-lg bg-[#ff5c35]/15 text-[#ea580c] font-black text-xs flex items-center justify-center">
-                          {idx + 1}
-                        </span>
+                      <div className="flex items-center gap-3">
+                        {/* Checkbox estilizado */}
+                        <div
+                          className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-all ${
+                            isChecked
+                              ? 'bg-[#ea580c] border-[#ea580c] text-white shadow-xs'
+                              : 'border-[#cbd5e1] bg-white'
+                          }`}
+                        >
+                          {isChecked && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
+                        </div>
+
                         <div>
                           <strong className="text-xs text-[#0f172a] block">
                             {item.dealName}
@@ -228,15 +298,21 @@ export const HubSpotCreateDealsModal: React.FC<HubSpotCreateDealsModalProps> = (
                         </span>
                       </div>
 
-                      {item.isExisting ? (
-                        <span className="font-bold text-[#16a34a] flex items-center gap-1">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>Ya vinculado: {item.existingDealId}</span>
-                        </span>
+                      {isChecked ? (
+                        item.isExisting ? (
+                          <span className="font-bold text-[#16a34a] flex items-center gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Ya vinculado: {item.existingDealId}</span>
+                          </span>
+                        ) : (
+                          <span className="font-bold text-[#ea580c] flex items-center gap-1">
+                            <Sparkles className="w-3.5 h-3.5" />
+                            <span>Se creará en HubSpot</span>
+                          </span>
+                        )
                       ) : (
-                        <span className="font-bold text-[#ea580c] flex items-center gap-1">
-                          <Sparkles className="w-3.5 h-3.5" />
-                          <span>Se creará nuevo negocio</span>
+                        <span className="font-semibold text-[#94a3b8] italic">
+                          No se creará negocio ahora
                         </span>
                       )}
                     </div>
@@ -258,11 +334,22 @@ export const HubSpotCreateDealsModal: React.FC<HubSpotCreateDealsModalProps> = (
           </button>
           <button
             type="button"
+            disabled={selectedCount === 0}
             onClick={handleConfirm}
-            className="px-6 py-2.5 rounded-xl bg-[#ea580c] hover:bg-[#c2410c] text-white text-xs font-bold shadow-md shadow-[#ea580c]/20 transition-all cursor-pointer flex items-center gap-2 hover:scale-[1.01]"
+            className={`px-6 py-2.5 rounded-xl text-xs font-bold shadow-md transition-all flex items-center gap-2 ${
+              selectedCount > 0
+                ? 'bg-[#ea580c] hover:bg-[#c2410c] text-white shadow-[#ea580c]/20 cursor-pointer hover:scale-[1.01]'
+                : 'bg-[#cbd5e1] text-[#64748b] cursor-not-allowed'
+            }`}
           >
-            <CheckCircle2 className="w-4 h-4 text-white" />
-            <span>Confirmar y sincronizar con HubSpot →</span>
+            <CheckCircle2 className="w-4 h-4 text-current" />
+            <span>
+              {selectedCount === 0
+                ? 'Selecciona al menos 1 servicio'
+                : selectedCount === commercialServices.length
+                ? 'Confirmar y sincronizar con HubSpot →'
+                : `Confirmar y sincronizar ${selectedCount} negocio(s) en HubSpot →`}
+            </span>
           </button>
         </div>
       </div>

@@ -34,7 +34,8 @@ import {
   Code2,
   Sliders,
   AlertCircle,
-  FileText
+  FileText,
+  ChevronDown
 } from 'lucide-react';
 
 interface NewOpportunityModalProps {
@@ -74,6 +75,8 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
   const [selectedCompany, setSelectedCompany] = useState<HubSpotCompanyItem | null>(null);
   const [isSearchingCompany, setIsSearchingCompany] = useState<boolean>(false);
   const companyDropdownRef = useRef<HTMLDivElement>(null);
+  const leadersDropdownRef = useRef<HTMLDivElement>(null);
+  const commercialDropdownRef = useRef<HTMLDivElement>(null);
   const [selectedContactId, setSelectedContactId] = useState<string>('');
   const [selectedNoteId, setSelectedNoteId] = useState<string>('');
 
@@ -91,20 +94,25 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
   const [deliveryDate, setDeliveryDate] = useState(() => toLocalDate(Date.now() + 3 * 86400000));
   const [deliveryError, setDeliveryError] = useState('');
 
-  // Close company dropdown on outside click
+  // Close dropdowns on outside click
   useEffect(() => {
     const handleOutsideClick = (event: MouseEvent) => {
-      if (companyDropdownRef.current && !companyDropdownRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (companyDropdownRef.current && !companyDropdownRef.current.contains(target)) {
         setIsSearchingCompany(false);
       }
+      if (leadersDropdownRef.current && !leadersDropdownRef.current.contains(target)) {
+        setLeadersOpen(false);
+      }
+      if (commercialDropdownRef.current && !commercialDropdownRef.current.contains(target)) {
+        setCommercialOpen(false);
+      }
     };
-    if (isSearchingCompany) {
-      document.addEventListener('mousedown', handleOutsideClick);
-    }
+    document.addEventListener('mousedown', handleOutsideClick);
     return () => {
       document.removeEventListener('mousedown', handleOutsideClick);
     };
-  }, [isSearchingCompany]);
+  }, []);
 
   // Reset modal state on open
   useEffect(() => {
@@ -196,10 +204,14 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
       : new Date(Date.now() + 3 * 86400000).toISOString();
     const safeHandoffHours = Math.max(24, Math.round((new Date(deadlineTimestamp).getTime() - Date.now()) / 3600000));
 
-    const assignedUser = eligibleLeaders.find((u) => selectedLeadUserIds.includes(u.id)) || eligibleLeaders[0];
-    if (!assignedUser) return;
-    const resolvedLeadUserId = assignedUser.id;
-    const resolvedLeadUserName = `${assignedUser.name} · ${assignedUser.officialRole || assignedUser.jobTitle || assignedUser.professionalRole || assignedUser.role || 'Líder de Proyecto'}`;
+    const selectedLeaders = eligibleLeaders.filter((user) => selectedLeadUserIds.includes(user.id));
+    if (selectedLeaders.length === 0) return;
+    const resolvedLeadUserId = selectedLeaders[0].id;
+    const resolvedLeadUserName = selectedLeaders.map((u) => u.name).join(', ');
+
+    const selectedCommercials = commercialUsers.filter((user) => commercialUserIds.includes(user.id));
+    if (selectedCommercials.length === 0) return;
+    const resolvedCommercialOwner = selectedCommercials.map((u) => u.name).join(', ');
 
     // Verify if company matches an existing Orbit client
     const existingClientMatch = existingClients.find(
@@ -230,9 +242,9 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
       contactEmail: currentContact?.email,
       contactPhone: currentContact?.phone,
       leadUserId: resolvedLeadUserId,
-      leadUserIds: eligibleLeaders.filter((user) => selectedLeadUserIds.includes(user.id)).map((user) => user.id),
+      leadUserIds: selectedLeaders.map((user) => user.id),
       leadUserName: resolvedLeadUserName,
-      commercialOwner: commercialUsers.find((user) => commercialUserIds.includes(user.id))?.name || 'Comercial Uhura',
+      commercialOwner: resolvedCommercialOwner,
       handoffHours: safeHandoffHours,
       handoffDeadline: deadlineTimestamp,
 
@@ -512,44 +524,174 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
             />
           </div>
 
-          {/* 5. Responsable de alcance y Owner comercial */}
+          {/* 5. Responsable de alcance y Owner comercial (Multi-check) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-            {/* Responsable de Alcance (Líder asignado) */}
-            <div className="space-y-1">
-              <label className="font-bold text-[#475569] block">
-                Líder asignado para scoping: <span className="text-red-500">*</span>
-              </label>
-              <select
-                required
-                value={selectedLeadUserIds[0] || ''}
-                onChange={(e) => setSelectedLeadUserIds([e.target.value])}
-                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-semibold bg-white focus:ring-2 focus:ring-[#501f92] text-xs"
+            {/* Responsable de Alcance (Líder asignado) - Multi-check */}
+            <div className="space-y-1 relative" ref={leadersDropdownRef}>
+              <div className="flex items-center justify-between">
+                <label className="font-bold text-[#475569] block text-xs">
+                  Líder asignado para scoping: <span className="text-red-500">*</span>
+                </label>
+                <span className="text-[10px] text-[#64748b] font-semibold">
+                  {selectedLeadUserIds.length} {selectedLeadUserIds.length === 1 ? 'seleccionado' : 'seleccionados'}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setLeadersOpen((prev) => !prev);
+                  setCommercialOpen(false);
+                }}
+                className={`w-full p-2.5 rounded-xl border text-left text-xs flex items-center justify-between transition-all bg-white cursor-pointer ${
+                  selectedLeadUserIds.length === 0
+                    ? 'border-red-300 ring-1 ring-red-200'
+                    : 'border-[#cbd5e1] hover:border-[#501f92] focus:ring-2 focus:ring-[#501f92]'
+                }`}
               >
-                {eligibleLeaders.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name} ({u.officialRole || u.role || 'Líder'})
-                  </option>
-                ))}
-              </select>
+                <span className="truncate font-semibold text-[#0f172a]">
+                  {selectedLeadUserIds.length === 0
+                    ? 'Seleccionar líder(es)...'
+                    : selectedLeadUserIds.length === 1
+                    ? eligibleLeaders.find((u) => u.id === selectedLeadUserIds[0])?.name || '1 líder'
+                    : `${eligibleLeaders.find((u) => u.id === selectedLeadUserIds[0])?.name} +${selectedLeadUserIds.length - 1} más`}
+                </span>
+                <ChevronDown className={`w-3.5 h-3.5 text-[#64748b] transition-transform ${leadersOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {leadersOpen && (
+                <div className="absolute left-0 right-0 top-full mt-1 z-30 bg-white border border-[#cbd5e1] rounded-2xl shadow-xl p-2 space-y-1 max-h-56 overflow-y-auto animate-in fade-in duration-150">
+                  <div className="flex items-center justify-between pb-1.5 px-1 border-b border-[#f1f5f9] text-[10px]">
+                    <span className="font-bold text-[#64748b] uppercase tracking-wider">Líderes disponibles</span>
+                    <div className="flex items-center gap-1.5 font-bold">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedLeadUserIds(eligibleLeaders.map((u) => u.id))}
+                        className="text-[#501f92] hover:underline cursor-pointer"
+                      >
+                        Todos
+                      </button>
+                      <span className="text-[#cbd5e1]">·</span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedLeadUserIds([])}
+                        className="text-[#64748b] hover:underline cursor-pointer"
+                      >
+                        Limpiar
+                      </button>
+                    </div>
+                  </div>
+                  <div className="space-y-0.5 pt-1">
+                    {eligibleLeaders.map((u) => {
+                      const isChecked = selectedLeadUserIds.includes(u.id);
+                      return (
+                        <label
+                          key={u.id}
+                          className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-[#f8fafc] cursor-pointer text-xs transition-colors"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => {
+                              setSelectedLeadUserIds((prev) =>
+                                isChecked ? prev.filter((id) => id !== u.id) : [...prev, u.id]
+                              );
+                            }}
+                            className="w-4 h-4 rounded text-[#501f92] focus:ring-[#501f92] border-[#cbd5e1] cursor-pointer accent-[#501f92]"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <span className="font-bold text-[#0f172a] block truncate">{u.name}</span>
+                            <span className="text-[10px] text-[#64748b] block truncate">{u.officialRole || u.role || 'Líder'}</span>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Owner Comercial */}
-            <div className="space-y-1">
-              <label className="font-bold text-[#475569] block">
-                Owner Comercial en Uhura: <span className="text-red-500">*</span>
-              </label>
-              <select
-                required
-                value={commercialUserIds[0] || ''}
-                onChange={(e) => setCommercialUserIds([e.target.value])}
-                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-semibold bg-white focus:ring-2 focus:ring-[#501f92] text-xs"
+            {/* Owner Comercial en Uhura - Multi-check */}
+            <div className="space-y-1 relative" ref={commercialDropdownRef}>
+              <div className="flex items-center justify-between">
+                <label className="font-bold text-[#475569] block text-xs">
+                  Owner Comercial en Uhura: <span className="text-red-500">*</span>
+                </label>
+                <span className="text-[10px] text-[#64748b] font-semibold">
+                  {commercialUserIds.length} {commercialUserIds.length === 1 ? 'seleccionado' : 'seleccionados'}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setCommercialOpen((prev) => !prev);
+                  setLeadersOpen(false);
+                }}
+                className={`w-full p-2.5 rounded-xl border text-left text-xs flex items-center justify-between transition-all bg-white cursor-pointer ${
+                  commercialUserIds.length === 0
+                    ? 'border-red-300 ring-1 ring-red-200'
+                    : 'border-[#cbd5e1] hover:border-[#501f92] focus:ring-2 focus:ring-[#501f92]'
+                }`}
               >
-                {commercialUsers.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name} ({u.jobTitle || 'Comercial'})
-                  </option>
-                ))}
-              </select>
+                <span className="truncate font-semibold text-[#0f172a]">
+                  {commercialUserIds.length === 0
+                    ? 'Seleccionar comercial(es)...'
+                    : commercialUserIds.length === 1
+                    ? commercialUsers.find((u) => u.id === commercialUserIds[0])?.name || '1 comercial'
+                    : `${commercialUsers.find((u) => u.id === commercialUserIds[0])?.name} +${commercialUserIds.length - 1} más`}
+                </span>
+                <ChevronDown className={`w-3.5 h-3.5 text-[#64748b] transition-transform ${commercialOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {commercialOpen && (
+                <div className="absolute left-0 right-0 top-full mt-1 z-30 bg-white border border-[#cbd5e1] rounded-2xl shadow-xl p-2 space-y-1 max-h-56 overflow-y-auto animate-in fade-in duration-150">
+                  <div className="flex items-center justify-between pb-1.5 px-1 border-b border-[#f1f5f9] text-[10px]">
+                    <span className="font-bold text-[#64748b] uppercase tracking-wider">Equipo Comercial</span>
+                    <div className="flex items-center gap-1.5 font-bold">
+                      <button
+                        type="button"
+                        onClick={() => setCommercialUserIds(commercialUsers.map((u) => u.id))}
+                        className="text-[#ea580c] hover:underline cursor-pointer"
+                      >
+                        Todos
+                      </button>
+                      <span className="text-[#cbd5e1]">·</span>
+                      <button
+                        type="button"
+                        onClick={() => setCommercialUserIds([])}
+                        className="text-[#64748b] hover:underline cursor-pointer"
+                      >
+                        Limpiar
+                      </button>
+                    </div>
+                  </div>
+                  <div className="space-y-0.5 pt-1">
+                    {commercialUsers.map((u) => {
+                      const isChecked = commercialUserIds.includes(u.id);
+                      return (
+                        <label
+                          key={u.id}
+                          className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-[#f8fafc] cursor-pointer text-xs transition-colors"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => {
+                              setCommercialUserIds((prev) =>
+                                isChecked ? prev.filter((id) => id !== u.id) : [...prev, u.id]
+                              );
+                            }}
+                            className="w-4 h-4 rounded text-[#ea580c] focus:ring-[#ea580c] border-[#cbd5e1] cursor-pointer accent-[#ea580c]"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <span className="font-bold text-[#0f172a] block truncate">{u.name}</span>
+                            <span className="text-[10px] text-[#64748b] block truncate">{u.jobTitle || 'Comercial'}</span>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

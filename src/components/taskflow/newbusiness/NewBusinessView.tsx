@@ -80,7 +80,8 @@ import {
   Edit3,
   ThumbsDown,
   RefreshCw,
-  History
+  History,
+  XCircle
 } from 'lucide-react';
 
 interface NewBusinessViewProps {
@@ -430,15 +431,29 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
   }, [commercialStructureDraft]);
 
   // Resumen comercial:
-  // - Total proyectos únicos
-  // - Fee mensual total
+  // - Total proyectos únicos (excluyendo servicios en Cierre perdido)
+  // - Fee mensual total (excluyendo servicios en Cierre perdido)
   // - Valor estimado del contrato = proyectos únicos + (fee mensual × vigencia)
   const commercialTotals = useMemo(() => {
     let totalOneOff = 0;
     let totalMonthlyFee = 0;
     let estimatedContractValue = 0;
+    let lostCount = 0;
+    let lostTotalValue = 0;
 
     commercialStructureDraft.forEach((item) => {
+      const isLost = item.hubspotDealStage === 'Cierre perdido';
+      const itemTotalVal =
+        item.modality === 'fixed_project'
+          ? Number(item.totalValue) || 0
+          : (Number(item.monthlyValue) || 0) * (Number(item.monthsDuration) || 0);
+
+      if (isLost) {
+        lostCount += 1;
+        lostTotalValue += itemTotalVal;
+        return; // Excluir de la sumatoria de contrato ganado/activo
+      }
+
       if (item.modality === 'fixed_project') {
         const val = Number(item.totalValue) || 0;
         totalOneOff += val;
@@ -451,7 +466,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
       }
     });
 
-    return { totalOneOff, totalMonthlyFee, estimatedContractValue };
+    return { totalOneOff, totalMonthlyFee, estimatedContractValue, lostCount, lostTotalValue };
   }, [commercialStructureDraft]);
 
   // Firma determinista y validación de estructura comercial
@@ -2421,7 +2436,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                   </p>
                 </div>
 
-                {/* Acciones de Trazabilidad y Simulación QA */}
+                {/* Acciones de Trazabilidad */}
                 <div className="flex items-center gap-2 flex-wrap">
                   <button
                     type="button"
@@ -2436,16 +2451,6 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                         {syncAuditTrail.length}
                       </span>
                     )}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setIsQaSimulationOpen(true)}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] hover:bg-[#f1f5f9] text-xs font-semibold text-[#64748b] transition-colors cursor-pointer"
-                    title="Controles técnicos de simulación QA para probar estados de red y sincronización"
-                  >
-                    <Sliders className="w-3.5 h-3.5 text-[#64748b]" />
-                    <span>Simulación QA</span>
                   </button>
                 </div>
               </div>
@@ -2551,16 +2556,29 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                       );
                     };
 
+                    const isClosedLost = item.hubspotDealStage === 'Cierre perdido';
+
                     if (!isEditingQuoteFields && isQuoteDiligenciada) {
                       /* Modo lectura limpio: fila horizontal despejada */
                       return (
                         <div
                           key={item.serviceId || idx}
-                          className="p-4 rounded-xl border border-[#e2e8f0] bg-white hover:border-[#cbd5e1] transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs"
+                          className={`p-4 rounded-xl border transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs ${
+                            isClosedLost
+                              ? 'border-dashed border-[#cbd5e1] bg-[#f8fafc]/90 opacity-70 hover:opacity-100'
+                              : 'border-[#e2e8f0] bg-white hover:border-[#cbd5e1]'
+                          }`}
                         >
                           <div className="space-y-1">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-bold text-[#0f172a] text-sm">{item.serviceName}</span>
+                              <span className={`font-bold text-sm ${isClosedLost ? 'text-[#64748b] line-through' : 'text-[#0f172a]'}`}>
+                                {item.serviceName}
+                              </span>
+                              {isClosedLost && (
+                                <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-[#fee2e2] text-[#b91c1c] border border-[#fecaca]">
+                                  Cierre perdido / Descartado
+                                </span>
+                              )}
                               <span className="text-[11px] px-2 py-0.5 rounded-md bg-[#f8fafc] text-[#64748b] border border-[#f1f5f9]">
                                 {item.weeksRef || 0} {item.weeksRef === 1 ? 'semana' : 'semanas'}
                               </span>
@@ -2587,29 +2605,35 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                             {isFixed ? (
                               <div className="text-right">
                                 <span className="text-[10px] uppercase font-bold text-[#94a3b8] block">Valor del servicio</span>
-                                <span className="text-sm font-black text-[#0f172a]">
+                                <span className={`text-sm font-black ${isClosedLost ? 'line-through text-[#94a3b8]' : 'text-[#0f172a]'}`}>
                                   {formatCurrency(item.totalValue || 0, quoteCurrencyDraft)}
                                 </span>
+                                {isClosedLost && (
+                                  <span className="text-[10px] text-[#dc2626] font-semibold block">Excluido del total</span>
+                                )}
                               </div>
                             ) : (
                               <div className="flex items-center gap-4 text-right">
                                 <div>
                                   <span className="text-[10px] uppercase font-bold text-[#94a3b8] block">Valor mensual</span>
-                                  <span className="text-sm font-black text-[#059669]">
+                                  <span className={`text-sm font-black ${isClosedLost ? 'line-through text-[#94a3b8]' : 'text-[#059669]'}`}>
                                     {formatCurrency(item.monthlyValue || 0, quoteCurrencyDraft)} / mes
                                   </span>
                                 </div>
                                 <div className="border-l border-[#f1f5f9] pl-4">
                                   <span className="text-[10px] uppercase font-bold text-[#94a3b8] block">Vigencia</span>
-                                  <span className="text-xs font-bold text-[#0f172a]">
+                                  <span className={`text-xs font-bold ${isClosedLost ? 'text-[#94a3b8]' : 'text-[#0f172a]'}`}>
                                     {item.monthsDuration || 0} meses
                                   </span>
                                 </div>
                                 <div className="border-l border-[#f1f5f9] pl-4">
                                   <span className="text-[10px] uppercase font-bold text-[#94a3b8] block">Total estimado</span>
-                                  <span className="text-xs font-extrabold text-[#501f92]">
+                                  <span className={`text-xs font-extrabold ${isClosedLost ? 'line-through text-[#94a3b8]' : 'text-[#501f92]'}`}>
                                     {formatCurrency((item.monthlyValue || 0) * (item.monthsDuration || 0), quoteCurrencyDraft)}
                                   </span>
+                                  {isClosedLost && (
+                                    <span className="text-[10px] text-[#dc2626] font-semibold block">Excluido del total</span>
+                                  )}
                                 </div>
                               </div>
                             )}
@@ -2622,11 +2646,22 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                     return (
                       <div
                         key={item.serviceId || idx}
-                        className="p-4 rounded-xl border border-[#e2e8f0] bg-white hover:border-[#cbd5e1] transition-all space-y-3.5 text-xs"
+                        className={`p-4 rounded-xl border transition-all space-y-3.5 text-xs ${
+                          isClosedLost
+                            ? 'border-dashed border-[#cbd5e1] bg-[#f8fafc]/90 opacity-75 hover:opacity-100'
+                            : 'border-[#e2e8f0] bg-white hover:border-[#cbd5e1]'
+                        }`}
                       >
                         <div className="flex items-center justify-between flex-wrap gap-2">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-bold text-[#0f172a] text-sm">{item.serviceName}</span>
+                            <span className={`font-bold text-sm ${isClosedLost ? 'text-[#64748b]' : 'text-[#0f172a]'}`}>
+                              {item.serviceName}
+                            </span>
+                            {isClosedLost && (
+                              <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-[#fee2e2] text-[#b91c1c] border border-[#fecaca]">
+                                Cierre perdido
+                              </span>
+                            )}
                             <span className="text-[11px] px-2 py-0.5 rounded-md bg-[#f8fafc] text-[#64748b] border border-[#f1f5f9]">
                               {item.weeksRef || 0} {item.weeksRef === 1 ? 'semana' : 'semanas'} en alcance
                             </span>
@@ -2791,6 +2826,20 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                   <p className="text-[11px] text-[#64748b]">Proyectos únicos + (Fee × vigencia)</p>
                 </div>
               </div>
+
+              {commercialTotals.lostCount > 0 && (
+                <div className="mt-4 pt-3 border-t border-[#e2e8f0] flex items-center justify-between flex-wrap gap-2 text-xs">
+                  <span className="flex items-center gap-1.5 font-semibold text-[#b91c1c]">
+                    <XCircle className="w-4 h-4 text-[#ef4444]" />
+                    <span>
+                      {commercialTotals.lostCount} {commercialTotals.lostCount === 1 ? 'servicio en Cierre perdido' : 'servicios en Cierre perdido'}
+                    </span>
+                  </span>
+                  <span className="font-semibold text-[#64748b]">
+                    {formatCurrency(commercialTotals.lostTotalValue, quoteCurrencyDraft)} excluidos de la suma del contrato ganado
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Planilla de Finanzas / Calculadora Google Sheet y Notas: Integradas directamente sin bordes anidados */}
@@ -2974,7 +3023,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                       </span>
                     </button>
 
-                    {/* Botón 2: Actualizar desde HubSpot (CTA primario tras crear negocios) */}
+                    {/* Botón 2: Sincronizar con HubSpot (CTA primario tras crear negocios) */}
                     <button
                       type="button"
                       onClick={() => setIsHubspotSyncOpen(true)}
@@ -2986,12 +3035,12 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                       }`}
                       title={
                         hasAnyHubSpotDeals
-                          ? 'Sincronizar etapas comerciales desde HubSpot en tiempo real'
+                          ? 'Sincronizar y conciliar etapas comerciales con HubSpot'
                           : 'Crea primero los negocios en HubSpot para sincronizar etapas'
                       }
                     >
                       <RefreshCw className={`w-3.5 h-3.5 ${hasAnyHubSpotDeals ? 'text-white' : 'text-[#ea580c]'}`} />
-                      <span>Actualizar desde HubSpot</span>
+                      <span>Sincronizar con HubSpot</span>
                     </button>
                   </div>
                 )}
