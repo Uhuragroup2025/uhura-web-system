@@ -370,6 +370,7 @@ export interface ProjectSummaryItem {
   baselineEndDate?: string;
   forecastEndDate?: string;
   actualEndDate?: string | null;
+  isKickedOff?: boolean;
   scheduleConfig?: ProjectScheduleConfig;
 
   // Colecciones de Gestión de Cronograma, Insumos y Rondas

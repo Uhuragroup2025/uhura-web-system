@@ -1,8 +1,8 @@
 # Requerimientos de Backend y Modelo de Datos (Orbit)
 
-> **Documento de Especificación Técnica para Futura Implementación Backend**
-> **Fecha de Actualización:** 26 de octubre de 2026 (Alineación con decisiones confirmadas de producto y política de privacidad de repositorios públicos)
-> Este documento consolida las deudas técnicas, relaciones inmutables y reglas de producto identificadas en el QA de **Proyectos y Tareas** antes de la conexión con los módulos de **Clientes, Finanzas, Cotizador, Capacidad y Dashboard**.
+> **Documento de Especificación Técnica para Implementación Backend (Indunova)**
+> **Fecha de Actualización:** 04 de noviembre de 2026 (Alineación con decisiones confirmadas de producto, arquitectura 1:1:1 por servicio, ticket #132 y modo desacoplado manual)
+> Este documento consolida las deudas técnicas, relaciones inmutables y reglas de producto identificadas en el QA de **Proyectos, Tareas, New Business, Cotización y Conversión a Proyectos**.
 
 > **AVISO DE PRIVACIDAD Y GOBERNANZA:**
 > La documentación pública define reglas, estructuras y comportamientos. La identidad nominal de colaboradores, correos, relaciones de reporte, calendarios individuales y crosswalk con backend se administra exclusivamente mediante **Equipo Canónico Privado**.
@@ -331,3 +331,66 @@ Indunova deberá implementar en sus scripts de migración y conciliación de bas
    - **Gobernanza del Perfil Ejecutivo (`executive`):** El perfil `executive` adicional definido en Equipo Canónico Privado forma parte de los 18 colaboradores activos y debe contar con usuario Orbit. Su asociación con Backend User ID se resolverá durante el crosswalk con Indunova.
    - **Gobernanza de `system_admin`:** Existen dos usuarios iniciales con Access Level `system_admin` con idénticos permisos técnicos en plataforma. La diferenciación funcional y operativa (soporte técnico / producto digital vs. soporte administrativo y configuración de capacidades/calendarios) corresponde a su rol en la organización, según se define en Equipo Canónico Privado.
    - No afirmar que la conciliación ya fue ejecutada en base de datos: corresponde a las especificaciones y reglas para la ejecución de scripts por parte de Indunova.
+
+
+---
+
+## 12. Módulo New Business: Cotización Multidivisa por Servicio y Conversión Canónica a Proyectos (Regla 1:1:1 y Ticket #132)
+
+### 12.1 Arquitectura Relacional 1:1:1
+En la versión oficial (HEAD de la rama `feat/hubspot-commercial-sync-flow`), la propuesta comercial se descompone a nivel atómico:
+* **1 Servicio en Alcance = 1 Bloque Comercial en Cotización = 1 Deal en HubSpot (si aplica) = 1 Proyecto Independiente en Orbit**.
+* La relación entre una Cotización (`QuoteProposal`) y sus servicios comerciales es de **1 a N** (`QuoteProposal` $\longrightarrow$ `ServiceCommercialItem[]`).
+* Cada servicio define de manera independiente:
+  * `modality`: `'fixed_project'` o `'fee_monthly'`
+  * `totalValue` (si es proyecto único) o `monthlyValue` + `monthsDuration` (si es fee)
+  * `currency`: `'COP'` o `'USD'`
+  * `hubspotDealStage`: `'Presentación a cliente'`, `'Cierre ganado'`, `'Cierre perdido'`, `'Enviado para facturar'`.
+
+### 12.2 Campos Numéricos en Base de Datos (Uso Obligatorio de `DECIMAL` / `NUMERIC`)
+* **Problema detectado en pruebas (candidata `1c8f724`):** El backend tipó los valores monetarios como `INTEGER`, lo que rompe cuando se envían cotizaciones en USD con decimales o redondeos contables.
+* **Requerimiento mandatorio:** Todos los campos de valores económicos (`sold_value`, `monthly_value`, `total_value`, `estimated_contract_value`) deben crearse como:
+  ```sql
+  sold_value NUMERIC(14, 2) NULL,
+  monthly_value NUMERIC(14, 2) NULL
+  ```
+  En Django Models:
+  ```python
+  sold_value = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
+  monthly_value = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
+  ```
+
+### 12.3 Endpoint de Conversión a Proyectos (`POST /api/convert-opportunity` - Ticket #132)
+Al convertir una oportunidad con servicios ganados, el backend **NO DEBE crear un solo proyecto agrupado**. Debe iterar sobre el array de `projects` recibido en el payload y crear **un proyecto independiente en la tabla `projects` por cada servicio ganado**:
+```typescript
+interface ConvertedProjectPlanPayload {
+  serviceId: string;
+  serviceName: string;
+  projectName: string;
+  projectType: 'fixed_project' | 'fee_monthly';
+  hubspotDealId?: string | null;
+  hubspotDealStage?: string;
+  soldValue?: number;
+  soldMonthlyValue?: number;
+  monthsDuration?: number;
+  deliverableIds: string[];
+  leadUserId?: string;       // ID del Líder Operativo asignado específicamente a este servicio
+  leadUserName?: string;
+}
+```
+**Reglas del endpoint:**
+1. Crear un registro en la tabla `projects` por cada elemento de `payload.projects`.
+2. Asignar a cada proyecto su respectivo `lead_user_id` (proveniente de `project.leadUserId`).
+3. Asociar todos los proyectos creados al mismo `client_id` (en cartera o nuevo).
+4. Excluir expresamente cualquier servicio con etapa `'Cierre perdido'`: **los servicios perdidos NUNCA generan proyectos ni tareas**.
+5. Duplicar o vincular los entregables y tareas del alcance exclusivamente al proyecto correspondiente a su servicio.
+
+### 12.4 Modo Desacoplado / Operación Manual (Sin Token de HubSpot)
+Para no bloquear New Business cuando la app privada de HubSpot esté caída o sin token válido:
+1. Las oportunidades pueden crearse 100% de forma manual (sin ID de HubSpot).
+2. En la Cotización, Comercial puede aprobar manualmente los servicios ganados pulsando **«Marcar como ganada 🏆»**, lo que dispara el flujo de conversión sin consultar la API de HubSpot.
+3. Se registra una entrada de auditoría en la tabla de trazabilidad (`status: 'success'`, `source: 'orbit'`) indicando que la aprobación fue manual y que la reconciliación con el CRM queda pendiente.
+
+### 12.5 Estados Operativos de Proyecto («Por empezar» vs «En ejecución»)
+* Si `startDate > hoy` (fecha futura programada por Operaciones/Cata), el proyecto se presenta como **«Por empezar»** y cuenta con la acción **«Iniciar proyecto 🚀»**.
+* Si `startDate <= hoy`, el proyecto se presenta como **«En ejecución»**.

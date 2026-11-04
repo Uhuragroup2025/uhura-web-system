@@ -686,6 +686,7 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
                   <th className="py-3 px-3">Proyecto</th>
                   <th className="py-3 px-3">Marca</th>
                   <th className="py-3 px-3">Estado</th>
+                  <th className="py-3 px-3 text-center">SOW</th>
                   <th className="py-3 px-3 text-right">Valor cotizado</th>
                   <th className="py-3 px-3 text-right">Margen real</th>
                   <th className="py-3 px-3 text-center">Semáforo</th>
@@ -707,14 +708,8 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
                         <span className="font-bold text-[#0f172a] group-hover:text-[#501f92] transition-colors">
                           {prj.name}
                         </span>
-                        {onViewProjectSow && sowProjectIds.includes(prj.id) && (
-                          <button type="button" className="text-[#501f92] underline text-xs"
-                            onClick={(event) => { event.stopPropagation(); onViewProjectSow(prj.id); }}>
-                            Ver SOW
-                          </button>
-                        )}
                         {prj.tag && (
-                          <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded bg-[#f2ecfb] text-[#501f92]">
+                          <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-[#f2ecfb] text-[#501f92]">
                             {prj.tag}
                           </span>
                         )}
@@ -739,6 +734,26 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
                       >
                         {prj.status}
                       </span>
+                    </td>
+
+                    {/* SOW Column */}
+                    <td className="py-3.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                      {onViewProjectSow && sowProjectIds.includes(prj.id) ? (
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onViewProjectSow(prj.id);
+                          }}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#faf5ff] hover:bg-[#f3e8ff] border border-[#e9d5ff] text-[#501f92] text-[11px] font-bold transition-all shadow-2xs hover:scale-105 cursor-pointer"
+                          title="Ver documento formal de Statement of Work (SOW)"
+                        >
+                          <FileText className="w-3.5 h-3.5 text-[#501f92]" />
+                          <span>Ver SOW</span>
+                        </button>
+                      ) : (
+                        <span className="text-[11px] text-[#94a3b8] italic">—</span>
+                      )}
                     </td>
 
                     {/* Valor cotizado */}

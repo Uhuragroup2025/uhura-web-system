@@ -173,6 +173,9 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
   const [oppModalMode, setOppModalMode] = useState<'hubspot' | 'manual'>('hubspot');
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [isConvertModalOpen, setIsConvertModalOpen] = useState<boolean>(false);
+  const [isMarkWonModalOpen, setIsMarkWonModalOpen] = useState<boolean>(false);
+  const [selectedWonServiceIds, setSelectedWonServiceIds] = useState<string[]>([]);
+  const [unselectedAction, setUnselectedAction] = useState<'lost' | 'keep'>('lost');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'quoting' | 'won'>('all');
   const [bannerNotification, setBannerNotification] = useState<{
@@ -3050,52 +3053,15 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                       <button
                         type="button"
                         onClick={() => {
-                          const nowIso = new Date().toISOString();
-                          const updatedCommercial: ServiceCommercialItem[] = commercialStructureDraft.map((s) => ({
-                            ...s,
-                            hubspotDealStage: (s.hubspotDealStage === 'Cierre perdido' ? 'Cierre perdido' : 'Cierre ganado') as HubSpotDealStage,
-                            approved: s.hubspotDealStage !== 'Cierre perdido'
-                          }));
-                          setCommercialStructureDraft(updatedCommercial);
-
-                          const manualAuditEntries: HubSpotSyncAuditEntry[] = updatedCommercial
+                          const defaultWon = commercialStructureDraft
                             .filter((s) => s.hubspotDealStage !== 'Cierre perdido')
-                            .map((s) => ({
-                              id: `audit-${Date.now()}-${s.serviceId}`,
-                              serviceId: s.serviceId,
-                              serviceName: s.serviceName,
-                              dealId: s.hubspotDealId || null,
-                              previousStage: s.hubspotDealStage || 'Presentación a cliente',
-                              newStage: 'Cierre ganado' as HubSpotDealStage,
-                              userId: currentUser?.id || 'commercial-manual',
-                              userName: currentUser?.name || 'Aprobación Comercial Manual',
-                              timestamp: nowIso,
-                              origin: 'Orbit' as const,
-                              syncStatus: 'success' as const,
-                              syncedFields: {
-                                dealName: `${s.serviceName} — ${activeOpp.prospectAccountName}`,
-                                companyName: activeOpp.prospectAccountName,
-                                contactName: activeOpp.contactName,
-                                commercialOwner: activeOpp.commercialOwner,
-                                value: s.modality === 'fixed_project' ? s.totalValue : s.monthlyValue,
-                                currency: quoteCurrencyDraft,
-                                stage: 'Cierre ganado' as HubSpotDealStage
-                              }
-                            }));
-
-                          if (manualAuditEntries.length > 0) {
-                            setSyncAuditTrail((prev) => [...manualAuditEntries, ...prev]);
-                          }
-
-                          const updatedQuote: QuoteProposal = {
-                            ...activeQuote,
-                            commercialStructure: updatedCommercial
-                          };
-                          handleUpdateQuote(updatedQuote);
-                          handleMarkOpportunityWon(activeOpp);
+                            .map((s) => s.serviceId);
+                          setSelectedWonServiceIds(defaultWon);
+                          setUnselectedAction('lost');
+                          setIsMarkWonModalOpen(true);
                         }}
                         className="px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5 active:scale-95 bg-[#059669] hover:bg-[#047857] text-white"
-                        title="Aprobar servicios y marcar como ganada manualmente (no bloquea New Business por fallas de HubSpot)"
+                        title="Seleccionar y confirmar qué servicios de la cotización quedaron ganados"
                       >
                         <CheckCircle2 className="w-3.5 h-3.5 text-[#d4ff4a]" />
                         <span>Marcar como ganada 🏆</span>
@@ -3193,6 +3159,307 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                 className="px-4 py-2 rounded-xl bg-[#dc2626] hover:bg-[#b91c1c] text-white text-xs font-bold"
               >
                 Confirmar Pérdida
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmación Granular: Marcar Servicios Ganados */}
+      {isMarkWonModalOpen && activeOpp && activeQuote && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl border border-[#e2e8f0] p-6 space-y-5 animate-in zoom-in-95 duration-150">
+            {/* Header */}
+            <div className="flex items-start justify-between gap-3 border-b border-[#f1f5f9] pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#ecfdf5] border border-[#a7f3d0] flex items-center justify-center text-[#059669] shadow-xs">
+                  <Trophy className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-extrabold text-[#0f172a]">
+                      Confirmar Servicios Ganados
+                    </h3>
+                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-[#d4ff4a]/20 text-[#2e5e04] border border-[#d4ff4a]/50">
+                      Cierre Comercial
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#64748b] mt-0.5">
+                    {activeOpp.prospectAccountName} · Selecciona qué servicios aprobó el cliente para marcarlos como ganados.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsMarkWonModalOpen(false)}
+                className="p-1.5 rounded-xl hover:bg-[#f1f5f9] text-[#64748b] hover:text-[#0f172a] transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* List of Services with Checkboxes */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-[#0f172a]">
+                  Servicios de la propuesta ({commercialStructureDraft.length})
+                </span>
+                <div className="flex items-center gap-2 text-[11px]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedWonServiceIds(commercialStructureDraft.map((s) => s.serviceId));
+                    }}
+                    className="text-[#501f92] font-semibold hover:underline cursor-pointer"
+                  >
+                    Seleccionar todos
+                  </button>
+                  <span className="text-[#cbd5e1]">|</span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedWonServiceIds([])}
+                    className="text-[#64748b] font-semibold hover:underline cursor-pointer"
+                  >
+                    Deseleccionar todos
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                {commercialStructureDraft.map((service) => {
+                  const isChecked = selectedWonServiceIds.includes(service.serviceId);
+                  const isCurrentlyLost = service.hubspotDealStage === 'Cierre perdido';
+                  const val = service.modality === 'fixed_project' ? (service.totalValue || 0) : (service.monthlyValue || 0);
+
+                  return (
+                    <div
+                      key={service.serviceId}
+                      onClick={() => {
+                        setSelectedWonServiceIds((prev) =>
+                          prev.includes(service.serviceId)
+                            ? prev.filter((id) => id !== service.serviceId)
+                            : [...prev, service.serviceId]
+                        );
+                      }}
+                      className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                        isChecked
+                          ? 'border-[#10b981] bg-[#ecfdf5]/50 shadow-xs'
+                          : 'border-[#e2e8f0] bg-[#f8fafc] opacity-75 hover:opacity-100 hover:border-[#cbd5e1]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => {}}
+                          className="w-4 h-4 rounded text-[#059669] focus:ring-[#059669] border-[#cbd5e1] cursor-pointer"
+                        />
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-[#0f172a]">
+                              {service.serviceName}
+                            </span>
+                            <span
+                              className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
+                                service.modality === 'fee_monthly'
+                                  ? 'bg-[#d4ff4a]/20 text-[#2e5e04]'
+                                  : 'bg-[#eff6ff] text-[#2563eb]'
+                              }`}
+                            >
+                              {service.modality === 'fee_monthly' ? 'Fee mensual' : 'Proyecto único'}
+                            </span>
+                          </div>
+                          {isCurrentlyLost && (
+                            <span className="text-[10px] text-[#dc2626] font-semibold block">
+                              (Actualmente en estado: Cierre perdido)
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="text-right shrink-0 font-mono">
+                        <span className="text-xs font-bold text-[#0f172a] block">
+                          {formatCurrency(val, quoteCurrencyDraft)}
+                        </span>
+                        {service.modality === 'fee_monthly' && (
+                          <span className="text-[10px] text-[#64748b]">
+                            /mes · {service.monthsDuration || 1} meses
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Unselected Services Decision */}
+            {commercialStructureDraft.length > selectedWonServiceIds.length && (
+              <div className="p-3.5 rounded-2xl bg-[#fff7ed] border border-[#fed7aa] space-y-2">
+                <span className="text-[11px] font-bold text-[#9a3412] block">
+                  ¿Cómo registrar los servicios no seleccionados? ({commercialStructureDraft.length - selectedWonServiceIds.length})
+                </span>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <label
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setUnselectedAction('lost');
+                    }}
+                    className={`p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition-all ${
+                      unselectedAction === 'lost'
+                        ? 'bg-white border-[#ea580c] shadow-2xs font-bold text-[#9a3412]'
+                        : 'border-[#fed7aa] bg-white/60 text-[#64748b]'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="unselectedAction"
+                      checked={unselectedAction === 'lost'}
+                      onChange={() => setUnselectedAction('lost')}
+                      className="text-[#ea580c] focus:ring-[#ea580c]"
+                    />
+                    <span>Marcar como 'Cierre perdido' (No generarán proyecto)</span>
+                  </label>
+
+                  <label
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setUnselectedAction('keep');
+                    }}
+                    className={`p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition-all ${
+                      unselectedAction === 'keep'
+                        ? 'bg-white border-[#ea580c] shadow-2xs font-bold text-[#9a3412]'
+                        : 'border-[#fed7aa] bg-white/60 text-[#64748b]'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="unselectedAction"
+                      checked={unselectedAction === 'keep'}
+                      onChange={() => setUnselectedAction('keep')}
+                      className="text-[#ea580c] focus:ring-[#ea580c]"
+                    />
+                    <span>Mantener pendientes en negociación</span>
+                  </label>
+                </div>
+              </div>
+            )}
+
+            {/* Won Summary Strip */}
+            <div className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] flex items-center justify-between text-xs">
+              <div>
+                <span className="text-[10px] font-bold uppercase text-[#64748b] block">
+                  Servicios a ganar
+                </span>
+                <span className="text-sm font-extrabold text-[#0f172a]">
+                  {selectedWonServiceIds.length} de {commercialStructureDraft.length} servicios seleccionados
+                </span>
+              </div>
+              <div className="text-right font-mono">
+                <span className="text-[10px] font-bold uppercase text-[#64748b] block">
+                  Total aprobado
+                </span>
+                <span className="text-sm font-black text-[#059669]">
+                  {formatCurrency(
+                    commercialStructureDraft
+                      .filter((s) => selectedWonServiceIds.includes(s.serviceId))
+                      .reduce((acc, s) => acc + (s.modality === 'fixed_project' ? (s.totalValue || 0) : (s.monthlyValue || 0) * (s.monthsDuration || 1)), 0),
+                    quoteCurrencyDraft
+                  )}
+                </span>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#f1f5f9]">
+              <button
+                type="button"
+                onClick={() => setIsMarkWonModalOpen(false)}
+                className="px-4 py-2.5 rounded-xl text-xs font-semibold text-[#64748b] hover:bg-[#f1f5f9] cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={selectedWonServiceIds.length === 0}
+                onClick={() => {
+                  const nowIso = new Date().toISOString();
+                  const updatedCommercial: ServiceCommercialItem[] = commercialStructureDraft.map((s) => {
+                    const isWon = selectedWonServiceIds.includes(s.serviceId);
+                    if (isWon) {
+                      return {
+                        ...s,
+                        hubspotDealStage: 'Cierre ganado' as HubSpotDealStage,
+                        approved: true
+                      };
+                    } else if (unselectedAction === 'lost') {
+                      return {
+                        ...s,
+                        hubspotDealStage: 'Cierre perdido' as HubSpotDealStage,
+                        approved: false
+                      };
+                    } else {
+                      return {
+                        ...s,
+                        approved: false
+                      };
+                    }
+                  });
+                  setCommercialStructureDraft(updatedCommercial);
+
+                  const wonServices = updatedCommercial.filter((s) => selectedWonServiceIds.includes(s.serviceId));
+
+                  const manualAuditEntries: HubSpotSyncAuditEntry[] = wonServices.map((s) => ({
+                    id: `audit-${Date.now()}-${s.serviceId}`,
+                    serviceId: s.serviceId,
+                    serviceName: s.serviceName,
+                    dealId: s.hubspotDealId || null,
+                    previousStage: s.hubspotDealStage || 'Presentación a cliente',
+                    newStage: 'Cierre ganado' as HubSpotDealStage,
+                    userId: currentUser?.id || 'commercial-manual',
+                    userName: currentUser?.name || 'Aprobación Comercial Manual',
+                    timestamp: nowIso,
+                    origin: 'Orbit' as const,
+                    syncStatus: 'success' as const,
+                    syncedFields: {
+                      dealName: `${s.serviceName} — ${activeOpp.prospectAccountName}`,
+                      companyName: activeOpp.prospectAccountName,
+                      contactName: activeOpp.contactName,
+                      commercialOwner: activeOpp.commercialOwner,
+                      value: s.modality === 'fixed_project' ? s.totalValue : s.monthlyValue,
+                      currency: quoteCurrencyDraft,
+                      stage: 'Cierre ganado' as HubSpotDealStage
+                    }
+                  }));
+
+                  if (manualAuditEntries.length > 0) {
+                    setSyncAuditTrail((prev) => [...manualAuditEntries, ...prev]);
+                  }
+
+                  const updatedQuote: QuoteProposal = {
+                    ...activeQuote,
+                    commercialStructure: updatedCommercial
+                  };
+                  handleUpdateQuote(updatedQuote);
+
+                  if (wonServices.length > 0) {
+                    handleMarkOpportunityWon(activeOpp);
+                  }
+
+                  setIsMarkWonModalOpen(false);
+                  setConversionSuccessMessage(
+                    `🏆 ¡Propuesta confirmada con ${wonServices.length} servicio(s) ganado(s)! Listo para convertir a proyectos.`
+                  );
+                  setTimeout(() => setConversionSuccessMessage(null), 5000);
+                }}
+                className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-1.5 cursor-pointer ${
+                  selectedWonServiceIds.length > 0
+                    ? 'bg-[#059669] hover:bg-[#047857] text-white active:scale-95'
+                    : 'bg-[#cbd5e1] text-[#64748b] cursor-not-allowed'
+                }`}
+              >
+                <CheckCircle2 className="w-4 h-4 text-[#d4ff4a]" />
+                <span>Confirmar y marcar ganados ({selectedWonServiceIds.length}) 🏆</span>
               </button>
             </div>
           </div>

@@ -2,8 +2,8 @@
 
 > **Documento:** Especificación Funcional Maestra para Portabilidad, Backend y Modelo de Datos
 > **Destinatario Técnico Principal:** Indunova (Backend Django REST Framework / PostgreSQL) y Equipo de Producto Uhura Group
-> **Fecha de Actualización:** 26 de octubre de 2026
-> **Versión:** 3.3.0 (Master Functional Freeze & Canonical Decision Alignment)
+> **Fecha de Actualización:** 04 de noviembre de 2026
+> **Versión:** 3.4.0 (Aprobación Canónica UAT 2: 1 Servicio = 1 Proyecto, Decimales, Líderes por Servicio y Modo Desacoplado)
 > **Estado:** Especificación Maestra Canónica Reconciliada — Fuente de Verdad Funcional de Orbit
 >
 > **Convención de Estados de Implementación:**
@@ -550,28 +550,17 @@ Asegurar una transición ordenada y atómica entre la oportunidad comercial apro
 2. **Autorización de Conversión:**
    - La acción de conversión está habilitada para perfiles con Access Level `commercial` y `client_relationship`.
 
-#### 8.3 Propuesta Funcional en Evaluación: Activación en Dos Fases y Gobernanza del Cronograma (⚠️ Propuesta funcional pendiente de aprobación e implementación)
+#### 8.3 Arquitectura de Conversión Aprobada: Regla 1:1:1 y Cronograma Paralelo (🟢 Decisión funcional aprobada - 04 Nov 2026)
 
-> **NOTA DE ALCANCE Y DESACOPLE:**
-> Los siguientes conceptos corresponden a una **propuesta funcional en evaluación para una fase posterior**.
-> **NO hacen parte de las decisiones cerradas de esta actualización, NO están implementados en el prototipo vigente y NO deben considerarse contratos consolidados:**
-> - Separación entre "Convertir" e "Iniciar Proyecto".
-> - Nuevos estados de proyecto como `Pendiente de inicio` o `En planificación`.
-> - Creación de tareas con `dueDate: null` o estado transitorio `unscheduled`.
-> - Conceptos de capacidad pendiente, tentativa y comprometida.
-> - Selección obligatoria de Project Lead en un flujo de inicio posterior.
-> - Aprobación formal de línea base de cronograma y reforecast.
-> - Diferenciación entre Proyecto Único y Fee Mensual en el flujo de activación.
-> Esta épica se desarrollará, prototipará y validará en una **rama y ticket técnico independientes**.
-
-##### Resumen de la Propuesta en Evaluación:
-- **Fase 1 (Conversión):** Crearía el proyecto en un estado preliminar sin computar capacidad ni fechas definitivas hasta tener confirmación operativa.
-- **Fase 2 (Inicio manual):** Un usuario `commercial` o `client_relationship` ejecutaría manualmente "Iniciar Proyecto", fijando fecha de kick-off y asignando al Project Lead.
-- **Línea Base y Reforecast:** El Project Lead validaría las fechas tentativas proyectadas por Orbit antes de consolidar la línea base operativa.
-- **Estados Conceptuales Propuestos:**
-  - Oportunidad: *Borrador*, *En alcance*, *Lista para cotizar*, *Cotizada*, *Ganada*, *Convertida*.
-  - Proyecto (en evaluación): *Pendiente de inicio*, *En planificación*, *Activo*, *Cerrado*.
-  - Salud del Proyecto: *Saludable*, *Atención*, *En riesgo* (vectores de salud, no estados de flujo).
+Conforme a las definiciones acordadas para la UAT 2 (Ticket #132 y rama `feat/hubspot-commercial-sync-flow`):
+1. **Regla Canónica 1:1:1:** Cada servicio ganado genera un proyecto independiente en la tabla `projects` de Orbit. Todos quedan asociados al mismo Cliente en el Directorio sin duplicarlo.
+2. **Asignación Granular de Líder Operativo:** En el modal de conversión, cada tarjeta de servicio ganado cuenta con su propio selector de Líder Operativo (`leadUserId`), permitiendo asignar líderes distintos o el mismo líder según la especialidad de cada servicio.
+3. **Exclusión Estricta de Servicios Perdidos:** Cualquier servicio con etapa confirmada de `'Cierre perdido'` queda excluido de la conversión y NUNCA genera proyectos ni tareas.
+4. **Estados Operativos y Botón «Iniciar proyecto 🚀»:**
+   - Si la fecha de inicio es posterior a la fecha actual (`startDate > hoy`), el proyecto se crea en estado **`Por empezar`** y despliega el botón **`Iniciar proyecto 🚀`**.
+   - Al pulsar dicho botón, se alinean las fechas definitivas de arranque y se recalculan proporcionalmente las fechas de entrega de cada tarea en el backlog del proyecto.
+   - Si la fecha ya está en curso (`startDate <= hoy`), el proyecto se marca como **`En ejecución`**.
+5. **Modo Desacoplado / Manual:** La conversión opera 100% de manera autónoma cuando HubSpot no está disponible o el token está inactivo, registrando la trazabilidad en la auditoría de New Business para reconciliación posterior.
 
 ---
 

@@ -135,6 +135,21 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   useEffect(() => {
     setSelectedProjectId(initialSelectedProjectId);
   }, [initialSelectedProjectId]);
+
+  // Cerrar menú contextual de opciones de proyecto (Archivar / Eliminar) al hacer clic fuera
+  useEffect(() => {
+    if (!activeProjectMenu) return;
+    const handleOutsideClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.project-menu-container')) {
+        setActiveProjectMenu(null);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, [activeProjectMenu]);
   
   // Project Detail Tab & Grouping
   const [activeTab, setActiveTab] = useState<ProjectDetailTab>('overview');
@@ -582,6 +597,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
       startDate: scheduleKickoffDate,
       endDate: finalEndDate,
       deliverables: updatedDeliverables,
+      isKickedOff: true,
       healthNote: `Proyecto iniciado formalmente el ${scheduleKickoffDate} con cronograma alineado.`
     };
 
@@ -626,6 +642,13 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
       ? Math.round((currentProject.consumedHours / currentProject.budgetedHours) * 100)
       : 0;
 
+    const isProjectCompleted = (currentProject.status as string) === 'completed' || (currentProject.status as string) === 'Cerrado' || (currentProject.status as string) === 'Completado';
+    const isProjectArchived = currentProject.status === 'Archivado';
+    const isProjectPendingToStart = !isProjectCompleted && !isProjectArchived && (
+      !currentProject.isKickedOff ||
+      (!currentProject.startDate || currentProject.startDate > todayStr || currentProject.status === 'Planificación' || (currentProject.status as string) === 'Por empezar')
+    );
+
     return (
       <div className="space-y-6 animate-in fade-in duration-200">
         {scheduleSuccessMessage && (
@@ -656,7 +679,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             </button>
             <ChevronRight className="w-3.5 h-3.5 text-[#94a3b8]" />
             <span className="font-bold text-[#0f172a] truncate max-w-xs sm:max-w-md">
-              {currentProject.name}
+              {currentProject.clientName}
             </span>
           </div>
 
@@ -672,7 +695,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             )}
 
             {/* Project Actions Menu (Archive & Delete) */}
-            <div className="relative">
+            <div className="relative project-menu-container">
               <button
                 onClick={() => setActiveProjectMenu(activeProjectMenu === currentProject.id ? null : currentProject.id)}
                 className="p-2 rounded-xl bg-white hover:bg-[#f8fafc] text-[#64748b] hover:text-[#0f172a] border border-[#e2e8f0] transition-colors cursor-pointer"
@@ -740,7 +763,6 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                     ? 'Proyecto único'
                     : 'Interno / No facturable'}
                 </span>
-                <span className="text-xs font-semibold text-[#64748b]">· {currentProject.serviceBase}</span>
               </div>
               
               <h1 className="text-2xl font-extrabold text-[#0f172a] pt-0.5 tracking-tight">{currentProject.name}</h1>
@@ -748,90 +770,84 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
               <p className="text-xs text-[#64748b]">
                 Líder del proyecto: <strong className="text-[#0f172a]">{currentProject.leadName}</strong>
               </p>
-              {!isFeeProject && (
-                <div className="flex items-center gap-2 flex-wrap pt-1">
+              {/* Badges de Estado, Gates y Tandas */}
+              <div className="flex items-center gap-2 flex-wrap pt-1.5">
+                {/* 1. Estado Chip con la misma UI exacta de Gates y Tandas */}
+                <span
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                    isProjectArchived
+                      ? 'bg-[#f1f5f9] text-[#64748b] border border-[#cbd5e1]'
+                      : isProjectCompleted
+                      ? 'bg-[#f1f5f9] text-[#475569] border border-[#cbd5e1]'
+                      : isProjectPendingToStart
+                      ? 'bg-[#eff6ff] text-[#1d4ed8] border border-[#bfdbfe]'
+                      : 'bg-[#ecfdf5] text-[#166534] border border-[#bbf7d0]'
+                  }`}
+                  title={isProjectPendingToStart ? 'La fecha de arranque aún no inicia o el proyecto está pendiente de iniciar' : 'El proyecto se encuentra formalmente en ejecución'}
+                >
                   <span
-                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#faf5ff] text-[#501f92] border border-[#e9d5ff]"
-                    title="Límite contractual de aprobaciones formales para evitar sobrecostos"
-                  >
-                    🛡️ Gates incluidos: 2
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      isProjectPendingToStart ? 'bg-[#2563eb] animate-pulse' : isProjectCompleted || isProjectArchived ? 'bg-[#64748b]' : 'bg-[#10b981]'
+                    }`}
+                  />
+                  <span>
+                    Estado: {isProjectArchived ? 'Archivado' : isProjectCompleted ? 'Completado' : isProjectPendingToStart ? 'Pendiente de iniciar' : 'En ejecución'}
                   </span>
-                  <span
-                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#f0fdf4] text-[#166534] border border-[#bbf7d0]"
-                    title="2 tandas por gate: 1 tanda grande de feedback estructural + 1 tanda menor de afinamiento"
-                  >
-                    🔄 Tandas de ajuste: 2 por gate
-                  </span>
-                </div>
-              )}
+                </span>
+
+                {!isFeeProject && (
+                  <>
+                    <span
+                      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#faf5ff] text-[#501f92] border border-[#e9d5ff]"
+                      title="Límite contractual de aprobaciones formales para evitar sobrecostos"
+                    >
+                      🛡️ Gates incluidos: {currentProject.scheduleConfig?.gateCount || 2}
+                    </span>
+                    <span
+                      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#f0fdf4] text-[#166534] border border-[#bbf7d0]"
+                      title="2 tandas por gate: 1 tanda grande de feedback estructural + 1 tanda menor de afinamiento"
+                    >
+                      🔄 Tandas de ajuste: {currentProject.scheduleConfig?.includedReworkRounds || 2} por gate
+                    </span>
+                  </>
+                )}
+              </div>
             </div>
 
-            {/* Health Box & Schedule Kickoff Action */}
+            {/* Schedule Kickoff Action Button */}
             <div className="flex items-center gap-2.5 flex-wrap">
-              {/* Si la fecha es futura o aún no está definida, mostrar botón destacado "Iniciar proyecto 🚀" */}
-              {(!currentProject.startDate || currentProject.startDate > todayStr || currentProject.status === 'Planificación' || currentProject.status === 'draft' || (currentProject.status as string) === 'Por empezar') ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setIsScheduleModalOpen(true)}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-[#d4ff4a] hover:bg-[#bceb34] text-[#0f172a] text-xs font-black shadow-sm transition-all hover:scale-[1.02] cursor-pointer animate-pulse"
-                    title="Fijar fecha oficial de arranque y sincronizar automáticamente los deadlines de las actividades del equipo"
-                  >
-                    <Play className="w-3.5 h-3.5 fill-current" />
-                    <span>Iniciar proyecto 🚀</span>
-                  </button>
-
-                  {currentProject.startDate && (
-                    <button
-                      type="button"
-                      onClick={() => setIsScheduleModalOpen(true)}
-                      className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#cbd5e1] text-[#0f172a] text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
-                      title="Fecha programada por Cata/Operaciones. Clic para ajustar."
-                    >
-                      <Calendar className="w-3.5 h-3.5 text-[#501f92]" />
-                      <span>Inicio: {currentProject.startDate}</span>
-                      <span className="text-[10px] text-[#64748b]">· Fin: {currentProject.endDate || 'Por definir'}</span>
-                    </button>
-                  )}
-                </>
+              {isProjectPendingToStart ? (
+                <button
+                  type="button"
+                  onClick={() => setIsScheduleModalOpen(true)}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-[#d4ff4a] hover:bg-[#bceb34] text-[#0f172a] text-xs font-black shadow-md hover:shadow-lg transition-all hover:scale-[1.02] cursor-pointer"
+                  title="Fijar fecha oficial de arranque y sincronizar automáticamente los deadlines de las actividades del equipo"
+                >
+                  <Play className="w-4 h-4 fill-current text-[#0f172a]" />
+                  <span className="text-sm font-black tracking-tight">Iniciar proyecto 🚀</span>
+                </button>
               ) : (
                 <button
                   type="button"
                   onClick={() => setIsScheduleModalOpen(true)}
-                  className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#cbd5e1] text-[#0f172a] text-xs font-bold transition-colors cursor-pointer shadow-2xs"
-                  title="Ajustar fecha de inicio o recalcular cronograma de entrega"
+                  className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white hover:bg-[#f8fafc] border border-[#cbd5e1] hover:border-[#501f92] text-[#0f172a] text-xs font-bold transition-all shadow-xs cursor-pointer group"
+                  title="Proyecto iniciado. Clic para ajustar fechas o recalcular cronograma"
                 >
+                  <span className="w-2 h-2 rounded-full bg-[#10b981] inline-block" />
+                  <span className="font-extrabold text-[#065f46]">Iniciado</span>
+                  <span className="text-[#cbd5e1]">|</span>
                   <Calendar className="w-3.5 h-3.5 text-[#501f92]" />
-                  <span>Inicio: {currentProject.startDate}</span>
-                  <span className="text-[10px] text-[#64748b]">· Fin: {currentProject.endDate || 'Por definir'}</span>
+                  <span className="text-xs text-[#334155] font-semibold">
+                    Inicio: {currentProject.startDate || 'Hoy'}
+                  </span>
+                  <span className="text-[11px] text-[#64748b]">
+                    · Fin: {currentProject.endDate || 'Por definir'}
+                  </span>
+                  <span className="text-[10px] text-[#64748b] group-hover:text-[#501f92] underline ml-1">
+                    Ajustar
+                  </span>
                 </button>
               )}
-
-              {/* Indicador de Estado: Por empezar (si fecha aún no llega) vs En ejecución (si ya está en curso) */}
-              <div className="flex items-center gap-3 bg-[#f8fafc] px-3.5 py-2 rounded-2xl border border-[#e2e8f0] shrink-0">
-                <div className="text-right">
-                  <span className="text-[10px] font-bold uppercase text-[#64748b] block">Estado</span>
-                  {currentProject.status === 'Archivado' ? (
-                    <span className="text-xs font-bold text-[#64748b] block mt-0.5">
-                      Archivado
-                    </span>
-                  ) : ((currentProject.status as string) === 'completed' || (currentProject.status as string) === 'Cerrado' || (currentProject.status as string) === 'Completado') ? (
-                    <span className="text-xs font-bold text-[#065f46] block mt-0.5">
-                      Completado
-                    </span>
-                  ) : (!currentProject.startDate || currentProject.startDate > todayStr) ? (
-                    <span className="text-xs font-bold text-[#1d4ed8] inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 rounded-md bg-[#eff6ff] border border-[#bfdbfe]">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#2563eb] inline-block animate-pulse" />
-                      <span>Por empezar</span>
-                    </span>
-                  ) : (
-                    <span className="text-xs font-bold text-[#047857] inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 rounded-md bg-[#ecfdf5] border border-[#a7f3d0]">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] inline-block" />
-                      <span>En ejecución</span>
-                    </span>
-                  )}
-                </div>
-              </div>
             </div>
           </div>
 
@@ -2202,7 +2218,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                     </span>
 
                     {/* Quick Menu Button */}
-                    <div className="relative" onClick={(e) => e.stopPropagation()}>
+                    <div className="relative project-menu-container" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => setActiveProjectMenu(activeProjectMenu === prj.id ? null : prj.id)}
                         className="p-1 rounded-lg text-[#94a3b8] hover:text-[#0f172a] hover:bg-[#f1f5f9] transition-colors"
