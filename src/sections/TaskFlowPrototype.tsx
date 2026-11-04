@@ -1837,6 +1837,8 @@ export const TaskFlowPrototype: React.FC = () => {
       soldMonthlyValue?: number;
       monthsDuration?: number;
       deliverableIds: string[];
+      leadUserId?: string;
+      leadUserName?: string;
     }>;
   }) => {
     const opp = payload.opportunity;
@@ -1966,6 +1968,40 @@ export const TaskFlowPrototype: React.FC = () => {
         const soldValueCOP = quoteCurrency === 'COP' && soldValue > 0 ? soldValue : undefined;
         const codePrefix = projItem.projectType === 'fee_monthly' ? 'FEE' : 'PRJ';
 
+        const specificLeadUser = (projItem.leadUserId ? activeTeam.find((u) => u.id === projItem.leadUserId) : null) || assignedLeadUser;
+        const prjLeadName = specificLeadUser?.name || projItem.leadUserName || leadName;
+        const prjLeadAvatarBg = specificLeadUser?.avatarBg || 'bg-[#501f92]';
+        const prjLeadRole = specificLeadUser?.officialRole || specificLeadUser?.professionalRole || specificLeadUser?.role || 'Líder de Proyecto';
+
+        const projectCoreTeam: any[] = [
+          {
+            id: specificLeadUser?.id || `lead-${prjId}`,
+            name: prjLeadName,
+            role: prjLeadRole,
+            avatarBg: prjLeadAvatarBg,
+            initials: specificLeadUser?.initials || prjLeadName.slice(0, 2).toUpperCase(),
+            isLead: true,
+            weeklyAllocatedHours: 4
+          }
+        ];
+
+        if (payload.specialistUserIds && Array.isArray(payload.specialistUserIds)) {
+          payload.specialistUserIds.forEach((specId: string) => {
+            const specUser = activeTeam.find((u) => u.id === specId);
+            if (specUser && specUser.id !== specificLeadUser?.id) {
+              projectCoreTeam.push({
+                id: specUser.id,
+                name: specUser.name,
+                role: specUser.officialRole || specUser.professionalRole || specUser.role || 'Especialista',
+                avatarBg: specUser.avatarBg || 'bg-[#7839ee]',
+                initials: specUser.initials || specUser.name.slice(0, 2).toUpperCase(),
+                isLead: false,
+                weeklyAllocatedHours: 8
+              });
+            }
+          });
+        }
+
         const newPrj: ProjectSummaryItem = {
           id: prjId,
           code: `${codePrefix}-${Math.floor(10 + Math.random() * 90)}`,
@@ -1974,9 +2010,9 @@ export const TaskFlowPrototype: React.FC = () => {
           clientName: resolvedClientName,
           taxEntityId: effectiveTaxEntityId || (clients.find(c => c.id === resolvedClientId)?.taxEntities?.[0]?.id) || null,
           brand: resolvedClientName,
-          leadName,
-          leadAvatarBg,
-          leadRole,
+          leadName: prjLeadName,
+          leadAvatarBg: prjLeadAvatarBg,
+          leadRole: prjLeadRole,
           projectType: projItem.projectType,
           serviceBase: projItem.serviceName,
           budgetedHours: totalHours,
@@ -1989,7 +2025,7 @@ export const TaskFlowPrototype: React.FC = () => {
           brief: opp.briefSummary || opp.discoveryNotes,
           briefUrl: opp.briefUrl || null,
           deliverables: newProjectDeliverables,
-          coreTeam: resolvedCoreTeam,
+          coreTeam: projectCoreTeam,
           originOpportunityId: opp.id,
           originQuoteIds: [quote.id],
           hubspotDealId: projItem.hubspotDealId || opp.hubspotDealId || null,

@@ -32,6 +32,8 @@ export interface ConvertedProjectPlan {
   soldMonthlyValue?: number;
   monthsDuration?: number;
   deliverableIds: string[];
+  leadUserId?: string;
+  leadUserName?: string;
 }
 
 export interface ConvertOpportunityPayload {
@@ -141,6 +143,8 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
 
   // Nombres sugeridos y editables: [Nombre del servicio] — [Nombre del cliente]
   const [projectNames, setProjectNames] = useState<Record<string, string>>({});
+  // Líder operativo asignado independientemente por cada servicio ganado
+  const [serviceLeadUserIds, setServiceLeadUserIds] = useState<Record<string, string>>({});
 
   useEffect(() => {
     setProjectNames((prev) => {
@@ -179,6 +183,20 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
     return eligibleLeaders[0] || null;
   }, [opportunity, users, eligibleLeaders]);
 
+  // Inicializar líderes por servicio con el líder de scoping por defecto
+  useEffect(() => {
+    setServiceLeadUserIds((prev) => {
+      const next = { ...prev };
+      const defaultId = initialLeadUser?.id || eligibleLeaders[0]?.id || '';
+      wonServices.forEach((svc) => {
+        if (!next[svc.serviceId] && defaultId) {
+          next[svc.serviceId] = defaultId;
+        }
+      });
+      return next;
+    });
+  }, [wonServices, initialLeadUser, eligibleLeaders]);
+
   // Selección múltiple de líderes operativos
   const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>(() =>
     initialLeadUser ? [initialLeadUser.id] : []
@@ -211,14 +229,20 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (selectedLeadUsers.length === 0 || (opportunity.clientId && !matchedExistingClient)) return;
     if (wonServices.length === 0) return;
+    if (opportunity.clientId && !matchedExistingClient) return;
 
     // Regla canónica 1:1:1:
     // 1 servicio en Orbit = 1 negocio en HubSpot = 1 proyecto independiente en Orbit
+    // Cada proyecto tiene su propio Líder Operativo asignado por Comercial
+    const fallbackLeadId = selectedLeadUsers[0]?.id || initialLeadUser?.id || eligibleLeaders[0]?.id;
+
     const convertedProjects: ConvertedProjectPlan[] = wonServices.map((svc) => {
       const customName = (projectNames[svc.serviceId] || `${svc.serviceName} — ${clientName}`).trim();
       const serviceDeliverables = getDeliverablesForService(svc);
+      const svcLeadId = serviceLeadUserIds[svc.serviceId] || fallbackLeadId;
+      const svcLeadUser = users.find((u) => u.id === svcLeadId);
+
       return {
         serviceId: svc.serviceId,
         serviceName: svc.serviceName,
@@ -229,17 +253,25 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
         soldValue: svc.modality === 'fixed_project' ? svc.totalValue : undefined,
         soldMonthlyValue: svc.modality === 'fee_monthly' ? svc.monthlyValue : undefined,
         monthsDuration: svc.modality === 'fee_monthly' ? svc.monthsDuration : undefined,
-        deliverableIds: serviceDeliverables.map((d) => d.id)
+        deliverableIds: serviceDeliverables.map((d) => d.id),
+        leadUserId: svcLeadId,
+        leadUserName: svcLeadUser?.name || 'Líder de Proyecto'
       };
     });
 
     const isMixed = wonServices.some((s) => s.modality === 'fixed_project') && wonServices.some((s) => s.modality === 'fee_monthly');
 
+    const allAssignedLeadIds = Array.from(
+      new Set(convertedProjects.map((p) => p.leadUserId).filter(Boolean) as string[])
+    );
+    const primaryLeadId = allAssignedLeadIds[0] || fallbackLeadId;
+    const primaryLeadUsers = users.filter((u) => allAssignedLeadIds.includes(u.id));
+
     onConfirm({
       projects: convertedProjects,
-      leadUserId: selectedLeadUsers[0].id,
-      leadUserIds: selectedLeadIds,
-      leadName: selectedLeadUsers.map((u) => u.name).join(', '),
+      leadUserId: primaryLeadId,
+      leadUserIds: allAssignedLeadIds.length > 0 ? allAssignedLeadIds : [primaryLeadId],
+      leadName: primaryLeadUsers.map((u) => u.name).join(', ') || 'Líder de Proyecto',
       specialistUserIds: selectedSpecialistIds.filter((id) => users.some((user) => user.id === id)),
       startDate,
       endDate: endDate || undefined,
@@ -427,6 +459,40 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
                       />
                     </div>
 
+                    {/* Selector de Líder Operativo por servicio */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <label className="font-bold text-[#475569] block text-[11px]">
+                          Líder operativo asignado a este servicio: <span className="text-red-500">*</span>
+                        </label>
+                        <span className="text-[10px] text-[#501f92] font-semibold">
+                          Responsable operativo
+                        </span>
+                      </div>
+                      <select
+                        value={serviceLeadUserIds[service.serviceId] || initialLeadUser?.id || eligibleLeaders[0]?.id || ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setServiceLeadUserIds((prev) => ({
+                            ...prev,
+                            [service.serviceId]: val
+                          }));
+                        }}
+                        className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] text-xs font-semibold focus:ring-2 focus:ring-[#501f92] bg-white shadow-2xs cursor-pointer"
+                      >
+                        {eligibleLeaders.map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.name} — {u.officialRole || u.professionalRole || u.role || 'Líder de Proyecto'}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-[10px] text-[#64748b]">
+                        {wonServices.length > 1
+                          ? 'Comercial puede asignar el mismo líder o diferentes líderes para cada servicio ganado.'
+                          : 'Asigna el líder operativo del alcance o cámbialo si otro líder ejecutará el proyecto.'}
+                      </p>
+                    </div>
+
                     {/* Entregables asignados exclusivamente a este proyecto */}
                     <div className="space-y-1.5 pt-1 border-t border-[#f1f5f9]">
                       <div className="flex items-center justify-between text-[10.5px]">
@@ -459,56 +525,30 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
             </div>
           </div>
 
-          {/* Líderes Operativos & Fechas */}
+          {/* Resumen de Líderes Asignados & Fechas del Cronograma */}
           <div className="space-y-3">
-            <div className="space-y-1.5">
-              <label className="font-bold text-[#475569] block text-xs">
-                Líder(es) Operativo(s): <span className="text-red-500">*</span>
-              </label>
-              <p className="text-[11px] text-[#64748b]">
-                Selecciona uno o varios líderes para la gestión y asignación operativa de los proyectos creados:
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-44 overflow-y-auto p-2 rounded-xl bg-white border border-[#cbd5e1]">
-                {eligibleLeaders.map((u) => {
-                  const isSelected = selectedLeadIds.includes(u.id);
+            <div className="p-3 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-1.5">
+              <span className="text-[10.5px] uppercase font-bold text-[#64748b] block">
+                Líder(es) Operativo(s) Asignado(s) a los Proyectos:
+              </span>
+              <div className="flex flex-wrap gap-1.5 pt-0.5">
+                {Array.from(new Set(wonServices.map((s) => serviceLeadUserIds[s.serviceId] || initialLeadUser?.id || eligibleLeaders[0]?.id).filter(Boolean))).map((leadId) => {
+                  const leadObj = users.find((u) => u.id === leadId);
+                  if (!leadObj) return null;
                   return (
-                    <label
-                      key={u.id}
-                      className={`flex items-center gap-2 p-2 rounded-lg border transition-all cursor-pointer text-xs ${
-                        isSelected
-                          ? 'bg-[#501f92]/10 border-[#501f92]/40 text-[#0f172a] font-bold shadow-2xs'
-                          : 'bg-[#f8fafc] border-transparent hover:border-[#cbd5e1] text-[#475569]'
-                      }`}
+                    <span
+                      key={leadId}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-[#cbd5e1] text-xs font-semibold text-[#0f172a] shadow-2xs"
                     >
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => {
-                          setSelectedLeadIds((prev) => {
-                            if (prev.includes(u.id)) {
-                              if (prev.length <= 1) return prev; // Mantener al menos 1 líder
-                              return prev.filter((id) => id !== u.id);
-                            }
-                            return [...prev, u.id];
-                          });
-                        }}
-                        className="w-4 h-4 rounded text-[#501f92] focus:ring-[#501f92] cursor-pointer"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-semibold text-[#0f172a]">{u.name}</p>
-                        <p className="text-[10.5px] text-[#64748b] truncate font-normal">
-                          {u.officialRole || u.professionalRole || u.role || 'Líder'}
-                        </p>
-                      </div>
-                    </label>
+                      <span className="w-2 h-2 rounded-full bg-[#501f92]" />
+                      <span>{leadObj.name}</span>
+                      <span className="text-[10px] text-[#64748b]">
+                        ({leadObj.officialRole || leadObj.role || 'Líder'})
+                      </span>
+                    </span>
                   );
                 })}
               </div>
-              {selectedLeadIds.length === 0 && (
-                <p className="text-[11px] text-red-500 font-bold">
-                  Selecciona al menos un líder operativo.
-                </p>
-              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">

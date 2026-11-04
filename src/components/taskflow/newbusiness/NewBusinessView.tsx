@@ -125,6 +125,8 @@ interface NewBusinessViewProps {
       soldMonthlyValue?: number;
       monthsDuration?: number;
       deliverableIds: string[];
+      leadUserId?: string;
+      leadUserName?: string;
     }>;
   }) => void;
   currentUser?: UserItem;
@@ -3042,6 +3044,63 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                       <RefreshCw className={`w-3.5 h-3.5 ${hasAnyHubSpotDeals ? 'text-white' : 'text-[#ea580c]'}`} />
                       <span>Sincronizar con HubSpot</span>
                     </button>
+
+                    {/* Botón 3: Aprobación Comercial Manual (cuando HubSpot no responde o es oportunidad manual) */}
+                    {!hasAnyWonServices && activeOpp.status !== 'won' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const nowIso = new Date().toISOString();
+                          const updatedCommercial: ServiceCommercialItem[] = commercialStructureDraft.map((s) => ({
+                            ...s,
+                            hubspotDealStage: (s.hubspotDealStage === 'Cierre perdido' ? 'Cierre perdido' : 'Cierre ganado') as HubSpotDealStage,
+                            approved: s.hubspotDealStage !== 'Cierre perdido'
+                          }));
+                          setCommercialStructureDraft(updatedCommercial);
+
+                          const manualAuditEntries: HubSpotSyncAuditEntry[] = updatedCommercial
+                            .filter((s) => s.hubspotDealStage !== 'Cierre perdido')
+                            .map((s) => ({
+                              id: `audit-${Date.now()}-${s.serviceId}`,
+                              serviceId: s.serviceId,
+                              serviceName: s.serviceName,
+                              dealId: s.hubspotDealId || null,
+                              previousStage: s.hubspotDealStage || 'Presentación a cliente',
+                              newStage: 'Cierre ganado' as HubSpotDealStage,
+                              userId: currentUser?.id || 'commercial-manual',
+                              userName: currentUser?.name || 'Aprobación Comercial Manual',
+                              timestamp: nowIso,
+                              origin: 'Orbit' as const,
+                              syncStatus: 'success' as const,
+                              syncedFields: {
+                                dealName: `${s.serviceName} — ${activeOpp.prospectAccountName}`,
+                                companyName: activeOpp.prospectAccountName,
+                                contactName: activeOpp.contactName,
+                                commercialOwner: activeOpp.commercialOwner,
+                                value: s.modality === 'fixed_project' ? s.totalValue : s.monthlyValue,
+                                currency: quoteCurrencyDraft,
+                                stage: 'Cierre ganado' as HubSpotDealStage
+                              }
+                            }));
+
+                          if (manualAuditEntries.length > 0) {
+                            setSyncAuditTrail((prev) => [...manualAuditEntries, ...prev]);
+                          }
+
+                          const updatedQuote: QuoteProposal = {
+                            ...activeQuote,
+                            commercialStructure: updatedCommercial
+                          };
+                          handleUpdateQuote(updatedQuote);
+                          handleMarkOpportunityWon(activeOpp);
+                        }}
+                        className="px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5 active:scale-95 bg-[#059669] hover:bg-[#047857] text-white"
+                        title="Aprobar servicios y marcar como ganada manualmente (no bloquea New Business por fallas de HubSpot)"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[#d4ff4a]" />
+                        <span>Marcar como ganada 🏆</span>
+                      </button>
+                    )}
                   </div>
                 )}
 
@@ -3049,11 +3108,11 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setIsConvertModalOpen(true)}
-                    className="px-4 py-2.5 rounded-xl text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer bg-[#059669] hover:bg-[#047857] text-white animate-pulse"
+                    className="px-4 py-2.5 rounded-xl text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer bg-[#501f92] hover:bg-[#3d1572] text-white animate-pulse"
                     title="Convertir servicios ganados en proyectos operativos independientes"
                   >
                     <FolderPlus className="w-4 h-4 text-[#d4ff4a]" />
-                    <span>Convertir servicios ganados a proyectos →</span>
+                    <span>Convertir a Cliente y Proyectos →</span>
                   </button>
                 )}
 

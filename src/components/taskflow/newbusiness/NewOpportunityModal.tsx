@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   NewBusinessOpportunity,
-  OpportunityType,
   ClientProfile,
   ProductBacklogTemplate,
   QuoteProposal,
@@ -9,7 +8,6 @@ import {
 } from '../types';
 import { isEligibleScopingLeader, isEligibleTeamMember } from './teamCandidates';
 import {
-  HUBSPOT_SIMULATED_COMPANIES,
   HubSpotCompanyItem,
   HubSpotContactItem,
   HubSpotMeetingNote,
@@ -20,22 +18,13 @@ import {
   X,
   Building2,
   User,
-  Mail,
-  Phone,
   Calendar,
   CheckCircle2,
   Sparkles,
-  ExternalLink,
-  Clock,
-  Folder,
-  Briefcase,
   Search,
-  ArrowRight,
-  Code2,
-  Sliders,
-  AlertCircle,
-  FileText,
-  ChevronDown
+  ChevronDown,
+  Folder,
+  Mail
 } from 'lucide-react';
 
 interface NewOpportunityModalProps {
@@ -52,9 +41,13 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
   isOpen,
   onClose,
   onSaveOpportunity,
-  existingClients,
+  existingClients = [],
+  initialMode = 'hubspot',
   users = []
 }) => {
+  // Mode toggle: 'hubspot' | 'manual'
+  const [mode, setMode] = useState<'hubspot' | 'manual'>(initialMode);
+
   // Available leaders for assignment (filtered from users)
   const availableUsers = users.filter((user) => user.status === 'Active');
   const eligibleLeaders = availableUsers.filter(isEligibleScopingLeader);
@@ -75,10 +68,16 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
   const [selectedCompany, setSelectedCompany] = useState<HubSpotCompanyItem | null>(null);
   const [isSearchingCompany, setIsSearchingCompany] = useState<boolean>(false);
   const companyDropdownRef = useRef<HTMLDivElement>(null);
-  const leadersDropdownRef = useRef<HTMLDivElement>(null);
-  const commercialDropdownRef = useRef<HTMLDivElement>(null);
   const [selectedContactId, setSelectedContactId] = useState<string>('');
   const [selectedNoteId, setSelectedNoteId] = useState<string>('');
+
+  // Manual Mode State (Replicating Screenshot 2)
+  const [accountType, setAccountType] = useState<'new' | 'existing'>('new');
+  const [selectedExistingClientId, setSelectedExistingClientId] = useState<string>('');
+  const [manualCompanyName, setManualCompanyName] = useState<string>('');
+  const [manualContactName, setManualContactName] = useState<string>('');
+  const [manualContactEmail, setManualContactEmail] = useState<string>('');
+  const [driveFolderUrl, setDriveFolderUrl] = useState<string>('');
 
   // General fields
   const [title, setTitle] = useState<string>('');
@@ -87,6 +86,8 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
   const [commercialUserIds, setCommercialUserIds] = useState<string[]>([]);
   const [leadersOpen, setLeadersOpen] = useState(false);
   const [commercialOpen, setCommercialOpen] = useState(false);
+  const leadersDropdownRef = useRef<HTMLDivElement>(null);
+  const commercialDropdownRef = useRef<HTMLDivElement>(null);
 
   const toLocalDate = (time: number) => {
     return new Date(time).toISOString().slice(0, 10);
@@ -117,6 +118,13 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
   // Reset modal state on open
   useEffect(() => {
     if (isOpen) {
+      setMode(initialMode || 'hubspot');
+      setAccountType('new');
+      setSelectedExistingClientId(existingClients[0]?.id || '');
+      setManualCompanyName('');
+      setManualContactName('');
+      setManualContactEmail('');
+      setDriveFolderUrl('');
       setCompanySearchQuery('');
       setSelectedCompany(null);
       setIsSearchingCompany(false);
@@ -135,7 +143,7 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
         setSelectedLeadUserIds([eligibleLeaders[0].id]);
       }
     }
-  }, [isOpen]);
+  }, [isOpen, initialMode, existingClients]);
 
   // Filtered HubSpot Companies
   const matchingCompanies = useMemo(() => {
@@ -152,14 +160,12 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
     setCompanySearchQuery(company.name);
     setIsSearchingCompany(false);
 
-    // Auto-select primary contact
     if (company.contacts.length > 0) {
       setSelectedContactId(company.contacts[0].id);
     } else {
       setSelectedContactId('');
     }
 
-    // Auto-select first brief note
     if (company.notes.length > 0) {
       setSelectedNoteId(company.notes[0].id);
       setBriefText(company.notes[0].fullContent);
@@ -168,19 +174,16 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
       setBriefText('');
     }
 
-    // Auto suggest opportunity title
     if (!title) {
       setTitle(`Propuesta ${company.name}`);
     }
   };
 
-  // Selected contact object
   const currentContact: HubSpotContactItem | undefined = useMemo(() => {
     if (!selectedCompany) return undefined;
     return selectedCompany.contacts.find((c) => c.id === selectedContactId);
   }, [selectedCompany, selectedContactId]);
 
-  // Selected brief note object
   const currentNote: HubSpotMeetingNote | undefined = useMemo(() => {
     if (!selectedCompany) return undefined;
     return selectedCompany.notes.find((n) => n.id === selectedNoteId);
@@ -191,8 +194,46 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!selectedCompany) {
-      return;
+    let clientMatch: ClientProfile | null = null;
+    let prospectName = '';
+    let contactN = '';
+    let contactE = '';
+    let hubCompanyId: string | null = null;
+    let hubContactId: string | null = null;
+    let hubNoteId: string | null = null;
+    let hubNoteSnippet: string | undefined = undefined;
+
+    if (mode === 'hubspot') {
+      if (!selectedCompany) return;
+      hubCompanyId = selectedCompany.id;
+      hubContactId = currentContact?.id || null;
+      hubNoteId = currentNote?.id || null;
+      hubNoteSnippet = currentNote?.snippet || undefined;
+      prospectName = selectedCompany.name;
+      contactN = currentContact?.name || '';
+      contactE = currentContact?.email || '';
+
+      clientMatch = existingClients.find(
+        (c) =>
+          c.hubspotCompanyId === selectedCompany.id ||
+          c.name.toLowerCase().trim() === selectedCompany.name.toLowerCase().trim()
+      ) || null;
+    } else {
+      // Modo manual
+      if (accountType === 'existing') {
+        const found = existingClients.find((c) => c.id === selectedExistingClientId);
+        if (!found) return;
+        clientMatch = found;
+        prospectName = found.name;
+      } else {
+        if (!manualCompanyName.trim()) return;
+        prospectName = manualCompanyName.trim();
+        clientMatch = existingClients.find(
+          (c) => c.name.toLowerCase().trim() === prospectName.toLowerCase().trim()
+        ) || null;
+      }
+      contactN = manualContactName.trim();
+      contactE = manualContactEmail.trim();
     }
 
     const oppId = `opp-${Date.now()}`;
@@ -213,13 +254,6 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
     if (selectedCommercials.length === 0) return;
     const resolvedCommercialOwner = selectedCommercials.map((u) => u.name).join(', ');
 
-    // Verify if company matches an existing Orbit client
-    const existingClientMatch = existingClients.find(
-      (c) =>
-        c.hubspotCompanyId === selectedCompany.id ||
-        c.name.toLowerCase().trim() === selectedCompany.name.toLowerCase().trim()
-    );
-
     const initialQuote: QuoteProposal = {
       id: defaultQuoteId,
       opportunityId: oppId,
@@ -234,13 +268,12 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
 
     const newOpp: NewBusinessOpportunity = {
       id: oppId,
-      title: title.trim() || `Propuesta ${selectedCompany.name}`,
-      type: existingClientMatch ? 'upsell' : 'new_client',
-      clientId: existingClientMatch ? existingClientMatch.id : null,
-      prospectAccountName: selectedCompany.name,
-      contactName: currentContact?.name,
-      contactEmail: currentContact?.email,
-      contactPhone: currentContact?.phone,
+      title: title.trim() || `Propuesta ${prospectName}`,
+      type: clientMatch ? 'upsell' : 'new_client',
+      clientId: clientMatch ? clientMatch.id : null,
+      prospectAccountName: prospectName,
+      contactName: contactN || undefined,
+      contactEmail: contactE || undefined,
       leadUserId: resolvedLeadUserId,
       leadUserIds: selectedLeaders.map((user) => user.id),
       leadUserName: resolvedLeadUserName,
@@ -248,15 +281,16 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
       handoffHours: safeHandoffHours,
       handoffDeadline: deadlineTimestamp,
 
-      // Guardar de forma simulada datos de HubSpot
-      hubspotCompanyId: selectedCompany.id,
-      hubspotContactId: currentContact?.id || null,
-      hubspotBriefNoteId: currentNote?.id || null,
-      hubspotBriefNoteSnippet: currentNote?.snippet || undefined,
-      hubspotDealStage: null, // Los negocios en HubSpot se crean posteriormente desde Cotización
+      // Datos de HubSpot si aplica
+      hubspotCompanyId: hubCompanyId,
+      hubspotContactId: hubContactId,
+      hubspotBriefNoteId: hubNoteId,
+      hubspotBriefNoteSnippet: hubNoteSnippet,
+      hubspotDealStage: null,
 
-      status: 'discovery', // Inicia en discovery listo para dimensionamiento en Alcance
-      briefSummary: briefText.trim() || currentNote?.snippet || undefined,
+      driveFolderUrl: driveFolderUrl.trim() || undefined,
+      status: 'discovery',
+      briefSummary: briefText.trim() || hubNoteSnippet || undefined,
       quotes: [initialQuote],
       startConditions: {
         contractSignedRequired: true,
@@ -279,6 +313,16 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
     onClose();
   };
 
+  const isFormValid =
+    mode === 'hubspot'
+      ? Boolean(selectedCompany && !hasNoCompanyMatch && selectedContactId && title.trim() && selectedLeadUserIds.length > 0 && commercialUserIds.length > 0)
+      : Boolean(
+          (accountType === 'existing' ? selectedExistingClientId : manualCompanyName.trim()) &&
+          title.trim() &&
+          selectedLeadUserIds.length > 0 &&
+          commercialUserIds.length > 0
+        );
+
   return (
     <div
       className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
@@ -288,8 +332,8 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
         className="bg-white w-full max-w-xl rounded-3xl shadow-2xl border border-[#e2e8f0] overflow-hidden flex flex-col max-h-[92vh]"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header con icono de alto contraste y diseño minimalista */}
-        <div className="p-5 bg-gradient-to-r from-[#140b24] via-[#2a134a] to-[#501f92] text-white">
+        {/* Header con icono, badge y Segmented Control (Traer desde HubSpot / Crear manualmente) */}
+        <div className="p-5 bg-gradient-to-r from-[#140b24] via-[#2a134a] to-[#501f92] text-white space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <span className="p-2.5 rounded-xl bg-white text-[#501f92] shadow-sm flex items-center justify-center">
@@ -298,11 +342,13 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="text-base font-extrabold tracking-tight">Nueva Oportunidad</h3>
-                  <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-[#ff5c35]/25 text-[#fed7aa] border border-[#ff5c35]/40 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#ff5c35]" />
-                    HubSpot Sync
+                  <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-[#d4ff4a]/20 text-[#d4ff4a] border border-[#d4ff4a]/30">
+                    Handoff Comercial
                   </span>
                 </div>
+                <p className="text-[11px] text-white/75 mt-0.5">
+                  Cuando una oportunidad calificada requiere scoping de un líder, Orbit activa el SLA e inicia su tarea de preventa
+                </p>
               </div>
             </div>
             <button
@@ -313,224 +359,318 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
               <X className="w-5 h-5" />
             </button>
           </div>
+
+          {/* Segmented Control: Traer desde HubSpot vs Crear manualmente */}
+          <div className="flex items-center p-1 rounded-xl bg-black/25 border border-white/10 text-xs">
+            <button
+              type="button"
+              onClick={() => setMode('hubspot')}
+              className={`flex-1 py-1.5 px-3 rounded-lg font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                mode === 'hubspot'
+                  ? 'bg-white text-[#501f92] shadow-sm'
+                  : 'text-white/80 hover:text-white'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-[#ff5c35]" />
+              <span>Traer desde HubSpot</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('manual')}
+              className={`flex-1 py-1.5 px-3 rounded-lg font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                mode === 'manual'
+                  ? 'bg-white text-[#501f92] shadow-sm'
+                  : 'text-white/80 hover:text-white'
+              }`}
+            >
+              <span>Crear manualmente</span>
+            </button>
+          </div>
         </div>
 
         {/* Formulario */}
         <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1 text-xs">
-          {/* 1. Empresa / cliente en HubSpot */}
-          <div className="p-3.5 bg-[#fff7ed] rounded-2xl border border-[#ffedd5] space-y-2.5">
-            <div className="flex items-center justify-between">
-              <label className="font-extrabold text-[#9a3412] text-xs flex items-center gap-1.5">
-                <Building2 className="w-4 h-4 text-[#ea580c]" />
-                <span>Empresa / cliente en HubSpot:</span>
-                <span className="text-red-500">*</span>
-              </label>
-              <span className="text-[10px] text-[#c2410c] font-medium">Búsqueda en directorio HubSpot</span>
-            </div>
+          {mode === 'hubspot' ? (
+            /* ========================================================================= */
+            /* MODO HUBSPOT (Screenshot 1) */
+            /* ========================================================================= */
+            <>
+              {/* 1. Empresa / cliente en HubSpot */}
+              <div className="p-3.5 bg-[#fff7ed] rounded-2xl border border-[#ffedd5] space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="font-extrabold text-[#9a3412] text-xs flex items-center gap-1.5">
+                    <Building2 className="w-4 h-4 text-[#ea580c]" />
+                    <span>Empresa / cliente en HubSpot:</span>
+                    <span className="text-red-500">*</span>
+                  </label>
+                  <span className="text-[10px] text-[#c2410c] font-medium">Búsqueda en directorio HubSpot</span>
+                </div>
 
-            <div className="relative" ref={companyDropdownRef}>
-              <div className="relative">
-                <Search className="w-3.5 h-3.5 absolute left-3 top-3 text-[#9a3412]" />
-                <input
-                  type="text"
-                  required
-                  placeholder="Buscar empresa por nombre o dominio (ej: Danone, GeoTours, Bambú...)"
-                  value={companySearchQuery}
-                  onFocus={() => setIsSearchingCompany(true)}
-                  onChange={(e) => {
-                    setCompanySearchQuery(e.target.value);
-                    setIsSearchingCompany(true);
-                    if (selectedCompany && e.target.value !== selectedCompany.name) {
-                      setSelectedCompany(null);
-                      setSelectedContactId('');
-                      setSelectedNoteId('');
-                    }
-                  }}
-                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-[#fed7aa] bg-white text-[#0f172a] text-xs font-semibold focus:ring-2 focus:ring-[#ea580c] focus:outline-none placeholder:text-[#94a3b8] placeholder:font-normal"
-                />
-              </div>
+                <div className="relative" ref={companyDropdownRef}>
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 absolute left-3 top-3 text-[#9a3412]" />
+                    <input
+                      type="text"
+                      required
+                      placeholder="Buscar empresa por nombre o dominio (ej: Danone, GeoTours, Bambú...)"
+                      value={companySearchQuery}
+                      onFocus={() => setIsSearchingCompany(true)}
+                      onChange={(e) => {
+                        setCompanySearchQuery(e.target.value);
+                        setIsSearchingCompany(true);
+                        if (selectedCompany && e.target.value !== selectedCompany.name) {
+                          setSelectedCompany(null);
+                          setSelectedContactId('');
+                          setSelectedNoteId('');
+                        }
+                      }}
+                      className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-[#fed7aa] bg-white text-[#0f172a] text-xs font-semibold focus:ring-2 focus:ring-[#ea580c] focus:outline-none placeholder:text-[#94a3b8] placeholder:font-normal"
+                    />
+                  </div>
 
-              {/* Dropdown de Empresas HubSpot */}
-              {isSearchingCompany && (
-                <div className="absolute left-0 right-0 top-full mt-1.5 bg-white rounded-xl border border-[#cbd5e1] shadow-xl z-20 max-h-52 overflow-y-auto divide-y divide-[#f1f5f9]">
-                  {matchingCompanies.map((c) => (
-                    <button
-                      type="button"
-                      key={c.id}
-                      onClick={() => handleSelectCompany(c)}
-                      className="w-full text-left p-2.5 hover:bg-[#fff7ed] transition-colors flex items-center justify-between cursor-pointer"
-                    >
-                      <div>
-                        <strong className="text-[#0f172a] block text-xs">{c.name}</strong>
-                        <span className="text-[10.5px] text-[#64748b]">
-                          {c.domain} · {c.industry}
-                        </span>
-                      </div>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#f1f5f9] text-[#501f92]">
-                        ID: {c.id}
-                      </span>
-                    </button>
-                  ))}
-                  {matchingCompanies.length === 0 && (
-                    <div className="p-3 text-center text-xs text-[#64748b]">
-                      No se encontraron empresas con ese término.
+                  {isSearchingCompany && (
+                    <div className="absolute left-0 right-0 top-full mt-1.5 bg-white rounded-xl border border-[#cbd5e1] shadow-xl z-20 max-h-52 overflow-y-auto divide-y divide-[#f1f5f9]">
+                      {matchingCompanies.map((c) => (
+                        <button
+                          type="button"
+                          key={c.id}
+                          onClick={() => handleSelectCompany(c)}
+                          className="w-full p-2.5 text-left hover:bg-[#fff7ed] transition-colors flex items-center justify-between group cursor-pointer"
+                        >
+                          <div>
+                            <strong className="text-xs text-[#0f172a] group-hover:text-[#ea580c] block">
+                              {c.name}
+                            </strong>
+                            <span className="text-[10.5px] text-[#64748b]">
+                              {c.domain} · {(c as any).city || 'Colombia'}
+                            </span>
+                          </div>
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#f1f5f9] text-[#64748b]">
+                            {c.id}
+                          </span>
+                        </button>
+                      ))}
                     </div>
                   )}
                 </div>
-              )}
-            </div>
 
-            {/* Mensaje obligatorio si la empresa no existe en HubSpot */}
-            {hasNoCompanyMatch && (
-              <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 flex items-start gap-2 animate-in fade-in">
-                <AlertCircle className="w-4 h-4 shrink-0 text-red-600 mt-0.5" />
-                <div className="text-[11px] leading-relaxed">
-                  <strong>Esta empresa no se encuentra registrada en HubSpot.</strong>
-                  <p className="mt-0.5 text-red-600">
-                    Primero debe crearse en HubSpot antes de abrir la oportunidad en Orbit. No se permite crear empresas ni contactos manuales desde este prototipo.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Empresa seleccionada pill */}
-            {selectedCompany && (
-              <div className="p-2.5 rounded-xl bg-white border border-[#fed7aa] flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-[#16a34a]" />
-                  <div>
-                    <span className="font-extrabold text-[#0f172a]">{selectedCompany.name}</span>
-                    <span className="text-[10px] text-[#64748b] ml-2">({selectedCompany.domain})</span>
-                  </div>
-                </div>
-                <span className="text-[10px] font-mono font-bold text-[#c2410c] bg-[#fff7ed] px-2 py-0.5 rounded border border-[#fed7aa]">
-                  {selectedCompany.id}
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* 2. Contacto principal en HubSpot (habilitado tras seleccionar empresa) */}
-          <div className="space-y-1">
-            <label className="font-bold text-[#475569] block flex items-center justify-between">
-              <span className="flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-[#501f92]" />
-                <span>Contacto principal en HubSpot:</span>
-                <span className="text-red-500">*</span>
-              </span>
-              {selectedCompany && (
-                <span className="text-[10px] text-[#64748b]">
-                  {selectedCompany.contacts.length} contactos asociados
-                </span>
-              )}
-            </label>
-
-            {selectedCompany ? (
-              <select
-                required
-                value={selectedContactId}
-                onChange={(e) => setSelectedContactId(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] font-semibold text-[#0f172a] bg-white focus:ring-2 focus:ring-[#501f92] text-xs"
-              >
-                <option value="">Selecciona un contacto...</option>
-                {selectedCompany.contacts.map((cnt) => (
-                  <option key={cnt.id} value={cnt.id}>
-                    {cnt.name} ({cnt.role || 'Contacto'} · {cnt.email})
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <div className="p-2.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] text-[#94a3b8] text-xs italic">
-                Selecciona primero una empresa en HubSpot para habilitar los contactos asociados.
-              </div>
-            )}
-
-            {currentContact && (
-              <div className="flex items-center gap-3 text-[11px] text-[#475569] pt-1 pl-1">
-                <span>📧 {currentContact.email}</span>
-                {currentContact.phone && <span>📞 {currentContact.phone}</span>}
-                <span className="text-[#94a3b8] font-mono text-[10px]">ID: {currentContact.id}</span>
-              </div>
-            )}
-          </div>
-
-          {/* 3. Brief / Nota de reunión en HubSpot */}
-          <div className="space-y-1.5">
-            <label className="font-bold text-[#475569] block flex items-center justify-between">
-              <span className="flex items-center gap-1.5">
-                <FileText className="w-3.5 h-3.5 text-[#501f92]" />
-                <span>Brief / nota de reunión en HubSpot:</span>
-                <span className="text-red-500">*</span>
-              </span>
-              <span className="text-[10px] text-[#64748b]">Texto copiado de notas HubSpot</span>
-            </label>
-
-            {selectedCompany ? (
-              <div className="space-y-2">
-                <select
-                  required
-                  value={selectedNoteId}
-                  onChange={(e) => {
-                    const noteId = e.target.value;
-                    setSelectedNoteId(noteId);
-                    const note = selectedCompany.notes.find((n) => n.id === noteId);
-                    if (note) {
-                      setBriefText(note.fullContent);
-                    }
-                  }}
-                  className="w-full p-2.5 rounded-xl border border-[#cbd5e1] font-medium text-[#0f172a] bg-white focus:ring-2 focus:ring-[#501f92] text-xs"
-                >
-                  <option value="">Selecciona una nota de reunión asociada...</option>
-                  {selectedCompany.notes.map((note) => (
-                    <option key={note.id} value={note.id}>
-                      [{note.date}] {note.author ? `${note.author} · ` : ''}{note.snippet.slice(0, 70)}...
-                    </option>
-                  ))}
-                </select>
-
-                {currentNote && (
-                  <div className="p-3 rounded-xl bg-[#faf5ff] border border-[#e9d5ff] space-y-1">
-                    <div className="flex items-center justify-between text-[10.5px]">
-                      <span className="font-bold text-[#501f92]">
-                        📅 {currentNote.date} · ✍️ {currentNote.author}
-                      </span>
-                      <span className="text-[#64748b] font-mono text-[10px]">ID: {currentNote.id}</span>
-                    </div>
-                    <p className="text-[11px] text-[#334155] leading-relaxed italic">
-                      "{currentNote.fullContent}"
-                    </p>
+                {selectedCompany && (
+                  <div className="p-2.5 rounded-xl bg-white border border-[#fed7aa] flex items-center justify-between text-xs">
+                    <span className="font-bold text-[#0f172a] flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-[#16a34a]" />
+                      <span>{selectedCompany.name}</span>
+                    </span>
+                    <span className="text-[10.5px] text-[#ea580c] font-semibold">
+                      {selectedCompany.contacts.length} contacto(s) · {selectedCompany.notes.length} nota(s)
+                    </span>
                   </div>
                 )}
               </div>
-            ) : (
-              <div className="p-2.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] text-[#94a3b8] text-xs italic">
-                Selecciona primero una empresa en HubSpot para consultar sus notas de brief.
-              </div>
-            )}
-          </div>
 
-          {/* 4. Título de la oportunidad */}
+              {/* 2. Contacto principal en HubSpot */}
+              <div className="space-y-1">
+                <label className="font-bold text-[#475569] block">
+                  Contacto principal en HubSpot: <span className="text-red-500">*</span>
+                </label>
+                {selectedCompany ? (
+                  <select
+                    required
+                    value={selectedContactId}
+                    onChange={(e) => setSelectedContactId(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-[#cbd5e1] font-semibold text-[#0f172a] bg-white focus:ring-2 focus:ring-[#501f92] text-xs"
+                  >
+                    <option value="">Selecciona un contacto asociado...</option>
+                    {selectedCompany.contacts.map((contact) => (
+                      <option key={contact.id} value={contact.id}>
+                        {contact.name} ({contact.role || 'Contacto'}) — {contact.email}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="p-2.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] text-[#94a3b8] text-xs italic">
+                    Selecciona primero una empresa en HubSpot para habilitar los contactos asociados.
+                  </div>
+                )}
+              </div>
+
+              {/* 3. Brief / nota de reunión en HubSpot */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-[#475569] block">
+                    Brief / nota de reunión en HubSpot: <span className="text-red-500">*</span>
+                  </label>
+                  <span className="text-[10px] text-[#64748b]">Texto copiado de notas HubSpot</span>
+                </div>
+                {selectedCompany ? (
+                  <select
+                    required
+                    value={selectedNoteId}
+                    onChange={(e) => {
+                      const noteId = e.target.value;
+                      setSelectedNoteId(noteId);
+                      const note = selectedCompany.notes.find((n) => n.id === noteId);
+                      if (note) setBriefText(note.fullContent);
+                    }}
+                    className="w-full p-2.5 rounded-xl border border-[#cbd5e1] font-medium text-[#0f172a] bg-white focus:ring-2 focus:ring-[#501f92] text-xs"
+                  >
+                    <option value="">Selecciona una nota de reunión asociada...</option>
+                    {selectedCompany.notes.map((note) => (
+                      <option key={note.id} value={note.id}>
+                        [{note.date}] {note.author ? `${note.author} · ` : ''}{note.snippet.slice(0, 70)}...
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="p-2.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] text-[#94a3b8] text-xs italic">
+                    Selecciona primero una empresa en HubSpot para consultar sus notas de brief.
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            /* ========================================================================= */
+            /* MODO MANUAL (Screenshot 2: Idéntico a Producción) */
+            /* ========================================================================= */
+            <>
+              {/* Tipo de Cuenta: Cliente nuevo vs Cliente existente */}
+              <div className="p-3.5 bg-[#f8fafc] rounded-2xl border border-[#e2e8f0] space-y-2.5">
+                <span className="font-bold text-[#475569] block text-xs">Tipo de Cuenta:</span>
+                <div className="flex items-center gap-6">
+                  <label className="flex items-center gap-2 cursor-pointer font-semibold text-[#0f172a]">
+                    <input
+                      type="radio"
+                      name="accountType"
+                      value="new"
+                      checked={accountType === 'new'}
+                      onChange={() => setAccountType('new')}
+                      className="w-4 h-4 text-[#501f92] focus:ring-[#501f92] cursor-pointer"
+                    />
+                    <span>Cliente nuevo</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer font-semibold text-[#0f172a]">
+                    <input
+                      type="radio"
+                      name="accountType"
+                      value="existing"
+                      checked={accountType === 'existing'}
+                      onChange={() => setAccountType('existing')}
+                      className="w-4 h-4 text-[#501f92] focus:ring-[#501f92] cursor-pointer"
+                    />
+                    <span>Cliente existente</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Empresa o Cuenta */}
+              {accountType === 'new' ? (
+                <div className="space-y-1">
+                  <label className="font-bold text-[#475569] block">
+                    Empresa o Cuenta: <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ej: Danone S.A., GeoTours, BrandCo..."
+                    value={manualCompanyName}
+                    onChange={(e) => {
+                      setManualCompanyName(e.target.value);
+                      if (!title) setTitle(`Propuesta ${e.target.value}`);
+                    }}
+                    className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-semibold bg-white focus:ring-2 focus:ring-[#501f92] text-xs"
+                  />
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <label className="font-bold text-[#475569] block">
+                    Seleccionar Cliente existente: <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    required
+                    value={selectedExistingClientId}
+                    onChange={(e) => {
+                      setSelectedExistingClientId(e.target.value);
+                      const c = existingClients.find((cli) => cli.id === e.target.value);
+                      if (c && !title) setTitle(`Propuesta ${c.name}`);
+                    }}
+                    className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-semibold bg-white focus:ring-2 focus:ring-[#501f92] text-xs"
+                  >
+                    <option value="">Selecciona un cliente de la lista...</option>
+                    {existingClients.map((client) => (
+                      <option key={client.id} value={client.id}>
+                        {client.name} {(client as any).brand ? `(${(client as any).brand})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Nombre / Título de la oportunidad */}
           <div className="space-y-1">
             <label className="font-bold text-[#475569] block">
-              Título comercial de la oportunidad: <span className="text-red-500">*</span>
+              {mode === 'manual' ? 'Nombre de la Oportunidad / Requerimiento:' : 'Título comercial de la oportunidad:'}{' '}
+              <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               required
-              placeholder="Ej: Rediseño Ecommerce Bonafont & Campaña Q4"
+              placeholder="Ej: Rediseño ecommerce Bonafont..."
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-bold focus:ring-2 focus:ring-[#501f92] text-xs bg-white"
             />
           </div>
 
-          {/* 5. Responsable de alcance y Owner comercial (Multi-check) */}
+          {/* Brief (opcional) */}
+          <div className="space-y-1">
+            <label className="font-bold text-[#475569] block">
+              Brief {mode === 'manual' ? '(opcional)' : 'adicional / notas'}:
+            </label>
+            <textarea
+              rows={3}
+              placeholder="Contexto y requerimiento recibido del cliente"
+              value={briefText}
+              onChange={(e) => setBriefText(e.target.value)}
+              className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] bg-white focus:ring-2 focus:ring-[#501f92] text-xs"
+            />
+          </div>
+
+          {/* Contacto Principal & Email (en modo manual) */}
+          {mode === 'manual' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="font-bold text-[#475569] block">Contacto Principal:</label>
+                <input
+                  type="text"
+                  placeholder="Ej: Carlos Mendoza"
+                  value={manualContactName}
+                  onChange={(e) => setManualContactName(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] bg-white focus:ring-2 focus:ring-[#501f92] text-xs"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-[#475569] block">Email de Contacto:</label>
+                <input
+                  type="email"
+                  placeholder="carlos@empresa.com"
+                  value={manualContactEmail}
+                  onChange={(e) => setManualContactEmail(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] bg-white focus:ring-2 focus:ring-[#501f92] text-xs"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Responsable de alcance y Owner comercial (Multi-check) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-            {/* Responsable de Alcance (Líder asignado) - Multi-check */}
+            {/* Responsable de Alcance (Multi-check) */}
             <div className="space-y-1 relative" ref={leadersDropdownRef}>
               <div className="flex items-center justify-between">
                 <label className="font-bold text-[#475569] block text-xs">
-                  Líder asignado para scoping: <span className="text-red-500">*</span>
+                  {mode === 'manual' ? 'Responsables del alcance:' : 'Líder asignado para scoping:'}{' '}
+                  <span className="text-red-500">*</span>
                 </label>
                 <span className="text-[10px] text-[#64748b] font-semibold">
                   {selectedLeadUserIds.length} {selectedLeadUserIds.length === 1 ? 'seleccionado' : 'seleccionados'}
@@ -550,7 +690,7 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
               >
                 <span className="truncate font-semibold text-[#0f172a]">
                   {selectedLeadUserIds.length === 0
-                    ? 'Seleccionar líder(es)...'
+                    ? 'Seleccionar responsable(s)...'
                     : selectedLeadUserIds.length === 1
                     ? eligibleLeaders.find((u) => u.id === selectedLeadUserIds[0])?.name || '1 líder'
                     : `${eligibleLeaders.find((u) => u.id === selectedLeadUserIds[0])?.name} +${selectedLeadUserIds.length - 1} más`}
@@ -610,11 +750,12 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
               )}
             </div>
 
-            {/* Owner Comercial en Uhura - Multi-check */}
+            {/* Owner Comercial en Uhura (Multi-check) */}
             <div className="space-y-1 relative" ref={commercialDropdownRef}>
               <div className="flex items-center justify-between">
                 <label className="font-bold text-[#475569] block text-xs">
-                  Owner Comercial en Uhura: <span className="text-red-500">*</span>
+                  {mode === 'manual' ? 'Responsable comercial:' : 'Owner Comercial en Uhura:'}{' '}
+                  <span className="text-red-500">*</span>
                 </label>
                 <span className="text-[10px] text-[#64748b] font-semibold">
                   {commercialUserIds.length} {commercialUserIds.length === 1 ? 'seleccionado' : 'seleccionados'}
@@ -718,23 +859,47 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
             {deliveryError && <p className="text-[11px] text-red-500 font-bold">{deliveryError}</p>}
           </div>
 
+          {/* Carpeta Google Drive (Screenshot 2) */}
+          <div className="p-3.5 bg-[#f8fafc] rounded-2xl border border-[#e2e8f0] space-y-1.5">
+            <label className="font-bold text-[#334155] flex items-center gap-1.5 text-xs">
+              <Folder className="w-4 h-4 text-[#501f92]" />
+              <span>Carpeta Google Drive:</span>
+            </label>
+            <input
+              type="url"
+              placeholder="https://drive.google.com/drive/folders/..."
+              value={driveFolderUrl}
+              onChange={(e) => setDriveFolderUrl(e.target.value)}
+              className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs text-[#0f172a] bg-white focus:ring-2 focus:ring-[#501f92]"
+            />
+            <p className="text-[10.5px] text-[#64748b]">
+              Brief, propuesta y documentos relacionados. Repositorio documental oficial del prospecto.
+            </p>
+          </div>
+
           {/* Footer Actions */}
-          <div className="pt-3 border-t border-[#f1f5f9] flex items-center justify-end gap-2.5">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-[#64748b] hover:bg-[#f1f5f9] rounded-xl transition-colors cursor-pointer"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={!selectedCompany || hasNoCompanyMatch || !selectedContactId}
-              className="px-5 py-2.5 text-xs font-bold text-white bg-[#501f92] hover:bg-[#3d1572] disabled:bg-[#cbd5e1] disabled:cursor-not-allowed rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-2 hover:scale-[1.01]"
-            >
-              <Sparkles className="w-4 h-4 text-[#d4ff4a]" />
-              <span>Crear Oportunidad →</span>
-            </button>
+          <div className="pt-3 border-t border-[#f1f5f9] flex items-center justify-between flex-wrap gap-2">
+            <p className="text-[11px] text-[#64748b] italic">
+              El líder decidirá si usar plantilla o hacer a medida al abrir <strong>Alcance</strong>.
+            </p>
+
+            <div className="flex items-center gap-2 ml-auto">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-xs font-semibold text-[#64748b] hover:bg-[#f1f5f9] rounded-xl transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={!isFormValid}
+                className="px-5 py-2.5 text-xs font-bold text-white bg-[#501f92] hover:bg-[#3d1572] disabled:bg-[#cbd5e1] disabled:cursor-not-allowed rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-2 hover:scale-[1.01]"
+              >
+                <CheckCircle2 className="w-4 h-4 text-[#d4ff4a]" />
+                <span>Crear oportunidad</span>
+              </button>
+            </div>
           </div>
         </form>
       </div>

@@ -129,6 +129,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'fee_monthly' | 'fixed_project' | 'internal_non_billable' | 'risk'>('all');
   const [filterClient, setFilterClient] = useState<string>('all');
+  const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
   
   // Sync selected project ID if prop changes from outside (e.g. breadcrumb navigation)
   useEffect(() => {
@@ -767,16 +768,32 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
             {/* Health Box & Schedule Kickoff Action */}
             <div className="flex items-center gap-2.5 flex-wrap">
-              {(!currentProject.startDate || currentProject.status === 'Planificación' || currentProject.status === 'draft') ? (
-                <button
-                  type="button"
-                  onClick={() => setIsScheduleModalOpen(true)}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-[#d4ff4a] hover:bg-[#bceb34] text-[#0f172a] text-xs font-black shadow-sm transition-all hover:scale-[1.02] cursor-pointer animate-pulse"
-                  title="Fijar fecha oficial de arranque y sincronizar automáticamente los deadlines de las actividades del equipo"
-                >
-                  <Play className="w-3.5 h-3.5 fill-current" />
-                  <span>Programar Inicio de Proyecto 🚀</span>
-                </button>
+              {/* Si la fecha es futura o aún no está definida, mostrar botón destacado "Iniciar proyecto 🚀" */}
+              {(!currentProject.startDate || currentProject.startDate > todayStr || currentProject.status === 'Planificación' || currentProject.status === 'draft' || (currentProject.status as string) === 'Por empezar') ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setIsScheduleModalOpen(true)}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-[#d4ff4a] hover:bg-[#bceb34] text-[#0f172a] text-xs font-black shadow-sm transition-all hover:scale-[1.02] cursor-pointer animate-pulse"
+                    title="Fijar fecha oficial de arranque y sincronizar automáticamente los deadlines de las actividades del equipo"
+                  >
+                    <Play className="w-3.5 h-3.5 fill-current" />
+                    <span>Iniciar proyecto 🚀</span>
+                  </button>
+
+                  {currentProject.startDate && (
+                    <button
+                      type="button"
+                      onClick={() => setIsScheduleModalOpen(true)}
+                      className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#cbd5e1] text-[#0f172a] text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
+                      title="Fecha programada por Cata/Operaciones. Clic para ajustar."
+                    >
+                      <Calendar className="w-3.5 h-3.5 text-[#501f92]" />
+                      <span>Inicio: {currentProject.startDate}</span>
+                      <span className="text-[10px] text-[#64748b]">· Fin: {currentProject.endDate || 'Por definir'}</span>
+                    </button>
+                  )}
+                </>
               ) : (
                 <button
                   type="button"
@@ -790,12 +807,29 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                 </button>
               )}
 
-              <div className="flex items-center gap-3 bg-[#f8fafc] px-3.5 py-2.5 rounded-2xl border border-[#e2e8f0] shrink-0">
+              {/* Indicador de Estado: Por empezar (si fecha aún no llega) vs En ejecución (si ya está en curso) */}
+              <div className="flex items-center gap-3 bg-[#f8fafc] px-3.5 py-2 rounded-2xl border border-[#e2e8f0] shrink-0">
                 <div className="text-right">
                   <span className="text-[10px] font-bold uppercase text-[#64748b] block">Estado</span>
-                  <span className="text-xs font-semibold text-[#047857] block mt-0.5">
-                    {currentProject.status === 'Activo' ? 'En ejecución' : (currentProject.status || 'Por iniciar')}
-                  </span>
+                  {currentProject.status === 'Archivado' ? (
+                    <span className="text-xs font-bold text-[#64748b] block mt-0.5">
+                      Archivado
+                    </span>
+                  ) : ((currentProject.status as string) === 'completed' || (currentProject.status as string) === 'Cerrado' || (currentProject.status as string) === 'Completado') ? (
+                    <span className="text-xs font-bold text-[#065f46] block mt-0.5">
+                      Completado
+                    </span>
+                  ) : (!currentProject.startDate || currentProject.startDate > todayStr) ? (
+                    <span className="text-xs font-bold text-[#1d4ed8] inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 rounded-md bg-[#eff6ff] border border-[#bfdbfe]">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#2563eb] inline-block animate-pulse" />
+                      <span>Por empezar</span>
+                    </span>
+                  ) : (
+                    <span className="text-xs font-bold text-[#047857] inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 rounded-md bg-[#ecfdf5] border border-[#a7f3d0]">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] inline-block" />
+                      <span>En ejecución</span>
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -2143,9 +2177,21 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                     >
                       {prj.projectType === 'fee_monthly' ? 'Fee mensual' : 'Proyecto único'}
                     </span>
-                    {prj.status === 'Archivado' && (
+                    {prj.status === 'Archivado' ? (
                       <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-[#f1f5f9] text-[#64748b]">
                         Archivado
+                      </span>
+                    ) : ((prj.status as string) === 'completed' || (prj.status as string) === 'Cerrado' || (prj.status as string) === 'Completado') ? (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-[#ecfdf5] text-[#065f46] border border-[#a7f3d0]">
+                        Completado
+                      </span>
+                    ) : (!prj.startDate || prj.startDate > todayStr) ? (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-[#eff6ff] text-[#1d4ed8] border border-[#bfdbfe]">
+                        Por empezar
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-[#ecfdf5] text-[#047857] border border-[#a7f3d0]">
+                        En ejecución
                       </span>
                     )}
                   </div>
