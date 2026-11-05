@@ -122,7 +122,7 @@ export const ProjectTeamTab: React.FC<ProjectTeamTabProps> = ({
     }>();
 
     users.forEach((u) => {
-      const configuredWeekly = u.capacityHours || 40;
+      const configuredWeekly = u.capacityHours || 42;
       let thisProjectWeekly = 0;
       let otherProjectsWeekly = 0;
 
@@ -184,7 +184,7 @@ export const ProjectTeamTab: React.FC<ProjectTeamTabProps> = ({
         status: 'Active' as const,
         tasksCount: 0,
         joinedDate: '',
-        capacityHours: 40
+        capacityHours: 42
       };
 
       const existing = grouped.get(asg.userId);
@@ -239,7 +239,7 @@ export const ProjectTeamTab: React.FC<ProjectTeamTabProps> = ({
         status: 'Active' as const,
         tasksCount: 0,
         joinedDate: '',
-        capacityHours: 40
+        capacityHours: 42
       }
     );
   };

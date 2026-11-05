@@ -76,7 +76,7 @@ const COLOMBIA_HOLIDAYS_2026: { date: string; name: string; month: number; day: 
 // Fórmula canónica: availableCapacity = configuredAvailability - plannedLoad
 // La disponibilidad semanal proviene de la disponibilidad configurada del usuario para el periodo.
 // Puede haber colaboradores con dedicación completa, media jornada, permisos o vacaciones.
-const DEFAULT_FALLBACK_WEEKLY_HOURS = 40.0;
+const DEFAULT_FALLBACK_WEEKLY_HOURS = 42.0;
 
 export const CapacityView: React.FC<CapacityViewProps> = ({
   tasks,
@@ -98,17 +98,14 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
 
   // Identificación de roles canónicos según matriz de permisos:
   // - collaborator: únicamente "Mi Capacidad"
-  // - leader: "Mi Capacidad" | "Mi Equipo" | "Organización"
-  // - executive: únicamente "Organización" como vista principal y necesaria (sin balance personal)
-  // - client_relationship / commercial / administrative / system_admin: "Mi Capacidad" | "Organización"
+  // - leader / client_relationship / commercial / administrative / system_admin: "Mi Capacidad" | "Organización" (con filtro por área)
+  // - executive: únicamente "Organización" como vista principal (sin balance personal)
   const isCollaborator = userAccessLevel === 'collaborator';
-  const isLeader = userAccessLevel === 'leader';
   const isExecutive = userAccessLevel === 'executive';
 
   // Visibilidad de pestañas de perspectiva
   const showPersonalTab = !isExecutive; // CEO / executive solo consulta Organización
-  const showTeamTab = isLeader;         // "Mi Equipo" exclusivo de líder jerárquico
-  const showOrgTab = !isCollaborator;   // Organización disponible para todos excepto collaborator operativo
+  const showOrgTab = !isCollaborator;   // Organización disponible para líderes, comercial, administrativa, executive, CRS y admin
 
   // Perspectiva inicial según rol
   const getInitialPerspective = (): CapacityPerspective => {
@@ -128,10 +125,8 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
       setPerspective('org');
     } else if (isCollaborator) {
       setPerspective('personal');
-    } else if (!isLeader && perspective === 'team') {
-      setPerspective('org');
     }
-  }, [userAccessLevel, isExecutive, isCollaborator, isLeader, perspective]);
+  }, [userAccessLevel, isExecutive, isCollaborator]);
 
   // Usuario actual en sesión
   const currentUserName = currentUser ? currentUser.name : 'Paola Monsalve';
@@ -253,8 +248,17 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
   const isOverloaded = myCurrentAssigned > myNetCapacity;
   const isOptimal = myUtilizationPercent >= 70 && myUtilizationPercent <= 100;
 
-  // Helper para asignar departamento organizacional según rol o especialidad
+  // Helper para asignar departamento organizacional según departamento configurado, rol o especialidad
   const resolveUserDept = (u: UserItem): string => {
+    if (u.department) {
+      const d = u.department.toLowerCase();
+      if (d.includes('creativ')) return 'Área Creatividad';
+      if (d.includes('growth')) return 'Área Growth';
+      if (d.includes('product')) return 'Área Producto';
+      if (d.includes('admin')) return 'Área Administrativa';
+      if (d.includes('comerc')) return 'Área Comercial';
+      if (d.includes('c-level') || d.includes('dirección') || d.includes('direccion')) return 'C-Level';
+    }
     const role = (u.officialRole || u.jobTitle || '').toLowerCase();
     const name = u.name.toLowerCase();
     if (role.includes('ceo') || name.includes('ana maría')) return 'C-Level';
@@ -350,16 +354,23 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
         executed = Number((executed / 5).toFixed(1));
       }
 
-      const utilPercent = netCapacity > 0 ? Math.round((assigned / netCapacity) * 100) : 0;
-      const diffHours = Number((netCapacity - assigned).toFixed(1));
+      const effectiveLoad = Number(Math.max(assigned, executed).toFixed(1));
+      const utilPercent = netCapacity > 0 ? Math.round((effectiveLoad / netCapacity) * 100) : 0;
+      const diffHours = Number((netCapacity - effectiveLoad).toFixed(1));
 
-      // Estado de capacidad
+      // Estado de capacidad bajo regla realista (85% capacidad productiva = 35.7h de 42h; 15% = 6.3h chats/mails/reuniones):
+      // - available: < 75% (< 31.5h)
+      // - optimal: 75% a 85% (31.5h - 35.7h) -> En Ritmo / Equilibrado
+      // - tight: 86% a 100% (35.8h - 42.0h) -> Al Límite / Atención
+      // - overloaded: > 100% (> 42.0h) -> Sobrecarga crítica
       let status: 'optimal' | 'available' | 'overloaded' | 'tight' = 'optimal';
       if (netCapacity === 0 && absenceDeduction > 0) {
         status = 'available'; // En descanso aprobado
-      } else if (assigned > netCapacity) {
+      } else if (effectiveLoad > netCapacity) {
         status = 'overloaded';
-      } else if (assigned < netCapacity * 0.75) {
+      } else if (effectiveLoad > netCapacity * 0.85) {
+        status = 'tight';
+      } else if (effectiveLoad < netCapacity * 0.75) {
         status = 'available';
       } else {
         status = 'optimal';
@@ -433,6 +444,7 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
     const totalAvailable = Number((totalCapacity - totalAssigned).toFixed(0));
     const avgUtilization = totalCapacity > 0 ? Math.round((totalAssigned / totalCapacity) * 100) : 0;
     const overloadedCount = list.filter(m => m.status === 'overloaded').length;
+    const tightCount = list.filter(m => m.status === 'tight').length;
     const availableCount = list.filter(m => m.status === 'available').length;
     const optimalCount = list.filter(m => m.status === 'optimal').length;
 
@@ -444,6 +456,7 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
       totalAvailable,
       avgUtilization,
       overloadedCount,
+      tightCount,
       availableCount,
       optimalCount
     };
@@ -487,26 +500,7 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
               </button>
             )}
 
-            {/* Pestaña 2: Mi Equipo (Exclusivo Líderes según reportsTo/leaderId) */}
-            {showTeamTab && (
-              <button
-                onClick={() => setPerspective('team')}
-                className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap text-center ${
-                  perspective === 'team'
-                    ? 'bg-white text-[#0f172a] shadow-xs'
-                    : 'text-[#64748b] hover:text-[#0f172a]'
-                }`}
-              >
-                <Users className="w-3.5 h-3.5 shrink-0" />
-                <span className="hidden sm:inline">Mi Equipo</span>
-                <span className="sm:hidden">Equipo</span>
-                <span className="ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] bg-[#e2e8f0] text-[#334155] font-semibold">
-                  {myTeamMembers.length}
-                </span>
-              </button>
-            )}
-
-            {/* Pestaña 3: Organización (Disponible para Líderes, Client Relationship, Commercial, Executive y Admins) */}
+            {/* Pestaña 2: Organización (Disponible para Líderes, Comercial, Administrativa, Executive, CRS y Admins) */}
             {showOrgTab && (
               <button
                 onClick={() => setPerspective('org')}
@@ -517,8 +511,7 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
                 }`}
               >
                 <Building2 className="w-3.5 h-3.5 shrink-0" />
-                <span className="hidden sm:inline">Organización</span>
-                <span className="sm:hidden">Org</span>
+                <span>Organización</span>
               </button>
             )}
           </div>
@@ -553,17 +546,6 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
               Mes
             </button>
           </div>
-
-          {/* Disponibilidad Pactada L-V */}
-          <div
-            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl text-[11px] font-medium text-[#475569] shrink-0"
-            title="Capacidad configurada de lunes a viernes. Fines de semana no computan como cuota esperada ni horas pendientes."
-          >
-            <span className="w-2 h-2 rounded-full bg-[#10b981]" />
-            <span className="hidden sm:inline">Disponibilidad base: <strong>L-V</strong></span>
-            <span className="sm:hidden"><strong>Base L-V</strong></span>
-            <span className="text-[10px] text-[#059669] bg-[#ecfdf5] px-1.5 py-0.5 rounded border border-[#a7f3d0]">Sin cuota 8h universal</span>
-          </div>
         </div>
       </div>
 
@@ -575,9 +557,7 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
             <span className="text-xs font-bold text-[#64748b] uppercase tracking-wider">
               {perspective === 'personal'
                 ? 'Mi Balance de Horas'
-                : perspective === 'team'
-                ? 'Horas de Mi Equipo'
-                : 'Capacidad Global Orbit'}
+                : 'Capacidad Global'}
             </span>
             <div className="w-8 h-8 rounded-xl bg-[#f2ecfb] text-[#501f92] flex items-center justify-center">
               <Clock className="w-4 h-4" />
@@ -688,8 +668,14 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
                     {currentSummary.overloadedCount > 0 ? 'Sobrecarga Detectada' : 'Capacidad Saludable'}
                   </span>
                 </div>
-                <div className="flex items-center gap-2 mt-2 text-xs">
+                <div className="flex items-center gap-2 mt-2 text-xs flex-wrap">
                   <span className="text-[#dc2626] font-bold">⚠️ {currentSummary.overloadedCount} sobrecargados</span>
+                  {currentSummary.tightCount > 0 && (
+                    <>
+                      <span className="text-[#64748b]">·</span>
+                      <span className="text-[#d97706] font-bold">⚡ {currentSummary.tightCount} al límite</span>
+                    </>
+                  )}
                   <span className="text-[#64748b]">·</span>
                   <span className="text-[#059669] font-semibold">{currentSummary.availableCount} con disponibilidad</span>
                 </div>
@@ -699,31 +685,47 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
         </div>
 
         {/* KPI 3: Ritmo de Avance (Pacing) */}
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] shadow-xs space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-[#64748b] uppercase tracking-wider">Ritmo de Avance (Pacing)</span>
-            <div className="w-8 h-8 rounded-xl bg-[#eff6ff] text-[#2563eb] flex items-center justify-center">
-              <TrendingUp className="w-4 h-4" />
-            </div>
-          </div>
+        {(() => {
+          const dayOfWeek = new Date().getDay(); // 0=Dom, 1=Lun..5=Vie, 6=Sab
+          const businessDayIndex = dayOfWeek === 0 || dayOfWeek === 6 ? 5 : dayOfWeek;
+          const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+          const expectedWeekPct = businessDayIndex * 20;
+          const baseCap = perspective === 'personal' ? periodLegalCapacity : currentSummary.totalCapacity;
+          const productiveTarget = Number((baseCap * 0.85).toFixed(1));
+          const execHours = perspective === 'personal' ? myCurrentExecuted : currentSummary.totalExecuted;
+          const actualPacingPct = productiveTarget > 0 ? Math.round((execHours / productiveTarget) * 100) : 0;
+          const pacingDelta = actualPacingPct - expectedWeekPct;
+          const pacingLabel = pacingDelta > 10 ? 'Adelantado' : pacingDelta < -10 ? 'Rezagado' : 'En Ritmo';
+          const pacingBadgeClass =
+            pacingDelta > 10
+              ? 'text-[#059669] bg-[#ecfdf5] border-[#a7f3d0]'
+              : pacingDelta < -10
+              ? 'text-[#d97706] bg-[#fffbeb] border-[#fde68a]'
+              : 'text-[#1d4ed8] bg-[#eff6ff] border-[#bfdbfe]';
 
-          <div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-extrabold text-[#0f172a]">En Ritmo</span>
-              <span className="text-xs text-[#059669] font-bold bg-[#ecfdf5] px-2 py-0.5 rounded-md border border-[#a7f3d0]">
-                +4% vs esperado
-              </span>
-            </div>
-            <p className="text-xs text-[#64748b] mt-1 leading-relaxed">
-              Semana transcurrida al <strong>60%</strong> (Miércoles). Carga planificada ejecutada en balance saludable.
-            </p>
-          </div>
+          return (
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] shadow-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-[#64748b] uppercase tracking-wider">Ritmo de Avance (Pacing)</span>
+                <div className="w-8 h-8 rounded-xl bg-[#eff6ff] text-[#2563eb] flex items-center justify-center">
+                  <TrendingUp className="w-4 h-4" />
+                </div>
+              </div>
 
-          <div className="pt-1 flex items-center justify-between text-xs text-[#475569] border-t border-[#f1f5f9]">
-            <span>Disponibilidad base: <strong>40.0h (L-V)</strong></span>
-            <span className="text-[#501f92] font-semibold">Carga asignada: {myCurrentAssigned.toFixed(1)}h</span>
-          </div>
-        </div>
+              <div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-extrabold text-[#0f172a]">{pacingLabel}</span>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-md border ${pacingBadgeClass}`}>
+                    {pacingDelta >= 0 ? `+${pacingDelta}%` : `${pacingDelta}%`} vs esperado
+                  </span>
+                </div>
+                <p className="text-xs text-[#64748b] mt-1 leading-relaxed">
+                  Semana al <strong>{expectedWeekPct}%</strong> ({dayNames[dayOfWeek]}). Meta productiva (85%): <strong className="font-mono text-[#0f172a]">{productiveTarget}h</strong>.
+                </p>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* 3. VISTA SEGÚN PERSPECTIVA SELECCIONADA */}
@@ -984,13 +986,16 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-3.5">
               {displayedMembers.map((member) => {
                 const isOver = member.status === 'overloaded';
+                const isTight = member.status === 'tight';
                 const isAvailable = member.status === 'available';
 
                 const barColor = isOver
                   ? 'bg-[#dc2626]'
+                  : isTight
+                  ? 'bg-[#d97706]'
                   : isAvailable
                   ? 'bg-[#3b82f6]' // Azul capacidad disponible
-                  : 'bg-[#10b981]'; // Verde equilibrado
+                  : 'bg-[#10b981]'; // Verde en ritmo (75%-85%)
 
                 const isAbsent = member.absenceDeduction > 0 && member.capacity === 0;
 
@@ -998,6 +1003,8 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
                   ? 'bg-[#fef3c7] text-[#92400e] border-[#fde68a]'
                   : isOver
                   ? 'bg-[#fee2e2] text-[#b91c1c] border-[#fca5a5]'
+                  : isTight
+                  ? 'bg-[#fffbeb] text-[#b45309] border-[#fde68a]'
                   : isAvailable
                   ? 'bg-[#eff6ff] text-[#1d4ed8] border-[#bfdbfe]'
                   : 'bg-[#ecfdf5] text-[#047857] border-[#a7f3d0]';
@@ -1005,10 +1012,12 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
                 const statusLabel = isAbsent
                   ? (member.activeAbsence?.type === 'vacation' ? '🌴 En Vacaciones' : 'Ausencia Aprobada')
                   : isOver
-                  ? `⚠️ Sobreasignado (+${Math.abs(member.diffHours)}h)`
+                  ? `⚠️ Sobrecarga (+${Math.abs(member.diffHours)}h)`
+                  : isTight
+                  ? `⚡ Al Límite (${member.utilPercent}%)`
                   : isAvailable
                   ? `+${member.diffHours}h disponibles`
-                  : `Equilibrado (${member.assigned}h)`;
+                  : `En Ritmo (${member.utilPercent}%)`;
 
                 return (
                   <div
@@ -1019,6 +1028,8 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
                         ? 'bg-[#fffdf7] border-[#fef3c7] hover:border-[#fde68a]'
                         : isOver
                         ? 'bg-[#fffbfa] border-[#fecdd3] hover:border-[#fda4af]'
+                        : isTight
+                        ? 'bg-[#fffdf7] border-[#fde68a] hover:border-[#fcd34d]'
                         : isAvailable
                         ? 'bg-[#fcfdff] border-[#e2e8f0] hover:border-[#bfdbfe]'
                         : 'bg-white border-[#e2e8f0] hover:border-[#a7f3d0]'
@@ -1061,31 +1072,58 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
                       </div>
                     )}
 
-                    {/* Barra de Capacidad del Colaborador */}
-                    <div className="mt-3 space-y-1.5">
-                      <div className="flex justify-between text-xs font-mono">
-                        <span className="text-[#64748b]">
-                          Asignado: <strong className="text-[#0f172a]">{member.assigned}h</strong> / {member.capacity}h
-                        </span>
-                        <span className={`font-bold ${
-                          isOver ? 'text-[#dc2626]' : isAvailable ? 'text-[#1d4ed8]' : 'text-[#059669]'
-                        }`}>
-                          {member.utilPercent}%
-                        </span>
-                      </div>
-
-                      {/* Barra de Progreso de Capacidad con Reglas Semafóricas */}
-                      <div className="h-2 w-full bg-[#f1f5f9] rounded-full overflow-hidden flex">
+                    {/* Barras de Capacidad del Colaborador: 1. Planificado | 2. Ejecutado */}
+                    <div className="mt-3 space-y-2.5">
+                      {/* Barra 1: Planificado */}
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-[11px] font-mono">
+                          <span className="text-[#64748b]">
+                            Planificado: <strong className="text-[#0f172a]">{member.assigned}h</strong> / {member.capacity}h
+                          </span>
+                          <span className={`font-bold ${
+                            isOver ? 'text-[#dc2626]' : isAvailable ? 'text-[#1d4ed8]' : 'text-[#059669]'
+                          }`}>
+                            {member.capacity > 0 ? Math.round((member.assigned / member.capacity) * 100) : 0}%
+                          </span>
+                        </div>
                         <div
-                          style={{ width: `${Math.min(100, member.utilPercent)}%` }}
-                          className={`h-full transition-all duration-300 ${barColor}`}
-                          title={`Utilización: ${member.utilPercent}% (${member.assigned}h / ${member.capacity}h)`}
-                        />
+                          className="h-2 w-full bg-[#f1f5f9] rounded-full overflow-hidden"
+                          title={`Planificado: ${member.assigned}h de ${member.capacity}h`}
+                        >
+                          <div
+                            style={{ width: `${member.capacity > 0 ? Math.min(100, (member.assigned / member.capacity) * 100) : 0}%` }}
+                            className={`h-full transition-all duration-300 rounded-full ${barColor}`}
+                          />
+                        </div>
                       </div>
 
-                      <div className="flex items-center justify-between text-[10px] text-[#64748b] pt-0.5">
-                        <span>Ejecutado: <strong>{member.executed}h</strong> · Disp: <strong>{member.diffHours > 0 ? `+${member.diffHours}h` : `${member.diffHours}h`}</strong></span>
-                        <span className="text-[#501f92] font-medium hover:underline">Ver tareas →</span>
+                      {/* Barra 2: Ejecutado (Amarillo) */}
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-[11px] font-mono">
+                          <span className="text-[#64748b]">
+                            Ejecutado: <strong className="text-[#0f172a]">{member.executed}h</strong> / {member.capacity}h
+                          </span>
+                          <span className="font-bold text-[#d97706]">
+                            {member.capacity > 0 ? Math.round((member.executed / member.capacity) * 100) : 0}%
+                          </span>
+                        </div>
+                        <div
+                          className="h-2 w-full bg-[#f1f5f9] rounded-full overflow-hidden"
+                          title={`Ejecutado / Registrado: ${member.executed}h de ${member.capacity}h`}
+                        >
+                          <div
+                            style={{ width: `${member.capacity > 0 ? Math.min(100, (member.executed / member.capacity) * 100) : 0}%` }}
+                            className="h-full bg-[#f59e0b] transition-all duration-300 rounded-full"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Pie: Horas Libres */}
+                      <div className="flex items-center justify-between text-[11px] pt-1 border-t border-[#f1f5f9]">
+                        <span className={member.diffHours >= 0 ? 'text-[#059669] font-bold' : 'text-[#dc2626] font-bold'}>
+                          Libre: {member.diffHours >= 0 ? `${member.diffHours}h` : `0h (+${Math.abs(member.diffHours)}h extra)`}
+                        </span>
+                        <span className="text-[#501f92] font-semibold hover:underline">Ver tareas →</span>
                       </div>
                     </div>
                   </div>

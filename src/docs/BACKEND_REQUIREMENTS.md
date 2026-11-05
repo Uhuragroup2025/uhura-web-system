@@ -394,3 +394,28 @@ Para no bloquear New Business cuando la app privada de HubSpot esté caída o si
 ### 12.5 Estados Operativos de Proyecto («Por empezar» vs «En ejecución»)
 * Si `startDate > hoy` (fecha futura programada por Operaciones/Cata), el proyecto se presenta como **«Por empezar»** y cuenta con la acción **«Iniciar proyecto 🚀»**.
 * Si `startDate <= hoy`, el proyecto se presenta como **«En ejecución»**.
+
+---
+
+## 13. Módulo Capacidad: Jornada de 42h, Cálculo de Planificado vs. Ejecutado y Filtro por Área
+
+### 13.1 Jornada Base y Deducción de Festivos/Ausencias
+* La capacidad semanal predeterminada de todo colaborador activo en Orbit es de **`42.0 horas semanales`** (`8.4h/día` hábil de lunes a viernes).
+* Al descontar 1 día festivo oficial (ej. lunes festivo en Colombia), la capacidad neta de esa semana es `42.0 - 8.4 = 33.6h`.
+
+### 13.2 Corrección de Cálculo de `Planificado` vs. `Ejecutado` (Hallazgo UAT #2)
+* **Problema detectado en UAT #2:** El endpoint de Capacidad mostraba `Planificado: 0.0h` incluso cuando las tareas tenían fechas asignadas en su **Cronograma** (`startDate` / `dueDate`) y horas presupuestadas (`budgetedHours`), y no descontaba las horas ya registradas (`TimeLog`) de las horas libres.
+* **Regla mandatoria para Backend:**
+  1. **`planned_hours` (`Planificado`):** Debe sumar las horas presupuestadas (`budgeted_hours`) de las tareas asignadas al colaborador cuyo cronograma (`start_date` / `due_date`) se cruce con la semana/periodo consultado (además de las asignaciones semanales de proyecto si aplican).
+  2. **`logged_hours` (`Ejecutado`):** Suma los `TimeLog` registrados por el colaborador en el periodo.
+  3. **`free_hours` (`Libre`):** Debe calcularse como:
+     ```python
+     effective_load = max(planned_hours, logged_hours)
+     free_hours = round(max(0, net_capacity - effective_load), 1)
+     ```
+     Así se evita mostrar `Libre: 33.6h` cuando el colaborador ya registró horas trabajadas en la semana.
+
+### 13.3 Vista Unificada `Organización` y Permisos RBAC
+* Se unifica la visibilidad de equipo y compañía en una sola vista **`Organización`** (eliminando la pestaña redundante *Mi Equipo*), habilitada para `leader`, `commercial`, `administrative`, `executive`, `client_relationship` y `system_admin`.
+* El perfil `collaborator` mantiene acceso exclusivo a **`Mi Capacidad`**.
+* El endpoint debe devolver el campo `department` normalizado (`Área Creatividad`, `Área Growth`, `Área Producto`, `Área Administrativa`, `Área Comercial`, `C-Level`) para soportar el filtrado por área en el frontend.

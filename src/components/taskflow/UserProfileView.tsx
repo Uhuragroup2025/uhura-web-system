@@ -85,7 +85,7 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
   const [leaderId, setLeaderId] = useState<string>(user.leaderId || '');
   const [department, setDepartment] = useState<string>(user.department || 'Operativo (Medios)');
   const [capacityHours, setCapacityHours] = useState<string>(
-    user.capacityHours !== undefined ? Number(user.capacityHours).toFixed(2) : '40.00'
+    user.capacityHours !== undefined ? Number(user.capacityHours).toFixed(2) : '42.00'
   );
   const [joinedDate, setJoinedDate] = useState<string>(user.joinedDate || '01 / 07 / 2024');
   const [birthDate, setBirthDate] = useState<string>(
@@ -159,7 +159,7 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
       leaderId: leaderId || undefined,
       reportsTo: leaderId || undefined,
       leaderName: updatedLeaderName,
-      capacityHours: parseFloat(capacityHours) || 40,
+      capacityHours: parseFloat(capacityHours) || 42,
       joinedDate: joinedDate.trim(),
       birthDate: birthDate.trim(),
       birthDateFormatted: birthDate.trim(),

@@ -19,7 +19,7 @@ const DEMO_COLLABORATOR_USER: UserItem = {
   status: 'Active',
   tasksCount: 6,
   joinedDate: 'Mar 2024',
-  capacityHours: 40,
+  capacityHours: 42,
   utilizedPercent: 85,
   jobTitle: 'Front-End / Digital Specialist',
   officialRole: 'Front-End Dev',

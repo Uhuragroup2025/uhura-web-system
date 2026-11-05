@@ -92,3 +92,32 @@ Para evitar confusiones en los proyectos activos en `/proyectos`:
 En la vista de detalle de cada Cliente (`/clientes` -> Proyectos de la Cuenta):
 - La tabla de proyectos cuenta con una **columna dedicada de SOW**, separada del nombre del proyecto.
 - Si el proyecto cuenta con SOW formalizado, se despliega el botón **«Ver SOW»** con icono de documento, permitiendo consultar el contrato y entregables acordados sin sobrecargar el nombre del proyecto.
+
+---
+
+## 8. Módulo de Capacidad: Jornada de 42h, Barras Duales y Vista Unificada por Área
+
+- **Jornada Base Estándar:** `42 horas semanales` (`8.4h/día` para deducción de festivos y ausencias aprobadas en Google Calendar / Orbit).
+- **Dos Barras Independientes por Colaborador:**
+  1. **Barra 1 — `Planificado`:** Suma las horas presupuestadas/asignadas (`budgetedHours`) de las tareas asignadas al colaborador en el periodo frente a su capacidad neta semanal.
+  2. **Barra 2 — `Ejecutado` (en amarillo `#f59e0b`):** Suma las horas reales registradas (`TimeLog`) por el colaborador en el periodo frente a su capacidad neta semanal.
+- **Cálculo Realista de Horas Libres (`Libre`):**
+  $$\text{Libre} = \max(0, \text{Capacidad Neta} - \max(\text{Planificado}, \text{Ejecutado}))$$
+  De esta forma, si un colaborador registra horas en tareas sin presupuesto previo, su disponibilidad semanal se descuenta en tiempo real.
+- **Gobernanza de Vistas y Filtro por Área:**
+  - `collaborator`: accede únicamente a **`Mi Capacidad`** (balance personal, tareas y timer).
+  - `leader`, `commercial`, `administrative`, `executive`, `client_relationship`, `system_admin`: acceden a la vista unificada **`Organización`** con filtro por área (`Todas las áreas`, `Área Creatividad`, `Área Growth`, `Área Producto`, `Área Administrativa`, `Área Comercial`, `C-Level / Dirección`), eliminando la pestaña redundante «Mi Equipo».
+- **Definición de las 3 Tarjetas KPI Superiores (Vista Organización):**
+  1. **`Capacidad Global`:**
+     - Muestra el total de horas **Planificadas** (`sum(assigned)`) frente al total de horas **Disponibles Netas** (`sum(netCapacity)`) de los colaboradores visibles en el filtro activo, junto con el total de horas **Ejecutadas/Registradas** (`sum(executed)`) y su barra termométrica de doble segmento (*Ejecutado*, *Pendiente*, *Libre*).
+  2. **`Estado de Carga de la Organización`:**
+     - Muestra el `%` promedio de utilización (`round((totalAssigned / totalCapacity) * 100)`), el badge de salud (`Capacidad Saludable` si `overloadedCount === 0`, o `Sobrecarga Detectada` si hay colaboradores con carga > capacidad neta) y el conteo de colaboradores sobrecargados vs. con disponibilidad.
+  3. **`Ritmo de Avance (Pacing)`:**
+     - Compara el porcentaje de horas ejecutadas sobre la **Meta Productiva (`85%` de la capacidad neta = `35.7h/semana` en jornada de `42h`)** frente al porcentaje de días hábiles transcurridos en la semana (`Lunes = 20%`, `Martes = 40%`, `Miércoles = 60%`, `Jueves = 80%`, `Viernes = 100%`), indicando si el equipo está *En Ritmo* (`±10%`), *Adelantado* (`> +10%`) o *Rezagado* (`< -10%`).
+- **Umbrales Realistas de Carga y Sobrecarga (Factor Productivo `85%`):**
+  - Sobre la jornada contractual de **`42.0h/semana`** (`8.4h/día`), se reserva un **`15%` (`6.3h/semana`)** para chats, correos, ceremonias internas y pausas, estableciendo **`35.7h/semana` (`85%`)** como capacidad productiva sostenible:
+    - 🔵 **Disponible (`< 75%` → `< 31.5h`):** Holgura real para nuevas asignaciones.
+    - 🟢 **En Ritmo (`75% – 85%` → `31.5h – 35.7h`):** Carga productiva ideal y sostenible.
+    - 🟡 **Al Límite (`86% – 100%` → `35.8h – 42.0h`):** Alerta temprana (supera el 85% productivo; riesgo de absorber chats/correos en horas extra).
+    - 🔴 **Sobrecarga (`> 100%` → `> 42.0h`):** Sobrecarga crítica por encima de la jornada legal/contractual.
+
