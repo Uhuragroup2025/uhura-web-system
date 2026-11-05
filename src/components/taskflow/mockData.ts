@@ -1942,7 +1942,7 @@ export const initialUsers: UserItem[] = [
     capacityHours: 42,
     utilizedPercent: 90,
     jobTitle: 'Digital Designer',
-    department: 'Diseño & Creatividad',
+    department: 'Área Producto',
     leaderId: 'u-2',
     reportsTo: 'u-2',
     leaderName: 'Paola Monsalve',

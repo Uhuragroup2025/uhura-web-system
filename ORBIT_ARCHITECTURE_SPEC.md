@@ -121,3 +121,10 @@ En la vista de detalle de cada Cliente (`/clientes` -> Proyectos de la Cuenta):
     - 🟡 **Al Límite (`86% – 100%` → `35.8h – 42.0h`):** Alerta temprana (supera el 85% productivo; riesgo de absorber chats/correos en horas extra).
     - 🔴 **Sobrecarga (`> 100%` → `> 42.0h`):** Sobrecarga crítica por encima de la jornada legal/contractual.
 
+- **Distribución Oficial de Perfiles por Área (Filtro `Organización`):**
+  - **`Área Producto`:** Paola Monsalve (Product Lead), Laura Isabel Gómez (Digital Designer), Oscar Cerpa (Desarrollador Web Front-End).
+  - **`Área Growth`:** Camilo Vélez (Growth Manager), Nayeliz Brunal (Digital Content Specialist), Juan Sebastian Caicedo (Traffic & Performance Specialist), Simón Vélez (Trafficker Media / DigiOps Specialist).
+  - **`Área Creatividad`:** Diego Cadavid (Creative & Copy Lead), Esmeralda Duque Ramírez (Content Creator), Sara Rivera (Community Manager), Melisa Gil (Creative Designer), Juan Camilo Torres (Creative Strategist), Diego Alejandro Flores Vargas (Media & Design), Sara María Lagos Obando (Creative Specialist).
+  - **`Área Comercial`:** Catalina Tejada (Directora Comercial), Luisa Fernanda Urazán (Operaciones & Cuentas / Client Relationship).
+  - **`Área Administrativa`:** Laura Viviana Salazar Perez (Administrativa & RRHH).
+  - **`C-Level`:** Ana María Giraldo (Dirección General / CEO), Álvaro Antonio Gómez Machuca (Representante Legal / Dirección).

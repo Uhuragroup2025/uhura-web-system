@@ -248,25 +248,80 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
   const isOverloaded = myCurrentAssigned > myNetCapacity;
   const isOptimal = myUtilizationPercent >= 70 && myUtilizationPercent <= 100;
 
-  // Helper para asignar departamento organizacional según departamento configurado, rol o especialidad
+  // Helper para asignar departamento organizacional según perfil/área oficial de Uhura Group
   const resolveUserDept = (u: UserItem): string => {
-    if (u.department) {
-      const d = u.department.toLowerCase();
-      if (d.includes('creativ')) return 'Área Creatividad';
-      if (d.includes('growth')) return 'Área Growth';
-      if (d.includes('product')) return 'Área Producto';
-      if (d.includes('admin')) return 'Área Administrativa';
-      if (d.includes('comerc')) return 'Área Comercial';
-      if (d.includes('c-level') || d.includes('dirección') || d.includes('direccion')) return 'C-Level';
-    }
-    const role = (u.officialRole || u.jobTitle || '').toLowerCase();
     const name = u.name.toLowerCase();
-    if (role.includes('ceo') || name.includes('ana maría')) return 'C-Level';
-    if (role.includes('web') || role.includes('front-end') || role.includes('product') || role.includes('trafficker media') || name.includes('oscar') || name.includes('laura isabel') || name.includes('simón')) return 'Área Producto';
-    if (role.includes('creative') || role.includes('community') || role.includes('content') || name.includes('diego') || name.includes('sara') || name.includes('camilo torres') || name.includes('melisa') || name.includes('alejandro') || name.includes('esmeralda')) return 'Área Creatividad';
-    if (role.includes('growth') || name.includes('camilo vélez') || name.includes('nayeliz') || name.includes('sebastian')) return 'Área Growth';
-    if (role.includes('comercial') || role.includes('client relationship') || name.includes('catalina') || name.includes('luisa')) return 'Área Comercial';
-    if (role.includes('administra') || name.includes('salazar')) return 'Área Administrativa';
+    const role = (u.officialRole || u.jobTitle || '').toLowerCase();
+    const dept = (u.department || '').toLowerCase();
+
+    // 1. C-Level / Dirección
+    if (role.includes('ceo') || role.includes('representante legal') || name.includes('ana maría') || name.includes('álvaro') || name.includes('alvaro')) {
+      return 'C-Level';
+    }
+    // 2. Área Producto (Paola Monsalve, Laura Isabel Gómez, Oscar Cerpa)
+    if (
+      name.includes('paola') ||
+      name.includes('laura isabel') ||
+      name.includes('laura gómez') ||
+      name.includes('laura gomez') ||
+      name.includes('oscar') ||
+      dept.includes('product') ||
+      dept.includes('tecnología') ||
+      dept.includes('tecnologia')
+    ) {
+      return 'Área Producto';
+    }
+    // 3. Área Growth (Camilo Vélez, Nayeliz Brunal, Juan Sebastian Caicedo, Simón Vélez)
+    if (
+      name.includes('camilo vélez') ||
+      name.includes('camilo velez') ||
+      name.includes('nayeliz') ||
+      name.includes('caicedo') ||
+      name.includes('simón') ||
+      name.includes('simon') ||
+      role.includes('growth') ||
+      role.includes('trafficker') ||
+      role.includes('traffic') ||
+      dept.includes('growth') ||
+      dept.includes('tráfico') ||
+      dept.includes('medios')
+    ) {
+      return 'Área Growth';
+    }
+    // 4. Área Comercial (Catalina Tejada, Luisa Fernanda Urazán)
+    if (
+      name.includes('catalina') ||
+      name.includes('luisa') ||
+      role.includes('comercial') ||
+      role.includes('client relationship') ||
+      dept.includes('comerc') ||
+      dept.includes('cuentas')
+    ) {
+      return 'Área Comercial';
+    }
+    // 5. Área Administrativa (Laura Viviana Salazar Perez)
+    if (
+      name.includes('salazar') ||
+      role.includes('administra') ||
+      dept.includes('admin')
+    ) {
+      return 'Área Administrativa';
+    }
+    // 6. Área Creatividad (Diego Cadavid, Esmeralda, Sara Rivera, Melisa Gil, Juan Camilo Torres, Diego Alejandro Flores, Sara María Lagos)
+    if (
+      name.includes('diego') ||
+      name.includes('esmeralda') ||
+      name.includes('sara') ||
+      name.includes('melisa') ||
+      name.includes('torres') ||
+      role.includes('creative') ||
+      role.includes('community') ||
+      role.includes('content') ||
+      dept.includes('creativ') ||
+      dept.includes('diseño')
+    ) {
+      return 'Área Creatividad';
+    }
     return 'Área Producto';
   };
 
