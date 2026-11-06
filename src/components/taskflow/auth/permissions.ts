@@ -146,6 +146,7 @@ export function viewToModule(view: OrbitView | string): OrbitModule {
       return 'capacidad';
     case 'clientes':
       return 'clientes';
+    case 'finanzas':
     case 'new-business':
     case 'cotizador':
       return 'new-business';
@@ -160,7 +161,6 @@ export function viewToModule(view: OrbitView | string): OrbitModule {
     case 'reportes':
     case 'nova-ia':
     case 'portal-cliente':
-    case 'finanzas':
     default:
       return 'administracion';
   }

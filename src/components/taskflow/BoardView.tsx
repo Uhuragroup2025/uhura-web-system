@@ -461,19 +461,45 @@ export const BoardView: React.FC<BoardViewProps> = ({
                             </span>
                           </div>
 
-                          {/* Universal Play / Stop */}
+                          {/* Universal Play / Pause / Stop (icon-only on active) */}
                           {isRunning ? (
-                            <button
-                              onClick={onStopTimer}
-                              className="px-2.5 py-1 rounded-lg text-[11px] font-bold text-white bg-[#dc2626] hover:bg-[#b91c1c] flex items-center gap-1 cursor-pointer animate-pulse shadow-xs"
-                              title="Detener timer"
-                            >
-                              <Square className="w-3 h-3 fill-current" />
-                              <span>Detener</span>
-                            </button>
+                            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                              {onPauseResumeTimer && (
+                                <button
+                                  type="button"
+                                  onClick={onPauseResumeTimer}
+                                  className={`p-1.5 rounded-lg text-white flex items-center justify-center cursor-pointer shadow-xs transition-colors ${
+                                    activeTimer?.isPaused
+                                      ? 'bg-[#10b981] hover:bg-[#059669]'
+                                      : 'bg-[#f59e0b] hover:bg-[#d97706]'
+                                  }`}
+                                  title={activeTimer?.isPaused ? 'Reanudar' : 'Pausar'}
+                                  aria-label={activeTimer?.isPaused ? 'Reanudar' : 'Pausar'}
+                                >
+                                  {activeTimer?.isPaused ? (
+                                    <Play className="w-3 h-3 fill-current" />
+                                  ) : (
+                                    <Pause className="w-3 h-3" />
+                                  )}
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={onStopTimer}
+                                className="p-1.5 rounded-lg text-white bg-[#dc2626] hover:bg-[#b91c1c] flex items-center justify-center cursor-pointer shadow-xs transition-colors"
+                                title="Detener y registrar"
+                                aria-label="Detener y registrar"
+                              >
+                                <Square className="w-3 h-3 fill-current" />
+                              </button>
+                            </div>
                           ) : (
                             <button
-                              onClick={() => onStartTimer && onStartTimer(task)}
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onStartTimer && onStartTimer(task);
+                              }}
                               className="p-1.5 rounded-lg bg-[#f1f5f9] hover:bg-[#501f92] text-[#475569] hover:text-white transition-colors cursor-pointer"
                               title="Iniciar Timer"
                             >

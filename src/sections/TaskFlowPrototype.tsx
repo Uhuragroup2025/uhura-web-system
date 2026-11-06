@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   OrbitView,
   TaskItem,
@@ -56,6 +56,7 @@ import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 import { CapacityView } from '../components/taskflow/CapacityView';
 import { MiDiaView } from '../components/taskflow/MiDiaView';
 import { LaColoniaView } from '../components/taskflow/colonia/LaColoniaView';
+import { TeamHumanProfileModal } from '../components/taskflow/copilot/TeamHumanProfileModal';
 import { FloatingBeaverWidget } from '../components/taskflow/FloatingBeaverWidget';
 import { TimerSummaryModal, TimerSummaryData } from '../components/taskflow/TimerSummaryModal';
 import { StopTimerRegisterModal } from '../components/taskflow/time/StopTimerRegisterModal';
@@ -69,6 +70,7 @@ import {
 import { MobileBottomNav } from '../components/taskflow/MobileBottomNav';
 import { MobileTimerMiniPlayer } from '../components/taskflow/MobileTimerMiniPlayer';
 import { NewBusinessView } from '../components/taskflow/newbusiness/NewBusinessView';
+import { DireccionFinanzasView } from '../components/taskflow/DireccionFinanzasView';
 import { INITIAL_NEW_BUSINESS_OPPORTUNITIES } from '../components/taskflow/newbusiness/mockOpportunities';
 import { canAccessModule, viewToModule } from '../components/taskflow/auth/permissions';
 import { AccessDeniedCard } from '../components/taskflow/auth/AccessDeniedCard';
@@ -727,14 +729,50 @@ export const TaskFlowPrototype: React.FC = () => {
   const [selectedProjectIdForView, setSelectedProjectIdForView] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [activeAlerts, setActiveAlerts] = useState(orbitOperationalAlerts);
 
-  // Time-Tracking Live State (Active timer starts at null by default)
-  const [activeTimer, setActiveTimer] = useState<ActiveTimerState | null>(null);
+  // Time-Tracking Live State (Persisted in localStorage across view reloads)
+  const ACTIVE_TIMER_STORAGE_KEY = 'orbit_active_timer_v1';
+  const [activeTimer, setActiveTimer] = useState<ActiveTimerState | null>(() => {
+    try {
+      const raw = localStorage.getItem(ACTIVE_TIMER_STORAGE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as ActiveTimerState & { savedAt?: number };
+      if (!parsed || !parsed.taskId) return null;
+      const extraSeconds =
+        !parsed.isPaused && parsed.savedAt
+          ? Math.max(0, Math.floor((Date.now() - parsed.savedAt) / 1000))
+          : 0;
+      const { savedAt: _savedAt, ...timerState } = parsed;
+      return {
+        ...timerState,
+        elapsedSeconds: (timerState.elapsedSeconds || 0) + extraSeconds
+      };
+    } catch {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      if (activeTimer) {
+        localStorage.setItem(
+          ACTIVE_TIMER_STORAGE_KEY,
+          JSON.stringify({ ...activeTimer, savedAt: Date.now() })
+        );
+      } else {
+        localStorage.removeItem(ACTIVE_TIMER_STORAGE_KEY);
+      }
+    } catch {
+      // Ignore storage quota errors
+    }
+  }, [activeTimer]);
 
   const [isManualLogModalOpen, setIsManualLogModalOpen] = useState(false);
   const [manualLogDefaultTaskId, setManualLogDefaultTaskId] = useState<string | undefined>(undefined);
 
   const [isTaskDetailModalOpen, setIsTaskDetailModalOpen] = useState(false);
+  const [isMyProfileModalOpen, setIsMyProfileModalOpen] = useState(false);
   const [selectedTaskForDetail, setSelectedTaskForDetail] = useState<TaskItem | null>(null);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
 
@@ -777,6 +815,8 @@ export const TaskFlowPrototype: React.FC = () => {
   // Conflict Timer Modal State (Solo un timer global; interacción explícita sin transferencias silenciosas)
   const [isConflictModalOpen, setIsConflictModalOpen] = useState(false);
   const [pendingTaskForTimer, setPendingTaskForTimer] = useState<TaskItem | null>(null);
+  const [queuedTaskAfterStop, setQueuedTaskAfterStop] = useState<TaskItem | null>(null);
+  const isCommittingTimerRef = useRef<boolean>(false);
 
   // Live Timer Interval Effect (exact seconds, no rounding)
   useEffect(() => {
@@ -830,7 +870,7 @@ export const TaskFlowPrototype: React.FC = () => {
     startTimerForTask(task);
   };
 
-  // Confirmación explícita para detener timer actual y arrancar en nueva tarea
+  // Confirmación explícita para detener timer actual (abriendo Registrar tiempo) y arrancar en nueva tarea al confirmar
   const handleConfirmSwitchTimer = () => {
     if (!pendingTaskForTimer) {
       setIsConflictModalOpen(false);
@@ -841,22 +881,19 @@ export const TaskFlowPrototype: React.FC = () => {
     setIsConflictModalOpen(false);
     setPendingTaskForTimer(null);
 
-    // Detener y registrar timer actual si acumuló tiempo
     if (activeTimer) {
-      if (activeTimer.elapsedSeconds >= 10) {
-        commitTimerLog(activeTimer.elapsedSeconds, false);
-      } else {
-        setActiveTimer(null);
-      }
+      setQueuedTaskAfterStop(nextTask);
+      handleStopTimer();
+      return;
     }
 
-    // Iniciar timer en la nueva tarea
     startTimerForTask(nextTask);
   };
 
   const handleCancelSwitchTimer = () => {
     setIsConflictModalOpen(false);
     setPendingTaskForTimer(null);
+    setQueuedTaskAfterStop(null);
   };
 
   // Pause / Resume (Mantenido para compatibilidad interna)
@@ -872,10 +909,21 @@ export const TaskFlowPrototype: React.FC = () => {
 
   // Commit Time Log helper (usado tanto por parada normal como por recuperación asistida)
   const commitTimerLog = (sessionSeconds: number, isAdjusted: boolean = false, originalDuration?: number) => {
-    if (!activeTimer) return;
+    if (!activeTimer || isCommittingTimerRef.current) return;
+    isCommittingTimerRef.current = true;
+    setTimeout(() => {
+      isCommittingTimerRef.current = false;
+    }, 0);
+
     const targetTask = tasks.find((t) => t.id === activeTimer.taskId);
     if (!targetTask) {
-      setActiveTimer(null);
+      const nextQueued = queuedTaskAfterStop;
+      setQueuedTaskAfterStop(null);
+      if (nextQueued) {
+        startTimerForTask(nextQueued);
+      } else {
+        setActiveTimer(null);
+      }
       return;
     }
 
@@ -907,7 +955,7 @@ export const TaskFlowPrototype: React.FC = () => {
     const newLog: TimeLog = {
       id: `log-${Date.now()}`,
       taskId: activeTimer.taskId,
-      userId: targetTask.assignee?.id || 'u-pao',
+      userId: currentUser?.id || targetTask.assignee?.id || 'u-pao',
       budgetedRoleId: activeTimer.budgetedRoleId || targetTask.budgetedRoleId || targetTask.budgetedRole || 'Diseñador Gráfico',
       durationSeconds: sessionSeconds,
       date: todayFormatted,
@@ -924,17 +972,23 @@ export const TaskFlowPrototype: React.FC = () => {
       taskTitle: activeTimer.taskTitle,
       clientName: activeTimer.clientName,
       projectName: activeTimer.projectName,
-      userName: targetTask.assignee?.name || 'Paola Morales',
-      userInitials: targetTask.assignee?.initials || 'PM',
-      userAvatarBg: targetTask.assignee?.avatarBg || 'bg-[#501f92]',
+      userName: currentUser?.name || targetTask.assignee?.name || 'Paola Monsalve',
+      userInitials: currentUser?.initials || targetTask.assignee?.initials || 'PM',
+      userAvatarBg: currentUser?.avatarBg || targetTask.assignee?.avatarBg || 'bg-[#501f92]',
       categoryType: activeTimer.categoryType
     };
 
     setTimeLogs((prev) => [newLog, ...prev]);
 
-    // Finalizar sesión y cerrar sin doble confirmación
+    // Finalizar sesión y cerrar sin doble confirmación; si había cambio en cola, iniciar nueva tarea
     setIsStopTimerModalOpen(false);
-    setActiveTimer(null);
+    const nextQueued = queuedTaskAfterStop;
+    setQueuedTaskAfterStop(null);
+    if (nextQueued) {
+      startTimerForTask(nextQueued);
+    } else {
+      setActiveTimer(null);
+    }
   };
 
   // Stop Timer: Pausar timer y abrir modal de revisión previa al registro
@@ -953,16 +1007,23 @@ export const TaskFlowPrototype: React.FC = () => {
     setIsStopTimerModalOpen(true);
   };
 
-  // Seguir trabajando: cierra modal y reanuda el timer conservando el tiempo acumulado
+  // Seguir trabajando / Cancelar registro: cierra modal, cancela cambio en cola y reanuda el timer anterior
   const handleResumeTimerFromModal = () => {
     setIsStopTimerModalOpen(false);
+    setQueuedTaskAfterStop(null);
     setActiveTimer((prev) => (prev ? { ...prev, isPaused: false } : null));
   };
 
   // Descartar sesión: acción destructiva confirmada que limpia el timer sin registrar horas
   const handleDiscardTimerSession = () => {
     setIsStopTimerModalOpen(false);
-    setActiveTimer(null);
+    const nextQueued = queuedTaskAfterStop;
+    setQueuedTaskAfterStop(null);
+    if (nextQueued) {
+      startTimerForTask(nextQueued);
+    } else {
+      setActiveTimer(null);
+    }
   };
 
   // Aceptar: detiene definitivamente la sesión y guarda un único registro
@@ -1050,7 +1111,9 @@ export const TaskFlowPrototype: React.FC = () => {
     const newLog: TimeLog = {
       ...data,
       id: `log-${Date.now()}`,
-      date: data.date || 'Hoy, 22 Ago 2026'
+      userId: currentUser?.id || data.userId || 'u-pao',
+      userName: currentUser?.name || data.userName || 'Paola Monsalve',
+      date: data.date || 'Hoy, ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' hs'
     };
 
     setTimeLogs((prev) => [newLog, ...prev]);
@@ -1258,9 +1321,46 @@ export const TaskFlowPrototype: React.FC = () => {
     budgetedRole?: string,
     requiresValidation?: boolean,
     projectLead?: TaskItem['projectLead'],
-    followers?: TaskItem['followers']
+    followers?: TaskItem['followers'],
+    assigneeAllocations?: TaskItem['assigneeAllocations']
   ) => {
     const timestamp = new Date().toISOString();
+    const existingTask = tasks.find((item) => item.id === taskId);
+    if (existingTask) {
+      const prevNames = new Set(
+        [existingTask.assignee?.name, ...(existingTask.collaborators || []).map((c) => c?.name)]
+          .filter((n): n is string => Boolean(n && n !== '-'))
+          .map((n) => n.toLowerCase())
+      );
+      const nextNames = [assignee?.name, ...(collaborators || []).map((c) => c?.name)].filter(
+        (n): n is string => Boolean(n && n !== '-')
+      );
+      const addedNames = nextNames.filter((n) => !prevNames.has(n.toLowerCase()));
+      if (addedNames.length > 0) {
+        const prioLabel =
+          existingTask.priority === 'High' || existingTask.priority === 'urgent'
+            ? 'Alta'
+            : existingTask.priority === 'Low' || existingTask.priority === 'low'
+            ? 'Baja'
+            : 'Media';
+        setActiveAlerts((prevAlerts) => [
+          {
+            id: `alt-${Date.now()}`,
+            type: 'ASIGNACIÓN',
+            title: existingTask.title,
+            client: existingTask.clientName || 'Orbit',
+            description: `Asignado a ${addedNames.join(', ')} · Prioridad ${prioLabel}`,
+            impactLevel: prioLabel === 'Alta' ? 'alto' : 'medio',
+            severity: prioLabel === 'Alta' ? 'high' : 'info',
+            read: false,
+            timeAgo: 'Ahora',
+            date: 'Hoy'
+          },
+          ...prevAlerts
+        ]);
+      }
+    }
+
     setTasks((prev) =>
       prev.map((t) => {
         if (t.id === taskId) {
@@ -1301,6 +1401,7 @@ export const TaskFlowPrototype: React.FC = () => {
             requiresValidation: requiresValidation !== undefined ? requiresValidation : t.requiresValidation,
             projectLead: projectLead !== undefined ? projectLead : t.projectLead,
             followers: followers !== undefined ? followers : t.followers,
+            assigneeAllocations: assigneeAllocations !== undefined ? assigneeAllocations : t.assigneeAllocations,
             activityLog: newLogs
           };
         }
@@ -1334,6 +1435,7 @@ export const TaskFlowPrototype: React.FC = () => {
           requiresValidation: requiresValidation !== undefined ? requiresValidation : prev.requiresValidation,
           projectLead: projectLead !== undefined ? projectLead : prev.projectLead,
           followers: followers !== undefined ? followers : prev.followers,
+          assigneeAllocations: assigneeAllocations !== undefined ? assigneeAllocations : prev.assigneeAllocations,
           activityLog: newLogs
         };
       });
@@ -2692,8 +2794,29 @@ export const TaskFlowPrototype: React.FC = () => {
     setUsers((prev) => prev.map((u) => (u.id === updatedUser.id ? updatedUser : u)));
   };
 
-  // Calculate live logged hours today from timesheets
-  const loggedHoursToday = timeLogs.reduce((acc, log) => acc + (log.durationSeconds || 0) / 3600, 0);
+  // Calculate live logged hours today from timesheets (strictly currentUser + today)
+  const todayTimeLogs = (() => {
+    const now = new Date();
+    const monthsShort = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+    const todayShortStr = `${now.getDate()} ${monthsShort[now.getMonth()]}`;
+    const todayIsoStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const cId = currentUser?.id?.toLowerCase();
+    const cName = currentUser?.name?.toLowerCase();
+
+    return timeLogs.filter((l) => {
+      const matchesUser = !currentUser
+        ? true
+        : (l.userId && l.userId.toLowerCase() === cId) ||
+          (l.userName && cName && l.userName.toLowerCase().includes(cName));
+      if (!matchesUser) return false;
+      const dLow = (l.date || '').toLowerCase().trim();
+      return dLow.startsWith('hoy') || dLow.includes(todayShortStr) || dLow.includes(todayIsoStr);
+    });
+  })();
+
+  const loggedHoursToday = Number(
+    todayTimeLogs.reduce((acc, log) => acc + (log.durationSeconds || 0) / 3600, 0).toFixed(1)
+  );
 
   // Quick Log Hours for Beaver Feeding & Uhura Bags
   const handleQuickLogHours = (
@@ -2729,7 +2852,7 @@ export const TaskFlowPrototype: React.FC = () => {
       case 'mi-dia':
         return 'Mi Día · Bucky el Castor de Orbit 🦫';
       case 'la-colonia':
-        return 'Fichas humanas · La Colonia 🦫';
+        return 'La Colonia Uhureña 🦫';
       case 'dashboard':
         return 'Dashboard';
       case 'proyectos':
@@ -2866,8 +2989,8 @@ export const TaskFlowPrototype: React.FC = () => {
 
           {/* Prototype App Body */}
           <div className="flex-1 flex overflow-hidden relative min-h-0">
-            {/* Sidebar Desktop */}
-            <div className="hidden md:flex flex-col shrink-0 self-stretch min-h-full">
+            {/* Sidebar Desktop (Hidden on mobile and tablet < lg so dashboard doesn't cramp) */}
+            <div className="hidden lg:flex flex-col shrink-0 self-stretch min-h-full">
               <TaskflowSidebar
                 currentView={currentView}
                 onSelectView={handleSelectView}
@@ -2877,9 +3000,9 @@ export const TaskFlowPrototype: React.FC = () => {
               />
             </div>
 
-            {/* Mobile Sidebar Overlay */}
+            {/* Mobile / Tablet Sidebar Overlay */}
             {mobileMenuOpen && (
-              <div className="md:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-xs flex">
+              <div className="lg:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-xs flex">
                 <div className="w-64 bg-[#0d0718] h-full shadow-2xl relative z-50">
                   <TaskflowSidebar
                     currentView={currentView}
@@ -2913,9 +3036,15 @@ export const TaskFlowPrototype: React.FC = () => {
                 onOpenTaskDetail={handleOpenTaskDetail}
                 tasks={tasks}
                 loggedHoursToday={loggedHoursToday}
+                todayTimeLogs={todayTimeLogs}
+                onOpenManualLog={() => handleOpenManualLogWithTask()}
+                onNavigateToCapacity={() => handleSelectView('capacidad')}
                 targetDayHours={8.0}
                 currentUser={currentUser}
                 isDarkTheme={false}
+                alerts={activeAlerts}
+                onUpdateAlerts={setActiveAlerts}
+                onOpenMyProfile={() => setIsMyProfileModalOpen(true)}
                 onSelectTask={(task) => {
                   setSelectedTaskForDetail(task);
                   setIsTaskDetailModalOpen(true);
@@ -2923,7 +3052,7 @@ export const TaskFlowPrototype: React.FC = () => {
               />
 
               {/* View Content with RBAC Protection */}
-              <div className={currentView === 'la-colonia' ? 'p-0 flex-1 flex flex-col min-h-0' : 'p-4 sm:p-6 lg:p-8 pb-28 md:pb-8 flex-1'}>
+              <div className={currentView === 'la-colonia' ? 'p-0 flex-1 flex flex-col min-h-0' : 'p-4 sm:p-6 lg:p-8 pb-28 lg:pb-8 flex-1'}>
                 {!canAccessModule(currentUser, currentView) ? (
                   <AccessDeniedCard
                     currentUser={currentUser}
@@ -3252,27 +3381,16 @@ export const TaskFlowPrototype: React.FC = () => {
                   />
                 )}
 
-                {/* 7.5. FINANZAS */}
+                {/* 7.5. DIRECCIÓN Y FINANZAS */}
                 {currentView === 'finanzas' && (
-                  <div className="bg-white p-5 rounded-2xl border border-[#e2e8f0] shadow-xs space-y-3 animate-in fade-in duration-200">
-                    <div>
-                      <h2 className="text-base font-bold text-[#0f172a]">Finanzas & Control de Cartera</h2>
-                      <p className="text-xs text-[#64748b] mt-0.5">
-                        Presupuestación de proyectos por horas hombre y balance de cartera
-                      </p>
-                    </div>
-                    <div className="pt-3 border-t border-[#f1f5f9] flex flex-wrap items-center gap-4 text-xs">
-                      <div>
-                        <span className="text-[#64748b] block text-[11px]">Cartera por cobrar</span>
-                        <strong className="text-sm font-bold text-[#0f172a]">$577.7M COP</strong>
-                      </div>
-                      <span className="text-[#cbd5e1]">·</span>
-                      <div>
-                        <span className="text-[#64748b] block text-[11px]">Cartera vencida</span>
-                        <strong className="text-sm font-bold text-[#dc2626]">$501.9M COP <span className="text-xs font-normal text-[#64748b]">(86.8% en mora)</span></strong>
-                      </div>
-                    </div>
-                  </div>
+                  <DireccionFinanzasView
+                    opportunities={opportunities}
+                    clients={clients}
+                    tasks={tasks}
+                    timeLogs={timeLogs}
+                    currentUser={currentUser}
+                    onNavigateToView={handleSelectView}
+                  />
                 )}
 
                 {/* 8. USUARIOS & PERMISOS */}
@@ -3336,6 +3454,7 @@ export const TaskFlowPrototype: React.FC = () => {
             isOpen={isTaskDetailModalOpen}
             onClose={() => setIsTaskDetailModalOpen(false)}
             task={selectedTaskForDetail}
+            currentUser={currentUser}
             tasksList={tasks}
             onSelectTask={(t) => setSelectedTaskForDetail(t)}
             activeTimer={activeTimer}
@@ -3488,6 +3607,17 @@ export const TaskFlowPrototype: React.FC = () => {
         activeTimer={activeTimer}
         onUpdateUser={handleUpdateUser}
         currentUser={currentUser}
+      />
+
+      {/* Modal de Perfil Personal (Solo usuario autenticado, desde Header) */}
+      <TeamHumanProfileModal
+        isOpen={isMyProfileModalOpen}
+        onClose={() => setIsMyProfileModalOpen(false)}
+        users={users}
+        selectedUserId={currentUser?.id}
+        onUpdateUser={handleUpdateUser}
+        currentUser={currentUser}
+        singleUserMode={true}
       />
 
       {/* Herramienta de QA / Simulación de Roles & Permisos (RBAC Bloque 3) */}

@@ -82,7 +82,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           onClick={(e) => {
             if (e.target === e.currentTarget) setIsMoreMenuOpen(false);
           }}
-          className="md:hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex flex-col justify-end animate-in fade-in duration-150"
+          className="lg:hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex flex-col justify-end animate-in fade-in duration-150"
         >
           <div
             id="mobile-more-menu-sheet"
@@ -180,6 +180,21 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                   </button>
 
                   <button
+                    onClick={() => handleNavClick('finanzas')}
+                    className={`p-3 rounded-2xl border text-left flex items-center gap-2.5 transition-all cursor-pointer ${
+                      currentView === 'finanzas'
+                        ? 'bg-[#241344] border-[#8a4dff] text-white'
+                        : 'bg-[#140b24] border-[#261845] text-[#c9b7ff]'
+                    }`}
+                  >
+                    <TrendingUp className="w-4 h-4 text-[#a855f7] shrink-0" />
+                    <div className="truncate">
+                      <span className="block text-xs font-bold truncate">Dirección & Finanzas</span>
+                      <span className="text-[10px] text-[#a855f7] block truncate">KPIs & Rentabilidad</span>
+                    </div>
+                  </button>
+
+                  <button
                     onClick={() => handleNavClick('new-business')}
                     className={`p-3 rounded-2xl border text-left flex items-center gap-2.5 transition-all cursor-pointer ${
                       currentView === 'new-business'
@@ -213,7 +228,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                     <span className="text-base shrink-0">🪵</span>
                     <div className="truncate">
                       <span className="block text-xs font-bold truncate">La Colonia</span>
-                      <span className="text-[10px] text-[#d4ff4a] block truncate">Hábitat de Bucky</span>
+                      <span className="text-[10px] text-[#d4ff4a] block truncate">Jugar en la colonía</span>
                     </div>
                   </button>
 
@@ -280,7 +295,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       <nav
         id="mobile-bottom-nav"
         aria-label="Navegación principal móvil"
-        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0d0718]/95 backdrop-blur-lg border-t border-[#261845] px-2 py-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))]"
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0d0718]/95 backdrop-blur-lg border-t border-[#261845] px-2 py-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))]"
       >
         <div className="flex items-center justify-around">
           {navItems.map((item) => {

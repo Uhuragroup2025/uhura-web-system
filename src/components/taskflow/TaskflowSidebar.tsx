@@ -62,7 +62,7 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
   const canNewBusiness = canAccessModule(currentUser, 'new-business');
   const canClientes = canAccessModule(currentUser, 'clientes');
   const canPlantillas = canAccessModule(currentUser, 'plantillas-producto');
-  const canFinanzas = canAccessModule(currentUser, 'administracion');
+  const canFinanzas = canAccessModule(currentUser, 'finanzas');
 
   const canColonia = canAccessModule(currentUser, 'la-colonia');
   const canMuro = canAccessModule(currentUser, 'la-colonia');
@@ -72,7 +72,7 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
   const canPortalCliente = canAccessModule(currentUser, 'administracion');
 
   const hasOperacion = canMiDia || canProyectos || canTareas || canCapacidad;
-  const hasComercial = canNewBusiness || canClientes || canPlantillas;
+  const hasComercial = canFinanzas || canNewBusiness || canClientes || canPlantillas;
   const hasExperiencia = canColonia;
   const hasSistema = canUsuarios;
 
@@ -131,7 +131,7 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
             {onToggleCollapse && (
               <button
                 onClick={onToggleCollapse}
-                className="hidden md:flex p-1.5 rounded-lg text-[#c9b7ff]/70 hover:text-white hover:bg-[#241344] transition-colors cursor-pointer shrink-0"
+                className="hidden lg:flex p-1.5 rounded-lg text-[#c9b7ff]/70 hover:text-white hover:bg-[#241344] transition-colors cursor-pointer shrink-0"
                 title="Ocultar menú lateral"
               >
                 <PanelLeftClose className="w-4 h-4 text-[#c9b7ff]/70" />
@@ -264,6 +264,29 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
 
             {(openSections.comercial || collapsed) && (
               <div className="space-y-0.5 pl-0.5">
+                {/* Dirección y Finanzas */}
+                {canFinanzas && (
+                  <button
+                    onClick={() => onSelectView('finanzas')}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                      currentView === 'finanzas'
+                        ? 'bg-[#1e113a] text-white font-semibold'
+                        : 'text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white'
+                    }`}
+                    title="Dirección y Finanzas · Salud comercial y operativa"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <TrendingUp className="w-3.5 h-3.5 text-[#a855f7]" />
+                      {!collapsed && <span>Dirección y Finanzas</span>}
+                    </div>
+                    {!collapsed && (
+                      <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-[#a855f7]/15 text-[#c9b7ff]">
+                        KPIs
+                      </span>
+                    )}
+                  </button>
+                )}
+
                 {/* New Business */}
                 {canNewBusiness && (
                   <button
@@ -364,7 +387,7 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
                         ? 'bg-gradient-to-r from-[#2e1859] to-[#1e113a] text-white shadow-sm border-l-2 border-[#d4ff4a]'
                         : 'text-[#c9b7ff] hover:bg-[#1a0f30] hover:text-white'
                     }`}
-                    title="La Colonia · Hábitat de Bucky, logros y pasear libre"
+                    title="La Colonia · Jugar en la colonía, logros y pasear libre"
                   >
                     <div className="flex items-center gap-2.5">
                       <span className="text-sm">🪵</span>

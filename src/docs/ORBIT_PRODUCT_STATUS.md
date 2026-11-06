@@ -1781,10 +1781,10 @@ Se eliminaron cards decorativas y accesos secundarios redundantes de la barra de
    - Capacidad (Disponibilidad, asignación y carga; se respeta el scope RBAC: `own` para colaboradores, `team` para líderes/CRS y `all` para administración/ejecutivo).
    - *Nota:* Se retiró `Horas` de la navegación primaria; Mi Día absorbió el timer, la carga manual y rápida, el progreso de jornada y los registros de hoy. El acceso a la auditoría histórica de timesheets se mantiene de forma contextual secundaria.
 2. **Comercial:**
-   - New Business (Embudo de ventas y cotizaciones).
-   - Clientes (Cartera, perfiles y entidades fiscales).
-   - Plantillas (Catálogo de servicios y producto).
-   - *Nota:* Se retiró `Finanzas` del sidebar hasta su definición funcional en fase posterior.
+   - **Dirección y Finanzas:** Métricas de valor vendido vs meta, base de fees recurrentes, top clientes y semáforo de proyectos (exclusivo para perfiles de Liderazgo y Dirección).
+   - **New Business:** Embudo de ventas, scoping de brief, cotizaciones y formalización contractual (SOW).
+   - **Clientes:** Directorio de cuentas, razones sociales / NITs y contactos.
+   - **Servicios:** Catálogo de servicios y plantillas maestras de entregables.
 3. **Experiencia:**
    - La Colonia (Hábitat vivencial de Bucky).
    - *Nota:* Se retiró `El Muro` del sidebar.
@@ -1814,6 +1814,35 @@ Mi Día deja de ser un dashboard de métricas decorativas para convertirse en el
      - Aniversarios de hoy o próximos en Uhura (derivados de `fecha_ingreso`).
      - Ausencias y vacaciones próximas relevantes del equipo (provenientes del modelo canónico `TeamAbsenceEvent`).
    - Esta información se visualiza de forma sobria y complementaria, reforzando la cercanía del equipo sin desviar el protagonismo de las tareas del día.
+
+---
+
+### 11.7. Módulo de Dirección y Finanzas: Lógica Comercial, Metas y Gancho con Alegra
+
+#### 1. Ubicación y Control de Acceso (RBAC)
+- **Ubicación Canónica:** Pestaña primaria dentro del grupo **COMERCIAL** en la barra lateral, situada jerárquicamente **inmediatamente encima de New Business**.
+- **Público Objetivo:** Exclusivo para perfiles de Liderazgo y Dirección (`executive`, `system_admin`, `commercial`, `leader`, `client_relationship`).
+- **Restricción Estricta:** Acceso denegado a colaboradores operativos (`collaborator`), evitando filtración de metas de facturación o cifras comerciales consolidadas.
+
+#### 2. Definición de los 3 Bloques No Redundantes
+Para evitar duplicidades con tableros existentes, la vista se compone estrictamente de 3 bloques funcionales:
+1. **Bloque 1: Cumplimiento Comercial & Proyección del Mes:**
+   - **Selector de Período:** Mes calendario evaluado (por defecto el mes en curso).
+   - **Meta del Mes:** Parámetro directivo editable en millones de COP (por defecto $350.000.000 COP).
+   - **Vendido / Cerrado en el Mes (New Business Won):** Sumatoria del valor contractual cotizado de todas las propuestas que alcanzaron estado `won` en el mes evaluado.
+   - **Base Recurrente Activa (Fees Mensuales):** Suma fija de los fees y retainers de clientes activos con facturación recurrente en curso.
+   - **Barra de Avance:** Porcentaje global alcanzado `(Vendido New Business + Base Recurrente) / Meta del Mes`.
+   - **Facturado Real (Alegra API) `[PENDIENTE INTEGRACIÓN]`:** Tarjeta visible que documenta explícitamente el hook de sincronización con Alegra. Muestra el estado "Por sincronizar / Pending Alegra" para contrastar ventas comprometidas vs. facturación electrónica efectivamente radicada y cobrada, sin recurrir a datos contables simulados.
+2. **Bloque 2: Top Clientes Activos:**
+   - Ranking de los 5 clientes con mayor concentración de horas registradas y volumen de entregables abiertos.
+   - Acceso directo al directorio de clientes.
+3. **Bloque 3: Proyectos · Semáforo de Consumo (Fuente Única de Salud Operativa):**
+   - Agrupa los proyectos activos y compara horas consumidas vs. horas presupuestadas (`consumedSeconds / budgetedHours`).
+   - Estados semafóricos:
+     - 🟢 **Normal:** Consumo inferior al 75% de la bolsa presupuestada.
+     - 🟡 **Alerta:** Consumo entre 75% y 100% de la bolsa.
+     - 🔴 **Excedido / Sobrecosto:** Consumo superior al 100% de las horas presupuestadas.
+   - Integra la visualización de entregables vencidos por proyecto (`dueDate < hoy` y `status !== 'Done'`), consolidando las alertas operativas en un solo punto sin tarjetas redundantes.
 
 ---
 

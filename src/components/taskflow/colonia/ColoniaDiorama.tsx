@@ -392,7 +392,7 @@ export const ColoniaDiorama: React.FC<ColoniaDioramaProps> = ({
               <span className="text-2xl">{selectedStructure.icon}</span>
               <div>
                 <h4 className="text-xs font-black text-white">{selectedStructure.name}</h4>
-                <span className="text-[10px] text-[#d4ff4a] font-bold">Hábitat de Bucky</span>
+                <span className="text-[10px] text-[#d4ff4a] font-bold">Jugar en la colonía</span>
               </div>
             </div>
             <button

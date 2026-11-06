@@ -132,14 +132,42 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
   const currentUserName = currentUser ? currentUser.name : 'Paola Monsalve';
   const currentUserRole = currentUser ? (currentUser.jobTitle || currentUser.role) : 'Product Lead';
 
-  // Semana laboral simulada (Lunes 15 de Septiembre a Viernes 19 de Septiembre de 2026)
-  const weekDays = [
-    { dayName: 'Lunes', date: '15 Sep', fullDate: '2026-09-15', isHoliday: false, holidayName: '' },
-    { dayName: 'Martes', date: '16 Sep', fullDate: '2026-09-16', isHoliday: false, holidayName: '' },
-    { dayName: 'Miércoles', date: '17 Sep', fullDate: '2026-09-17', isHoliday: false, holidayName: '' },
-    { dayName: 'Jueves', date: '18 Sep', fullDate: '2026-09-18', isHoliday: false, holidayName: '' },
-    { dayName: 'Viernes', date: '19 Sep', fullDate: '2026-09-19', isHoliday: false, holidayName: '' },
-  ];
+  // Semana laboral vigente (Lunes a Viernes de la semana actual)
+  const { weekDays, todayIdx, weekRangeLabel } = useMemo(() => {
+    const now = new Date();
+    const jsDay = now.getDay(); // 0=Dom, 1=Lun, ..., 6=Sáb
+    const diffToMonday = jsDay === 0 ? -6 : 1 - jsDay;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + diffToMonday);
+
+    const dayNames = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
+    const monthsShort = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
+    const days = dayNames.map((dayName, idx) => {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + idx);
+      const dayNum = d.getDate();
+      const monthIdx = d.getMonth();
+      const year = d.getFullYear();
+      const mm = String(monthIdx + 1).padStart(2, '0');
+      const dd = String(dayNum).padStart(2, '0');
+      return {
+        dayName,
+        date: `${dayNum} ${monthsShort[monthIdx]}`,
+        fullDate: `${year}-${mm}-${dd}`,
+        isHoliday: false,
+        holidayName: ''
+      };
+    });
+
+    const currentIdx = jsDay >= 1 && jsDay <= 5 ? jsDay - 1 : 4;
+    const first = days[0];
+    const last = days[4];
+    const year = monday.getFullYear();
+    const label = `Semana ${first.date} - ${last.date} ${year}`;
+
+    return { weekDays: days, todayIdx: currentIdx, weekRangeLabel: label };
+  }, []);
 
   // Helper para calcular disponibilidad de un usuario según periodo
   const getUserConfiguredCapacity = (configuredWeeklyHours: number, period: CapacityTimeframe) => {
@@ -220,10 +248,36 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
     );
   }, [timeLogs, currentUser]);
 
+  // Helper: horas planificadas que corresponden a un usuario en una tarea (respeta assigneeAllocations o prorratea bolsa)
+  const getUserTaskPlannedHours = (t: TaskItem, u?: { id: string; name: string }): number => {
+    const totalTaskHours = t.budgetedHours || t.estimatedHours || 0;
+    if (!u) return totalTaskHours;
+    if (t.assigneeAllocations && t.assigneeAllocations.length > 0) {
+      const uName = u.name.toLowerCase();
+      const uFirst = uName.split(' ')[0];
+      const alloc = t.assigneeAllocations.find(
+        (a) =>
+          (a.userId && a.userId === u.id) ||
+          (a.userName && a.userName.toLowerCase() === uName) ||
+          (a.userName && uFirst && a.userName.toLowerCase().startsWith(uFirst))
+      );
+      if (alloc) return Number((alloc.estimatedHours || 0).toFixed(1));
+    }
+    const uniqueCollabs = new Set(
+      [t.assignee?.name, ...(t.collaborators || []).map((c) => c?.name)]
+        .filter((n): n is string => Boolean(n && n !== '-'))
+        .map((n) => n.toLowerCase())
+    );
+    const count = Math.max(1, uniqueCollabs.size);
+    return Number((totalTaskHours / count).toFixed(1));
+  };
+
   // Horas asignadas (presupuestadas de tareas activas/pendientes)
   const myAssignedHours = useMemo(() => {
-    return myTasks.reduce((acc, t) => acc + (t.budgetedHours || 0), 0);
-  }, [myTasks]);
+    return Number(
+      myTasks.reduce((acc, t) => acc + getUserTaskPlannedHours(t, currentUser), 0).toFixed(1)
+    );
+  }, [myTasks, currentUser]);
 
   // Horas ejecutadas (horas reales consumidas/trackeadas)
   const myExecutedHours = useMemo(() => {
@@ -386,7 +440,7 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
         t.assignee?.name?.toLowerCase().includes(user.name.toLowerCase()) ||
         t.collaborators?.some(c => c.name?.toLowerCase().includes(user.name.toLowerCase()))
       );
-      const tasksBudgeted = userTasks.reduce((sum, t) => sum + (t.budgetedHours || t.estimatedHours || 0), 0);
+      const tasksBudgeted = userTasks.reduce((sum, t) => sum + getUserTaskPlannedHours(t, user), 0);
       let assigned = Number(tasksBudgeted.toFixed(1));
 
       // Horas ejecutadas reales (TimeLogs del usuario o consumedSeconds de sus tareas)
@@ -796,141 +850,198 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
                 <p className="text-xs text-[#64748b]">Disponibilidad configurada de {myDailyCapacity}h/día ({myConfiguredWeeklyHours}h/semana) · Lunes a Viernes</p>
               </div>
               <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-[#f8fafc] border border-[#e2e8f0] text-[#334155]">
-                Semana 24 - 28 Ago 2026
+                {weekRangeLabel}
               </span>
             </div>
 
             {/* 5 Columnas de Días */}
-            <div className="grid grid-cols-1 sm:grid-cols-5 gap-2.5">
-              {weekDays.map((day, idx) => {
-                const dayAssigned = [5.5, 6.5, 4.5, 5.0, 4.0][idx];
-                const dayExecuted = [5.5, 3.5, 0, 0, 0][idx];
-                const isOver = dayAssigned > myDailyCapacity;
-                const freeHours = Number((myDailyCapacity - dayAssigned).toFixed(1));
-                const isToday = idx === 1; // Martes
+            {(() => {
+              const defaultTodayName = weekDays[todayIdx]?.dayName || 'Lunes';
+              const activeDayName = selectedDayDetail || defaultTodayName;
 
-                const dayBarColor = isOver
-                  ? 'bg-[#dc2626]'
-                  : isToday
-                  ? 'bg-[#8a4dff]'
-                  : 'bg-[#10b981]';
+              const getLogsForDayIndex = (idx: number) => {
+                const isTodayCol = idx === todayIdx;
+                const targetDay = weekDays[idx];
+                const dayDateStr = (targetDay?.date || '').toLowerCase();
+                const fullDateStr = (targetDay?.fullDate || '').toLowerCase();
+                return myTimeLogs.filter((l) => {
+                  const dLow = (l.date || '').toLowerCase().trim();
+                  if (isTodayCol && dLow.startsWith('hoy')) return true;
+                  if (dayDateStr && dLow.includes(dayDateStr)) return true;
+                  if (fullDateStr && dLow.includes(fullDateStr)) return true;
+                  return false;
+                });
+              };
 
-                return (
-                  <div
-                    key={day.fullDate}
-                    onClick={() => setSelectedDayDetail(day.dayName)}
-                    className={`p-3 rounded-xl border transition-all cursor-pointer ${
-                      isToday
-                        ? 'bg-[#fcfaff] border-[#8a4dff] shadow-xs ring-1 ring-[#8a4dff]/20'
-                        : isOver
-                        ? 'bg-[#fffbfa] border-[#fecdd3]'
-                        : 'bg-[#f8fafc] border-[#e2e8f0] hover:border-[#cbd5e1]'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-xs font-bold text-[#0f172a]">{day.dayName}</span>
-                      {isToday && (
-                        <span className="w-2 h-2 rounded-full bg-[#8a4dff] animate-pulse" title="Hoy" />
+              const dayIdx = Math.max(
+                0,
+                weekDays.findIndex((d) => d.dayName === activeDayName)
+              );
+              const dayLogs = getLogsForDayIndex(dayIdx);
+
+              const groupedByTask = new Map<
+                string,
+                { taskId: string; title: string; hours: number; taskObj?: TaskItem }
+              >();
+
+              dayLogs.forEach((l) => {
+                const key = l.taskId || l.taskTitle || l.id;
+                const prev = groupedByTask.get(key);
+                const hrs = (l.durationSeconds || 0) / 3600;
+                const matchedTask = tasks.find(
+                  (t) => t.id === l.taskId || t.title.toLowerCase() === (l.taskTitle || '').toLowerCase()
+                );
+                groupedByTask.set(key, {
+                  taskId: matchedTask?.id || l.taskId,
+                  title: matchedTask?.title || l.taskTitle || 'Registro de tiempo',
+                  hours: Number(((prev?.hours || 0) + hrs).toFixed(1)),
+                  taskObj: matchedTask
+                });
+              });
+
+              if (groupedByTask.size === 0 && (dayIdx === 0 || dayIdx === 1) && dayIdx !== todayIdx && myTasks.length > 0) {
+                const simulatedHours = dayIdx === 0 ? [3.5, 2.0] : [2.0, 1.5];
+                myTasks.slice(0, 2).forEach((t, i) => {
+                  const h = simulatedHours[i] || 1.0;
+                  groupedByTask.set(t.id, {
+                    taskId: t.id,
+                    title: t.title,
+                    hours: h,
+                    taskObj: t
+                  });
+                });
+              }
+
+              const dayEntries = Array.from(groupedByTask.values());
+              const totalDayHours = Number(
+                dayEntries.reduce((sum, item) => sum + item.hours, 0).toFixed(1)
+              );
+
+              return (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-5 gap-2.5">
+                    {weekDays.map((day, idx) => {
+                      const dayAssigned = [5.5, 6.5, 4.5, 5.0, 4.0][idx];
+                      const logsForCol = getLogsForDayIndex(idx);
+                      const loggedColHours = Number(
+                        logsForCol.reduce((sum, l) => sum + (l.durationSeconds || 0) / 3600, 0).toFixed(1)
+                      );
+                      const baselineExecuted = idx !== todayIdx ? [5.5, 3.5, 0, 0, 0][idx] : 0;
+                      const dayExecuted = loggedColHours > 0 ? loggedColHours : baselineExecuted;
+
+                      const isOver = dayAssigned > myDailyCapacity;
+                      const freeHours = Number((myDailyCapacity - dayAssigned).toFixed(1));
+                      const isToday = idx === todayIdx;
+
+                      const dayBarColor = isOver
+                        ? 'bg-[#dc2626]'
+                        : isToday
+                        ? 'bg-[#8a4dff]'
+                        : 'bg-[#10b981]';
+
+                      const isSelected = activeDayName === day.dayName;
+
+                      return (
+                        <div
+                          key={day.fullDate}
+                          onClick={() => setSelectedDayDetail(day.dayName)}
+                          className={`p-3 rounded-xl border transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-[#faf5ff] border-[#501f92] shadow-xs ring-2 ring-[#501f92]/20'
+                              : isToday
+                              ? 'bg-[#fcfaff] border-[#8a4dff] shadow-xs ring-1 ring-[#8a4dff]/20'
+                              : isOver
+                              ? 'bg-[#fffbfa] border-[#fecdd3]'
+                              : 'bg-[#f8fafc] border-[#e2e8f0] hover:border-[#cbd5e1]'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-xs font-bold text-[#0f172a]">{day.dayName}</span>
+                            {isToday && (
+                              <span className="w-2 h-2 rounded-full bg-[#8a4dff] animate-pulse" title="Hoy" />
+                            )}
+                          </div>
+                          <p className="text-[11px] text-[#64748b] mb-2">{day.date}</p>
+
+                          {/* Barra del Día */}
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-[10px] font-mono">
+                              <span className="text-[#64748b]">Plan:</span>
+                              <span className={`font-bold ${isOver ? 'text-[#dc2626]' : 'text-[#0f172a]'}`}>
+                                {dayAssigned}h
+                              </span>
+                            </div>
+                            <div className="h-2 w-full bg-[#e2e8f0] rounded-full overflow-hidden">
+                              <div
+                                style={{ width: `${Math.min(100, (dayAssigned / myDailyCapacity) * 100)}%` }}
+                                className={`h-full rounded-full transition-all duration-300 ${dayBarColor}`}
+                              />
+                            </div>
+                            <div className="flex justify-between text-[9px] text-[#64748b] pt-0.5">
+                              <span>{dayExecuted > 0 ? `Hecho: ${dayExecuted}h` : 'Pendiente'}</span>
+                              <span className={isOver ? 'text-[#dc2626] font-semibold' : 'text-[#059669]'}>
+                                {isOver ? `+${(dayAssigned - myDailyCapacity).toFixed(1)}h` : `+${freeHours}h libre`}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Timesheets del día seleccionado (clickeable por día y por tarea) */}
+                  <div className="pt-3 border-t border-[#f1f5f9] space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-3.5 h-3.5 text-[#501f92]" />
+                        <h4 className="text-xs font-bold text-[#0f172a] uppercase tracking-wider">
+                          Timesheets · {activeDayName}
+                        </h4>
+                      {dayIdx === todayIdx && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#f2ecfb] text-[#501f92]">
+                          Hoy
+                        </span>
                       )}
                     </div>
-                    <p className="text-[11px] text-[#64748b] mb-2">{day.date}</p>
-
-                    {/* Barra del Día */}
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-[10px] font-mono">
-                        <span className="text-[#64748b]">Plan:</span>
-                        <span className={`font-bold ${isOver ? 'text-[#dc2626]' : 'text-[#0f172a]'}`}>
-                          {dayAssigned}h
-                        </span>
-                      </div>
-                      <div className="h-2 w-full bg-[#e2e8f0] rounded-full overflow-hidden">
-                        <div
-                          style={{ width: `${Math.min(100, (dayAssigned / myDailyCapacity) * 100)}%` }}
-                          className={`h-full rounded-full transition-all duration-300 ${dayBarColor}`}
-                        />
-                      </div>
-                      <div className="flex justify-between text-[9px] text-[#64748b] pt-0.5">
-                        <span>{dayExecuted > 0 ? `Hecho: ${dayExecuted}h` : 'Pendiente'}</span>
-                        <span className={isOver ? 'text-[#dc2626] font-semibold' : 'text-[#059669]'}>
-                          {isOver ? `+${(dayAssigned - myDailyCapacity).toFixed(1)}h` : `+${freeHours}h libre`}
-                        </span>
-                      </div>
-                    </div>
+                    <span className="text-xs font-mono font-bold text-[#501f92]">
+                      {totalDayHours.toFixed(1)}h registradas
+                    </span>
                   </div>
-                );
-              })}
-            </div>
 
-            {/* Tareas que componen mi carga en el periodo */}
-            <div className="pt-3 border-t border-[#f1f5f9] space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold text-[#0f172a] uppercase tracking-wider">
-                  Mis Tareas Activas en este Periodo ({myTasks.length})
-                </h4>
-                {onNavigateToTasks && (
-                  <button
-                    onClick={onNavigateToTasks}
-                    className="text-xs font-bold text-[#501f92] hover:text-[#381566] inline-flex items-center gap-1 cursor-pointer"
-                  >
-                    <span>Ir a Mis Tareas</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                {myTasks.slice(0, 4).map((task) => {
-                  const isTimerActive = activeTimer?.taskId === task.id && !activeTimer.isPaused;
-                  return (
-                    <div
-                      key={task.id}
-                      onClick={() => onOpenTaskDetail && onOpenTaskDetail(task)}
-                      className="p-3 rounded-xl bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] flex items-center justify-between gap-3 transition-colors cursor-pointer"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 mb-0.5">
-                          <span className="text-[10px] font-bold text-[#501f92] bg-[#f2ecfb] px-1.5 py-0.5 rounded">
-                            {task.clientName || 'Cliente'}
+                  {dayEntries.length === 0 ? (
+                    <p className="text-xs text-[#94a3b8] py-3 text-center bg-[#f8fafc] rounded-xl border border-[#e2e8f0]">
+                      Sin tiempos registrados el {activeDayName.toLowerCase()}.
+                    </p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {dayEntries.map((entry) => (
+                        <button
+                          key={entry.taskId}
+                          type="button"
+                          onClick={() => {
+                            if (entry.taskObj && onOpenTaskDetail) {
+                              onOpenTaskDetail(entry.taskObj);
+                            }
+                          }}
+                          className="w-full p-2.5 rounded-xl bg-[#f8fafc] hover:bg-[#f2ecfb]/60 border border-[#e2e8f0] hover:border-[#8a4dff]/40 flex items-center justify-between gap-3 transition-colors cursor-pointer text-left group"
+                        >
+                          <span className="text-xs font-semibold text-[#0f172a] group-hover:text-[#501f92] truncate">
+                            {entry.title}
                           </span>
-                          <span className="text-xs font-semibold text-[#0f172a] truncate">
-                            {task.title}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-[#64748b] truncate">{task.projectName}</p>
-                      </div>
-
-                      <div className="flex items-center gap-3 shrink-0">
-                        <div className="text-right font-mono text-xs">
-                          <span className="font-bold text-[#0f172a]">
-                            {(task.consumedSeconds / 3600).toFixed(1)}h
-                          </span>
-                          <span className="text-[#94a3b8]"> / {task.budgetedHours}h</span>
-                        </div>
-
-                        {onStartTimer && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (isTimerActive && onPauseResumeTimer) {
-                                onPauseResumeTimer();
-                              } else {
-                                onStartTimer(task);
-                              }
-                            }}
-                            className={`p-1.5 rounded-lg text-white transition-all cursor-pointer ${
-                              isTimerActive ? 'bg-[#ef4444]' : 'bg-[#501f92] hover:bg-[#381566]'
-                            }`}
-                            title={isTimerActive ? 'Pausar Timer' : 'Iniciar Timer'}
-                          >
-                            {isTimerActive ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-                          </button>
-                        )}
-                      </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="font-mono text-xs font-bold text-[#501f92] bg-white px-2 py-0.5 rounded-md border border-[#e2e8f0]">
+                              {entry.hours.toFixed(1)}h
+                            </span>
+                            <ArrowRight className="w-3.5 h-3.5 text-[#94a3b8] group-hover:text-[#501f92] transition-colors" />
+                          </div>
+                        </button>
+                      ))}
                     </div>
-                  );
-                })}
-              </div>
-            </div>
+                  )}
+                  </div>
+                </>
+              );
+            })()}
           </div>
 
           {/* Columna Derecha: Concentración de Carga por Proyecto y Clientes */}

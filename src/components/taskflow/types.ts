@@ -1038,7 +1038,7 @@ export interface ServiceProfitability {
   color: string;
 }
 
-export type OperationalAlertType = 'RETRASO' | 'RENTABILIDAD' | 'CARTERA';
+export type OperationalAlertType = 'RETRASO' | 'RENTABILIDAD' | 'CARTERA' | 'ASIGNACIÓN';
 
 export interface OperationalAlert {
   id: string;

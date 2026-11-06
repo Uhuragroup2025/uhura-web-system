@@ -102,11 +102,18 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
 
       // Mis Tareas vs Equipo
       if (viewMode === 'my') {
-        // In My Tasks, match current user (or if assignee matches or user is collaborator)
+        const targetName = (currentUserName || 'Paola Monsalve').toLowerCase();
+        const targetFirst = targetName.split(' ')[0];
         const isMine =
-          t.assignee?.name?.toLowerCase().includes('catalina') ||
+          t.assignee?.name?.toLowerCase().includes(targetFirst) ||
+          targetName.includes(t.assignee?.name?.toLowerCase() || '___') ||
           t.assignee?.name?.toLowerCase().includes('yo') ||
-          (t.collaborators && t.collaborators.some((c) => c.name.toLowerCase().includes('catalina')));
+          (t.collaborators &&
+            t.collaborators.some(
+              (c) =>
+                c.name.toLowerCase().includes(targetFirst) ||
+                targetName.includes(c.name.toLowerCase())
+            ));
         if (!isMine) return false;
       } else {
         // In Team view, filter by selected assignee if chosen
@@ -392,34 +399,30 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
                   </div>
                 </div>
 
-                {/* Title & Checkbox */}
+                {/* Title */}
                 <div className="flex items-start gap-2.5">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onToggleTask(task.id);
-                    }}
-                    className="mt-0.5 text-[#94a3b8] hover:text-[#501f92] transition-colors cursor-pointer shrink-0"
-                    aria-label={task.completed ? 'Marcar incompleta' : 'Marcar completada'}
-                  >
-                    {task.completed ? (
-                      <CheckCircle2 className="w-5 h-5 text-[#10b981]" />
-                    ) : (
-                      <div className="w-5 h-5 rounded-full border border-[#cbd5e1] hover:border-[#501f92]" />
-                    )}
-                  </button>
-
                   <div className="flex-1 min-w-0">
-                    <h4
-                      className={`text-xs font-bold leading-snug ${
-                        task.completed
-                          ? 'line-through text-[#94a3b8]'
-                          : 'text-[#0f172a]'
-                      }`}
-                    >
-                      {task.title}
-                    </h4>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <h4
+                        className={`text-xs font-bold leading-snug ${
+                          task.completed
+                            ? 'line-through text-[#94a3b8]'
+                            : 'text-[#0f172a]'
+                        }`}
+                      >
+                        {task.title}
+                      </h4>
+                      {isRunning && (
+                        <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#f2ecfb] text-[#501f92] border border-[#8a4dff]/30">
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              activeTimer?.isPaused ? 'bg-[#f59e0b]' : 'bg-[#501f92] animate-pulse'
+                            }`}
+                          />
+                          En curso
+                        </span>
+                      )}
+                    </div>
 
                     {/* Due Date & Assignee */}
                     <div className="flex flex-wrap items-center gap-2 mt-1 text-[11px] text-[#64748b]">
@@ -486,17 +489,38 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
                       </Button>
                     )}
 
-                    {/* Timer Play / Stop */}
+                    {/* Timer Play / Pause / Stop (icon-only on active) */}
                     {isRunning ? (
-                      <Button
-                        variant="danger"
-                        size="xs"
-                        onClick={onStopTimer}
-                        icon={<Square className="w-2.5 h-2.5 fill-current" />}
-                        className="animate-pulse py-1 px-2.5 text-[10px]"
-                      >
-                        Parar
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        {onPauseResumeTimer && (
+                          <button
+                            type="button"
+                            onClick={onPauseResumeTimer}
+                            title={activeTimer?.isPaused ? 'Reanudar' : 'Pausar'}
+                            aria-label={activeTimer?.isPaused ? 'Reanudar' : 'Pausar'}
+                            className={`p-1.5 rounded-lg text-white flex items-center justify-center shadow-2xs transition-colors cursor-pointer ${
+                              activeTimer?.isPaused
+                                ? 'bg-[#10b981] hover:bg-[#059669]'
+                                : 'bg-[#f59e0b] hover:bg-[#d97706]'
+                            }`}
+                          >
+                            {activeTimer?.isPaused ? (
+                              <Play className="w-3 h-3 fill-current" />
+                            ) : (
+                              <Pause className="w-3 h-3" />
+                            )}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={onStopTimer}
+                          title="Detener y registrar"
+                          aria-label="Detener y registrar"
+                          className="p-1.5 rounded-lg bg-[#dc2626] hover:bg-[#b91c1c] text-white flex items-center justify-center shadow-2xs transition-colors cursor-pointer"
+                        >
+                          <Square className="w-3 h-3 fill-current" />
+                        </button>
+                      </div>
                     ) : (
                       <Button
                         variant="primary"
@@ -573,21 +597,6 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
                       {/* 1. TAREA + BREADCRUMB */}
                       <td className="py-2.5 px-4">
                         <div className="flex items-start gap-2.5">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onToggleTask(task.id);
-                            }}
-                            className="mt-0.5 text-[#94a3b8] hover:text-[#501f92] transition-colors cursor-pointer shrink-0"
-                            aria-label={task.completed ? 'Marcar incompleta' : 'Marcar completada'}
-                          >
-                            {task.completed ? (
-                              <CheckCircle2 className="w-4 h-4 text-[#10b981]" />
-                            ) : (
-                              <div className="w-4 h-4 rounded-full border border-[#cbd5e1] hover:border-[#501f92]" />
-                            )}
-                          </button>
-
                           <div className="min-w-0 flex-1">
                             {/* Breadcrumb: Cliente → Proyecto */}
                             <div className="flex items-center gap-1 text-[10px] font-semibold text-[#64748b]">
@@ -624,13 +633,25 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
                             </div>
 
                             {/* Task Title */}
-                            <span
-                              className={`font-semibold text-xs block group-hover:text-[#501f92] transition-colors truncate mt-0.5 ${
-                                task.completed ? 'line-through text-[#94a3b8]' : 'text-[#0f172a]'
-                              }`}
-                            >
-                              {task.title}
-                            </span>
+                            <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
+                              <span
+                                className={`font-semibold text-xs block group-hover:text-[#501f92] transition-colors truncate ${
+                                  task.completed ? 'line-through text-[#94a3b8]' : 'text-[#0f172a]'
+                                }`}
+                              >
+                                {task.title}
+                              </span>
+                              {isRunning && (
+                                <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#f2ecfb] text-[#501f92] border border-[#8a4dff]/30 shrink-0">
+                                  <span
+                                    className={`w-1.5 h-1.5 rounded-full ${
+                                      activeTimer?.isPaused ? 'bg-[#f59e0b]' : 'bg-[#501f92] animate-pulse'
+                                    }`}
+                                  />
+                                  En curso
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -657,16 +678,39 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
                         </div>
                       </td>
 
-                      {/* 3. UNIVERSAL PLAY / STOP BUTTON */}
+                      {/* 3. UNIVERSAL PLAY / PAUSE / STOP BUTTONS (icon-only on active) */}
                       <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
                         {isRunning ? (
-                          <Button
-                            variant="danger"
-                            size="xs"
-                            onClick={onStopTimer}
-                            icon={<Square className="w-2.5 h-2.5 fill-current" />}
-                            className="p-1 h-6 w-6 animate-pulse"
-                          />
+                          <div className="inline-flex items-center justify-center gap-1">
+                            {onPauseResumeTimer && (
+                              <button
+                                type="button"
+                                onClick={onPauseResumeTimer}
+                                title={activeTimer?.isPaused ? 'Reanudar' : 'Pausar'}
+                                aria-label={activeTimer?.isPaused ? 'Reanudar' : 'Pausar'}
+                                className={`p-1 h-6 w-6 rounded-md text-white flex items-center justify-center transition-colors cursor-pointer ${
+                                  activeTimer?.isPaused
+                                    ? 'bg-[#10b981] hover:bg-[#059669]'
+                                    : 'bg-[#f59e0b] hover:bg-[#d97706]'
+                                }`}
+                              >
+                                {activeTimer?.isPaused ? (
+                                  <Play className="w-2.5 h-2.5 fill-current" />
+                                ) : (
+                                  <Pause className="w-2.5 h-2.5" />
+                                )}
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={onStopTimer}
+                              title="Detener y registrar"
+                              aria-label="Detener y registrar"
+                              className="p-1 h-6 w-6 rounded-md bg-[#dc2626] hover:bg-[#b91c1c] text-white flex items-center justify-center transition-colors cursor-pointer"
+                            >
+                              <Square className="w-2.5 h-2.5 fill-current" />
+                            </button>
+                          </div>
                         ) : (
                           <Button
                             variant="ghost"

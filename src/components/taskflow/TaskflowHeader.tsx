@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, Menu, X, LogOut, ShieldAlert, Sparkles, Check, ChevronDown, ExternalLink, Clock, Play, Pause, Square, Building2, Search, ArrowRight, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Bell, Menu, X, LogOut, ShieldAlert, Sparkles, Check, ChevronDown, ExternalLink, Clock, Play, Pause, Square, Building2, Search, ArrowRight, PanelLeftClose, PanelLeftOpen, User, Edit3, Plus } from 'lucide-react';
 import { orbitOperationalAlerts } from './mockData';
-import { ActiveTimerState, TaskItem, UserItem } from './types';
+import { ActiveTimerState, TaskItem, TimeLog, UserItem } from './types';
 import { UserAvatar } from './UserAvatar';
 
 export function formatHeaderTime(totalSeconds: number): string {
@@ -27,6 +27,12 @@ interface TaskflowHeaderProps {
   onToggleSidebarCollapse?: () => void;
   currentUser?: UserItem;
   isDarkTheme?: boolean;
+  alerts?: typeof orbitOperationalAlerts;
+  onUpdateAlerts?: React.Dispatch<React.SetStateAction<typeof orbitOperationalAlerts>>;
+  onOpenMyProfile?: () => void;
+  todayTimeLogs?: TimeLog[];
+  onOpenManualLog?: () => void;
+  onNavigateToCapacity?: () => void;
 }
 
 export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
@@ -45,11 +51,20 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
   sidebarCollapsed = false,
   onToggleSidebarCollapse,
   currentUser,
-  isDarkTheme = false
+  isDarkTheme = false,
+  alerts,
+  onUpdateAlerts,
+  onOpenMyProfile,
+  todayTimeLogs = [],
+  onOpenManualLog,
+  onNavigateToCapacity
 }) => {
   const [alertsOpen, setAlertsOpen] = useState(false);
   const [dailyProgressOpen, setDailyProgressOpen] = useState(false);
-  const [activeAlerts, setActiveAlerts] = useState(orbitOperationalAlerts);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [internalAlerts, setInternalAlerts] = useState(orbitOperationalAlerts);
+  const activeAlerts = alerts ?? internalAlerts;
+  const setActiveAlerts = onUpdateAlerts ?? setInternalAlerts;
 
   // Global Search State
   const [globalSearchQuery, setGlobalSearchQuery] = useState('');
@@ -58,6 +73,7 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const dailyProgressRef = useRef<HTMLDivElement>(null);
   const alertsContainerRef = useRef<HTMLDivElement>(null);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
 
   const unreadCount = activeAlerts.filter((a) => !a.read).length;
 
@@ -73,6 +89,7 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
         setIsSearchOpen(false);
         setDailyProgressOpen(false);
         setAlertsOpen(false);
+        setProfileMenuOpen(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -91,6 +108,9 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
       }
       if (alertsContainerRef.current && !alertsContainerRef.current.contains(target)) {
         setAlertsOpen(false);
+      }
+      if (profileMenuRef.current && !profileMenuRef.current.contains(target)) {
+        setProfileMenuOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -141,7 +161,7 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
         {onToggleMobileMenu && (
           <button
             onClick={onToggleMobileMenu}
-            className={`md:hidden p-1.5 rounded-xl transition-colors cursor-pointer ${isDarkTheme ? 'text-white/70 hover:bg-white/10 hover:text-white' : 'text-[#6b7280] hover:bg-[#f3f4f6] hover:text-[#111827]'}`}
+            className={`lg:hidden p-1.5 rounded-xl transition-colors cursor-pointer ${isDarkTheme ? 'text-white/70 hover:bg-white/10 hover:text-white' : 'text-[#6b7280] hover:bg-[#f3f4f6] hover:text-[#111827]'}`}
             aria-label="Abrir menú de navegación"
           >
             <Menu className="w-5 h-5" />
@@ -245,74 +265,122 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
 
       {/* Right Controls: Daily Progress Capsule (Opción A), Active Timer Badge, Notifications, User */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-        {/* Cápsula de Actividad del Día (Enfoque saludable y balance de Orbit) */}
+        {/* Cápsula de Tiempos de Hoy */}
         <div ref={dailyProgressRef} className="relative shrink-0">
           <button
             onClick={() => setDailyProgressOpen(!dailyProgressOpen)}
-            className="flex items-center gap-2 sm:gap-2.5 px-2.5 sm:px-3 py-1.5 rounded-2xl bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] hover:border-[#cbd5e1] shadow-2xs transition-all cursor-pointer text-left group shrink-0"
-            title="Ver tiempo ejecutado hoy"
+            className="flex items-center gap-2.5 px-3 py-1.5 rounded-2xl bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] hover:border-[#cbd5e1] shadow-2xs transition-all cursor-pointer shrink-0"
+            title="Ver tiempos registrados hoy"
           >
-            <div className="flex items-center gap-1.5 shrink-0">
-              <span
-                className="w-2 h-2 rounded-full shrink-0 bg-[#501f92]"
+            <span className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider leading-none">
+              Hoy
+            </span>
+            <div className="hidden sm:block w-14 h-1.5 bg-[#e2e8f0] rounded-full overflow-hidden">
+              <div
+                style={{ width: `${dailyPercent}%` }}
+                className="h-full bg-[#501f92] rounded-full transition-all duration-300"
               />
-              <div className="hidden sm:block">
-                <p className="text-[10px] font-bold text-[#64748b] leading-none uppercase tracking-wider">
-                  Hoy
-                </p>
-                <p className="text-xs font-mono font-bold text-[#0f172a] leading-tight whitespace-nowrap">
-                  {loggedHoursToday.toFixed(1)}h <span className="text-[#94a3b8] font-normal text-[10px]">registradas</span>
-                </p>
-              </div>
             </div>
-
-            <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-md bg-[#f2ecfb] text-[#501f92] border border-[#e9d5ff] shrink-0">
-              Activo
+            <span className="text-xs font-mono font-bold text-[#0f172a] leading-none whitespace-nowrap">
+              {loggedHoursToday.toFixed(1)}h
             </span>
           </button>
 
           {/* Daily Activity Popover */}
-          {dailyProgressOpen && (
-            <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-[#e2e8f0] z-50 p-4 animate-in fade-in zoom-in-95 space-y-3">
-              <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-2.5">
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-[#501f92]" />
-                  <h4 className="text-xs font-bold text-[#0f172a]">Tiempo Registrado (Hoy)</h4>
-                </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#ecfdf5] text-[#059669]">
-                  Lunes - Viernes
-                </span>
-              </div>
+          {dailyProgressOpen && (() => {
+            const groupedToday = new Map<string, { taskId: string; title: string; hours: number }>();
+            todayTimeLogs.forEach((l) => {
+              const key = l.taskId || l.taskTitle || l.id;
+              const prev = groupedToday.get(key);
+              const hrs = (l.durationSeconds || 0) / 3600;
+              const matched = tasks.find(
+                (t) => t.id === l.taskId || t.title.toLowerCase() === (l.taskTitle || '').toLowerCase()
+              );
+              groupedToday.set(key, {
+                taskId: matched?.id || l.taskId,
+                title: matched?.title || l.taskTitle || 'Registro de tiempo',
+                hours: Number(((prev?.hours || 0) + hrs).toFixed(1))
+              });
+            });
+            const todayEntries = Array.from(groupedToday.values());
 
-              <div className="space-y-1.5 text-xs text-[#64748b]">
-                <div className="flex justify-between">
-                  <span>Horas Invertidas Hoy:</span>
-                  <strong className="text-[#0f172a] font-mono">{loggedHoursToday.toFixed(1)}h</strong>
+            return (
+              <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-[#e2e8f0] z-50 p-4 animate-in fade-in zoom-in-95 space-y-3">
+                <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-[#501f92]" />
+                    <h4 className="text-xs font-bold text-[#0f172a]">Tiempos de hoy</h4>
+                  </div>
+                  <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-[#f2ecfb] text-[#501f92]">
+                    {loggedHoursToday.toFixed(1)}h
+                  </span>
                 </div>
-                <div className="flex justify-between">
-                  <span>Criterio Orbit:</span>
-                  <span className="text-[#64748b] text-[11px]">Enfoque en avance real</span>
+
+                {todayEntries.length === 0 ? (
+                  <p className="text-xs text-[#94a3b8] py-3 text-center bg-[#f8fafc] rounded-xl border border-[#f1f5f9]">
+                    Aún no has registrado tiempo hoy.
+                  </p>
+                ) : (
+                  <div className="max-h-48 overflow-y-auto space-y-1.5 pr-0.5">
+                    {todayEntries.map((entry) => (
+                      <button
+                        key={entry.taskId}
+                        type="button"
+                        onClick={() => {
+                          setDailyProgressOpen(false);
+                          if (onOpenTaskDetail && entry.taskId) {
+                            onOpenTaskDetail(entry.taskId);
+                          }
+                        }}
+                        className="w-full p-2 rounded-xl bg-[#f8fafc] hover:bg-[#f2ecfb]/60 border border-[#e2e8f0] hover:border-[#8a4dff]/40 flex items-center justify-between gap-2.5 text-left transition-colors cursor-pointer group"
+                      >
+                        <span className="text-xs font-semibold text-[#0f172a] group-hover:text-[#501f92] truncate">
+                          {entry.title}
+                        </span>
+                        <span className="font-mono text-[11px] font-bold text-[#501f92] bg-white px-2 py-0.5 rounded-md border border-[#e2e8f0] shrink-0">
+                          {entry.hours.toFixed(1)}h
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                <div className="pt-1 space-y-1.5">
+                  {onOpenManualLog && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDailyProgressOpen(false);
+                        onOpenManualLog();
+                      }}
+                      className="w-full py-2 px-3 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Cargar tiempo</span>
+                    </button>
+                  )}
+
+                  {(onNavigateToCapacity || onNavigateToDashboard) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onNavigateToCapacity) {
+                          onNavigateToCapacity();
+                        } else if (onNavigateToDashboard) {
+                          onNavigateToDashboard();
+                        }
+                        setDailyProgressOpen(false);
+                      }}
+                      className="w-full py-2 px-3 rounded-xl bg-[#f8fafc] hover:bg-[#f1f5f9] text-[#501f92] border border-[#e2e8f0] text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <span>Ver mis tiempos en Capacidad</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
               </div>
-
-              <div className="p-2.5 rounded-xl bg-[#f8fafc] border border-[#f1f5f9] text-[11px] text-[#64748b] leading-relaxed">
-                Orbit registra el tiempo real ejecutado sobre tareas sin imponer cuotas de llenado artificial.
-              </div>
-
-              {onNavigateToDashboard && (
-                <button
-                  onClick={() => {
-                    onNavigateToDashboard();
-                    setDailyProgressOpen(false);
-                  }}
-                  className="w-full py-2 px-3 rounded-xl bg-[#f8fafc] hover:bg-[#501f92] text-[#501f92] hover:text-white border border-[#e2e8f0] hover:border-[#501f92] text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <span>Ver Ritmo y Capacidad</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-          )}
+            );
+          })()}
         </div>
         {/* Active Timer Capsule (Clean & Integrated) */}
         {activeTimer && (
@@ -347,6 +415,29 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
             </span>
 
             <div className="flex items-center gap-1">
+              {onPauseResumeTimer && (
+                <button
+                  onClick={onPauseResumeTimer}
+                  className={`p-1.5 rounded-lg cursor-pointer shadow-xs transition-colors flex items-center gap-1 text-xs font-bold ${
+                    activeTimer.isPaused
+                      ? 'bg-[#10b981] hover:bg-[#059669] text-white'
+                      : 'bg-[#f59e0b] hover:bg-[#d97706] text-white'
+                  }`}
+                  title={activeTimer.isPaused ? 'Reanudar Timer' : 'Pausar Timer'}
+                >
+                  {activeTimer.isPaused ? (
+                    <>
+                      <Play className="w-3.5 h-3.5 fill-current" />
+                      <span className="hidden sm:inline text-[10px]">Reanudar</span>
+                    </>
+                  ) : (
+                    <>
+                      <Pause className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline text-[10px]">Pausar</span>
+                    </>
+                  )}
+                </button>
+              )}
               <button
                 onClick={onStopTimer}
                 className="p-1.5 rounded-lg bg-[#dc2626] hover:bg-[#b91c1c] text-white cursor-pointer shadow-xs transition-colors flex items-center gap-1 text-xs font-bold"
@@ -362,7 +453,13 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
         {/* Operational Alerts Bell Dropdown */}
         <div ref={alertsContainerRef} className="relative">
           <button
-            onClick={() => setAlertsOpen(!alertsOpen)}
+            onClick={() => {
+              const nextOpen = !alertsOpen;
+              setAlertsOpen(nextOpen);
+              if (nextOpen && unreadCount > 0) {
+                markAllAsRead();
+              }
+            }}
             className="p-2 rounded-xl text-[#6b7280] hover:bg-[#f3f4f6] hover:text-[#111827] transition-colors relative cursor-pointer"
             aria-label="Ver alertas operativas"
           >
@@ -444,31 +541,69 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
           )}
         </div>
 
-        {/* User Identity Badge (Read-only, no identity switcher here) */}
-        <div
-          className="flex items-center gap-2 pl-2 sm:pl-3 border-l border-[#e5e7eb] shrink-0"
-          title={`${currentUser?.name || 'Paola (Lead PM)'} · ${currentUser?.professionalRole || currentUser?.jobTitle || 'Product Lead'} (${currentUser?.accessLevel || 'leader'})`}
-        >
-          <UserAvatar
-            user={currentUser}
-            size="md"
-            className="ring-2 ring-[#8a4dff]/20 rounded-full"
-            imageClassName="rounded-full"
-            fallbackClassName="rounded-full"
-          />
-          <div className="hidden xl:block text-left">
-            <p className="text-xs font-bold text-[#111827] leading-tight whitespace-nowrap">
-              {currentUser?.name || 'Paola (Lead PM)'}
-            </p>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="text-[10px] text-[#6b7280] font-medium leading-tight whitespace-nowrap">
-                {currentUser?.professionalRole || currentUser?.jobTitle || 'Product Lead'}
-              </span>
-              <span className="text-[9px] px-1.5 py-0.2 rounded-full font-semibold uppercase tracking-wider bg-[#f3e8ff] text-[#6b21a8]">
-                {currentUser?.accessLevel || 'leader'}
-              </span>
+        {/* User Identity Badge & Personal Profile Menu */}
+        <div ref={profileMenuRef} className="relative pl-2 sm:pl-3 border-l border-[#e5e7eb] shrink-0">
+          <button
+            type="button"
+            onClick={() => setProfileMenuOpen((prev) => !prev)}
+            className="flex items-center gap-2 rounded-xl p-1 hover:bg-[#f8fafc] transition-colors cursor-pointer group"
+            title="Ver o editar mi perfil"
+          >
+            <UserAvatar
+              user={currentUser}
+              size="md"
+              className="ring-2 ring-[#8a4dff]/20 group-hover:ring-[#501f92]/50 rounded-full transition-all"
+              imageClassName="rounded-full"
+              fallbackClassName="rounded-full"
+            />
+            <div className="hidden xl:block text-left">
+              <p className="text-xs font-bold text-[#111827] leading-tight whitespace-nowrap">
+                {currentUser?.name || 'Paola (Lead PM)'}
+              </p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="text-[10px] text-[#6b7280] font-medium leading-tight whitespace-nowrap">
+                  {currentUser?.professionalRole || currentUser?.jobTitle || 'Product Lead'}
+                </span>
+                <span className="text-[9px] px-1.5 py-0.2 rounded-full font-semibold uppercase tracking-wider bg-[#f3e8ff] text-[#6b21a8]">
+                  {currentUser?.accessLevel || 'leader'}
+                </span>
+              </div>
             </div>
-          </div>
+            <ChevronDown className="w-3.5 h-3.5 text-[#94a3b8] group-hover:text-[#501f92] transition-colors hidden sm:block" />
+          </button>
+
+          {profileMenuOpen && (
+            <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-[#e2e8f0] z-50 overflow-hidden animate-in fade-in zoom-in-95">
+              <div className="p-3.5 bg-[#f8fafc] border-b border-[#f1f5f9] flex items-center gap-2.5">
+                <UserAvatar user={currentUser} size="md" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-[#0f172a] truncate">
+                    {currentUser?.name || 'Paola (Lead PM)'}
+                  </p>
+                  <p className="text-[11px] text-[#64748b] truncate">
+                    {currentUser?.email || 'paola@uhuragroup.com'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProfileMenuOpen(false);
+                    if (onOpenMyProfile) onOpenMyProfile();
+                  }}
+                  className="w-full px-3 py-2.5 rounded-xl text-left text-xs font-bold text-[#0f172a] hover:bg-[#f5f3ff] hover:text-[#501f92] transition-colors flex items-center justify-between cursor-pointer group"
+                >
+                  <div className="flex items-center gap-2">
+                    <User className="w-4 h-4 text-[#501f92]" />
+                    <span>Ver o editar mi perfil</span>
+                  </div>
+                  <Edit3 className="w-3.5 h-3.5 text-[#94a3b8] group-hover:text-[#501f92]" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </header>

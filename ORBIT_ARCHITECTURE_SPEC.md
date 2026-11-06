@@ -128,3 +128,66 @@ En la vista de detalle de cada Cliente (`/clientes` -> Proyectos de la Cuenta):
   - **`Área Comercial`:** Catalina Tejada (Directora Comercial), Luisa Fernanda Urazán (Operaciones & Cuentas / Client Relationship).
   - **`Área Administrativa`:** Laura Viviana Salazar Perez (Administrativa & RRHH).
   - **`C-Level`:** Ana María Giraldo (Dirección General / CEO), Álvaro Antonio Gómez Machuca (Representante Legal / Dirección).
+- **Asignación Multi-Colaborador (`assigneeAllocations`) vs. `Seguidores` (`0h` en Capacidad):**
+  - **Bolsa Única y Prorrateo (`Colaboradores`):** Una tarea tiene una bolsa única de horas presupuestadas (`budgetedHours`, ej. `4.0h`). Si tiene **1 colaborador**, absorbe el `100%` (`4.0h`). Si tiene **`N > 1` colaboradores**, la bolsa se reparte entre ellos (`assigneeAllocations`, auto-división equitativa por defecto o editable manualmente), **nunca** duplicando el `100%` de las horas a cada colaborador.
+  - **`Seguidores` y `Project Lead` (`0.0h` en Capacidad):** Quienes solo requieren visibilidad, acompañamiento o coordinación (ej. *Client Relationship* solicitando insumos al cliente o *Project Lead* revisando entregables) deben ubicarse en **`Seguidores`** o **`Project Lead`**. Su impacto en Capacidad es **`0.0h`** y **no descuentan tiempo** de la bolsa de ejecución del colaborador (sus tiempos implícitos de gestión/revisión se cubren con el `15%` de colchón operativo de las `42.0h` o con bolsas propias de gestión).
+  - **Reasignación (`Mover a Seguidores`):** Al reemplazar un ejecutor (`Persona X → Persona Y`), se debe mover a `Persona X` a **`Seguidores`** (acción rápida 1-clic en el modal) para liberar su capacidad **Planificada** futura sin perder sus `TimeLogs` históricos en su barra de **Ejecutado**.
+
+---
+
+## 9. Timer Global de Tareas: Estado Único, Controles Homologados y Cambio de Tarea
+
+- **Estado Único Compartido y Persistencia:**
+  - Existe un único estado `activeTimer` por usuario compartido en toda la aplicación (Encabezado Global, Detalle de Tarea, `Mi Día` y `Tareas`), persistido ante recarga de vista (`localStorage` / backend).
+  - Al pausar (`isPaused = true`), el contador deja de avanzar y el control cambia a **Reanudar**.
+- **Controles por Punto de Entrada:**
+  - **Encabezado Global:** muestra cliente, nombre de la tarea, tiempo transcurrido, botón **Pausar / Reanudar** y botón **Detener**.
+  - **Detalle de Tarea:** al estar activa la tarea, reemplaza `Iniciar Timer` por **Pausar / Reanudar** y **Detener**.
+  - **Miniaturas / Filas (`Mi Día` y `Tareas`):** destacan la tarea activa con la etiqueta **`En curso`** y muestran **dos controles independientes usando solamente iconos** (`Pausar/Reanudar` y `Detener`, sin escribir la palabra *Pausar*).
+- **Flujo `Cerrar el actual y cambiar`:**
+  1. Si existe un timer activo e intentan iniciar otra tarea, se solicita confirmación entre **`Seguir con el actual`** (cierra el aviso sin cambios) y **`Cerrar el actual y cambiar`**.
+  2. Al elegir **`Cerrar el actual y cambiar`**, se pausa el timer vigente y se abre el flujo de **`Registrar tiempo`** para confirmar las horas de la **tarea anterior**.
+  3. Al confirmar el registro, el `TimeLog` se guarda **únicamente en la tarea anterior** y se **inicia automáticamente** el timer de la nueva tarea, actualizando encabezado, detalle y listas.
+  4. Si el usuario **cancela el registro**, se mantiene el timer anterior activo y **no** se inicia el nuevo (sin duplicar registros ni perder tiempo).
+
+---
+
+## 10. Reglas de «Mi Día», Sincronización de Colaboradores y Notificaciones
+
+- **Contenido Estricto de «Mi Día»:**
+  - `Mi Día` debe mostrar únicamente lo accionable **hoy** para el usuario autenticado, ordenado por **prioridad** (`Urgente/Alta` primero):
+    1. Tareas donde el usuario es **Colaborador** (`assignee` o `collaborators`) cuya fecha de entrega o programación (`dueDate` / `scheduledDate`) sea **hoy** (o vencidas pendientes).
+    2. Tareas que requieren su **revisión o aprobación** (`status = Review` donde es `reviewer` o `Project Lead`).
+    3. La tarea que tenga **en curso** con el timer activo.
+- **Sincronización Inmediata al Cambiar o Sumar Colaboradores:**
+  - **Al retirar/reemplazar un colaborador:** La tarea debe desaparecer inmediatamente de su **Capacidad** planificada, de su vista **Mi Día** y de **Mis Tareas**.
+  - **Al asignar o sumar un colaborador:** La tarea debe aparecer inmediatamente en **Mis Tareas** (y en **Mi Día** si vence hoy o requiere su revisión), ordenada por prioridad y fecha de entrega.
+- **Notificaciones de Asignación y Revisión:**
+  - Todo cambio de asignación o adición como colaborador/revisor debe emitir una notificación en tiempo real en la campanita del encabezado indicando **título de la tarea, cliente/proyecto y prioridad**, con acceso directo al detalle de la tarea.
+  - Al desplegar la campanita de notificaciones, las alertas visibles se marcan automáticamente como **leídas** (ocultando el punto rojo), y solo vuelve a activarse cuando llega una nueva notificación.
+  - **Flujo de Estados por Rol en el Detalle de Tarea:**
+    - Las listas de tareas (`Mi Día` y `Mis Tareas`) **no** incluyen checkbox circular de completado rápido; toda transición de cierre y aprobación se realiza desde el detalle de la tarea.
+    - **Colaborador:**
+      - Ve **`Iniciar tarea`** (en `To Do`) y **`Solicitar revisión →`** (en `In Progress`).
+      - Cualquier acción del colaborador sobre una tarea en `To Do` (iniciar timer, enviar comentario, subir entregable o registrar tiempo) la pasa **automáticamente a `In Progress` (`En proceso`)**.
+    - **Project Lead / Seguidor / Revisor:**
+      - **No** ve el botón `Solicitar revisión →`.
+      - Ve **`Completar y aprobar`** para cerrar y aprobar la tarea directamente (o al marcarla manualmente como completada, se da por aprobada en estado `Done`).
+      - Cuando un colaborador pulsa `Solicitar revisión →` (estado `Review`), se habilitan los botones **`Devolver`** (regresa a `In Progress` para ajustes) y **`Aprobar y Completar`** (cierra en `Done`).
+  - **Visibilidad de Desvíos Presupuestales (`¿Qué requiere mi atención?`):**
+    - Cuando una tarea supera sus horas cotizadas (`horas ejecutadas > horas cotizadas`), la alerta **`Desvío X.Xh / Yh cotizadas`** se muestra obligatoriamente a **Comercial** (`commercial` / `client_relationship`) y al **Líder del proyecto asignado** (`projectLead` / `leader` de ese proyecto).
+
+---
+
+## 11. Imputación por Fecha de Trabajo Ejecutado, Perfil Personal y La Colonia
+
+- **Imputación de `TimeLog` por Fecha de Trabajo Ejecutado (`work_date`):**
+  - Todo registro de tiempo (por timer o carga manual) se acredita al usuario autenticado que lo ejecuta (`userId`) y se imputa al día correspondiente a su **`Fecha del trabajo ejecutado`** (`work_date`, por defecto el día vigente, o la fecha seleccionada en el formulario manual, ej. ayer).
+  - En **Mi Capacidad**, la distribución semanal (`Lunes` a `Viernes`) y el desglose **`Timesheets · [Día]`** reflejan cada `TimeLog` en el día exacto de su `work_date`, permitiendo hacer clic en cualquier día y abrir directamente el detalle de cada tarea registrada.
+- **Perfil Personal (`Mi Perfil` desde el Header) y Gobernanza de Edición:**
+  - Al hacer clic en la foto de perfil del encabezado principal, se abre **únicamente el perfil del usuario autenticado** (sin directorio de otros colaboradores).
+  - **Autoservicio restringido:** independientemente de su `accessLevel`, cada usuario solo puede editar sus **Pasatiempos e intereses** (`hobbies`) y **Su sueño o meta personal** (`personalDream`).
+  - **Vacaciones sincronizadas con Calendar:** el perfil muestra el estado y fechas de vacaciones en sincronización automática con **Google Calendar / Equipo & Accesos**.
+  - **Edición de terceros:** la modificación de datos contractuales, roles, capacidad o perfiles de otros usuarios es exclusiva del **Administrador desde `Equipo & Accesos`**.
+- **La Colonia (`Cónoce la colonia Uhureña` & `Jugar en la colonía`):**
+  - Muestra el muro cultural de solo lectura del equipo y el acceso directo **`Jugar en la colonía`** (minijuegos de Bucky), sin modal de directorio ni edición cruzada de perfiles.

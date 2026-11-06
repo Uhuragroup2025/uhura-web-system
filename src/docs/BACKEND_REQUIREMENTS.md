@@ -379,11 +379,14 @@ interface ConvertedProjectPlanPayload {
 }
 ```
 **Reglas del endpoint:**
-1. Crear un registro en la tabla `projects` por cada elemento de `payload.projects`.
-2. Asignar a cada proyecto su respectivo `lead_user_id` (proveniente de `project.leadUserId`).
-3. Asociar todos los proyectos creados al mismo `client_id` (en cartera o nuevo).
-4. Excluir expresamente cualquier servicio con etapa `'Cierre perdido'`: **los servicios perdidos NUNCA generan proyectos ni tareas**.
-5. Duplicar o vincular los entregables y tareas del alcance exclusivamente al proyecto correspondiente a su servicio.
+1. **Selección de Servicios Ganados:** El usuario comercial o líder selecciona expresamente cuáles de los servicios cotizados alcanzaron cierre ganado (`won`). El payload de conversión (`payload.projects`) contendrá únicamente los servicios aprobados por el cliente (pueden ser todos los servicios cotizados o solo un subconjunto, por ejemplo, 1 de 3). El backend crea proyectos única y exclusivamente para los servicios incluidos en el array recibido.
+2. **Transaccionalidad Atómica Obligatoria (`@transaction.atomic`):** La creación de los N proyectos independientes, junto con la duplicación/asignación de sus entregables y tareas operativas, debe ejecutarse bajo una transacción atómica de base de datos. Si la creación de cualquier proyecto o tarea falla, la transacción completa debe revertirse (*rollback*) sin dejar registros huérfanos.
+3. **Idempotencia:** Validar el campo `converted_project_id` en la oportunidad para evitar duplicidades si el usuario reenvía la petición.
+4. Crear un registro en la tabla `projects` por cada elemento de `payload.projects`.
+5. Asignar a cada proyecto su respectivo `lead_user_id` (proveniente de `project.leadUserId`).
+6. Asociar todos los proyectos creados al mismo `client_id` (en cartera o nuevo).
+7. Excluir expresamente cualquier servicio con etapa `'Cierre perdido'`: **los servicios perdidos NUNCA generan proyectos ni tareas**.
+8. Duplicar o vincular los entregables y tareas del alcance exclusivamente al proyecto correspondiente a su servicio.
 
 ### 12.4 Modo Desacoplado / Operación Manual (Sin Token de HubSpot)
 Para no bloquear New Business cuando la app privada de HubSpot esté caída o sin token válido:
@@ -419,3 +422,131 @@ Para no bloquear New Business cuando la app privada de HubSpot esté caída o si
 * Se unifica la visibilidad de equipo y compañía en una sola vista **`Organización`** (eliminando la pestaña redundante *Mi Equipo*), habilitada para `leader`, `commercial`, `administrative`, `executive`, `client_relationship` y `system_admin`.
 * El perfil `collaborator` mantiene acceso exclusivo a **`Mi Capacidad`**.
 * El endpoint debe devolver el campo `department` normalizado (`Área Creatividad`, `Área Growth`, `Área Producto`, `Área Administrativa`, `Área Comercial`, `C-Level`) para soportar el filtrado por área en el frontend.
+
+### 13.4 Prorrateo Multi-Colaborador (`assigneeAllocations`) y Regla `0h` para `Seguidores` / `Project Lead`
+* **Prorrateo de Bolsa en Tareas con Múltiples Ejecutores:**
+  * Cuando una tarea tiene `N > 1` colaboradores (`Colaboradores`), el backend **no debe** sumar el 100% de `budgeted_hours` a cada colaborador.
+  * Debe utilizar `assignee_allocations` (horas específicas asignadas a cada ejecutor sobre la bolsa de la tarea) o, en su defecto, prorratear `budgeted_hours / N` entre los colaboradores activos.
+* **Impacto `0.0h` de `Seguidores` y `Project Lead`:**
+  * Los usuarios en `followers` (`Seguidores`) o `project_lead` **nunca** suman horas a `planned_hours` en Capacidad ni descuentan horas de la bolsa de ejecución de la tarea.
+  * Al reasignar una tarea (`Mover a Seguidores`), el colaborador saliente deja de sumar en `planned_hours` de esa tarea, pero sus `TimeLog` previamente registrados permanecen intactos en su `logged_hours` (`Ejecutado`).
+
+---
+
+## 14. Timer Global de Tareas: Estado Único, Persistencia y Cambio de Tarea
+
+### 14.1 Unicidad y Persistencia del Timer Activo
+* Solo puede existir **un timer activo por usuario** (`active_timer`) en toda la aplicación, sin importar si se inicia desde el Detalle de Tarea, `Mi Día` o `Tareas`.
+* El estado debe persistir al navegar entre módulos, abrir/cerrar el modal de tarea y recargar la vista (`F5`).
+* Al pausar (`is_paused = true`), el contador debe detenerse y el control debe cambiar a **Reanudar** en todos los puntos de entrada (Encabezado Global, Detalle de Tarea y miniaturas/filas).
+
+### 14.2 Flujo `Cerrar el actual y cambiar`
+* Al intentar iniciar una nueva tarea cuando ya existe un timer activo:
+  1. **`Seguir con el actual`:** cierra el aviso y mantiene el timer vigente sin modificaciones.
+  2. **`Cerrar el actual y cambiar`:**
+     * Pausa el timer vigente y abre el flujo de **`Registrar tiempo`** para confirmar el tiempo trabajado de la **tarea anterior**.
+     * Al confirmar el registro, persiste el `TimeLog` **únicamente en la tarea anterior** e **inicia automáticamente** el timer de la nueva tarea seleccionada, actualizando encabezado, detalle y listas.
+     * Si el usuario **cancela el registro**, se mantiene el timer anterior y **no** se inicia el nuevo.
+     * Garantizar idempotencia para no generar `TimeLog` duplicados ni dejar dos timers activos.
+
+### 14.3 Restricción de Unicidad en Base de Datos para Timer Activo
+* En el modelo `ActiveTimer`, aplicar una restricción única estricta para evitar inconsistencias cuando el usuario tiene múltiples pestañas de navegador abiertas:
+  ```python
+  class ActiveTimer(models.Model):
+      user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='active_timer')
+      task = models.ForeignKey('Task', on_delete=models.CASCADE)
+      started_at = models.DateTimeField(auto_now_add=True)
+      is_paused = models.BooleanField(default=False)
+      paused_at = models.DateTimeField(null=True, blank=True)
+      accumulated_seconds = models.PositiveIntegerField(default=0)
+  ```
+* Si entra una solicitud para iniciar un timer cuando el usuario ya tiene uno activo en otra tarea, el backend debe responder con `409 Conflict`, forzando el flujo de detención/cambio previo.
+
+---
+
+## 15. Reglas de «Mi Día», Sincronización de Colaboradores y Notificaciones
+
+### 15.1 Criterio de Filtrado de «Mi Día»
+* El endpoint/vista de **`Mi Día`** debe devolver estrictamente:
+  1. Tareas donde el usuario es **Colaborador** (`assignee` o `collaborators`) con `due_date == hoy` (o `scheduled_date == hoy`, o vencidas sin completar).
+  2. Tareas en estado **`Review`** que requieran su **revisión o aprobación** (`reviewer_id == user.id` o `project_lead_id == user.id`).
+  3. La tarea con el **timer activo** del usuario.
+* Ordenamiento por defecto: pendientes primero, ordenadas por **prioridad** (`urgent` > `high` > `medium` > `low`), dejando las completadas de hoy tachadas al final.
+
+### 15.2 Sincronización en Tiempo Real al Modificar Colaboradores y Notificaciones
+* **Retiro / Reemplazo de Colaborador:** Al quitar a un usuario de `collaborators` / `assignee`, el backend debe excluir esa tarea de su carga **Planificada** en Capacidad, de **Mi Día** y de **Mis Tareas** de forma inmediata.
+* **Adición / Asignación de Colaborador:** Al asignar o sumar a un usuario como colaborador o revisor:
+  1. La tarea debe aparecer inmediatamente en **Mis Tareas** (y en **Mi Día** si vence hoy o requiere su revisión) respetando su **prioridad**.
+  2. Se debe disparar una **notificación** (`Notification` / alerta en campanita) al usuario asignado con: `task_id`, `task_title`, `client_name`, `priority` y `type = 'TASK_ASSIGNED'` (o `'REVIEW_REQUESTED'`).
+  3. Al abrir el panel de notificaciones, el cliente marca las alertas como `read = true` automáticamente.
+
+### 15.3 Reglas de Transición de Estados por Rol en la Tarea
+* **Gobernanza de Cierre:** Las vistas de lista (`Mi Día` y `Mis Tareas`) no deben exponer checkbox circular de completado rápido; el cierre y aprobación de tareas se ejecuta desde el detalle de la tarea.
+* **Auto-transición a `In Progress` (`En proceso`):** Si una tarea está en `To Do` y un **Colaborador** ejecuta cualquier acción (iniciar timer, comentar, subir entregable o registrar tiempo), su estado debe pasar automáticamente a `In Progress`.
+* **Visibilidad de Acciones por Rol:**
+  * **Colaborador:** puede ejecutar `Iniciar tarea` (`To Do → In Progress`) y `Solicitar revisión` (`In Progress → Review`).
+  * **Project Lead / Seguidor / Revisor:** **no** debe ver `Solicitar revisión`; tiene habilitado `Completar y aprobar` (y al marcar manualmente la tarea como completada, se asume aprobada en `Done`). Cuando la tarea entra en `Review`, se le habilitan **`Devolver`** (`Review → In Progress`) y **`Aprobar y Completar`** (`Review → Done`).
+
+### 15.4 Visibilidad de Desvíos Presupuestales
+* Cuando una tarea supera sus horas cotizadas (`logged_hours > budgeted_hours`), el endpoint de alertas/atención debe exponer el desvío (`Desvío X.Xh / Yh cotizadas`) **a Comercial (`commercial` / `client_relationship`) y al Líder del proyecto asignado (`project_lead_id` / `leader` de ese proyecto)**.
+
+---
+
+## 16. Imputación por Fecha de Trabajo, Perfil Personal y La Colonia
+
+### 16.1 Imputación de `TimeLog` por Fecha de Trabajo Ejecutado (`work_date`)
+* Cada `TimeLog` debe persistir `user_id` (usuario autenticado que ejecuta el registro) y `work_date` (**Fecha del trabajo ejecutado**, por defecto la fecha actual, o la fecha seleccionada en el registro manual).
+* El endpoint de **Mi Capacidad** debe agrupar y sumar `logged_hours` por `work_date` dentro de la semana laboral vigente (`Lunes` a `Viernes`) para alimentar tanto las tarjetas diarias como el desglose **`Timesheets · [Día]`**.
+
+### 16.2 Gobernanza de Perfil Personal (`Mi Perfil`) y Vacaciones
+* **Autoservicio limitado:** Cualquier usuario autenticado puede consultar y editar **únicamente su propio perfil** (`user_id == request.user.id`), restringido a los campos `hobbies` (pasatiempos e intereses) y `personal_dream` (sueño o meta personal).
+* **Restricción de edición cruzada:** Ningún rol (incluidos `leader` o `system_admin`) puede editar perfiles de terceros desde `Mi Perfil` o `La Colonia`; la edición de perfiles de otros colaboradores es exclusiva del **Administrador desde `Equipo & Accesos`**.
+* **Vacaciones:** El campo de vacaciones en `Mi Perfil` es de solo lectura en autoservicio y se sincroniza automáticamente desde **Google Calendar / Equipo & Accesos**.
+
+---
+
+## 17. Módulo de Dirección y Finanzas: Metas Comerciales, Recálculo y Hook con Alegra
+
+### 17.1 Persistencia de Metas Comerciales y Recálculo Automático
+Indunova debe proveer dos tablas relacionales para gobernar las metas sin depender del estado del frontend:
+```python
+class CommercialTarget(models.Model):
+    year = models.PositiveSmallIntegerField(unique=True) # ej. 2026
+    annual_target_cop = models.DecimalField(max_digits=14, decimal_places=2, default=4200000000.00) # $4.200M COP
+    monthly_target_cop = models.DecimalField(max_digits=14, decimal_places=2, default=350000000.00) # annual_target / 12
+    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+class MonthlyCommercialOverride(models.Model):
+    year = models.PositiveSmallIntegerField() # ej. 2026
+    month = models.PositiveSmallIntegerField() # 1 a 12
+    override_amount_cop = models.DecimalField(max_digits=14, decimal_places=2) # Ajuste manual reportado por Dirección
+    note = models.CharField(max_length=255, blank=True, default='')
+    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('year', 'month')
+```
+* **Recálculo Automático:** Al actualizar `annual_target_cop`, el backend recalcula automáticamente `monthly_target_cop = annual_target_cop / 12`.
+* **Prioridad de Cifra Efectiva Mensual:** Si existe un registro en `MonthlyCommercialOverride` para un mes específico, ese valor sustituye al cálculo automático de Orbit (salvando delays con contabilidad mientras no haya integración). Si no existe, se calcula como: `Vendido New Business ganado en el mes + Base mensual de fees activos`.
+
+### 17.2 Stub / Hook Desacoplado de Alegra (Cero Datos Simulados)
+* **Regla estricta:** Indunova **NO debe crear modelos de cartera ficticia, saldos en mora ni facturas simuladas**.
+* El endpoint de facturación real debe responder de manera honesta como stub hasta la entrega de credenciales contables:
+  `GET /api/v1/finance/alegra/invoices-summary/?month=2026-11`
+  ```json
+  {
+    "status": "pending_integration",
+    "connected": false,
+    "message": "Integración con Alegra pendiente de configuración de API Key contable",
+    "total_invoiced_cop": null,
+    "total_collected_cop": null
+  }
+  ```
+
+### 17.3 Capacidad Base Universal Inmutable en 42 Horas
+* La capacidad laboral contratada es de **`42.0 horas semanales`** (`8.4h/día` de Lunes a Viernes) para todos los colaboradores activos.
+* No asumir jornadas de 40h ni 48h en ningún cálculo.
+* La deducción de capacidad descuenta horas según la **`work_date`** (fecha real del trabajo ejecutado) y no según la fecha en que se envió la solicitud.
+

@@ -29,6 +29,7 @@ interface TeamHumanProfileModalProps {
   selectedUserId?: string;
   onUpdateUser?: (updatedUser: UserItem) => void;
   currentUser?: UserItem;
+  singleUserMode?: boolean;
 }
 
 /**
@@ -152,30 +153,32 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
   users,
   selectedUserId,
   onUpdateUser,
-  currentUser
+  currentUser,
+  singleUserMode = false
 }) => {
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState<'all' | 'birthdays' | 'anniversaries'>('all');
   const [timeScope, setTimeScope] = useState<'all' | 'upcoming' | 'this_month'>('all');
-  const [activeUserId, setActiveUserId] = useState<string>(selectedUserId || currentUser?.id || users[0]?.id || 'u-8');
+  const [activeUserId, setActiveUserId] = useState<string>(
+    singleUserMode ? (currentUser?.id || users[0]?.id || 'u-8') : (selectedUserId || currentUser?.id || users[0]?.id || 'u-8')
+  );
 
   // Modo edición de perfil
   const [isEditing, setIsEditing] = useState(false);
   const [editHobbies, setEditHobbies] = useState('');
   const [editPersonalDream, setEditPersonalDream] = useState('');
-  const [editPetNames, setEditPetNames] = useState('');
-  const [editCity, setEditCity] = useState('');
-  const [editBirthDate, setEditBirthDate] = useState('');
-  const [editAnniversaryDate, setEditAnniversaryDate] = useState('');
   const [saveSuccessNotice, setSaveSuccessNotice] = useState<string | null>(null);
 
   // Sincronizar selección cuando cambia externamente
   useEffect(() => {
-    if (selectedUserId) {
+    if (singleUserMode && currentUser?.id) {
+      setActiveUserId(currentUser.id);
+      setIsEditing(false);
+    } else if (selectedUserId) {
       setActiveUserId(selectedUserId);
       setIsEditing(false);
     }
-  }, [selectedUserId]);
+  }, [selectedUserId, singleUserMode, currentUser?.id, isOpen]);
 
   const activeUser = useMemo(() => {
     return users.find((u) => u.id === activeUserId) || users[0];
@@ -185,27 +188,16 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
     return calculateAgeFromBirthDate(activeUser?.birthDate);
   }, [activeUser?.birthDate]);
 
-  // Permisos: Solo el colaborador dueño de la ficha puede editar sus datos humanos ("Mi Ficha"),
-  // o perfiles con nivel de administración (system_admin / administrative / executive / Admin).
+  // Permisos: Solo el colaborador dueño de la ficha puede editar su propio perfil (pasatiempos y sueño).
+  // La edición de otros perfiles es exclusiva del Administrador desde Equipo & Accesos.
   const isSelf = Boolean(currentUser && activeUser && currentUser.id === activeUser.id);
-  const isAdmin = Boolean(
-    currentUser &&
-      (currentUser.accessLevel === 'system_admin' ||
-        currentUser.accessLevel === 'administrative' ||
-        currentUser.accessLevel === 'executive' ||
-        currentUser.role === 'Admin')
-  );
-  const canEdit = isSelf || isAdmin;
+  const canEdit = isSelf;
 
   // Al iniciar edición, precargar datos de la persona seleccionada
   const handleStartEdit = () => {
     if (!activeUser || !canEdit) return;
     setEditHobbies(activeUser.hobbies || '');
     setEditPersonalDream(activeUser.personalDream || '');
-    setEditPetNames(activeUser.petNames || '');
-    setEditCity(activeUser.city || '');
-    setEditBirthDate(activeUser.birthDate || '');
-    setEditAnniversaryDate(activeUser.anniversaryDate || activeUser.joinedDate || '');
     setIsEditing(true);
     setSaveSuccessNotice(null);
   };
@@ -215,25 +207,10 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
     e.preventDefault();
     if (!activeUser || !canEdit) return;
 
-    const trimmedBirthDate = editBirthDate.trim();
-    const formattedBday = trimmedBirthDate ? formatBirthDateHuman(trimmedBirthDate) : activeUser.birthDateFormatted;
-    
-    // Regla de Gobernanza: Si es colaborador estándar en autoservicio, la fecha de ingreso
-    // NO es modificable desde Ficha Humana para proteger la antigüedad contractual.
-    const resolvedAnniversary = isAdmin
-      ? editAnniversaryDate.trim()
-      : (activeUser.anniversaryDate || activeUser.joinedDate);
-
     const updatedUser: UserItem = {
       ...activeUser,
       hobbies: editHobbies.trim() || undefined,
-      personalDream: editPersonalDream.trim() || undefined,
-      petNames: editPetNames.trim() || undefined,
-      city: editCity.trim() || undefined,
-      birthDate: trimmedBirthDate || activeUser.birthDate,
-      birthDateFormatted: formattedBday || activeUser.birthDateFormatted,
-      anniversaryDate: resolvedAnniversary || activeUser.anniversaryDate,
-      joinedDate: resolvedAnniversary || activeUser.joinedDate
+      personalDream: editPersonalDream.trim() || undefined
     };
 
     if (onUpdateUser) {
@@ -241,7 +218,7 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
     }
 
     setIsEditing(false);
-    setSaveSuccessNotice(`¡Ficha de ${activeUser.name.split(' ')[0]} actualizada con éxito!`);
+    setSaveSuccessNotice(`¡Tu perfil se actualizó con éxito!`);
     setTimeout(() => {
       setSaveSuccessNotice(null);
     }, 4000);
@@ -344,31 +321,35 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
       onClick={onClose}
     >
       <div
-        className="bg-white w-full max-w-4xl rounded-3xl shadow-2xl border border-[#e2e8f0] flex flex-col max-h-[92vh] overflow-hidden animate-in zoom-in-95 duration-200"
+        className={`bg-white w-full ${singleUserMode ? 'max-w-2xl' : 'max-w-4xl'} rounded-3xl shadow-2xl border border-[#e2e8f0] flex flex-col max-h-[92vh] overflow-hidden animate-in zoom-in-95 duration-200`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* HEADER */}
         <div className="p-5 sm:p-6 bg-gradient-to-r from-[#2e1859] via-[#501f92] to-[#7c3aed] text-white flex items-center justify-between shrink-0 relative overflow-hidden">
           <div className="flex items-center gap-3 z-10">
             <div className="w-10 h-10 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center text-white">
-              <Users className="w-5 h-5 text-[#d4ff4a]" />
+              {singleUserMode ? <User className="w-5 h-5 text-[#d4ff4a]" /> : <Users className="w-5 h-5 text-[#d4ff4a]" />}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base sm:text-lg font-bold">Ficha Humana del Equipo</h3>
+                <h3 className="text-base sm:text-lg font-bold">
+                  {singleUserMode ? 'Mi Perfil' : 'La Colonia Uhureña'}
+                </h3>
                 <span className="text-[10px] font-bold uppercase tracking-wider bg-white/20 text-white px-2 py-0.5 rounded-full">
                   Cultura Uhura
                 </span>
               </div>
               <p className="text-xs text-white/80 mt-0.5">
-                Conoce y mantén actualizada la dimensión humana de la colonia: pasatiempos, fechas y aspiraciones.
+                {singleUserMode
+                  ? 'Edita tus pasatiempos, tu sueño personal y consulta tus vacaciones sincronizadas con Calendar.'
+                  : 'Conoce la dimensión humana de la colonia: pasatiempos, fechas y aspiraciones.'}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 z-10">
-            {/* Atajo directo para ver/editar mi propio perfil */}
-            {currentUser && (
+            {/* Atajo directo para ver/editar mi propio perfil (solo en vista de directorio) */}
+            {!singleUserMode && currentUser && (
               <button
                 onClick={() => {
                   setActiveUserId(currentUser.id);
@@ -381,10 +362,10 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
                     ? 'bg-[#d4ff4a] text-[#0f172a] border-[#d4ff4a]'
                     : 'bg-white/10 text-white border-white/20 hover:bg-white/20'
                 }`}
-                title="Ir a mi ficha personal"
+                title="Ir a mi perfil"
               >
                 <User className="w-3.5 h-3.5" />
-                <span>Mi Ficha</span>
+                <span>Mi Perfil</span>
               </button>
             )}
 
@@ -417,9 +398,10 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
           </div>
         )}
 
-        {/* BODY (TWO COLUMNS) */}
+        {/* BODY (TWO COLUMNS OR SINGLE USER) */}
         <div className="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden bg-[#fafafa]">
-          {/* LEFT COLUMN: TEAM MEMBERS LIST & FILTERS */}
+          {/* LEFT COLUMN: TEAM MEMBERS LIST & FILTERS (Hidden in singleUserMode) */}
+          {!singleUserMode && (
           <div className="w-full md:w-84 border-r border-[#e2e8f0] bg-white flex flex-col shrink-0">
             {/* Search & Main Filter Tabs */}
             <div className="p-3.5 border-b border-[#f1f5f9] space-y-2.5">
@@ -636,6 +618,7 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
               )}
             </div>
           </div>
+          )}
 
           {/* RIGHT COLUMN: DETAILED HUMAN PROFILE (READ / EDIT MODE) */}
           <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
@@ -670,15 +653,15 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
                         type="button"
                         onClick={handleStartEdit}
                         className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-[#501f92] hover:text-white bg-[#f5f3ff] hover:bg-[#501f92] border border-[#ddd6fe] hover:border-[#501f92] transition-all cursor-pointer self-start sm:self-auto shadow-2xs"
-                        title={isSelf ? 'Actualizar mi ficha humana' : `Actualizar ficha de ${activeUser.name} (como Admin)`}
+                        title="Editar mis pasatiempos y sueño personal"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
-                        <span>{isSelf ? 'Editar mi ficha' : 'Editar ficha (Admin)'}</span>
+                        <span>Editar mi perfil</span>
                       </button>
                     ) : (
                       <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-[#64748b] bg-[#f8fafc] border border-[#e2e8f0]">
                         <Lock className="w-3.5 h-3.5 text-[#94a3b8]" />
-                        <span>Modo lectura</span>
+                        <span>Solo lectura</span>
                       </div>
                     )
                   ) : (
@@ -703,83 +686,18 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
                       <div className="flex items-center gap-2">
                         <Sparkles className="w-4 h-4 text-[#7c3aed]" />
                         <h4 className="text-xs font-bold text-[#0f172a] uppercase tracking-wider">
-                          Editando Ficha de {activeUser.name}
+                          Editando Mi Perfil
                         </h4>
                       </div>
                       <span className="text-[11px] text-[#64748b]">
-                        Actualiza datos reales y pasatiempos
+                        Actualiza tus pasatiempos y tu sueño personal
                       </span>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                      {/* Ciudad de residencia */}
-                      <div>
-                        <label className="font-bold text-[#334155] block mb-1">
-                          📍 Ciudad de residencia
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="Ej: Medellín, Cali, Bogotá..."
-                          value={editCity}
-                          onChange={(e) => setEditCity(e.target.value)}
-                          className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs focus:outline-[#7c3aed] bg-[#f8fafc] text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal"
-                        />
-                      </div>
-
-                      {/* Fecha de nacimiento */}
-                      <div>
-                        <label className="font-bold text-[#334155] block mb-1">
-                          🎂 Fecha de nacimiento
-                        </label>
-                        <input
-                          type="date"
-                          value={editBirthDate}
-                          onChange={(e) => setEditBirthDate(e.target.value)}
-                          className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs focus:outline-[#7c3aed] bg-[#f8fafc]"
-                        />
-                        <span className="text-[10px] text-[#94a3b8] mt-0.5 block">
-                          La edad se calcula en runtime.
-                        </span>
-                      </div>
-
-                      {/* Fecha de ingreso / Aniversario (Protegido para colaboradores) */}
-                      <div>
-                        <label className="font-bold text-[#334155] block mb-1 flex items-center justify-between">
-                          <span>🎉 Fecha de ingreso</span>
-                          {!isAdmin && (
-                            <span className="text-[10px] text-[#b45309] font-medium flex items-center gap-0.5">
-                              <Lock className="w-2.5 h-2.5 text-[#b45309]" /> Protegido
-                            </span>
-                          )}
-                        </label>
-                        {isAdmin ? (
-                          <input
-                            type="text"
-                            placeholder="01 / 07 / 2024"
-                            value={editAnniversaryDate}
-                            onChange={(e) => setEditAnniversaryDate(e.target.value)}
-                            className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs focus:outline-[#7c3aed] bg-[#f8fafc]"
-                          />
-                        ) : (
-                          <input
-                            type="text"
-                            disabled
-                            value={activeUser.joinedDate || activeUser.anniversaryDate || '01 / 07 / 2024'}
-                            className="w-full p-2.5 rounded-xl border border-[#e2e8f0] text-xs bg-[#f1f5f9] text-[#64748b] cursor-not-allowed select-none"
-                          />
-                        )}
-                        <span className="text-[10px] text-[#64748b] mt-0.5 block">
-                          {isAdmin
-                            ? 'Dato contractual editable por Administrador.'
-                            : 'Dato contractual oficial · Administrado en Equipo & Accesos.'}
-                        </span>
-                      </div>
                     </div>
 
                     {/* Pasatiempos e intereses */}
                     <div className="text-xs space-y-1">
                       <label className="font-bold text-[#334155] block">
-                        ⚽ Pasatiempos e intereses fuera del trabajo
+                        ⚽ Pasatiempos e intereses (lo que te gusta)
                       </label>
                       <textarea
                         rows={3}
@@ -793,7 +711,7 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
                     {/* Su sueño es... */}
                     <div className="text-xs space-y-1">
                       <label className="font-bold text-[#334155] block">
-                        ⭐ Su sueño o meta personal
+                        ⭐ Tu sueño o meta personal
                       </label>
                       <textarea
                         rows={2}
@@ -804,18 +722,26 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
                       />
                     </div>
 
-                    {/* Mascotas */}
-                    <div className="text-xs space-y-1">
-                      <label className="font-bold text-[#334155] block">
-                        🐾 Mascotas de la familia (si tienes)
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Ej: Zeus (perro), Cocoa (gata) — o dejar vacío si no tienes"
-                        value={editPetNames}
-                        onChange={(e) => setEditPetNames(e.target.value)}
-                        className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs focus:outline-[#7c3aed] bg-[#f8fafc] text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal"
-                      />
+                    {/* Vacaciones (Sincronizadas con Calendar) */}
+                    <div className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-[#ecfdf5] text-[#059669] flex items-center justify-center shrink-0">
+                          <Calendar className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-[#0f172a]">
+                            🏖️ Vacaciones
+                          </p>
+                          <p className="text-[11px] text-[#64748b]">
+                            {activeUser.vacationStatus?.onVacation
+                              ? `Programadas: ${activeUser.vacationStatus.startDate || 'En curso'} → ${activeUser.vacationStatus.returnDate || 'Por confirmar'}`
+                              : 'Sin vacaciones programadas actualmente'}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#ede9fe] text-[#501f92] shrink-0">
+                        Sincronizado con Calendar
+                      </span>
                     </div>
 
                     {/* Botones de acción */}
@@ -939,7 +865,30 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
                         </div>
                       </div>
 
-                      {/* 3. Mascotas de la familia (ÚNICAMENTE cuando existan registradas) */}
+                      {/* 3. Vacaciones (Sincronizado con Calendar) */}
+                      <div className="border-t border-[#f1f5f9]" />
+                      <div className="flex items-start justify-between gap-3.5">
+                        <div className="flex items-start gap-3.5">
+                          <div className="w-9 h-9 rounded-xl bg-[#ecfdf5] text-[#059669] flex items-center justify-center shrink-0 mt-0.5">
+                            <Calendar className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <h4 className="text-xs font-bold text-[#0f172a] uppercase tracking-wider">
+                              Vacaciones
+                            </h4>
+                            <p className="text-xs text-[#334155] leading-relaxed mt-1">
+                              {activeUser.vacationStatus?.onVacation
+                                ? `En vacaciones · Del ${activeUser.vacationStatus.startDate || 'En curso'} al ${activeUser.vacationStatus.returnDate || 'Por confirmar'}`
+                                : 'Sin vacaciones programadas'}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#f5f3ff] text-[#501f92] border border-[#ddd6fe] shrink-0">
+                          Sincronizado con Calendar
+                        </span>
+                      </div>
+
+                      {/* 4. Mascotas de la familia (ÚNICAMENTE cuando existan registradas) */}
                       {activeUser.petNames && (
                         <>
                           <div className="border-t border-[#f1f5f9]" />

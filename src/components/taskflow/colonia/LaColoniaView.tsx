@@ -26,7 +26,6 @@ import {
 import { ColoniaMinigames } from './ColoniaMinigames';
 import { ColoniaSocialInbox } from './ColoniaSocialInbox';
 import { ColoniaRankingView } from './ColoniaRankingView';
-import { TeamHumanProfileModal } from '../copilot/TeamHumanProfileModal';
 import { UserAvatar } from '../UserAvatar';
 import {
   isSoundEnabled,
@@ -88,10 +87,6 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
   // Filtros de Fichas Humanas
   const [selectedFilter, setSelectedFilter] = useState<FilterCategory>('todos');
   const [searchQuery, setSearchQuery] = useState('');
-
-  // Modal de Ficha Humana
-  const [isHumanModalOpen, setIsHumanModalOpen] = useState(false);
-  const [selectedModalUserId, setSelectedModalUserId] = useState<string | undefined>(undefined);
 
   // Estados para el hábitat de Bucky y minijuegos
   const [activeGame, setActiveGame] = useState<ColonyGameId | null>(null);
@@ -218,47 +213,7 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
       {/* ==================================================================== */}
       {activeTabMode === 'fichas' && (
         <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto w-full">
-          {/* Header Bar con Selector de Modo & Buscador */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
-            <div>
-              <h1 className="text-xl sm:text-2xl font-black text-[#0f172a] tracking-tight">
-                Fichas humanas
-              </h1>
-              <p className="text-xs text-[#64748b] mt-0.5">
-                Cultura Uhura · La dimensión humana, gustos y celebraciones del equipo.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2.5 flex-wrap">
-              {/* Buscador Rápido con ⌘K */}
-              <div className="relative w-full sm:w-64">
-                <Search className="w-4 h-4 text-[#94a3b8] absolute left-3 top-2.5" />
-                <input
-                  type="text"
-                  placeholder="Buscar compañero, cargo o gustos..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-8 py-2 bg-white border border-[#e2e8f0] rounded-xl text-xs text-[#0f172a] placeholder:text-[#94a3b8] focus:outline-[#8a4dff] shadow-2xs"
-                />
-                <span className="absolute right-2.5 top-2.5 text-[10px] font-mono text-[#94a3b8] bg-[#f1f5f9] px-1.5 py-0.2 rounded border border-[#e2e8f0]">
-                  ⌘K
-                </span>
-              </div>
-
-              {/* Toggle a Modo Hábitat / Minijuegos */}
-              <button
-                type="button"
-                onClick={() => setActiveTabMode('habitat')}
-                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#2e1859] hover:bg-[#1a0f30] text-white text-xs font-bold transition-all shadow-xs cursor-pointer shrink-0"
-                title="Entrar al hábitat interactivo y minijuegos de Bucky"
-              >
-                <Gamepad2 className="w-3.5 h-3.5 text-[#d4ff4a]" />
-                <span>Hábitat de Bucky</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Banner Superior "Conoce a la colonia" (Exacto Staging) */}
+          {/* Banner Superior "Cónoce la colonia Uhureña" */}
           <div className="bg-white rounded-3xl p-5 border border-[#e2e8f0] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-3.5">
               <div className="w-12 h-12 rounded-2xl bg-[#faf5ff] border border-[#ede9fe] flex items-center justify-center text-2xl shadow-2xs shrink-0">
@@ -266,7 +221,7 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
               </div>
               <div>
                 <h2 className="text-base sm:text-lg font-extrabold text-[#0f172a] tracking-tight">
-                  Conoce a la colonia
+                  Cónoce la colonia Uhureña
                 </h2>
                 <p className="text-xs text-[#64748b] mt-0.5">
                   Cumpleaños, aniversarios, gustos y mascotas del equipo.
@@ -312,21 +267,16 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
                 </button>
               </div>
 
-              {/* Botón Mi Ficha */}
-              {currentUser && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedModalUserId(currentUser.id);
-                    setIsHumanModalOpen(true);
-                  }}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#d4ff4a] hover:bg-[#bceb34] text-[#0f172a] text-xs font-bold transition-all shadow-2xs cursor-pointer ml-1"
-                  title="Editar mis pasatiempos, gustos y metas personales"
-                >
-                  <UserAvatar user={currentUser} size="xs" />
-                  <span>Mi Ficha</span>
-                </button>
-              )}
+              {/* Toggle a Jugar en la colonía */}
+              <button
+                type="button"
+                onClick={() => setActiveTabMode('habitat')}
+                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#2e1859] hover:bg-[#1a0f30] text-white text-xs font-bold transition-all shadow-xs cursor-pointer shrink-0 ml-1"
+                title="Jugar en la colonía · Minijuegos de Bucky"
+              >
+                <Gamepad2 className="w-3.5 h-3.5 text-[#d4ff4a]" />
+                <span>Jugar en la colonía</span>
+              </button>
             </div>
           </div>
 
@@ -340,14 +290,10 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
               return (
                 <div
                   key={user.id}
-                  onClick={() => {
-                    setSelectedModalUserId(user.id);
-                    setIsHumanModalOpen(true);
-                  }}
-                  className={`bg-white rounded-3xl p-5 border transition-all duration-200 cursor-pointer flex flex-col justify-between group shadow-2xs hover:shadow-md ${
+                  className={`bg-white rounded-3xl p-5 border transition-all duration-200 flex flex-col justify-between shadow-2xs ${
                     isCurrentUserCard
                       ? 'border-[#8a4dff] ring-1 ring-[#8a4dff]/20'
-                      : 'border-[#e2e8f0] hover:border-[#cbd5e1]'
+                      : 'border-[#e2e8f0]'
                   }`}
                 >
                   <div>
@@ -421,7 +367,7 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
                         </p>
                       ) : (
                         <p className="text-[#94a3b8] italic text-[11px]">
-                          Sin pasatiempos registrados aún · Clic para agregar
+                          Sin pasatiempos registrados aún
                         </p>
                       )}
 
@@ -432,14 +378,6 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
                         </p>
                       )}
                     </div>
-                  </div>
-
-                  {/* Footer sutil con prompt para abrir */}
-                  <div className="mt-4 pt-3 border-t border-[#f1f5f9] flex items-center justify-between text-[11px] text-[#64748b]">
-                    <span className="group-hover:text-[#501f92] font-semibold transition-colors">
-                      Ver ficha completa
-                    </span>
-                    <ArrowRight className="w-3.5 h-3.5 text-[#94a3b8] group-hover:translate-x-0.5 group-hover:text-[#501f92] transition-all" />
                   </div>
                 </div>
               );
@@ -501,7 +439,7 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
               <span className="text-xs text-white/60">•</span>
               <h2 className="text-sm font-bold text-white flex items-center gap-1.5">
                 <span>🪵</span>
-                <span>Hábitat y Minijuegos de Bucky</span>
+                <span>Jugar en la colonía · Minijuegos</span>
               </h2>
             </div>
 
@@ -640,15 +578,6 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
         </div>
       )}
 
-      {/* MODAL DE FICHA HUMANA & GUSTOS DEL EQUIPO UHURA */}
-      <TeamHumanProfileModal
-        isOpen={isHumanModalOpen}
-        onClose={() => setIsHumanModalOpen(false)}
-        users={teamUsers}
-        selectedUserId={selectedModalUserId}
-        onUpdateUser={onUpdateUser}
-        currentUser={currentUser}
-      />
     </div>
   );
 };

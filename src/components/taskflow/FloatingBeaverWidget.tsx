@@ -1532,6 +1532,7 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
         users={effectiveUsers}
         onUpdateUser={onUpdateUser}
         currentUser={currentUser}
+        singleUserMode={true}
       />
 
       {/* MODAL DE EVENTOS & RECORDATORIOS DE EQUIPO (COPILOTO BUCKY) */}

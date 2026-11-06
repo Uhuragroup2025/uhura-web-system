@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   Circle,
   Play,
+  Pause,
   Square,
   Plus,
   AlertTriangle,
@@ -117,30 +118,52 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
     }, 3500);
   };
 
-  // 2. Filtrado de tareas asignadas al usuario actual
+  // 2. Filtrado estricto de "Mi Día":
+  // - Tareas donde el usuario es Colaborador con entrega hoy (o vencida/en cronograma de hoy)
+  // - Tareas que requieren su revisión o aprobación (status Review / in_review)
+  // - Tarea con el timer activo en curso
   const assignedTasks = useMemo(() => {
     const cId = currentUserId.toLowerCase();
     const cName = currentUserName.toLowerCase();
+    const cFirst = cName.split(' ')[0];
+    const todayIso = new Date().toISOString().split('T')[0];
 
-    return tasks.filter((t) => {
-      const matchAssignee =
-        t.assignee?.id?.toLowerCase() === cId ||
-        t.assignee?.name?.toLowerCase().includes(cName) ||
-        cName.includes(t.assignee?.name?.toLowerCase() || '___');
-      const matchCollab = t.collaborators?.some(
-        (c) => c.name?.toLowerCase().includes(cName)
-      );
-      return matchAssignee || matchCollab;
-    });
-  }, [tasks, currentUserId, currentUserName]);
+    const matchesUser = (person?: { id?: string; name?: string } | null) => {
+      if (!person) return false;
+      if (person.id && person.id.toLowerCase() === cId) return true;
+      const pName = (person.name || '').toLowerCase();
+      return Boolean(pName && (pName.includes(cFirst) || cName.includes(pName)));
+    };
 
-  // Si para un usuario específico no hay tareas asignadas en mockData, permitir fallback a tareas de demostración de su rol
-  const activeUserTasks = useMemo(() => {
-    if (assignedTasks.length > 0) return assignedTasks;
-    if (accessLevel === 'executive') return [];
-    // Si no tiene asignadas en mockData, mostrar un conjunto mínimo representativo
-    return tasks.slice(0, 3);
-  }, [assignedTasks, accessLevel, tasks]);
+    const isTodayOrDue = (t: TaskItem) => {
+      if (t.scheduledDate === todayIso || t.dueDate === todayIso) return true;
+      const dueTxt = (t.dueText || '').toLowerCase();
+      if (dueTxt.includes('hoy') || dueTxt.includes('vencid') || dueTxt.includes('urgente')) return true;
+      if (t.dueStatus === 'overdue' || t.dueStatus === 'urgent') return true;
+      return false;
+    };
+
+    return tasks
+      .filter((t) => {
+        if (activeTimer?.taskId === t.id) return true;
+
+        const isCollab = matchesUser(t.assignee) || (t.collaborators || []).some((c) => matchesUser(c));
+        const isReviewForMe =
+          (t.status === 'Review' || t.status === 'in_review') &&
+          (matchesUser(t.reviewer) || matchesUser(t.projectLead) || accessLevel === 'leader' || accessLevel === 'system_admin');
+
+        if (isReviewForMe) return true;
+        if (isCollab && isTodayOrDue(t)) return true;
+        return false;
+      })
+      .sort((a, b) => {
+        if (a.completed !== b.completed) return a.completed ? 1 : -1;
+        const prioWeight: Record<string, number> = { urgent: 4, High: 3, high: 3, Medium: 2, medium: 2, Low: 1, low: 1 };
+        return (prioWeight[b.priority] || 2) - (prioWeight[a.priority] || 2);
+      });
+  }, [tasks, currentUserId, currentUserName, activeTimer?.taskId, accessLevel]);
+
+  const activeUserTasks = assignedTasks;
 
   // 3. MATRIZ DE PERSPECTIVA POR ROL — EVALUACIÓN DE ELEMENTOS DE ATENCIÓN
   // Retrabajos / Ajustes urgentes
@@ -177,18 +200,30 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
   }, [accessLevel, tasks]);
 
   // Desvíos de presupuesto / Entregables en riesgo (horas ejecutadas > presupuestadas)
+  // Visible para Comercial, Client Relationship, Líder del proyecto asignado, Dirección y Colaborador (en sus tareas)
   const overtimeRisks = useMemo(() => {
-    if (!['collaborator', 'leader', 'client_relationship', 'executive', 'system_admin'].includes(accessLevel)) {
+    if (!['collaborator', 'leader', 'commercial', 'client_relationship', 'executive', 'system_admin'].includes(accessLevel)) {
       return [];
     }
-    const pool = accessLevel === 'collaborator' ? activeUserTasks : tasks;
+    const cName = currentUserName.toLowerCase();
+    const cFirst = cName.split(' ')[0];
+    const pool =
+      accessLevel === 'collaborator'
+        ? activeUserTasks
+        : accessLevel === 'leader'
+        ? tasks.filter((t) => {
+            const leadName = (t.projectLead?.name || '').toLowerCase();
+            if (!leadName) return true;
+            return leadName.includes(cFirst) || cName.includes(leadName);
+          })
+        : tasks;
     return pool.filter((t) => {
       if (t.completed) return false;
       const consumedHrs = (t.consumedSeconds || 0) / 3600;
       const budgeted = t.budgetedHours || 0;
       return budgeted > 0 && consumedHrs > budgeted;
     });
-  }, [accessLevel, activeUserTasks, tasks]);
+  }, [accessLevel, activeUserTasks, tasks, currentUserName]);
 
   // New Business que requiere acción (cotizaciones pendientes de aprobación o briefs por dimensionar)
   const newBusinessActions = useMemo(() => {
@@ -426,13 +461,14 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                 {reworkTasks.map((t) => (
                   <div
                     key={`rework-${t.id}`}
-                    className="p-3 rounded-2xl bg-white border border-[#fde68a] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                    onClick={() => onOpenTaskDetail(t.id)}
+                    className="p-3 rounded-2xl bg-white border border-[#fde68a] hover:border-[#dc2626] hover:bg-[#fef2f2]/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs cursor-pointer transition-all group shadow-2xs"
                   >
                     <div className="flex items-start gap-2.5">
                       <Repeat className="w-4 h-4 text-[#dc2626] shrink-0 mt-0.5" />
                       <div>
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-bold text-[#0f172a]">{t.title}</span>
+                          <span className="font-bold text-[#0f172a] group-hover:text-[#dc2626] transition-colors">{t.title}</span>
                           <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-[#fee2e2] text-[#991b1b]">
                             Ajuste Ronda {t.reworkRound || 1}
                           </span>
@@ -443,12 +479,10 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => onOpenTaskDetail(t.id)}
-                      className="px-3 py-1.5 rounded-xl bg-[#dc2626] text-white font-bold hover:bg-[#b91c1c] transition-colors self-start sm:self-auto cursor-pointer"
-                    >
-                      Atender ajuste
-                    </button>
+                    <span className="px-2.5 py-1 rounded-lg text-[#dc2626] group-hover:bg-[#fef2f2] font-semibold text-xs transition-colors self-start sm:self-auto shrink-0 inline-flex items-center gap-1">
+                      <span>Atender ajuste</span>
+                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                    </span>
                   </div>
                 ))}
 
@@ -456,24 +490,18 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                 {reviewTasks.map((t) => (
                   <div
                     key={`review-${t.id}`}
-                    className="p-3 rounded-2xl bg-white border border-[#fde68a] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                    onClick={() => onOpenTaskDetail(t.id)}
+                    className="p-3 rounded-2xl bg-white border border-[#fde68a] hover:border-[#8a4dff] hover:bg-[#faf5ff]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs cursor-pointer transition-all group shadow-2xs"
                   >
-                    <div className="flex items-start gap-2.5">
-                      <ShieldCheck className="w-4 h-4 text-[#8a4dff] shrink-0 mt-0.5" />
-                      <div>
-                        <span className="font-bold text-[#0f172a]">{t.title}</span>
-                        <span className="text-[11px] text-[#64748b] block mt-0.5">
-                          Entregable listo para revisión de calidad o aprobación de cliente
-                        </span>
-                      </div>
+                    <div className="flex items-center gap-2.5">
+                      <ShieldCheck className="w-4 h-4 text-[#8a4dff] shrink-0" />
+                      <span className="font-bold text-[#0f172a] group-hover:text-[#501f92] transition-colors">{t.title}</span>
                     </div>
 
-                    <button
-                      onClick={() => onOpenTaskDetail(t.id)}
-                      className="px-3 py-1.5 rounded-xl bg-[#f5f3ff] text-[#501f92] border border-[#ddd6fe] hover:bg-[#ede9fe] font-semibold text-xs transition-colors self-start sm:self-auto cursor-pointer"
-                    >
-                      Revisar pieza
-                    </button>
+                    <span className="px-2.5 py-1 rounded-lg text-[#501f92] group-hover:bg-[#f5f3ff] font-semibold text-xs transition-colors self-start sm:self-auto shrink-0 inline-flex items-center gap-1">
+                      <span>Listo para revisar</span>
+                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                    </span>
                   </div>
                 ))}
 
@@ -481,15 +509,20 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                 {clientDependencies.map((dep) => (
                   <div
                     key={`client-dep-${dep.id}`}
-                    className={`p-3.5 rounded-2xl bg-white border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs ${
-                      dep.delayDays > 0 ? 'border-[#fca5a5] bg-[#fff5f5]' : 'border-[#fde68a]'
+                    onClick={() => {
+                      if (onNavigateToView) onNavigateToView('proyectos');
+                    }}
+                    className={`p-3.5 rounded-2xl bg-white border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs cursor-pointer transition-all group shadow-2xs ${
+                      dep.delayDays > 0
+                        ? 'border-[#fca5a5] bg-[#fff5f5] hover:border-[#dc2626]'
+                        : 'border-[#fde68a] hover:border-[#64748b] hover:bg-[#f8fafc]'
                     }`}
                   >
                     <div className="flex items-start gap-2.5">
                       <Hourglass className={`w-4 h-4 shrink-0 mt-0.5 ${dep.delayDays > 0 ? 'text-[#dc2626]' : 'text-[#f59e0b]'}`} />
                       <div>
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-bold text-[#0f172a]">{dep.title}</span>
+                          <span className="font-bold text-[#0f172a] group-hover:text-[#501f92] transition-colors">{dep.title}</span>
                           <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#eff6ff] text-[#1d4ed8]">
                             {dep.clientName}
                           </span>
@@ -508,27 +541,16 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                             </span>
                           )}
                         </div>
-                        <div className="text-[11px] text-[#64748b] mt-0.5 flex items-center gap-2 flex-wrap">
-                          <span>Proyecto: <strong className="text-[#334155]">{dep.projectName}</strong></span>
-                          {dep.blocking && (
-                            <span className="text-[#dc2626] font-semibold">
-                              • Bloquea avance operativo
-                            </span>
-                          )}
-                        </div>
+                        <p className="text-[11px] text-[#64748b] mt-0.5">
+                          Aprobación pendiente · Puede impactar fechas del cronograma
+                        </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
-                      <button
-                        onClick={() => {
-                          if (onNavigateToView) onNavigateToView('proyectos');
-                        }}
-                        className="px-3 py-1.5 rounded-xl bg-[#f1f5f9] text-[#334155] border border-[#e2e8f0] font-semibold text-xs hover:bg-[#e2e8f0] hover:text-[#0f172a] transition-colors cursor-pointer"
-                      >
-                        Ver en proyecto
-                      </button>
-                    </div>
+                    <span className="px-2.5 py-1 rounded-lg text-[#334155] group-hover:bg-[#f1f5f9] group-hover:text-[#0f172a] font-semibold text-xs transition-colors shrink-0 self-start sm:self-auto inline-flex items-center gap-1">
+                      <span>Gestionar aprobación</span>
+                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                    </span>
                   </div>
                 ))}
 
@@ -536,24 +558,23 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                 {ownBlockedTasks.map((t) => (
                   <div
                     key={`blocked-${t.id}`}
-                    className="p-3 rounded-2xl bg-white border border-[#fecaca] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                    onClick={() => onOpenTaskDetail(t.id)}
+                    className="p-3 rounded-2xl bg-white border border-[#fecaca] hover:border-[#dc2626] hover:bg-[#fef2f2]/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs cursor-pointer transition-all group shadow-2xs"
                   >
                     <div className="flex items-start gap-2.5">
                       <AlertOctagon className="w-4 h-4 text-[#ef4444] shrink-0 mt-0.5" />
                       <div>
-                        <span className="font-bold text-[#0f172a]">{t.title}</span>
+                        <span className="font-bold text-[#0f172a] group-hover:text-[#dc2626] transition-colors">{t.title}</span>
                         <span className="text-[11px] text-[#991b1b] block mt-0.5">
                           Tarea bloqueada por dependencias o insumos de cliente
                         </span>
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => onOpenTaskDetail(t.id)}
-                      className="px-3 py-1.5 rounded-xl bg-[#fef2f2] text-[#dc2626] border border-[#fecaca] font-bold hover:bg-[#fee2e2] transition-colors self-start sm:self-auto cursor-pointer"
-                    >
-                      Ver bloqueo
-                    </button>
+                    <span className="px-2.5 py-1 rounded-lg text-[#dc2626] group-hover:bg-[#fef2f2] font-semibold text-xs transition-colors self-start sm:self-auto shrink-0 inline-flex items-center gap-1">
+                      <span>Ver bloqueo</span>
+                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                    </span>
                   </div>
                 ))}
 
@@ -564,32 +585,23 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                     <div
                       key={`overtime-${t.id}`}
                       onClick={() => onOpenTaskDetail(t.id)}
-                      className="p-3 rounded-2xl bg-white border border-[#fed7aa] hover:border-[#ea580c] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs cursor-pointer transition-colors group shadow-2xs"
+                      className="p-3 rounded-2xl bg-white border border-[#fed7aa] hover:border-[#ea580c] hover:bg-[#fff7ed]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs cursor-pointer transition-all group shadow-2xs"
                     >
-                      <div className="flex items-start gap-2.5">
-                        <Flame className="w-4 h-4 text-[#ea580c] shrink-0 mt-0.5" />
-                        <div>
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-bold text-[#0f172a] group-hover:text-[#ea580c] transition-colors">{t.title}</span>
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#fff7ed] text-[#c2410c] border border-[#fed7aa]">
-                              {consumedHrs}h / {t.budgetedHours}h cotizadas
-                            </span>
-                          </div>
-                          <span className="text-[11px] text-[#64748b] block mt-0.5">
-                            {t.clientName || 'Cliente'} • Horas ejecutadas superaron la estimación original
-                          </span>
-                        </div>
+                      <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                        <Flame className="w-4 h-4 text-[#ea580c] shrink-0" />
+                        <span className="font-bold text-[#0f172a] group-hover:text-[#ea580c] transition-colors truncate">
+                          {t.title}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-md bg-[#fff7ed] text-[#c2410c] font-bold border border-[#fed7aa] text-[10px] inline-flex items-center gap-1 shrink-0">
+                          <AlertTriangle className="w-3 h-3" />
+                          <span>Desvío {consumedHrs}h / {t.budgetedHours}h cotizadas</span>
+                        </span>
                       </div>
 
-                      <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
-                        <span className="px-2.5 py-1 rounded-xl bg-[#fff7ed] text-[#c2410c] font-bold border border-[#fed7aa] text-[11px] flex items-center gap-1">
-                          <AlertTriangle className="w-3 h-3" />
-                          <span>Desvío presupuestal</span>
-                        </span>
-                        <span className="text-[#ea580c] text-xs font-semibold group-hover:underline">
-                          Ajustar tarea →
-                        </span>
-                      </div>
+                      <span className="px-2.5 py-1 rounded-lg text-[#ea580c] group-hover:bg-[#fff7ed] text-xs font-semibold transition-colors self-start sm:self-auto shrink-0 inline-flex items-center gap-1">
+                        <span>Ajustar tarea</span>
+                        <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                      </span>
                     </div>
                   );
                 })}
@@ -773,20 +785,8 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                       }`}
                     >
                       <div className="flex items-start justify-between gap-3">
-                        {/* Checkbox + Titulo + Metadatos */}
+                        {/* Titulo + Metadatos */}
                         <div className="flex items-start gap-3 flex-1 min-w-0">
-                          <button
-                            onClick={() => onToggleTask(task.id)}
-                            className="mt-0.5 shrink-0 text-[#94a3b8] hover:text-[#501f92] transition-colors cursor-pointer"
-                            title={task.completed ? 'Marcar como pendiente' : 'Marcar como completada'}
-                          >
-                            {task.completed ? (
-                              <CheckCircle2 className="w-5 h-5 text-[#10b981]" />
-                            ) : (
-                              <Circle className="w-5 h-5 text-[#cbd5e1] hover:text-[#8a4dff]" />
-                            )}
-                          </button>
-
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2 flex-wrap">
                               <h3
@@ -797,6 +797,17 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                               >
                                 {task.title}
                               </h3>
+
+                              {isTimerActiveForThisTask && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#f2ecfb] text-[#501f92] border border-[#8a4dff]/30">
+                                  <span
+                                    className={`w-1.5 h-1.5 rounded-full ${
+                                      activeTimer?.isPaused ? 'bg-[#f59e0b]' : 'bg-[#501f92] animate-pulse'
+                                    }`}
+                                  />
+                                  En curso
+                                </span>
+                              )}
 
                               {task.isRework && (
                                 <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-[#fee2e2] text-[#991b1b]">
@@ -809,40 +820,41 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                                   Desvío {consumedHrs}h/{budgetedHrs}h
                                 </span>
                               )}
-
-                              {isTimerActiveForThisTask && (
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#8a4dff] text-white flex items-center gap-1 animate-pulse">
-                                  <Clock className="w-3 h-3" />
-                                  <span>En curso</span>
-                                </span>
-                              )}
-                            </div>
-
-                            <div className="flex items-center gap-2 text-[11px] text-[#64748b] mt-1 flex-wrap">
-                              <span className="font-semibold text-[#501f92]">
-                                {task.clientName || 'Uhura'}
-                              </span>
-                              <span>•</span>
-                              <span className="truncate">{task.projectName || task.board}</span>
-                              <span>•</span>
-                              <span className="font-mono">
-                                {task.budgetedRoleId || 'Colaborador'} ({consumedHrs}h / {budgetedHrs}h)
-                              </span>
                             </div>
                           </div>
                         </div>
 
                         {/* Botones de acción directa: Timer & Detalle */}
-                        <div className="flex items-center gap-2 shrink-0">
+                        <div className="flex items-center gap-1.5 shrink-0">
                           {isTimerActiveForThisTask ? (
-                            <button
-                              onClick={onStopTimer}
-                              className="px-3 py-1.5 rounded-xl bg-[#dc2626] hover:bg-[#b91c1c] text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
-                              title="Detener timer y registrar sesión"
-                            >
-                              <Square className="w-3 h-3 fill-current" />
-                              <span className="hidden sm:inline">Detener</span>
-                            </button>
+                            <>
+                              {onPauseResumeTimer && (
+                                <button
+                                  onClick={onPauseResumeTimer}
+                                  className={`p-2 rounded-xl text-white flex items-center justify-center shadow-xs transition-all cursor-pointer ${
+                                    activeTimer?.isPaused
+                                      ? 'bg-[#10b981] hover:bg-[#059669]'
+                                      : 'bg-[#f59e0b] hover:bg-[#d97706]'
+                                  }`}
+                                  title={activeTimer?.isPaused ? 'Reanudar' : 'Pausar'}
+                                  aria-label={activeTimer?.isPaused ? 'Reanudar' : 'Pausar'}
+                                >
+                                  {activeTimer?.isPaused ? (
+                                    <Play className="w-3.5 h-3.5 fill-current" />
+                                  ) : (
+                                    <Pause className="w-3.5 h-3.5" />
+                                  )}
+                                </button>
+                              )}
+                              <button
+                                onClick={onStopTimer}
+                                className="p-2 rounded-xl bg-[#dc2626] hover:bg-[#b91c1c] text-white flex items-center justify-center shadow-xs transition-all cursor-pointer"
+                                title="Detener y registrar"
+                                aria-label="Detener y registrar"
+                              >
+                                <Square className="w-3.5 h-3.5 fill-current" />
+                              </button>
+                            </>
                           ) : !task.completed ? (
                             <button
                               onClick={() => onStartTimer(task)}
@@ -915,130 +927,22 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                     }`}
                   />
                 </div>
+              </div>
 
-                {/* Atajos de Carga Rápida */}
-                <div className="flex items-center gap-1.5 flex-wrap pt-1">
-                  <span className="text-[10px] font-bold text-[#64748b] uppercase mr-1">
-                    Carga rápida:
-                  </span>
+              {/* Link directo a Capacidad para ver tiempos de hoy y de la semana */}
+              {onNavigateToView && (
+                <div className="flex justify-end">
                   <button
-                    onClick={() => onQuickLogHours(0.5, 'Soporte y gestión rápida', 'internal')}
-                    className="px-2 py-1 rounded-lg bg-white border border-[#cbd5e1] hover:border-[#8a4dff] text-[11px] font-semibold text-[#0f172a] hover:text-[#501f92] transition-colors cursor-pointer"
+                    type="button"
+                    onClick={() => onNavigateToView('capacidad')}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-[#501f92] hover:bg-[#f5f3ff] transition-colors cursor-pointer"
                   >
-                    +30m
-                  </button>
-                  <button
-                    onClick={() => onQuickLogHours(1.0, 'Sesión operativa', 'client')}
-                    className="px-2 py-1 rounded-lg bg-white border border-[#cbd5e1] hover:border-[#8a4dff] text-[11px] font-semibold text-[#0f172a] hover:text-[#501f92] transition-colors cursor-pointer"
-                  >
-                    +1h
-                  </button>
-                  <button
-                    onClick={() => onQuickLogHours(2.0, 'Bloque de diseño / desarrollo', 'client')}
-                    className="px-2 py-1 rounded-lg bg-white border border-[#cbd5e1] hover:border-[#8a4dff] text-[11px] font-semibold text-[#0f172a] hover:text-[#501f92] transition-colors cursor-pointer"
-                  >
-                    +2h
-                  </button>
-                  <span className="text-[#cbd5e1]">•</span>
-                  <button
-                    onClick={() => onQuickLogHours(0.5, 'Daily Standup Uhura', 'internal', 'Uhura Interno')}
-                    className="px-2 py-1 rounded-lg bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[11px] font-medium text-[#475569] transition-colors cursor-pointer"
-                  >
-                    Daily (+30m)
-                  </button>
-                  <button
-                    onClick={() => onQuickLogHours(1.0, 'Sync Operativo de Proyecto', 'internal', 'Uhura Interno')}
-                    className="px-2 py-1 rounded-lg bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[11px] font-medium text-[#475569] transition-colors cursor-pointer"
-                  >
-                    Sync (+1h)
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>Ver mis tiempos de hoy</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
-              </div>
-
-              {/* Acordeón de Registros de Hoy */}
-              <div className="border border-[#e2e8f0] rounded-2xl overflow-hidden">
-                <button
-                  onClick={() => setIsLogsAccordionOpen(!isLogsAccordionOpen)}
-                  className="w-full p-3.5 bg-white hover:bg-[#f8fafc] flex items-center justify-between text-xs font-bold text-[#0f172a] transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-3.5 h-3.5 text-[#8a4dff]" />
-                    <span>Mis registros de hoy ({todayLogs.length})</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-[#64748b]">
-                    <span className="text-[11px] font-mono">{loggedHoursToday.toFixed(1)}h total</span>
-                    <ChevronDown
-                      className={`w-4 h-4 transition-transform duration-200 ${
-                        isLogsAccordionOpen ? 'rotate-180' : ''
-                      }`}
-                    />
-                  </div>
-                </button>
-
-                {isLogsAccordionOpen && (
-                  <div className="p-3 bg-[#f8fafc] border-t border-[#e2e8f0] space-y-2">
-                    {todayLogs.length === 0 ? (
-                      <p className="text-[11px] text-[#94a3b8] text-center py-2">
-                        Aún no tienes registros cargados hoy. Usa el timer o la carga manual.
-                      </p>
-                    ) : (
-                      <div className="space-y-1.5">
-                        {todayLogs.map((log) => {
-                          const logHours = ((log.durationSeconds || 0) / 3600).toFixed(1);
-                          return (
-                            <div
-                              key={log.id}
-                              className="p-2.5 rounded-xl bg-white border border-[#e2e8f0] flex items-center justify-between gap-3 text-xs"
-                            >
-                              <div className="min-w-0 flex-1">
-                                <p className="font-semibold text-[#0f172a] truncate">
-                                  {log.taskTitle || 'Registro de tiempo'}
-                                </p>
-                                <span className="text-[10px] text-[#64748b] block truncate">
-                                  {log.clientName || 'Uhura'} • {log.projectName || 'General'} • {log.date || 'Hoy'}
-                                </span>
-                              </div>
-
-                              <div className="flex items-center gap-3 shrink-0">
-                                <span className="font-mono font-bold text-[#501f92]">
-                                  {logHours}h
-                                </span>
-                                {onDeleteTimeLog && (
-                                  <button
-                                    onClick={() => {
-                                      if (confirm('¿Deseas eliminar este registro de tiempo?')) {
-                                        onDeleteTimeLog(log.id);
-                                        showToast('Registro de tiempo eliminado.');
-                                      }
-                                    }}
-                                    className="p-1 rounded-lg text-[#94a3b8] hover:text-[#dc2626] hover:bg-[#fee2e2] transition-colors cursor-pointer"
-                                    title="Eliminar este registro"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    {/* Enlace sutil para auditoría histórica */}
-                    {onNavigateToView && (
-                      <div className="pt-2 text-center">
-                        <button
-                          onClick={() => onNavigateToView('timesheets')}
-                          className="text-[11px] font-semibold text-[#501f92] hover:underline cursor-pointer inline-flex items-center gap-1"
-                        >
-                          <span>Ver historial en Timesheets</span>
-                          <ArrowRight className="w-3 h-3" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+              )}
             </div>
           )}
         </div>
@@ -1174,9 +1078,9 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
               </div>
             )}
 
-            {/* ACCESOS DIRECTOS A CULTURA Y FICHAS HUMANAS */}
-            <div className="pt-2 border-t border-[#f1f5f9] space-y-2">
-              {onNavigateToView && (
+            {/* ACCESO DIRECTO A LA COLONIA UHUREÑA */}
+            {onNavigateToView && (
+              <div className="pt-2 border-t border-[#f1f5f9]">
                 <button
                   type="button"
                   onClick={() => onNavigateToView('la-colonia')}
@@ -1184,29 +1088,12 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                 >
                   <div className="flex items-center gap-2">
                     <span>🦫</span>
-                    <span>Conoce a la colonia</span>
+                    <span>Cónoce la colonia Uhureña</span>
                   </div>
                   <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                 </button>
-              )}
-
-              {currentUser && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedTeamUserId(currentUser.id);
-                    setIsHumanProfileModalOpen(true);
-                  }}
-                  className="w-full p-2.5 rounded-2xl bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] text-[#334155] text-xs font-semibold transition-all flex items-center justify-between cursor-pointer"
-                >
-                  <div className="flex items-center gap-2">
-                    <UserAvatar user={currentUser} size="xs" />
-                    <span>Mi ficha personal</span>
-                  </div>
-                  <span className="text-[11px] text-[#8a4dff] font-bold">Editar →</span>
-                </button>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </aside>
       </div>
@@ -1318,6 +1205,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
         selectedUserId={selectedTeamUserId}
         onUpdateUser={onUpdateUser}
         currentUser={currentUser}
+        singleUserMode={true}
       />
     </div>
   );

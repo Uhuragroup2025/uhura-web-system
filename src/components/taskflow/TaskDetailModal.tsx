@@ -57,7 +57,8 @@ import {
   ShieldCheck,
   ArrowRight,
   AlertCircle,
-  Layers
+  Layers,
+  Info
 } from 'lucide-react';
 import {
   TaskItem,
@@ -73,7 +74,9 @@ import {
   TaskCommentReaction,
   STANDARD_UHURA_ROLES,
   TaskActivityLogEntry,
-  TaskActivityType
+  TaskActivityType,
+  TaskAssigneeAllocation,
+  UserItem
 } from './types';
 import { DropdownMenu, DropdownOption } from '../ui/DropdownMenu';
 import { initialUsers } from './mockData';
@@ -145,6 +148,7 @@ interface TaskDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   task: TaskItem | null;
+  currentUser?: UserItem;
   tasksList?: TaskItem[];
   onSelectTask?: (task: TaskItem) => void;
   activeTimer: ActiveTimerState | null;
@@ -169,7 +173,8 @@ interface TaskDetailModalProps {
     budgetedRole?: string,
     requiresValidation?: boolean,
     projectLead?: TaskItem['projectLead'],
-    followers?: TaskItem['followers']
+    followers?: TaskItem['followers'],
+    assigneeAllocations?: TaskAssigneeAllocation[]
   ) => void;
   onUpdateCriteria?: (
     taskId: string,
@@ -206,6 +211,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   isOpen,
   onClose,
   task,
+  currentUser,
   tasksList = [],
   activeTimer,
   onStartTimer,
@@ -268,6 +274,39 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   const [requestedBy, setRequestedBy] = useState<string>(task?.requestedBy || 'Paola Monsalve');
   const [budgetedRole, setBudgetedRole] = useState<string>(task?.budgetedRole || 'Diseñador Gráfico');
   const [requiresValidation, setRequiresValidation] = useState<boolean>(task?.requiresValidation ?? false);
+  const [assigneeAllocations, setAssigneeAllocations] = useState<TaskAssigneeAllocation[]>(
+    task?.assigneeAllocations || []
+  );
+  const [isEditingHoursSplit, setIsEditingHoursSplit] = useState<boolean>(false);
+  const [showCollabTooltip, setShowCollabTooltip] = useState<boolean>(false);
+
+  const buildEqualAllocations = (
+    members: { name: string; initials: string; avatarBg: string; avatarUrl?: string | null }[],
+    totalHours: number
+  ): TaskAssigneeAllocation[] => {
+    if (members.length === 0) return [];
+    const safeTotal = Math.max(0, Number(totalHours) || 0);
+    const baseShare = Math.round((safeTotal / members.length) * 10) / 10;
+    return members.map((m, idx) => {
+      const matchedUser = initialUsers.find(
+        (u) =>
+          u.name.toLowerCase() === m.name.toLowerCase() ||
+          u.name.toLowerCase().startsWith(m.name.toLowerCase().split(' ')[0])
+      );
+      const isLast = idx === members.length - 1;
+      const hours = isLast
+        ? Math.max(0, Number((safeTotal - baseShare * (members.length - 1)).toFixed(1)))
+        : baseShare;
+      return {
+        userId: matchedUser?.id || m.name.toLowerCase().replace(/\s+/g, '-'),
+        userName: m.name,
+        userInitials: m.initials,
+        userAvatarBg: m.avatarBg,
+        userAvatarUrl: m.avatarUrl ?? matchedUser?.avatarUrl ?? null,
+        estimatedHours: hours
+      };
+    });
+  };
 
   // Bucky Copiloto: Chequeo de colaboradores asignados en vacaciones
   const assignedVacationAlerts = useMemo(() => {
@@ -353,6 +392,9 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
       setRequestedBy(task.requestedBy || 'Paola Monsalve');
       setBudgetedRole(task.budgetedRole || 'Diseñador Gráfico');
       setRequiresValidation(task.requiresValidation ?? false);
+      setAssigneeAllocations(task.assigneeAllocations || []);
+      setIsEditingHoursSplit(false);
+      setShowCollabTooltip(false);
       setOpenTeamDropdown(null);
 
       setBudgetValue((task.budgetedHours || 1).toString());
@@ -749,6 +791,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   const handleSendMessage = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!messageInput.trim() && pendingAttachments.length === 0) return;
+    ensureInProgressOnCollaboratorAction();
 
     const content = messageInput.trim();
 
@@ -1170,7 +1213,8 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     newBudgetedRole?: string,
     newRequiresValidation?: boolean,
     newProjectLead?: TaskItem['projectLead'],
-    newFollowers?: NonNullable<TaskItem['followers']>
+    newFollowers?: NonNullable<TaskItem['followers']>,
+    newAssigneeAllocations?: TaskAssigneeAllocation[]
   ) => {
     if (newAssignee.name !== assignee?.name) {
       logActivity(
@@ -1197,6 +1241,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     if (newRequiresValidation !== undefined) setRequiresValidation(newRequiresValidation);
     if (newProjectLead !== undefined) setProjectLead(newProjectLead);
     if (newFollowers !== undefined) setFollowers(newFollowers);
+    if (newAssigneeAllocations !== undefined) setAssigneeAllocations(newAssigneeAllocations);
 
     if (onUpdateTeam && task) {
       onUpdateTeam(
@@ -1208,8 +1253,42 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
         newBudgetedRole !== undefined ? newBudgetedRole : budgetedRole,
         newRequiresValidation !== undefined ? newRequiresValidation : requiresValidation,
         newProjectLead !== undefined ? newProjectLead : projectLead,
-        newFollowers !== undefined ? newFollowers : followers
+        newFollowers !== undefined ? newFollowers : followers,
+        newAssigneeAllocations !== undefined ? newAssigneeAllocations : assigneeAllocations
       );
+    }
+  };
+
+  const currentNameLower = (currentUser?.name || 'Paola Monsalve').toLowerCase();
+  const currentFirstLower = currentNameLower.split(' ')[0];
+  const matchesCurrentUser = (p?: { name?: string } | null) => {
+    if (!p?.name) return false;
+    const pLow = p.name.toLowerCase();
+    return pLow.includes(currentFirstLower) || currentNameLower.includes(pLow);
+  };
+  const isCurrentUserCollaborator =
+    matchesCurrentUser(assignee) || collaborators.some((c) => matchesCurrentUser(c));
+  const isCurrentUserLeadOrFollower =
+    matchesCurrentUser(projectLead) ||
+    followers.some((f) => matchesCurrentUser(f)) ||
+    matchesCurrentUser(reviewer) ||
+    (!isCurrentUserCollaborator &&
+      Boolean(
+        currentUser?.accessLevel &&
+          ['leader', 'system_admin', 'client_relationship', 'executive'].includes(
+            currentUser.accessLevel
+          )
+      ));
+
+  const ensureInProgressOnCollaboratorAction = () => {
+    if (task && task.status === 'To Do' && isCurrentUserCollaborator && onUpdateTaskStatus) {
+      logActivity(
+        'status_change',
+        'Estado cambiado automáticamente a "In Progress" por acción del colaborador',
+        'To Do',
+        'In Progress'
+      );
+      onUpdateTaskStatus(task.id, 'In Progress');
     }
   };
 
@@ -1218,13 +1297,25 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     if (!onUpdateTaskStatus || !task) return;
 
     if (task.status === 'To Do') {
-      logActivity('status_change', 'Estado cambiado de "To Do" a "In Progress"', 'To Do', 'In Progress');
-      onUpdateTaskStatus(task.id, 'In Progress');
-      showToast('Tarea iniciada (En proceso)');
+      if (isCurrentUserLeadOrFollower && !isCurrentUserCollaborator) {
+        logActivity('status_change', 'Tarea aprobada y completada directamente por líder/seguidor', 'To Do', 'Done');
+        onUpdateTaskStatus(task.id, 'Done');
+        showToast('Tarea aprobada y marcada como Completada');
+      } else {
+        logActivity('status_change', 'Estado cambiado de "To Do" a "In Progress"', 'To Do', 'In Progress');
+        onUpdateTaskStatus(task.id, 'In Progress');
+        showToast('Tarea iniciada (En proceso)');
+      }
     } else if (task.status === 'In Progress') {
-      logActivity('status_change', 'Estado cambiado de "In Progress" a "Review"', 'In Progress', 'Review');
-      onUpdateTaskStatus(task.id, 'Review');
-      showToast('Tarea enviada a Revisión');
+      if (isCurrentUserLeadOrFollower && !isCurrentUserCollaborator) {
+        logActivity('status_change', 'Tarea aprobada y completada por líder/seguidor', 'In Progress', 'Done');
+        onUpdateTaskStatus(task.id, 'Done');
+        showToast('Tarea aprobada y marcada como Completada');
+      } else {
+        logActivity('status_change', 'Estado cambiado de "In Progress" a "Review"', 'In Progress', 'Review');
+        onUpdateTaskStatus(task.id, 'Review');
+        showToast('Tarea enviada a Revisión');
+      }
     } else if (task.status === 'Review') {
       logActivity('status_change', 'Estado cambiado de "Review" a "Done" (Completada)', 'Review', 'Done');
       onUpdateTaskStatus(task.id, 'Done');
@@ -1396,28 +1487,57 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
           {/* Right: Actions Toolbar */}
           <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
-            {/* Timer CTA: Defaults to Play. When running, shows clear Stop action */}
+            {/* Timer CTA: Defaults to Play. When running, shows Pause/Resume + Stop */}
             {isRunning ? (
               <div className="flex items-center gap-1.5">
+                {onPauseResumeTimer && (
+                  <button
+                    id="task-timer-pause-resume-btn"
+                    onClick={onPauseResumeTimer}
+                    className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-white text-xs font-bold shadow-xs cursor-pointer transition-all ${
+                      activeTimer?.isPaused
+                        ? 'bg-[#10b981] hover:bg-[#059669]'
+                        : 'bg-[#f59e0b] hover:bg-[#d97706]'
+                    }`}
+                    title={activeTimer?.isPaused ? 'Reanudar timer' : 'Pausar timer'}
+                  >
+                    {activeTimer?.isPaused ? (
+                      <>
+                        <Play className="w-3.5 h-3.5 fill-current" />
+                        <span>Reanudar</span>
+                      </>
+                    ) : (
+                      <>
+                        <Pause className="w-3.5 h-3.5" />
+                        <span>Pausar</span>
+                      </>
+                    )}
+                  </button>
+                )}
                 <button
                   id="task-timer-stop-btn"
                   onClick={onStopTimer}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#dc2626] hover:bg-[#b91c1c] text-white text-xs font-bold shadow-xs cursor-pointer transition-all animate-pulse"
+                  className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#dc2626] hover:bg-[#b91c1c] text-white text-xs font-bold shadow-xs cursor-pointer transition-all ${
+                    !activeTimer?.isPaused ? 'animate-pulse' : ''
+                  }`}
                   title="Detener timer y registrar tiempo"
                 >
                   <Square className="w-3.5 h-3.5 fill-current" />
-                  <span>Detener Timer</span>
+                  <span>Detener</span>
                 </button>
               </div>
             ) : (
               <button
                 id="task-timer-start-btn"
-                onClick={() => onStartTimer(task)}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold shadow-xs cursor-pointer transition-all"
-                title="Iniciar timer"
+                onClick={() => {
+                  ensureInProgressOnCollaboratorAction();
+                  onStartTimer(task);
+                }}
+                className="p-2.5 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white shadow-xs cursor-pointer transition-all flex items-center justify-center"
+                title="Iniciar Timer"
+                aria-label="Iniciar Timer"
               >
-                <Play className="w-3.5 h-3.5 fill-current" />
-                <span>Iniciar Timer</span>
+                <Play className="w-4 h-4 fill-current" />
               </button>
             )}
 
@@ -1426,7 +1546,10 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               <div className="relative group">
                 <button
                   id="task-manual-time-btn"
-                  onClick={() => onOpenManualLog(task.id)}
+                  onClick={() => {
+                    ensureInProgressOnCollaboratorAction();
+                    onOpenManualLog(task.id);
+                  }}
                   aria-label="Registrar tiempo manualmente"
                   className="p-2 rounded-xl bg-white hover:bg-[#f8fafc] text-[#501f92] border border-[#e2e8f0] shadow-2xs hover:border-[#8a4dff]/40 transition-all cursor-pointer flex items-center justify-center relative"
                 >
@@ -1570,7 +1693,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
           {/* Quick status transition button in the banner */}
           <div className="flex items-center gap-2 shrink-0">
-            {task.status === 'To Do' && (
+            {task.status === 'To Do' && isCurrentUserCollaborator && (
               <button
                 type="button"
                 onClick={handleProgressTaskStatus}
@@ -1581,38 +1704,66 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               </button>
             )}
 
-            {task.status === 'In Progress' && (
+            {task.status === 'To Do' && !isCurrentUserCollaborator && isCurrentUserLeadOrFollower && (
+              <button
+                type="button"
+                onClick={handleProgressTaskStatus}
+                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+              >
+                <CheckCircle2 className="w-3 h-3" />
+                <span>Completar y aprobar</span>
+              </button>
+            )}
+
+            {task.status === 'In Progress' && isCurrentUserCollaborator && (
               <button
                 type="button"
                 onClick={handleProgressTaskStatus}
                 className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
-                title="Pasar a revisión para que el revisor o líder valide la tarea"
+                title="Pasar a revisión para que el Project Lead o seguidor valide la tarea"
               >
                 <Eye className="w-3 h-3" />
                 <span>Solicitar revisión →</span>
               </button>
             )}
 
+            {task.status === 'In Progress' && !isCurrentUserCollaborator && isCurrentUserLeadOrFollower && (
+              <button
+                type="button"
+                onClick={handleProgressTaskStatus}
+                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+              >
+                <CheckCircle2 className="w-3 h-3" />
+                <span>Completar y aprobar</span>
+              </button>
+            )}
+
             {task.status === 'Review' && (
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={handleRejectToInProgress}
-                  className="px-2 py-1 rounded-lg bg-white hover:bg-amber-50 text-amber-900 border border-amber-300 font-semibold text-[11px] flex items-center gap-1 transition-all cursor-pointer"
-                  title="Devolver la tarea al colaborador para corregir o ajustar entregables"
-                >
-                  <RotateCcw className="w-2.5 h-2.5" />
-                  <span>Devolver</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleProgressTaskStatus}
-                  className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
-                >
-                  <CheckCircle2 className="w-3 h-3" />
-                  <span>Aprobar y Completar</span>
-                </button>
-              </div>
+              isCurrentUserLeadOrFollower ? (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={handleRejectToInProgress}
+                    className="px-2 py-1 rounded-lg bg-white hover:bg-amber-50 text-amber-900 border border-amber-300 font-semibold text-[11px] flex items-center gap-1 transition-all cursor-pointer"
+                    title="Devolver la tarea al colaborador para corregir o ajustar entregables"
+                  >
+                    <RotateCcw className="w-2.5 h-2.5" />
+                    <span>Devolver</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleProgressTaskStatus}
+                    className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                  >
+                    <CheckCircle2 className="w-3 h-3" />
+                    <span>Aprobar y Completar</span>
+                  </button>
+                </div>
+              ) : (
+                <span className="text-[11px] font-semibold text-amber-800 bg-amber-100/80 px-2.5 py-1 rounded-lg border border-amber-200">
+                  En espera de aprobación
+                </span>
+              )
             )}
 
             {task.status === 'Done' && (
@@ -3102,7 +3253,6 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                       <Crown className="w-3.5 h-3.5 text-[#501f92]" />
                       <span>Project Lead</span>
                     </span>
-                    <span className="text-[10px] text-[#64748b]">Lidera la gestión</span>
                   </div>
 
                   <DropdownMenu
@@ -3165,12 +3315,27 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
                 {/* 2. Colaboradores (Responsables de la ejecución - multiselección) */}
                 <div>
-                  <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center justify-between mb-1.5 relative">
                     <span className="text-[11px] font-bold text-[#0f172a] flex items-center gap-1.5">
                       <Users className="w-3.5 h-3.5 text-[#10b981]" />
                       <span>Colaboradores</span>
+                      <button
+                        type="button"
+                        onClick={() => setShowCollabTooltip((prev) => !prev)}
+                        onMouseEnter={() => setShowCollabTooltip(true)}
+                        onMouseLeave={() => setShowCollabTooltip(false)}
+                        aria-label="Información sobre horas de colaboradores"
+                        className="inline-flex items-center text-[#94a3b8] hover:text-[#501f92] cursor-pointer transition-colors"
+                      >
+                        <Info className="w-3.5 h-3.5" />
+                      </button>
                     </span>
-                    <span className="text-[10px] text-[#64748b]">Ejecutan la tarea</span>
+
+                    {showCollabTooltip && (
+                      <div className="absolute left-0 top-6 z-50 w-64 p-2.5 rounded-xl bg-[#0f172a] text-white text-[11px] leading-relaxed shadow-lg border border-[#334155]">
+                        El colaborador absorbe el <strong>100%</strong> de las horas cotizadas. Si agregas más colaboradores, se repartirán las horas cotizadas.
+                      </div>
+                    )}
                   </div>
 
                   <DropdownMenu
@@ -3214,7 +3379,21 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                         role: primary.role
                       };
 
-                      applyTeamUpdate(primaryAssignee, rest, reviewer, requestedBy, budgetedRole, requiresValidation, projectLead, followers);
+                      const taskBudget = task?.budgetedHours || Number(budgetValue) || 1;
+                      const nextAllocations = buildEqualAllocations(selectedMembers, taskBudget);
+                      setIsEditingHoursSplit(selectedMembers.length > 1);
+
+                      applyTeamUpdate(
+                        primaryAssignee,
+                        rest,
+                        reviewer,
+                        requestedBy,
+                        budgetedRole,
+                        requiresValidation,
+                        projectLead,
+                        followers,
+                        nextAllocations
+                      );
                     }}
                     options={TEAM_MEMBERS_POOL.map((m) => {
                       const u = initialUsers.find((usr) => usr.name === m.name);
@@ -3288,6 +3467,161 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                     menuClassName="w-full z-40 max-h-56"
                   />
 
+                  {/* Desglose de bolsa por colaborador y acción rápida Mover a Seguidores */}
+                  {(() => {
+                    const collabMap = new Map<string, typeof assignee>();
+                    if (assignee && assignee.name && assignee.name !== '-') {
+                      collabMap.set(assignee.name, assignee);
+                    }
+                    collaborators.forEach((c) => {
+                      if (c && c.name && c.name !== '-') {
+                        collabMap.set(c.name, c);
+                      }
+                    });
+                    const allCollabs = Array.from(collabMap.values());
+                    const taskBudget = task?.budgetedHours || Number(budgetValue) || 0;
+
+                    if (allCollabs.length > 1) {
+                      const effectiveAllocations =
+                        assigneeAllocations.length === allCollabs.length
+                          ? assigneeAllocations
+                          : buildEqualAllocations(allCollabs, taskBudget);
+                      const totalAllocated = Number(
+                        effectiveAllocations.reduce((sum, a) => sum + (Number(a.estimatedHours) || 0), 0).toFixed(1)
+                      );
+                      const diff = Number((totalAllocated - taskBudget).toFixed(1));
+
+                      if (!isEditingHoursSplit) {
+                        return (
+                          <div className="mt-1.5 flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-[#f8fafc] border border-[#e2e8f0] text-[11px]">
+                            <span className="text-[#475569] truncate">
+                              Reparto:{' '}
+                              <strong className="text-[#0f172a] font-medium">
+                                {allCollabs
+                                  .map((c, idx) => {
+                                    const alloc =
+                                      effectiveAllocations.find(
+                                        (a) => a.userName?.toLowerCase() === c.name.toLowerCase()
+                                      ) || effectiveAllocations[idx];
+                                    return `${c.name.split(' ')[0]} ${(alloc?.estimatedHours ?? 0).toFixed(1)}h`;
+                                  })
+                                  .join(' · ')}
+                              </strong>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setIsEditingHoursSplit(true)}
+                              className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#501f92] hover:underline shrink-0 cursor-pointer"
+                            >
+                              <Edit2 className="w-2.5 h-2.5" />
+                              <span>Ajustar</span>
+                            </button>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="mt-2 p-2.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#475569]">
+                              Reparto de horas ({taskBudget.toFixed(1)}h)
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setIsEditingHoursSplit(false)}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#501f92] hover:bg-[#3f1775] text-white text-[10px] font-semibold transition-colors cursor-pointer"
+                            >
+                              <Check className="w-3 h-3" />
+                              <span>Listo</span>
+                            </button>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            {allCollabs.map((c, idx) => {
+                              const currentAlloc =
+                                effectiveAllocations.find(
+                                  (a) => a.userName?.toLowerCase() === c.name.toLowerCase()
+                                ) || effectiveAllocations[idx];
+                              const hoursVal = currentAlloc?.estimatedHours ?? 0;
+
+                              return (
+                                <div
+                                  key={c.name}
+                                  className="flex items-center justify-between gap-2 bg-white px-2 py-1.5 rounded-lg border border-[#e2e8f0]"
+                                >
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <UserAvatar
+                                      name={c.name}
+                                      initials={c.initials}
+                                      avatarBg={c.avatarBg}
+                                      avatarUrl={c.avatarUrl}
+                                      size="custom"
+                                      className="w-5 h-5 rounded-full text-[9px] shrink-0"
+                                    />
+                                    <span className="text-xs font-medium text-[#0f172a] truncate">
+                                      {c.name.split(' ')[0]}
+                                    </span>
+                                  </div>
+
+                                  <div className="flex items-center gap-1 shrink-0">
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      step="0.5"
+                                      value={hoursVal}
+                                      onChange={(e) => {
+                                        const nextVal = Math.max(0, Number(e.target.value) || 0);
+                                        const updated = effectiveAllocations.map((a, i) =>
+                                          a.userName?.toLowerCase() === c.name.toLowerCase() || i === idx
+                                            ? { ...a, estimatedHours: nextVal }
+                                            : a
+                                        );
+                                        applyTeamUpdate(
+                                          assignee,
+                                          collaborators,
+                                          reviewer,
+                                          requestedBy,
+                                          budgetedRole,
+                                          requiresValidation,
+                                          projectLead,
+                                          followers,
+                                          updated
+                                        );
+                                      }}
+                                      className="w-16 px-1.5 py-0.5 text-right text-xs font-mono font-semibold text-[#0f172a] bg-[#f8fafc] border border-[#cbd5e1] rounded-md focus:outline-none focus:border-[#501f92]"
+                                    />
+                                    <span className="text-[10px] text-[#64748b]">h</span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          <div className="flex items-center justify-between pt-1 border-t border-[#e2e8f0] text-[10px]">
+                            <span className="text-[#64748b] font-medium">
+                              Total: <strong className="text-[#0f172a] font-mono">{totalAllocated.toFixed(1)}h</strong> / {taskBudget.toFixed(1)}h
+                            </span>
+                            {diff > 0.05 ? (
+                              <span className="font-semibold text-[#b45309]">
+                                Supera bolsa (+{diff.toFixed(1)}h)
+                              </span>
+                            ) : diff < -0.05 ? (
+                              <span className="font-medium text-[#64748b]">
+                                {Math.abs(diff).toFixed(1)}h sin asignar
+                              </span>
+                            ) : (
+                              <span className="font-semibold text-[#059669]">
+                                100% asignado
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    return null;
+                  })()}
+
                   {/* Bucky Copiloto: Aviso si hay colaboradores en vacaciones asignados */}
                   {assignedVacationAlerts.length > 0 && (
                     <div className="mt-2 p-2.5 rounded-xl bg-[#fffbeb] border border-[#fde68a] text-xs flex items-start gap-2">
@@ -3313,7 +3647,6 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                       <Eye className="w-3.5 h-3.5 text-[#6366f1]" />
                       <span>Seguidores</span>
                     </span>
-                    <span className="text-[10px] text-[#64748b]">Acompañamiento</span>
                   </div>
 
                   <DropdownMenu

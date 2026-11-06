@@ -44,7 +44,7 @@ export const MobileTimerMiniPlayer: React.FC<MobileTimerMiniPlayerProps> = ({
     <aside
       id="mobile-timer-mini-player"
       aria-label="Cronómetro activo"
-      className="md:hidden fixed bottom-[66px] left-3 right-3 z-35 bg-[#140b24] border border-[#8a4dff]/40 rounded-2xl p-2.5 shadow-2xl backdrop-blur-md animate-in slide-in-from-bottom-3 duration-200"
+      className="lg:hidden fixed bottom-[66px] left-3 right-3 z-35 bg-[#140b24] border border-[#8a4dff]/40 rounded-2xl p-2.5 shadow-2xl backdrop-blur-md animate-in slide-in-from-bottom-3 duration-200"
     >
       <div className="flex items-center justify-between gap-2.5">
         {/* Left: Indicator & Task Info (Clickable) */}
