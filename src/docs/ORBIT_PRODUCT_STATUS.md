@@ -557,9 +557,10 @@ Conforme a las definiciones acordadas para la UAT 2 (Ticket #132 y rama `feat/hu
 2. **Asignación Granular de Líder Operativo:** En el modal de conversión, cada tarjeta de servicio ganado cuenta con su propio selector de Líder Operativo (`leadUserId`), permitiendo asignar líderes distintos o el mismo líder según la especialidad de cada servicio.
 3. **Exclusión Estricta de Servicios Perdidos:** Cualquier servicio con etapa confirmada de `'Cierre perdido'` queda excluido de la conversión y NUNCA genera proyectos ni tareas.
 4. **Estados Operativos y Botón «Iniciar proyecto 🚀»:**
-   - Si la fecha de inicio es posterior a la fecha actual (`startDate > hoy`), el proyecto se crea en estado **`Por empezar`** y despliega el botón **`Iniciar proyecto 🚀`**.
-   - Al pulsar dicho botón, se alinean las fechas definitivas de arranque y se recalculan proporcionalmente las fechas de entrega de cada tarea en el backlog del proyecto.
-   - Si la fecha ya está en curso (`startDate <= hoy`), el proyecto se marca como **`En ejecución`**.
+   - *(Actualizado 07 Nov 2026)* La conversión **no define fechas de inicio ni de entrega**: cerrar el negocio no hace el proyecto ejecutable. Todo proyecto convertido nace **`Por iniciar`** con el botón **`Iniciar proyecto 🚀`**.
+   - En la conversión solo se definen, por servicio, las **tandas de ajuste incluidas** (default 2) y los **días hábiles por tanda** (default 3); las semanas de producción se heredan del Alcance.
+   - Al pulsar **`Iniciar proyecto 🚀`**, el líder fija la fecha de arranque y Orbit calcula la línea base en días hábiles: espera de kickoff + producción + gates × aprobación + gates × tandas × días por tanda. Se congelan `baselineStartDate`/`baselineEndDate` y se programan inicio y vencimiento de cada tarea.
+   - Desde ese momento el proyecto queda **`En ejecución`**.
 5. **Modo Desacoplado / Manual:** La conversión opera 100% de manera autónoma cuando HubSpot no está disponible o el token está inactivo, registrando la trazabilidad en la auditoría de New Business para reconciliación posterior.
 
 ---

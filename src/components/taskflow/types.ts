@@ -321,6 +321,8 @@ export interface ProjectScheduleConfig {
   gateApprovalWaitDays: number;   // Default: 5 días hábiles
   gateCount: number;              // Default: 2 gates
   includedReworkRounds: number;   // Default: 2 rondas
+  reworkRoundDays?: number;       // Default: 3 días hábiles de cliente + equipo por cada tanda incluida
+  productionWeeks?: number;       // Semanas de producción definidas en el Alcance (weeksRef del servicio)
 }
 
 export type ProjectHealthStatus = 'healthy' | 'attention' | 'risk';

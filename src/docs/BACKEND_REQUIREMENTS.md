@@ -394,9 +394,24 @@ Para no bloquear New Business cuando la app privada de HubSpot esté caída o si
 2. En la Cotización, Comercial puede aprobar manualmente los servicios ganados pulsando **«Marcar como ganada 🏆»**, lo que dispara el flujo de conversión sin consultar la API de HubSpot.
 3. Se registra una entrada de auditoría en la tabla de trazabilidad (`status: 'success'`, `source: 'orbit'`) indicando que la aprobación fue manual y que la reconciliación con el CRM queda pendiente.
 
-### 12.5 Estados Operativos de Proyecto («Por empezar» vs «En ejecución»)
-* Si `startDate > hoy` (fecha futura programada por Operaciones/Cata), el proyecto se presenta como **«Por empezar»** y cuenta con la acción **«Iniciar proyecto 🚀»**.
-* Si `startDate <= hoy`, el proyecto se presenta como **«En ejecución»**.
+### 12.5 Estados Operativos de Proyecto («Por iniciar» vs «En ejecución»)
+* **La conversión NO define fechas.** Cerrar un negocio y convertirlo en Cliente + Proyecto no lo hace ejecutable: el proyecto nace con `start_date = NULL`, `end_date = NULL`, `is_kicked_off = false` y se presenta como **«Por iniciar»** con la acción **«Iniciar proyecto 🚀»**.
+* La conversión solo persiste la configuración contractual del cronograma en `schedule_config` por proyecto:
+  `included_rework_rounds` (default 2), `rework_round_days` (default 3 días hábiles), `production_weeks` (= `weeksRef` del servicio en el Alcance), `gate_count` (2), `gate_approval_wait_days` (5), `client_kickoff_wait_days` (3).
+* Las tareas creadas en la conversión nacen sin fechas (`scheduled_date` y `due_date` vacíos).
+* **«Iniciar proyecto 🚀»** (líder del proyecto) fija la fecha de arranque y calcula la línea base en **días hábiles** (excluye fines de semana y festivos de Colombia):
+  ```
+  total = client_kickoff_wait_days
+        + production_weeks × 5
+        + gate_count × gate_approval_wait_days
+        + gate_count × included_rework_rounds × rework_round_days
+  ```
+  - `baseline_start_date` / `baseline_end_date` se congelan en el primer arranque. Ajustes posteriores solo actualizan `forecast_end_date`.
+  - Entregables: producción repartida según horas cotizadas; la espera de kickoff va tras el primer entregable; tras cada entregable con gate se suman días de aprobación + tandas incluidas.
+  - Tareas: reciben `scheduled_date` (inicio) y `due_date` (vencimiento) proporcionales a sus horas dentro del entregable. Mi Día muestra las tareas cuya ventana incluye hoy.
+  - Las tandas incluidas **no son desvío**; solo una tanda adicional (`round_number > included_rework_rounds`) mueve el forecast.
+  - Proyectos Fee mensual: sin gates ni tandas.
+* Referencia de implementación: `src/components/taskflow/schedule/scheduleEngine.ts`.
 
 ---
 

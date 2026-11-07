@@ -337,21 +337,21 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
             {/* Gates */}
             <div className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0]">
               <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Gates de Aprobación</span>
-              <p className="text-sm font-extrabold text-[#0f172a] mt-1">2 Gates incluidos</p>
-              <span className="text-[11px] text-[#64748b] mt-0.5 block">5 días hábiles de revisión por cliente</span>
+              <p className="text-sm font-extrabold text-[#0f172a] mt-1">{project.scheduleConfig?.gateCount ?? 2} Gates incluidos</p>
+              <span className="text-[11px] text-[#64748b] mt-0.5 block">{project.scheduleConfig?.gateApprovalWaitDays ?? 5} días hábiles de revisión por cliente</span>
             </div>
 
             {/* Rondas de ajuste */}
             <div className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0]">
               <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Tandas de Ajustes</span>
-              <p className="text-sm font-extrabold text-[#0f172a] mt-1">2 rondas por gate</p>
-              <span className="text-[11px] text-[#64748b] mt-0.5 block">1 tanda grande + 1 tanda menor</span>
+              <p className="text-sm font-extrabold text-[#0f172a] mt-1">{project.scheduleConfig?.includedReworkRounds ?? 2} tandas por gate</p>
+              <span className="text-[11px] text-[#64748b] mt-0.5 block">{project.scheduleConfig?.reworkRoundDays ?? 3} días hábiles por tanda · incluidas en el plan</span>
             </div>
 
             {/* Devolución Kickoff */}
             <div className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0]">
               <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Devolución de Kickoff</span>
-              <p className="text-sm font-extrabold text-[#0f172a] mt-1">3 días hábiles</p>
+              <p className="text-sm font-extrabold text-[#0f172a] mt-1">{project.scheduleConfig?.clientKickoffWaitDays ?? 3} días hábiles</p>
               <span className="text-[11px] text-[#64748b] mt-0.5 block">0h capacidad consumida</span>
             </div>
 
@@ -359,7 +359,7 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
             <div className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0]">
               <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Forecast de Entrega</span>
               <p className="text-sm font-extrabold text-[#501f92] mt-1">
-                {project.forecastEndDate || project.baselineEndDate || project.endDate || 'En fecha'}
+                {project.forecastEndDate || project.baselineEndDate || project.endDate || 'Por definir al iniciar'}
               </p>
               <span className="text-[11px] text-[#64748b] mt-0.5 block">
                 {scheduleHistory.length} reforecast{scheduleHistory.length !== 1 ? 's' : ''} auditado{scheduleHistory.length !== 1 ? 's' : ''}

@@ -40,6 +40,8 @@ export interface ConvertedProjectPlan {
     gateApprovalWaitDays?: number;
     gateCount: number;
     includedReworkRounds: number;
+    reworkRoundDays?: number;
+    productionWeeks?: number;
   };
 }
 
@@ -49,7 +51,9 @@ export interface ConvertOpportunityPayload {
   leadUserIds?: string[];
   leadName: string;
   specialistUserIds?: string[];
-  startDate: string;
+  /** @deprecated Las fechas se definen al «Iniciar proyecto», nunca en la conversión. */
+  startDate?: string;
+  /** @deprecated Las fechas se definen al «Iniciar proyecto», nunca en la conversión. */
   endDate?: string;
   initialFormalizationStatus?: 'pendiente_formalizacion' | 'activo';
   startConditionsConfig?: any;
@@ -161,6 +165,8 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
   const [serviceLeadUserIds, setServiceLeadUserIds] = useState<Record<string, string>>({});
   // Tandas de ajustes permitidas por servicio (default: 2)
   const [serviceReworkRounds, setServiceReworkRounds] = useState<Record<string, number>>({});
+  // Días hábiles que consume cada tanda de ajustes (feedback cliente + aplicación). Default: 3
+  const [serviceReworkRoundDays, setServiceReworkRoundDays] = useState<Record<string, number>>({});
 
   useEffect(() => {
     setProjectNames((prev) => {
@@ -228,15 +234,6 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
     )
   );
 
-  const [startDate, setStartDate] = useState<string>(
-    new Date().toISOString().slice(0, 10)
-  );
-  const [endDate, setEndDate] = useState<string>(() => {
-    const d = new Date();
-    d.setMonth(d.getMonth() + 2);
-    return d.toISOString().slice(0, 10);
-  });
-  const [isEndDateCustomized, setIsEndDateCustomized] = useState<boolean>(false);
 
   if (!isOpen) return null;
 
@@ -259,6 +256,7 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
       const svcLeadId = serviceLeadUserIds[svc.serviceId] || fallbackLeadId;
       const svcLeadUser = users.find((u) => u.id === svcLeadId);
       const reworkRounds = serviceReworkRounds[svc.serviceId] ?? 2;
+      const reworkRoundDays = serviceReworkRoundDays[svc.serviceId] ?? 3;
 
       return {
         serviceId: svc.serviceId,
@@ -276,7 +274,9 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
         includedReworkRounds: reworkRounds,
         scheduleConfig: {
           gateCount: 2,
-          includedReworkRounds: reworkRounds
+          includedReworkRounds: reworkRounds,
+          reworkRoundDays,
+          productionWeeks: svc.weeksRef || undefined
         }
       };
     });
@@ -295,8 +295,6 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
       leadUserIds: allAssignedLeadIds.length > 0 ? allAssignedLeadIds : [primaryLeadId],
       leadName: primaryLeadUsers.map((u) => u.name).join(', ') || 'Líder de Proyecto',
       specialistUserIds: selectedSpecialistIds.filter((id) => users.some((user) => user.id === id)),
-      startDate,
-      endDate: endDate || undefined,
       initialFormalizationStatus: 'pendiente_formalizacion',
       startConditionsConfig: {
         contractSignedRequired: true,
@@ -576,6 +574,25 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
                           rondas de feedback incluidas contractualmente antes de cobrar sobrecostos.
                         </span>
                       </div>
+                      <div className="flex items-center gap-2 pt-1">
+                        <input
+                          type="number"
+                          min="1"
+                          max="15"
+                          value={serviceReworkRoundDays[service.serviceId] ?? 3}
+                          onChange={(e) => {
+                            const val = Math.max(1, parseInt(e.target.value, 10) || 1);
+                            setServiceReworkRoundDays((prev) => ({
+                              ...prev,
+                              [service.serviceId]: val
+                            }));
+                          }}
+                          className="w-20 p-2 rounded-xl border border-[#cbd5e1] text-[#0f172a] text-xs font-bold focus:ring-2 focus:ring-[#501f92] bg-white shadow-2xs"
+                        />
+                        <span className="text-[10.5px] text-[#64748b]">
+                          días hábiles por tanda (feedback del cliente + aplicación). Se suman al cronograma al iniciar el proyecto.
+                        </span>
+                      </div>
                     </div>
                   </div>
                 );
@@ -609,45 +626,11 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-              <div className="space-y-1">
-                <label className="font-bold text-[#475569] block">
-                  Fecha Inicio estimada: <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="date"
-                  required
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-medium bg-white focus:ring-2 focus:ring-[#501f92] shadow-2xs"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <label className="font-bold text-[#475569] block">
-                    Fecha Entrega:
-                  </label>
-                  {!isEndDateCustomized && (
-                    <span className="text-[10px] font-semibold text-[#501f92] bg-[#f2ecfb] px-1.5 py-0.2 rounded">
-                      Sugerida
-                    </span>
-                  )}
-                </div>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => {
-                    setEndDate(e.target.value);
-                    setIsEndDateCustomized(true);
-                  }}
-                  className={`w-full p-2.5 rounded-xl border transition-colors focus:ring-2 focus:ring-[#501f92] shadow-2xs ${
-                    !isEndDateCustomized
-                      ? 'bg-[#faf5ff] border-[#d8b4fe] text-[#475569] font-medium'
-                      : 'bg-white border-[#cbd5e1] text-[#0f172a] font-medium'
-                  }`}
-                />
-              </div>
+            <div className="p-3 rounded-xl bg-[#faf5ff] border border-[#e9d5ff] text-[11px] text-[#501f92] flex items-start gap-2">
+              <Calendar className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>
+                Las fechas de inicio y entrega <strong>no se definen aquí</strong>. Cada proyecto nace <strong>Por iniciar</strong> y el líder fija el arranque con <strong>«Iniciar proyecto 🚀»</strong>, donde Orbit calcula la entrega con las semanas del alcance, los gates y las tandas de ajuste.
+              </span>
             </div>
           </div>
 

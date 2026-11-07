@@ -137,7 +137,8 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
 
     const isTodayOrDue = (t: TaskItem) => {
       if (t.scheduledDate === todayIso || t.dueDate === todayIso) return true;
-      const dueTxt = (t.dueText || '').toLowerCase();
+      // Tarea en curso: su ventana programada (inicio → vencimiento) incluye hoy
+      if (!t.completed && t.scheduledDate && t.dueDate && t.scheduledDate <= todayIso && todayIso <= t.dueDate) return true;      const dueTxt = (t.dueText || '').toLowerCase();
       if (dueTxt.includes('hoy') || dueTxt.includes('vencid') || dueTxt.includes('urgente')) return true;
       if (t.dueStatus === 'overdue' || t.dueStatus === 'urgent') return true;
       return false;

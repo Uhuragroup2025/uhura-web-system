@@ -10,6 +10,7 @@ import { ProjectTeamTab } from './projects/ProjectTeamTab';
 import { ProjectTasksTab } from './projects/ProjectTasksTab';
 import { ScheduleProjectModal } from './ScheduleProjectModal';
 import { initialUsers } from './mockData';
+import { computeScheduleBaseline, planProjectSchedule } from './schedule/scheduleEngine';
 import { UserAvatar } from './UserAvatar';
 import {
   Button,
@@ -126,6 +127,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   const [scheduleKickoffDate, setScheduleKickoffDate] = useState<string>('');
   const [scheduleDurationWeeks, setScheduleDurationWeeks] = useState<number>(4);
   const [scheduleReworkRounds, setScheduleReworkRounds] = useState<number>(2);
+  const [scheduleReworkRoundDays, setScheduleReworkRoundDays] = useState<number>(3);
   const [scheduleRecalculateTasks, setScheduleRecalculateTasks] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'fee_monthly' | 'fixed_project' | 'internal_non_billable' | 'risk'>('all');
@@ -559,12 +561,12 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   useEffect(() => {
     if (currentProject) {
       setScheduleKickoffDate(currentProject.startDate || new Date().toISOString().slice(0, 10));
-      setScheduleReworkRounds(currentProject.scheduleConfig?.includedReworkRounds || 2);
-      if (currentProject.startDate && currentProject.endDate) {
-        const start = new Date(currentProject.startDate).getTime();
-        const end = new Date(currentProject.endDate).getTime();
-        const diffWeeks = Math.max(1, Math.round((end - start) / (1000 * 60 * 60 * 24 * 7)));
-        setScheduleDurationWeeks(diffWeeks);
+      setScheduleReworkRounds(currentProject.scheduleConfig?.includedReworkRounds ?? 2);
+      setScheduleReworkRoundDays(currentProject.scheduleConfig?.reworkRoundDays ?? 3);
+      // Semanas de producción: fuente de verdad = Alcance (productionWeeks heredado de la conversión)
+      const scopeWeeks = currentProject.scheduleConfig?.productionWeeks;
+      if (scopeWeeks && scopeWeeks > 0) {
+        setScheduleDurationWeeks(scopeWeeks);
       } else {
         const estWeeks = Math.max(1, Math.round((currentProject.budgetedHours || 20) / 20));
         setScheduleDurationWeeks(estWeeks);
@@ -572,83 +574,98 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
     }
   }, [currentProject?.id, isScheduleModalOpen]);
 
-  const calculatedEndDate = useMemo(() => {
-    if (!scheduleKickoffDate) return '';
-    const d = new Date(scheduleKickoffDate);
-    d.setDate(d.getDate() + (scheduleDurationWeeks * 7));
-    return d.toISOString().slice(0, 10);
-  }, [scheduleKickoffDate, scheduleDurationWeeks]);
+  const isCurrentProjectFee = normalizeProjectType(currentProject?.projectType) === 'fee_monthly';
+
+  const scheduleConfigDraft = useMemo(() => ({
+    ...(currentProject?.scheduleConfig || {}),
+    includedReworkRounds: scheduleReworkRounds,
+    reworkRoundDays: scheduleReworkRoundDays,
+    productionWeeks: scheduleDurationWeeks
+  }), [currentProject?.scheduleConfig, scheduleReworkRounds, scheduleReworkRoundDays, scheduleDurationWeeks]);
+
+  const scheduleBreakdown = useMemo(() => {
+    if (!scheduleKickoffDate) return null;
+    return computeScheduleBaseline({
+      startDate: scheduleKickoffDate,
+      productionWeeks: scheduleDurationWeeks,
+      config: scheduleConfigDraft,
+      isFee: isCurrentProjectFee
+    });
+  }, [scheduleKickoffDate, scheduleDurationWeeks, scheduleConfigDraft, isCurrentProjectFee]);
+
+  const calculatedEndDate = scheduleBreakdown?.endDate || '';
 
   const handleConfirmKickoff = () => {
     if (!currentProject || !scheduleKickoffDate) return;
-    const finalEndDate = calculatedEndDate;
-
-    const updatedDeliverables = (currentProject.deliverables || []).map((d, dIdx, allDels) => {
-      const totalSpanDays = scheduleDurationWeeks * 7;
-      const daysPerDel = allDels.length > 0 ? totalSpanDays / allDels.length : totalSpanDays;
-      const delStartDayOffset = Math.round(dIdx * daysPerDel);
-      const delEndDayOffset = Math.round((dIdx + 1) * daysPerDel);
-
-      const dStartDate = new Date(scheduleKickoffDate);
-      dStartDate.setDate(dStartDate.getDate() + delStartDayOffset);
-
-      const dEndDate = new Date(scheduleKickoffDate);
-      dEndDate.setDate(dEndDate.getDate() + delEndDayOffset);
-
-      return {
-        ...d,
-        startDate: dStartDate.toISOString().slice(0, 10),
-        endDate: dEndDate.toISOString().slice(0, 10)
-      };
+    const projectTasks = tasks.filter((t) => t.projectId === currentProject.id);
+    const plan = planProjectSchedule({
+      startDate: scheduleKickoffDate,
+      productionWeeks: scheduleDurationWeeks,
+      config: scheduleConfigDraft,
+      isFee: isCurrentProjectFee,
+      deliverables: (currentProject.deliverables || []).map((d) => ({
+        id: d.id,
+        name: d.name,
+        totalQuotedHours: d.totalQuotedHours
+      })),
+      tasks: projectTasks.map((t) => ({ id: t.id, deliverableId: t.deliverableId, budgetedHours: t.budgetedHours }))
     });
+    const finalStartDate = plan.baseline.startDate;
+    const finalEndDate = plan.baseline.endDate;
+    const plannedDelById = new Map(plan.deliverables.map((d) => [d.id, d]));
+
+    const updatedDeliverables = (currentProject.deliverables || []).map((d) => {
+      const planned = plannedDelById.get(d.id);
+      return planned ? { ...d, startDate: planned.startDate, endDate: planned.endDate } : d;
+    });
+
+    // Primer arranque: congela la línea base. Ajustes posteriores solo mueven el forecast.
+    const isFirstKickoff = !currentProject.isKickedOff || !currentProject.baselineEndDate;
 
     const updatedProject: ProjectSummaryItem = {
       ...currentProject,
       status: 'Activo',
-      startDate: scheduleKickoffDate,
+      startDate: finalStartDate,
       endDate: finalEndDate,
+      baselineStartDate: isFirstKickoff ? finalStartDate : currentProject.baselineStartDate,
+      baselineEndDate: isFirstKickoff ? finalEndDate : currentProject.baselineEndDate,
+      forecastEndDate: finalEndDate,
       deliverables: updatedDeliverables,
       isKickedOff: true,
       scheduleConfig: {
         clientKickoffWaitDays: currentProject.scheduleConfig?.clientKickoffWaitDays ?? 3,
         gateApprovalWaitDays: currentProject.scheduleConfig?.gateApprovalWaitDays ?? 5,
         gateCount: currentProject.scheduleConfig?.gateCount ?? 2,
-        includedReworkRounds: scheduleReworkRounds
+        includedReworkRounds: scheduleReworkRounds,
+        reworkRoundDays: scheduleReworkRoundDays,
+        productionWeeks: scheduleDurationWeeks
       },
-      healthNote: `Proyecto iniciado formalmente el ${scheduleKickoffDate} con cronograma alineado.`
+      healthNote: `Proyecto iniciado formalmente el ${finalStartDate} con cronograma alineado.`
     };
 
     if (onUpdateProject) {
       onUpdateProject(updatedProject);
     }
 
-    if (scheduleRecalculateTasks && onUpdateAllTasks) {
-      const projectTasks = tasks.filter((t) => t.projectId === currentProject.id);
-      if (projectTasks.length > 0) {
-        const updatedAllTasks = tasks.map((t) => {
-          if (t.projectId !== currentProject.id) return t;
-          const taskIdx = projectTasks.findIndex((pt) => pt.id === t.id);
-          const totalDays = scheduleDurationWeeks * 7;
-          const dayOffset = Math.max(1, Math.round(((taskIdx + 1) / projectTasks.length) * totalDays));
-          const taskDueDate = new Date(scheduleKickoffDate);
-          taskDueDate.setDate(taskDueDate.getDate() + dayOffset);
-          const formattedDueDate = taskDueDate.toISOString().slice(0, 10);
-
-          return {
-            ...t,
-            date: t.date || scheduleKickoffDate,
-            dueDate: formattedDueDate,
-            dueText: `Deadline: ${formattedDueDate}`,
-            dueStatus: 'normal' as const
-          };
-        });
-        onUpdateAllTasks(updatedAllTasks);
-      }
+    if (scheduleRecalculateTasks && onUpdateAllTasks && projectTasks.length > 0) {
+      const updatedAllTasks = tasks.map((t) => {
+        const slot = t.projectId === currentProject.id ? plan.tasks[t.id] : undefined;
+        if (!slot) return t;
+        return {
+          ...t,
+          date: slot.scheduledDate,
+          scheduledDate: slot.scheduledDate,
+          dueDate: slot.dueDate,
+          dueText: `Deadline: ${slot.dueDate}`,
+          dueStatus: 'normal' as const
+        };
+      });
+      onUpdateAllTasks(updatedAllTasks);
     }
 
     setIsScheduleModalOpen(false);
     setScheduleSuccessMessage(
-      `🚀 ¡Proyecto "${currentProject.name}" iniciado formalmente el ${scheduleKickoffDate}! Cronograma alineado y deadlines sincronizados.`
+      `🚀 ¡Proyecto "${currentProject.name}" iniciado formalmente el ${finalStartDate}! Cronograma alineado y deadlines sincronizados.`
     );
     setTimeout(() => setScheduleSuccessMessage(null), 6000);
   };
@@ -771,7 +788,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                     </span>
                     <span
                       className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#f0fdf4] text-[#166534] border border-[#bbf7d0]"
-                      title="2 tandas por gate: 1 tanda grande de feedback estructural + 1 tanda menor de afinamiento"
+                      title={`${currentProject.scheduleConfig?.includedReworkRounds ?? 2} tandas por gate · ${currentProject.scheduleConfig?.reworkRoundDays ?? 3} días hábiles por tanda (incluidas en la línea base)`}
                     >
                       🔄 Tandas de ajuste: {currentProject.scheduleConfig?.includedReworkRounds || 2} por gate
                     </span>
@@ -926,7 +943,9 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             <div className="p-3 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] flex flex-col justify-between">
               <span className="text-[10px] uppercase font-bold text-[#64748b] block">Cronograma</span>
               <span className="text-xs font-bold text-[#0f172a] block truncate mt-0.5">
-                {currentProject.startDate || '15 Ago'} → {currentProject.endDate || '31 Dic'}
+                {isProjectPendingToStart && !currentProject.startDate
+                  ? 'Se define al iniciar'
+                  : `${currentProject.startDate || '—'} → ${currentProject.forecastEndDate || currentProject.endDate || '—'}`}
               </span>
               <div className="mt-1">
                 <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ${
@@ -934,9 +953,11 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                     ? 'bg-[#f1f5f9] text-[#64748b]'
                     : currentProject.status === 'En Pausa'
                     ? 'bg-[#fffbeb] text-[#b45309]'
+                    : isProjectPendingToStart
+                    ? 'bg-[#faf5ff] text-[#501f92]'
                     : 'bg-[#ecfdf5] text-[#166534]'
                 }`}>
-                  {currentProject.status || 'Activo'}
+                  {isProjectPendingToStart ? 'Por iniciar' : (currentProject.status || 'Activo')}
                 </span>
               </div>
             </div>
@@ -1773,7 +1794,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <label className="font-bold text-[#334155]">
-                      Duración Estimada (Semanas):
+                      Semanas de producción{currentProject.scheduleConfig?.productionWeeks ? ' (del alcance)' : ''}:
                     </label>
                     <div className="flex items-center gap-1">
                       {[2, 4, 6, 8, 12].map((w) => (
@@ -1801,24 +1822,37 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                     className="w-full p-2.5 rounded-xl border border-[#cbd5e1] font-semibold text-xs text-[#0f172a] focus:ring-2 focus:ring-[#501f92]"
                   />
 
-                  {/* Banner de fecha de entrega calculada */}
-                  {calculatedEndDate && (
-                    <div className="p-3 rounded-xl bg-[#faf5ff] border border-[#e9d5ff] flex items-center justify-between text-xs mt-2">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-[#501f92] shrink-0" />
-                        <div>
-                          <span className="text-[10.5px] text-[#64748b] block">Fecha proyectada de cierre:</span>
-                          <strong className="text-[#501f92] font-bold text-xs">{calculatedEndDate}</strong>
+                  {/* Desglose de la línea base en días hábiles */}
+                  {scheduleBreakdown && (
+                    <div className="p-3 rounded-xl bg-[#faf5ff] border border-[#e9d5ff] text-xs mt-2 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-[#501f92] shrink-0" />
+                          <div>
+                            <span className="text-[10.5px] text-[#64748b] block">Entrega (línea base):</span>
+                            <strong className="text-[#501f92] font-bold text-xs">{scheduleBreakdown.endDate}</strong>
+                          </div>
                         </div>
+                        <span className="text-[10px] font-semibold text-[#64748b] bg-white px-2 py-1 rounded-md border border-[#e9d5ff]">
+                          {scheduleBreakdown.totalBusinessDays} días hábiles
+                        </span>
                       </div>
-                      <span className="text-[10px] font-semibold text-[#64748b] bg-white px-2 py-1 rounded-md border border-[#e9d5ff]">
-                        ~{scheduleDurationWeeks * 5} días hábiles
-                      </span>
+                      <ul className="text-[10.5px] text-[#475569] space-y-0.5 border-t border-[#e9d5ff] pt-2">
+                        <li className="flex justify-between"><span>Producción ({scheduleDurationWeeks} sem.)</span><strong>{scheduleBreakdown.productionDays} d</strong></li>
+                        <li className="flex justify-between"><span>Devolución de kickoff (cliente)</span><strong>{scheduleBreakdown.kickoffWaitDays} d</strong></li>
+                        {scheduleBreakdown.gateCount > 0 && (
+                          <>
+                            <li className="flex justify-between"><span>Aprobación cliente ({scheduleBreakdown.gateCount} gates × {scheduleBreakdown.gateApprovalDays / scheduleBreakdown.gateCount} d)</span><strong>{scheduleBreakdown.gateApprovalDays} d</strong></li>
+                            <li className="flex justify-between"><span>Tandas de ajuste ({scheduleBreakdown.gateCount} gates × {scheduleBreakdown.reworkRounds} tandas × {scheduleBreakdown.reworkRoundDays} d)</span><strong>{scheduleBreakdown.reworkDays} d</strong></li>
+                          </>
+                        )}
+                      </ul>
                     </div>
                   )}
                 </div>
 
                 {/* 3. Tandas de ajuste permitidas por gate / entrega */}
+                {!isCurrentProjectFee && (
                 <div className="space-y-1.5 p-3.5 rounded-xl bg-[#faf5ff] border border-[#e9d5ff]">
                   <div className="flex items-center justify-between">
                     <label className="font-bold text-[#334155] flex items-center gap-1.5">
@@ -1854,7 +1888,21 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                       rondas de feedback incluidas contractualmente por cada hito formal antes de cobrar sobrecostos.
                     </span>
                   </div>
+                  <div className="flex items-center gap-2 pt-1">
+                    <input
+                      type="number"
+                      min="1"
+                      max="15"
+                      value={scheduleReworkRoundDays}
+                      onChange={(e) => setScheduleReworkRoundDays(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                      className="w-20 p-2 rounded-xl border border-[#cbd5e1] font-bold text-xs text-[#0f172a] focus:ring-2 focus:ring-[#501f92] bg-white"
+                    />
+                    <span className="text-[11px] text-[#64748b] leading-tight">
+                      días hábiles por tanda (feedback del cliente + aplicación de ajustes). Incluidas en el plan: no cuentan como desvío.
+                    </span>
+                  </div>
                 </div>
+                )}
 
                 {/* 4. Recálculo automático de Deadlines */}
                 <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-2">

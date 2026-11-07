@@ -106,7 +106,7 @@ interface NewBusinessViewProps {
     leadUserIds?: string[];
     specialistUserIds?: string[];
     leadName: string;
-    startDate: string;
+    startDate?: string;
     endDate?: string;
     initialFormalizationStatus?: 'pendiente_formalizacion' | 'activo';
     startConditionsConfig?: any;
@@ -633,7 +633,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
     leadUserIds?: string[];
     specialistUserIds?: string[];
     leadName: string;
-    startDate: string;
+    startDate?: string;
     endDate?: string;
     initialFormalizationStatus?: 'pendiente_formalizacion' | 'activo';
     startConditionsConfig?: any;

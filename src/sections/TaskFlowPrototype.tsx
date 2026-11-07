@@ -1920,8 +1920,8 @@ export const TaskFlowPrototype: React.FC = () => {
     leadUserIds?: string[];
     specialistUserIds?: string[];
     leadName: string;
-    startDate: string;
-    endDate?: string;
+    startDate?: string; // Obsoleto: las fechas se fijan al «Iniciar proyecto»
+    endDate?: string;   // Obsoleto: las fechas se fijan al «Iniciar proyecto»
     initialFormalizationStatus?: 'pendiente_formalizacion' | 'activo';
     startConditionsConfig?: any;
     approvedServiceIds?: string[];
@@ -2122,8 +2122,8 @@ export const TaskFlowPrototype: React.FC = () => {
           soldValue: soldValue > 0 ? soldValue : undefined,
           soldValueCOP,
           soldCurrency: quoteCurrency,
-          startDate: payload.startDate,
-          endDate: payload.endDate,
+          startDate: undefined, // Se define al «Iniciar proyecto»
+          endDate: undefined,
           brief: opp.briefSummary || opp.discoveryNotes,
           briefUrl: opp.briefUrl || null,
           deliverables: newProjectDeliverables,
@@ -2141,7 +2141,9 @@ export const TaskFlowPrototype: React.FC = () => {
             clientKickoffWaitDays: (projItem as any).scheduleConfig?.clientKickoffWaitDays ?? 3,
             gateApprovalWaitDays: (projItem as any).scheduleConfig?.gateApprovalWaitDays ?? 5,
             gateCount: (projItem as any).scheduleConfig?.gateCount ?? 2,
-            includedReworkRounds: (projItem as any).scheduleConfig?.includedReworkRounds ?? (projItem as any).includedReworkRounds ?? 2
+            includedReworkRounds: (projItem as any).scheduleConfig?.includedReworkRounds ?? (projItem as any).includedReworkRounds ?? 2,
+            reworkRoundDays: (projItem as any).scheduleConfig?.reworkRoundDays ?? 3,
+            productionWeeks: (projItem as any).scheduleConfig?.productionWeeks
           },
           healthNote: `Proyecto independiente creado a partir del servicio ganado "${projItem.serviceName}"`
         };
@@ -2179,9 +2181,9 @@ export const TaskFlowPrototype: React.FC = () => {
               board: projItem.projectName,
               department: 'Operaciones',
               date: new Date().toISOString().slice(0, 10),
-              dueDate: payload.endDate || new Date().toISOString().slice(0, 10),
+              dueDate: '', // Se programa al «Iniciar proyecto»
               dueStatus: 'normal',
-              dueText: 'Planificado en Scoping',
+              dueText: 'Se programa al iniciar el proyecto',
               budgetedHours: bItem.estimatedHours || 0,
               consumedSeconds: 0,
               completed: false,
@@ -2272,8 +2274,8 @@ export const TaskFlowPrototype: React.FC = () => {
         soldValue: fixedSoldValue > 0 ? fixedSoldValue : undefined,
         soldValueCOP: quoteCurrency === 'COP' && fixedSoldValue > 0 ? fixedSoldValue : undefined,
         soldCurrency: quoteCurrency,
-        startDate: payload.startDate,
-        endDate: payload.endDate,
+        startDate: undefined, // Se define al «Iniciar proyecto»
+        endDate: undefined,
         brief: opp.briefSummary || opp.discoveryNotes,
         briefUrl: opp.briefUrl || null,
         deliverables: newProjectDeliverablesFixed,
@@ -2291,7 +2293,9 @@ export const TaskFlowPrototype: React.FC = () => {
           clientKickoffWaitDays: (payload as any).scheduleConfig?.clientKickoffWaitDays ?? 3,
           gateApprovalWaitDays: (payload as any).scheduleConfig?.gateApprovalWaitDays ?? 5,
           gateCount: (payload as any).scheduleConfig?.gateCount ?? 2,
-          includedReworkRounds: (payload as any).scheduleConfig?.includedReworkRounds ?? (payload as any).includedReworkRounds ?? 2
+          includedReworkRounds: (payload as any).scheduleConfig?.includedReworkRounds ?? (payload as any).includedReworkRounds ?? 2,
+          reworkRoundDays: (payload as any).scheduleConfig?.reworkRoundDays ?? 3,
+          productionWeeks: (payload as any).scheduleConfig?.productionWeeks
         },
         healthNote: 'Proyecto puntual de propuesta mixta ganado en New Business'
       };
@@ -2333,8 +2337,8 @@ export const TaskFlowPrototype: React.FC = () => {
         soldValue: feeSoldTotal > 0 ? feeSoldTotal : undefined,
         soldValueCOP: quoteCurrency === 'COP' && feeSoldTotal > 0 ? feeSoldTotal : undefined,
         soldCurrency: quoteCurrency,
-        startDate: payload.startDate,
-        endDate: payload.endDate,
+        startDate: undefined, // Se define al «Iniciar proyecto»
+        endDate: undefined,
         brief: opp.briefSummary || opp.discoveryNotes,
         briefUrl: opp.briefUrl || null,
         deliverables: newProjectDeliverablesFee,
@@ -2352,7 +2356,9 @@ export const TaskFlowPrototype: React.FC = () => {
           clientKickoffWaitDays: (payload as any).scheduleConfig?.clientKickoffWaitDays ?? 3,
           gateApprovalWaitDays: (payload as any).scheduleConfig?.gateApprovalWaitDays ?? 5,
           gateCount: (payload as any).scheduleConfig?.gateCount ?? 2,
-          includedReworkRounds: (payload as any).scheduleConfig?.includedReworkRounds ?? (payload as any).includedReworkRounds ?? 2
+          includedReworkRounds: (payload as any).scheduleConfig?.includedReworkRounds ?? (payload as any).includedReworkRounds ?? 2,
+          reworkRoundDays: (payload as any).scheduleConfig?.reworkRoundDays ?? 3,
+          productionWeeks: (payload as any).scheduleConfig?.productionWeeks
         },
         healthNote: 'Proyecto fee mensual de propuesta mixta ganado en New Business'
       };
@@ -2399,9 +2405,9 @@ export const TaskFlowPrototype: React.FC = () => {
             board: fixedName,
             department: 'Operaciones',
             date: new Date().toISOString().slice(0, 10),
-            dueDate: payload.endDate || new Date().toISOString().slice(0, 10),
+            dueDate: '', // Se programa al «Iniciar proyecto»
             dueStatus: 'normal',
-            dueText: 'Planificado en Scoping',
+            dueText: 'Se programa al iniciar el proyecto',
             budgetedHours: bItem.estimatedHours || 0,
             consumedSeconds: 0,
             completed: false,
@@ -2442,9 +2448,9 @@ export const TaskFlowPrototype: React.FC = () => {
             board: feeName,
             department: 'Operaciones',
             date: new Date().toISOString().slice(0, 10),
-            dueDate: payload.endDate || new Date().toISOString().slice(0, 10),
+            dueDate: '', // Se programa al «Iniciar proyecto»
             dueStatus: 'normal',
-            dueText: 'Planificado en Scoping',
+            dueText: 'Se programa al iniciar el proyecto',
             budgetedHours: bItem.estimatedHours || 0,
             consumedSeconds: 0,
             completed: false,
@@ -2517,8 +2523,8 @@ export const TaskFlowPrototype: React.FC = () => {
         soldValue,
         soldValueCOP,
         soldCurrency: quoteCurrency,
-        startDate: payload.startDate,
-        endDate: payload.endDate,
+        startDate: undefined, // Se define al «Iniciar proyecto»
+        endDate: undefined,
         brief: opp.briefSummary || opp.discoveryNotes,
         briefUrl: opp.briefUrl || null,
         deliverables: newProjectDeliverables,
@@ -2536,7 +2542,9 @@ export const TaskFlowPrototype: React.FC = () => {
           clientKickoffWaitDays: (payload as any).scheduleConfig?.clientKickoffWaitDays ?? 3,
           gateApprovalWaitDays: (payload as any).scheduleConfig?.gateApprovalWaitDays ?? 5,
           gateCount: (payload as any).scheduleConfig?.gateCount ?? 2,
-          includedReworkRounds: (payload as any).scheduleConfig?.includedReworkRounds ?? (payload as any).includedReworkRounds ?? 2
+          includedReworkRounds: (payload as any).scheduleConfig?.includedReworkRounds ?? (payload as any).includedReworkRounds ?? 2,
+          reworkRoundDays: (payload as any).scheduleConfig?.reworkRoundDays ?? 3,
+          productionWeeks: (payload as any).scheduleConfig?.productionWeeks
         },
         healthNote: 'Proyecto recién ganado y aprobado en New Business'
       };
@@ -2572,9 +2580,9 @@ export const TaskFlowPrototype: React.FC = () => {
             board: payload.projectName,
             department: 'Operaciones',
             date: new Date().toISOString().slice(0, 10),
-            dueDate: payload.endDate || new Date().toISOString().slice(0, 10),
+            dueDate: '', // Se programa al «Iniciar proyecto»
             dueStatus: 'normal',
-            dueText: 'Planificado en Scoping',
+            dueText: 'Se programa al iniciar el proyecto',
             budgetedHours: bItem.estimatedHours || 0,
             consumedSeconds: 0,
             completed: false,
