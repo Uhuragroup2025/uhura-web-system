@@ -174,11 +174,11 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
 
   useEffect(() => {
     setProjectNames((prev) => {
+      const missing = wonServices.filter((svc) => !prev[svc.serviceId]);
+      if (missing.length === 0) return prev; // sin cambios: evita re-render en bucle
       const next = { ...prev };
-      wonServices.forEach((svc) => {
-        if (!next[svc.serviceId]) {
-          next[svc.serviceId] = `${svc.serviceName} — ${clientName}`;
-        }
+      missing.forEach((svc) => {
+        next[svc.serviceId] = `${svc.serviceName} — ${clientName}`;
       });
       return next;
     });
@@ -212,12 +212,12 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
   // Inicializar líderes por servicio con el líder de scoping por defecto
   useEffect(() => {
     setServiceLeadUserIds((prev) => {
-      const next = { ...prev };
       const defaultId = initialLeadUser?.id || eligibleLeaders[0]?.id || '';
-      wonServices.forEach((svc) => {
-        if (!next[svc.serviceId] && defaultId) {
-          next[svc.serviceId] = defaultId;
-        }
+      const missing = defaultId ? wonServices.filter((svc) => !prev[svc.serviceId]) : [];
+      if (missing.length === 0) return prev; // sin cambios: evita re-render en bucle
+      const next = { ...prev };
+      missing.forEach((svc) => {
+        next[svc.serviceId] = defaultId;
       });
       return next;
     });

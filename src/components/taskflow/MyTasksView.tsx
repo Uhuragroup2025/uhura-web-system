@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { TaskItem, ActiveTimerState, TaskStatus, TaskPriority, UserItem, ProjectSummaryItem } from './types';
 import { getUserAccessLevel } from './auth/permissions';
-import { makePersonMatcher, getTaskRelation, isProjectResponsible, makeTaskProjectResolver } from './auth/taskVisibility';
+import { makePersonMatcher, getTaskRelation, isProjectResponsible, makeTaskProjectResolver, makeTaskComparator } from './auth/taskVisibility';
 import { UserAvatar } from './UserAvatar';
 import {
   Button,
@@ -170,31 +170,10 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
       return true;
     });
 
-    // Automatic default sorting by due date (nearest first), leaving overdue and today on top
-    return list.sort((a, b) => {
-      const aDone = a.completed || a.status === 'Done';
-      const bDone = b.completed || b.status === 'Done';
-      if (aDone && !bDone) return 1;
-      if (!aDone && bDone) return -1;
-
-      const getTimestamp = (t: TaskItem) => {
-        if (!t.dueDate) return 9999999999999;
-        const d = new Date(t.dueDate).getTime();
-        return isNaN(d) ? 9999999999999 : d;
-      };
-
-      const timeA = getTimestamp(a);
-      const timeB = getTimestamp(b);
-
-      if (timeA !== timeB) {
-        return sortDirection === 'asc' ? timeA - timeB : timeB - timeA;
-      }
-
-      const prioWeight: Record<string, number> = { High: 3, Medium: 2, Low: 1 };
-      const weightA = prioWeight[a.priority] || 2;
-      const weightB = prioWeight[b.priority] || 2;
-      return weightB - weightA;
-    });
+    // Orden por defecto: vencidas → urgentes con fecha hoy/mañana → fecha más cercana → prioridad.
+    // La urgencia viene marcada en la tarea; ECO no la infiere.
+    const byDate = makeTaskComparator();
+    return sortDirection === 'asc' ? list.sort(byDate) : list.sort((a, b) => (Boolean(a.completed) !== Boolean(b.completed) ? (a.completed ? 1 : -1) : -byDate(a, b)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tasks, viewMode, filterTab, categoryFilter, selectedClient, selectedProject, selectedAssignee, searchQuery, sortDirection, identity, matchesMe, myProjectIds, canSeeTeam]);
 

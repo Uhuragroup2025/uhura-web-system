@@ -3701,6 +3701,7 @@ export const TaskFlowPrototype: React.FC = () => {
 
       {/* Floating Beaver Mascot Companion (Codex-Style Interactive Character with Vida Propia) */}
       <FloatingBeaverWidget
+        currentView={currentView}
         loggedHoursToday={loggedHoursToday}
         targetDayHours={8.0}
         onQuickLogHours={handleQuickLogHours}

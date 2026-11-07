@@ -1016,15 +1016,27 @@ Mi Día puede mostrar de forma discreta y no invasiva:
 - *Criterio UI:* Información visible de manera sobria y secundaria, sin competir con la lista de tareas operativas ni saturar el home con widgets pesados.
 
 #### 17.5 Regla de visibilidad de tareas (todos los perfiles)
+- **Mi Día = el cronograma de hoy.** Solo aparecen las tareas cuyo cronograma cae hoy (inicio o vencimiento hoy, o en curso) y las vencidas sin cerrar. La urgencia no la decide ECO: viene marcada en la tarea por quien la pide, y solo sirve para ordenar. Si la persona no tiene nada agendado hoy, Mi Día le muestra **«Próximas»**: sus siguientes tareas por cercanía de fecha y prioridad, para adelantar.
+- **Tareas = todo, ordenado por fecha.** Primero las vencidas, luego las urgentes con fecha hoy o mañana y después el resto por fecha más cercana.
 - **Mis prioridades = solo lo que me pertenece.** En «Qué tengo que hacer hoy» y en «Mis tareas» aparecen únicamente las tareas donde la persona es responsable de ejecución (asignada o colaboradora) y las que le toca revisar. Nunca tareas de otras personas, aunque compartan rol, área o primer nombre.
 - **Seguidores, sin la misma urgencia.** Quien está como seguidor para revisar o estar al tanto ve la tarea en **«Siguiendo»** (bloque plegado en Mi Día y pestaña en Tareas). No cuenta como pendiente, no suma a su carga ni a la bandeja de atención.
-- **Comercial y líder: lo de sus proyectos permea su día.** Insumos y dependencias del cliente, bloqueos, desvíos de horas y retrabajos llegan a la bandeja «Qué requiere mi atención» solo de los proyectos de los que la persona es responsable (líder del proyecto o responsable de cuenta). Dirección y administración del sistema ven todos los proyectos en esa bandeja, pero no las tareas de otros en su lista personal.
+- **Comercial y líder: lo de sus proyectos permea su día.** Insumos y dependencias del cliente, bloqueos, desvíos de horas y retrabajos llegan a la bandeja «¿Qué requiere mi atención?» (parte superior de Mi Día) solo de los proyectos de los que la persona es responsable (líder del proyecto o responsable de cuenta). Dirección y administración del sistema ven en esa misma bandeja las excepciones de todos los proyectos (además del semáforo de Proyectos y del Tablero de Dirección y Finanzas), pero no las tareas de otros en su lista personal.
 - **Tareas · «Equipo»:** el colaborador no lo ve. Líder y comercial ven las tareas de sus proyectos; Dirección y administración, todas.
 - Requisito técnico y criterios de aceptación: `BACKEND_REQUIREMENTS.md` §15.1. Implementación en el prototipo: `auth/taskVisibility.ts`, usada por `MiDiaView.tsx` y `MyTasksView.tsx`.
 
 ---
 
 ### Módulo 18: Bucky y La Colonia (Espacio Social & Lúdico)
+
+> **Nombre (07 Nov 2026):** la mascota se llama **ECO**, igual que la plataforma (antes «Bucky»). Los textos visibles usan «ECO»; los nombres internos de código (`buckyEngine`, `BuckyLabModal`) se mantienen por compatibilidad.
+>
+> **Reglas de la mascota (revisadas 07 Nov 2026):**
+> - Sus alertas («1 cosa para revisar», desvíos, urgentes) usan **solo las tareas de la persona** (misma regla de §17.5); nunca habla de tareas ajenas.
+> - Se oculta dentro de La Colonia y puede apagarse; al reactivarla sale saludando. Apagado, sonido y modo navideño son preferencias personales.
+> - Los cumpleaños y aniversarios se calculan con la fecha real del día.
+> - **Modo navideño:** se activa al hacer clic en la mascota → «🎄 Modo navideño». Pone gorro a la mascota, nieve suave sobre la app (se desactiva si el sistema pide reducir movimiento) y un 🎄 junto al logo. Es solo visual y por persona.
+> - **Modo del menú lateral:** sol (claro) o luna (oscuro, predeterminado), en el pie del menú. Solo cambia el menú; el área de trabajo sigue en blanco como en producción.
+> - El laboratorio de la mascota (`Shift+Alt+B` / `?buckyLab=true`) es solo de desarrollo y no va a producción.
 
 #### 18.1 Propósito y Definición Funcional Cerrada
 - **Bucky:** Asistente contextual de ECO que acompaña la jornada laboral, alerta sobre timers olvidados, tareas bloqueadas y deadlines. En la vista global de ECO actúa como widget flotante; al ingresar a La Colonia, el widget flotante global desaparece para dar paso al Bucky protagonista dentro de su hábitat.

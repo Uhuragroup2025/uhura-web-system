@@ -88,3 +88,65 @@ export function makeTaskProjectResolver(projects: ProjectSummaryItem[]) {
     (task.projectId && byId.get(task.projectId)) ||
     byName.get((task.projectName || task.board || '').toLowerCase());
 }
+
+// ── Orden y agenda del día ────────────────────────────────────────────────────
+// La urgencia no la decide ECO: viene en la tarea (prioridad «urgente» puesta por quien la pide).
+// Lo que ECO ordena es la cercanía de la fecha del cronograma.
+
+const isoDay = (d: Date) => d.toISOString().slice(0, 10);
+const addDaysIso = (iso: string, days: number) => {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return isoDay(d);
+};
+const isIso = (s?: string | null) => Boolean(s && /^\d{4}-\d{2}-\d{2}/.test(s));
+
+export const isUrgentTask = (t: TaskItem) => String(t.priority).toLowerCase() === 'urgent';
+
+/** Fecha de referencia del cronograma: vencimiento, si no, inicio programado. */
+export const taskScheduleDate = (t: TaskItem): string | null =>
+  (isIso(t.dueDate) ? t.dueDate!.slice(0, 10) : null) || (isIso(t.scheduledDate) ? t.scheduledDate!.slice(0, 10) : null);
+
+/**
+ * ¿Está en el cronograma de hoy? Inicio o vencimiento hoy, ventana en curso que incluye hoy,
+ * o vencida sin completar (sigue siendo trabajo de hoy). La prioridad no cuenta aquí.
+ */
+export function isScheduledForDay(t: TaskItem, todayIso: string = isoDay(new Date())): boolean {
+  if (t.completed) return t.scheduledDate === todayIso || t.dueDate === todayIso;
+  const start = isIso(t.scheduledDate) ? t.scheduledDate!.slice(0, 10) : null;
+  const due = isIso(t.dueDate) ? t.dueDate!.slice(0, 10) : null;
+  if (start === todayIso || due === todayIso) return true;
+  if (start && due && start <= todayIso && todayIso <= due) return true;
+  if (due && due < todayIso) return true; // vencida
+  if (!start && !due) {
+    // Datos de demostración sin fecha ISO: se usa el texto de vencimiento
+    const txt = (t.dueText || '').toLowerCase();
+    return txt.includes('hoy') || txt.includes('vencid');
+  }
+  return false;
+}
+
+/**
+ * Rango de orden: 0 vencidas · 1 urgentes con fecha hoy o mañana · 2 el resto.
+ * Dentro de cada rango: fecha más cercana primero y, a igual fecha, la urgente/alta primero.
+ */
+export function makeTaskComparator(todayIso: string = isoDay(new Date())) {
+  const tomorrow = addDaysIso(todayIso, 1);
+  const prio: Record<string, number> = { urgent: 4, high: 3, medium: 2, low: 1 };
+  const rank = (t: TaskItem) => {
+    const d = taskScheduleDate(t);
+    if (d && d < todayIso && !t.completed) return 0;
+    const start = isIso(t.scheduledDate) ? t.scheduledDate!.slice(0, 10) : d;
+    if (isUrgentTask(t) && ((d && d <= tomorrow) || (start && start <= tomorrow))) return 1;
+    return 2;
+  };
+  return (a: TaskItem, b: TaskItem) => {
+    if (Boolean(a.completed) !== Boolean(b.completed)) return a.completed ? 1 : -1;
+    const r = rank(a) - rank(b);
+    if (r !== 0) return r;
+    const da = taskScheduleDate(a) || '9999-12-31';
+    const db = taskScheduleDate(b) || '9999-12-31';
+    if (da !== db) return da < db ? -1 : 1;
+    return (prio[String(b.priority).toLowerCase()] || 2) - (prio[String(a.priority).toLowerCase()] || 2);
+  };
+}

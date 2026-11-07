@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useChristmasMode } from './seasonal/christmasMode';
 import { OrbitView, UserItem } from './types';
 import { canAccessModule } from './auth/permissions';
 import {
@@ -21,7 +22,9 @@ import {
   BookOpen,
   Target,
   Sparkles,
-  Monitor
+  Monitor,
+  Sun,
+  Moon
 } from 'lucide-react';
 
 interface TaskflowSidebarProps {
@@ -46,6 +49,26 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
     costos: false,
     sistema: false
   });
+
+  // Modo del sidebar: oscuro (luna, por defecto) o claro (sol). Preferencia personal del navegador.
+  const [sidebarTheme, setSidebarTheme] = useState<'dark' | 'light'>(() => {
+    try {
+      return localStorage.getItem('eco_sidebar_theme') === 'light' ? 'light' : 'dark';
+    } catch {
+      return 'dark';
+    }
+  });
+  const toggleSidebarTheme = () => {
+    const next = sidebarTheme === 'dark' ? 'light' : 'dark';
+    setSidebarTheme(next);
+    try {
+      localStorage.setItem('eco_sidebar_theme', next);
+    } catch {
+      /* sin almacenamiento */
+    }
+  };
+  const [christmas] = useChristmasMode();
+  const themeToggleLabel = sidebarTheme === 'dark' ? 'Cambiar menú a modo claro' : 'Cambiar menú a modo oscuro';
 
   const toggleSection = (section: string) => {
     setOpenSections((prev) => ({
@@ -81,6 +104,7 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
 
   return (
     <aside
+      data-sidebar-theme={sidebarTheme}
       className={`bg-[#0d0718] border-r border-[#261845] text-white flex flex-col justify-between transition-all duration-200 h-full min-h-full flex-1 ${
         collapsed ? 'w-16 p-2' : 'w-64 p-3.5'
       }`}
@@ -105,6 +129,15 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
                 <PanelLeftOpen className="w-4 h-4 text-[#d4ff4a]" />
               </button>
             )}
+            <button
+              type="button"
+              onClick={toggleSidebarTheme}
+              className="w-full flex items-center justify-center p-1.5 rounded-lg text-[#c9b7ff] hover:bg-[#2e1859] hover:text-white transition-colors cursor-pointer"
+              title={themeToggleLabel}
+              aria-label={themeToggleLabel}
+            >
+              {sidebarTheme === 'dark' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+            </button>
           </div>
         ) : (
           <div className="flex items-center gap-3 px-2 py-2.5 mb-2 border-b border-[#261845]/70 justify-between">
@@ -113,6 +146,7 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
                   <span className="font-extrabold text-base tracking-tight text-white">ECO</span>
+                  {christmas && <span className="text-sm" title="Modo navideño">🎄</span>}
                   <span className="text-[10px] uppercase font-bold tracking-widest px-1.5 py-0.5 rounded bg-[#8a4dff]/30 text-[#c9b7ff]">
                     v2.6
                   </span>
@@ -491,9 +525,34 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
 
       {/* Footer */}
       {!collapsed && (
-        <div className="pt-3 mt-2 border-t border-[#261845] text-[11px] text-[#c9b7ff]/60 flex items-center justify-between px-2">
+        <div className="pt-3 mt-2 border-t border-[#261845] text-[11px] text-[#c9b7ff]/60 flex items-center justify-between gap-2 px-2">
           <span>Uhura OS · ECO</span>
-          <span className="font-mono text-[10px]">v2.6</span>
+          <div
+            role="radiogroup"
+            aria-label="Modo del menú"
+            className="flex items-center gap-0.5 p-0.5 rounded-full border border-[#261845]"
+          >
+            <button
+              type="button"
+              role="radio"
+              aria-checked={sidebarTheme === 'light'}
+              onClick={() => sidebarTheme !== 'light' && toggleSidebarTheme()}
+              className={`p-1 rounded-full cursor-pointer transition-colors ${sidebarTheme === 'light' ? 'bg-[#f3eefe] text-[#501f92]' : 'text-[#c9b7ff]/60 hover:text-white'}`}
+              title="Modo claro"
+            >
+              <Sun className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={sidebarTheme === 'dark'}
+              onClick={() => sidebarTheme !== 'dark' && toggleSidebarTheme()}
+              className={`p-1 rounded-full cursor-pointer transition-colors ${sidebarTheme === 'dark' ? 'bg-[#1e113a] text-[#d4ff4a]' : 'text-[#c9b7ff]/60 hover:text-white'}`}
+              title="Modo oscuro"
+            >
+              <Moon className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
       )}
     </aside>

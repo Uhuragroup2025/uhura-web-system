@@ -44,7 +44,7 @@ import {
   TeamAbsenceEvent
 } from './types';
 import { getUserAccessLevel, can } from './auth/permissions';
-import { makePersonMatcher, getTaskRelation, isProjectResponsible, makeTaskProjectResolver } from './auth/taskVisibility';
+import { makePersonMatcher, getTaskRelation, isProjectResponsible, makeTaskProjectResolver, isScheduledForDay, makeTaskComparator, isUrgentTask, taskScheduleDate } from './auth/taskVisibility';
 import { initialUsers, initialAbsenceEvents } from './mockData';
 import { processTeamLifeEvents } from './copilot/teamLifeEngine';
 import { calculateBusinessDays } from './health/projectHealthEngine';
@@ -142,16 +142,10 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
   };
 
   const todayIsoForTasks = new Date().toISOString().split('T')[0];
-  const isTodayOrDue = (t: TaskItem) => {
-    const todayIso = todayIsoForTasks;
-    if (t.scheduledDate === todayIso || t.dueDate === todayIso) return true;
-    // Tarea en curso: su ventana programada (inicio → vencimiento) incluye hoy
-    if (!t.completed && t.scheduledDate && t.dueDate && t.scheduledDate <= todayIso && todayIso <= t.dueDate) return true;
-    const dueTxt = (t.dueText || '').toLowerCase();
-    if (dueTxt.includes('hoy') || dueTxt.includes('vencid') || dueTxt.includes('urgente')) return true;
-    if (t.dueStatus === 'overdue' || t.dueStatus === 'urgent') return true;
-    return false;
-  };
+  // Mi Día = solo lo que el cronograma pone para hoy (incluye ventana en curso y vencidas).
+  // La prioridad «urgente» no mete una tarea al día: solo la ordena primero.
+  const isTodayOrDue = (t: TaskItem) => isScheduledForDay(t, todayIsoForTasks);
+  const compareTasks = useMemo(() => makeTaskComparator(todayIsoForTasks), [todayIsoForTasks]);
 
   const assignedTasks = useMemo(() => {
     return tasks
@@ -163,15 +157,22 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
         if (relation === 'owner' && isTodayOrDue(t)) return true;
         return false;
       })
-      .sort((a, b) => {
-        if (a.completed !== b.completed) return a.completed ? 1 : -1;
-        const prioWeight: Record<string, number> = { urgent: 4, High: 3, high: 3, Medium: 2, medium: 2, Low: 1, low: 1 };
-        return (prioWeight[b.priority] || 2) - (prioWeight[a.priority] || 2);
-      });
+      .sort(compareTasks);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tasks, identity, matchesMe, activeTimer?.taskId]);
+  }, [tasks, identity, matchesMe, activeTimer?.taskId, compareTasks]);
 
   const activeUserTasks = assignedTasks;
+
+  // Si la persona no tiene nada agendado hoy, se le sugieren sus siguientes tareas
+  // por cercanía de fecha y prioridad (no se «adelantan» al día: se muestran como próximas).
+  const upcomingTasks = useMemo(() => {
+    if (activeUserTasks.some((t) => !t.completed && getTaskRelation(t, identity, matchesMe) === 'owner')) return [];
+    return tasks
+      .filter((t) => !t.completed && !t.isArchived && getTaskRelation(t, identity, matchesMe) === 'owner' && !activeUserTasks.includes(t))
+      .sort(compareTasks)
+      .slice(0, 5);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasks, activeUserTasks, identity, matchesMe, compareTasks]);
 
   // Tareas que sigo: informativas, sin urgencia (no suman a pendientes, atención ni capacidad)
   const followedTasks = useMemo(
@@ -770,13 +771,31 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                 </p>
               </div>
             ) : activeUserTasks.length === 0 ? (
-              <div className="p-6 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] text-center space-y-2">
-                <p className="text-xs font-semibold text-[#64748b]">
-                  No tienes tareas programadas para hoy en tu tablero personal.
-                </p>
-                <p className="text-[11px] text-[#94a3b8]">
-                  Puedes registrar horas de soporte libre o revisar el backlog de Proyectos.
-                </p>
+              <div className="space-y-3">
+                <div className="p-4 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] text-center space-y-1">
+                  <p className="text-xs font-semibold text-[#64748b]">No tienes tareas agendadas para hoy.</p>
+                  <p className="text-[11px] text-[#94a3b8]">
+                    {upcomingTasks.length > 0 ? 'Puedes adelantar tus próximas tareas, ordenadas por fecha y prioridad.' : 'Puedes registrar horas de soporte libre o revisar el backlog de Proyectos.'}
+                  </p>
+                </div>
+                {upcomingTasks.length > 0 && (
+                  <ul className="space-y-1.5" aria-label="Próximas tareas">
+                    {upcomingTasks.map((t) => (
+                      <li key={t.id}>
+                        <button
+                          type="button"
+                          onClick={() => onOpenTaskDetail(t.id)}
+                          className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border border-[#e2e8f0] bg-white hover:border-[#cbd5e1] text-left text-xs cursor-pointer"
+                        >
+                          {isUrgentTask(t) && <span className="shrink-0 px-1.5 py-0.5 rounded-md bg-[#fef2f2] text-[#dc2626] text-[10px] font-bold">Urgente</span>}
+                          <span className="flex-1 min-w-0 truncate font-semibold text-[#0f172a]">{t.title}</span>
+                          <span className="shrink-0 text-[#64748b]">{taskScheduleDate(t) || t.dueText || 'Sin fecha'}</span>
+                          <ChevronRight className="w-4 h-4 text-[#94a3b8] shrink-0" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             ) : (
               <div className="space-y-2.5">
