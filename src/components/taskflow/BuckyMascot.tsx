@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BuckyMascotState } from './types';
 export type { BuckyMascotState };
-import neutralMascotImg from '../../assets/images/orbit_mascot_cutout.png';
-import celebrateRenderImg from '../../assets/images/bucky_celebrate_render_1788557761452.jpg';
-import warningRenderImg from '../../assets/images/bucky_warning_render_1788557774378.jpg';
-import sadRenderImg from '../../assets/images/bucky_sad_render_1788557787368.jpg';
+import neutralMascotImg from '../../assets/images/eco/eco-thumbs-up.webp';
+import celebrateRenderImg from '../../assets/images/eco/eco-celebrating.webp';
+import warningRenderImg from '../../assets/images/eco/eco-worried.webp';
+import sadRenderImg from '../../assets/images/eco/eco-sad.webp';
 import {
   Sparkles,
   AlertTriangle,

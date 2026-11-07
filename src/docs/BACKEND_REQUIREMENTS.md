@@ -705,3 +705,11 @@ Especificación funcional en `ORBIT_PRODUCT_STATUS.md` §11.5 y §11.5.1.
 * `POST …/test`, `POST …/pause`, `POST …/resume` (`system_admin`).
 * `GET …/unmatched` y `POST …/unmatched/{id}/resolve` con `user_id` o `ignore = true` (`system_admin`). Resolver crea el `TeamAbsenceEvent` con `source = 'google_calendar'` y queda en bitácora (quién, cuándo).
 
+---
+
+## 21. Mascota ECO: apariencia de temporada (07 Nov 2026)
+Especificación funcional en `ORBIT_PRODUCT_STATUS.md` (Módulo 18, reglas de la mascota).
+* Configuración de organización `mascot_skin` (`christmas` | `standard`), editable **solo por `system_admin`**; lectura para todos los usuarios autenticados. En el prototipo vive en el navegador (`eco_mascot_skin`); en producción debe persistirse en backend y quedar en bitácora (quién y cuándo la cambió).
+* Preferencias personales (no requieren backend o pueden ir en el perfil): mascota apagada, sonido y nieve.
+* Las emociones de la mascota se calculan en el frontend con las tareas propias del usuario (§15.1); no requieren endpoints nuevos.
+

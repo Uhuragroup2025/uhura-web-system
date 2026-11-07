@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useChristmasMode } from './seasonal/christmasMode';
+import { useMascotSkin } from './mascot/ecoMascot';
 import { OrbitView, UserItem } from './types';
 import { canAccessModule } from './auth/permissions';
 import {
@@ -67,7 +67,7 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
       /* sin almacenamiento */
     }
   };
-  const [christmas] = useChristmasMode();
+  const christmas = useMascotSkin().skin === 'christmas';
   const themeToggleLabel = sidebarTheme === 'dark' ? 'Cambiar menú a modo claro' : 'Cambiar menú a modo oscuro';
 
   const toggleSection = (section: string) => {

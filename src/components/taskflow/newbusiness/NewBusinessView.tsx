@@ -3598,7 +3598,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
             <div className="relative mx-auto w-36 h-36 sm:w-44 sm:h-44 mb-3 flex items-center justify-center">
               <div className="absolute inset-0 bg-gradient-to-tr from-[#d4ff4a]/30 to-[#a78bfa]/30 rounded-full blur-2xl scale-110 animate-pulse" />
               <img
-                src="/bucky_celebrating_cutout.png"
+                src="/brand/eco-celebrating.webp"
                 alt="Bucky Celebrando Propuesta Ganada"
                 className="relative w-full h-full object-contain drop-shadow-[0_12px_32px_rgba(212,255,74,0.45)] animate-bounce"
                 style={{ animationDuration: '1.8s' }}

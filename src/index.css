@@ -500,9 +500,11 @@ select option {
   -webkit-text-fill-color: #0f172a !important;
 }
 
-/* Modals and light panels default text safeguard */
+/* Modals and light panels default text safeguard.
+   Excluye fondos translúcidos de baja opacidad (bg-white/5…/20, también en hover) que se usan sobre paneles oscuros:
+   allí el texto debe seguir siendo claro (p. ej. ventana de la mascota). */
 .bg-white,
-[class*="bg-white"] {
+[class*="bg-white"]:not([class~="bg-white/5"]):not([class~="bg-white/10"]):not([class~="bg-white/15"]):not([class~="bg-white/20"]):not([class~="bg-white/[0.07]"]):not([class~="hover:bg-white/5"]):not([class~="hover:bg-white/10"]):not([class~="hover:bg-white/15"]):not([class~="hover:bg-white/20"]):not([class~="hover:bg-white/[0.07]"]) {
   color: #0f172a;
 }
 

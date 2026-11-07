@@ -7,7 +7,7 @@
 import React from 'react';
 import { BuckyAccessory, ColonyResources } from './types';
 import { X, Check, Lock, Sparkles, ShieldCheck } from 'lucide-react';
-import buckyHoodieHappyImg from '../../../assets/images/bucky_hip_uhura_v3.png';
+import buckyHoodieHappyImg from '../../../assets/images/eco/eco-thumbs-up.webp';
 
 interface ColoniaCustomizerModalProps {
   isOpen: boolean;

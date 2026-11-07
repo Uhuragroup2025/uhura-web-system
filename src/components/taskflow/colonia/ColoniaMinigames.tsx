@@ -13,8 +13,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ColonyGameId, ColonyChallenge, WeeklyLeaderboardEntry, TeammateOption } from './types';
 import { UserItem } from '../types';
-import buckyCelebratingImg from '../../../assets/images/bucky_celebrating_cutout.png';
-import buckyFocusImg from '../../../assets/images/bucky_focus_cutout.png';
+import buckyCelebratingImg from '../../../assets/images/eco/eco-celebrating.webp';
+import buckyFocusImg from '../../../assets/images/eco/eco-focus.webp';
 import {
   loadWeeklyLeaderboards,
   recordWeeklyScore,

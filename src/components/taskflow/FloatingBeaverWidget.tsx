@@ -1,11 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import beaverMascotImg from '../../assets/images/orbit_mascot_cutout.png';
-import buckyHoodieHappyImg from '../../assets/images/bucky_hip_uhura_v3.png';
-import buckyWavingImg from '../../assets/images/bucky_waving_cutout.png';
-import buckyCelebratingImg from '../../assets/images/bucky_celebrating_cutout.png';
-import buckyAlertImg from '../../assets/images/bucky_alert_cutout.png';
-import buckyRestingImg from '../../assets/images/bucky_resting_cutout.png';
-import buckyFocusImg from '../../assets/images/bucky_focus_cutout.png';
 import {
   Flame,
   Zap,
@@ -50,7 +43,10 @@ import { TeamLifeEventsModal } from './copilot/TeamLifeEventsModal';
 import { ActiveBreakModal } from './copilot/ActiveBreakModal';
 import { TeamHumanProfileModal } from './copilot/TeamHumanProfileModal';
 import { initialUsers, initialAbsenceEvents } from './mockData';
-import { useChristmasMode, SantaHat, Snowfall } from './seasonal/christmasMode';
+import { Snowfall } from './seasonal/christmasMode';
+import { useMascotSkin, setMascotSkin, setSnowEnabled, mascotImage, ECO_EMOTION_IMAGES, EcoEmotion, MascotSkin, MASCOT_SKIN_LABEL } from './mascot/ecoMascot';
+import { isScheduledForDay, makeTaskComparator, taskScheduleDate } from './auth/taskVisibility';
+import { getUserAccessLevel } from './auth/permissions';
 import { makePersonMatcher, isTaskOwner } from './auth/taskVisibility';
 
 interface FloatingBeaverWidgetProps {
@@ -383,7 +379,10 @@ const FloatingBeaverCore: React.FC<FloatingBeaverCoreProps> = ({
 
   // Apagar la mascota: lo maneja el contenedor (FloatingBeaverWidget) para no romper el orden de hooks.
   const handleToggleBuckyPower = () => onPowerOff();
-  const [christmas, setChristmas] = useChristmasMode();
+  // Apariencia de la mascota: la define system_admin para toda la organización (por defecto, Navidad).
+  const { skin, snow } = useMascotSkin();
+  const christmas = skin === 'christmas';
+  const isSystemAdmin = currentUser ? getUserAccessLevel(currentUser) === 'system_admin' : false;
 
   // Procesar eventos de equipo para el copiloto humano/operativo
   const effectiveUsers = users && users.length > 0 ? users : initialUsers;
@@ -461,10 +460,31 @@ const FloatingBeaverCore: React.FC<FloatingBeaverCoreProps> = ({
   const hasAlertedOvertimeRef = useRef(false);
 
   // Resolved central Bucky state
+  // Contexto emocional: siempre con las tareas propias (el contenedor ya las filtró).
+  const todayIsoMascot = new Date().toISOString().slice(0, 10);
   const criticalOvertimeTasks = tasks.filter(
-    (t) => (t.consumedSeconds || 0) > (t.budgetedHours || 0) * 3600
+    (t) => !t.completed && (t.budgetedHours || 0) > 0 && (t.consumedSeconds || 0) > (t.budgetedHours || 0) * 3600
   );
-  const allTasksDone = tasks.length > 0 && tasks.every((t) => t.status === 'Done' || t.completed);
+  const todayTasks = tasks.filter((t) => isScheduledForDay(t, todayIsoMascot));
+  const overdueTasks = tasks.filter((t) => {
+    const d = taskScheduleDate(t);
+    return !t.completed && Boolean(d && d < todayIsoMascot);
+  });
+  const allTasksDone = todayTasks.length > 0 && todayTasks.every((t) => t.status === 'Done' || t.completed);
+  const plannedTodayHours = todayTasks.filter((t) => !t.completed).reduce((sum, t) => sum + (t.budgetedHours || 0), 0);
+  const nextTask = todayTasks.length === 0
+    ? tasks.filter((t) => !t.completed).sort(makeTaskComparator(todayIsoMascot))[0]
+    : undefined;
+  const [isFirstVisitToday] = useState<boolean>(() => {
+    try {
+      const key = `eco_mascot_greeted_${todayIsoMascot}`;
+      if (sessionStorage.getItem(key)) return false;
+      sessionStorage.setItem(key, '1');
+      return true;
+    } catch {
+      return false;
+    }
+  });
 
   const buckyState = resolveBuckyState({
     loggedHoursToday,
@@ -472,6 +492,11 @@ const FloatingBeaverCore: React.FC<FloatingBeaverCoreProps> = ({
     criticalOvertimeTasks,
     activeTimer,
     allTasksCompleted: allTasksDone,
+    deadlineRiskTasks: overdueTasks,
+    isOverCapacity: plannedTodayHours > targetDayHours,
+    hasTasksToday: todayTasks.length > 0,
+    nextTaskTitle: nextTask?.title,
+    isFirstVisitToday,
     hasTasks: tasks.length > 0,
     recentTaskCompleted: currentAction === 'clap',
     isBreakRecommended: activeBreakActive ? false : undefined
@@ -1041,42 +1066,20 @@ const FloatingBeaverCore: React.FC<FloatingBeaverCoreProps> = ({
   };
 
   // Active cutout image based on state and poses
+  // Reacciones transitorias → emoción; en reposo, la emoción que resuelve el motor según el día.
+  const ACTION_EMOTION: Partial<Record<BuckyAction, EcoEmotion>> = {
+    stand: 'ok', happy: 'ok', wave: 'ok', walk: 'ok',
+    celebrate: 'celebrating', jump: 'celebrating', motivate: 'celebrating', clap: 'celebrating',
+    alert: 'surprised', sad: 'sad',
+    rest: 'coffee', sleep: 'coffee', tired: 'worried', yawn: 'coffee', stretch: 'coffee', hydrate: 'coffee', exercise: 'coffee',
+    point: 'focus', focus: 'focus'
+  };
   const getCurrentBeaverImage = () => {
-    if (isDragging) return buckyCelebratingImg;
-    if (isWalking || currentAction === 'walk') return buckyHoodieHappyImg;
-
-    // Transient lifelike reaction (active for the duration of the reaction)
-    if (currentAction !== 'idle') {
-      switch (currentAction) {
-        case 'stand':
-        case 'happy':
-          return buckyHoodieHappyImg;
-        case 'wave':
-          return buckyWavingImg;
-        case 'celebrate':
-        case 'jump':
-        case 'motivate':
-        case 'clap':
-          return buckyCelebratingImg;
-        case 'alert':
-        case 'sad':
-          return buckyAlertImg;
-        case 'rest':
-        case 'sleep':
-        case 'tired':
-          return buckyRestingImg;
-        case 'point':
-        case 'focus':
-          return buckyFocusImg;
-        default:
-          break;
-      }
-    }
-
-    // After transient reaction (clap, celebrate, etc.), return strictly to the
-    // contextual state resolved by resolveBuckyState(context)
-    if (isWarningActive) return buckyAlertImg;
-    return buckyState.image || buckyHoodieHappyImg;
+    if (isDragging) return mascotImage('celebrating', skin);
+    if (isWalking) return mascotImage('ok', skin);
+    const transient = currentAction !== 'idle' ? ACTION_EMOTION[currentAction] : undefined;
+    if (transient) return mascotImage(transient, skin);
+    return mascotImage(buckyState.emotion, skin);
   };
 
   // Animation class based on current lifelike action
@@ -1169,13 +1172,13 @@ const FloatingBeaverCore: React.FC<FloatingBeaverCoreProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleToggleChristmas = () => {
-    const next = !christmas;
-    setChristmas(next);
+  const handleChangeSkin = (next: MascotSkin) => {
+    if (!isSystemAdmin || next === skin) return;
+    setMascotSkin(next);
     setIsOpen(false);
-    setCurrentAction(next ? 'celebrate' : 'wave');
-    setSpeechBubbleText(next ? '¡Jo, jo, jo! 🎄 Modo navideño activado. ¡Felices fiestas, equipo!' : 'Guardamos las luces hasta el próximo diciembre ✨');
-    if (soundEnabled) playChime(next ? 'celebrate' : 'wave');
+    setCurrentAction(next === 'christmas' ? 'celebrate' : 'wave');
+    setSpeechBubbleText(next === 'christmas' ? '¡Jo, jo, jo! 🎄 ¡Felices fiestas, equipo!' : 'Guardamos las luces hasta el próximo diciembre ✨');
+    if (soundEnabled) playChime(next === 'christmas' ? 'celebrate' : 'wave');
     setTimeout(() => {
       setSpeechBubbleText(null);
       setCurrentAction('idle');
@@ -1184,7 +1187,7 @@ const FloatingBeaverCore: React.FC<FloatingBeaverCoreProps> = ({
 
   return (
     <>
-      {christmas && <Snowfall />}
+      {christmas && snow && <Snowfall />}
       {/* 1. BUCKY CHARACTER & COMPACT BUBBLE (DRAGGABLE ONLY ON CHARACTER) */}
       <div
         className="fixed z-45 font-sans select-none pointer-events-auto"
@@ -1316,12 +1319,11 @@ const FloatingBeaverCore: React.FC<FloatingBeaverCoreProps> = ({
                 title="Arrastra a ECO para moverlo • Clic para opciones"
               >
                 <img
-                  src={buckyFocusImg}
+                  src={ECO_EMOTION_IMAGES.focus}
                   alt="ECO en foco"
                   className={`w-auto ${getBeaverSizeClass()} object-contain drop-shadow-[0_12px_28px_rgba(0,0,0,0.55)] select-none pointer-events-none transition-all duration-300`}
                 />
                 <div className="absolute top-1 right-2 w-3.5 h-3.5 rounded-full bg-[#10b981] animate-ping" />
-                {christmas && <SantaHat className="absolute -top-3 left-1/2 -translate-x-[60%] w-14 -rotate-12 pointer-events-none drop-shadow" />}
               </button>
             </div>
           ) : (
@@ -1337,14 +1339,13 @@ const FloatingBeaverCore: React.FC<FloatingBeaverCoreProps> = ({
                 title="Arrastra a ECO para moverlo • Clic para interactuar"
               >
                 <img
-                  src={isWarningActive ? buckyAlertImg : getCurrentBeaverImage()}
+                  src={getCurrentBeaverImage()}
                   alt="ECO, la mascota"
                   className={`w-auto ${getBeaverSizeClass()} object-contain drop-shadow-[0_12px_28px_rgba(0,0,0,0.55)] select-none pointer-events-none transition-all duration-300`}
                 />
                 {isWarningActive && (
                   <span className="absolute top-1 right-2 w-3.5 h-3.5 rounded-full bg-[#f59e0b] border-2 border-[#0d0718] animate-ping" />
                 )}
-                {christmas && <SantaHat className="absolute -top-3 left-1/2 -translate-x-[60%] w-14 -rotate-12 pointer-events-none drop-shadow" />}
                 {getActionEmojiBadge() && (
                   <span className="absolute -top-2 -left-2 text-base select-none pointer-events-none animate-bounce">
                     {getActionEmojiBadge()}
@@ -1458,21 +1459,48 @@ const FloatingBeaverCore: React.FC<FloatingBeaverCoreProps> = ({
             </button>
           </div>
 
-          {/* Temporada: modo navideño (preferencia visual personal) */}
-          <button
-            type="button"
-            role="switch"
-            aria-checked={christmas}
-            onClick={handleToggleChristmas}
-            className={`w-full py-2 px-3 rounded-xl border text-[11px] font-bold flex items-center justify-between gap-2 transition-colors cursor-pointer ${
-              christmas ? 'bg-[#dc2626]/20 border-[#f87171]/50 text-white' : 'bg-white/5 hover:bg-white/10 border-white/10 text-white'
-            }`}
-          >
-            <span className="flex items-center gap-1.5">🎄 Modo navideño</span>
-            <span className={`w-8 h-4 rounded-full relative transition-colors ${christmas ? 'bg-[#22c55e]' : 'bg-white/20'}`}>
-              <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${christmas ? 'left-4' : 'left-0.5'}`} />
-            </span>
-          </button>
+          {/* Apariencia (system_admin, para toda la organización) y nieve (preferencia personal) */}
+          {(isSystemAdmin || christmas) && (
+            <div className="p-3 rounded-2xl bg-white/[0.07] border border-white/15 space-y-2.5">
+              {isSystemAdmin && (
+                <div className="space-y-1.5">
+                  <p className="text-[11px] font-bold text-white">Apariencia de ECO para todo el equipo</p>
+                  <div role="radiogroup" aria-label="Apariencia de la mascota" className="grid grid-cols-2 gap-1.5">
+                    {(['christmas', 'standard'] as MascotSkin[]).map((opt) => (
+                      <button
+                        key={opt}
+                        type="button"
+                        role="radio"
+                        aria-checked={skin === opt}
+                        onClick={() => handleChangeSkin(opt)}
+                        className={`py-1.5 px-2 rounded-lg text-[11px] font-bold border cursor-pointer transition-colors ${
+                          skin === opt ? 'bg-[#d4ff4a] text-[#140b24] border-[#d4ff4a]' : 'bg-transparent text-white border-white/30 hover:bg-white/10'
+                        }`}
+                      >
+                        {opt === 'christmas' ? '🎄 ' : '💜 '}
+                        {MASCOT_SKIN_LABEL[opt].replace(' (buzo morado)', '')}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-white/70">Solo administración del sistema puede cambiarla.</p>
+                </div>
+              )}
+              {christmas && (
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={snow}
+                  onClick={() => setSnowEnabled(!snow)}
+                  className="w-full flex items-center justify-between gap-2 text-[11px] font-bold text-white cursor-pointer"
+                >
+                  <span>❄️ Nieve en pantalla</span>
+                  <span className={`w-8 h-4 rounded-full relative transition-colors ${snow ? 'bg-[#22c55e]' : 'bg-white/30'}`}>
+                    <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${snow ? 'left-4' : 'left-0.5'}`} />
+                  </span>
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Si hay algo relevante: 1 cosa para revisar */}
           {criticalOvertimeTasks.length > 0 && (

@@ -15,9 +15,9 @@ import {
   Smile,
   Sparkles
 } from 'lucide-react';
-import buckyCelebratingImg from '../../../assets/images/bucky_celebrating_cutout.png';
-import buckyFocusImg from '../../../assets/images/bucky_focus_cutout.png';
-import buckyRestingImg from '../../../assets/images/bucky_resting_cutout.png';
+import buckyCelebratingImg from '../../../assets/images/eco/eco-celebrating.webp';
+import buckyFocusImg from '../../../assets/images/eco/eco-focus.webp';
+import buckyRestingImg from '../../../assets/images/eco/eco-coffee.webp';
 
 interface ActiveBreakModalProps {
   isOpen: boolean;

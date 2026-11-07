@@ -33,9 +33,9 @@ import {
   playTapSound
 } from './coloniaAudio';
 
-import buckyHoodieHappyImg from '../../../assets/images/bucky_hip_uhura_v3.png';
-import buckyFocusImg from '../../../assets/images/bucky_focus_cutout.png';
-import buckyCelebratingImg from '../../../assets/images/bucky_celebrating_cutout.png';
+import buckyHoodieHappyImg from '../../../assets/images/eco/eco-thumbs-up.webp';
+import buckyFocusImg from '../../../assets/images/eco/eco-focus.webp';
+import buckyCelebratingImg from '../../../assets/images/eco/eco-celebrating.webp';
 
 import {
   Swords,

@@ -1,9 +1,4 @@
-import buckyHoodieHappyImg from '../../assets/images/bucky_hip_uhura_v3.png';
-import buckyCelebratingImg from '../../assets/images/bucky_celebrating_cutout.png';
-import buckyAlertImg from '../../assets/images/bucky_alert_cutout.png';
-import buckyFocusImg from '../../assets/images/bucky_focus_cutout.png';
-import buckyRestingImg from '../../assets/images/bucky_resting_cutout.png';
-import buckyWavingImg from '../../assets/images/bucky_waving_cutout.png';
+import { ECO_EMOTION_IMAGES, EcoEmotion } from './mascot/ecoMascot';
 import { ActiveTimerState, TaskItem } from './types';
 
 // ==========================================
@@ -27,6 +22,9 @@ export type BuckyInternalStateKey =
   | 'FIRST_VISIT_TODAY'      // 6. Saludo inicial del día
   | 'INACTIVITY_IDLE'        // 7. Pausa / estiramiento por inactividad
   | 'NORMAL_EQUILIBRIUM'     // 8. Estado base con Buzo Uhura oficial
+  | 'OVERDUE_OWN_TASKS'      // Tareas propias vencidas (preocupado, nunca castigo)
+  | 'OVER_CAPACITY'          // Carga del día por encima de la capacidad
+  | 'NOTHING_SCHEDULED'      // Sin tareas agendadas hoy (pensativo: ¿qué adelantamos?)
   | 'SAD';                   // Preservado para el laboratorio / casos excepcionales
 
 export type BuckyPose =
@@ -47,6 +45,7 @@ export interface BuckyResolvedState {
   internalKey: BuckyInternalStateKey;
   pose: BuckyPose;
   image: string;
+  emotion: EcoEmotion;
   humanBadge: string;
   badgeText: string;
   badgeColor: string;
@@ -78,6 +77,8 @@ export interface BuckyContext {
   isBreakRecommended?: boolean;
   isFirstVisitToday?: boolean;
   isInactiveIdle?: boolean;
+  hasTasksToday?: boolean;          // ¿Tiene tareas propias agendadas hoy?
+  nextTaskTitle?: string;           // Próxima tarea sugerida cuando no hay nada hoy
   hasNotifiedOvertime?: boolean;
 }
 
@@ -312,7 +313,8 @@ export function resolveBuckyState(ctx: BuckyContext): BuckyResolvedState {
     return {
       internalKey: 'ACTIVE_TIMER',
       pose: 'focus',
-      image: buckyFocusImg,
+      image: ECO_EMOTION_IMAGES.focus,
+      emotion: 'focus',
       humanBadge: 'En foco',
       badgeText: 'En foco',
       badgeColor: 'bg-[#f5f3ff] text-[#501f92] border-[#ddd6fe]',
@@ -324,12 +326,52 @@ export function resolveBuckyState(ctx: BuckyContext): BuckyResolvedState {
     };
   }
 
+  // 2. CRITICAL_OVERTIME (una tarea propia superó sus horas cotizadas) → sorprendido
+  if (ctx.criticalOvertimeTasks && ctx.criticalOvertimeTasks.length > 0) {
+    const t = ctx.criticalOvertimeTasks[0];
+    return {
+      internalKey: 'CRITICAL_OVERTIME',
+      pose: 'alert',
+      image: ECO_EMOTION_IMAGES.surprised,
+      emotion: 'surprised',
+      humanBadge: 'Ojo con las horas',
+      badgeText: 'Ojo con las horas',
+      badgeColor: 'bg-[#fff7ed] text-[#c2410c] border-[#fed7aa]',
+      headline: '¡Ojo! ⏱️',
+      speech: `«${(t.title || '').slice(0, 40)}» ya pasó las horas cotizadas. Cuéntale a tu líder si necesitas más tiempo.`,
+      description: 'Una de tus tareas consumió más horas de las cotizadas.',
+      isAlert: true,
+      cta: { label: 'Avisar a mi líder', actionType: 'notify_overtime', task: t },
+      soundType: 'alert'
+    };
+  }
+
+  // 2b. OVERDUE_OWN_TASKS (tareas propias vencidas) → preocupado, con tono de ayuda
+  if (ctx.deadlineRiskTasks && ctx.deadlineRiskTasks.length > 0) {
+    const n = ctx.deadlineRiskTasks.length;
+    return {
+      internalKey: 'OVERDUE_OWN_TASKS',
+      pose: 'tired',
+      image: ECO_EMOTION_IMAGES.worried,
+      emotion: 'worried',
+      humanBadge: 'Pendientes vencidos',
+      badgeText: 'Pendientes vencidos',
+      badgeColor: 'bg-[#fef2f2] text-[#b91c1c] border-[#fecaca]',
+      headline: 'Se nos pasaron unas fechas 😟',
+      speech: n === 1 ? 'Tienes 1 tarea vencida. ¿La cerramos o pedimos nueva fecha?' : `Tienes ${n} tareas vencidas. ¿Empezamos por la más antigua?`,
+      description: 'Tareas propias con fecha de entrega pasada y sin cerrar.',
+      isAlert: false,
+      soundType: 'alert'
+    };
+  }
+
   // 3. DAY_CLOSED_SUCCESS (Todas las tareas del día listas con éxito)
   if (ctx.allTasksCompleted && (ctx.hasTasks ?? true)) {
     return {
       internalKey: 'DAY_CLOSED_SUCCESS',
       pose: 'celebrate',
-      image: buckyCelebratingImg,
+      image: ECO_EMOTION_IMAGES.celebrating,
+      emotion: 'celebrating',
       humanBadge: 'Día completo',
       badgeText: 'Día completo',
       badgeColor: 'bg-[#ecfdf5] text-[#059669] border-[#a7f3d0]',
@@ -350,7 +392,8 @@ export function resolveBuckyState(ctx: BuckyContext): BuckyResolvedState {
     return {
       internalKey: 'RECENT_TASK_COMPLETED',
       pose: 'clap',
-      image: buckyCelebratingImg,
+      image: ECO_EMOTION_IMAGES.celebrating,
+      emotion: 'celebrating',
       humanBadge: '¡Buen avance!',
       badgeText: '¡Buen avance!',
       badgeColor: 'bg-[#ecfdf5] text-[#059669] border-[#a7f3d0]',
@@ -367,7 +410,8 @@ export function resolveBuckyState(ctx: BuckyContext): BuckyResolvedState {
     return {
       internalKey: 'BREAK_RECOMMENDED',
       pose: 'rest',
-      image: buckyRestingImg,
+      image: ECO_EMOTION_IMAGES.coffee,
+      emotion: 'coffee',
       humanBadge: 'Pausa de bienestar',
       badgeText: 'Pausa de bienestar',
       badgeColor: 'bg-[#f5f3ff] text-[#7c3aed] border-[#ddd6fe]',
@@ -383,12 +427,31 @@ export function resolveBuckyState(ctx: BuckyContext): BuckyResolvedState {
     };
   }
 
+  // 5b. OVER_CAPACITY (más horas planeadas hoy que capacidad) → preocupado
+  if (ctx.isOverCapacity) {
+    return {
+      internalKey: 'OVER_CAPACITY',
+      pose: 'tired',
+      image: ECO_EMOTION_IMAGES.worried,
+      emotion: 'worried',
+      humanBadge: 'Día cargado',
+      badgeText: 'Día cargado',
+      badgeColor: 'bg-[#fffbeb] text-[#b45309] border-[#fde68a]',
+      headline: 'Hoy viene pesado 😅',
+      speech: 'Tienes más horas planeadas que tu jornada. Prioriza lo urgente y habla con tu líder si algo no alcanza.',
+      description: 'La carga planificada de hoy supera tu capacidad configurada.',
+      isAlert: false,
+      soundType: 'alert'
+    };
+  }
+
   // 6. FIRST_VISIT_TODAY (Saludo cordial y positivo de bienvenida)
   if (ctx.isFirstVisitToday) {
     return {
       internalKey: 'FIRST_VISIT_TODAY',
       pose: 'wave',
-      image: buckyWavingImg,
+      image: ECO_EMOTION_IMAGES.ok,
+      emotion: 'ok',
       humanBadge: 'Saludo',
       badgeText: '¡Hola!',
       badgeColor: 'bg-[#f5f3ff] text-[#501f92] border-[#ddd6fe]',
@@ -400,12 +463,33 @@ export function resolveBuckyState(ctx: BuckyContext): BuckyResolvedState {
     };
   }
 
+  // 6b. NOTHING_SCHEDULED (sin tareas agendadas hoy) → pensativo
+  if (ctx.hasTasksToday === false) {
+    return {
+      internalKey: 'NOTHING_SCHEDULED',
+      pose: 'idle',
+      image: ECO_EMOTION_IMAGES.thinking,
+      emotion: 'thinking',
+      humanBadge: 'Día libre de entregas',
+      badgeText: 'Sin agenda hoy',
+      badgeColor: 'bg-[#f5f3ff] text-[#501f92] border-[#ddd6fe]',
+      headline: '¿Qué adelantamos? 🤔',
+      speech: ctx.nextTaskTitle
+        ? `Hoy no tienes nada agendado. Podrías adelantar «${ctx.nextTaskTitle.slice(0, 40)}».`
+        : 'Hoy no tienes nada agendado. Buen momento para registrar soporte o revisar el backlog.',
+      description: 'No hay tareas propias en el cronograma de hoy.',
+      isAlert: false,
+      soundType: 'happy'
+    };
+  }
+
   // 7. INACTIVITY_IDLE (ECO en reposo prolongado)
   if (ctx.isInactiveIdle) {
     return {
       internalKey: 'INACTIVITY_IDLE',
       pose: 'yawn',
-      image: buckyHoodieHappyImg, // Buzo Uhura oficial
+      image: ECO_EMOTION_IMAGES.coffee,
+      emotion: 'coffee',
       humanBadge: 'Tomando aire',
       badgeText: 'Tomando aire',
       badgeColor: 'bg-[#f8fafc] text-[#64748b] border-[#cbd5e1]',
@@ -426,7 +510,8 @@ export function resolveBuckyState(ctx: BuckyContext): BuckyResolvedState {
   return {
     internalKey: 'NORMAL_EQUILIBRIUM',
     pose: 'happy',
-    image: buckyHoodieHappyImg, // Buzo Uhura oficial como identidad visual permanente
+    image: ECO_EMOTION_IMAGES.ok,
+      emotion: 'ok',
     humanBadge: 'Todo tranquilo',
     badgeText: 'Todo tranquilo',
     badgeColor: 'bg-[#f5f3ff] text-[#501f92] border-[#ddd6fe]',

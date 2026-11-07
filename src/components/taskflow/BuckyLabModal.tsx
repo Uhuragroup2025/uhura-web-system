@@ -24,16 +24,16 @@
 
 import React, { useState } from 'react';
 import { X, Copy, Download, Volume2, Sparkles, AlertTriangle, ShieldCheck, Terminal } from 'lucide-react';
-import buckyHoodieHappyImg from '../../assets/images/bucky_hip_uhura_v3.png';
-import buckyCelebratingImg from '../../assets/images/bucky_celebrating_cutout.png';
-import buckyAlertImg from '../../assets/images/bucky_alert_cutout.png';
-import buckyFocusImg from '../../assets/images/bucky_focus_cutout.png';
-import buckyRestingImg from '../../assets/images/bucky_resting_cutout.png';
-import buckyWavingImg from '../../assets/images/bucky_waving_cutout.png';
-import buckyCelebrateRenderImg from '../../assets/images/bucky_celebrate_render_1788557761452.jpg';
-import buckyWarningRenderImg from '../../assets/images/bucky_warning_render_1788557774378.jpg';
-import buckySadRenderImg from '../../assets/images/bucky_sad_render_1788557787368.jpg';
-import orbitMascotCutoutImg from '../../assets/images/orbit_mascot_cutout.png';
+import buckyHoodieHappyImg from '../../assets/images/eco/eco-thumbs-up.webp';
+import buckyCelebratingImg from '../../assets/images/eco/eco-celebrating.webp';
+import buckyAlertImg from '../../assets/images/eco/eco-surprised.webp';
+import buckyFocusImg from '../../assets/images/eco/eco-focus.webp';
+import buckyRestingImg from '../../assets/images/eco/eco-coffee.webp';
+import buckyWavingImg from '../../assets/images/eco/eco-thumbs-up.webp';
+import buckyCelebrateRenderImg from '../../assets/images/eco/eco-celebrating.webp';
+import buckyWarningRenderImg from '../../assets/images/eco/eco-worried.webp';
+import buckySadRenderImg from '../../assets/images/eco/eco-sad.webp';
+import orbitMascotCutoutImg from '../../assets/images/eco/eco-thumbs-up.webp';
 import { playBuckySound, BuckyPose } from './buckyEngine';
 
 interface BuckyLabModalProps {

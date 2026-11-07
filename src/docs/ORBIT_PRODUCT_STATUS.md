@@ -1031,10 +1031,21 @@ Mi Día puede mostrar de forma discreta y no invasiva:
 > **Nombre (07 Nov 2026):** la mascota se llama **ECO**, igual que la plataforma (antes «Bucky»). Los textos visibles usan «ECO»; los nombres internos de código (`buckyEngine`, `BuckyLabModal`) se mantienen por compatibilidad.
 >
 > **Reglas de la mascota (revisadas 07 Nov 2026):**
-> - Sus alertas («1 cosa para revisar», desvíos, urgentes) usan **solo las tareas de la persona** (misma regla de §17.5); nunca habla de tareas ajenas.
-> - Se oculta dentro de La Colonia y puede apagarse; al reactivarla sale saludando. Apagado, sonido y modo navideño son preferencias personales.
+> - **Personaje:** 9 imágenes oficiales en `src/assets/images/eco/` (buzo morado con la «e» de ECO): pulgar arriba, celebrando, sorprendido, preocupado, triste, pensativo, en foco (tablet), café y Navidad.
+> - **Emociones según el día de la persona** (`buckyEngine.ts`, siempre con sus propias tareas, regla §17.5), en este orden:
+>   1. Cronómetro corriendo → **en foco**.
+>   2. Una tarea propia superó sus horas cotizadas → **sorprendido** (aviso con opción de avisar al líder).
+>   3. Tareas propias vencidas → **preocupado**, con tono de ayuda («¿la cerramos o pedimos nueva fecha?»).
+>   4. Todas las tareas de hoy listas → **celebrando**; tarea recién terminada → celebrando breve.
+>   5. Pausa recomendada o inactividad → **café**.
+>   6. Más horas planeadas hoy que la jornada → **preocupado** («hoy viene pesado»).
+>   7. Primera visita del día o todo en orden → **pulgar arriba**.
+>   8. Nada agendado hoy → **pensativo**, sugiriendo la próxima tarea a adelantar.
+>   - **Triste** solo aparece como reacción breve; nunca se usa como castigo por productividad.
+> - **Apariencia de temporada (configurable solo por `system_admin`, para toda la organización):** «Navidad» (predeterminada en temporada) o «Estándar». Se cambia en la ventana de la mascota → «Apariencia de ECO para todo el equipo». Con Navidad, los estados tranquilos (pulgar arriba y pensativo) muestran el personaje navideño; las emociones que piden atención conservan su imagen para que se entiendan. Navidad también activa la nieve y el 🎄 junto al logo; cada persona puede apagar la nieve para sí («Nieve en pantalla»).
+> - Sus alertas usan **solo las tareas de la persona**; nunca habla de tareas ajenas. Se oculta dentro de La Colonia y puede apagarse; al reactivarla sale saludando. Apagado y sonido son preferencias personales.
 > - Los cumpleaños y aniversarios se calculan con la fecha real del día.
-> - **Modo navideño:** se activa al hacer clic en la mascota → «🎄 Modo navideño». Pone gorro a la mascota, nieve suave sobre la app (se desactiva si el sistema pide reducir movimiento) y un 🎄 junto al logo. Es solo visual y por persona.
+> - **Ventana de la mascota (UI):** fondo oscuro con texto e íconos claros. Se corrigió una regla global de estilos que oscurecía el texto de los botones translúcidos («Pausa Activa», «Ficha Humana», íconos del encabezado).
 > - **Modo del menú lateral:** sol (claro) o luna (oscuro, predeterminado), en el pie del menú. Solo cambia el menú; el área de trabajo sigue en blanco como en producción.
 > - El laboratorio de la mascota (`Shift+Alt+B` / `?buckyLab=true`) es solo de desarrollo y no va a producción.
 
