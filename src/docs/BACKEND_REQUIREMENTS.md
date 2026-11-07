@@ -727,3 +727,13 @@ Especificación funcional en `ORBIT_PRODUCT_STATUS.md` (Módulo 18, reglas de la
 * Preferencias personales (no requieren backend o pueden ir en el perfil): mascota apagada, sonido y nieve.
 * Las emociones de la mascota se calculan en el frontend con las tareas propias del usuario (§15.1); no requieren endpoints nuevos.
 
+---
+
+## 22. La Colonia: retos y ranking (07 Nov 2026)
+Especificación funcional en `ORBIT_PRODUCT_STATUS.md` Módulo 18.
+* `game_results` (`id`, `user_id`, `game_id` = `torre` | `nenufar`, `score`, `created_at`). Ranking semanal = `MAX(score)` por `user_id` y `game_id` desde el lunes 00:00 (hora Colombia) de la semana en curso; desempate por quien lo logró primero. Sin tabla propia de ranking.
+* `colony_challenges` (`id`, `game_id`, `challenger_user_id`, `challenger_score`, `challenged_user_id`, `challenged_score` null hasta jugar, `status` = `pending` | `completed`, `created_at`, `completed_at`). Ganador derivado: mayor puntaje; igual = empate. Un reto se resuelve una sola vez.
+* Rivales: solo usuarios activos de Equipo & Accesos, nunca uno mismo.
+* Notificaciones en la campana: «X te retó en {juego} con N pts» (al retado) y «{Resultado} contra X» (a ambos, al resolverse).
+* Recordatorio de horas de la mascota (§21 y Módulo 18): se calcula en el frontend con las horas registradas de hoy; si se quiere también por Google Chat o correo, debe usar el mismo umbral (70 % de la jornada) y la misma hora (4:00 p. m.), respetando ausencias y festivos.
+

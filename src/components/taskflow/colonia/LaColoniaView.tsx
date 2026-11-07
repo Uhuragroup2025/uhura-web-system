@@ -21,7 +21,11 @@ import {
   saveColonyChallenges,
   loadWeeklyLeaderboards,
   resolveColonyChallenge,
-  createColonyChallenge
+  createColonyChallenge,
+  getUserChallenges,
+  challengeOutcomeFor,
+  relativeTimeEs,
+  COLONY_GAME_NAMES
 } from './coloniaEngine';
 import { ColoniaMinigames } from './ColoniaMinigames';
 import { ColoniaSocialInbox } from './ColoniaSocialInbox';
@@ -119,7 +123,25 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
     }
   });
 
-  const activeUserId = currentUser?.id || 'u-2';
+  const activeUserId = currentUser?.id || 'anon';
+  const [activeChallenge, setActiveChallenge] = useState<ColonyChallenge | null>(null);
+  // Compañeros para retar: Equipo & Accesos, activos, sin la persona que juega
+  const teammates: TeammateOption[] = useMemo(
+    () =>
+      teamUsers
+        .filter((u) => u.status !== 'Inactive' && u.id !== activeUserId)
+        .map((u) => ({
+          id: u.id,
+          name: u.name,
+          role: u.jobTitle || u.officialRole || u.role || '',
+          initials: u.initials || u.name.split(' ').map((n) => n[0]).join('').slice(0, 2),
+          avatarBg: u.avatarBg || 'bg-[#501f92]',
+          avatarUrl: u.avatarUrl
+        })),
+    [teamUsers, activeUserId]
+  );
+  const myChallenges = useMemo(() => getUserChallenges(challenges, activeUserId), [challenges, activeUserId]);
+  const latestResult = myChallenges.results[0];
 
   const refreshColonyData = () => {
     setChallenges(loadColonyChallenges());
@@ -159,13 +181,16 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
         if (!user.birthDate) return false;
         const parts = user.birthDate.split('-');
         const month = parseInt(parts[1], 10);
-        return month === 10; // Octubre
+        return month === new Date().getMonth() + 1; // mes en curso
       }
 
       if (selectedFilter === 'aniversarios') {
         if (!user.joinedDate && !user.anniversaryDate) return false;
         const joined = (user.joinedDate || user.anniversaryDate || '').toLowerCase();
-        return joined.includes('oct') || joined.includes('/ 10 /');
+        const mIdx = new Date().getMonth();
+        const short = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'][mIdx];
+        const mm = String(mIdx + 1).padStart(2, '0');
+        return joined.includes(short) || joined.includes(`/ ${mm} /`) || joined.includes(`-${mm}-`);
       }
 
       return true;
@@ -213,7 +238,7 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
       {/* ==================================================================== */}
       {activeTabMode === 'fichas' && (
         <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto w-full">
-          {/* Banner Superior "Cónoce la colonia Uhureña" */}
+          {/* Banner Superior "Conoce La Colonia" */}
           <div className="bg-white rounded-3xl p-5 border border-[#e2e8f0] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-3.5">
               <div className="w-12 h-12 rounded-2xl bg-[#faf5ff] border border-[#ede9fe] flex items-center justify-center text-2xl shadow-2xs shrink-0">
@@ -221,7 +246,7 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
               </div>
               <div>
                 <h2 className="text-base sm:text-lg font-extrabold text-[#0f172a] tracking-tight">
-                  Cónoce la colonia Uhureña
+                  Conoce La Colonia
                 </h2>
                 <p className="text-xs text-[#64748b] mt-0.5">
                   Cumpleaños, aniversarios, gustos y mascotas del equipo.
@@ -267,15 +292,15 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
                 </button>
               </div>
 
-              {/* Toggle a Jugar en la colonía */}
+              {/* Toggle a Jugar en La Colonia */}
               <button
                 type="button"
                 onClick={() => setActiveTabMode('habitat')}
                 className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#2e1859] hover:bg-[#1a0f30] text-white text-xs font-bold transition-all shadow-xs cursor-pointer shrink-0 ml-1"
-                title="Jugar en la colonía · Minijuegos de ECO"
+                title="Jugar en La Colonia · Minijuegos de ECO"
               >
                 <Gamepad2 className="w-3.5 h-3.5 text-[#d4ff4a]" />
-                <span>Jugar en la colonía</span>
+                <span>Jugar en La Colonia</span>
               </button>
             </div>
           </div>
@@ -439,11 +464,29 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
               <span className="text-xs text-white/60">•</span>
               <h2 className="text-sm font-bold text-white flex items-center gap-1.5">
                 <span>🪵</span>
-                <span>Jugar en la colonía · Minijuegos</span>
+                <span>Jugar en La Colonia · Minijuegos</span>
               </h2>
             </div>
 
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsInboxOpen(true)}
+                className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold cursor-pointer flex items-center gap-1.5"
+              >
+                <span>⚔️ Retos</span>
+                {myChallenges.received.length > 0 && (
+                  <span className="px-1.5 rounded-full bg-[#d4ff4a] text-[#120822] text-[10px] font-black">{myChallenges.received.length}</span>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsRankingOpen(true)}
+                className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold cursor-pointer flex items-center gap-1.5"
+              >
+                <Trophy className="w-3.5 h-3.5 text-[#fbbf24]" />
+                <span>Ranking</span>
+              </button>
               <button
                 onClick={() => setSoundOn(!soundOn)}
                 className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white cursor-pointer"
@@ -482,8 +525,58 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
                   />
                 </div>
                 <p className="text-xs text-white/80 leading-relaxed">
-                  Despeja la mente entre sprints. Cada juego toma menos de 20 segundos y fomenta la cercanía sin distraer de las metas del día.
+                  Despeja la mente entre tareas: cada partida dura 15 segundos. Juega, reta a alguien del equipo y mira quién gana.
                 </p>
+
+                {/* Retos: lo pendiente y el último resultado, a la vista */}
+                {(myChallenges.received.length > 0 || latestResult) && (
+                  <div className="space-y-2">
+                    {myChallenges.received.slice(0, 2).map((ch) => (
+                      <div key={ch.id} className="p-3 rounded-2xl bg-[#501f92]/40 border border-[#d4ff4a]/60 flex items-center justify-between gap-3 text-xs">
+                        <span className="text-white">
+                          <strong>{ch.challengerName.split(' ')[0]}</strong> te retó en {COLONY_GAME_NAMES[ch.gameId]} con{' '}
+                          <strong className="text-[#d4ff4a]">{ch.challengerScore} pts</strong>
+                          <span className="text-white/50"> · {relativeTimeEs(ch.createdAt)}</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveChallenge(ch);
+                            setActiveGame(ch.gameId);
+                          }}
+                          className="shrink-0 px-3 py-1.5 rounded-xl bg-[#d4ff4a] text-[#120822] font-black cursor-pointer"
+                        >
+                          Aceptar reto
+                        </button>
+                      </div>
+                    ))}
+                    {latestResult && (() => {
+                      const outcome = challengeOutcomeFor(latestResult, activeUserId);
+                      const iAmChallenger = latestResult.challengerUserId === activeUserId;
+                      const mine = iAmChallenger ? latestResult.challengerScore : latestResult.challengedScore ?? 0;
+                      const theirs = iAmChallenger ? latestResult.challengedScore ?? 0 : latestResult.challengerScore;
+                      const rival = (iAmChallenger ? latestResult.challengedName : latestResult.challengerName).split(' ')[0];
+                      return (
+                        <div className={`p-3 rounded-2xl border text-xs flex items-center justify-between gap-3 ${outcome === 'won' ? 'bg-[#d4ff4a]/10 border-[#d4ff4a]/50' : 'bg-white/5 border-white/10'}`}>
+                          <span className="text-white">
+                            {outcome === 'won' ? '🏆 ' : outcome === 'lost' ? '😅 ' : '🤝 '}
+                            <strong>
+                              {outcome === 'won'
+                                ? `Ganaste ${mine} a ${theirs} contra ${rival}`
+                                : outcome === 'lost'
+                                ? `${rival} te ganó ${theirs} a ${mine}`
+                                : `Empate ${mine} a ${theirs} con ${rival}`}
+                            </strong>
+                            <span className="text-white/50"> · {COLONY_GAME_NAMES[latestResult.gameId]} · {relativeTimeEs(latestResult.completedAt)}</span>
+                          </span>
+                          <button type="button" onClick={() => setActiveGame(latestResult.gameId)} className="shrink-0 text-[#d4ff4a] font-bold hover:underline cursor-pointer">
+                            Revancha
+                          </button>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
                   <button
@@ -495,7 +588,7 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
                       Torre de Troncos
                     </h4>
                     <p className="text-[11px] text-white/60 mt-1">
-                      Equilibra la mayor cantidad de troncos antes de que caigan.
+                      Suelta cada tronco alineado con la base y apila lo más alto posible.
                     </p>
                   </button>
 
@@ -508,7 +601,7 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
                       Salto de Nenúfares
                     </h4>
                     <p className="text-[11px] text-white/60 mt-1">
-                      Salta con ECO calculando el ritmo del río.
+                      Toca el nenúfar donde aparezca ECO lo más rápido que puedas.
                     </p>
                   </button>
                 </div>
@@ -532,45 +625,73 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
 
                   <ColoniaMinigames
                     type={activeGame}
+                    activeChallenge={activeChallenge}
+                    teammates={teammates}
+                    currentUser={currentUser}
+                    onChallengeCreated={(ch) => {
+                      refreshColonyData();
+                      showToast(`Reto enviado a ${ch.challengedName.split(' ')[0]} ⚔️`);
+                    }}
                     onComplete={(gameId: ColonyGameId, score: number) => {
                       setLastGameResult({ gameId, score });
-                      showToast(`¡Partida terminada! Puntuación: ${score} pts 🪵✨`);
+                      setActiveChallenge(null);
+                      refreshColonyData();
                       setActiveGame(null);
                     }}
-                    onClose={() => setActiveGame(null)}
+                    onClose={() => {
+                      setActiveChallenge(null);
+                      refreshColonyData();
+                      setActiveGame(null);
+                    }}
                   />
                 </div>
               )}
             </div>
 
-            {/* Columna Derecha: Leaderboard Semanal */}
+            {/* Columna Derecha: Ranking semanal (mejor puntaje de cada persona; se reinicia el lunes) */}
             <div className="space-y-6">
-              <div className="p-5 rounded-3xl bg-[#180d32] border border-white/10 space-y-4">
+              <div className="p-5 rounded-2xl bg-[#180d32] border border-white/10 space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Trophy className="w-4 h-4 text-[#fbbf24]" />
-                    <h4 className="text-xs font-bold text-white uppercase tracking-wider">
-                      Ranking Semanal
-                    </h4>
+                    <h4 className="text-xs font-bold text-white uppercase tracking-wider">Ranking semanal</h4>
                   </div>
-                  <span className="text-[10px] text-white/50">Esta semana</span>
+                  <span className="text-[10px] text-white/50">Se reinicia el lunes</span>
                 </div>
-
-                <div className="space-y-2">
-                  {weeklyBoards.torre?.slice(0, 5).map((entry, idx) => (
-                    <div
-                      key={entry.userId}
-                      className="p-2.5 rounded-xl bg-white/5 border border-white/5 flex items-center justify-between text-xs"
+                <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-white/5 text-[11px] font-bold">
+                  {(['torre', 'nenufar'] as ColonyGameId[]).map((g) => (
+                    <button
+                      key={g}
+                      type="button"
+                      onClick={() => setRankingGame(g)}
+                      className={`py-1.5 rounded-lg cursor-pointer ${rankingGame === g ? 'bg-[#d4ff4a] text-[#120822]' : 'text-white/70 hover:text-white'}`}
                     >
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-[#d4ff4a] w-4">
-                          #{idx + 1}
-                        </span>
-                        <span className="font-medium text-white">{entry.name}</span>
-                      </div>
-                      <span className="font-mono text-white/70">{entry.score} pts</span>
-                    </div>
+                      {COLONY_GAME_NAMES[g]}
+                    </button>
                   ))}
+                </div>
+                <div className="space-y-2">
+                  {(weeklyBoards[rankingGame] || []).length === 0 && (
+                    <p className="p-3 rounded-xl bg-white/5 text-xs text-white/60 text-center">
+                      Nadie ha jugado esta semana. ¡Marca el primer puntaje!
+                    </p>
+                  )}
+                  {(weeklyBoards[rankingGame] || []).slice(0, 5).map((entry, idx) => {
+                    const isMe = entry.userId === activeUserId;
+                    return (
+                      <div
+                        key={entry.userId}
+                        className={`p-2.5 rounded-xl border flex items-center justify-between text-xs ${isMe ? 'bg-[#501f92]/40 border-[#d4ff4a]/60' : 'bg-white/5 border-white/5'}`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-[#d4ff4a] w-5">{idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`}</span>
+                          <span className="font-medium text-white">{entry.name}</span>
+                          {isMe && <span className="text-[9px] font-black px-1.5 rounded bg-[#d4ff4a] text-[#120822]">Tú</span>}
+                        </div>
+                        <span className="text-white/80 font-bold">{entry.score} pts</span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -578,6 +699,39 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
         </div>
       )}
 
+      <ColoniaSocialInbox
+        isOpen={isInboxOpen}
+        onClose={() => setIsInboxOpen(false)}
+        receivedChallenges={myChallenges.received}
+        sentChallenges={myChallenges.sent}
+        historyChallenges={myChallenges.results}
+        activeUserId={activeUserId}
+        onPlayChallenge={(ch) => {
+          setIsInboxOpen(false);
+          setActiveChallenge(ch);
+          setActiveGame(ch.gameId);
+        }}
+        onRematch={(ch) => {
+          setIsInboxOpen(false);
+          setActiveChallenge(null);
+          setActiveGame(ch.gameId);
+        }}
+        onOpenNewChallenge={() => {
+          setIsInboxOpen(false);
+          showToast('Juega una partida y al final elige a quién retar ⚔️');
+        }}
+      />
+      <ColoniaRankingView
+        isOpen={isRankingOpen}
+        onClose={() => setIsRankingOpen(false)}
+        weeklyBoards={weeklyBoards}
+        initialGame={rankingGame}
+        activeUserId={activeUserId}
+        onPlayGame={(g) => {
+          setIsRankingOpen(false);
+          setActiveGame(g);
+        }}
+      />
     </div>
   );
 };

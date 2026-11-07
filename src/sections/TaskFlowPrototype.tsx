@@ -3129,7 +3129,7 @@ export const TaskFlowPrototype: React.FC = () => {
                 todayTimeLogs={todayTimeLogs}
                 onOpenManualLog={() => handleOpenManualLogWithTask()}
                 onNavigateToCapacity={() => handleSelectView('capacidad')}
-                targetDayHours={8.0}
+                targetDayHours={Number(((currentUser?.capacityHours || 42) / 5).toFixed(1))}
                 currentUser={currentUser}
                 isDarkTheme={false}
                 alerts={activeAlerts}
@@ -3169,7 +3169,7 @@ export const TaskFlowPrototype: React.FC = () => {
                     onToggleTask={handleToggleTask}
                     onQuickLogHours={handleQuickLogHours}
                     loggedHoursToday={loggedHoursToday}
-                    targetDayHours={8.0}
+                    targetDayHours={Number(((currentUser?.capacityHours || 42) / 5).toFixed(1))}
                     onNavigateToView={handleSelectView}
                     opportunities={opportunities}
                     projects={projectsList}
@@ -3183,7 +3183,7 @@ export const TaskFlowPrototype: React.FC = () => {
                   <LaColoniaView
                     tasks={tasks}
                     loggedHoursToday={loggedHoursToday}
-                    targetDayHours={8.0}
+                    targetDayHours={Number(((currentUser?.capacityHours || 42) / 5).toFixed(1))}
                     plannedHoursToday={4.0}
                     currentUser={currentUser}
                     teamUsers={users}
@@ -3715,7 +3715,7 @@ export const TaskFlowPrototype: React.FC = () => {
       <FloatingBeaverWidget
         currentView={currentView}
         loggedHoursToday={loggedHoursToday}
-        targetDayHours={8.0}
+        targetDayHours={Number(((currentUser?.capacityHours || 42) / 5).toFixed(1))}
         onQuickLogHours={handleQuickLogHours}
         onNavigateToView={handleSelectView}
         streakDays={6}

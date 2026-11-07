@@ -25,6 +25,7 @@ export type BuckyInternalStateKey =
   | 'OVERDUE_OWN_TASKS'      // Tareas propias vencidas (preocupado, nunca castigo)
   | 'OVER_CAPACITY'          // Carga del día por encima de la capacidad
   | 'NOTHING_SCHEDULED'      // Sin tareas agendadas hoy (pensativo: ¿qué adelantamos?)
+  | 'LOW_TIME_LOGGED'        // Al final del día lleva menos del 70 % de su jornada registrada (triste, recordatorio)
   | 'SAD';                   // Preservado para el laboratorio / casos excepcionales
 
 export type BuckyPose =
@@ -55,7 +56,7 @@ export interface BuckyResolvedState {
   isAlert: boolean;
   cta?: {
     label: string;
-    actionType: 'notify_overtime' | 'start_break' | 'review_day';
+    actionType: 'notify_overtime' | 'start_break' | 'review_day' | 'log_time';
     task?: TaskItem;
   };
   soundType?: 'alert' | 'celebrate' | 'clap' | 'focus' | 'wave' | 'yawn' | 'rest' | 'pop' | 'happy';
@@ -77,7 +78,8 @@ export interface BuckyContext {
   isBreakRecommended?: boolean;
   isFirstVisitToday?: boolean;
   isInactiveIdle?: boolean;
-  hasTasksToday?: boolean;          // ¿Tiene tareas propias agendadas hoy?
+  hasTasksToday?: boolean;
+  timeLogReminderDue?: boolean;     // Día hábil, sin ausencia y ya cerca del fin de la jornada          // ¿Tiene tareas propias agendadas hoy?
   nextTaskTitle?: string;           // Próxima tarea sugerida cuando no hay nada hoy
   hasNotifiedOvertime?: boolean;
 }
@@ -323,6 +325,34 @@ export function resolveBuckyState(ctx: BuckyContext): BuckyResolvedState {
       description: 'Sesión activa de cronometraje para registrar con exactitud cada avance.',
       isAlert: false,
       soundType: 'focus'
+    };
+  }
+
+  // 1b. LOW_TIME_LOGGED: cerca del fin del día lleva < 70 % de la jornada registrada → triste + recordatorio
+  //     Tono juguetón, nunca de castigo: invita a cargar en un minuto.
+  if (ctx.timeLogReminderDue && (ctx.targetDayHours ?? 8) > 0 && ctx.loggedHoursToday < (ctx.targetDayHours ?? 8) * 0.7) {
+    const target = ctx.targetDayHours ?? 8;
+    const logged = ctx.loggedHoursToday;
+    const pct = Math.round((logged / target) * 100);
+    const lines = [
+      `Me pongo triste cuando el día se queda sin registrar 🥺 Llevas ${logged.toFixed(1)} h de ${target.toFixed(1)} h (${pct} %). ¿Lo cargamos en un minuto?`,
+      `Psst… a tu día le faltan horas 🥺 Vas en ${pct} %. Cárgalas ahora y me devuelves la sonrisa.`,
+      `Mi cola no se mueve hasta que el día quede registrado 🦫💜 Llevas ${logged.toFixed(1)} h. ¿Me ayudas?`
+    ];
+    return {
+      internalKey: 'LOW_TIME_LOGGED',
+      pose: 'sad',
+      image: ECO_EMOTION_IMAGES.sad,
+      emotion: 'sad',
+      humanBadge: 'Faltan horas por cargar',
+      badgeText: 'Faltan horas',
+      badgeColor: 'bg-[#f5f3ff] text-[#501f92] border-[#ddd6fe]',
+      headline: 'Tu día está a medio cargar 🥺',
+      speech: lines[new Date().getDate() % lines.length],
+      description: `Registro de hoy: ${logged.toFixed(1)} h de ${target.toFixed(1)} h (meta mínima 70 %).`,
+      isAlert: true,
+      cta: { label: 'Cargar mis horas', actionType: 'log_time' },
+      soundType: 'alert'
     };
   }
 

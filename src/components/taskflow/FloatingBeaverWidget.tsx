@@ -47,6 +47,7 @@ import { Snowfall } from './seasonal/christmasMode';
 import { useMascotSkin, setMascotSkin, setSnowEnabled, mascotImage, ECO_EMOTION_IMAGES, EcoEmotion, MascotSkin, MASCOT_SKIN_LABEL } from './mascot/ecoMascot';
 import { isScheduledForDay, makeTaskComparator, taskScheduleDate } from './auth/taskVisibility';
 import { getUserAccessLevel } from './auth/permissions';
+import { isBusinessDay } from './health/projectHealthEngine';
 import { makePersonMatcher, isTaskOwner } from './auth/taskVisibility';
 
 interface FloatingBeaverWidgetProps {
@@ -475,6 +476,14 @@ const FloatingBeaverCore: React.FC<FloatingBeaverCoreProps> = ({
   const nextTask = todayTasks.length === 0
     ? tasks.filter((t) => !t.completed).sort(makeTaskComparator(todayIsoMascot))[0]
     : undefined;
+  // Recordatorio de horas: día hábil, sin ausencia hoy y desde las 4:00 p. m.
+  const myAbsentToday = (absenceEvents && absenceEvents.length > 0 ? absenceEvents : initialAbsenceEvents).some(
+    (a) => a.userId === currentUser?.id && a.status === 'active' && a.startDate <= todayIsoMascot && todayIsoMascot <= (a.endDate || a.startDate)
+  );
+  const nowLocal = new Date();
+  const timeLogReminderDue =
+    Boolean(currentUser) && isBusinessDay(new Date(`${todayIsoMascot}T00:00:00Z`)) && !myAbsentToday && nowLocal.getHours() >= 16;
+
   const [isFirstVisitToday] = useState<boolean>(() => {
     try {
       const key = `eco_mascot_greeted_${todayIsoMascot}`;
@@ -497,6 +506,7 @@ const FloatingBeaverCore: React.FC<FloatingBeaverCoreProps> = ({
     hasTasksToday: todayTasks.length > 0,
     nextTaskTitle: nextTask?.title,
     isFirstVisitToday,
+    timeLogReminderDue,
     hasTasks: tasks.length > 0,
     recentTaskCompleted: currentAction === 'clap',
     isBreakRecommended: activeBreakActive ? false : undefined
@@ -505,12 +515,10 @@ const FloatingBeaverCore: React.FC<FloatingBeaverCoreProps> = ({
   // Warning & contextual alert states
   const [isAlertDismissed, setIsAlertDismissed] = useState(false);
 
-  // Reset alert dismissed state if the risk task changes
+  // Un aviso cerrado no tapa el siguiente: se reactiva cuando cambia el motivo del aviso
   useEffect(() => {
-    if (coreRiskTask?.id) {
-      setIsAlertDismissed(false);
-    }
-  }, [coreRiskTask?.id]);
+    setIsAlertDismissed(false);
+  }, [coreRiskTask?.id, buckyState.internalKey]);
 
   const isWarningActive = Boolean(buckyState.isAlert);
 
@@ -1204,12 +1212,10 @@ const FloatingBeaverCore: React.FC<FloatingBeaverCoreProps> = ({
                 <div className="space-y-1">
                   <div className="flex items-center gap-1.5 text-[#f59e0b] font-bold text-[11px]">
                     <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                    <span>Ojo Pao 👀</span>
+                    <span>{buckyState.internalKey === 'LOW_TIME_LOGGED' ? 'Un favorcito 🥺' : `Ojo, ${(currentUser?.name || '').split(' ')[0] || 'equipo'} 👀`}</span>
                   </div>
                   <p className="text-[#f1f5f9] text-[11px] leading-relaxed">
-                    {coreRiskTask
-                      ? `Esta tarea "${coreRiskTask.title}" ya superó sus horas presupuestadas.`
-                      : (buckyState.speech || 'Se detectó un desvío de horas en la jornada.')}
+                    {buckyState.speech}
                   </p>
                 </div>
                 <button
@@ -1230,14 +1236,14 @@ const FloatingBeaverCore: React.FC<FloatingBeaverCoreProps> = ({
                   }}
                   className="text-[#d4ff4a] hover:underline font-bold cursor-pointer"
                 >
-                  Ver tareas afectadas →
+                  {buckyState.cta?.actionType === 'log_time' ? 'Cargar mis horas →' : 'Ver tareas afectadas →'}
                 </button>
                 <button
                   type="button"
                   onClick={() => setIsAlertDismissed(true)}
                   className="text-white/50 hover:text-white cursor-pointer"
                 >
-                  Entendido
+                  {buckyState.cta?.actionType === 'log_time' ? 'Más tarde' : 'Entendido'}
                 </button>
               </div>
             </div>

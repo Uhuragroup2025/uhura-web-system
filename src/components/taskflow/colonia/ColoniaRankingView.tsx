@@ -5,7 +5,7 @@
  * Clasificación semanal simple, sin tablas corporativas pesadas:
  * - Podio visual limpio (🥇 Diego 120, 🥈 Paola 100, 🥉 Cata 95)
  * - Posición del usuario si está más abajo (#8 · 62 pts)
- * - Toggle simple entre Torre de Cedro y Reflejos de Nenúfar
+ * - Toggle simple entre Torre de Troncos y Salto de Nenúfares
  */
 
 import React, { useState } from 'react';
@@ -41,7 +41,7 @@ export const ColoniaRankingView: React.FC<ColoniaRankingViewProps> = ({
 
   // Encuentra la posición del usuario
   const userIndex = currentBoard.findIndex(
-    (e) => e.userId === activeUserId || e.highlight
+    (e) => e.userId === activeUserId
   );
   const userEntry = userIndex !== -1 ? currentBoard[userIndex] : null;
   const isUserInTop3 = userIndex >= 0 && userIndex < 3;
@@ -85,7 +85,7 @@ export const ColoniaRankingView: React.FC<ColoniaRankingViewProps> = ({
                 : 'text-white/60 hover:text-white'
             }`}
           >
-            <span>🌿 Torre de Cedro</span>
+            <span>🪵 Torre de Troncos</span>
           </button>
           <button
             onClick={() => {
@@ -98,16 +98,21 @@ export const ColoniaRankingView: React.FC<ColoniaRankingViewProps> = ({
                 : 'text-white/60 hover:text-white'
             }`}
           >
-            <span>⚡ Reflejos Nenúfar</span>
+            <span>🌿 Salto de Nenúfares</span>
           </button>
         </div>
 
+        {currentBoard.length === 0 && (
+          <p className="p-3 rounded-xl bg-white/5 text-xs text-white/60 text-center">
+            Nadie ha jugado esta semana. ¡Marca el primer puntaje!
+          </p>
+        )}
         {/* Visual Podio Top 3 */}
         <div className="grid grid-cols-3 gap-2 pt-2 items-end">
           {/* #2 PUESTO */}
           <div className="flex flex-col items-center">
             {top2 ? (
-              <div className={`w-full p-2.5 rounded-2xl flex flex-col items-center border transition-all ${top2.highlight ? 'bg-[#501f92]/50 border-[#d4ff4a]' : 'bg-white/5 border-white/10'}`}>
+              <div className={`w-full p-2.5 rounded-2xl flex flex-col items-center border transition-all ${(top2.userId === activeUserId) ? 'bg-[#501f92]/50 border-[#d4ff4a]' : 'bg-white/5 border-white/10'}`}>
                 <span className="text-base mb-1">🥈</span>
                 <span className="text-xs font-bold text-white truncate max-w-full">
                   {top2.name.split(' ')[0]}
@@ -126,7 +131,7 @@ export const ColoniaRankingView: React.FC<ColoniaRankingViewProps> = ({
           {/* #1 PUESTO (Centro más alto) */}
           <div className="flex flex-col items-center">
             {top1 ? (
-              <div className={`w-full p-3 rounded-2xl flex flex-col items-center border transition-all -translate-y-2 shadow-lg ${top1.highlight ? 'bg-[#501f92]/70 border-[#d4ff4a]' : 'bg-gradient-to-b from-[#501f92]/40 to-white/5 border-[#d4ff4a]/60'}`}>
+              <div className={`w-full p-3 rounded-2xl flex flex-col items-center border transition-all -translate-y-2 shadow-lg ${(top1.userId === activeUserId) ? 'bg-[#501f92]/70 border-[#d4ff4a]' : 'bg-gradient-to-b from-[#501f92]/40 to-white/5 border-[#d4ff4a]/60'}`}>
                 <span className="text-xl mb-1">🥇</span>
                 <span className="text-xs font-black text-white truncate max-w-full">
                   {top1.name.split(' ')[0]}
@@ -145,7 +150,7 @@ export const ColoniaRankingView: React.FC<ColoniaRankingViewProps> = ({
           {/* #3 PUESTO */}
           <div className="flex flex-col items-center">
             {top3 ? (
-              <div className={`w-full p-2.5 rounded-2xl flex flex-col items-center border transition-all ${top3.highlight ? 'bg-[#501f92]/50 border-[#d4ff4a]' : 'bg-white/5 border-white/10'}`}>
+              <div className={`w-full p-2.5 rounded-2xl flex flex-col items-center border transition-all ${(top3.userId === activeUserId) ? 'bg-[#501f92]/50 border-[#d4ff4a]' : 'bg-white/5 border-white/10'}`}>
                 <span className="text-base mb-1">🥉</span>
                 <span className="text-xs font-bold text-white truncate max-w-full">
                   {top3.name.split(' ')[0]}
@@ -168,7 +173,7 @@ export const ColoniaRankingView: React.FC<ColoniaRankingViewProps> = ({
             <div
               key={entry.id}
               className={`flex items-center justify-between p-2 rounded-xl text-xs border ${
-                entry.highlight
+                (entry.userId === activeUserId)
                   ? 'bg-[#501f92]/40 border-[#d4ff4a]/60 text-white font-bold'
                   : 'bg-white/5 border-white/5 text-white/80'
               }`}
@@ -176,7 +181,7 @@ export const ColoniaRankingView: React.FC<ColoniaRankingViewProps> = ({
               <div className="flex items-center gap-2">
                 <span className="font-mono text-white/50 w-5">#{idx + 4}</span>
                 <span>{entry.name.split(' ')[0]}</span>
-                {entry.highlight && (
+                {(entry.userId === activeUserId) && (
                   <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-[#d4ff4a] text-[#120822]">
                     Tú
                   </span>
@@ -209,7 +214,7 @@ export const ColoniaRankingView: React.FC<ColoniaRankingViewProps> = ({
             className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-[#d4ff4a] to-[#4be5ff] text-[#120822] text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md hover:scale-[1.01]"
           >
             <Play className="w-3.5 h-3.5 fill-[#120822]" />
-            <span>Jugar para mejorar mi marca ({selectedGame === 'torre' ? 'Torre' : 'Nenúfar'})</span>
+            <span>Jugar para mejorar mi marca ({selectedGame === 'torre' ? 'Torre de Troncos' : 'Salto de Nenúfares'})</span>
           </button>
         </div>
       </div>

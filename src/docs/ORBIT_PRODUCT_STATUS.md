@@ -1043,13 +1043,22 @@ Mi Día puede mostrar de forma discreta y no invasiva:
 >   6. Más horas planeadas hoy que la jornada → **preocupado** («hoy viene pesado»).
 >   7. Primera visita del día o todo en orden → **pulgar arriba**.
 >   8. Nada agendado hoy → **pensativo**, sugiriendo la próxima tarea a adelantar.
->   - **Triste** solo aparece como reacción breve; nunca se usa como castigo por productividad.
+>   - **Triste + recordatorio de horas (07 Nov 2026):** en día hábil, sin ausencia registrada y desde las 4:00 p. m., si la persona lleva **menos del 70 %** de su jornada diaria registrada (capacidad semanal ÷ 5), ECO se pone triste y muestra un recordatorio juguetón con «Cargar mis horas» y «Más tarde». No aparece si el cronómetro está corriendo. Objetivo: adopción del registro de tiempo con tono cercano, nunca de castigo.
+>   - Fuera de ese caso, **triste** solo aparece como reacción breve.
 > - **Apariencia de temporada (configurable solo por `system_admin`, para toda la organización):** «Navidad» (predeterminada en temporada) o «Estándar». Se cambia en la ventana de la mascota → «Apariencia de ECO para todo el equipo». Con Navidad, los estados tranquilos (pulgar arriba y pensativo) muestran el personaje navideño; las emociones que piden atención conservan su imagen para que se entiendan. Navidad también activa la nieve y el 🎄 junto al logo; cada persona puede apagar la nieve para sí («Nieve en pantalla»).
 > - Sus alertas usan **solo las tareas de la persona**; nunca habla de tareas ajenas. Se oculta dentro de La Colonia y puede apagarse; al reactivarla sale saludando. Apagado y sonido son preferencias personales.
 > - Los cumpleaños y aniversarios se calculan con la fecha real del día.
 > - **Ventana de la mascota (UI):** fondo oscuro con texto e íconos claros. Se corrigió una regla global de estilos que oscurecía el texto de los botones translúcidos («Pausa Activa», «Ficha Humana», íconos del encabezado).
 > - **Modo del menú lateral:** sol (claro) o luna (oscuro, predeterminado), en el pie del menú. Solo cambia el menú; el área de trabajo sigue en blanco como en producción.
 > - El laboratorio de la mascota (`Shift+Alt+B` / `?buckyLab=true`) es solo de desarrollo y no va a producción.
+
+> **La Colonia en el prototipo (revisado 07 Nov 2026) — versión sencilla vigente:**
+> - **Dos juegos de 15 s:** «Torre de Troncos» (soltar cada tronco alineado y apilar) y «Salto de Nenúfares» (tocar el nenúfar donde aparece ECO). Mismos nombres en tarjetas, partida, retos y ranking.
+> - **Retar a alguien:** al terminar una partida se elige a un compañero activo de Equipo & Accesos. El reto queda «esperando» para quien retó y aparece como «te retó con N pts · Aceptar reto» para el retado. Al jugarlo se resuelve: gana el mayor puntaje; igual puntaje es empate.
+> - **Quién ganó, para los dos:** la pantalla de juegos muestra el último resultado («Ganaste 104 a 90 contra Paola» / «Oscar te ganó 104 a 90») con «Revancha», y el botón «Retos» abre la bandeja: por responder, esperando y resultados.
+> - **Ranking semanal sencillo:** una pestaña por juego con el mejor puntaje de cada persona en la semana; se reinicia el lunes; marca «Tú». Sin datos sembrados: si nadie ha jugado, lo dice.
+> - Fechas reales en los retos («hace 5 min», «ayer»). El mensaje para compartir es para Google Chat.
+> - La vista inmersiva tipo mapa (Diorama) descrita abajo es la **dirección visual propuesta**; hoy la pantalla de juegos usa tarjetas. Ver propuesta visual en el chat del 07 Nov 2026 (mapa ilustrado con letreros «Jugar»).
 
 #### 18.1 Propósito y Definición Funcional Cerrada
 - **Bucky:** Asistente contextual de ECO que acompaña la jornada laboral, alerta sobre timers olvidados, tareas bloqueadas y deadlines. En la vista global de ECO actúa como widget flotante; al ingresar a La Colonia, el widget flotante global desaparece para dar paso al Bucky protagonista dentro de su hábitat.

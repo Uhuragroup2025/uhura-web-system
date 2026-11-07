@@ -18,6 +18,7 @@ import buckyFocusImg from '../../../assets/images/eco/eco-focus.webp';
 import {
   loadWeeklyLeaderboards,
   recordWeeklyScore,
+  COLONY_GAME_NAMES,
   createColonyChallenge,
   resolveColonyChallenge
 } from './coloniaEngine';
@@ -72,12 +73,12 @@ export const ColoniaMinigames: React.FC<ColoniaMinigamesProps> = ({
         <div className="flex items-center justify-between border-b border-white/10 pb-3">
           <div className="flex items-center gap-2.5">
             <span className="text-2xl">
-              {normalizedGameId === 'torre' ? '🌿' : '⚡'}
+              {normalizedGameId === 'torre' ? '🪵' : '🌿'}
             </span>
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-sm sm:text-base font-black text-white">
-                  {normalizedGameId === 'torre' ? 'La Torre de Cedro' : 'Reflejos de Nenúfar'}
+                  {COLONY_GAME_NAMES[normalizedGameId]}
                 </h3>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#d4ff4a]/20 text-[#d4ff4a] border border-[#d4ff4a]/40">
                   ⏱️ 15 SEGUNDOS
@@ -133,6 +134,7 @@ interface GameIntroScreenProps {
   oneRule: string;
   gameId: ColonyGameId;
   activeChallenge?: ColonyChallenge | null;
+  activeUserId?: string;
   onStart: () => void;
 }
 
@@ -141,14 +143,14 @@ const GameIntroScreen: React.FC<GameIntroScreenProps> = ({
   oneRule,
   gameId,
   activeChallenge,
+  activeUserId,
   onStart
 }) => {
   const leaderboards = loadWeeklyLeaderboards();
   const ranking = leaderboards[gameId] || [];
-  const top1 = ranking[0] || { name: 'Diego', score: 120 };
-  const userEntry = ranking.find(e => e.highlight);
-  const userBest = userEntry ? userEntry.score : 0;
-  const leaderScore = top1.score;
+  const userEntry = ranking.find((e) => e.userId === activeUserId);
+  const userBest = userEntry ? userEntry.score : null;
+  const leaderScore = ranking[0]?.score ?? null;
 
   return (
     <div className="space-y-4 py-2 text-center select-none animate-in zoom-in-95 duration-200">
@@ -167,8 +169,8 @@ const GameIntroScreen: React.FC<GameIntroScreenProps> = ({
       {/* Título & 1 sola regla estilo mobile limpio */}
       <div className="space-y-1.5 pt-1">
         <h2 className="text-xl sm:text-2xl font-black text-white tracking-wide flex items-center justify-center gap-2">
-          <span>{gameId === 'torre' ? '🌿' : '⚡'}</span>
-          <span>{gameId === 'torre' ? 'TORRE DE CEDRO' : 'REFLEJOS DE NENÚFAR'}</span>
+          <span>{gameId === 'torre' ? '🪵' : '🌿'}</span>
+          <span className="uppercase">{COLONY_GAME_NAMES[gameId]}</span>
         </h2>
         <p className="text-xs sm:text-sm text-[#c9b7ff] max-w-xs mx-auto font-medium leading-relaxed">
           {oneRule}
@@ -185,11 +187,11 @@ const GameIntroScreen: React.FC<GameIntroScreenProps> = ({
       {/* Récords de referencia rápida */}
       <div className="flex items-center justify-center gap-3 py-1.5 px-4 rounded-xl bg-white/5 border border-white/10 text-xs font-mono max-w-xs mx-auto text-white/80">
         <span>
-          Tu récord: <strong className="text-white font-bold">{userBest}</strong>
+          Tu récord: <strong className="text-white font-bold">{userBest ?? '—'}</strong>
         </span>
         <span className="text-white/20">·</span>
         <span className="text-[#d4ff4a]">
-          Semana: <strong className="text-[#d4ff4a] font-bold">{leaderScore}</strong>
+          Mejor de la semana: <strong className="text-[#d4ff4a] font-bold">{leaderScore ?? '—'}</strong>
         </span>
       </div>
 
@@ -211,8 +213,8 @@ const GameIntroScreen: React.FC<GameIntroScreenProps> = ({
           {ranking.slice(0, 3).map((r, i) => (
             <span key={r.id} className="flex items-center gap-1">
               <span>{i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}</span>
-              <span className={r.highlight ? 'text-[#d4ff4a] font-bold' : 'text-white/80'}>
-                {r.highlight ? 'Tú' : r.name.split(' ')[0]} {r.score}
+              <span className={r.userId === activeUserId ? 'text-[#d4ff4a] font-bold' : 'text-white/80'}>
+                {r.userId === activeUserId ? 'Tú' : r.name.split(' ')[0]} {r.score}
               </span>
             </span>
           ))}
@@ -254,21 +256,21 @@ const GameOverScreen: React.FC<GameOverScreenProps> = ({
   const [copiedSlack, setCopiedSlack] = useState(false);
 
   // Guardar puntuación semanal y obtener posición
-  const activeUserId = currentUser?.id || 'u-2';
-  const { rank, isBest, leaderboards } = recordWeeklyScore(
-    gameId,
-    score,
-    activeUserId,
-    currentUser?.name ? `${currentUser.name} (Tú)` : 'Paola Monsalve (Tú)',
-    currentUser?.jobTitle || currentUser?.officialRole || currentUser?.role || 'Product Lead',
-    currentUser?.initials || 'PM',
-    currentUser?.avatarBg || 'bg-[#501f92]'
-  );
-  const userEntry = leaderboards[gameId]?.find(e => e.userId === activeUserId || e.highlight);
+  // Jugador real (de Equipo & Accesos). La partida se registra una sola vez.
+  const player = {
+    id: currentUser?.id || 'anon',
+    name: currentUser?.name || 'Tú',
+    initials: currentUser?.initials || 'TU',
+    role: currentUser?.jobTitle || currentUser?.officialRole || currentUser?.role || '',
+    avatarBg: currentUser?.avatarBg || 'bg-[#501f92]'
+  };
+  const activeUserId = player.id;
+  const [{ rank, isBest, leaderboards }] = useState(() => recordWeeklyScore(gameId, score, player));
+  const userEntry = leaderboards[gameId]?.find((e) => e.userId === activeUserId);
   const weeklyBest = userEntry ? userEntry.score : score;
-  const top1 = leaderboards[gameId]?.[0] || { name: 'Diego', score: 120 };
-  const leaderName = top1.name.split(' ')[0];
-  const leaderScore = top1.score;
+  const top1 = leaderboards[gameId]?.find((e) => e.userId !== activeUserId) || null;
+  const leaderName = top1 ? top1.name.split(' ')[0] : '';
+  const leaderScore = top1 ? top1.score : 0;
 
   // Comparación contra reto si venía de un desafío
   const rivalScore = activeChallenge?.challengerScore ?? null;
@@ -292,13 +294,7 @@ const GameOverScreen: React.FC<GameOverScreenProps> = ({
 
   const handleSendChallenge = (teammate: TeammateOption) => {
     setSelectedTeammate(teammate);
-    const challengerData = {
-      id: activeUserId,
-      name: currentUser?.name || 'Paola Monsalve',
-      initials: currentUser?.initials || 'PM',
-      role: currentUser?.jobTitle || currentUser?.officialRole || currentUser?.role || 'Product Lead',
-      avatarBg: currentUser?.avatarBg || 'bg-[#501f92]'
-    };
+    const challengerData = player;
 
     const { newChallenge } = createColonyChallenge(
       gameId,
@@ -322,7 +318,7 @@ const GameOverScreen: React.FC<GameOverScreenProps> = ({
   };
 
   const handleCopySlack = () => {
-    const text = `🌿 Reto en ECO (La Colonia Uhura): ¡Hice ${score} puntos en "${gameName}"! ¿Quién del equipo me supera en 15 segundos? 🦫⚡ Entra a La Colonia y descúbrelo.`;
+    const text = `🎮 Reto en La Colonia de ECO: hice ${score} puntos en «${gameName}». ¿Quién me supera? Entra a ECO › La Colonia y acepta el reto.`;
     navigator.clipboard.writeText(text);
     setCopiedSlack(true);
     setTimeout(() => setCopiedSlack(false), 3000);
@@ -371,7 +367,7 @@ const GameOverScreen: React.FC<GameOverScreenProps> = ({
         /* Pantalla de resultado estándar cuidada */
         <div className="space-y-2.5">
           <div className="text-3xl animate-bounce">
-            {gameId === 'torre' ? '🌿' : '⚡'}
+            {gameId === 'torre' ? '🪵' : '🌿'}
           </div>
 
           <div className="text-5xl font-mono font-black text-[#d4ff4a] tracking-tight">
@@ -401,9 +397,11 @@ const GameOverScreen: React.FC<GameOverScreenProps> = ({
               className="w-10 h-10 object-contain shrink-0"
             />
             <p className="text-xs text-white/90 text-left font-medium leading-snug">
-              {score >= leaderScore
-                ? '¡Eres la marca número 1 de la semana! ECO está orgulloso 🦫👑'
-                : `Te faltaron ${leaderScore - score} pts para superar a ${leaderName} 👀`}
+              {!top1
+                ? '¡Abriste el ranking de la semana! Reta a alguien para ver quién te alcanza 👀'
+                : score > leaderScore
+                ? '¡Vas de primer lugar esta semana! 👑'
+                : `Te faltaron ${leaderScore - score + 1} pts para superar a ${leaderName} 👀`}
             </p>
           </div>
         </div>
@@ -499,7 +497,7 @@ const GameOverScreen: React.FC<GameOverScreenProps> = ({
           className="text-white/50 hover:text-white transition-colors cursor-pointer flex items-center gap-1.5"
         >
           <Copy className="w-3 h-3 text-[#c9b7ff]" />
-          <span>{copiedSlack ? '¡Copiado!' : 'Copiar para Slack'}</span>
+          <span>{copiedSlack ? '¡Copiado!' : 'Copiar mensaje para Google Chat'}</span>
         </button>
         <span className="text-white/20">·</span>
         <button
@@ -606,7 +604,8 @@ const TorreCedroMinigame: React.FC<MinigameSubProps> = ({
   if (gameState === 'intro') {
     return (
       <GameIntroScreen
-        title="La Torre de Cedro"
+        activeUserId={currentUser?.id}
+        title="Torre de Troncos"
         oneRule="Toca la pantalla cuando el tronco esté alineado con la base para soltarlo y apilarlo lo más alto posible."
         gameId="torre"
         activeChallenge={activeChallenge}
@@ -625,7 +624,7 @@ const TorreCedroMinigame: React.FC<MinigameSubProps> = ({
       <GameOverScreen
         score={score}
         gameId="torre"
-        gameName="La Torre de Cedro"
+        gameName="Torre de Troncos"
         activeChallenge={activeChallenge}
         teammates={teammates}
         currentUser={currentUser}
@@ -772,8 +771,9 @@ const ReflejosNenufarMinigame: React.FC<MinigameSubProps> = ({
   if (gameState === 'intro') {
     return (
       <GameIntroScreen
-        title="Reflejos de Nenúfar"
-        oneRule="Toca la hoja donde aparezca ECO 🦫 tan rápido como puedas antes de que salte a otra."
+        activeUserId={currentUser?.id}
+        title="Salto de Nenúfares"
+        oneRule="Toca el nenúfar donde aparezca ECO lo más rápido que puedas antes de que salte a otro."
         gameId="nenufar"
         activeChallenge={activeChallenge}
         onStart={() => {
@@ -791,7 +791,7 @@ const ReflejosNenufarMinigame: React.FC<MinigameSubProps> = ({
       <GameOverScreen
         score={score}
         gameId="nenufar"
-        gameName="Reflejos de Nenúfar"
+        gameName="Salto de Nenúfares"
         activeChallenge={activeChallenge}
         teammates={teammates}
         currentUser={currentUser}

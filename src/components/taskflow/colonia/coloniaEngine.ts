@@ -553,111 +553,56 @@ export function rewardMinigameCompletion(
  *    evolutiva futura, no como dependencia actual.
  */
 
-const CHALLENGES_STORAGE_KEY = 'orbit_colonia_challenges_v2';
-const LEADERBOARD_STORAGE_KEY = 'orbit_colonia_leaderboards_v2';
+const CHALLENGES_STORAGE_KEY = 'eco_colonia_challenges_v3';
+const RESULTS_STORAGE_KEY = 'eco_colonia_results_v1';
 
-export const INITIAL_COLONY_CHALLENGES: ColonyChallenge[] = [
-  {
-    id: 'ch-1',
-    gameId: 'torre',
-    challengerUserId: 'u-10',
-    challengerName: 'Oscar Cerpa',
-    challengerInitials: 'OC',
-    challengerRole: 'Desarrollador Web Front-End',
-    challengerAvatarBg: 'bg-[#f59e0b]',
-    challengerScore: 85,
-    challengedUserId: 'u-2',
-    challengedName: 'Paola Monsalve',
-    challengedInitials: 'PM',
-    challengedRole: 'Product Lead',
-    challengedAvatarBg: 'bg-[#501f92]',
-    status: 'pending',
-    createdAt: 'Hoy, hace 2h'
-  },
-  {
-    id: 'ch-2',
-    gameId: 'nenufar',
-    challengerUserId: 'u-2',
-    challengerName: 'Paola Monsalve',
-    challengerInitials: 'PM',
-    challengerRole: 'Product Lead',
-    challengerAvatarBg: 'bg-[#501f92]',
-    challengerScore: 15,
-    challengedUserId: 'u-5',
-    challengedName: 'Laura Isabel Gómez',
-    challengedInitials: 'LG',
-    challengedRole: 'Digital Designer',
-    challengedAvatarBg: 'bg-[#0284c7]',
-    status: 'pending',
-    createdAt: 'Ayer'
-  },
-  {
-    id: 'ch-3',
-    gameId: 'torre',
-    challengerUserId: 'u-6',
-    challengerName: 'Catalina Tejada',
-    challengerInitials: 'CT',
-    challengerRole: 'Directora Comercial',
-    challengerAvatarBg: 'bg-[#7c3aed]',
-    challengerScore: 95,
-    challengedUserId: 'u-2',
-    challengedName: 'Paola Monsalve',
-    challengedInitials: 'PM',
-    challengedRole: 'Product Lead',
-    challengedAvatarBg: 'bg-[#501f92]',
-    challengedScore: 100,
-    status: 'completed',
-    winnerUserId: 'u-2',
-    createdAt: 'Hace 3 días',
-    completedAt: 'Hace 3 días'
-  }
-];
+// Sin datos sembrados: los retos y el ranking se construyen solo con partidas reales.
+export const INITIAL_COLONY_CHALLENGES: ColonyChallenge[] = [];
 
-export const INITIAL_WEEKLY_LEADERBOARDS: Record<ColonyGameId, WeeklyLeaderboardEntry[]> = {
-  torre: [
-    { id: 'lb-1', userId: 'u-2-diego', name: 'Diego Cadavid', role: 'Creative Lead', initials: 'DC', avatarBg: 'bg-[#dc2626]', score: 120 },
-    { id: 'lb-2', userId: 'u-2', name: 'Paola Monsalve (Tú)', role: 'Product Lead', initials: 'PM', avatarBg: 'bg-[#501f92]', score: 100, highlight: true },
-    { id: 'lb-3', userId: 'u-6', name: 'Catalina Tejada', role: 'Directora Comercial', initials: 'CT', avatarBg: 'bg-[#7c3aed]', score: 95 },
-    { id: 'lb-4', userId: 'u-10', name: 'Oscar Cerpa', role: 'Desarrollador Web Front-End', initials: 'OC', avatarBg: 'bg-[#f59e0b]', score: 85 },
-    { id: 'lb-5', userId: 'u-11', name: 'Sara Rivera', role: 'Community Manager', initials: 'SR', avatarBg: 'bg-[#ec4899]', score: 75 }
-  ],
-  nenufar: [
-    { id: 'lb-6', userId: 'u-5', name: 'Laura Isabel Gómez', role: 'Digital Designer', initials: 'LG', avatarBg: 'bg-[#0284c7]', score: 22 },
-    { id: 'lb-7', userId: 'u-10', name: 'Oscar Cerpa', role: 'Desarrollador Web Front-End', initials: 'OC', avatarBg: 'bg-[#f59e0b]', score: 18 },
-    { id: 'lb-8', userId: 'u-2', name: 'Paola Monsalve (Tú)', role: 'Product Lead', initials: 'PM', avatarBg: 'bg-[#501f92]', score: 15, highlight: true },
-    { id: 'lb-9', userId: 'u-6', name: 'Catalina Tejada', role: 'Directora Comercial', initials: 'CT', avatarBg: 'bg-[#7c3aed]', score: 13 },
-    { id: 'lb-10', userId: 'u-14', name: 'Camilo Velez', role: 'Growth Manager', initials: 'CV', avatarBg: 'bg-[#059669]', score: 11 }
-  ]
+export const COLONY_GAME_NAMES: Record<ColonyGameId, string> = {
+  torre: 'Torre de Troncos',
+  nenufar: 'Salto de Nenúfares'
 };
 
-export function loadColonyChallenges(): ColonyChallenge[] {
-  if (typeof window === 'undefined') return INITIAL_COLONY_CHALLENGES;
+export interface ColonyPlayer {
+  id: string;
+  name: string;
+  initials: string;
+  role: string;
+  avatarBg: string;
+}
+
+const readJson = <T,>(key: string, fallback: T): T => {
+  if (typeof window === 'undefined') return fallback;
   try {
-    const raw = localStorage.getItem(CHALLENGES_STORAGE_KEY);
-    if (!raw) {
-      localStorage.setItem(CHALLENGES_STORAGE_KEY, JSON.stringify(INITIAL_COLONY_CHALLENGES));
-      return INITIAL_COLONY_CHALLENGES;
-    }
-    return JSON.parse(raw);
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
   } catch {
-    return INITIAL_COLONY_CHALLENGES;
+    return fallback;
   }
+};
+const writeJson = (key: string, value: unknown) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    /* sin almacenamiento */
+  }
+};
+
+// ── Retos ────────────────────────────────────────────────────────────────────
+export function loadColonyChallenges(): ColonyChallenge[] {
+  return readJson<ColonyChallenge[]>(CHALLENGES_STORAGE_KEY, INITIAL_COLONY_CHALLENGES);
 }
 
 export function saveColonyChallenges(challenges: ColonyChallenge[]): void {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(CHALLENGES_STORAGE_KEY, JSON.stringify(challenges));
-  } catch (err) {
-    console.error('Error saving challenges', err);
-  }
+  writeJson(CHALLENGES_STORAGE_KEY, challenges);
 }
 
 export function createColonyChallenge(
   gameId: ColonyGameId,
-  challenger: { id: string; name: string; initials: string; role: string; avatarBg: string },
+  challenger: ColonyPlayer,
   challengerScore: number,
-  challenged: { id: string; name: string; initials: string; role: string; avatarBg: string }
+  challenged: ColonyPlayer
 ): { challenges: ColonyChallenge[]; newChallenge: ColonyChallenge } {
   const current = loadColonyChallenges();
   const newChallenge: ColonyChallenge = {
@@ -675,106 +620,140 @@ export function createColonyChallenge(
     challengedRole: challenged.role,
     challengedAvatarBg: challenged.avatarBg,
     status: 'pending',
-    createdAt: 'Hoy, hace un momento'
+    createdAt: new Date().toISOString()
   };
-
   const updated = [newChallenge, ...current];
   saveColonyChallenges(updated);
   return { challenges: updated, newChallenge };
 }
 
+/** Resuelve un reto: gana el mayor puntaje; igual puntaje = empate (sin ganador). */
 export function resolveColonyChallenge(
   challengeId: string,
   challengedScore: number
 ): { challenges: ColonyChallenge[]; resolved: ColonyChallenge | null; won: boolean; tie: boolean } {
   const current = loadColonyChallenges();
-  const target = current.find(c => c.id === challengeId);
-  if (!target) return { challenges: current, resolved: null, won: false, tie: false };
-
+  const target = current.find((c) => c.id === challengeId);
+  if (!target || target.status === 'completed') return { challenges: current, resolved: target || null, won: false, tie: false };
   const won = challengedScore > target.challengerScore;
   const tie = challengedScore === target.challengerScore;
-  const winnerUserId = won
-    ? target.challengedUserId
-    : tie
-    ? undefined
-    : target.challengerUserId;
-
   const resolved: ColonyChallenge = {
     ...target,
     challengedScore,
     status: 'completed',
-    winnerUserId,
-    completedAt: 'Hoy, recién jugado'
+    winnerUserId: won ? target.challengedUserId : tie ? undefined : target.challengerUserId,
+    completedAt: new Date().toISOString()
   };
-
-  const updated = current.map(c => (c.id === challengeId ? resolved : c));
+  const updated = current.map((c) => (c.id === challengeId ? resolved : c));
   saveColonyChallenges(updated);
   return { challenges: updated, resolved, won, tie };
 }
 
-export function loadWeeklyLeaderboards(): Record<ColonyGameId, WeeklyLeaderboardEntry[]> {
-  if (typeof window === 'undefined') return INITIAL_WEEKLY_LEADERBOARDS;
-  try {
-    const raw = localStorage.getItem(LEADERBOARD_STORAGE_KEY);
-    if (!raw) {
-      localStorage.setItem(LEADERBOARD_STORAGE_KEY, JSON.stringify(INITIAL_WEEKLY_LEADERBOARDS));
-      return INITIAL_WEEKLY_LEADERBOARDS;
-    }
-    return JSON.parse(raw);
-  } catch {
-    return INITIAL_WEEKLY_LEADERBOARDS;
-  }
+/** Retos de una persona: recibidos por jugar, enviados en espera y resultados recientes. */
+export function getUserChallenges(challenges: ColonyChallenge[], userId: string) {
+  const mine = challenges.filter((c) => c.challengerUserId === userId || c.challengedUserId === userId);
+  return {
+    received: mine.filter((c) => c.status === 'pending' && c.challengedUserId === userId),
+    sent: mine.filter((c) => c.status === 'pending' && c.challengerUserId === userId),
+    results: mine
+      .filter((c) => c.status === 'completed')
+      .sort((a, b) => ((b.completedAt || '') > (a.completedAt || '') ? 1 : -1))
+      .slice(0, 8)
+  };
 }
 
+/** Resultado de un reto desde el punto de vista de una persona. */
+export function challengeOutcomeFor(c: ColonyChallenge, userId: string): 'won' | 'lost' | 'tie' | null {
+  if (c.status !== 'completed') return null;
+  if (!c.winnerUserId) return 'tie';
+  return c.winnerUserId === userId ? 'won' : 'lost';
+}
+
+// ── Resultados y ranking semanal (derivado; se reinicia cada lunes) ───────────
+export function loadGameResults(): GameResult[] {
+  return readJson<GameResult[]>(RESULTS_STORAGE_KEY, []);
+}
+
+/** Lunes 00:00 (hora local) de la semana de la fecha dada. */
+export function weekStart(date: Date = new Date()): Date {
+  const d = new Date(date);
+  const day = d.getDay(); // 0 domingo
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
+  return d;
+}
+
+export function recordGameResult(gameId: ColonyGameId, score: number, player: ColonyPlayer): GameResult {
+  const result: GameResult = {
+    id: 'gr-' + Date.now(),
+    userId: player.id,
+    userName: player.name,
+    gameId,
+    score,
+    createdAt: new Date().toISOString()
+  };
+  const all = [result, ...loadGameResults()].slice(0, 2000);
+  writeJson(RESULTS_STORAGE_KEY, all);
+  writeJson('eco_colonia_players_v1', { ...readJson<Record<string, ColonyPlayer>>('eco_colonia_players_v1', {}), [player.id]: player });
+  return result;
+}
+
+/** Ranking semanal: mejor puntaje de cada persona en la semana actual, por juego. */
+export function loadWeeklyLeaderboards(now: Date = new Date()): Record<ColonyGameId, WeeklyLeaderboardEntry[]> {
+  const since = weekStart(now).toISOString();
+  const players = readJson<Record<string, ColonyPlayer>>('eco_colonia_players_v1', {});
+  const boards: Record<ColonyGameId, WeeklyLeaderboardEntry[]> = { torre: [], nenufar: [] };
+  (['torre', 'nenufar'] as ColonyGameId[]).forEach((gameId) => {
+    const best = new Map<string, GameResult>();
+    loadGameResults()
+      .filter((r) => r.gameId === gameId && r.createdAt >= since)
+      .forEach((r) => {
+        const prev = best.get(r.userId);
+        if (!prev || r.score > prev.score) best.set(r.userId, r);
+      });
+    boards[gameId] = Array.from(best.values())
+      .sort((a, b) => b.score - a.score || (a.createdAt < b.createdAt ? -1 : 1))
+      .map((r) => {
+        const p = players[r.userId];
+        return {
+          id: r.id,
+          userId: r.userId,
+          name: p?.name || r.userName,
+          role: p?.role || '',
+          initials: p?.initials || r.userName.split(' ').map((n) => n[0]).join('').slice(0, 2),
+          avatarBg: p?.avatarBg || 'bg-[#501f92]',
+          score: r.score
+        };
+      });
+  });
+  return boards;
+}
+
+/**
+ * Registra la partida y devuelve la posición semanal de la persona.
+ * Compatibilidad con la firma anterior (gameId, score, jugador).
+ */
 export function recordWeeklyScore(
   gameId: ColonyGameId,
   score: number,
-  userId: string = 'u-2',
-  userName: string = 'Paola Monsalve (Tú)',
-  userRole: string = 'Product Lead',
-  initials: string = 'PM',
-  avatarBg: string = 'bg-[#501f92]'
-): { leaderboards: Record<ColonyGameId, WeeklyLeaderboardEntry[]>; rank: number; isBest: boolean } {
-  const boards = loadWeeklyLeaderboards();
-  const board = [...(boards[gameId] || [])];
+  player: ColonyPlayer
+): { leaderboards: Record<ColonyGameId, WeeklyLeaderboardEntry[]>; rank: number; isBest: boolean; previousBest: number | null } {
+  const before = loadWeeklyLeaderboards()[gameId].find((e) => e.userId === player.id)?.score ?? null;
+  recordGameResult(gameId, score, player);
+  const leaderboards = loadWeeklyLeaderboards();
+  const rank = leaderboards[gameId].findIndex((e) => e.userId === player.id) + 1;
+  return { leaderboards, rank, isBest: before === null || score > before, previousBest: before };
+}
 
-  const userEntryIndex = board.findIndex(e => e.userId === userId || e.highlight);
-  let isBest = false;
-
-  if (userEntryIndex >= 0) {
-    if (score > board[userEntryIndex].score) {
-      board[userEntryIndex].score = score;
-      isBest = true;
-    }
-  } else {
-    board.push({
-      id: 'lb-' + Date.now(),
-      userId,
-      name: userName,
-      role: userRole,
-      initials,
-      avatarBg,
-      score,
-      highlight: true
-    });
-    isBest = true;
-  }
-
-  board.sort((a, b) => b.score - a.score);
-  const rank = board.findIndex(e => e.userId === userId || e.highlight) + 1;
-
-  const updatedBoards = {
-    ...boards,
-    [gameId]: board
-  };
-
-  if (typeof window !== 'undefined') {
-    try {
-      localStorage.setItem(LEADERBOARD_STORAGE_KEY, JSON.stringify(updatedBoards));
-    } catch (e) {
-      console.error('Error saving leaderboards', e);
-    }
-  }
-
-  return { leaderboards: updatedBoards, rank, isBest };
+/** Texto relativo en español para una fecha ISO («hace 5 min», «ayer»…). */
+export function relativeTimeEs(iso?: string): string {
+  if (!iso || !/^\d{4}-/.test(iso)) return iso || '';
+  const diff = Date.now() - new Date(iso).getTime();
+  const min = Math.round(diff / 60000);
+  if (min < 1) return 'hace un momento';
+  if (min < 60) return `hace ${min} min`;
+  const h = Math.round(min / 60);
+  if (h < 24) return `hace ${h} h`;
+  const d = Math.round(h / 24);
+  return d === 1 ? 'ayer' : `hace ${d} días`;
 }
