@@ -112,8 +112,13 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
     status: 'Activo',
     healthStatus: 'verde',
     healthNote: 'Consumo dentro de lo proyectado para el ciclo actual',
-    rolloverPolicy: 'none',
+    rolloverPolicy: 'carry_over',
     currentMonthCycle: '2026-09',
+    // Contrato de ejemplo: fee de 6 meses (ciclos ago-2026 → ene-2027)
+    isKickedOff: true,
+    contractMonths: 6,
+    contractStartDate: '2026-08-01',
+    contractEndDate: '2027-01-31',
     monthlyCycles: [
       {
         monthKey: '2026-08',
@@ -2164,6 +2169,9 @@ export const TaskFlowPrototype: React.FC = () => {
             productionWeeks: (projItem as any).scheduleConfig?.productionWeeks
           },
           healthNote: `Proyecto independiente creado a partir del servicio ganado "${projItem.serviceName}"`,
+          // Fee mensual: vigencia y política de horas no usadas (los ciclos se crean al iniciar)
+          contractMonths: projItem.projectType === 'fee_monthly' ? ((projItem as any).monthsDuration ?? 6) : null,
+          rolloverPolicy: projItem.projectType === 'fee_monthly' ? ((projItem as any).rolloverPolicy ?? 'none') : undefined,
           // Recursos externos del servicio; los que no tienen servicio van al primer proyecto
           externalResources: (quote.externalResources || []).filter((r) =>
             r.serviceId ? r.serviceId === projItem.serviceId : pIdx === 0
@@ -3189,6 +3197,7 @@ export const TaskFlowPrototype: React.FC = () => {
                 {currentView === 'proyectos' && (
                   <ProjectsView
                     tasks={tasks}
+                    onUpdateAllTasks={setTasks}
                     clients={clients}
                     projectsList={projectsList}
                     currentUser={currentUser}

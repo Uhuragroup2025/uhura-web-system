@@ -9,6 +9,7 @@ import { ProjectTeamTab } from './projects/ProjectTeamTab';
 import { ProjectTasksTab } from './projects/ProjectTasksTab';
 import { initialUsers } from './mockData';
 import { computeScheduleBaseline, planProjectSchedule } from './schedule/scheduleEngine';
+import { buildFeeCycles, contractEndDate as computeContractEnd, monthKeyOf, taskCycleKey, generateCycleTasks, daysUntil, RENEWAL_NOTICE_DAYS } from './schedule/feeCycles';
 import { ProjectNotificationsModal } from './integrations/ProjectNotificationsModal';
 import { CloseProjectModal } from './projects/CloseProjectModal';
 import { canViewProjectNotifications } from './integrations/googleChat';
@@ -136,6 +137,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   const [scheduleReworkRounds, setScheduleReworkRounds] = useState<number>(2);
   const [scheduleReworkRoundDays, setScheduleReworkRoundDays] = useState<number>(5);
   const [scheduleKickoffWaitDays, setScheduleKickoffWaitDays] = useState<number>(3);
+  const [scheduleContractMonths, setScheduleContractMonths] = useState<number>(6); // Fee: vigencia
   const [scheduleRecalculateTasks, setScheduleRecalculateTasks] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'fee_monthly' | 'fixed_project' | 'internal_non_billable' | 'risk'>('all');
@@ -226,16 +228,43 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   const [editProjectLead, setEditProjectLead] = useState('');
   const [editProjectStatus, setEditProjectStatus] = useState<string>('Activo');
   const [editProjectBrief, setEditProjectBrief] = useState('');
+  // Fee mensual: ciclo consultado (null = mes en curso, 'all' = contrato completo)
+  const [selectedCycleKey, setSelectedCycleKey] = useState<string | null>(null);
+  useEffect(() => { setSelectedCycleKey(null); }, [selectedProjectId]);
 
   // Compute metrics for each project based on tasks (dynamic calculation)
   const enrichedProjects = useMemo(() => {
     return projectsList.map((prj) => {
-      const projectTasks = tasks.filter(
+      const allProjectTasks = tasks.filter(
         (t) =>
           t.projectId === prj.id ||
           t.projectName?.toLowerCase() === prj.name.toLowerCase() ||
           t.board?.toLowerCase() === prj.name.toLowerCase()
       );
+
+      // Fee mensual: ciclos vivos de la vigencia (con renovaciones) y vista filtrada por mes
+      const isFeePrj = normalizeProjectType(prj.projectType) === 'fee_monthly';
+      let cycles = prj.monthlyCycles || [];
+      if (isFeePrj && prj.contractStartDate && prj.contractMonths) {
+        const renewals = prj.contractRenewals || [];
+        const addedMonths = renewals.reduce((sum, r) => sum + r.addedMonths, 0);
+        cycles = buildFeeCycles({
+          contractStartDate: prj.contractStartDate,
+          periods: [
+            { months: Math.max(1, prj.contractMonths - addedMonths), monthlyHours: prj.budgetedHours },
+            ...renewals.map((r) => ({ months: r.addedMonths, monthlyHours: r.monthlyHours }))
+          ],
+          rolloverPolicy: prj.rolloverPolicy,
+          tasks: allProjectTasks,
+          generatedKeys: (prj.monthlyCycles || []).filter((c) => c.tasksGenerated).map((c) => c.monthKey)
+        });
+      }
+      const activeCycleKey = cycles.find((c) => c.status === 'active')?.monthKey || prj.currentMonthCycle || cycles[cycles.length - 1]?.monthKey || null;
+      const viewCycleKey = isFeePrj && cycles.length > 0 && prj.id === selectedProjectId
+        ? (selectedCycleKey === 'all' ? null : (selectedCycleKey || activeCycleKey))
+        : null;
+      const viewCycle = cycles.find((c) => c.monthKey === viewCycleKey) || null;
+      const projectTasks = viewCycleKey ? allProjectTasks.filter((t) => taskCycleKey(t) === viewCycleKey) : allProjectTasks;
 
       const tasksAssignedHours = projectTasks.reduce((acc, t) => acc + (t.budgetedHours || 0), 0);
       const projectSoldHours = prj.soldHours || prj.budgetedHours || 0;
@@ -246,9 +275,11 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
         0
       ) || 0;
 
-      const effectiveBudgetedHours = deliverablesQuoted > 0
+      const baseBudgetedHours = deliverablesQuoted > 0
         ? deliverablesQuoted
         : (projectSoldHours > 0 ? projectSoldHours : tasksAssignedHours);
+      // En un ciclo: bolsa del mes + horas trasladadas del mes anterior
+      const effectiveBudgetedHours = viewCycle ? viewCycle.quotedHours + (viewCycle.rolloverHoursIn || 0) : baseBudgetedHours;
 
       const totalConsumedSeconds = projectTasks.reduce((acc, t) => acc + (t.consumedSeconds || 0), 0);
       const consumedHours = totalConsumedSeconds / 3600;
@@ -280,12 +311,15 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
         healthNote,
         deliverables: prj.deliverables || [],
         coreTeam: prj.coreTeam || [],
-        monthlyCycles: prj.monthlyCycles || [],
+        monthlyCycles: cycles,
         rolloverPolicy: prj.rolloverPolicy || 'none',
-        tasks: projectTasks
+        tasks: projectTasks,
+        allTasks: allProjectTasks,
+        activeCycleKey,
+        viewCycleKey
       };
     });
-  }, [projectsList, tasks]);
+  }, [projectsList, tasks, selectedProjectId, selectedCycleKey]);
 
   // Handle Project Selection
   const handleCardClick = (id: string) => {
@@ -578,6 +612,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
       setScheduleReworkRounds(currentProject.scheduleConfig?.includedReworkRounds ?? 2);
       setScheduleReworkRoundDays(currentProject.scheduleConfig?.reworkRoundDays ?? 5);
       setScheduleKickoffWaitDays(currentProject.scheduleConfig?.clientKickoffWaitDays ?? 3);
+      setScheduleContractMonths(currentProject.contractMonths ?? 6);
       // Semanas de producción: fuente de verdad = Alcance (productionWeeks heredado de la conversión)
       const scopeWeeks = currentProject.scheduleConfig?.productionWeeks;
       if (scopeWeeks && scopeWeeks > 0) {
@@ -612,10 +647,13 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
   const handleConfirmKickoff = () => {
     if (!currentProject || !scheduleKickoffDate) return;
-    const projectTasks = tasks.filter((t) => t.projectId === currentProject.id);
+    // Todas las tareas del proyecto (por id o, en datos legados, por nombre), sin filtro de ciclo
+    const projectTasks = ((currentProject as any).allTasks || currentProject.tasks) as TaskItem[];
+    const projectTaskIds = new Set(projectTasks.map((t) => t.id));
     const plan = planProjectSchedule({
       startDate: scheduleKickoffDate,
-      productionWeeks: scheduleDurationWeeks,
+      // Fee: las tareas del alcance son la plantilla del PRIMER mes (≈ 4 semanas)
+      productionWeeks: isCurrentProjectFee ? 4 : scheduleDurationWeeks,
       config: scheduleConfigDraft,
       isFee: isCurrentProjectFee,
       deliverables: (currentProject.deliverables || []).map((d) => ({
@@ -623,7 +661,14 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
         name: d.name,
         totalQuotedHours: d.totalQuotedHours
       })),
-      tasks: projectTasks.map((t) => ({ id: t.id, deliverableId: t.deliverableId, budgetedHours: t.budgetedHours }))
+      tasks: projectTasks.map((t) => {
+        const dels = currentProject.deliverables || [];
+        // Respaldo para datos legados: asociar por nombre del frente si el id no coincide
+        const delId = dels.some((d) => d.id === t.deliverableId)
+          ? t.deliverableId
+          : dels.find((d) => d.name === t.frente)?.id || t.deliverableId;
+        return { id: t.id, deliverableId: delId, budgetedHours: t.budgetedHours };
+      })
     });
     const finalStartDate = plan.baseline.startDate;
     const finalEndDate = plan.baseline.endDate;
@@ -637,14 +682,37 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
     // Primer arranque: congela la línea base. Ajustes posteriores solo mueven el forecast.
     const isFirstKickoff = !currentProject.isKickedOff || !currentProject.baselineEndDate;
 
+    // Fee mensual: contrato por vigencia y ciclos mensuales
+    const feeStartKey = monthKeyOf(finalStartDate);
+    const feeContractEnd = isCurrentProjectFee ? computeContractEnd(finalStartDate, scheduleContractMonths) : undefined;
+    const feeTasksForCycles = projectTasks.map((t) => ({ ...t, cycleKey: t.cycleKey || feeStartKey }));
+    const feeCycles = isCurrentProjectFee
+      ? buildFeeCycles({
+          contractStartDate: finalStartDate,
+          periods: [{ months: scheduleContractMonths, monthlyHours: currentProject.budgetedHours }],
+          rolloverPolicy: currentProject.rolloverPolicy,
+          tasks: feeTasksForCycles,
+          generatedKeys: [feeStartKey]
+        })
+      : undefined;
+
     const updatedProject: ProjectSummaryItem = {
       ...currentProject,
       status: 'Activo',
       startDate: finalStartDate,
-      endDate: finalEndDate,
+      endDate: isCurrentProjectFee ? feeContractEnd : finalEndDate,
       baselineStartDate: isFirstKickoff ? finalStartDate : currentProject.baselineStartDate,
-      baselineEndDate: isFirstKickoff ? finalEndDate : currentProject.baselineEndDate,
-      forecastEndDate: finalEndDate,
+      baselineEndDate: isCurrentProjectFee ? feeContractEnd : (isFirstKickoff ? finalEndDate : currentProject.baselineEndDate),
+      forecastEndDate: isCurrentProjectFee ? feeContractEnd : finalEndDate,
+      ...(isCurrentProjectFee
+        ? {
+            contractMonths: scheduleContractMonths,
+            contractStartDate: finalStartDate,
+            contractEndDate: feeContractEnd,
+            monthlyCycles: feeCycles,
+            currentMonthCycle: feeStartKey
+          }
+        : {}),
       deliverables: updatedDeliverables,
       isKickedOff: true,
       scheduleConfig: isCurrentProjectFee
@@ -659,10 +727,11 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
     if (scheduleRecalculateTasks && onUpdateAllTasks && projectTasks.length > 0) {
       const updatedAllTasks = tasks.map((t) => {
-        const slot = t.projectId === currentProject.id ? plan.tasks[t.id] : undefined;
+        const slot = projectTaskIds.has(t.id) ? plan.tasks[t.id] : undefined;
         if (!slot) return t;
         return {
           ...t,
+          ...(isCurrentProjectFee ? { cycleKey: t.cycleKey || feeStartKey } : {}),
           date: slot.scheduledDate,
           scheduledDate: slot.scheduledDate,
           dueDate: slot.dueDate,
@@ -944,6 +1013,76 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             </div>
           </div>
 
+          {/* Fee mensual: ciclo consultado, tareas del mes y renovación */}
+          {isFeeProject && currentProject.monthlyCycles && currentProject.monthlyCycles.length > 0 && (() => {
+            const cycles = currentProject.monthlyCycles;
+            const activeKey = (currentProject as any).activeCycleKey as string | null;
+            const viewKey = (currentProject as any).viewCycleKey as string | null;
+            const allTasks = ((currentProject as any).allTasks || currentProject.tasks) as TaskItem[];
+            const activeIdx = Math.max(0, cycles.findIndex((c) => c.monthKey === activeKey));
+            const near = cycles.slice(Math.max(0, activeIdx - 1), activeIdx + 2);
+            const others = cycles.filter((c) => !near.includes(c));
+            const years = Array.from(new Set(others.map((c) => c.monthKey.slice(0, 4))));
+            const viewCycle = cycles.find((c) => c.monthKey === viewKey) || null;
+            const firstKey = cycles[0].monthKey;
+            const templateTasks = allTasks.filter((t) => taskCycleKey(t) === firstKey);
+            const canGenerate = canEditProject && viewCycle && viewCycle.status !== 'closed' && currentProject.tasks.length === 0 && templateTasks.length > 0 && viewCycle.monthKey !== firstKey;
+            const daysLeft = currentProject.contractEndDate ? daysUntil(currentProject.contractEndDate) : null;
+            return (
+              <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-[#f1f5f9] text-xs">
+                <label className="flex items-center gap-2 font-semibold text-[#475569]">
+                  <span>Ciclo:</span>
+                  <select
+                    value={selectedCycleKey || ''}
+                    onChange={(e) => setSelectedCycleKey(e.target.value || null)}
+                    className="px-2.5 py-1.5 rounded-xl border border-[#cbd5e1] bg-white text-[#0f172a] font-bold"
+                  >
+                    <option value="">{cycles.find((c) => c.monthKey === activeKey)?.monthLabel || 'Mes actual'} (en curso)</option>
+                    {near.filter((c) => c.monthKey !== activeKey).map((c) => (
+                      <option key={c.monthKey} value={c.monthKey}>{c.monthLabel}{c.status === 'closed' ? ' · cerrado' : ' · próximo'}</option>
+                    ))}
+                    {years.map((y) => (
+                      <optgroup key={y} label={`Otros meses ${y}`}>
+                        {others.filter((c) => c.monthKey.startsWith(y)).map((c) => (
+                          <option key={c.monthKey} value={c.monthKey}>{c.monthLabel}{c.status === 'closed' ? ' · cerrado' : ''}</option>
+                        ))}
+                      </optgroup>
+                    ))}
+                    <option value="all">Contrato completo</option>
+                  </select>
+                </label>
+                {viewCycle && (
+                  <span className="text-[#64748b]">
+                    Bolsa {viewCycle.quotedHours}h{viewCycle.rolloverHoursIn ? ` + ${viewCycle.rolloverHoursIn}h trasladadas` : ''} · {viewCycle.executedHours}h ejecutadas
+                  </span>
+                )}
+                {canGenerate && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!onUpdateAllTasks || !viewCycle) return;
+                      const generated = generateCycleTasks(templateTasks, firstKey, viewCycle.monthKey);
+                      onUpdateAllTasks([...tasks, ...generated]);
+                      onUpdateProject?.({
+                        ...currentProject,
+                        monthlyCycles: cycles.map((c) => (c.monthKey === viewCycle.monthKey ? { ...c, tasksGenerated: true } : c))
+                      });
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-[#501f92] hover:bg-[#3d1572] text-white font-bold cursor-pointer"
+                    title="Crea las tareas recurrentes del mes a partir de la plantilla del primer mes (en producción lo hace ECO automáticamente el día 1)"
+                  >
+                    Generar tareas de {viewCycle!.monthLabel}
+                  </button>
+                )}
+                {daysLeft !== null && daysLeft <= RENEWAL_NOTICE_DAYS && (
+                  <span className={`ml-auto px-2.5 py-1 rounded-full font-bold border ${daysLeft < 0 ? 'bg-[#fef2f2] text-[#b91c1c] border-[#fecaca]' : 'bg-[#fffbeb] text-[#b45309] border-[#fde68a]'}`}>
+                    {daysLeft < 0 ? `Contrato vencido hace ${-daysLeft} días` : `Contrato vence en ${daysLeft} días`} · renovar en Resumen
+                  </span>
+                )}
+              </div>
+            );
+          })()}
+
           {/* Quick 4 KPIs Bar (Compact, horizontal strip) */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-[#f1f5f9] text-xs">
             {/* 1. Presupuesto */}
@@ -1105,6 +1244,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             coreTeam={currentProject.coreTeam || []}
             allProjects={projectsList}
             allTasks={tasks}
+            onSelectCycle={(key) => setSelectedCycleKey(key)}
             currentUser={currentUser}
             allUsers={users || initialUsers}
             onUpdateProject={onUpdateProject}
@@ -1137,6 +1277,12 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             onPauseResumeTimer={onPauseResumeTimer}
             onOpenTaskDetail={onOpenTaskDetail}
             onUpdateTasks={(newTasks) => {
+              // Fuente única: la lista global de tareas. Se reemplazan las tareas visibles del proyecto
+              // (pueden estar filtradas por ciclo) sin tocar las demás.
+              if (onUpdateAllTasks) {
+                const visibleIds = new Set(currentProject.tasks.map((t) => t.id));
+                onUpdateAllTasks([...tasks.filter((t) => !visibleIds.has(t.id)), ...newTasks]);
+              }
               if (onUpdateProject) {
                 const totalConsumed = newTasks.reduce((sum, t) => sum + (t.consumedSeconds || 0) / 3600, 0);
                 const completedCount = newTasks.filter((t) => t.status === "Done" || t.completed || t.status === "completed").length;
@@ -1813,7 +1959,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
         {isCloseProjectModalOpen && (
           <CloseProjectModal
             project={currentProject}
-            tasks={currentProject.tasks}
+            tasks={((currentProject as any).allTasks || currentProject.tasks) as TaskItem[]}
             currentUser={currentUser}
             onClose={() => setIsCloseProjectModalOpen(false)}
             onGoToTasks={() => {
@@ -1887,7 +2033,28 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                   </div>
                 </div>
 
-                {/* 2. Semanas de producción (del Alcance) */}
+                {/* 2a. Fee: vigencia del contrato */}
+                {isCurrentProjectFee && (
+                  <label className="space-y-1.5 block">
+                    <span className="font-bold text-[#334155] block">Vigencia del contrato (meses)</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="36"
+                      value={scheduleContractMonths}
+                      onChange={(e) => setScheduleContractMonths(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                      className="w-full p-2.5 rounded-xl border border-[#cbd5e1] font-bold text-xs text-[#0f172a] focus:ring-2 focus:ring-[#501f92] bg-white"
+                    />
+                    {scheduleKickoffDate && (
+                      <span className="text-[11px] text-[#64748b] block">
+                        Contrato: {scheduleBreakdown?.startDate || scheduleKickoffDate} → {computeContractEnd(scheduleBreakdown?.startDate || scheduleKickoffDate, scheduleContractMonths)} · {currentProject.budgetedHours}h por mes · las tareas del alcance son la plantilla del mes 1.
+                      </span>
+                    )}
+                  </label>
+                )}
+
+                {/* 2. Semanas de producción (del Alcance) — solo proyecto único */}
+                {!isCurrentProjectFee && (
                 <label className="space-y-1.5 block">
                   <span className="font-bold text-[#334155] block">
                     Semanas de producción{currentProject.scheduleConfig?.productionWeeks ? ' (del alcance)' : ''}
@@ -1901,6 +2068,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                       className="w-full p-2.5 rounded-xl border border-[#cbd5e1] font-bold text-xs text-[#0f172a] focus:ring-2 focus:ring-[#501f92] bg-white"
                     />
                 </label>
+                )}
 
                 {/* 3. Tiempos del cliente (editables, sin valores ocultos) */}
                 <div className="space-y-2">
@@ -1950,8 +2118,8 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                   </p>
                 </div>
 
-                {/* Resultado: entrega calculada */}
-                {scheduleBreakdown && (
+                {/* Resultado: entrega calculada (proyecto único; el fee muestra la línea de contrato) */}
+                {scheduleBreakdown && !isCurrentProjectFee && (
                   <div className="p-3 rounded-xl bg-[#faf5ff] border border-[#e9d5ff] text-xs space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">

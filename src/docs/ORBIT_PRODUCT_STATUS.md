@@ -724,6 +724,17 @@ Entidad persistente para insumos, accesos o gates que condicionan la ruta críti
 - `note`: String (Justificación obligatoria).
 - `createdAt`: DateTime inmutable.
 
+#### 11.6.1 Fee mensual: vigencia, ciclos y renovación (🟢 Decisión aprobada · 🟣 Implementado en prototipo · 07 Nov 2026)
+- **Un fee es un solo proyecto** con ciclos mensuales; no se crea un proyecto por mes.
+- **Conversión:** por servicio fee se confirma la **vigencia en meses** (precargada de la cotización, editable: 3, 6, 12…) y la política de **horas no usadas**: `No se acumulan` (`none`) · `Pasan al mes siguiente` (`carry_over`) · `Pasan hasta un 25 %` (`contractual_cap`).
+- **Iniciar proyecto:** fija el inicio del contrato y calcula el fin (`inicio + vigencia − 1 día`). Las tareas del alcance son la **plantilla del mes 1** y se reparten en ese mes. No aplica cronograma de rondas.
+- **Ciclo mensual:** bolsa mensual de horas por rol (la del alcance) + horas trasladadas según la política. Cada tarea pertenece a un ciclo (`cycleKey = 'YYYY-MM'`; si falta, se deriva de su fecha).
+- **Tareas recurrentes:** en producción, ECO crea el día 1 de cada mes las tareas del ciclo a partir de la plantilla del mes 1 (sin tiempo, estado ni registros). En el prototipo se hace con «Generar tareas de <mes>».
+- **Consultar un mes (p. ej. enero):** selector **Ciclo** en el encabezado del proyecto; KPIs, Resumen, Tareas y Matriz se filtran a ese mes. Opción «Contrato completo» para ver todo.
+- **Histórico corto:** el selector y la tabla de Resumen muestran mes anterior, actual y siguiente; el resto queda agrupado por año bajo demanda («Ver los N meses del contrato»). Cada mes es una fila: bolsa (+ trasladadas), ejecutadas, desvío y estado.
+- **Renovación:** aviso 30 días antes del fin del contrato. «Renovar fee» agrega meses (nuevo periodo) con la bolsa mensual acordada y una nota; el histórico se conserva. Si no se renueva, se usa el cierre de proyecto (§11.7).
+- Referencias: `src/components/taskflow/schedule/feeCycles.ts`, `projects/FeeContractSection.tsx`.
+
 #### 11.7 Cierre del Proyecto (🟢 Decisión aprobada · 🟣 Implementado en prototipo · 07 Nov 2026)
 Acción **⋮ → Cerrar proyecto**, disponible para perfiles con edición de proyectos cuando el proyecto ya inició y no está cerrado ni archivado.
 - **Tareas resueltas antes de cerrar:** si hay tareas sin completar, el cierre se bloquea y ofrece «Ir a Tareas».

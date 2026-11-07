@@ -29,6 +29,8 @@ import {
 import { UserAvatar } from '../UserAvatar';
 import { evaluateProjectHealth, calculateBusinessDays, addBusinessDays } from '../health/projectHealthEngine';
 import { ProjectTeamTab } from './ProjectTeamTab';
+import { FeeContractSection } from './FeeContractSection';
+import { can } from '../auth/permissions';
 
 interface ProjectOverviewTabProps {
   project: ProjectSummaryItem & {
@@ -39,6 +41,7 @@ interface ProjectOverviewTabProps {
   coreTeam: ProjectTeamMember[];
   allProjects?: ProjectSummaryItem[];
   allTasks?: TaskItem[]; // Todas las tareas (capacidad global del equipo)
+  onSelectCycle?: (cycleKey: string) => void; // Fee mensual: abrir un mes desde el historial
   currentUser?: UserItem;
   allUsers?: UserItem[];
   onNavigateToDeliverables: () => void;
@@ -54,6 +57,7 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
   coreTeam,
   allProjects = [],
   allTasks,
+  onSelectCycle,
   currentUser,
   allUsers = [],
   onNavigateToDeliverables,
@@ -163,6 +167,17 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* FEE MENSUAL: contrato, ciclos y renovación */}
+      {!isFixed && project.contractStartDate && (
+        <FeeContractSection
+          project={project}
+          currentUser={currentUser}
+          canEdit={!currentUser || can(currentUser, 'edit', 'proyectos')}
+          onUpdateProject={onUpdateProject}
+          onSelectCycle={onSelectCycle}
+        />
+      )}
+
       {/* PROYECTO CERRADO: foto final del cierre */}
       {project.closure && (
         <div className="bg-white rounded-3xl border border-[#e2e8f0] p-5 shadow-xs space-y-3">

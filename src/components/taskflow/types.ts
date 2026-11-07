@@ -134,6 +134,8 @@ export interface ProjectMonthlyCycle {
   rolloverHoursIn?: number;  // Horas traspasadas del ciclo anterior si aplica
   executedHours: number;     // Horas ejecutadas reales en este ciclo (rollup)
   status: 'closed' | 'active' | 'upcoming';
+  periodNumber?: number;     // Periodo de contrato (1 = contrato inicial, 2 = primera renovación…)
+  tasksGenerated?: boolean;  // Las tareas recurrentes del mes ya se crearon
   notes?: string;
 }
 
@@ -393,6 +395,11 @@ export interface ProjectSummaryItem {
   forecastEndDate?: string;
   actualEndDate?: string | null;
   closure?: ProjectClosureRecord | null;
+  // Fee mensual: contrato por vigencia con ciclos mensuales
+  contractMonths?: number | null;            // Vigencia contratada (ej. 3, 6, 12 meses)
+  contractStartDate?: string | null;         // Inicio del contrato (fijado al «Iniciar proyecto»)
+  contractEndDate?: string | null;           // Fin del contrato (inicio + vigencia)
+  contractRenewals?: Array<{ renewedAt: string; renewedByName: string; addedMonths: number; monthlyHours: number; note?: string }>;
   externalResources?: ExternalResourceItem[];     // Heredados de la cotización     // Registro de cierre (autor, fecha, motivo y foto final)
   isKickedOff?: boolean;
   scheduleConfig?: ProjectScheduleConfig;
@@ -825,6 +832,7 @@ export interface TaskItem {
   dueDate: string;
   targetDate?: string | null; // Fecha objetivo (opcional según contexto de proyecto)
   scheduledDate?: string | null; // Fecha planificada para ejecución (usada en Mi Día)
+  cycleKey?: string | null;      // Fee mensual: ciclo al que pertenece la tarea ('YYYY-MM')
   isDeadlineStrict?: boolean; // Flag de deadline estricto vs fecha orientativa
   dueStatus: 'normal' | 'soon' | 'overdue' | 'tomorrow' | 'urgent';
   dueText: string;

@@ -31,6 +31,7 @@ export interface ConvertedProjectPlan {
   soldValue?: number;
   soldMonthlyValue?: number;
   monthsDuration?: number;
+  rolloverPolicy?: 'none' | 'carry_over' | 'contractual_cap';
   deliverableIds: string[];
   leadUserId?: string;
   leadUserName?: string;
@@ -167,6 +168,9 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
   const [serviceReworkRounds, setServiceReworkRounds] = useState<Record<string, number>>({});
   // Días hábiles que consume cada tanda de ajustes (feedback cliente + aplicación). Default: 3
   const [serviceReworkRoundDays, setServiceReworkRoundDays] = useState<Record<string, number>>({});
+  // Fee mensual: vigencia del contrato (meses) y política de horas no usadas
+  const [serviceContractMonths, setServiceContractMonths] = useState<Record<string, number>>({});
+  const [serviceRollover, setServiceRollover] = useState<Record<string, 'none' | 'carry_over' | 'contractual_cap'>>({});
 
   useEffect(() => {
     setProjectNames((prev) => {
@@ -268,7 +272,8 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
         hubspotDealStage: svc.hubspotDealStage,
         soldValue: svc.modality === 'fixed_project' ? svc.totalValue : undefined,
         soldMonthlyValue: svc.modality === 'fee_monthly' ? svc.monthlyValue : undefined,
-        monthsDuration: svc.modality === 'fee_monthly' ? svc.monthsDuration : undefined,
+        monthsDuration: svc.modality === 'fee_monthly' ? (serviceContractMonths[svc.serviceId] ?? svc.monthsDuration ?? 6) : undefined,
+        rolloverPolicy: svc.modality === 'fee_monthly' ? (serviceRollover[svc.serviceId] ?? 'none') : undefined,
         deliverableIds: serviceDeliverables.map((d) => d.id),
         leadUserId: svcLeadId,
         leadUserName: svcLeadUser?.name || 'Líder de Proyecto',
@@ -544,6 +549,44 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
                         ))}
                       </div>
                     </div>
+
+                    {/* Fee mensual: vigencia del contrato y horas no usadas */}
+                    {service.modality === 'fee_monthly' && (
+                      <div className="space-y-2 pt-2 border-t border-[#f1f5f9]">
+                        <span className="font-bold text-[#475569] block text-[11px]">Contrato del fee</span>
+                        <div className="grid grid-cols-2 gap-2">
+                          <label className="space-y-1 block">
+                            <span className="text-[10.5px] font-semibold text-[#475569] block">Vigencia (meses)</span>
+                            <input
+                              type="number"
+                              min="1"
+                              max="36"
+                              value={serviceContractMonths[service.serviceId] ?? service.monthsDuration ?? 6}
+                              onChange={(e) => {
+                                const val = Math.max(1, parseInt(e.target.value, 10) || 1);
+                                setServiceContractMonths((prev) => ({ ...prev, [service.serviceId]: val }));
+                              }}
+                              className="w-full p-2 rounded-xl border border-[#cbd5e1] text-[#0f172a] text-xs font-bold focus:ring-2 focus:ring-[#501f92] bg-white shadow-2xs"
+                            />
+                          </label>
+                          <label className="space-y-1 block">
+                            <span className="text-[10.5px] font-semibold text-[#475569] block">Horas no usadas del mes</span>
+                            <select
+                              value={serviceRollover[service.serviceId] ?? 'none'}
+                              onChange={(e) => setServiceRollover((prev) => ({ ...prev, [service.serviceId]: e.target.value as 'none' | 'carry_over' | 'contractual_cap' }))}
+                              className="w-full p-2 rounded-xl border border-[#cbd5e1] text-[#0f172a] text-xs font-bold focus:ring-2 focus:ring-[#501f92] bg-white shadow-2xs"
+                            >
+                              <option value="none">No se acumulan</option>
+                              <option value="carry_over">Pasan al mes siguiente</option>
+                              <option value="contractual_cap">Pasan hasta un 25 %</option>
+                            </select>
+                          </label>
+                        </div>
+                        <p className="text-[10.5px] text-[#64748b]">
+                          Cada mes de la vigencia es un ciclo con la bolsa mensual de horas y roles del alcance. La fecha de inicio se define al «Iniciar proyecto».
+                        </p>
+                      </div>
+                    )}
 
                     {/* Rondas de ajuste del cliente (solo proyectos únicos): definen el cronograma al iniciar */}
                     {service.modality === 'fixed_project' && (

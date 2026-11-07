@@ -444,6 +444,16 @@ Para no bloquear New Business cuando la app privada de HubSpot esté caída o si
 
 ---
 
+### 12.9 Fee mensual: contrato y ciclos
+* En `projects` (fee): `contract_months`, `contract_start_date`, `contract_end_date`, `rollover_policy` (`none` | `carry_over` | `contractual_cap` = 25 % de la bolsa mensual).
+* `project_cycles` (un registro por mes de vigencia): `cycle_key` (`YYYY-MM`), `period_number`, `quoted_hours`, `rollover_hours_in`, `executed_hours` (rollup de `time_logs` de tareas del ciclo), `status` (`closed` | `active` | `upcoming`), `tasks_generated`.
+* `project_contract_renewals`: `renewed_at`, `renewed_by_user_id`, `added_months`, `monthly_hours`, `note`. Una renovación agrega ciclos sin modificar los cerrados.
+* `tasks.cycle_key` para fees. Job programado el día 1 de cada mes: abre el ciclo y clona las tareas plantilla del mes 1 (sin tiempo ni estado); idempotente por `(project_id, cycle_key)`.
+* Endpoints con filtro `?cycle=YYYY-MM` para KPIs, tareas y matriz de horas; por defecto el ciclo activo.
+* Notificación de renovación 30 días antes de `contract_end_date` al líder y a comercial.
+
+---
+
 ## 13. Módulo Capacidad: Jornada de 42h, Cálculo de Planificado vs. Ejecutado y Filtro por Área
 
 ### 13.1 Jornada Base y Deducción de Festivos/Ausencias
