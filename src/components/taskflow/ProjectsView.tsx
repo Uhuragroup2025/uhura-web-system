@@ -13,6 +13,8 @@ import { initialUsers } from './mockData';
 import { computeScheduleBaseline, planProjectSchedule } from './schedule/scheduleEngine';
 import { ProjectNotificationsModal } from './integrations/ProjectNotificationsModal';
 import { canViewProjectNotifications } from './integrations/googleChat';
+import { calculateBusinessDays } from './health/projectHealthEngine';
+import { can } from './auth/permissions';
 import { UserAvatar } from './UserAvatar';
 import {
   Button,
@@ -325,6 +327,12 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   // Selected project details
   const currentProject = enrichedProjects.find((p) => p.id === selectedProjectId);
   const isFeeProject = normalizeProjectType(currentProject?.projectType) === 'fee_monthly';
+  // Permisos de la vista de proyecto (sin usuario en sesión, el prototipo asume edición)
+  const canEditProject = !currentUser || can(currentUser, 'edit', 'proyectos');
+  const isCollaboratorView = currentUser?.accessLevel === 'collaborator';
+  useEffect(() => {
+    if (isCollaboratorView && (activeTab === 'matrix' || activeTab === 'team')) setActiveTab('overview');
+  }, [isCollaboratorView, activeTab]);
 
   // If switching to a fee project while on backlog or phase group, reset to valid views
   useEffect(() => {
@@ -794,7 +802,11 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
             {/* Schedule Kickoff Action Button & Project Options Menu (siempre en la misma fila) */}
             <div className="flex items-center gap-2 flex-nowrap min-w-0 max-w-full">
-              {isProjectPendingToStart ? (
+              {isProjectPendingToStart && !canEditProject ? (
+                <span className="px-4 py-2 rounded-2xl bg-[#faf5ff] border border-[#e9d5ff] text-[#501f92] text-xs font-bold">
+                  Por iniciar
+                </span>
+              ) : isProjectPendingToStart ? (
                 <button
                   type="button"
                   onClick={() => setIsScheduleModalOpen(true)}
@@ -807,8 +819,9 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
               ) : (
                 <button
                   type="button"
-                  onClick={() => setIsScheduleModalOpen(true)}
-                  className="flex flex-wrap md:flex-nowrap md:whitespace-nowrap items-center gap-x-2 gap-y-0.5 min-w-0 text-left px-4 py-2 rounded-2xl bg-white hover:bg-[#f8fafc] border border-[#cbd5e1] hover:border-[#501f92] text-[#0f172a] text-xs font-bold transition-all shadow-xs cursor-pointer group"
+                  disabled={!canEditProject}
+                  onClick={() => canEditProject && setIsScheduleModalOpen(true)}
+                  className="disabled:cursor-default flex flex-wrap md:flex-nowrap md:whitespace-nowrap items-center gap-x-2 gap-y-0.5 min-w-0 text-left px-4 py-2 rounded-2xl bg-white hover:bg-[#f8fafc] border border-[#cbd5e1] hover:border-[#501f92] text-[#0f172a] text-xs font-bold transition-all shadow-xs cursor-pointer group"
                   title="Proyecto iniciado. Clic para ajustar fechas o recalcular cronograma"
                 >
                   <span className="w-2 h-2 rounded-full bg-[#10b981] inline-block" />
@@ -821,13 +834,16 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                   <span className="text-[11px] text-[#64748b]">
                     · Fin: {currentProject.endDate || 'Por definir'}
                   </span>
-                  <span className="text-[10px] text-[#64748b] group-hover:text-[#501f92] underline ml-1">
-                    Ajustar
-                  </span>
+                  {canEditProject && (
+                    <span className="text-[10px] text-[#64748b] group-hover:text-[#501f92] underline ml-1">
+                      Ajustar
+                    </span>
+                  )}
                 </button>
               )}
 
-              {/* Project Actions Menu (3 dots) */}
+              {/* Project Actions Menu (3 dots) — solo si hay acciones para el perfil */}
+              {(canEditProject || canViewProjectNotifications(currentUser?.accessLevel)) && (
               <div className="relative project-menu-container shrink-0">
                 <button
                   onClick={() => setActiveProjectMenu(activeProjectMenu === currentProject.id ? null : currentProject.id)}
@@ -839,6 +855,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
                 {activeProjectMenu === currentProject.id && (
                   <div className="absolute right-0 top-full mt-1.5 w-48 bg-white rounded-2xl shadow-xl border border-[#e2e8f0] py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+                    {canEditProject && (
                     <button
                       onClick={() => {
                         setEditProjectName(currentProject.name);
@@ -854,6 +871,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                       <Pencil className="w-3.5 h-3.5 text-[#501f92]" />
                       <span>Editar proyecto</span>
                     </button>
+                    )}
 
                     {canViewProjectNotifications(currentUser?.accessLevel) && (
                       <button
@@ -868,6 +886,8 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                       </button>
                     )}
 
+                    {canEditProject && (
+                    <>
                     <button
                       onClick={() => {
                         if (onArchiveProject) {
@@ -891,9 +911,12 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                       <Trash2 className="w-3.5 h-3.5 text-[#dc2626]" />
                       <span>Eliminar proyecto</span>
                     </button>
+                    </>
+                    )}
                   </div>
                 )}
               </div>
+              )}
             </div>
           </div>
 
@@ -935,7 +958,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
             {/* 3. Tareas / Entregables */}
             <div className="p-3 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] flex flex-col justify-between">
-              <span className="text-[10px] uppercase font-bold text-[#64748b] block">Entregables</span>
+              <span className="text-[10px] uppercase font-bold text-[#64748b] block">Tareas</span>
               <span className="text-base font-extrabold text-[#0f172a] mt-0.5">
                 {currentProject.completedTasksCount}/{currentProject.totalTasksCount}{' '}
                 <span className="text-xs font-normal text-[#64748b]">
@@ -955,6 +978,18 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                   ? 'Se define al iniciar'
                   : `${currentProject.startDate || '—'} → ${currentProject.forecastEndDate || currentProject.endDate || '—'}`}
               </span>
+              {(() => {
+                const base = currentProject.baselineEndDate;
+                const fc = currentProject.forecastEndDate;
+                if (!base || !fc || base === fc) return null;
+                const late = fc > base;
+                const d = late ? calculateBusinessDays(base, fc) : calculateBusinessDays(fc, base);
+                return (
+                  <span className={`text-[10px] block mt-0.5 font-semibold ${late ? 'text-[#b45309]' : 'text-[#15803d]'}`}>
+                    Base {base} · {late ? '+' : '−'}{d} d hábiles
+                  </span>
+                );
+              })()}
               <div className="mt-1">
                 <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ${
                   currentProject.status === 'Archivado'
@@ -998,6 +1033,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             <span>Tareas ({currentProject.tasks.length})</span>
           </button>
 
+          {!isCollaboratorView && (
           <button
             onClick={() => {
               setActiveTab('matrix');
@@ -1011,6 +1047,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             <TableIcon className="w-3.5 h-3.5 text-current" />
             <span>Matriz Horas por Rol ({rolesBreakdown.length})</span>
           </button>
+          )}
 
           {!isFeeProject && currentProject.phasesList && currentProject.phasesList.length > 0 && (
             <button
@@ -1535,7 +1572,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
         )}
 
         {/* TAB 3: MATRIZ HORAS POR ROL */}
-        {(activeTab === 'matrix' || activeTab === 'team') && (
+        {(activeTab === 'matrix' || activeTab === 'team') && !isCollaboratorView && (
           <div className="space-y-5">
                 {/* Top Analysis Notice */}
                 <div className="p-4 rounded-2xl bg-gradient-to-r from-[#f5f3ff] to-[#f8fafc] border border-[#e9d5ff] flex items-start gap-3">
@@ -1689,7 +1726,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                                     ? 'bg-[#ecfdf5] text-[#065f46]'
                                     : 'bg-[#f1f5f9] text-[#475569]'
                                 }`}>
-                                  {f.completedCount === f.tasks.length && f.tasks.length > 0 ? 'Entregado' : 'En Ejecución'}
+                                  {f.completedCount === f.tasks.length && f.tasks.length > 0 ? 'Entregado' : isProjectPendingToStart ? 'Por iniciar' : 'En Ejecución'}
                                 </span>
                               </td>
                             </tr>
@@ -1717,7 +1754,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                             )}
                           </td>
                           <td className="py-3.5 px-4 text-center font-mono">{percentHours}%</td>
-                          <td className="py-3.5 px-5 text-right pr-6 text-[#501f92]">{currentProject.status}</td>
+                          <td className="py-3.5 px-5 text-right pr-6 text-[#501f92]">{isProjectPendingToStart ? 'Por iniciar' : currentProject.status}</td>
                         </tr>
                       </tfoot>
                     </table>

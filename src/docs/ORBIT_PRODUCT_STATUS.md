@@ -645,14 +645,17 @@ Contenedor principal de la ejecución operativa, control presupuestal de horas, 
 #### 11.2 Estructura Aprobada de Navegación Interna del Proyecto
 La ficha de proyecto se organiza en la siguiente estructura de pestañas oficial:
 ```text
-1. Resumen: Visión ejecutiva del proyecto, alcance técnico, gobernanza y equipo asignado.
+1. Resumen: Entregables, cronograma y rondas de ajuste, y Equipo Asignado (derivado de tareas, §14.3).
 2. Tareas: Tablero operativo y lista de tareas con entregables colapsados por defecto y bloque de dependencias.
-3. Equipo: Matriz de staffing, colaboradores asignados, horas semanales y roles.
-4. Matriz Horas: Matriz de consumo presupuestal con vistas consolidadas de "Horas por Rol" y "Horas por Servicio/Entregable".
-5. Backlog (Opcional): Visible únicamente cuando el proyecto contiene fases estructuradas.
-6. Actividad: Auditoría cronológica de cambios y eventos del proyecto.
-7. Configuración: Parámetros del proyecto, fechas oficiales y estados de formalización.
+3. Matriz Horas por Rol: Horas cotizadas vs. ejecutadas por rol y por entregable. No visible para `collaborator`.
+4. Backlog (Opcional): Visible únicamente cuando el proyecto contiene fases estructuradas.
 ```
+*(Actualizado 07 Nov 2026)* Ya no existen pestañas «Equipo» (se integró en Resumen), «Actividad» ni «Configuración». Las acciones del proyecto viven en el menú ⋮: Editar, Notificaciones (§11.8), Archivar y Eliminar.
+
+**Vista por perfil:**
+- `collaborator`: Resumen y Tareas en solo lectura del proyecto (sin menú ⋮, sin «Iniciar proyecto» ni «Ajustar», sin Matriz Horas). Su trabajo diario está en Mi Día y Tareas.
+- Perfiles con edición de proyectos (`leader`, `client_relationship`, `system_admin`): todas las acciones.
+- `executive`: consulta; en el menú ⋮ solo Notificaciones (lectura).
 
 > **DECISIÓN DE DISEÑO Y REDUCCIÓN DE RUIDO VISUAL (PESTAÑA RESUMEN):**
 > Para evitar saturación y duplicidad cognitiva, la pestaña **Resumen** se optimizó radicalmente:
@@ -662,10 +665,9 @@ La ficha de proyecto se organiza en la siguiente estructura de pestañas oficial
 
 #### 11.3 Gobernanza Contractual en el Encabezado del Proyecto
 En el encabezado del proyecto, especialmente para proyectos de alcance único (`fixed_project`), se visibilizan las reglas contractuales fundamentales acordadas:
-- **Gates de Aprobación Incluidos:** Número de hitos formales de validación con el cliente (Default: 2 gates, ej. Gate 1: UX/Contenido, Gate 2: Implementación/QA).
-- **Rondas de Ajuste por Gate:** Límite contractual de iteraciones por cada gate (Default: máximo 2 tandas de ajustes: 1 tanda integral grande y 1 tanda de pulido menor).
-- **Devolución de Kickoff:** Ventana de revisión y respuesta inicial (3 días hábiles sin consumo de capacidad).
-- **Trinomio de Cronograma:** Baseline inicial (inmutable), Forecast proyectado (según dependencias confirmadas) y Fecha Real de cierre.
+- **Rondas de ajuste incluidas** (chip del encabezado): una ronda = el cliente revisa una entrega, devuelve ajustes y aprueba. Se define por proyecto (sugerido 2 × 5 días hábiles); reemplaza el modelo anterior de gates × tandas (§8.3).
+- **Entrega de insumos del cliente:** días hábiles tras el kickoff (sugerido 3; 0 si no aplica), sin consumo de capacidad.
+- **Trinomio de Cronograma:** Baseline inicial (inmutable), Forecast proyectado y Fecha Real de cierre. El KPI «Cronograma» muestra inicio → forecast y la diferencia en días hábiles frente a la línea base cuando existe.
 
 #### 11.4 Entidades y Campos Principales
 - **`ProjectProfile` (`ProjectSummaryItem`):**

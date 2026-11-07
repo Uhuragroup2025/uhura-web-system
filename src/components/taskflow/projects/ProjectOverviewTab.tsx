@@ -228,10 +228,10 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
               </span>
               <div>
                 <h2 className="text-base font-extrabold text-[#0f172a]">
-                  Estructura del Proyecto & Entregables Formalizados
+                  Entregables ({deliverables.length})
                 </h2>
                 <p className="text-xs text-[#64748b]">
-                  {deliverables.length} entregables formalizados · {totalTasks} tareas operativas listas para ejecución
+                  {totalTasks} tareas · clic en un entregable para ver sus tareas
                 </p>
               </div>
             </div>
@@ -242,7 +242,7 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
             onClick={() => onNavigateToTasks()}
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold transition-all cursor-pointer shadow-xs self-start sm:self-auto"
           >
-            <span>Ir a Tareas y Operación ({totalTasks})</span>
+            <span>Ver tareas</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>
@@ -314,12 +314,9 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
                 <h3 className="font-extrabold text-sm text-[#0f172a]">
                   Cronograma y rondas de ajuste
                 </h3>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#f3e8ff] text-[#501f92]">
-                  Cláusulas Operativas Uhura
-                </span>
               </div>
               <p className="text-xs text-[#64748b] mt-0.5">
-                Protección contra scope creep: ventanas de espera por cliente no consumen capacidad del equipo y excluyen festivos.
+                Tiempos del cliente incluidos en la línea base. No consumen capacidad del equipo.
               </p>
             </div>
 
@@ -352,14 +349,14 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
               <span className="text-[11px] text-[#64748b] mt-0.5 block">Tras el kickoff · no consume capacidad del equipo</span>
             </div>
 
-            {/* Forecast */}
+            {/* Cambios de cronograma (la fecha vigente está en el KPI «Cronograma») */}
             <div className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0]">
-              <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Forecast de Entrega</span>
-              <p className="text-sm font-extrabold text-[#501f92] mt-1">
-                {project.forecastEndDate || project.baselineEndDate || project.endDate || 'Por definir al iniciar'}
+              <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Cambios de cronograma</span>
+              <p className="text-sm font-extrabold text-[#0f172a] mt-1">
+                {scheduleHistory.length} reforecast{scheduleHistory.length !== 1 ? 's' : ''}
               </p>
               <span className="text-[11px] text-[#64748b] mt-0.5 block">
-                {scheduleHistory.length} reforecast{scheduleHistory.length !== 1 ? 's' : ''} auditado{scheduleHistory.length !== 1 ? 's' : ''}
+                {project.baselineEndDate ? `Línea base: ${project.baselineEndDate}` : 'Línea base al iniciar el proyecto'}
               </span>
             </div>
           </div>
