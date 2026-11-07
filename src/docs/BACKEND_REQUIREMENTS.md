@@ -527,12 +527,23 @@ Para no bloquear New Business cuando la app privada de HubSpot esté caída o si
 
 ## 15. Reglas de «Mi Día», Sincronización de Colaboradores y Notificaciones
 
-### 15.1 Criterio de Filtrado de «Mi Día»
-* El endpoint/vista de **`Mi Día`** debe devolver estrictamente:
-  1. Tareas donde el usuario es **Colaborador** (`assignee` o `collaborators`) con `due_date == hoy`, `scheduled_date == hoy`, **ventana en curso** (`scheduled_date <= hoy <= due_date`, no completada) o vencidas sin completar.
-  2. Tareas en estado **`Review`** que requieran su **revisión o aprobación** (`reviewer_id == user.id` o `project_lead_id == user.id`).
-  3. La tarea con el **timer activo** del usuario.
+### 15.1 Regla de visibilidad de tareas (Mi Día, Tareas y bandeja de atención) — obligatoria para todos los perfiles
+**Principio:** nadie ve en sus prioridades tareas que no le pertenecen. Ni por compartir rol, ni por ser líder de otra área, ni por tener el mismo primer nombre que otra persona. La relación de una persona con una tarea se calcula **siempre por `user_id`**, nunca por nombre.
+
+| Relación con la tarea | Cómo se determina | Dónde aparece | Urgencia |
+|---|---|---|---|
+| **Responsable de ejecución** | `assignee_id`, `collaborators` o `assignee_allocations` | «Qué tengo que hacer hoy» (Mi Día) y «Mis tareas» | Normal: cuenta en pendientes, prioridad y capacidad |
+| **Revisor** | Tarea en `Review` y `reviewer_id == user.id` (si no hay revisor, `project.lead_user_id == user.id`) | Mi Día y «Mis tareas» | Normal |
+| **Seguidor** | `followers` | «Siguiendo» (Mi Día plegado y pestaña en Tareas) | **Sin urgencia**: no suma a pendientes, contadores de atención, capacidad ni alertas |
+| Ninguna | — | No aparece | — |
+
+* **Mi Día · «Qué tengo que hacer hoy»** devuelve solo: tareas donde el usuario es responsable de ejecución con `due_date == hoy`, `scheduled_date == hoy`, **ventana en curso** (`scheduled_date <= hoy <= due_date`, no completada) o vencidas sin completar; las que le toca revisar; y la tarea con su timer activo. **Ningún nivel de acceso** (tampoco `leader` ni `system_admin`) recibe aquí revisiones de proyectos ajenos.
+* **Excepciones de proyecto** en la bandeja «Qué requiere mi atención» (insumos y dependencias del cliente, bloqueos del equipo, desvíos de horas, retrabajos): solo de los proyectos de los que el usuario es **responsable** (`project.lead_user_id`, `account_manager_id` o líder comercial asignado). Así, al comercial o al líder les llegan los insumos y dependencias de **sus** proyectos aunque no ejecuten tareas. `executive` y `system_admin` ven todos los proyectos en la bandeja, pero **no** las tareas de otros en su lista personal.
+* **Tareas · «Equipo»:** no existe para `collaborator`. Para `leader`, `commercial`, `client_relationship` y `administrative` muestra solo las tareas de los proyectos de los que es responsable. Para `executive` y `system_admin`, todas.
+* **Seguidores:** se usan para que alguien revise o esté al tanto. Ver la tarea no la convierte en suya: no puede pedir revisión, no recibe recordatorios de vencimiento y no se cuenta en su carga.
 * Ordenamiento por defecto: pendientes primero, ordenadas por **prioridad** (`urgent` > `high` > `medium` > `low`), dejando las completadas de hoy tachadas al final.
+* **Aceptación (QA):** con dos usuarios que comparten primer nombre (p. ej. dos «Diego» o dos «Laura»), cada uno ve únicamente sus tareas. Un colaborador no ve el selector «Equipo». Un seguidor ve la tarea en «Siguiendo» y no en «Qué tengo que hacer hoy».
+* Implementación de referencia en el prototipo: `src/components/taskflow/auth/taskVisibility.ts` (la comparación por nombre del prototipo existe solo porque los datos de demostración no traen ID; en producción no se usa).
 
 ### 15.2 Sincronización en Tiempo Real al Modificar Colaboradores y Notificaciones
 * **Retiro / Reemplazo de Colaborador:** Al quitar a un usuario de `collaborators` / `assignee`, el backend debe excluir esa tarea de su carga **Planificada** en Capacidad, de **Mi Día** y de **Mis Tareas** de forma inmediata.
@@ -645,4 +656,29 @@ Especificación funcional y permisos en `ORBIT_PRODUCT_STATUS.md` §11.8. Requis
 * Envío asíncrono con reintentos **idempotentes** (clave por evento y destino): un reintento no duplica mensajes. Una falla de Google Chat **no** impide guardar la acción en ECO.
 * Formato: mensaje corto y amigable con estructura reconocible y enlace directo a la tarea (ej.: «👋 ¡Hola, equipo! Soy ECO 🐻. … [Ver tarea en ECO]»).
 * Pruebas controladas (espacio de prueba) para no notificar al equipo por error.
+
+---
+
+## 19. Arranque en producción y migración desde COR (07 Nov 2026)
+Especificación funcional en `ORBIT_PRODUCT_STATUS.md` §9.4.
+
+### 19.1 Qué se migra y qué no
+* **Sí se migra:** usuarios (perfiles, roles, calendario laboral) y **clientes** (datos fiscales, contactos, integraciones). Nada más.
+* **No se migra:** proyectos, entregables, tareas, comentarios, timers ni registros de horas de COR ni de la plataforma que hoy opera Indunova. Ningún script de seed o migración puede crear proyectos o tareas con fecha anterior al arranque (**corte: 1 de noviembre de 2026**).
+* Los datos de demostración del prototipo (proyectos, tareas, oportunidades, mocks) **no** se cargan en producción, igual que el Simulador QA.
+* COR queda como archivo histórico de solo lectura. Antes de apagarlo, Uhura exporta (CSV/PDF) las horas y proyectos que finanzas necesite conservar; esos archivos no se importan a ECO.
+
+### 19.2 Proyectos vigentes al arranque
+* Se crean **a mano desde la interfaz** por el líder o comercial responsable, con el flujo normal: proyecto nuevo (o conversión desde New Business si existe la oportunidad) → «Iniciar proyecto».
+* «Iniciar proyecto» debe aceptar una **fecha de inicio pasada**: es la fecha real del contrato. El cronograma y los ciclos se calculan desde ahí.
+* **Fee mensual iniciado antes del arranque** (caso Cristar: inicia el 1 de noviembre y se crea en ECO en diciembre): `contract_start_date` real; los meses anteriores existen como ciclos **sin tareas** («Mes 1 · fuera de ECO»); las tareas se generan solo desde el ciclo actual. Si el contrato tiene la excepción de acumular horas, el saldo inicial se registra como un ajuste manual con nota y usuario, no como horas importadas.
+* Cada proyecto guarda su origen: `origin = 'new_business' | 'manual_go_live'`, y los creados con `manual_go_live` registran quién los creó y cuándo.
+* Primer proyecto en producción: **Rediseño web Neroli**, creado manualmente (su cierre comercial ocurrió fuera de ECO).
+
+### 19.3 Si hubiera muchos proyectos vigentes
+Si al momento del arranque hay más proyectos vigentes de los que se pueden crear a mano en un día, se habilita una **carga única por plantilla** (CSV) con: cliente, nombre, tipo (único / fee), fecha de inicio, vigencia en meses, horas contratadas por rol, líder y responsable de cuenta. La carga:
+* Solo crea el proyecto y su configuración; **nunca** tareas, horas ni comentarios.
+* Corre primero en modo de prueba (`dry_run`) y devuelve un informe para que Uhura lo apruebe.
+* Rechaza filas con fecha de fin anterior al corte o cliente inexistente.
+* Marca los proyectos con `origin = 'import'` y deja al líder la tarea de revisar e «Iniciar proyecto».
 

@@ -1015,6 +1015,13 @@ Mi Día puede mostrar de forma discreta y no invasiva:
 - **Ausencias y vacaciones próximas relevantes:** Obtenidas del modelo canónico `TeamAbsenceEvent` (eventos aprobados y programados).
 - *Criterio UI:* Información visible de manera sobria y secundaria, sin competir con la lista de tareas operativas ni saturar el home con widgets pesados.
 
+#### 17.5 Regla de visibilidad de tareas (todos los perfiles)
+- **Mis prioridades = solo lo que me pertenece.** En «Qué tengo que hacer hoy» y en «Mis tareas» aparecen únicamente las tareas donde la persona es responsable de ejecución (asignada o colaboradora) y las que le toca revisar. Nunca tareas de otras personas, aunque compartan rol, área o primer nombre.
+- **Seguidores, sin la misma urgencia.** Quien está como seguidor para revisar o estar al tanto ve la tarea en **«Siguiendo»** (bloque plegado en Mi Día y pestaña en Tareas). No cuenta como pendiente, no suma a su carga ni a la bandeja de atención.
+- **Comercial y líder: lo de sus proyectos permea su día.** Insumos y dependencias del cliente, bloqueos, desvíos de horas y retrabajos llegan a la bandeja «Qué requiere mi atención» solo de los proyectos de los que la persona es responsable (líder del proyecto o responsable de cuenta). Dirección y administración del sistema ven todos los proyectos en esa bandeja, pero no las tareas de otros en su lista personal.
+- **Tareas · «Equipo»:** el colaborador no lo ve. Líder y comercial ven las tareas de sus proyectos; Dirección y administración, todas.
+- Requisito técnico y criterios de aceptación: `BACKEND_REQUIREMENTS.md` §15.1. Implementación en el prototipo: `auth/taskVisibility.ts`, usada por `MiDiaView.tsx` y `MyTasksView.tsx`.
+
 ---
 
 ### Módulo 18: Bucky y La Colonia (Espacio Social & Lúdico)
@@ -1225,6 +1232,14 @@ Para asegurar una frontera limpia de trabajo entre Producto (Uhura) y la Fábric
    Cuando Indunova defina el mecanismo técnico de integración, deberá indicar a Uhura qué calendario, permisos y credenciales necesita para staging/producción. Uhura facilitará el acceso correspondiente al calendario corporativo gestionado por Administrativa.
 
 ---
+
+### 9.4 Arranque en producción: qué se hereda y cómo se crean los proyectos vigentes
+- **Empezamos limpios.** Producción solo hereda **usuarios y clientes**. No se heredan proyectos ni tareas de COR (la herramienta actual, con proyectos y tareas viejas sin cerrar) ni de la plataforma que hoy opera Indunova, y nada anterior a noviembre de 2026. Así nadie arranca con pendientes viejos en Mi Día.
+- **Proyectos vigentes, a mano.** Se crean desde ECO con el flujo normal: proyecto nuevo (o conversión si la oportunidad existe) → «Iniciar proyecto» con la **fecha real de inicio**, aunque sea pasada.
+  - **Rediseño web Neroli:** primer proyecto en producción; se crea a mano porque su cierre comercial ya ocurrió.
+  - **Fee de Cristar** (inicia en noviembre y se crea en ECO en diciembre): se inicia con fecha 1 de noviembre; noviembre queda como «Mes 1 · fuera de ECO» sin tareas y se generan solo las tareas de diciembre (Mes 2). Si el contrato tuviera la excepción de acumular horas, el saldo se registra como ajuste manual con nota.
+- **Recomendación:** crear a mano los proyectos vigentes al iniciar cada mes mientras sean pocos (es la oportunidad de depurar alcance, líder y horas). Solo si al arranque hubiera más de los que se pueden crear en un día, usar la carga única por plantilla descrita en `BACKEND_REQUIREMENTS.md` §19.3: crea proyectos, nunca tareas ni horas, y pasa por una prueba antes de aplicarse.
+- COR queda como archivo de consulta. Lo que finanzas necesite conservar se exporta antes de apagarlo; no se importa a ECO.
 
 ## 10. Roles, Niveles de Acceso y Matriz de Permisos (RBAC)
 

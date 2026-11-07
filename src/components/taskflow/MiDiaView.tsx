@@ -44,6 +44,7 @@ import {
   TeamAbsenceEvent
 } from './types';
 import { getUserAccessLevel, can } from './auth/permissions';
+import { makePersonMatcher, getTaskRelation, isProjectResponsible, makeTaskProjectResolver } from './auth/taskVisibility';
 import { initialUsers, initialAbsenceEvents } from './mockData';
 import { processTeamLifeEvents } from './copilot/teamLifeEngine';
 import { calculateBusinessDays } from './health/projectHealthEngine';
@@ -118,43 +119,48 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
     }, 3500);
   };
 
-  // 2. Filtrado estricto de "Mi Día":
-  // - Tareas donde el usuario es Colaborador con entrega hoy (o vencida/en cronograma de hoy)
-  // - Tareas que requieren su revisión o aprobación (status Review / in_review)
-  // - Tarea con el timer activo en curso
+  // 2. Visibilidad (regla única, ver auth/taskVisibility.ts):
+  // - «Qué tengo que hacer hoy»: solo tareas donde el usuario es responsable de ejecución
+  //   (assignee / collaborators) con fecha hoy, ventana en curso o vencida; las que debe
+  //   revisar (revisor, o líder del proyecto si no hay revisor) y la del timer activo.
+  // - Seguidores: van a «Siguiendo», sin urgencia ni conteo.
+  // - Excepciones de equipo (bloqueos, desvíos, insumos): solo de proyectos de los que el
+  //   usuario es responsable (líder o responsable de cuenta). Dirección y admin ven todo.
+  const effectiveUserList = users && users.length > 0 ? users : initialUsers;
+  const identity = currentUser || effectiveUserList.find((u) => u.id === currentUserId);
+  const matchesMe = useMemo(() => makePersonMatcher(identity, effectiveUserList), [identity, effectiveUserList]);
+  const projectOfTask = useMemo(() => makeTaskProjectResolver(projects), [projects]);
+  const isGlobalViewer = accessLevel === 'executive' || accessLevel === 'system_admin';
+  const myProjectIds = useMemo(
+    () => new Set(projects.filter((p) => isProjectResponsible(p, identity, matchesMe)).map((p) => p.id)),
+    [projects, identity, matchesMe]
+  );
+  const inMyScope = (t: TaskItem) => {
+    if (isGlobalViewer) return true;
+    const p = projectOfTask(t);
+    return Boolean(p && myProjectIds.has(p.id));
+  };
+
+  const todayIsoForTasks = new Date().toISOString().split('T')[0];
+  const isTodayOrDue = (t: TaskItem) => {
+    const todayIso = todayIsoForTasks;
+    if (t.scheduledDate === todayIso || t.dueDate === todayIso) return true;
+    // Tarea en curso: su ventana programada (inicio → vencimiento) incluye hoy
+    if (!t.completed && t.scheduledDate && t.dueDate && t.scheduledDate <= todayIso && todayIso <= t.dueDate) return true;
+    const dueTxt = (t.dueText || '').toLowerCase();
+    if (dueTxt.includes('hoy') || dueTxt.includes('vencid') || dueTxt.includes('urgente')) return true;
+    if (t.dueStatus === 'overdue' || t.dueStatus === 'urgent') return true;
+    return false;
+  };
+
   const assignedTasks = useMemo(() => {
-    const cId = currentUserId.toLowerCase();
-    const cName = currentUserName.toLowerCase();
-    const cFirst = cName.split(' ')[0];
-    const todayIso = new Date().toISOString().split('T')[0];
-
-    const matchesUser = (person?: { id?: string; name?: string } | null) => {
-      if (!person) return false;
-      if (person.id && person.id.toLowerCase() === cId) return true;
-      const pName = (person.name || '').toLowerCase();
-      return Boolean(pName && (pName.includes(cFirst) || cName.includes(pName)));
-    };
-
-    const isTodayOrDue = (t: TaskItem) => {
-      if (t.scheduledDate === todayIso || t.dueDate === todayIso) return true;
-      // Tarea en curso: su ventana programada (inicio → vencimiento) incluye hoy
-      if (!t.completed && t.scheduledDate && t.dueDate && t.scheduledDate <= todayIso && todayIso <= t.dueDate) return true;      const dueTxt = (t.dueText || '').toLowerCase();
-      if (dueTxt.includes('hoy') || dueTxt.includes('vencid') || dueTxt.includes('urgente')) return true;
-      if (t.dueStatus === 'overdue' || t.dueStatus === 'urgent') return true;
-      return false;
-    };
-
     return tasks
       .filter((t) => {
+        if (t.isArchived) return false;
         if (activeTimer?.taskId === t.id) return true;
-
-        const isCollab = matchesUser(t.assignee) || (t.collaborators || []).some((c) => matchesUser(c));
-        const isReviewForMe =
-          (t.status === 'Review' || t.status === 'in_review') &&
-          (matchesUser(t.reviewer) || matchesUser(t.projectLead) || accessLevel === 'leader' || accessLevel === 'system_admin');
-
-        if (isReviewForMe) return true;
-        if (isCollab && isTodayOrDue(t)) return true;
+        const relation = getTaskRelation(t, identity, matchesMe);
+        if (relation === 'reviewer') return true;
+        if (relation === 'owner' && isTodayOrDue(t)) return true;
         return false;
       })
       .sort((a, b) => {
@@ -162,27 +168,40 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
         const prioWeight: Record<string, number> = { urgent: 4, High: 3, high: 3, Medium: 2, medium: 2, Low: 1, low: 1 };
         return (prioWeight[b.priority] || 2) - (prioWeight[a.priority] || 2);
       });
-  }, [tasks, currentUserId, currentUserName, activeTimer?.taskId, accessLevel]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasks, identity, matchesMe, activeTimer?.taskId]);
 
   const activeUserTasks = assignedTasks;
 
+  // Tareas que sigo: informativas, sin urgencia (no suman a pendientes, atención ni capacidad)
+  const followedTasks = useMemo(
+    () =>
+      tasks.filter(
+        (t) => !t.completed && !t.isArchived && getTaskRelation(t, identity, matchesMe) === 'follower' && (isTodayOrDue(t) || t.status === 'Review')
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tasks, identity, matchesMe]
+  );
+  const [showFollowed, setShowFollowed] = useState(false);
+
   // 3. MATRIZ DE PERSPECTIVA POR ROL — EVALUACIÓN DE ELEMENTOS DE ATENCIÓN
-  // Retrabajos / Ajustes urgentes
+  // Retrabajos / Ajustes: los propios; quien es responsable del proyecto ve los de sus proyectos
   const reworkTasks = useMemo(() => {
     if (!['collaborator', 'leader', 'client_relationship', 'executive', 'system_admin'].includes(accessLevel)) {
       return [];
     }
-    const pool = accessLevel === 'collaborator' ? activeUserTasks : tasks;
+    const pool = accessLevel === 'collaborator' ? activeUserTasks : tasks.filter((t) => inMyScope(t) || activeUserTasks.includes(t));
     return pool.filter((t) => !t.completed && (t.isRework || (t.reworkRound && t.reworkRound > 0)));
-  }, [accessLevel, activeUserTasks, tasks]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessLevel, activeUserTasks, tasks, myProjectIds]);
 
-  // Revisiones pendientes
+  // Revisiones pendientes: solo las que me corresponde revisar
   const reviewTasks = useMemo(() => {
     if (!['leader', 'client_relationship', 'system_admin'].includes(accessLevel)) {
       return [];
     }
-    return tasks.filter((t) => !t.completed && (t.status === 'Review' || t.status === 'in_review'));
-  }, [accessLevel, tasks]);
+    return tasks.filter((t) => !t.completed && getTaskRelation(t, identity, matchesMe) === 'reviewer');
+  }, [accessLevel, tasks, identity, matchesMe]);
 
   // Bloqueos propios
   const ownBlockedTasks = useMemo(() => {
@@ -192,39 +211,30 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
     return activeUserTasks.filter((t) => !t.completed && Boolean(t.isBlocked || t.blockedReason));
   }, [accessLevel, activeUserTasks]);
 
-  // Bloqueos de equipo (para líderes / executive)
+  // Bloqueos de equipo: de los proyectos que lidero (Dirección / admin: todos)
   const teamBlockedTasks = useMemo(() => {
     if (!['leader', 'executive', 'system_admin'].includes(accessLevel)) {
       return [];
     }
-    return tasks.filter((t) => !t.completed && Boolean(t.isBlocked || t.blockedReason));
-  }, [accessLevel, tasks]);
+    return tasks.filter((t) => !t.completed && Boolean(t.isBlocked || t.blockedReason) && inMyScope(t) && !activeUserTasks.includes(t));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessLevel, tasks, myProjectIds, activeUserTasks]);
 
-  // Desvíos de presupuesto / Entregables en riesgo (horas ejecutadas > presupuestadas)
-  // Visible para Comercial, Client Relationship, Líder del proyecto asignado, Dirección y Colaborador (en sus tareas)
+  // Desvíos de presupuesto (horas ejecutadas > presupuestadas)
+  // Colaborador: en sus tareas. Comercial / líder: en los proyectos de los que es responsable. Dirección: todos.
   const overtimeRisks = useMemo(() => {
     if (!['collaborator', 'leader', 'commercial', 'client_relationship', 'executive', 'system_admin'].includes(accessLevel)) {
       return [];
     }
-    const cName = currentUserName.toLowerCase();
-    const cFirst = cName.split(' ')[0];
-    const pool =
-      accessLevel === 'collaborator'
-        ? activeUserTasks
-        : accessLevel === 'leader'
-        ? tasks.filter((t) => {
-            const leadName = (t.projectLead?.name || '').toLowerCase();
-            if (!leadName) return true;
-            return leadName.includes(cFirst) || cName.includes(leadName);
-          })
-        : tasks;
+    const pool = accessLevel === 'collaborator' ? activeUserTasks : tasks.filter((t) => inMyScope(t) || activeUserTasks.includes(t));
     return pool.filter((t) => {
       if (t.completed) return false;
       const consumedHrs = (t.consumedSeconds || 0) / 3600;
       const budgeted = t.budgetedHours || 0;
       return budgeted > 0 && consumedHrs > budgeted;
     });
-  }, [accessLevel, activeUserTasks, tasks, currentUserName]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessLevel, activeUserTasks, tasks, myProjectIds]);
 
   // New Business que requiere acción (cotizaciones pendientes de aprobación o briefs por dimensionar)
   const newBusinessActions = useMemo(() => {
@@ -267,6 +277,8 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
     const allDeps: Array<ProjectDependency & { projectName: string; clientName: string; delayDays: number }> = [];
 
     projects.forEach((proj: ProjectSummaryItem) => {
+      // Insumos del cliente: solo de proyectos de los que soy responsable (Dirección / admin: todos)
+      if (!isGlobalViewer && !myProjectIds.has(proj.id)) return;
       (proj.dependencies || []).forEach((dep) => {
         if (dep.ownerType === 'client' && dep.status === 'pending') {
           const delayDays = dep.expectedDate && todayStr > dep.expectedDate
@@ -283,7 +295,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
     });
 
     return allDeps.sort((a, b) => b.delayDays - a.delayDays);
-  }, [accessLevel, projects]);
+  }, [accessLevel, projects, isGlobalViewer, myProjectIds]);
 
   // Total de elementos accionables de atención
   const totalAttentionCount =
@@ -879,6 +891,40 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                     </div>
                   );
                 })}
+              </div>
+            )}
+
+            {/* Siguiendo: tareas donde soy seguidor. Informativas, sin urgencia ni conteo. */}
+            {followedTasks.length > 0 && (
+              <div className="pt-3 border-t border-[#f1f5f9]">
+                <button
+                  type="button"
+                  onClick={() => setShowFollowed(!showFollowed)}
+                  className="w-full flex items-center justify-between text-xs font-semibold text-[#64748b] hover:text-[#0f172a] cursor-pointer"
+                  aria-expanded={showFollowed}
+                >
+                  <span>Siguiendo · {followedTasks.length} tarea{followedTasks.length !== 1 ? 's' : ''} de otras personas para que estés al tanto</span>
+                  <ChevronRight className={`w-4 h-4 transition-transform ${showFollowed ? 'rotate-90' : ''}`} />
+                </button>
+                {showFollowed && (
+                  <ul className="mt-2 space-y-1.5">
+                    {followedTasks.map((t) => (
+                      <li key={t.id}>
+                        <button
+                          type="button"
+                          onClick={() => onOpenTaskDetail(t.id)}
+                          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl bg-[#f8fafc] hover:bg-[#f1f5f9] text-left text-xs cursor-pointer"
+                        >
+                          <span className="flex-1 min-w-0 truncate text-[#334155]">{t.title}</span>
+                          <span className="shrink-0 text-[#94a3b8] truncate max-w-[40%]">
+                            {t.assignee?.name} · {t.projectName || t.board}
+                          </span>
+                          {t.status === 'Review' && <span className="shrink-0 text-[10px] font-bold text-[#501f92]">En revisión</span>}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             )}
           </div>

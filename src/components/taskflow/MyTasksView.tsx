@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { TaskItem, ActiveTimerState, TaskStatus, TaskPriority } from './types';
+import { TaskItem, ActiveTimerState, TaskStatus, TaskPriority, UserItem, ProjectSummaryItem } from './types';
+import { getUserAccessLevel } from './auth/permissions';
+import { makePersonMatcher, getTaskRelation, isProjectResponsible, makeTaskProjectResolver } from './auth/taskVisibility';
 import { UserAvatar } from './UserAvatar';
 import {
   Button,
@@ -29,12 +31,16 @@ import {
   Check,
   ArrowUpDown,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  Bell
 } from 'lucide-react';
 
 interface MyTasksViewProps {
   tasks: TaskItem[];
   currentUserName?: string;
+  currentUser?: UserItem;
+  users?: UserItem[];
+  projects?: ProjectSummaryItem[];
   onToggleTask: (taskId: string) => void;
   onOpenNewTaskModal?: () => void;
   activeTimer?: ActiveTimerState | null;
@@ -49,7 +55,10 @@ interface MyTasksViewProps {
 
 export const MyTasksView: React.FC<MyTasksViewProps> = ({
   tasks,
-  currentUserName = 'Catalina Tejada',
+  currentUserName,
+  currentUser,
+  users = [],
+  projects = [],
   onToggleTask,
   onOpenNewTaskModal,
   activeTimer,
@@ -62,7 +71,27 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
   onUpdateTaskStatus
 }) => {
   // Mode: "Mis Tareas" (focus personal) vs "Equipo" (lead overview)
-  const [viewMode, setViewMode] = useState<'my' | 'team'>('my');
+  // «Siguiendo»: tareas donde soy seguidor (informativas). «Equipo»: solo para quien
+  // responde por proyectos (sus proyectos) y Dirección / admin (todo). El colaborador no lo ve.
+  const [viewMode, setViewMode] = useState<'my' | 'following' | 'team'>('my');
+  const identity = useMemo(
+    () => currentUser || (currentUserName ? users.find((u) => u.name === currentUserName) || ({ id: '', name: currentUserName } as UserItem) : undefined),
+    [currentUser, currentUserName, users]
+  );
+  const accessLevel = currentUser ? getUserAccessLevel(currentUser) : 'collaborator';
+  const isGlobalViewer = accessLevel === 'executive' || accessLevel === 'system_admin';
+  const matchesMe = useMemo(() => makePersonMatcher(identity, users), [identity, users]);
+  const projectOfTask = useMemo(() => makeTaskProjectResolver(projects), [projects]);
+  const myProjectIds = useMemo(
+    () => new Set(projects.filter((p) => isProjectResponsible(p, identity, matchesMe)).map((p) => p.id)),
+    [projects, identity, matchesMe]
+  );
+  const canSeeTeam = accessLevel !== 'collaborator' && (isGlobalViewer || myProjectIds.size > 0);
+  const inTeamScope = (t: TaskItem) => {
+    if (isGlobalViewer) return true;
+    const p = projectOfTask(t);
+    return Boolean(p && myProjectIds.has(p.id));
+  };
   const [filterTab, setFilterTab] = useState<'all' | 'active' | 'review' | 'completed'>('all');
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'client' | 'internal'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -76,7 +105,7 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
     new Set(tasks.map((t) => t.projectName || t.board).filter(Boolean))
   );
   const availableAssignees = Array.from(
-    new Set(tasks.map((t) => t.assignee?.name).filter(Boolean))
+    new Set(tasks.filter((t) => canSeeTeam && inTeamScope(t)).map((t) => t.assignee?.name).filter(Boolean))
   );
 
   const filteredTasks = useMemo(() => {
@@ -100,23 +129,14 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
         }
       }
 
-      // Mis Tareas vs Equipo
+      // Mis tareas (responsable o revisor) / Siguiendo (seguidor) / Equipo (proyectos a cargo)
+      const relation = getTaskRelation(t, identity, matchesMe);
       if (viewMode === 'my') {
-        const targetName = (currentUserName || 'Paola Monsalve').toLowerCase();
-        const targetFirst = targetName.split(' ')[0];
-        const isMine =
-          t.assignee?.name?.toLowerCase().includes(targetFirst) ||
-          targetName.includes(t.assignee?.name?.toLowerCase() || '___') ||
-          t.assignee?.name?.toLowerCase().includes('yo') ||
-          (t.collaborators &&
-            t.collaborators.some(
-              (c) =>
-                c.name.toLowerCase().includes(targetFirst) ||
-                targetName.includes(c.name.toLowerCase())
-            ));
-        if (!isMine) return false;
+        if (relation !== 'owner' && relation !== 'reviewer') return false;
+      } else if (viewMode === 'following') {
+        if (relation !== 'follower') return false;
       } else {
-        // In Team view, filter by selected assignee if chosen
+        if (!canSeeTeam || !inTeamScope(t)) return false;
         if (selectedAssignee !== 'all' && t.assignee?.name !== selectedAssignee) return false;
       }
 
@@ -175,7 +195,8 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
       const weightB = prioWeight[b.priority] || 2;
       return weightB - weightA;
     });
-  }, [tasks, viewMode, filterTab, categoryFilter, selectedClient, selectedProject, selectedAssignee, searchQuery, sortDirection]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasks, viewMode, filterTab, categoryFilter, selectedClient, selectedProject, selectedAssignee, searchQuery, sortDirection, identity, matchesMe, myProjectIds, canSeeTeam]);
 
   const getStatusBadge = (status: TaskStatus, completed: boolean) => {
     if (completed || status === 'Done') {
@@ -226,16 +247,29 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
               <span>Mis tareas</span>
             </button>
             <button
-              onClick={() => setViewMode('team')}
+              onClick={() => setViewMode('following')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
-                viewMode === 'team'
+                viewMode === 'following'
                   ? 'bg-white text-[#0f172a] shadow-xs'
                   : 'text-[#64748b] hover:text-[#0f172a]'
               }`}
             >
-              <Users className="w-3.5 h-3.5 shrink-0" />
-              <span>Equipo</span>
+              <Bell className="w-3.5 h-3.5 shrink-0" />
+              <span>Siguiendo</span>
             </button>
+            {canSeeTeam && (
+            <button
+                onClick={() => setViewMode('team')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+                  viewMode === 'team'
+                    ? 'bg-white text-[#0f172a] shadow-xs'
+                    : 'text-[#64748b] hover:text-[#0f172a]'
+                }`}
+              >
+                <Users className="w-3.5 h-3.5 shrink-0" />
+                <span>Equipo</span>
+              </button>
+            )}
           </div>
 
           {onOpenNewTaskModal && (
@@ -255,7 +289,7 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
           <input
             type="text"
             placeholder={
-              viewMode === 'my'
+              viewMode !== 'team'
                 ? 'Buscar en mis tareas, cliente o proyecto...'
                 : 'Buscar por tarea, cliente, proyecto o responsable...'
             }

@@ -3279,6 +3279,9 @@ export const TaskFlowPrototype: React.FC = () => {
                 {currentView === 'tareas' && (
                   <MyTasksView
                     tasks={tasks}
+                    currentUser={currentUser}
+                    users={users}
+                    projects={projectsList}
                     onToggleTask={handleToggleTask}
                     onOpenNewTaskModal={() => setIsNewTaskModalOpen(true)}
                     activeTimer={activeTimer}
