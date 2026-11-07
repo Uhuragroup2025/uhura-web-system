@@ -1765,6 +1765,9 @@ export const initialUsers: UserItem[] = [
   {
     id: 'u-1',
     name: 'Ana María Giraldo',
+    loginUsername: 'ana',
+    hasPassword: true,
+    lastLoginAt: '2026-11-05T11:07:00-05:00',
     email: 'ana@uhuragroup.com',
     initials: 'AG',
     avatarBg: 'bg-[#501f92]',
@@ -1791,6 +1794,9 @@ export const initialUsers: UserItem[] = [
   {
     id: 'u-2',
     name: 'Paola Monsalve',
+    loginUsername: 'paola',
+    hasPassword: true,
+    lastLoginAt: '2026-11-07T08:15:00-05:00',
     email: 'paola@uhuragroup.com',
     initials: 'PM',
     avatarBg: 'bg-[#501f92]',
@@ -1959,6 +1965,9 @@ export const initialUsers: UserItem[] = [
   {
     id: 'u-8',
     name: 'Catalina Tejada',
+    loginUsername: 'catalina',
+    hasPassword: true,
+    lastLoginAt: '2026-11-06T17:40:00-05:00',
     email: 'catalina@uhuragroup.com',
     initials: 'CT',
     avatarBg: 'bg-[#7c3aed]',

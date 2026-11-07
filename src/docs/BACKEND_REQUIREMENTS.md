@@ -572,6 +572,13 @@ Para no bloquear New Business cuando la app privada de HubSpot esté caída o si
 * Cada `TimeLog` debe persistir `user_id` (usuario autenticado que ejecuta el registro) y `work_date` (**Fecha del trabajo ejecutado**, por defecto la fecha actual, o la fecha seleccionada en el registro manual).
 * El endpoint de **Mi Capacidad** debe agrupar y sumar `logged_hours` por `work_date` dentro de la semana laboral vigente (`Lunes` a `Viernes`) para alimentar tanto las tarjetas diarias como el desglose **`Timesheets · [Día]`**.
 
+### 16.1.1 Acceso a ECO desde el perfil (solo `system_admin`)
+* Campos en `users`: `login_username` (único, minúsculas, `[a-z0-9._-]{3,32}`), `last_login_at`, `password_hash`, `must_change_password`. La API expone `has_password` (booleano), nunca el hash.
+* `POST /users/{id}/username` → valida unicidad; no toca la contraseña.
+* `POST /users/{id}/temporary-password` → recibe la contraseña temporal por HTTPS, la guarda con hash, marca `must_change_password = true` e invalida las sesiones activas. Mínimo 8 caracteres.
+* `POST /users/{id}/deactivate` / `reactivate` → sin borrado físico; desactivado no inicia sesión ni aparece para asignar trabajo.
+* Cada acción queda en `UserProfileAuditEntry` (quién y cuándo), **sin** el valor de la contraseña. Nada de esto se registra en logs.
+
 ### 16.2 Gobernanza de Perfil Personal (`Mi Perfil`) y Vacaciones
 * **Autoservicio limitado:** Cualquier usuario autenticado puede consultar y editar **únicamente su propio perfil** (`user_id == request.user.id`), restringido a los campos `hobbies` (pasatiempos e intereses) y `personal_dream` (sueño o meta personal).
 * **Restricción de edición cruzada:** Ningún rol (incluidos `leader` o `system_admin`) puede editar perfiles de terceros desde `Mi Perfil` o `La Colonia`; la edición de perfiles de otros colaboradores es exclusiva del **Administrador desde `Equipo & Accesos`**.

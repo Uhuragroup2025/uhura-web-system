@@ -1499,6 +1499,8 @@ Solo existen 5 alcances autorizados:
 ### 10.8. Definición Funcional y Gobernanza: Perfil del Colaborador (Equipo & Accesos)
 
 > **Reconciliación con producción (07 Nov 2026):** el perfil del prototipo se alinea con el de producción: **rol profesional** como desplegable de selección múltiple (solo catálogo oficial; el primero es el principal), **calendario laboral** (Colombia/México) con **vigente desde** (las semanas anteriores no se recalculan), **desactivar usuario** (conserva su historia de horas y proyectos) e **historial de cambios del perfil** (rol, nivel de acceso, líder, área, capacidad, calendario). El historial autoritativo lo genera el backend (`UserProfileAuditEntry`).
+>
+> **Acceso a ECO (igual a producción, solo `system_admin`):** tarjeta en el perfil con estado (`Con contraseña` · `Sin acceso asignado` · `Desactivado`), usuario de ingreso y último ingreso. Permite **asignar o cambiar el usuario de ingreso** (único, sin espacios; la contraseña no cambia), **asignar o restablecer el acceso** con una contraseña temporal que escribe el admin dos veces (mínimo 8 caracteres; se entrega por canal privado y se obliga a cambiarla al entrar) y **desactivar o reactivar** a la persona. El historial registra cada cambio, nunca la contraseña. Reemplaza el modal anterior del prototipo que generaba y copiaba la contraseña en texto plano.
 
 > **CIERRE DE DEFINICIÓN FUNCIONAL (EQUIPO & ACCESOS → PERFIL DEL COLABORADOR):**
 > Se formaliza la separación estricta entre **identidad profesional**, **nivel RBAC funcional** y **compatibilidad técnica secundaria**, garantizando que la matriz RBAC permanezca cerrada y con una única fuente de verdad.

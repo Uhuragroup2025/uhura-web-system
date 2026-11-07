@@ -978,6 +978,10 @@ export interface UserItem {
   workCalendar?: 'CO' | 'MX';          // Calendario laboral (festivos que descuentan capacidad)
   workCalendarSince?: string | null;   // Vigente desde (las semanas anteriores no se recalculan)
   profileHistory?: UserProfileAuditEntry[]; // Previsualización; el historial autoritativo es del backend
+  loginUsername?: string;              // Usuario de ingreso (único, sin espacios)
+  lastLoginAt?: string | null;         // Último ingreso (ISO)
+  hasPassword?: boolean;               // Tiene contraseña asignada (el valor nunca viaja al frontend)
+  mustChangePassword?: boolean;        // Debe cambiar la contraseña temporal al entrar
   utilizedPercent?: number;
   jobTitle?: string;
   officialRole?: StandardUhuraRole; // Rol cotizable principal (compatibilidad)
