@@ -312,7 +312,7 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-[#501f92]" />
                 <h3 className="font-extrabold text-sm text-[#0f172a]">
-                  Gobernanza de Alcance, Gates & Rondas de Ajuste
+                  Cronograma y rondas de ajuste
                 </h3>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#f3e8ff] text-[#501f92]">
                   Cláusulas Operativas Uhura
@@ -335,26 +335,21 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-            {/* Gates */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {/* Rondas de ajuste (una ronda = el cliente revisa, devuelve ajustes y aprueba) */}
             <div className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0]">
-              <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Gates de Aprobación</span>
-              <p className="text-sm font-extrabold text-[#0f172a] mt-1">{project.scheduleConfig?.gateCount ?? 2} Gates incluidos</p>
-              <span className="text-[11px] text-[#64748b] mt-0.5 block">{project.scheduleConfig?.gateApprovalWaitDays ?? 5} días hábiles de revisión por cliente</span>
+              <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Rondas de ajuste</span>
+              <p className="text-sm font-extrabold text-[#0f172a] mt-1">
+                {(project.reworkRounds || []).filter((r) => r.cause === 'client_adjustment').length} usadas de {project.scheduleConfig?.includedReworkRounds ?? 2}
+              </p>
+              <span className="text-[11px] text-[#64748b] mt-0.5 block">{project.scheduleConfig?.reworkRoundDays ?? 5} días hábiles por ronda · incluidas en el plan</span>
             </div>
 
-            {/* Rondas de ajuste */}
+            {/* Insumos del cliente tras el kickoff */}
             <div className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0]">
-              <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Tandas de Ajustes</span>
-              <p className="text-sm font-extrabold text-[#0f172a] mt-1">{project.scheduleConfig?.includedReworkRounds ?? 2} tandas por gate</p>
-              <span className="text-[11px] text-[#64748b] mt-0.5 block">{project.scheduleConfig?.reworkRoundDays ?? 3} días hábiles por tanda · incluidas en el plan</span>
-            </div>
-
-            {/* Devolución Kickoff */}
-            <div className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0]">
-              <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Devolución de Kickoff</span>
+              <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Insumos del cliente</span>
               <p className="text-sm font-extrabold text-[#0f172a] mt-1">{project.scheduleConfig?.clientKickoffWaitDays ?? 3} días hábiles</p>
-              <span className="text-[11px] text-[#64748b] mt-0.5 block">0h capacidad consumida</span>
+              <span className="text-[11px] text-[#64748b] mt-0.5 block">Tras el kickoff · no consume capacidad del equipo</span>
             </div>
 
             {/* Forecast */}

@@ -127,9 +127,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   const [scheduleKickoffDate, setScheduleKickoffDate] = useState<string>('');
   const [scheduleDurationWeeks, setScheduleDurationWeeks] = useState<number>(4);
   const [scheduleReworkRounds, setScheduleReworkRounds] = useState<number>(2);
-  const [scheduleReworkRoundDays, setScheduleReworkRoundDays] = useState<number>(3);
-  const [scheduleGateCount, setScheduleGateCount] = useState<number>(2);
-  const [scheduleGateDays, setScheduleGateDays] = useState<number>(5);
+  const [scheduleReworkRoundDays, setScheduleReworkRoundDays] = useState<number>(5);
   const [scheduleKickoffWaitDays, setScheduleKickoffWaitDays] = useState<number>(3);
   const [scheduleRecalculateTasks, setScheduleRecalculateTasks] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -565,9 +563,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
     if (currentProject) {
       setScheduleKickoffDate(currentProject.startDate || new Date().toISOString().slice(0, 10));
       setScheduleReworkRounds(currentProject.scheduleConfig?.includedReworkRounds ?? 2);
-      setScheduleReworkRoundDays(currentProject.scheduleConfig?.reworkRoundDays ?? 3);
-      setScheduleGateCount(currentProject.scheduleConfig?.gateCount ?? 2);
-      setScheduleGateDays(currentProject.scheduleConfig?.gateApprovalWaitDays ?? 5);
+      setScheduleReworkRoundDays(currentProject.scheduleConfig?.reworkRoundDays ?? 5);
       setScheduleKickoffWaitDays(currentProject.scheduleConfig?.clientKickoffWaitDays ?? 3);
       // Semanas de producción: fuente de verdad = Alcance (productionWeeks heredado de la conversión)
       const scopeWeeks = currentProject.scheduleConfig?.productionWeeks;
@@ -584,12 +580,10 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
   const scheduleConfigDraft = useMemo(() => ({
     clientKickoffWaitDays: scheduleKickoffWaitDays,
-    gateApprovalWaitDays: scheduleGateDays,
-    gateCount: scheduleGateCount,
     includedReworkRounds: scheduleReworkRounds,
     reworkRoundDays: scheduleReworkRoundDays,
     productionWeeks: scheduleDurationWeeks
-  }), [scheduleKickoffWaitDays, scheduleGateDays, scheduleGateCount, scheduleReworkRounds, scheduleReworkRoundDays, scheduleDurationWeeks]);
+  }), [scheduleKickoffWaitDays, scheduleReworkRounds, scheduleReworkRoundDays, scheduleDurationWeeks]);
 
   const scheduleBreakdown = useMemo(() => {
     if (!scheduleKickoffDate) return null;
@@ -641,7 +635,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
       deliverables: updatedDeliverables,
       isKickedOff: true,
       scheduleConfig: isCurrentProjectFee
-        ? { ...scheduleConfigDraft, gateCount: currentProject.scheduleConfig?.gateCount ?? 0 }
+        ? { ...scheduleConfigDraft, includedReworkRounds: 0 }
         : scheduleConfigDraft,
       healthNote: `Proyecto iniciado formalmente el ${finalStartDate} con cronograma alineado.`
     };
@@ -784,16 +778,10 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                 {!isFeeProject && (
                   <>
                     <span
-                      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#faf5ff] text-[#501f92] border border-[#e9d5ff]"
-                      title="Límite contractual de aprobaciones formales para evitar sobrecostos"
-                    >
-                      🛡️ Gates incluidos: {currentProject.scheduleConfig?.gateCount || 2}
-                    </span>
-                    <span
                       className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#f0fdf4] text-[#166534] border border-[#bbf7d0]"
-                      title={`${currentProject.scheduleConfig?.includedReworkRounds ?? 2} tandas por gate · ${currentProject.scheduleConfig?.reworkRoundDays ?? 3} días hábiles por tanda (incluidas en la línea base)`}
+                      title={`Rondas de ajuste incluidas en contrato · ${currentProject.scheduleConfig?.reworkRoundDays ?? 5} días hábiles por ronda`}
                     >
-                      🔄 Tandas de ajuste: {currentProject.scheduleConfig?.includedReworkRounds || 2} por gate
+                      🔄 Rondas de ajuste: {currentProject.scheduleConfig?.includedReworkRounds ?? 2}
                     </span>
                   </>
                 )}
@@ -1811,10 +1799,10 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
                 {/* 3. Tiempos del cliente (editables, sin valores ocultos) */}
                 <div className="space-y-2">
-                  <span className="font-bold text-[#334155] block">Tiempos del cliente (días hábiles)</span>
+                  <span className="font-bold text-[#334155] block">Tiempos del cliente</span>
                   <div className="grid grid-cols-2 gap-3">
                   <label className="space-y-1 block col-span-2">
-                    <span className="text-[11px] font-semibold text-[#475569] block">Devolución del kickoff</span>
+                    <span className="text-[11px] font-semibold text-[#475569] block">Entrega de insumos del cliente (días)</span>
                     <input
                       type="number"
                       min="0"
@@ -1827,29 +1815,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                     {!isCurrentProjectFee && (
                       <>
                   <label className="space-y-1 block">
-                    <span className="text-[11px] font-semibold text-[#475569] block">Gates de aprobación</span>
-                    <input
-                      type="number"
-                      min="0"
-                      max="20"
-                      value={scheduleGateCount}
-                      onChange={(e) => setScheduleGateCount(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                      className="w-full p-2 rounded-xl border border-[#cbd5e1] font-bold text-xs text-[#0f172a] focus:ring-2 focus:ring-[#501f92] bg-white"
-                    />
-                  </label>
-                  <label className="space-y-1 block">
-                    <span className="text-[11px] font-semibold text-[#475569] block">Días de revisión por gate</span>
-                    <input
-                      type="number"
-                      min="0"
-                      max="30"
-                      value={scheduleGateDays}
-                      onChange={(e) => setScheduleGateDays(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                      className="w-full p-2 rounded-xl border border-[#cbd5e1] font-bold text-xs text-[#0f172a] focus:ring-2 focus:ring-[#501f92] bg-white"
-                    />
-                  </label>
-                  <label className="space-y-1 block">
-                    <span className="text-[11px] font-semibold text-[#475569] block">Tandas de ajuste por gate</span>
+                    <span className="text-[11px] font-semibold text-[#475569] block">Rondas de ajuste incluidas</span>
                     <input
                       type="number"
                       min="0"
@@ -1860,7 +1826,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                     />
                   </label>
                   <label className="space-y-1 block">
-                    <span className="text-[11px] font-semibold text-[#475569] block">Días por tanda</span>
+                    <span className="text-[11px] font-semibold text-[#475569] block">Días hábiles por ronda</span>
                     <input
                       type="number"
                       min="0"
@@ -1873,6 +1839,10 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                       </>
                     )}
                   </div>
+                  <p className="text-[10.5px] text-[#64748b] leading-relaxed">
+                    <strong>Insumos:</strong> lo que el cliente entrega tras el kickoff (accesos, contenidos, logos); usa 0 si no aplica.
+                    {!isCurrentProjectFee && <> <strong>Ronda de ajuste:</strong> el cliente revisa una entrega, devuelve ajustes y aprueba. Las incluidas no son desvío; una adicional mueve la fecha.</>}
+                  </p>
                 </div>
 
                 {/* Resultado: entrega calculada */}
@@ -1891,9 +1861,9 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                       </span>
                     </div>
                     <p className="text-[10.5px] text-[#475569] border-t border-[#e9d5ff] pt-2">
-                      Producción {scheduleBreakdown.productionDays} d · Kickoff {scheduleBreakdown.kickoffWaitDays} d
-                      {scheduleBreakdown.gateCount > 0 && (
-                        <> · Revisión {scheduleBreakdown.gateApprovalDays} d · Tandas {scheduleBreakdown.reworkDays} d</>
+                      Producción {scheduleBreakdown.productionDays} d · Insumos {scheduleBreakdown.kickoffWaitDays} d
+                      {scheduleBreakdown.reworkRounds > 0 && (
+                        <> · Rondas {scheduleBreakdown.reworkRounds} × {scheduleBreakdown.reworkRoundDays} d = {scheduleBreakdown.reworkDays} d</>
                       )}
                     </p>
                   </div>

@@ -37,8 +37,8 @@ export interface ConvertedProjectPlan {
   includedReworkRounds?: number;
   scheduleConfig?: {
     clientKickoffWaitDays?: number;
-    gateApprovalWaitDays?: number;
-    gateCount: number;
+    gateApprovalWaitDays?: number; // @deprecated
+    gateCount?: number;            // @deprecated
     includedReworkRounds: number;
     reworkRoundDays?: number;
     productionWeeks?: number;
@@ -60,8 +60,8 @@ export interface ConvertOpportunityPayload {
   includedReworkRounds?: number;
   scheduleConfig?: {
     clientKickoffWaitDays?: number;
-    gateApprovalWaitDays?: number;
-    gateCount: number;
+    gateApprovalWaitDays?: number; // @deprecated
+    gateCount?: number;            // @deprecated
     includedReworkRounds: number;
   };
 
@@ -167,9 +167,6 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
   const [serviceReworkRounds, setServiceReworkRounds] = useState<Record<string, number>>({});
   // Días hábiles que consume cada tanda de ajustes (feedback cliente + aplicación). Default: 3
   const [serviceReworkRoundDays, setServiceReworkRoundDays] = useState<Record<string, number>>({});
-  // Gates de aprobación y días de revisión del cliente por gate (solo proyectos únicos)
-  const [serviceGateCount, setServiceGateCount] = useState<Record<string, number>>({});
-  const [serviceGateDays, setServiceGateDays] = useState<Record<string, number>>({});
 
   useEffect(() => {
     setProjectNames((prev) => {
@@ -259,10 +256,8 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
       const svcLeadId = serviceLeadUserIds[svc.serviceId] || fallbackLeadId;
       const svcLeadUser = users.find((u) => u.id === svcLeadId);
       const reworkRounds = serviceReworkRounds[svc.serviceId] ?? 2;
-      const reworkRoundDays = serviceReworkRoundDays[svc.serviceId] ?? 3;
+      const reworkRoundDays = serviceReworkRoundDays[svc.serviceId] ?? 5;
       const isFixed = svc.modality === 'fixed_project';
-      const gateCount = isFixed ? (serviceGateCount[svc.serviceId] ?? 2) : 0;
-      const gateApprovalWaitDays = serviceGateDays[svc.serviceId] ?? 5;
 
       return {
         serviceId: svc.serviceId,
@@ -279,8 +274,6 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
         leadUserName: svcLeadUser?.name || 'Líder de Proyecto',
         includedReworkRounds: reworkRounds,
         scheduleConfig: {
-          gateCount,
-          gateApprovalWaitDays,
           includedReworkRounds: isFixed ? reworkRounds : 0,
           reworkRoundDays,
           productionWeeks: svc.weeksRef || undefined
@@ -315,8 +308,8 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
       },
       includedReworkRounds: convertedProjects[0]?.includedReworkRounds || 2,
       scheduleConfig: convertedProjects[0]?.scheduleConfig || {
-        gateCount: 2,
-        includedReworkRounds: 2
+        includedReworkRounds: 2,
+        reworkRoundDays: 5
       },
       // Compatibilidad legacy
       projectName: convertedProjects[0]?.projectName || `${clientName} — Proyecto`,
@@ -552,43 +545,15 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
                       </div>
                     </div>
 
-                    {/* Aprobaciones del cliente (solo proyectos únicos): definen el cronograma al iniciar */}
+                    {/* Rondas de ajuste del cliente (solo proyectos únicos): definen el cronograma al iniciar */}
                     {service.modality === 'fixed_project' && (
                       <div className="space-y-2 pt-2 border-t border-[#f1f5f9]">
                         <span className="font-bold text-[#475569] block text-[11px]">
-                          Aprobaciones del cliente (días hábiles)
+                          Rondas de ajuste del cliente
                         </span>
                         <div className="grid grid-cols-2 gap-2">
                           <label className="space-y-1 block">
-                            <span className="text-[10.5px] font-semibold text-[#475569] block">Gates de aprobación</span>
-                            <input
-                              type="number"
-                              min="0"
-                              max="20"
-                              value={serviceGateCount[service.serviceId] ?? 2}
-                              onChange={(e) => {
-                                const val = Math.max(0, parseInt(e.target.value, 10) || 0);
-                                setServiceGateCount((prev) => ({ ...prev, [service.serviceId]: val }));
-                              }}
-                              className="w-full p-2 rounded-xl border border-[#cbd5e1] text-[#0f172a] text-xs font-bold focus:ring-2 focus:ring-[#501f92] bg-white shadow-2xs"
-                            />
-                          </label>
-                          <label className="space-y-1 block">
-                            <span className="text-[10.5px] font-semibold text-[#475569] block">Días de revisión por gate</span>
-                            <input
-                              type="number"
-                              min="0"
-                              max="30"
-                              value={serviceGateDays[service.serviceId] ?? 5}
-                              onChange={(e) => {
-                                const val = Math.max(0, parseInt(e.target.value, 10) || 0);
-                                setServiceGateDays((prev) => ({ ...prev, [service.serviceId]: val }));
-                              }}
-                              className="w-full p-2 rounded-xl border border-[#cbd5e1] text-[#0f172a] text-xs font-bold focus:ring-2 focus:ring-[#501f92] bg-white shadow-2xs"
-                            />
-                          </label>
-                          <label className="space-y-1 block">
-                            <span className="text-[10.5px] font-semibold text-[#475569] block">Tandas de ajuste por gate</span>
+                            <span className="text-[10.5px] font-semibold text-[#475569] block">Rondas de ajuste incluidas</span>
                             <input
                               type="number"
                               min="0"
@@ -602,12 +567,12 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
                             />
                           </label>
                           <label className="space-y-1 block">
-                            <span className="text-[10.5px] font-semibold text-[#475569] block">Días por tanda</span>
+                            <span className="text-[10.5px] font-semibold text-[#475569] block">Días hábiles por ronda</span>
                             <input
                               type="number"
                               min="0"
                               max="15"
-                              value={serviceReworkRoundDays[service.serviceId] ?? 3}
+                              value={serviceReworkRoundDays[service.serviceId] ?? 5}
                               onChange={(e) => {
                                 const val = Math.max(0, parseInt(e.target.value, 10) || 0);
                                 setServiceReworkRoundDays((prev) => ({ ...prev, [service.serviceId]: val }));
@@ -616,6 +581,9 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
                             />
                           </label>
                         </div>
+                        <p className="text-[10.5px] text-[#64748b]">
+                          Cada ronda: el cliente revisa, devuelve ajustes y aprueba. Una ronda adicional se cobra y mueve la fecha de entrega.
+                        </p>
                       </div>
                     )}
                   </div>

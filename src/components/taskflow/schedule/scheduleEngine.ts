@@ -5,43 +5,41 @@
  *  - La conversión de una oportunidad NO define fechas. El proyecto nace «Por iniciar».
  *  - Al pulsar «Iniciar proyecto 🚀» se calcula la línea base en DÍAS HÁBILES:
  *
- *      total = espera_kickoff
- *            + días_producción               (semanas del alcance × 5)
- *            + gates × días_aprobación_gate
- *            + gates × tandas_incluidas × días_por_tanda
+ *      total = entrega_insumos_cliente          (tras el kickoff)
+ *            + días_producción                   (semanas del alcance × 5)
+ *            + rondas_ajuste × días_por_ronda    (revisión y aprobación del cliente)
  *
- *  - Las tandas incluidas contractualmente forman parte del plan: NO son desvío.
- *    Solo una tanda adicional (> incluidas) mueve el forecast.
- *  - Los proyectos Fee mensual no tienen gates ni tandas (operación recurrente).
+ *  - Ronda de ajuste = el cliente revisa una entrega, devuelve ajustes y aprueba.
+ *    Es un solo concepto (antes «gates» y «tandas por gate»).
+ *  - Las rondas incluidas contractualmente forman parte del plan: NO son desvío.
+ *    Solo una ronda adicional (> incluidas) mueve el forecast y puede generar sobrecosto.
+ *  - Los proyectos Fee mensual no tienen rondas (operación recurrente).
  */
 import type { ProjectDeliverable, ProjectScheduleConfig, TaskItem } from '../types';
 import { addBusinessDays, isBusinessDay } from '../health/projectHealthEngine';
 
-export const DEFAULT_SCHEDULE_CONFIG: Required<Omit<ProjectScheduleConfig, 'productionWeeks'>> = {
+/** Valores sugeridos: solo precargan los campos, siempre visibles y editables. */
+export const DEFAULT_SCHEDULE_CONFIG = {
   clientKickoffWaitDays: 3,
-  gateApprovalWaitDays: 5,
-  gateCount: 2,
   includedReworkRounds: 2,
-  reworkRoundDays: 3
+  reworkRoundDays: 5
 };
 
 export interface ScheduleInput {
   startDate: string;            // Fecha de arranque (YYYY-MM-DD)
   productionWeeks: number;      // Semanas de producción del alcance
   config?: Partial<ProjectScheduleConfig>;
-  isFee?: boolean;              // Fee mensual: sin gates ni tandas
+  isFee?: boolean;              // Fee mensual: sin rondas de ajuste
 }
 
 export interface ScheduleBreakdown {
   startDate: string;            // Primer día hábil del proyecto
   endDate: string;              // Último día hábil (línea base)
-  kickoffWaitDays: number;
+  kickoffWaitDays: number;      // Entrega de insumos del cliente tras el kickoff
   productionDays: number;
-  gateCount: number;
-  gateApprovalDays: number;     // Total (gates × días de aprobación)
-  reworkRounds: number;
-  reworkRoundDays: number;
-  reworkDays: number;           // Total (gates × tandas × días por tanda)
+  reworkRounds: number;         // Rondas de ajuste incluidas
+  reworkRoundDays: number;      // Días hábiles por ronda
+  reworkDays: number;           // Total (rondas × días por ronda)
   totalBusinessDays: number;
 }
 
@@ -59,13 +57,11 @@ function businessDayAt(firstDay: string, index: number): string {
 }
 
 export function resolveScheduleConfig(config?: Partial<ProjectScheduleConfig>, isFee = false) {
-  const merged = { ...DEFAULT_SCHEDULE_CONFIG, ...(config || {}) };
+  const c = config || {};
   return {
-    clientKickoffWaitDays: Math.max(0, merged.clientKickoffWaitDays ?? 3),
-    gateApprovalWaitDays: isFee ? 0 : Math.max(0, merged.gateApprovalWaitDays ?? 5),
-    gateCount: isFee ? 0 : Math.max(0, merged.gateCount ?? 2),
-    includedReworkRounds: isFee ? 0 : Math.max(0, merged.includedReworkRounds ?? 2),
-    reworkRoundDays: isFee ? 0 : Math.max(0, merged.reworkRoundDays ?? 3)
+    clientKickoffWaitDays: Math.max(0, c.clientKickoffWaitDays ?? DEFAULT_SCHEDULE_CONFIG.clientKickoffWaitDays),
+    includedReworkRounds: isFee ? 0 : Math.max(0, c.includedReworkRounds ?? DEFAULT_SCHEDULE_CONFIG.includedReworkRounds),
+    reworkRoundDays: isFee ? 0 : Math.max(0, c.reworkRoundDays ?? DEFAULT_SCHEDULE_CONFIG.reworkRoundDays)
   };
 }
 
@@ -74,17 +70,14 @@ export function computeScheduleBaseline(input: ScheduleInput): ScheduleBreakdown
   const cfg = resolveScheduleConfig(input.config, input.isFee);
   const startDate = toBusinessDay(input.startDate);
   const productionDays = Math.max(1, Math.round(Math.max(0, input.productionWeeks) * 5));
-  const gateApprovalDays = cfg.gateCount * cfg.gateApprovalWaitDays;
-  const reworkDays = cfg.gateCount * cfg.includedReworkRounds * cfg.reworkRoundDays;
-  const totalBusinessDays = cfg.clientKickoffWaitDays + productionDays + gateApprovalDays + reworkDays;
+  const reworkDays = cfg.includedReworkRounds * cfg.reworkRoundDays;
+  const totalBusinessDays = cfg.clientKickoffWaitDays + productionDays + reworkDays;
 
   return {
     startDate,
     endDate: businessDayAt(startDate, totalBusinessDays - 1),
     kickoffWaitDays: cfg.clientKickoffWaitDays,
     productionDays,
-    gateCount: cfg.gateCount,
-    gateApprovalDays,
     reworkRounds: cfg.includedReworkRounds,
     reworkRoundDays: cfg.reworkRoundDays,
     reworkDays,
@@ -106,29 +99,33 @@ function allocate(total: number, weights: number[]): number[] {
   return base;
 }
 
-/** Índices de entregables que cierran con un gate de aprobación del cliente. */
-export function detectGateDeliverables(deliverables: Pick<ProjectDeliverable, 'name'>[], gateCount: number): number[] {
-  if (gateCount <= 0 || deliverables.length === 0) return [];
-  const named = deliverables.map((d, i) => (/gate/i.test(d.name) ? i : -1)).filter((i) => i >= 0);
-  const chosen = named.slice(0, gateCount);
-  // Si la plantilla no nombra suficientes gates, se asignan a los últimos entregables restantes
-  for (let i = deliverables.length - 1; chosen.length < Math.min(gateCount, deliverables.length) && i >= 0; i--) {
-    if (!chosen.includes(i)) chosen.push(i);
+/**
+ * Reparte las rondas de ajuste entre los entregables que el cliente revisa:
+ * los que la plantilla marca como «Gate»; si no hay, al final del último entregable.
+ */
+export function distributeReviewRounds(deliverables: Pick<ProjectDeliverable, 'name'>[], rounds: number): Map<number, number> {
+  const out = new Map<number, number>();
+  if (rounds <= 0 || deliverables.length === 0) return out;
+  const named = deliverables.map((d, i) => (/gate|aprobaci/i.test(d.name) ? i : -1)).filter((i) => i >= 0);
+  const targets = named.length > 0 ? named : [deliverables.length - 1];
+  for (let r = 0; r < rounds; r++) {
+    const idx = targets[Math.min(targets.length - 1, Math.floor((r * targets.length) / rounds))];
+    out.set(idx, (out.get(idx) || 0) + 1);
   }
-  return chosen.sort((a, b) => a - b);
+  return out;
 }
 
 export interface PlannedSchedule {
   baseline: ScheduleBreakdown;
-  deliverables: Array<{ id: string; startDate: string; endDate: string; hasGate: boolean }>;
+  deliverables: Array<{ id: string; startDate: string; endDate: string; reviewRounds: number }>;
   tasks: Record<string, { scheduledDate: string; dueDate: string }>;
 }
 
 /**
  * Planifica entregables y tareas en días hábiles:
  *  - Producción repartida por horas cotizadas de cada entregable.
- *  - Espera de kickoff después del primer entregable.
- *  - Tras cada entregable con gate: días de aprobación + tandas incluidas.
+ *  - Entrega de insumos del cliente después del primer entregable (kickoff).
+ *  - Tras los entregables que revisa el cliente: rondas × días por ronda.
  *  - Cada tarea recibe `scheduledDate` (inicio) y `dueDate` (vencimiento).
  */
 export function planProjectSchedule(params: ScheduleInput & {
@@ -158,13 +155,7 @@ export function planProjectSchedule(params: ScheduleInput & {
     return d.totalQuotedHours || fromTasks || 1;
   });
   const delDays = allocate(baseline.productionDays, delHours).map((n) => Math.max(1, n));
-  // Gates por entregable: si hay más gates que entregables, los sobrantes se acumulan en el último
-  const gateIdxList = detectGateDeliverables(dels, cfg.gateCount);
-  const gatesAt = new Map<number, number>();
-  gateIdxList.forEach((i) => gatesAt.set(i, 1));
-  const extraGates = Math.max(0, cfg.gateCount - gateIdxList.length);
-  if (extraGates > 0) gatesAt.set(dels.length - 1, (gatesAt.get(dels.length - 1) || 0) + extraGates);
-  const gateTailDays = cfg.gateApprovalWaitDays + cfg.includedReworkRounds * cfg.reworkRoundDays;
+  const roundsAt = distributeReviewRounds(dels, cfg.includedReworkRounds);
 
   let cursor = 0; // índice de día hábil desde el arranque
   const plannedDels: PlannedSchedule['deliverables'] = [];
@@ -189,16 +180,15 @@ export function planProjectSchedule(params: ScheduleInput & {
     });
 
     cursor += prodDays;
-    const gatesHere = gatesAt.get(i) || 0;
-    const hasGate = gatesHere > 0;
-    cursor += gatesHere * gateTailDays;
+    const reviewRounds = roundsAt.get(i) || 0;
+    cursor += reviewRounds * cfg.reworkRoundDays;
     if (i === 0) cursor += cfg.clientKickoffWaitDays;
 
     plannedDels.push({
       id: d.id,
       startDate: businessDayAt(baseline.startDate, delStart),
       endDate: businessDayAt(baseline.startDate, cursor - 1),
-      hasGate
+      reviewRounds
     });
   });
 

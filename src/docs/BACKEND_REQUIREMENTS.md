@@ -400,23 +400,22 @@ Para no bloquear New Business cuando la app privada de HubSpot esté caída o si
 ### 12.5 Estados Operativos de Proyecto («Por iniciar» vs «En ejecución»)
 * **La conversión NO define fechas.** Cerrar un negocio y convertirlo en Cliente + Proyecto no lo hace ejecutable: el proyecto nace con `start_date = NULL`, `end_date = NULL`, `is_kicked_off = false` y se presenta como **«Por iniciar»** con la acción **«Iniciar proyecto 🚀»**.
 * La conversión solo persiste la configuración contractual del cronograma en `schedule_config` por proyecto:
-  `gate_count`, `gate_approval_wait_days`, `included_rework_rounds`, `rework_round_days` y `production_weeks` (= `weeksRef` del servicio en el Alcance), más `client_kickoff_wait_days`.
-  - Todos son **visibles y editables** por servicio en la conversión y se confirman en «Iniciar proyecto». No hay valores implícitos: los sugeridos (2 gates · 5 días de revisión · 2 tandas · 3 días por tanda · 3 días de kickoff) solo precargan los campos. Un proyecto pequeño puede tener 1 gate; uno grande, varios.
-  - **Solo proyectos únicos** tienen gates y tandas. Fee mensual: `gate_count = 0`, `included_rework_rounds = 0`.
-  - Si hay más gates que entregables, los gates sobrantes se acumulan al final del último entregable.
+  `included_rework_rounds` (rondas de ajuste incluidas, sugerido 2), `rework_round_days` (días hábiles por ronda, sugerido 5), `production_weeks` (= `weeksRef` del servicio en el Alcance) y `client_kickoff_wait_days` (entrega de insumos del cliente tras el kickoff, sugerido 3; 0 si no aplica).
+  - **Ronda de ajuste** = el cliente revisa una entrega, devuelve ajustes y aprueba. Es un único concepto: reemplaza el modelo anterior de «gates × tandas por gate» (`gate_count` y `gate_approval_wait_days` quedan obsoletos).
+  - Todos los campos son **visibles y editables** por servicio en la conversión y se confirman en «Iniciar proyecto»; los valores sugeridos solo precargan.
+  - **Solo proyectos únicos** tienen rondas. Fee mensual: `included_rework_rounds = 0`.
 * Las tareas creadas en la conversión nacen sin fechas (`scheduled_date` y `due_date` vacíos).
 * **«Iniciar proyecto 🚀»** (líder del proyecto) fija la fecha de arranque y calcula la línea base en **días hábiles** (excluye fines de semana y festivos de Colombia):
   ```
   total = client_kickoff_wait_days
         + production_weeks × 5
-        + gate_count × gate_approval_wait_days
-        + gate_count × included_rework_rounds × rework_round_days
+        + included_rework_rounds × rework_round_days
   ```
   - `baseline_start_date` / `baseline_end_date` se congelan en el primer arranque. Ajustes posteriores solo actualizan `forecast_end_date`.
-  - Entregables: producción repartida según horas cotizadas; la espera de kickoff va tras el primer entregable; tras cada entregable con gate se suman días de aprobación + tandas incluidas.
+  - Entregables: producción repartida según horas cotizadas; la entrega de insumos va tras el primer entregable; las rondas se ubican después de los entregables que revisa el cliente (los marcados «Gate» en la plantilla; si no hay, al final del último).
   - Tareas: reciben `scheduled_date` (inicio) y `due_date` (vencimiento) proporcionales a sus horas dentro del entregable. Mi Día muestra las tareas cuya ventana incluye hoy.
-  - Las tandas incluidas **no son desvío**; solo una tanda adicional (`round_number > included_rework_rounds`) mueve el forecast.
-  - Proyectos Fee mensual: sin gates ni tandas.
+  - Las rondas incluidas **no son desvío**; solo una ronda adicional (`round_number > included_rework_rounds`) mueve el forecast y puede generar sobrecosto.
+  - Proyectos Fee mensual: sin rondas.
 * Referencia de implementación: `src/components/taskflow/schedule/scheduleEngine.ts`.
 
 ---

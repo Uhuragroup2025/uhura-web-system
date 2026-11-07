@@ -317,11 +317,13 @@ export interface ProjectReworkRound {
 }
 
 export interface ProjectScheduleConfig {
-  clientKickoffWaitDays: number;  // Default: 3 días hábiles
-  gateApprovalWaitDays: number;   // Default: 5 días hábiles
-  gateCount: number;              // Default: 2 gates
-  includedReworkRounds: number;   // Default: 2 rondas
-  reworkRoundDays?: number;       // Default: 3 días hábiles de cliente + equipo por cada tanda incluida
+  clientKickoffWaitDays: number;  // Entrega de insumos del cliente tras el kickoff (sugerido 3 días hábiles)
+  includedReworkRounds: number;   // Rondas de ajuste incluidas en contrato (sugerido 2). Ronda = el cliente revisa, devuelve ajustes y aprueba
+  reworkRoundDays?: number;       // Días hábiles por ronda (sugerido 5)
+  /** @deprecated Unificado en rondas de ajuste (includedReworkRounds). */
+  gateApprovalWaitDays?: number;
+  /** @deprecated Unificado en rondas de ajuste (includedReworkRounds). */
+  gateCount?: number;
   productionWeeks?: number;       // Semanas de producción definidas en el Alcance (weeksRef del servicio)
 }
 
