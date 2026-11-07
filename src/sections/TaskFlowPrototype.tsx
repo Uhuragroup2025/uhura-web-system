@@ -3506,6 +3506,8 @@ export const TaskFlowPrototype: React.FC = () => {
                     onInviteUser={() => setIsInviteModalOpen(true)}
                     onDeleteUser={handleDeleteUser}
                     onUpdateUser={handleUpdateUser}
+                    absenceEvents={absenceEvents}
+                    onAddAbsenceEvent={(ev) => setAbsenceEvents((prev) => [...prev, ev])}
                   />
                 )}
 

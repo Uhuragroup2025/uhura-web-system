@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { UserItem, UserRole, UserStatus, OrbitAccessLevel } from './types';
+import { UserItem, UserRole, UserStatus, OrbitAccessLevel, TeamAbsenceEvent } from './types';
+import { GoogleCalendarIntegrationCard, CalendarSyncState, UnmatchedCalendarEvent } from './integrations/GoogleCalendarIntegrationCard';
 import { UserProfileView } from './UserProfileView';
 import { UserAvatar } from './UserAvatar';
 import {
@@ -19,9 +20,10 @@ import {
   Users as UsersIcon,
   CheckCircle2,
   XCircle,
-  Lock
+  Lock,
+  Plug
 } from 'lucide-react';
-import { ROLE_PERMISSIONS_MATRIX } from './auth/permissions';
+import { ROLE_PERMISSIONS_MATRIX, getUserAccessLevel } from './auth/permissions';
 
 interface UsersViewProps {
   users: UserItem[];
@@ -31,7 +33,22 @@ interface UsersViewProps {
   onUpdateUser?: (updatedUser: UserItem) => void;
   selectedUserId?: string | null;
   onSelectUser?: (userId: string | null) => void;
+  absenceEvents?: TeamAbsenceEvent[];
+  onAddAbsenceEvent?: (event: TeamAbsenceEvent) => void;
 }
+
+// Datos simulados del prototipo (sin credenciales ni URLs reales)
+const INITIAL_CALENDAR_STATE: CalendarSyncState = {
+  calendarLabel: 'Ausencias Uhura (corporativo)',
+  status: 'active',
+  lastSyncAt: '2026-11-07T07:00:00-05:00',
+  lastSyncResult: 'ok',
+  importedCount: 14
+};
+const INITIAL_UNMATCHED: UnmatchedCalendarEvent[] = [
+  { id: 'gcal-unm-1', title: 'Vacaciones Juli', startDate: '2026-12-22', endDate: '2027-01-02', allDay: true, reason: 'Sin invitado del equipo' },
+  { id: 'gcal-unm-2', title: 'Permiso medio día — cita médica', startDate: '2026-11-13', endDate: '2026-11-13', allDay: false, reason: 'Invitado externo a Uhura' }
+];
 
 export const UsersView: React.FC<UsersViewProps> = ({
   users,
@@ -40,10 +57,25 @@ export const UsersView: React.FC<UsersViewProps> = ({
   onDeleteUser,
   onUpdateUser,
   selectedUserId: initialSelectedUserId = null,
-  onSelectUser
+  onSelectUser,
+  absenceEvents = [],
+  onAddAbsenceEvent
 }) => {
+  // Integraciones: system_admin gestiona; executive consulta; el resto no ve la pestaña.
+  const viewerLevel = currentUser ? getUserAccessLevel(currentUser) : 'collaborator';
+  const canSeeIntegrations = viewerLevel === 'system_admin' || viewerLevel === 'executive';
+  const canManageIntegrations = viewerLevel === 'system_admin';
+  const [calendarState, setCalendarState] = useState<CalendarSyncState>(INITIAL_CALENDAR_STATE);
+  const [unmatchedEvents, setUnmatchedEvents] = useState<UnmatchedCalendarEvent[]>(INITIAL_UNMATCHED);
+  const handleResolveUnmatched = (eventId: string, absence: TeamAbsenceEvent | null) => {
+    setUnmatchedEvents((prev) => prev.filter((e) => e.id !== eventId));
+    if (absence) {
+      onAddAbsenceEvent?.(absence);
+      setCalendarState((prev) => ({ ...prev, importedCount: prev.importedCount + 1 }));
+    }
+  };
   const [selectedUserId, setSelectedUserId] = useState<string | null>(initialSelectedUserId);
-  const [activeTab, setActiveTab] = useState<'directory' | 'roles'>('directory');
+  const [activeTab, setActiveTab] = useState<'directory' | 'roles' | 'integrations'>('directory');
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -180,6 +212,20 @@ export const UsersView: React.FC<UsersViewProps> = ({
               <Key className="w-3.5 h-3.5" />
               <span>Matriz RBAC</span>
             </button>
+            {canSeeIntegrations && (
+              <button
+                onClick={() => setActiveTab('integrations')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                  activeTab === 'integrations' ? 'bg-white text-[#0f172a] shadow-xs' : 'text-[#64748b] hover:text-[#0f172a]'
+                }`}
+              >
+                <Plug className="w-3.5 h-3.5" />
+                <span>Integraciones</span>
+                {unmatchedEvents.length > 0 && (
+                  <span className="ml-0.5 px-1.5 rounded-full bg-[#fde68a] text-[#92400e] text-[10px]">{unmatchedEvents.length}</span>
+                )}
+              </button>
+            )}
           </div>
 
           {activeTab === 'directory' && (
@@ -194,7 +240,17 @@ export const UsersView: React.FC<UsersViewProps> = ({
         </div>
       </div>
 
-      {activeTab === 'directory' ? (
+      {activeTab === 'integrations' && canSeeIntegrations ? (
+        <GoogleCalendarIntegrationCard
+          state={calendarState}
+          unmatched={unmatchedEvents}
+          absenceEvents={absenceEvents}
+          users={users}
+          canManage={canManageIntegrations}
+          onChangeState={setCalendarState}
+          onResolveUnmatched={handleResolveUnmatched}
+        />
+      ) : activeTab === 'directory' ? (
         <>
           {/* Filter Row */}
           <div className="bg-white p-4 rounded-2xl border border-[#e5e7eb] shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">

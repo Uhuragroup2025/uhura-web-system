@@ -1567,7 +1567,7 @@ Para la separación estricta entre la identidad operativa actual de `UserProfile
 
 ---
 
-> **Excepción aprobada (07 Nov 2026 · ticket #149):** la **administración de webhooks de Google Chat** es la única pantalla de configuración de integraciones visible en ECO, y está restringida a `system_admin` (ver §11.8). El resto de usuarios nunca ve URLs, tokens ni botones de sincronización.
+> **Excepciones aprobadas (07 Nov 2026 · ticket #149):** solo dos pantallas de integración son visibles, ambas sin credenciales ni URLs: (1) **Google Chat** por cliente y proyecto, gestionada por `system_admin` (§11.8); (2) **Google Calendar · Ausencias del equipo** en *Equipo & Accesos → Integraciones*, gestionada por `system_admin` y de consulta para `executive` (§11.5.1). El resto de usuarios no ve estas pantallas.
 
 ### 11.2. Frontera Canónica de Sistemas (Sources of Truth)
 
@@ -1826,6 +1826,15 @@ export interface TeamAbsenceEvent {
    - El motor de vida de equipo (`teamLifeEngine.ts`) evalúa `checkAssigneeAvailability`: si se intenta asignar o consultar a un colaborador con ausencia activa hoy, Bucky emite advertencia de bloqueo; si tiene una ausencia en los próximos 14 días, emite aviso preventivo para planificar entregables antes de su salida.
 5. **Deuda Técnica Identificada (Prototipo Capacidad):**
    - La semana de cálculo simulada en `CapacityView` (del 15 al 19 de septiembre de 2026) se mantiene deliberadamente como deuda de prototipo visual. Será refactorizada para navegación de semanas dinámica y persistencia real en iteraciones posteriores (Navegación / Mi Día / Capacidad dinámica). No pertenece a este fix documental ni altera el contrato de interoperabilidad.
+
+
+#### 11.5.1 Vista de administración: Equipo & Accesos → Integraciones (🟣 Implementado en prototipo · 07 Nov 2026)
+- **Quién la ve:** `system_admin` gestiona; `executive` consulta; el resto de perfiles no ve la pestaña.
+- **Qué muestra:** estado de la conexión (`Conectado` · `Pendiente de acceso` · `Pausado` · `Error`), nombre del calendario, última sincronización, ausencias importadas y eventos por asociar.
+- **Acciones (`system_admin`):** probar conexión, pausar o reanudar, y resolver **eventos sin persona asociada**: ECO asocia cada evento por el correo del invitado; si no encuentra a nadie del equipo, el evento queda en esta lista para elegir a quién corresponde (la ausencia baja a Capacidad y Mi Día) o ignorarlo.
+- **Cómo se lee el evento:** por el título. «Vacaciones», «Incapacidad», «Permiso» → 8 h/día; «Medio día» → 4 h/día; otro título → «Otra ausencia», 8 h/día. Un evento cancelado anula la ausencia.
+- **Sin credenciales en pantalla:** la conexión la hace Indunova con una cuenta de servicio de Google Workspace de solo lectura; no se pegan tokens ni URLs. ECO nunca escribe en el calendario.
+- En el prototipo la conexión y los eventos son simulados. Requisitos técnicos: `BACKEND_REQUIREMENTS.md` §20.
 
 ---
 

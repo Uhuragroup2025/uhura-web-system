@@ -684,3 +684,24 @@ Si al momento del arranque hay más proyectos vigentes de los que se pueden crea
 * Rechaza filas con fecha de fin anterior al corte o cliente inexistente.
 * Marca los proyectos con `origin = 'import'` y deja al líder la tarea de revisar e «Iniciar proyecto».
 
+---
+
+## 20. Sincronización con Google Calendar · Ausencias del equipo (Ticket #149)
+Especificación funcional en `ORBIT_PRODUCT_STATUS.md` §11.5 y §11.5.1.
+
+### 20.1 Conexión
+* Cuenta de servicio de Google Workspace con **solo lectura** sobre el calendario corporativo de ausencias. Uhura comparte el calendario con la cuenta que indique Indunova. Las credenciales viven en el gestor de secretos del backend; nunca en el repositorio, tickets, logs ni respuestas de API.
+* `calendar_integrations`: `calendar_label`, `status` (`active` | `pending_access` | `paused` | `error`), `last_sync_at`, `last_sync_result`, `last_sync_error`, `imported_count`, `updated_by_user_id`, `updated_at`. El ID del calendario no se expone al frontend.
+
+### 20.2 Sincronización
+* Mecanismo a criterio de Indunova (notificaciones push o tarea periódica). Idempotente por `external_calendar_event_id`: re-sincronizar no duplica ausencias.
+* **Asociación a la persona:** por el correo del invitado (`attendee.email` = `users.email`). Si no hay coincidencia única, el evento se guarda en `calendar_unmatched_events` (`external_event_id`, `title`, `start_date`, `end_date`, `all_day`, `reason`, `status` = `pending` | `resolved` | `ignored`) y **no** descuenta capacidad hasta que `system_admin` lo asocie.
+* **Tipo e impacto por título:** «Vacaciones» → `vacation`, «Incapacidad» → `sick_leave`, «Permiso» → `personal_leave` (8 h/día); «Medio día» → `personal_leave` 4 h/día; otro → `other` 8 h/día. Reglas configurables en backend.
+* Evento cancelado o eliminado en el calendario → `TeamAbsenceEvent.status = 'cancelled'` (sin borrado físico).
+* Fechas en día civil (sin corrimientos por zona horaria).
+
+### 20.3 API y permisos
+* `GET /integrations/google-calendar` (`system_admin`, `executive`): estado y contadores.
+* `POST …/test`, `POST …/pause`, `POST …/resume` (`system_admin`).
+* `GET …/unmatched` y `POST …/unmatched/{id}/resolve` con `user_id` o `ignore = true` (`system_admin`). Resolver crea el `TeamAbsenceEvent` con `source = 'google_calendar'` y queda en bitácora (quién, cuándo).
+
