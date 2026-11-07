@@ -694,6 +694,28 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
     status: 'Activo',
     healthStatus: 'rojo',
     healthNote: 'Desvío en horas y mora en pago'
+  },
+  {
+    id: 'prj-neroli-fee',
+    code: 'NER-FEE-01',
+    name: 'Fee mensual — Neroli Fragancias',
+    clientId: 'cli-neroli',
+    clientName: 'Neroli Fragancias',
+    taxEntityId: null,
+    brand: 'Neroli',
+    leadName: 'Paola (Lead PM)',
+    leadAvatarBg: 'bg-[#501f92]',
+    leadRole: 'Lead Project Manager',
+    projectType: 'fee_monthly',
+    serviceBase: 'Fee Mensual · Contenido & Social',
+    budgetedHours: 40,
+    soldHours: 40,
+    status: 'Activo',
+    healthStatus: 'verde',
+    healthNote: 'Primer proyecto de adopción de Google Chat (hereda la integración del cliente)',
+    rolloverPolicy: 'none',
+    deliverables: [],
+    googleChatMode: 'inherit_client'
   }
 ];
 

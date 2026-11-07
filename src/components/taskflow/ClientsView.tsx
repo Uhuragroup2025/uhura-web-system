@@ -149,6 +149,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
             setIsEditModalOpen(true);
           }}
           onUpdateClient={onUpdateClient}
+          currentUser={currentUser}
         />
         <EditClientModal
           isOpen={isEditModalOpen}

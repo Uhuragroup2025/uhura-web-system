@@ -11,6 +11,8 @@ import { ProjectTasksTab } from './projects/ProjectTasksTab';
 import { ScheduleProjectModal } from './ScheduleProjectModal';
 import { initialUsers } from './mockData';
 import { computeScheduleBaseline, planProjectSchedule } from './schedule/scheduleEngine';
+import { ProjectNotificationsModal } from './integrations/ProjectNotificationsModal';
+import { canViewProjectNotifications } from './integrations/googleChat';
 import { UserAvatar } from './UserAvatar';
 import {
   Button,
@@ -64,7 +66,8 @@ import {
   Archive,
   Trash2,
   X,
-  Pencil
+  Pencil,
+  Bell
 } from 'lucide-react';
 
 interface ProjectsViewProps {
@@ -123,6 +126,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   const [activeProjectMenu, setActiveProjectMenu] = useState<string | null>(null);
   const [projectPendingDelete, setProjectPendingDelete] = useState<ProjectSummaryItem | null>(null);
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [isNotificationsModalOpen, setIsNotificationsModalOpen] = useState(false);
   const [scheduleSuccessMessage, setScheduleSuccessMessage] = useState<string | null>(null);
   const [scheduleKickoffDate, setScheduleKickoffDate] = useState<string>('');
   const [scheduleDurationWeeks, setScheduleDurationWeeks] = useState<number>(4);
@@ -850,6 +854,19 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                       <Pencil className="w-3.5 h-3.5 text-[#501f92]" />
                       <span>Editar proyecto</span>
                     </button>
+
+                    {canViewProjectNotifications(currentUser?.accessLevel) && (
+                      <button
+                        onClick={() => {
+                          setIsNotificationsModalOpen(true);
+                          setActiveProjectMenu(null);
+                        }}
+                        className="w-full px-3.5 py-2 text-left text-xs font-semibold text-[#334155] hover:bg-[#f8fafc] flex items-center gap-2 cursor-pointer transition-colors"
+                      >
+                        <Bell className="w-3.5 h-3.5 text-[#501f92]" />
+                        <span>Notificaciones</span>
+                      </button>
+                    )}
 
                     <button
                       onClick={() => {
@@ -1734,6 +1751,16 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
         />
 
         {/* Modal: Programar Inicio de Proyecto / Kick-off Operativo */}
+        {isNotificationsModalOpen && (
+          <ProjectNotificationsModal
+            project={currentProject}
+            client={clients.find((c) => c.id === currentProject.clientId || c.name === currentProject.clientName) || null}
+            currentUser={currentUser}
+            onClose={() => setIsNotificationsModalOpen(false)}
+            onUpdateProject={(updated) => onUpdateProject?.(updated)}
+          />
+        )}
+
         {isScheduleModalOpen && (
           <div
             onClick={(e) => {

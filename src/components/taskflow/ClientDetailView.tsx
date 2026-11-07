@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { ClientProfile, ClientProjectHistoryItem, ClientTaxEntity, ClientContact, ProjectSummaryItem } from './types';
+import { ClientProfile, ClientProjectHistoryItem, ClientTaxEntity, ClientContact, ProjectSummaryItem, UserItem } from './types';
+import { GoogleChatIntegrationCard } from './integrations/GoogleChatIntegrationCard';
+import { canManageGoogleChat, canViewClientIntegrations, getProjectChatMode } from './integrations/googleChat';
 import { ClientRadarChart } from './ClientRadarChart';
 import {
   Building2,
@@ -41,6 +43,7 @@ interface ClientDetailViewProps {
   onOpenNewProject?: () => void;
   onEditClient?: (client: ClientProfile) => void;
   onUpdateClient?: (client: ClientProfile) => void;
+  currentUser?: UserItem;
 }
 
 export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
@@ -53,7 +56,8 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
   sowProjectIds = [],
   onOpenNewProject,
   onEditClient,
-  onUpdateClient
+  onUpdateClient,
+  currentUser
 }) => {
   const [portalActive, setPortalActive] = useState(client.portalActive);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -481,6 +485,35 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
           )}
         </div>
       </div>
+
+      {/* INTEGRACIONES (solo system_admin gestiona; executive consulta) */}
+      {canViewClientIntegrations(currentUser?.accessLevel) && (
+        <section className="bg-white rounded-3xl border border-[#e2e8f0] shadow-2xs p-5 space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h3 className="font-extrabold text-sm text-[#0f172a]">Integraciones</h3>
+              <p className="text-[11px] text-[#64748b]">
+                Configuración predeterminada que heredan los proyectos y fees del cliente.
+                {(() => {
+                  const inheriting = projects.filter(
+                    (p) => (p.clientId === client.id || p.clientName === client.name) && getProjectChatMode(p) === 'inherit_client'
+                  ).length;
+                  return inheriting > 0 ? ` ${inheriting} proyecto(s) la heredan.` : '';
+                })()}
+              </p>
+            </div>
+          </div>
+          <GoogleChatIntegrationCard
+            config={client.googleChat}
+            canManage={canManageGoogleChat(currentUser?.accessLevel)}
+            showMask={canManageGoogleChat(currentUser?.accessLevel)}
+            showDefaultToggle
+            contextLabel={`los proyectos de ${client.name}`}
+            userName={currentUser?.name || 'Sistema'}
+            onChange={(next) => onUpdateClient?.({ ...client, googleChat: next ? { ...next, isDefaultForProjects: next.isDefaultForProjects ?? true } : null })}
+          />
+        </section>
+      )}
 
       {/* HEALTH DIAGNOSTIC EXPLANATION SECTION */}
       <div className="p-5 rounded-2xl bg-white border border-[#e2e8f0] shadow-xs space-y-3">

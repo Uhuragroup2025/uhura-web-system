@@ -27,6 +27,23 @@ const DEMO_COLLABORATOR_USER: UserItem = {
   accessLevel: 'collaborator'
 };
 
+// Perfil de prueba para validar acciones exclusivas de system_admin (p. ej. integraciones)
+const DEMO_SYSTEM_ADMIN_USER: UserItem = {
+  id: 'qa-system-admin',
+  name: 'Administrador del Sistema',
+  email: 'admin.qa@uhuragroup.com',
+  initials: 'AS',
+  avatarBg: 'bg-[#0f172a]',
+  role: 'Admin',
+  status: 'Active',
+  tasksCount: 0,
+  joinedDate: 'Ene 2024',
+  capacityHours: 42,
+  utilizedPercent: 0,
+  jobTitle: 'Administrador del Sistema',
+  accessLevel: 'system_admin'
+};
+
 /**
  * SIMULADOR DE ROLES Y PERMISOS (SOLO QA Y DESARROLLO)
  * 
@@ -68,6 +85,12 @@ export const DevQaRoleSimulator: React.FC<DevQaRoleSimulatorProps> = ({
       user: DEMO_COLLABORATOR_USER,
       badge: 'Front-End Dev · collaborator',
       badgeColor: 'bg-cyan-100 text-cyan-800 border-cyan-200'
+    },
+    {
+      label: 'Administrador del Sistema (Prueba RBAC)',
+      user: DEMO_SYSTEM_ADMIN_USER,
+      badge: 'system_admin',
+      badgeColor: 'bg-slate-100 text-slate-800 border-slate-200'
     }
   ];
 

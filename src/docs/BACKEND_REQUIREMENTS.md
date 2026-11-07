@@ -578,3 +578,26 @@ class MonthlyCommercialOverride(models.Model):
 * No asumir jornadas de 40h ni 48h en ningún cálculo.
 * La deducción de capacidad descuenta horas según la **`work_date`** (fecha real del trabajo ejecutado) y no según la fecha en que se envió la solicitud.
 
+---
+
+## 18. Integración con Google Chat (Ticket #149)
+Especificación funcional y permisos en `ORBIT_PRODUCT_STATUS.md` §11.8. Requisitos de backend:
+
+### 18.1 Modelo
+* `client_google_chat_integrations` (1:1 con `clients`): `space_name`, `webhook_url_encrypted`, `webhook_last4`, `status` (`pending_test` | `active` | `inactive` | `error`), `is_default_for_projects` (default `true`), `last_test_at`, `last_test_result`, `last_test_error`, `updated_by_user_id`, `updated_at`.
+* En `projects`: `google_chat_mode` (`inherit_client` | `disabled` | `custom`, default `inherit_client`) y, si es `custom`, una integración propia con los mismos campos.
+* Bitácora de cambios de integración (quién, cuándo, acción) sin almacenar la URL.
+
+### 18.2 Seguridad
+* La URL del webhook se guarda **cifrada** y **nunca** se devuelve por API; las respuestas solo incluyen `webhook_last4` / máscara.
+* Solo `system_admin` puede crear, probar, activar, desactivar, reemplazar o eliminar. `leader` solo puede cambiar `google_chat_mode` entre `inherit_client` y `disabled`.
+* Las URLs no se registran en logs, tickets ni documentación.
+
+### 18.3 Envío
+* Resolución del destino según la precedencia de §11.8 (proyecto activo → desactivado → cliente activo predeterminado → solo in-app).
+* «Guardar y probar» envía un mensaje real de prueba; si falla, `status = error` con el detalle.
+* Eventos que se publican: nueva tarea/asignación relevante, solicitud de revisión, comentario con mención o solicitud de revisión, devolución, aprobación, cambio a prioridad urgente y recordatorio de pendientes sin repetición. **No** se publican eventos de timer ni cambios sin acción requerida.
+* Envío asíncrono con reintentos **idempotentes** (clave por evento y destino): un reintento no duplica mensajes. Una falla de Google Chat **no** impide guardar la acción en ECO.
+* Formato: mensaje corto y amigable con estructura reconocible y enlace directo a la tarea (ej.: «👋 ¡Hola, equipo! Soy ECO 🐻. … [Ver tarea en ECO]»).
+* Pruebas controladas (espacio de prueba) para no notificar al equipo por error.
+

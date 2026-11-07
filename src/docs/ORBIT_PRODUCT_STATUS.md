@@ -1504,6 +1504,8 @@ Para la separación estricta entre la identidad operativa actual de `UserProfile
 
 ---
 
+> **Excepción aprobada (07 Nov 2026 · ticket #149):** la **administración de webhooks de Google Chat** es la única pantalla de configuración de integraciones visible en Orbit/ECO, y está restringida a `system_admin` (ver §11.8). El resto de usuarios nunca ve URLs, tokens ni botones de sincronización.
+
 ### 11.2. Frontera Canónica de Sistemas (Sources of Truth)
 
 | Sistema Externo | Rol en el Ecosistema | Source of Truth Canónico | Entidades Vinculadas en Orbit | Claves Foráneas & Hooks en Orbit |
@@ -1835,6 +1837,40 @@ Mi Día deja de ser un dashboard de métricas decorativas para convertirse en el
    - Esta información se visualiza de forma sobria y complementaria, reforzando la cercanía del equipo sin desviar el protagonismo de las tareas del día.
 
 ---
+
+### 11.8. Integración con Google Chat por cliente y proyecto (🟣 Implementado en prototipo · ticket #149)
+Objetivo: publicar en el espacio de Google Chat de cada cliente las novedades que requieren atención (asignación, solicitud de revisión, mención, devolución, aprobación, prioridad urgente), con mensajes breves y un enlace a la tarea. No se envían eventos de timer, cambios visuales ni actividad sin acción requerida. La notificación in-app sigue siendo la fuente principal.
+
+**Dónde se configura**
+- **Cliente → Integraciones → Google Chat:** integración predeterminada que heredan sus proyectos y fees. Muestra estado (`Pendiente de prueba` · `Conectado` · `Inactivo` · `Error`), espacio, si los proyectos la heredan, última prueba y su resultado, y quién hizo la última modificación.
+- **Proyecto → ⋮ → Notificaciones:** tres modos excluyentes: `Usar la integración del cliente` (por defecto) · `No enviar notificaciones a Google Chat` · `Usar un espacio diferente para este proyecto`. Muestra siempre el destino efectivo.
+
+**Permisos**
+| Perfil | Cliente | Proyecto |
+|---|---|---|
+| `system_admin` | Registra, guarda y prueba, desactiva, reactiva, reemplaza y elimina. Ve la referencia enmascarada. | Elige cualquier modo y gestiona el webhook propio. |
+| `executive` | Consulta estado, espacio, última prueba y última modificación. No ve URL ni máscara. | Consulta. |
+| `leader` | Sin acceso a la sección del cliente. | Consulta estado y espacio; puede elegir **heredar** o **no enviar** (no registra URLs). |
+| Demás perfiles | Sin acceso. | Sin acceso. |
+
+**Acciones**
+- *Desactivar:* conserva la configuración y detiene los envíos.
+- *Reactivar:* ejecuta una prueba y vuelve a `Conectado` si es satisfactoria.
+- *Reemplazar:* pide una URL nueva, la prueba y sustituye la anterior.
+- *Eliminar:* borra la vinculación (requiere confirmación explícita); para volver a usar Google Chat se registra un webhook nuevo. Desactivar y eliminar son botones distintos.
+
+**Regla de resolución (precedencia)**
+1. Proyecto con webhook propio activo → se usa el del proyecto.
+2. Proyecto con Google Chat desactivado → no se envía.
+3. Proyecto que hereda → se usa el webhook **activo** del cliente marcado como predeterminado.
+4. Sin configuración válida → solo notificación in-app.
+Desactivar la integración del cliente detiene los proyectos que heredan; un proyecto con webhook propio sigue activo.
+
+**Seguridad**
+- Tras guardar, la URL no se vuelve a mostrar: solo una referencia enmascarada (`••••••••••••aB92`).
+- El prototipo **simula** la prueba (valida el formato `https://chat.googleapis.com/v1/spaces/…`) y nunca hace solicitudes reales ni guarda URLs. Ninguna URL real debe existir en el repositorio, tickets ni documentación abierta.
+- Caso de adopción: cliente **Neroli Fragancias** con integración activa (mock sin URL) y su proyecto «Fee mensual — Neroli Fragancias» heredándola.
+- Referencias de código: `src/components/taskflow/integrations/googleChat.ts` (reglas), `GoogleChatIntegrationCard.tsx`, `ProjectNotificationsModal.tsx`.
 
 ### 11.7. Módulo de Dirección y Finanzas: Lógica Comercial, Metas y Gancho con Alegra
 

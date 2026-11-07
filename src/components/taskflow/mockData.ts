@@ -3041,5 +3041,47 @@ export const orbitClientsData: ClientProfile[] = [
         progressPercent: 35
       }
     ]
+  },
+  {
+    id: 'cli-neroli',
+    name: 'Neroli Fragancias',
+    isInternal: false,
+    status: 'active',
+    type: 'Fee mensual',
+    healthStatus: 'Saludable',
+    portalActive: false,
+    projectsCount: 1,
+    activeProjectsCount: 1,
+    closedProjectsCount: 0,
+    averageMarginPercent: null,
+    billedCOP: '$0',
+    billedInvoicesCount: 0,
+    receivableCOP: '$0',
+    receivableStatus: 'al día',
+    accountManagerName: 'Luisa Urazán',
+    taxEntities: [],
+    contacts: [],
+    commercialInfo: {
+      contactName: '',
+      contactRole: '',
+      contactEmail: '',
+      contactPhone: '',
+      clientSince: 'Noviembre de 2026',
+      brands: ['Neroli']
+    },
+    projectsHistory: [],
+    // Integración de ejemplo: sin URL real; solo referencia enmascarada
+    googleChat: {
+      spaceName: 'Neroli Fragancias',
+      hasWebhook: true,
+      webhookMask: '••••••••••••aB92',
+      status: 'active',
+      lastTestAt: '2026-11-06T18:30:00.000Z',
+      lastTestResult: 'success',
+      lastTestMessage: 'Mensaje de prueba entregado (simulado).',
+      updatedAt: '2026-11-06T18:30:00.000Z',
+      updatedByName: 'Administrador del Sistema',
+      isDefaultForProjects: true
+    }
   }
 ];

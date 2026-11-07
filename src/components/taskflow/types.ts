@@ -382,6 +382,10 @@ export interface ProjectSummaryItem {
   scheduleHistory?: ProjectScheduleChange[];
   reworkRounds?: ProjectReworkRound[];
   projectHealth?: ProjectHealthResult;
+
+  // Notificaciones a Google Chat (precedencia en resolveGoogleChatTarget)
+  googleChatMode?: GoogleChatNotificationMode;   // Default: 'inherit_client'
+  googleChat?: GoogleChatIntegration | null;     // Solo si googleChatMode === 'custom'
   
   // Entregables y Equipo Formal
   deliverables?: ProjectDeliverable[];
@@ -1179,6 +1183,29 @@ export interface ClientTaxEntity {
  */
 export type ClientStatus = 'active' | 'paused' | 'archived';
 
+/**
+ * Integración con Google Chat mediante webhook entrante.
+ * Seguridad: la URL del webhook NUNCA se persiste en frontend ni se expone por API;
+ * solo se conserva una referencia enmascarada (`webhookMask`). En backend la URL se
+ * guarda cifrada y únicamente `system_admin` puede registrarla o reemplazarla.
+ */
+export type GoogleChatIntegrationStatus = 'pending_test' | 'active' | 'inactive' | 'error';
+
+/** Modo de notificación de un proyecto/fee hacia Google Chat. */
+export type GoogleChatNotificationMode = 'inherit_client' | 'disabled' | 'custom';
+
+export interface GoogleChatIntegration {
+  spaceName: string;                    // Nombre del espacio de Google Chat
+  hasWebhook: boolean;
+  webhookMask?: string | null;          // Ej. '••••••••••••aB92' (nunca la URL)
+  status: GoogleChatIntegrationStatus;
+  lastTestAt?: string | null;           // ISO timestamp de la última prueba
+  lastTestResult?: 'success' | 'error' | null;
+  lastTestMessage?: string | null;
+  updatedAt?: string | null;
+  updatedByName?: string | null;        // Usuario que hizo la última modificación
+}
+
 export interface ClientProfile {
   id: string;
   name: string;                         // Nombre Comercial / Marca Sombrilla
@@ -1217,6 +1244,9 @@ export interface ClientProfile {
   commercialInfo?: ClientCommercialInfo;
   behavior?: ClientBehaviorScores;
   projectsHistory?: ClientProjectHistoryItem[];
+
+  // Integraciones (administradas solo por system_admin)
+  googleChat?: (GoogleChatIntegration & { isDefaultForProjects: boolean }) | null;
 }
 
 export interface ClientProjectNode {
