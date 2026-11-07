@@ -1,4 +1,6 @@
 import React, { useState, useMemo } from 'react';
+import { formatDate, formatDateRange } from '../../utils/formatters';
+import { PageHeader } from './PageHeader';
 import { TaskItem, ActiveTimerState, TaskStatus, TaskPriority, UserItem, ProjectSummaryItem } from './types';
 import { getUserAccessLevel } from './auth/permissions';
 import { makePersonMatcher, getTaskRelation, isProjectResponsible, makeTaskProjectResolver, makeTaskComparator } from './auth/taskVisibility';
@@ -177,6 +179,46 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tasks, viewMode, filterTab, categoryFilter, selectedClient, selectedProject, selectedAssignee, searchQuery, sortDirection, identity, matchesMe, myProjectIds, canSeeTeam]);
 
+  // Mensaje vacío según el contexto, con la acción que tiene sentido
+  const hasActiveFilters = filterTab !== 'all' || categoryFilter !== 'all' || selectedClient !== 'all' || selectedProject !== 'all' || selectedAssignee !== 'all' || searchQuery.trim() !== '';
+  const clearFilters = () => {
+    setFilterTab('all');
+    setCategoryFilter('all');
+    setSelectedClient('all');
+    setSelectedProject('all');
+    setSelectedAssignee('all');
+    setSearchQuery('');
+  };
+  const renderEmpty = () => (
+    <div className="space-y-2 text-center">
+      <p className="text-sm font-semibold text-[#0f172a]">
+        {hasActiveFilters
+          ? 'Ninguna tarea coincide con los filtros'
+          : viewMode === 'following'
+          ? 'No estás siguiendo tareas'
+          : viewMode === 'team'
+          ? 'Tu equipo no tiene tareas abiertas'
+          : 'No tienes tareas asignadas'}
+      </p>
+      <p className="text-xs text-[#64748b]">
+        {hasActiveFilters
+          ? 'Prueba quitando algún filtro.'
+          : viewMode === 'following'
+          ? 'Cuando te agreguen como seguidor de una tarea, aparecerá aquí.'
+          : 'Cuando te asignen una tarea o crees una, aparecerá aquí ordenada por fecha.'}
+      </p>
+      {hasActiveFilters ? (
+        <button type="button" onClick={clearFilters} className="mt-1 px-3.5 py-1.5 rounded-xl border border-[#e2e8f0] text-xs font-bold text-[#0f172a] hover:bg-[#f8fafc] cursor-pointer">
+          Quitar filtros
+        </button>
+      ) : viewMode === 'my' && onOpenNewTaskModal ? (
+        <button type="button" onClick={onOpenNewTaskModal} className="mt-1 px-3.5 py-1.5 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold cursor-pointer">
+          Nueva tarea
+        </button>
+      ) : null}
+    </div>
+  );
+
   const getStatusBadge = (status: TaskStatus, completed: boolean) => {
     if (completed || status === 'Done') {
       return (
@@ -209,6 +251,7 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
+      <PageHeader title="Tareas" description="Tus tareas por fecha y prioridad, las que sigues y, si lideras, las de tu equipo." />
       {/* Barra de Control Unificada: Modo, Acciones y Filtros en una sola tarjeta cohesiva */}
       <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-[#e2e8f0] shadow-xs space-y-3">
         {/* Fila 1: Selector de Modo (Mis Tareas vs Equipo) + Botón Nueva Tarea */}
@@ -360,9 +403,7 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
       {/* Mobile Task Cards (Mobile View - md:hidden) */}
       <div className="block md:hidden space-y-2.5">
         {filteredTasks.length === 0 ? (
-          <div className="bg-white rounded-2xl p-8 text-center text-xs text-[#94a3b8] border border-[#e2e8f0]">
-            No se encontraron tareas con los filtros seleccionados.
-          </div>
+          <div className="bg-white rounded-2xl p-8 border border-[#e2e8f0]">{renderEmpty()}</div>
         ) : (
           filteredTasks.map((task) => {
             const isRunning = activeTimer?.taskId === task.id;
@@ -400,12 +441,12 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
                   {/* Priority / Category badge */}
                   <div className="flex items-center gap-1 shrink-0">
                     {task.priority === 'High' && (
-                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-[#fef2f2] text-[#dc2626] border border-[#fecaca]">
+                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-lg bg-[#fef2f2] text-[#dc2626] border border-[#fecaca]">
                         Alta
                       </span>
                     )}
                     {task.categoryType === 'internal' && (
-                      <span className="text-[10px] font-medium px-1.5 py-0.2 rounded-md bg-[#f1f5f9] text-[#64748b]">
+                      <span className="text-[10px] font-medium px-1.5 py-0.2 rounded-lg bg-[#f1f5f9] text-[#64748b]">
                         Interno
                       </span>
                     )}
@@ -450,7 +491,7 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
                           }`}
                         >
                           <Calendar className="w-3 h-3 shrink-0" />
-                          <span>{task.dueDate}</span>
+                          <span>{formatDate(task.dueDate)}</span>
                           {isOverdue && (
                             <span className="text-[9px] uppercase bg-[#fee2e2] text-[#dc2626] px-1 rounded font-bold">
                               Vencida
@@ -587,9 +628,9 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
                 <tr>
                   <td
                     colSpan={viewMode === 'team' ? 6 : 5}
-                    className="py-12 text-center text-[#94a3b8]"
+                    className="py-12"
                   >
-                    No se encontraron tareas con los filtros seleccionados.
+                    {renderEmpty()}
                   </td>
                 </tr>
               ) : (
@@ -686,7 +727,7 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
                               ? 'text-[#d97706] font-semibold'
                               : 'text-[#334155] font-medium'
                           }`}>
-                            {task.dueDate || 'Sin fecha'}
+                            {formatDate(task.dueDate)}
                           </span>
                         </div>
                       </td>
@@ -701,7 +742,7 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
                                 onClick={onPauseResumeTimer}
                                 title={activeTimer?.isPaused ? 'Reanudar' : 'Pausar'}
                                 aria-label={activeTimer?.isPaused ? 'Reanudar' : 'Pausar'}
-                                className={`p-1 h-6 w-6 rounded-md text-white flex items-center justify-center transition-colors cursor-pointer ${
+                                className={`p-1 h-6 w-6 rounded-lg text-white flex items-center justify-center transition-colors cursor-pointer ${
                                   activeTimer?.isPaused
                                     ? 'bg-[#10b981] hover:bg-[#059669]'
                                     : 'bg-[#f59e0b] hover:bg-[#d97706]'
@@ -719,7 +760,7 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
                               onClick={onStopTimer}
                               title="Detener y registrar"
                               aria-label="Detener y registrar"
-                              className="p-1 h-6 w-6 rounded-md bg-[#dc2626] hover:bg-[#b91c1c] text-white flex items-center justify-center transition-colors cursor-pointer"
+                              className="p-1 h-6 w-6 rounded-lg bg-[#dc2626] hover:bg-[#b91c1c] text-white flex items-center justify-center transition-colors cursor-pointer"
                             >
                               <Square className="w-2.5 h-2.5 fill-current" />
                             </button>

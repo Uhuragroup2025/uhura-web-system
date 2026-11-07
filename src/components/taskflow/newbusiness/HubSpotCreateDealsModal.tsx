@@ -133,7 +133,7 @@ export const HubSpotCreateDealsModal: React.FC<HubSpotCreateDealsModalProps> = (
       onClick={onClose}
     >
       <div
-        className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-[#e2e8f0] overflow-hidden flex flex-col max-h-[92vh]"
+        className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-[#e2e8f0] overflow-hidden flex flex-col max-h-[92vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header con branding HubSpot */}
@@ -285,7 +285,7 @@ export const HubSpotCreateDealsModal: React.FC<HubSpotCreateDealsModalProps> = (
                     <div className="flex items-center justify-between pt-2 border-t border-[#f1f5f9] text-[10.5px] text-[#64748b]">
                       <div className="flex items-center gap-2">
                         <span
-                          className={`px-2 py-0.5 rounded-md font-semibold ${
+                          className={`px-2 py-0.5 rounded-lg font-semibold ${
                             isFixed
                               ? 'bg-[#501f92]/10 text-[#501f92]'
                               : 'bg-[#059669]/10 text-[#047857]'

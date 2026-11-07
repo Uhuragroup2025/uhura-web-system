@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { formatDateRange } from '../../../utils/formatters';
 import { CalendarRange, RefreshCw, X } from 'lucide-react';
 import type { ProjectSummaryItem, UserItem } from '../types';
 import { contractEndDate, daysUntil, RENEWAL_NOTICE_DAYS } from '../schedule/feeCycles';
@@ -57,7 +58,7 @@ export const FeeContractSection: React.FC<FeeContractSectionProps> = ({ project,
   };
 
   return (
-    <div className="bg-white rounded-3xl border border-[#e2e8f0] p-5 shadow-xs space-y-3">
+    <div className="bg-white rounded-2xl border border-[#e2e8f0] p-5 shadow-xs space-y-3">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
@@ -65,7 +66,7 @@ export const FeeContractSection: React.FC<FeeContractSectionProps> = ({ project,
             <h3 className="font-extrabold text-sm text-[#0f172a]">Contrato y ciclos mensuales</h3>
           </div>
           <p className="text-xs text-[#64748b] mt-0.5">
-            {project.contractStartDate} → {project.contractEndDate} · Mes {Math.min(monthNumber, cycles.length)} de {cycles.length} · Horas no usadas: {ROLLOVER_LABEL[project.rolloverPolicy || 'none']}
+            {formatDateRange(project.contractStartDate, project.contractEndDate)} · Mes {Math.min(monthNumber, cycles.length)} de {cycles.length} · Horas no usadas: {ROLLOVER_LABEL[project.rolloverPolicy || 'none']}
             {(project.contractRenewals || []).length > 0 && ` · ${project.contractRenewals!.length} renovación(es)`}
           </p>
         </div>
@@ -133,7 +134,7 @@ export const FeeContractSection: React.FC<FeeContractSectionProps> = ({ project,
 
       {isRenewOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4" onClick={(e) => { if (e.target === e.currentTarget) setIsRenewOpen(false); }}>
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-[#e2e8f0] space-y-3">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-[#e2e8f0] space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="font-extrabold text-base text-[#0f172a]">Renovar fee</h3>
               <button onClick={() => setIsRenewOpen(false)} className="p-1 text-[#64748b] hover:bg-[#f1f5f9] rounded-lg cursor-pointer"><X className="w-4 h-4" /></button>

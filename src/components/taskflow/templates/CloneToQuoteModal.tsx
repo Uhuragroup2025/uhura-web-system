@@ -404,7 +404,7 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                       type="button"
                       onClick={() => setTargetOpportunityMode('existing')}
                       disabled={opportunities.length === 0}
-                      className={`px-2.5 py-1 rounded-md font-semibold transition-colors cursor-pointer ${
+                      className={`px-2.5 py-1 rounded-lg font-semibold transition-colors cursor-pointer ${
                         targetOpportunityMode === 'existing'
                           ? 'bg-[#8a4dff] text-white'
                           : opportunities.length === 0
@@ -417,7 +417,7 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setTargetOpportunityMode('new')}
-                      className={`px-2.5 py-1 rounded-md font-semibold transition-colors cursor-pointer ${
+                      className={`px-2.5 py-1 rounded-lg font-semibold transition-colors cursor-pointer ${
                         targetOpportunityMode === 'new'
                           ? 'bg-[#8a4dff] text-white'
                           : 'bg-white text-[#64748b] border border-[#cbd5e1] hover:bg-[#f1f5f9]'
@@ -571,7 +571,7 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                           {selectedTemplate.roleBudgetsRollup?.map((rb) => (
                             <span
                               key={rb.roleId}
-                              className="text-xs px-2.5 py-1 rounded-md bg-[#1a0f30] border border-[#2d1b4e] text-[#e2e8f0]"
+                              className="text-xs px-2.5 py-1 rounded-lg bg-[#1a0f30] border border-[#2d1b4e] text-[#e2e8f0]"
                             >
                               <strong className="text-white font-semibold mr-1.5">{rb.roleName}:</strong>
                               <span className="text-[#d4ff4a] font-bold">{rb.quotedHours}h</span>
@@ -606,7 +606,7 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                   onClick={handleGenerateClone}
                   className="inline-flex items-center gap-2 px-6 py-2.5 text-xs font-bold text-white bg-[#8a4dff] hover:bg-[#7839ee] rounded-xl shadow-md transition-colors cursor-pointer"
                 >
-                  <span>Generar Copia Independiente para Cotización</span>
+                  <span>Generar copia independiente para cotización</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
@@ -673,7 +673,7 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                             ({del.backlogItems.length} actividades)
                           </span>
                         </div>
-                        <span className="text-xs font-bold text-[#8a4dff] px-2 py-0.5 rounded-md bg-[#8a4dff]/10">
+                        <span className="text-xs font-bold text-[#8a4dff] px-2 py-0.5 rounded-lg bg-[#8a4dff]/10">
                           {del.totalHoursRollup} hrs
                         </span>
                       </div>
@@ -697,7 +697,7 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                                   onChange={(e) =>
                                     handleUpdateQuoteItem(del.id, act.id, 'title', e.target.value)
                                   }
-                                  className="w-full text-xs text-[#0f172a] px-2 py-1.5 rounded-md border border-[#cbd5e1] bg-white"
+                                  className="w-full text-xs text-[#0f172a] px-2 py-1.5 rounded-lg border border-[#cbd5e1] bg-white"
                                 />
                               </div>
 
@@ -708,7 +708,7 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                                   onChange={(e) =>
                                     handleUpdateQuoteItem(del.id, act.id, 'roleId', e.target.value)
                                   }
-                                  className={`w-full text-xs px-2 py-1.5 rounded-md border bg-white ${
+                                  className={`w-full text-xs px-2 py-1.5 rounded-lg border bg-white ${
                                     act.roleId === ROLE_PENDING_DEFINITION || act.roleName === ROLE_PENDING_DEFINITION
                                       ? 'border-[#f59e0b] text-[#b45309] font-medium bg-[#fffbeb]'
                                       : 'border-[#cbd5e1] text-[#334155]'
@@ -745,7 +745,7 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                                       parseFloat(e.target.value) || 0
                                     )
                                   }
-                                  className="w-18 text-xs text-right font-semibold text-[#0f172a] px-2 py-1.5 rounded-md border border-[#cbd5e1] bg-white"
+                                  className="w-18 text-xs text-right font-semibold text-[#0f172a] px-2 py-1.5 rounded-lg border border-[#cbd5e1] bg-white"
                                 />
                                 <span className="text-[11px] text-[#64748b]">hrs</span>
                               </div>
@@ -767,7 +767,7 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                             className="w-full py-1.5 border border-dashed border-[#cbd5e1] hover:border-[#8a4dff] text-[#8a4dff] text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 bg-[#fcfaff]/50 transition-colors cursor-pointer"
                           >
                             <Plus className="w-3.5 h-3.5" />
-                            <span>Agregar Actividad Personalizada</span>
+                            <span>Agregar actividad personalizada</span>
                           </button>
                         </div>
                       )}
@@ -855,7 +855,7 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                 className="inline-flex items-center gap-2 px-5 py-2 text-xs font-bold text-white bg-[#10b981] hover:bg-[#059669] rounded-lg shadow-sm transition-colors cursor-pointer"
               >
                 <CheckCircle2 className="w-4 h-4" />
-                <span>Confirmar Cotización y Guardar</span>
+                <span>Confirmar cotización y guardar</span>
               </button>
             )}
           </div>

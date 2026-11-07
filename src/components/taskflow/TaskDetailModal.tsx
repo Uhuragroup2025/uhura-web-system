@@ -308,7 +308,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     });
   };
 
-  // Bucky Copiloto: Chequeo de colaboradores asignados en vacaciones
+  // ECO: Chequeo de colaboradores asignados en vacaciones
   const assignedVacationAlerts = useMemo(() => {
     const alerts: { name: string; message: string; returnDate?: string }[] = [];
     const assignedList = Array.from(new Set([assignee?.name, ...(collaborators || []).map((c) => c?.name)].filter(Boolean) as string[]));
@@ -404,8 +404,8 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
       setReworkReason('');
       setReworkRequestedBy(task.clientName || 'Cliente');
       setReworkHours('1.0');
-      setStartDateInput(task.startDate || '2026-08-20');
-      setDueDateInput(task.dueDate || '2026-08-24');
+      setStartDateInput(task.startDate || '');
+      setDueDateInput(task.dueDate || '');
 
       const initialCriteria =
         task.acceptanceCriteria && task.acceptanceCriteria.length > 0
@@ -493,7 +493,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
             actorName: tl.userName || task.assignee?.name || 'Colaborador',
             actorInitials: tl.userName ? tl.userName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase() : 'CO',
             actorAvatarBg: '#501f92',
-            timestamp: tl.date || '2026-08-22',
+            timestamp: tl.date || '',
             description: `Registró ${hours}h de ejecución${tl.note ? `: "${tl.note}"` : ''}`
           });
         }
@@ -511,7 +511,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
             actorName: rw.requestedBy || 'Cliente / Revisor',
             actorInitials: 'RW',
             actorAvatarBg: '#ea580c',
-            timestamp: rw.date || '2026-08-21',
+            timestamp: rw.date || '',
             description: `Retrabajo registrado (+${rw.hoursSpent || 0}h): ${rw.reason}`
           });
         }
@@ -529,7 +529,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
             actorName: del.submittedBy || task.assignee?.name || 'Colaborador',
             actorInitials: del.submittedBy ? del.submittedBy.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase() : 'DL',
             actorAvatarBg: '#10b981',
-            timestamp: del.submittedAt || '2026-08-21',
+            timestamp: del.submittedAt || '',
             description: `Entregable subido: "${del.title || 'Entregable'}"${del.status === 'approved' ? ' (Aprobado)' : ''}`
           });
         }
@@ -545,7 +545,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
         actorName: task.requestedBy || task.projectLead?.name || 'Project Lead',
         actorInitials: 'PL',
         actorAvatarBg: '#501f92',
-        timestamp: task.startDate || task.date || '2026-08-20',
+        timestamp: task.startDate || task.date || '',
         description: `Tarea creada y asignada inicialmente a ${task.assignee?.name || 'Colaborador'}`
       });
     }
@@ -1013,7 +1013,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               tokens.push(
                 <span
                   key={`mention-${match.index}`}
-                  className="inline-flex items-center gap-1 font-bold text-[#501f92] bg-[#f5f3ff] hover:bg-[#ede9fe] border border-[#ddd6fe] px-1.5 py-0.2 rounded-md text-[11px] transition-colors align-baseline"
+                  className="inline-flex items-center gap-1 font-bold text-[#501f92] bg-[#f5f3ff] hover:bg-[#ede9fe] border border-[#ddd6fe] px-1.5 py-0.2 rounded-lg text-[11px] transition-colors align-baseline"
                   title={`Miembro: ${memberProfile ? memberProfile.role : 'Equipo'}`}
                 >
                   <AtSign className="w-2.5 h-2.5 text-[#501f92]" />
@@ -1038,7 +1038,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                       showToast(`Navegando a ${matchedTask.title}`);
                     }
                   }}
-                  className={`inline-flex items-center gap-1 font-mono font-bold px-1.5 py-0.2 rounded-md text-[11px] border transition-all align-baseline ${
+                  className={`inline-flex items-center gap-1 font-mono font-bold px-1.5 py-0.2 rounded-lg text-[11px] border transition-all align-baseline ${
                     matchedTask
                       ? 'bg-[#f0f9ff] text-[#0284c7] border-[#bae6fd] hover:bg-[#e0f2fe] hover:border-[#0284c7] cursor-pointer shadow-2xs'
                       : 'bg-[#f8fafc] text-[#475569] border-[#e2e8f0]'
@@ -1356,7 +1356,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
       <div
         id="task-detail-modal-container"
-        className="bg-white sm:rounded-3xl max-w-5xl w-full h-full sm:h-auto sm:max-h-[92vh] border-0 sm:border sm:border-[#e2e8f0] shadow-2xl overflow-hidden flex flex-col"
+        className="bg-white sm:rounded-2xl max-w-5xl w-full h-full sm:h-auto sm:max-h-[92vh] border-0 sm:border sm:border-[#e2e8f0] shadow-2xl overflow-hidden flex flex-col"
       >
         {/* ========================================================= */}
         {/* HEADER: Cliente > Proyecto > Frente | Title | Timer | + | 3-dots | X */}
@@ -1411,7 +1411,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                 <>
                   <span className="text-[#cbd5e1]">›</span>
                   <span
-                    className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#eff6ff] text-[#1d4ed8] border border-[#dbeafe]"
+                    className="inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-bold bg-[#eff6ff] text-[#1d4ed8] border border-[#dbeafe]"
                     title={`Fase del proyecto: ${task.phase || task.fase}`}
                   >
                     {task.phase || task.fase}
@@ -1651,7 +1651,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
                 </span>
-                <span className="font-bold px-2 py-0.5 rounded-md bg-amber-100/90 text-amber-900 border border-amber-300 text-[11px] shrink-0">
+                <span className="font-bold px-2 py-0.5 rounded-lg bg-amber-100/90 text-amber-900 border border-amber-300 text-[11px] shrink-0">
                   🟡 EN PROCESO
                 </span>
                 <span className="text-[11px] text-amber-900/90 font-medium truncate sm:whitespace-normal">
@@ -1661,7 +1661,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
             )}
 
             {task.status === 'Review' && (
-              <span className="font-bold px-2 py-0.5 rounded-md bg-[#ede9fe] text-[#501f92] border border-[#c4b5fd] text-[11px] flex items-center gap-1 shrink-0">
+              <span className="font-bold px-2 py-0.5 rounded-lg bg-[#ede9fe] text-[#501f92] border border-[#c4b5fd] text-[11px] flex items-center gap-1 shrink-0">
                 <Eye className="w-3 h-3 text-[#501f92]" />
                 <span>🔍 EN REVISIÓN</span>
               </span>
@@ -1669,7 +1669,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
             {task.status === 'Done' && (
               <>
-                <span className="font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 border border-emerald-300 text-[11px] flex items-center gap-1 shrink-0">
+                <span className="font-bold px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-900 border border-emerald-300 text-[11px] flex items-center gap-1 shrink-0">
                   <CheckCircle2 className="w-3 h-3 text-emerald-700" />
                   <span>🟢 COMPLETADA</span>
                 </span>
@@ -1681,7 +1681,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
             {task.status === 'To Do' && (
               <>
-                <span className="font-bold px-2 py-0.5 rounded-md bg-slate-200 text-slate-800 border border-slate-300 text-[11px] shrink-0">
+                <span className="font-bold px-2 py-0.5 rounded-lg bg-slate-200 text-slate-800 border border-slate-300 text-[11px] shrink-0">
                   ⚪ POR HACER
                 </span>
                 <span className="text-[11px] text-slate-600 font-medium truncate sm:whitespace-normal">
@@ -1756,7 +1756,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                     className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
                   >
                     <CheckCircle2 className="w-3 h-3" />
-                    <span>Aprobar y Completar</span>
+                    <span>Aprobar y completar</span>
                   </button>
                 </div>
               ) : (
@@ -2474,7 +2474,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                         Registro cronológico de cambios de estado, colaboradores, entregables y eventos clave.
                       </p>
                     </div>
-                    <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-[#f1f5f9] text-[#475569]">
+                    <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-lg bg-[#f1f5f9] text-[#475569]">
                       {allActivities.length} {allActivities.length === 1 ? 'evento' : 'eventos'}
                     </span>
                   </div>
@@ -2544,7 +2544,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                                     {act.actorInitials || act.actorName.slice(0, 2).toUpperCase()}
                                   </div>
                                   <span className="font-extrabold text-[#0f172a] truncate">{act.actorName}</span>
-                                  <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-md ${badgeBg}`}>
+                                  <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-lg ${badgeBg}`}>
                                     {badgeLabel}
                                   </span>
                                 </div>
@@ -2567,11 +2567,11 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
                               {act.previousValue && act.newValue && (
                                 <div className="flex items-center gap-2 text-[11px] pt-1">
-                                  <span className="px-2 py-0.5 rounded-md bg-[#f1f5f9] text-[#64748b] font-medium border border-[#e2e8f0]">
+                                  <span className="px-2 py-0.5 rounded-lg bg-[#f1f5f9] text-[#64748b] font-medium border border-[#e2e8f0]">
                                     {act.previousValue}
                                   </span>
                                   <span className="text-[#94a3b8] font-bold">➔</span>
-                                  <span className="px-2 py-0.5 rounded-md bg-[#f5f3ff] text-[#501f92] font-bold border border-[#ddd6fe]">
+                                  <span className="px-2 py-0.5 rounded-lg bg-[#f5f3ff] text-[#501f92] font-bold border border-[#ddd6fe]">
                                     {act.newValue}
                                   </span>
                                 </div>
@@ -2664,7 +2664,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                                     {t.title}
                                   </span>
                                 </div>
-                                <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-[#f1f5f9] text-[#64748b] shrink-0 font-semibold">
+                                <span className="text-[9px] px-1.5 py-0.5 rounded-lg bg-[#f1f5f9] text-[#64748b] shrink-0 font-semibold">
                                   {t.status}
                                 </span>
                               </button>
@@ -2709,7 +2709,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                           <button
                             type="button"
                             onClick={() => handleRemovePendingAttachment(att.id)}
-                            className="p-0.5 text-[#94a3b8] hover:text-[#ef4444] rounded-md transition-colors cursor-pointer"
+                            className="p-0.5 text-[#94a3b8] hover:text-[#ef4444] rounded-lg transition-colors cursor-pointer"
                           >
                             <X className="w-3 h-3" />
                           </button>
@@ -3529,7 +3529,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                             <button
                               type="button"
                               onClick={() => setIsEditingHoursSplit(false)}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#501f92] hover:bg-[#3f1775] text-white text-[10px] font-semibold transition-colors cursor-pointer"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#501f92] hover:bg-[#3f1775] text-white text-[10px] font-semibold transition-colors cursor-pointer"
                             >
                               <Check className="w-3 h-3" />
                               <span>Listo</span>
@@ -3588,7 +3588,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                                           updated
                                         );
                                       }}
-                                      className="w-16 px-1.5 py-0.5 text-right text-xs font-mono font-semibold text-[#0f172a] bg-[#f8fafc] border border-[#cbd5e1] rounded-md focus:outline-none focus:border-[#501f92]"
+                                      className="w-16 px-1.5 py-0.5 text-right text-xs font-mono font-semibold text-[#0f172a] bg-[#f8fafc] border border-[#cbd5e1] rounded-lg focus:outline-none focus:border-[#501f92]"
                                     />
                                     <span className="text-[10px] text-[#64748b]">h</span>
                                   </div>
@@ -3622,13 +3622,12 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                     return null;
                   })()}
 
-                  {/* Bucky Copiloto: Aviso si hay colaboradores en vacaciones asignados */}
+                  {/* ECO: Aviso si hay colaboradores en vacaciones asignados */}
                   {assignedVacationAlerts.length > 0 && (
                     <div className="mt-2 p-2.5 rounded-xl bg-[#fffbeb] border border-[#fde68a] text-xs flex items-start gap-2">
-                      <span className="text-sm shrink-0">🦫</span>
                       <div className="space-y-0.5">
                         <div className="text-[10px] font-bold text-[#78350f] uppercase tracking-wider">
-                          Aviso Operativo de Bucky
+                          Aviso operativo
                         </div>
                         {assignedVacationAlerts.map((a) => (
                           <p key={a.name} className="text-[#92400e] text-[11px] leading-snug">
@@ -3725,7 +3724,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                       <Briefcase className="w-3.5 h-3.5 text-[#0284c7]" />
                       <span>Rol cotizado</span>
                     </span>
-                    <span className="text-[10px] text-[#0284c7] font-semibold bg-[#f0f9ff] px-2 py-0.5 rounded-md border border-[#bae6fd]">
+                    <span className="text-[10px] text-[#0284c7] font-semibold bg-[#f0f9ff] px-2 py-0.5 rounded-lg border border-[#bae6fd]">
                       Tarifario
                     </span>
                   </div>
@@ -3908,7 +3907,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                       >
                         <div className="flex items-center justify-between">
                           <span
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold ${
                               rwk.origin === 'client'
                                 ? 'bg-[#eff6ff] text-[#1d4ed8] border border-[#bfdbfe]'
                                 : 'bg-[#faf5ff] text-[#7e22ce] border border-[#e9d5ff]'

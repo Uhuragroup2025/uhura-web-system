@@ -529,7 +529,7 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
         {/* Left Column: Entregables y Actividades (8 cols) */}
         <div className="lg:col-span-8 space-y-4">
           {quote.deliverables.length === 0 ? (
-            <div className="p-8 text-center bg-white rounded-3xl border-2 border-dashed border-[#cbd5e1] space-y-4">
+            <div className="p-8 text-center bg-white rounded-2xl border-2 border-dashed border-[#cbd5e1] space-y-4">
               <div className="w-14 h-14 rounded-2xl bg-[#501f92]/10 flex items-center justify-center mx-auto text-[#501f92]">
                 <Layers className="w-7 h-7" />
               </div>
@@ -720,7 +720,7 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
                                           e.target.value as StandardUhuraRole
                                         )
                                       }
-                                      className={`text-[11px] font-semibold px-2 py-0.5 rounded-md border border-transparent hover:border-[#cbd5e1] ${badgeStyle.bg} ${badgeStyle.text} focus:ring-1 focus:ring-[#501f92] cursor-pointer outline-hidden transition-colors`}
+                                      className={`text-[11px] font-semibold px-2 py-0.5 rounded-lg border border-transparent hover:border-[#cbd5e1] ${badgeStyle.bg} ${badgeStyle.text} focus:ring-1 focus:ring-[#501f92] cursor-pointer outline-hidden transition-colors`}
                                       title="Rol presupuestado"
                                     >
                                       {[...new Set([...STANDARD_UHURA_ROLES, act.roleName])].map((role) => (
@@ -738,7 +738,7 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
                                       onChange={(e) => {
                                         handleUpdateActivity(del.id, act.id, 'suggestedUserId', e.target.value || null);
                                       }}
-                                      className="text-[11px] font-medium px-2 py-0.5 rounded-md border border-[#e2e8f0] bg-white text-[#334155] hover:border-[#cbd5e1] focus:ring-1 focus:ring-[#501f92] cursor-pointer outline-hidden transition-colors max-w-[130px] truncate"
+                                      className="text-[11px] font-medium px-2 py-0.5 rounded-lg border border-[#e2e8f0] bg-white text-[#334155] hover:border-[#cbd5e1] focus:ring-1 focus:ring-[#501f92] cursor-pointer outline-hidden transition-colors max-w-[130px] truncate"
                                       title="Persona responsable de ejecutar la actividad"
                                     >
                                       <option value="">👤 (Sin responsable)</option>
@@ -752,7 +752,7 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
 
                                   {/* Right: Estimated Hours & Action Icons (revealed on hover) */}
                                   <div className="flex items-center gap-2 shrink-0">
-                                    <div className="flex items-center gap-1 bg-[#f8fafc] px-2 py-0.5 rounded-md border border-[#e2e8f0]">
+                                    <div className="flex items-center gap-1 bg-[#f8fafc] px-2 py-0.5 rounded-lg border border-[#e2e8f0]">
                                       <input
                                         type="number"
                                         min="0"

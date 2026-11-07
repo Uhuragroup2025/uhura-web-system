@@ -203,7 +203,7 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
             )}
           </div>
           <div className="flex flex-wrap items-center gap-2.5 mt-1.5 text-xs text-[#64748b]">
-            <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md font-bold text-[11px] ${statusInfo.bg} ${statusInfo.text}`}>
+            <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg font-bold text-[11px] ${statusInfo.bg} ${statusInfo.text}`}>
               <span className={`w-1.5 h-1.5 rounded-full ${statusInfo.dot}`} />
               {statusInfo.label}
             </span>
@@ -268,7 +268,7 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-[#f8fafc] text-[#334155] border border-[#e2e8f0] text-xs font-bold shadow-2xs transition-colors cursor-pointer"
           >
             <Edit3 className="w-3.5 h-3.5 text-[#64748b]" />
-            <span>Editar Cuenta</span>
+            <span>Editar cuenta</span>
           </button>
 
           {/* Volver */}
@@ -381,7 +381,7 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
                     <div className="flex items-center gap-2">
                       <span className="font-mono font-bold text-sm text-[#0f172a]">{tax.nit}</span>
                       {tax.isPrimary && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#501f92] text-white">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-lg bg-[#501f92] text-white">
                           <Star className="w-2.5 h-2.5 fill-current" />
                           Principal
                         </span>
@@ -452,13 +452,13 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-sm text-[#0f172a]">{con.name}</span>
                       {con.isPrimary && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#501f92] text-white">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-lg bg-[#501f92] text-white">
                           <Star className="w-2.5 h-2.5 fill-current" />
                           Principal
                         </span>
                       )}
                     </div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-[#e2e8f0] text-[#334155]">
+                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-lg bg-[#e2e8f0] text-[#334155]">
                       {con.contactType}
                     </span>
                   </div>
@@ -488,7 +488,7 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
 
       {/* INTEGRACIONES (solo system_admin gestiona; executive consulta) */}
       {canViewClientIntegrations(currentUser?.accessLevel) && (
-        <section className="bg-white rounded-3xl border border-[#e2e8f0] shadow-2xs p-5 space-y-3">
+        <section className="bg-white rounded-2xl border border-[#e2e8f0] shadow-2xs p-5 space-y-3">
           <div className="flex items-center justify-between gap-3">
             <div>
               <h3 className="font-extrabold text-sm text-[#0f172a]">Integraciones</h3>

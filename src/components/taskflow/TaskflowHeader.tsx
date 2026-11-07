@@ -12,6 +12,7 @@ export function formatHeaderTime(totalSeconds: number): string {
 
 interface TaskflowHeaderProps {
   currentViewTitle?: string;
+  currentViewSection?: string;           // Grupo del menú (Operación, Comercial…) para la ruta
   onToggleMobileMenu?: () => void;
   onSelectAlert?: (alertId: string) => void;
   activeTimer?: ActiveTimerState | null;
@@ -37,6 +38,7 @@ interface TaskflowHeaderProps {
 
 export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
   currentViewTitle = 'Dashboard ejecutivo',
+  currentViewSection,
   onToggleMobileMenu,
   onSelectAlert,
   activeTimer,
@@ -168,10 +170,16 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
           </button>
         )}
 
-        {/* View Title: Displayed on XL screens to prevent visual redundancy with page headers on tablet */}
-        <h1 className={`hidden xl:block text-base font-bold tracking-tight whitespace-nowrap ${isDarkTheme ? 'text-white' : 'text-[#0f172a]'}`}>
-          {currentViewTitle}
-        </h1>
+        {/* Ruta (grupo › vista). El título grande vive en el encabezado de cada pantalla. */}
+        <nav aria-label="Ruta" className={`hidden xl:flex items-center gap-1.5 text-sm whitespace-nowrap ${isDarkTheme ? 'text-white/70' : 'text-[#64748b]'}`}>
+          {currentViewSection && (
+            <>
+              <span>{currentViewSection}</span>
+              <span aria-hidden="true" className={isDarkTheme ? 'text-white/40' : 'text-[#cbd5e1]'}>›</span>
+            </>
+          )}
+          <span aria-current="page" className={`font-semibold ${isDarkTheme ? 'text-white' : 'text-[#0f172a]'}`}>{currentViewTitle}</span>
+        </nav>
       </div>
 
       {/* Center: Global Task Search Bar */}
@@ -337,7 +345,7 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
                         <span className="text-xs font-semibold text-[#0f172a] group-hover:text-[#501f92] truncate">
                           {entry.title}
                         </span>
-                        <span className="font-mono text-[11px] font-bold text-[#501f92] bg-white px-2 py-0.5 rounded-md border border-[#e2e8f0] shrink-0">
+                        <span className="font-mono text-[11px] font-bold text-[#501f92] bg-white px-2 py-0.5 rounded-lg border border-[#e2e8f0] shrink-0">
                           {entry.hours.toFixed(1)}h
                         </span>
                       </button>

@@ -142,7 +142,7 @@ export function calculateRoleBudgetExecutedHours(
 }
 
 /**
- * Emite un evento desacoplado de Time Tracking para que Bucky u otros módulos lo escuchen.
+ * Emite un evento desacoplado de Time Tracking para que ECO u otros módulos lo escuchen.
  */
 export function createTimeTrackingEvent(
   type: TimeTrackingEventType,

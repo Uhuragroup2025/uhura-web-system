@@ -561,3 +561,12 @@ select option {
 [data-sidebar-theme='light'] .bg-\[\#a855f7\]\/15 { background-color: #f3eefe !important; }
 [data-sidebar-theme='light'] .bg-\[\#501f92\] { color: #ffffff !important; }
 [data-sidebar-theme='light'] .bg-\[\#501f92\].text-\[\#d4ff4a\] { color: #ffffff !important; }
+
+/* ── ECO · Cifras: tipografía de la interfaz con dígitos tabulares ─────────── */
+/* Dentro de ECO, los números (horas, montos, fechas) usan la misma fuente que el resto,
+   con cifras de ancho fijo para que se alineen en tablas y tarjetas. */
+.orbit-saas-root .font-mono {
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}

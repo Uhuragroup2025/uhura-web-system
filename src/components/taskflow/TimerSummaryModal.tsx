@@ -103,7 +103,7 @@ export const TimerSummaryModal: React.FC<TimerSummaryModalProps> = ({
       }}
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#090513]/70 backdrop-blur-xs animate-in fade-in duration-200"
     >
-      <div className="bg-white rounded-3xl shadow-2xl border border-[#e2e8f0] w-full max-w-md overflow-hidden text-[#0f172a] animate-in zoom-in-95 duration-150">
+      <div className="bg-white rounded-2xl shadow-2xl border border-[#e2e8f0] w-full max-w-md overflow-hidden text-[#0f172a] animate-in zoom-in-95 duration-150">
         {/* Header */}
         <div className="p-5 bg-gradient-to-r from-[#0f172a] via-[#1e293b] to-[#0f172a] text-white flex items-center justify-between border-b border-[#334155]">
           <div className="flex items-center gap-2.5">

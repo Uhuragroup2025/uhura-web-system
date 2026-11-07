@@ -113,7 +113,7 @@ export function getAnniversaryRecognitionMessage(userName: string, years: number
 }
 
 /**
- * Procesa la lista de usuarios y extrae los eventos humanos y operativos para Bucky
+ * Procesa la lista de usuarios y extrae los eventos humanos y operativos para ECO
  */
 export function processTeamLifeEvents(
   users: UserItem[],
@@ -255,7 +255,7 @@ export function processTeamLifeEvents(
           date: v.startDate || 'Activa',
           returnDate: v.returnDate,
           headline: `${user.name.split(' ')[0]} en Vacaciones 🏖️`,
-          message: `${user.name} está en período de vacaciones aprobado hasta el ${v.returnDate || 'próxima semana'}. Bucky avisará si se le intenta asignar trabajo operativo.`,
+          message: `${user.name} está en período de vacaciones aprobado hasta el ${v.returnDate || 'próxima semana'}. ECO avisará si se le intenta asignar trabajo operativo.`,
           isActiveNow: true,
           userHobbies: user.hobbies,
           userPersonalDream: user.personalDream,
@@ -370,7 +370,7 @@ export function processTeamLifeEvents(
 
 /**
  * Validador operativo para asignaciones de tareas.
- * Bucky avisa si el colaborador está de vacaciones o ausencia programada (consumiendo TeamAbsenceEvent).
+ * ECO avisa si el colaborador está de vacaciones o ausencia programada (consumiendo TeamAbsenceEvent).
  */
 export function checkAssigneeAvailability(
   userNameOrId: string,
@@ -415,8 +415,8 @@ export function checkAssigneeAvailability(
       isAvailable: false,
       isOnVacation: true,
       reason: 'absence_active',
-      alertTitle: `🦫 Bucky Copiloto: ${user.name.split(' ')[0]} tiene ausencia registrada`,
-      alertMessage: `${user.name} tiene ${activeAbsence.title} aprobada hasta el ${activeAbsence.endDate}${sourceLabel}. Bucky te recomienda no sobrecargar su retorno y considerar un respaldo operativo.`,
+      alertTitle: `🦫 ECO: ${user.name.split(' ')[0]} tiene ausencia registrada`,
+      alertMessage: `${user.name} tiene ${activeAbsence.title} aprobada hasta el ${activeAbsence.endDate}${sourceLabel}. ECO te recomienda no sobrecargar su retorno y considerar un respaldo operativo.`,
       returnDate: activeAbsence.endDate,
       warningLevel: 'warning'
     };
@@ -429,8 +429,8 @@ export function checkAssigneeAvailability(
       isAvailable: false,
       isOnVacation: true,
       reason: 'vacation_active',
-      alertTitle: `🦫 Bucky Copiloto: ${user.name.split(' ')[0]} está de vacaciones`,
-      alertMessage: `${user.name} se encuentra en período de descanso aprobado hasta el ${returnDate}. Bucky te recomienda no sobrecargar su retorno y considerar un respaldo operativo.`,
+      alertTitle: `🦫 ECO: ${user.name.split(' ')[0]} está de vacaciones`,
+      alertMessage: `${user.name} se encuentra en período de descanso aprobado hasta el ${returnDate}. ECO te recomienda no sobrecargar su retorno y considerar un respaldo operativo.`,
       returnDate,
       warningLevel: 'warning'
     };
@@ -451,7 +451,7 @@ export function checkAssigneeAvailability(
       isOnVacation: false,
       hasFutureAbsence: true,
       futureAbsenceText: `${futureAbsence.title} (${futureAbsence.startDate})`,
-      alertTitle: `🦫 Bucky Copiloto: Ausencia próxima para ${user.name.split(' ')[0]}`,
+      alertTitle: `🦫 ECO: Ausencia próxima para ${user.name.split(' ')[0]}`,
       alertMessage: `${user.name} tiene ${futureAbsence.title} programada del ${futureAbsence.startDate} al ${futureAbsence.endDate}${sourceLabel}. Tenlo en cuenta al definir entregables.`,
       returnDate: futureAbsence.endDate,
       warningLevel: 'info'
@@ -466,7 +466,7 @@ export function checkAssigneeAvailability(
 }
 
 /**
- * Resuelve la frase que Bucky dice en su globo de diálogo sobre eventos de equipo
+ * Resuelve la frase que ECO dice en su globo de diálogo sobre eventos de equipo
  */
 export function resolveBuckyTeamLifeSpeech(result: ProcessedTeamLifeResult): {
   speech: string;
@@ -509,7 +509,7 @@ export function resolveBuckyTeamLifeSpeech(result: ProcessedTeamLifeResult): {
     if (up.type === 'birthday') {
       return {
         headline: `Cumpleaños Cerca 🎈`,
-        speech: `En ${up.daysRemaining} días cumple años ${up.userName.split(' ')[0]}. ¡Bucky ya está preparando los saludos! 🪵✨`,
+        speech: `En ${up.daysRemaining} días cumple años ${up.userName.split(' ')[0]}. ¡ECO ya está preparando los saludos! 🪵✨`,
         badge: 'Próximo Cumpleaños',
         type: 'birthday'
       };

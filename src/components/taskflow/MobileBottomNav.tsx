@@ -42,7 +42,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   const navItems = [
     {
       id: 'mi-dia' as OrbitView,
-      label: 'Mi Día 🦫',
+      label: 'Mi Día',
       icon: CheckSquare,
       isActive: currentView === 'mi-dia' || currentView === 'dashboard'
     },

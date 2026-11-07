@@ -451,7 +451,7 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
                           </span>
                         )}
                         <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${
                             service.hubspotDealStage === 'Enviado para facturar'
                               ? 'bg-[#3b82f6]/10 text-[#1d4ed8] border border-[#bfdbfe]'
                               : 'bg-[#059669]/10 text-[#047857] border border-[#a7f3d0]'
@@ -460,7 +460,7 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
                           {service.hubspotDealStage || 'Cierre ganado'}
                         </span>
                         <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${
                             isFixed
                               ? 'bg-[#501f92]/10 text-[#501f92]'
                               : 'bg-[#059669]/10 text-[#047857]'

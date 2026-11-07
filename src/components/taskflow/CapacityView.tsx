@@ -1,4 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { formatDate, formatDateRange } from '../../utils/formatters';
+import { PageHeader } from './PageHeader';
+import { nextColombianHoliday } from './health/projectHealthEngine';
 import {
   Clock,
   User,
@@ -161,7 +164,7 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
       };
     });
 
-    const currentIdx = jsDay >= 1 && jsDay <= 5 ? jsDay - 1 : 4;
+    const currentIdx = jsDay >= 1 && jsDay <= 5 ? jsDay - 1 : -1; // fin de semana: ninguna columna es «hoy»
     const first = days[0];
     const last = days[4];
     const year = monday.getFullYear();
@@ -573,14 +576,60 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
   }, [displayedMembers]);
 
   // Desglose por proyecto / concentración de carga personal
+  // Concentración real: horas planificadas de mis tareas abiertas, agrupadas por proyecto.
   const projectConcentration = useMemo(() => {
-    return [
-      { name: 'Campaña Navidad 2026 (Danone)', client: 'Danone S.A.', hours: 14.5, type: 'Fee', color: '#501f92' },
-      { name: 'Campaña Navidad Yamaha', client: 'INCOLMOTOS YAMAHA S.A.', hours: 11.0, type: 'Proyecto', color: '#8a4dff' },
-      { name: 'Fee Mantenimiento Web Prisma', client: 'Prisma Kiddos', hours: 7.5, type: 'Fee', color: '#0284c7' },
-      { name: 'Innovación & ECO OS Labs', client: 'Uhura Interno', hours: 5.0, type: 'Interno', color: '#64748b' },
-    ];
-  }, []);
+    const palette = ['#501f92', '#8a4dff', '#0284c7', '#64748b', '#059669', '#d97706'];
+    const byProject = new Map<string, { name: string; client: string; hours: number; type: string }>();
+    myTasks
+      .filter((t) => !t.completed)
+      .forEach((t) => {
+        const hours = getUserTaskPlannedHours(t, currentUser);
+        if (hours <= 0) return;
+        const name = t.projectName || t.board || 'Sin proyecto';
+        const prev = byProject.get(name);
+        byProject.set(name, {
+          name,
+          client: t.clientName || '',
+          hours: Number(((prev?.hours || 0) + hours).toFixed(1)),
+          type: t.categoryType === 'internal' ? 'Interno' : 'Proyecto'
+        });
+      });
+    return Array.from(byProject.values())
+      .sort((x, y) => y.hours - x.hours)
+      .slice(0, 5)
+      .map((p, i) => ({ ...p, color: palette[i % palette.length] }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myTasks, currentUser]);
+  const concentrationTotal = projectConcentration.reduce((sum, p) => sum + p.hours, 0);
+
+  // Plan real por día: reparte las horas de cada tarea abierta entre los días hábiles de su ventana
+  // (inicio → vencimiento). Tareas sin fechas no se ubican en ningún día (no se inventan fechas).
+  const isoOk = (v?: string | null) => Boolean(v && /^\d{4}-\d{2}-\d{2}/.test(v));
+  const businessDaysBetween = (from: string, to: string) => {
+    let n = 0;
+    const d = new Date(`${from}T00:00:00Z`);
+    const end = new Date(`${to}T00:00:00Z`);
+    while (d <= end && n < 400) {
+      const wd = d.getUTCDay();
+      if (wd !== 0 && wd !== 6) n++;
+      d.setUTCDate(d.getUTCDate() + 1);
+    }
+    return Math.max(1, n);
+  };
+  const plannedByDay = useMemo(() => {
+    return weekDays.map((day) => {
+      const total = myTasks
+        .filter((t) => !t.completed)
+        .reduce((sum, t) => {
+          const start = isoOk(t.scheduledDate) ? t.scheduledDate!.slice(0, 10) : isoOk(t.dueDate) ? t.dueDate!.slice(0, 10) : null;
+          const due = isoOk(t.dueDate) ? t.dueDate!.slice(0, 10) : start;
+          if (!start || !due || day.fullDate < start || day.fullDate > due) return sum;
+          return sum + getUserTaskPlannedHours(t, currentUser) / businessDaysBetween(start, due);
+        }, 0);
+      return Number(total.toFixed(1));
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myTasks, weekDays, currentUser]);
 
   // Detalle del usuario seleccionado en drawer
   const selectedMemberObj = useMemo(() => {
@@ -590,6 +639,7 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
+      <PageHeader title="Capacidad" description={`Disponibilidad y carga · ${weekRangeLabel}`} />
       {/* 1. Header Superior de Control de Capacidad */}
       <div className="bg-white p-3 sm:p-4 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
         {/* Izquierda: Selector de Perspectiva (Mi Capacidad vs Equipo vs Organización) */}
@@ -752,7 +802,7 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
                   }`}>
                     {myAvailableHours > 0 ? `+${myAvailableHours}h` : `${myAvailableHours}h`}
                   </span>
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-[#f8fafc] border border-[#e2e8f0] text-[#334155]">
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-lg bg-[#f8fafc] border border-[#e2e8f0] text-[#334155]">
                     {myUtilizationPercent}% utilización
                   </span>
                 </div>
@@ -770,7 +820,7 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
                   <span className="text-2xl font-extrabold text-[#0f172a] font-mono">
                     {currentSummary.avgUtilization}%
                   </span>
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-md border ${
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-lg border ${
                     currentSummary.overloadedCount > 0
                       ? 'bg-[#fef2f2] text-[#dc2626] border-[#fecdd3]'
                       : 'bg-[#ecfdf5] text-[#059669] border-[#a7f3d0]'
@@ -825,7 +875,7 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
               <div>
                 <div className="flex items-baseline gap-2">
                   <span className="text-2xl font-extrabold text-[#0f172a]">{pacingLabel}</span>
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-md border ${pacingBadgeClass}`}>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-lg border ${pacingBadgeClass}`}>
                     {pacingDelta >= 0 ? `+${pacingDelta}%` : `${pacingDelta}%`} vs esperado
                   </span>
                 </div>
@@ -900,19 +950,6 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
                 });
               });
 
-              if (groupedByTask.size === 0 && (dayIdx === 0 || dayIdx === 1) && dayIdx !== todayIdx && myTasks.length > 0) {
-                const simulatedHours = dayIdx === 0 ? [3.5, 2.0] : [2.0, 1.5];
-                myTasks.slice(0, 2).forEach((t, i) => {
-                  const h = simulatedHours[i] || 1.0;
-                  groupedByTask.set(t.id, {
-                    taskId: t.id,
-                    title: t.title,
-                    hours: h,
-                    taskObj: t
-                  });
-                });
-              }
-
               const dayEntries = Array.from(groupedByTask.values());
               const totalDayHours = Number(
                 dayEntries.reduce((sum, item) => sum + item.hours, 0).toFixed(1)
@@ -922,13 +959,12 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
                 <>
                   <div className="grid grid-cols-1 sm:grid-cols-5 gap-2.5">
                     {weekDays.map((day, idx) => {
-                      const dayAssigned = [5.5, 6.5, 4.5, 5.0, 4.0][idx];
+                      const dayAssigned = plannedByDay[idx] || 0;
                       const logsForCol = getLogsForDayIndex(idx);
                       const loggedColHours = Number(
                         logsForCol.reduce((sum, l) => sum + (l.durationSeconds || 0) / 3600, 0).toFixed(1)
                       );
-                      const baselineExecuted = idx !== todayIdx ? [5.5, 3.5, 0, 0, 0][idx] : 0;
-                      const dayExecuted = loggedColHours > 0 ? loggedColHours : baselineExecuted;
+                      const dayExecuted = loggedColHours; // solo horas registradas reales
 
                       const isOver = dayAssigned > myDailyCapacity;
                       const freeHours = Number((myDailyCapacity - dayAssigned).toFixed(1));
@@ -1030,7 +1066,7 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
                             {entry.title}
                           </span>
                           <div className="flex items-center gap-2 shrink-0">
-                            <span className="font-mono text-xs font-bold text-[#501f92] bg-white px-2 py-0.5 rounded-md border border-[#e2e8f0]">
+                            <span className="font-mono text-xs font-bold text-[#501f92] bg-white px-2 py-0.5 rounded-lg border border-[#e2e8f0]">
                               {entry.hours.toFixed(1)}h
                             </span>
                             <ArrowRight className="w-3.5 h-3.5 text-[#94a3b8] group-hover:text-[#501f92] transition-colors" />
@@ -1053,8 +1089,13 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
             </div>
 
             <div className="space-y-3">
+              {projectConcentration.length === 0 && (
+                <p className="text-xs text-[#94a3b8] p-3 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
+                  Aún no tienes horas planificadas en tareas abiertas.
+                </p>
+              )}
               {projectConcentration.map((item) => {
-                const percent = Math.round((item.hours / myCurrentAssigned) * 100);
+                const percent = concentrationTotal > 0 ? Math.round((item.hours / concentrationTotal) * 100) : 0;
                 return (
                   <div key={item.name} className="p-3 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-2">
                     <div className="flex items-center justify-between text-xs">
@@ -1082,15 +1123,23 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
               })}
             </div>
 
-            {/* Nota de Próximo Festivo */}
-            <div className="p-3 rounded-xl bg-[#eff6ff] border border-[#bfdbfe] text-xs text-[#1e40af] space-y-1">
-              <p className="font-bold flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5" /> Próximo Festivo Oficial Colombia
-              </p>
-              <p className="text-[11px] text-[#3b82f6]">
-                <strong>Lunes 12 de Octubre</strong> (Día de la Raza) · Esa semana tendrá 33.6h de capacidad legal.
-              </p>
-            </div>
+            {/* Próximo festivo (calculado desde el calendario laboral; sin fecha si no hay) */}
+            {(() => {
+              const next = nextColombianHoliday(new Date().toISOString().slice(0, 10));
+              if (!next) return null;
+              const label = new Date(`${next}T12:00:00`).toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
+              const weekHours = Number((myConfiguredWeeklyHours - myConfiguredWeeklyHours / 5).toFixed(1));
+              return (
+                <div className="p-3 rounded-xl bg-[#eff6ff] border border-[#bfdbfe] text-xs text-[#1e40af] space-y-1">
+                  <p className="font-bold flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5" /> Próximo festivo (Colombia)
+                  </p>
+                  <p className="text-[11px] text-[#1d4ed8]">
+                    <strong className="capitalize">{label}</strong> · Esa semana tendrá {weekHours}h de capacidad.
+                  </p>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
@@ -1219,7 +1268,7 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
                       </div>
 
                       {/* Chip de Estado */}
-                      <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md whitespace-nowrap shrink-0 border ${statusBadgeBg}`}>
+                      <span className={`text-[11px] font-bold px-2 py-0.5 rounded-lg whitespace-nowrap shrink-0 border ${statusBadgeBg}`}>
                         {statusLabel}
                       </span>
                     </div>
@@ -1345,7 +1394,7 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
                     {selectedMemberObj.activeAbsence?.title || 'Ausencia Aprobada'} (-{selectedMemberObj.absenceDeduction}h)
                   </p>
                   <p className="text-[11px] text-[#92400e]">
-                    Período: {selectedMemberObj.activeAbsence?.startDate} al {selectedMemberObj.activeAbsence?.endDate}
+                    Período: {formatDate(selectedMemberObj.activeAbsence?.startDate)} al {formatDate(selectedMemberObj.activeAbsence?.endDate)}
                     {selectedMemberObj.activeAbsence?.source === 'google_calendar' && ' · Sincronizado vía Google Calendar'}
                   </p>
                 </div>

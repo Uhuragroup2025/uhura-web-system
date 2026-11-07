@@ -24,7 +24,9 @@ import {
   Sparkles,
   Monitor,
   Sun,
-  Moon
+  Moon,
+  CalendarCheck,
+  TreePine
 } from 'lucide-react';
 
 interface TaskflowSidebarProps {
@@ -147,9 +149,6 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
                 <div className="flex items-center gap-1.5">
                   <span className="font-extrabold text-base tracking-tight text-white">ECO</span>
                   {christmas && <span className="text-sm" title="Modo navideño">🎄</span>}
-                  <span className="text-[10px] uppercase font-bold tracking-widest px-1.5 py-0.5 rounded bg-[#8a4dff]/30 text-[#c9b7ff]">
-                    v2.6
-                  </span>
                 </div>
                 <span className="text-[11px] text-[#c9b7ff]/80 font-medium tracking-wide uppercase block truncate">
                   UHURA GROUP
@@ -190,26 +189,21 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
 
             {(openSections.operacion || collapsed) && (
               <div className="space-y-0.5 pl-0.5">
-                {/* Mi Día · Home Contextual de ECO */}
+                {/* Mi Día */}
                 {canMiDia && (
                   <button
                     onClick={() => onSelectView('mi-dia')}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
                       currentView === 'mi-dia' || currentView === 'dashboard'
-                        ? 'bg-gradient-to-r from-[#2e1859] to-[#1e113a] text-white shadow-sm border-l-2 border-[#d4ff4a]'
-                        : 'text-[#c9b7ff] hover:bg-[#1a0f30] hover:text-white'
+                        ? 'bg-[#1e113a] text-white font-semibold'
+                        : 'text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white'
                     }`}
-                    title="Mi Día · Home Contextual con perspectivas de rol"
+                    title="Mi Día"
                   >
                     <div className="flex items-center gap-2.5">
-                      <span className="text-sm">🦫</span>
-                      {!collapsed && <span className="font-bold">Mi Día</span>}
+                      <CalendarCheck className="w-3.5 h-3.5 text-[#8a4dff]" />
+                      {!collapsed && <span>Mi Día</span>}
                     </div>
-                    {!collapsed && (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#d4ff4a]/20 text-[#d4ff4a] border border-[#d4ff4a]/30">
-                        Home
-                      </span>
-                    )}
                   </button>
                 )}
 
@@ -262,9 +256,6 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
                       <Users2 className="w-3.5 h-3.5 text-[#8a4dff]" />
                       {!collapsed && <span>Capacidad</span>}
                     </div>
-                    {!collapsed && (
-                      <span className="text-[10px] font-semibold text-[#c9b7ff]/60">25 pers</span>
-                    )}
                   </button>
                 )}
               </div>
@@ -305,14 +296,9 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
                     title="Dirección y Finanzas · Salud comercial y operativa"
                   >
                     <div className="flex items-center gap-2.5">
-                      <TrendingUp className="w-3.5 h-3.5 text-[#a855f7]" />
+                      <TrendingUp className="w-3.5 h-3.5 text-[#8a4dff]" />
                       {!collapsed && <span>Dirección y Finanzas</span>}
                     </div>
-                    {!collapsed && (
-                      <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-[#a855f7]/15 text-[#c9b7ff]">
-                        KPIs
-                      </span>
-                    )}
                   </button>
                 )}
 
@@ -328,14 +314,9 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
                     title="New Business · Scoping, cotización y SOW"
                   >
                     <div className="flex items-center gap-2.5">
-                      <Target className="w-3.5 h-3.5 text-[#4be5ff]" />
+                      <Target className="w-3.5 h-3.5 text-[#8a4dff]" />
                       {!collapsed && <span>New Business</span>}
                     </div>
-                    {!collapsed && (
-                      <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-[#4be5ff]/15 text-[#4be5ff]">
-                        Brief
-                      </span>
-                    )}
                   </button>
                 )}
 
@@ -372,11 +353,6 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
                       <Briefcase className="w-3.5 h-3.5 text-[#8a4dff]" />
                       {!collapsed && <span>Servicios</span>}
                     </div>
-                    {!collapsed && (
-                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-[#8a4dff]/25 text-[#d4ff4a]">
-                        Catálogo
-                      </span>
-                    )}
                   </button>
                 )}
 
@@ -411,22 +387,17 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
                 {canColonia && (
                   <button
                     onClick={() => onSelectView('la-colonia')}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
                       currentView === 'la-colonia'
-                        ? 'bg-gradient-to-r from-[#2e1859] to-[#1e113a] text-white shadow-sm border-l-2 border-[#d4ff4a]'
-                        : 'text-[#c9b7ff] hover:bg-[#1a0f30] hover:text-white'
+                        ? 'bg-[#1e113a] text-white font-semibold'
+                        : 'text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white'
                     }`}
-                    title="La Colonia · Jugar en la colonía, logros y pasear libre"
+                    title="La Colonia"
                   >
                     <div className="flex items-center gap-2.5">
-                      <span className="text-sm">🪵</span>
+                      <TreePine className="w-3.5 h-3.5 text-[#8a4dff]" />
                       {!collapsed && <span>La Colonia</span>}
                     </div>
-                    {!collapsed && (
-                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-[#501f92] text-[#d4ff4a] border border-[#8a4dff]/40">
-                        Nivel 1
-                      </span>
-                    )}
                   </button>
                 )}
 
@@ -526,7 +497,7 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
       {/* Footer */}
       {!collapsed && (
         <div className="pt-3 mt-2 border-t border-[#261845] text-[11px] text-[#c9b7ff]/60 flex items-center justify-between gap-2 px-2">
-          <span>Uhura OS · ECO</span>
+          <span>ECO · v2.6</span>
           <div
             role="radiogroup"
             aria-label="Modo del menú"

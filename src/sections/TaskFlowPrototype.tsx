@@ -412,7 +412,7 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
       {
         id: 'dep-batt-2',
         projectId: 'prj-battsaver-1',
-        title: 'Aprobación Gate 1 (UI Figma Prototipo)',
+        title: 'Aprobación ronda 1 (UI Figma Prototipo)',
         type: 'approval',
         ownerType: 'client',
         followUpOwnerUserId: 'u-3',
@@ -464,7 +464,7 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
         dependencyId: 'dep-batt-2',
         confirmedByUserId: 'u-2',
         confirmedByName: 'Paola Monsalve',
-        note: 'Espera de validación directiva en Gate 1',
+        note: 'Espera de validación directiva en la ronda 1',
         createdAt: '2026-09-26T16:00:00Z'
       }
     ],
@@ -2923,30 +2923,39 @@ export const TaskFlowPrototype: React.FC = () => {
     setTimeLogs((prev) => [newLog, ...prev]);
   };
 
+  const getHeaderSection = (): string | undefined => {
+    if (['mi-dia', 'dashboard', 'proyectos', 'tareas', 'capacidad', 'timesheets'].includes(currentView)) return 'Operación';
+    if (['finanzas', 'new-business', 'clientes', 'plantillas-producto'].includes(currentView)) return 'Comercial';
+    if (currentView === 'la-colonia') return 'Experiencia';
+    if (['licencias', 'hardware'].includes(currentView)) return 'Costos de operación';
+    if (['usuarios', 'config-roles', 'config-permisos'].includes(currentView)) return 'Sistema';
+    return undefined;
+  };
+
   const getHeaderTitle = () => {
     switch (currentView) {
       case 'mi-dia':
-        return 'Mi Día · Bucky el Castor de ECO 🦫';
+        return 'Mi Día';
       case 'la-colonia':
-        return 'La Colonia Uhureña 🦫';
+        return 'La Colonia';
       case 'dashboard':
         return 'Dashboard';
       case 'proyectos':
         return 'Proyectos';
       case 'tareas':
-        return 'Mis Tareas';
+        return 'Tareas';
       case 'timesheets':
         return 'Registro de Tiempos';
       case 'capacidad':
-        return 'Capacidad del Equipo';
+        return 'Capacidad';
       case 'clientes':
         return 'Clientes';
       case 'plantillas-producto':
-        return 'Biblioteca de Plantillas Maestras · Producto';
+        return 'Servicios';
       case 'new-business':
-        return 'New Business · Scoping & Oportunidades';
+        return 'New Business';
       case 'finanzas':
-        return 'Finanzas';
+        return 'Dirección y Finanzas';
       case 'hardware':
         return 'Hardware';
       case 'licencias':
@@ -2958,7 +2967,7 @@ export const TaskFlowPrototype: React.FC = () => {
       case 'nova-ia':
         return 'Nova IA';
       case 'usuarios':
-        return 'Usuarios';
+        return 'Equipo & Accesos';
       case 'config-roles':
         return 'Roles';
       case 'config-permisos':
@@ -3041,7 +3050,7 @@ export const TaskFlowPrototype: React.FC = () => {
 
       {/* Main SaaS Canvas Box */}
       <main className="max-w-[1880px] w-full mx-auto px-2 sm:px-4 lg:px-6 mt-3 pb-8 flex-1 flex flex-col min-h-0">
-        <div className={`bg-[#f9fafb] rounded-3xl border border-[#261845] shadow-2xl overflow-hidden flex flex-col flex-1 min-h-[calc(100vh-140px)] ${
+        <div className={`bg-[#f9fafb] rounded-2xl border border-[#261845] shadow-2xl overflow-hidden flex flex-col flex-1 min-h-[calc(100vh-140px)] ${
           saasFont === 'jakarta' ? 'font-saas' : saasFont === 'inter' ? 'font-inter' : 'font-montserrat'
         }`}>
           {/* Top Prototype Navigation Chrome */}
@@ -3105,6 +3114,7 @@ export const TaskFlowPrototype: React.FC = () => {
               {/* Header with live timer capsule & global task search */}
               <TaskflowHeader
                 currentViewTitle={getHeaderTitle()}
+                currentViewSection={getHeaderSection()}
                 onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)}
                 sidebarCollapsed={sidebarCollapsed}
                 onToggleSidebarCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}

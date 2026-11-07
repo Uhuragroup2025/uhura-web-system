@@ -459,7 +459,7 @@ const FloatingBeaverCore: React.FC<FloatingBeaverCoreProps> = ({
   // Cooldown and sound deduplication
   const hasAlertedOvertimeRef = useRef(false);
 
-  // Resolved central Bucky state
+  // Resolved central ECO state
   // Contexto emocional: siempre con las tareas propias (el contenedor ya las filtró).
   const todayIsoMascot = new Date().toISOString().slice(0, 10);
   const criticalOvertimeTasks = tasks.filter(
@@ -521,7 +521,7 @@ const FloatingBeaverCore: React.FC<FloatingBeaverCoreProps> = ({
   const showAlertBubble = !isOpen && isWarningActive && !isAlertDismissed;
   const showSpeechBubble = !isOpen && !showAlertBubble && Boolean(speechBubbleText);
 
-  // Bucky visible size scaling:
+  // ECO visible size scaling:
   // Normal state: ~115–130px visible height.
   // Expressive/warning/wave/celebrate states: ~125–140px visible height.
   const isExpandedPose =
@@ -566,7 +566,7 @@ const FloatingBeaverCore: React.FC<FloatingBeaverCoreProps> = ({
 
   const percent = Math.min(100, Math.round((loggedHoursToday / targetDayHours) * 100));
 
-  // Bounds and clamping helpers for Bucky
+  // Bounds and clamping helpers for ECO
   const BUCKY_W = 120;
   const BUCKY_H = 130;
   const clampX = (x: number) => {
@@ -898,7 +898,7 @@ const FloatingBeaverCore: React.FC<FloatingBeaverCoreProps> = ({
     triggerLivingAction('stretch', `Acomodando pieza en el hábitat... +${hours}h de recurso registrado 🪵`);
   };
 
-  // Drag handlers (Pointer events) — strictly on Bucky character
+  // Drag handlers (Pointer events) — strictly on ECO character
   const handlePointerDown = (e: React.PointerEvent) => {
     // Only primary button
     if (e.button !== 0) return;
@@ -1002,11 +1002,11 @@ const FloatingBeaverCore: React.FC<FloatingBeaverCoreProps> = ({
   };
 
   // SMART NON-OVERLAPPING & VIEWPORT-CONSTRAINED PLACEMENT FOR THE POPOVER
-  // Automatically repositions based on Bucky's position:
-  // - If Bucky is near the right edge -> opens to the left
-  // - If Bucky is near the left edge -> opens to the right
-  // - If Bucky is near the bottom edge -> opens upwards (anchored with bottom)
-  // - If Bucky is near the top edge -> opens downwards (anchored with top)
+  // Automatically repositions based on ECO's position:
+  // - If ECO is near the right edge -> opens to the left
+  // - If ECO is near the left edge -> opens to the right
+  // - If ECO is near the bottom edge -> opens upwards (anchored with bottom)
+  // - If ECO is near the top edge -> opens downwards (anchored with top)
   // - Always guarantees 100% inside viewport with dynamic maxHeight & overflow-y-auto
   const getPopoverStyle = (): React.CSSProperties => {
     if (typeof window === 'undefined') return {};
@@ -1018,7 +1018,7 @@ const FloatingBeaverCore: React.FC<FloatingBeaverCoreProps> = ({
     const curX = coords ? coords.x : winW - 150;
     const curY = coords ? coords.y : winH - 170;
 
-    // 1. Horizontal: left or right of Bucky
+    // 1. Horizontal: left or right of ECO
     let left: number;
     const spaceOnRight = winW - (curX + BUCKY_W);
     const spaceOnLeft = curX;
@@ -1308,7 +1308,7 @@ const FloatingBeaverCore: React.FC<FloatingBeaverCoreProps> = ({
                 </div>
               </div>
 
-              {/* Bucky Himself: Loose Character in Focus Mode (Draggable) */}
+              {/* ECO Himself: Loose Character in Focus Mode (Draggable) */}
               <button
                 type="button"
                 onPointerDown={handlePointerDown}
@@ -1361,7 +1361,7 @@ const FloatingBeaverCore: React.FC<FloatingBeaverCoreProps> = ({
       {isOpen && (
         <div
           style={getPopoverStyle()}
-          className="bg-[#140b24]/95 text-white rounded-3xl p-4 sm:p-5 border border-[#8a4dff]/50 shadow-2xl animate-in zoom-in-95 duration-150 backdrop-blur-xl space-y-3 overflow-y-auto"
+          className="bg-[#140b24]/95 text-white rounded-2xl p-4 sm:p-5 border border-[#8a4dff]/50 shadow-2xl animate-in zoom-in-95 duration-150 backdrop-blur-xl space-y-3 overflow-y-auto"
         >
           {/* Header controls */}
           <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
@@ -1426,7 +1426,7 @@ const FloatingBeaverCore: React.FC<FloatingBeaverCoreProps> = ({
             </div>
           </div>
 
-          {/* Mensaje principal de Bucky */}
+          {/* Mensaje principal de ECO */}
           <div className="bg-white/5 p-3 rounded-2xl border border-white/10 text-xs text-white/90 leading-relaxed font-medium">
             <p className="font-semibold text-white">
               {buckyState.speech}

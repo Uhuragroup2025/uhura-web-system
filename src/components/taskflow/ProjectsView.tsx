@@ -1,4 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { formatDate, formatDateRange } from '../../utils/formatters';
+import { PageHeader } from './PageHeader';
 import { TaskItem, ActiveTimerState, ClientProfile, ProjectType, ProjectPhaseItem, ProjectSummaryItem, TaskPriority, UserItem, normalizeProjectType, STANDARD_UHURA_ROLES } from './types';
 export type { ProjectSummaryItem };
 import { BoardView } from './BoardView';
@@ -568,10 +570,11 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
       priority: 'Medium',
       completed: false,
       date: 'Hoy',
-      startDate: currentProject.startDate || '2026-08-15',
-      dueDate: currentProject.endDate || '2026-12-31',
-      baselineStartDate: currentProject.startDate || '2026-08-15',
-      baselineDueDate: currentProject.endDate || '2026-12-31',
+      // Sin fechas del proyecto, la tarea nace sin fechas (no se inventan); «Iniciar proyecto» las programa.
+      startDate: currentProject.startDate || '',
+      dueDate: currentProject.endDate || '',
+      baselineStartDate: currentProject.startDate || '',
+      baselineDueDate: currentProject.endDate || '',
       dueStatus: 'normal',
       dueText: 'En fecha',
       assignee: {
@@ -807,7 +810,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
         </div>
 
         {/* Project Header Banner */}
-        <div className="bg-white rounded-3xl p-5 sm:p-6 border border-[#e2e8f0] shadow-xs space-y-4">
+        <div className="bg-white rounded-2xl p-5 sm:p-6 border border-[#e2e8f0] shadow-xs space-y-4">
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
             <div className="space-y-1.5">
               <div className="flex flex-wrap items-center gap-2">
@@ -862,7 +865,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                     }`}
                   />
                   <span>
-                    Estado: {isProjectArchived ? 'Archivado' : isProjectCompleted ? 'Cerrado' : isProjectPendingToStart ? 'Pendiente de iniciar' : isProjectScheduled ? `Programado · inicia ${currentProject.startDate}` : 'En ejecución'}
+                    Estado: {isProjectArchived ? 'Archivado' : isProjectCompleted ? 'Cerrado' : isProjectPendingToStart ? 'Por iniciar' : isProjectScheduled ? `Programado · inicia ${formatDate(currentProject.startDate)}` : 'En ejecución'}
                   </span>
                 </span>
 
@@ -883,7 +886,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             <div className="flex items-center gap-2 flex-nowrap min-w-0 max-w-full">
               {isProjectCompleted ? (
                 <span className="px-4 py-2 rounded-2xl bg-[#f1f5f9] border border-[#e2e8f0] text-[#334155] text-xs font-bold">
-                  🏁 Cerrado · Fin real: {currentProject.actualEndDate || currentProject.closure?.actualEndDate || '—'}
+                  🏁 Cerrado · Fin real: {formatDate(currentProject.actualEndDate || currentProject.closure?.actualEndDate)}
                 </span>
               ) : isProjectPendingToStart && !canEditProject ? (
                 <span className="px-4 py-2 rounded-2xl bg-[#faf5ff] border border-[#e9d5ff] text-[#501f92] text-xs font-bold">
@@ -907,15 +910,12 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                   className="disabled:cursor-default flex flex-wrap md:flex-nowrap md:whitespace-nowrap items-center gap-x-2 gap-y-0.5 min-w-0 text-left px-4 py-2 rounded-2xl bg-white hover:bg-[#f8fafc] border border-[#cbd5e1] hover:border-[#501f92] text-[#0f172a] text-xs font-bold transition-all shadow-xs cursor-pointer group"
                   title="Proyecto iniciado. Clic para ajustar fechas o recalcular cronograma"
                 >
-                  <span className="w-2 h-2 rounded-full bg-[#10b981] inline-block" />
-                  <span className="font-extrabold text-[#065f46]">{isProjectScheduled ? 'Programado' : 'Iniciado'}</span>
-                  <span className="text-[#cbd5e1]">|</span>
                   <Calendar className="w-3.5 h-3.5 text-[#501f92]" />
                   <span className="text-xs text-[#334155] font-semibold">
-                    Inicio: {currentProject.startDate || 'Hoy'}
+                    Inicio: {formatDate(currentProject.startDate)}
                   </span>
                   <span className="text-[11px] text-[#64748b]">
-                    · Fin: {currentProject.endDate || 'Por definir'}
+                    · Fin: {formatDate(currentProject.endDate, 'Por definir')}
                   </span>
                   {canEditProject && (
                     <span className="text-[10px] text-[#64748b] group-hover:text-[#501f92] underline ml-1">
@@ -1142,7 +1142,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
               <span className="text-xs font-bold text-[#0f172a] block truncate mt-0.5">
                 {isProjectPendingToStart && !currentProject.startDate
                   ? 'Se define al iniciar'
-                  : `${currentProject.startDate || '—'} → ${currentProject.forecastEndDate || currentProject.endDate || '—'}`}
+                  : formatDateRange(currentProject.startDate, currentProject.forecastEndDate || currentProject.endDate)}
               </span>
               {(() => {
                 const base = currentProject.baselineEndDate;
@@ -1306,7 +1306,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
         {activeTab === 'backlog' && (
           <div className="space-y-5">
             {/* Top Phase Lifecycle Stepper & Controls */}
-            <div className="bg-white rounded-3xl p-5 border border-[#e2e8f0] shadow-xs space-y-4">
+            <div className="bg-white rounded-2xl p-5 border border-[#e2e8f0] shadow-xs space-y-4">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-[#f1f5f9]">
                 <div>
                   <div className="flex items-center gap-2">
@@ -1356,7 +1356,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-lg ${
                           phase.status === 'completed'
                             ? 'bg-[#ecfdf5] text-[#065f46]'
                             : phase.status === 'in_progress'
@@ -1375,7 +1375,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                       </h4>
 
                       <div className="flex items-center justify-between text-[10px] text-[#64748b] mt-1">
-                        <span>{phase.startDate ? phase.startDate.slice(5) : '15 Ago'} → {phase.endDate ? phase.endDate.slice(5) : '31 Dic'}</span>
+                        <span>{formatDateRange(phase.startDate, phase.endDate)}</span>
                         <span className="font-mono font-bold text-[#0f172a]">{phase.consumedHours.toFixed(0)}/{phase.budgetedHours}h</span>
                       </div>
 
@@ -1557,7 +1557,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             )}
 
             {/* Backlog Matrix Table */}
-            <div className="bg-white rounded-3xl border border-[#e2e8f0] shadow-xs overflow-hidden">
+            <div className="bg-white rounded-2xl border border-[#e2e8f0] shadow-xs overflow-hidden">
               <div className="p-4 border-b border-[#f1f5f9] flex flex-wrap items-center justify-between gap-3 bg-[#f8fafc]">
                 <div className="flex items-center gap-2">
                   <TableIcon className="w-4 h-4 text-[#501f92]" />
@@ -1646,7 +1646,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
                             {/* Fase */}
                             <td className="py-3.5 px-3">
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#eff6ff] text-[#1d4ed8] border border-[#dbeafe]">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-bold bg-[#eff6ff] text-[#1d4ed8] border border-[#dbeafe]">
                                 {task.phase || task.fase || 'Discovery'}
                               </span>
                             </td>
@@ -1658,7 +1658,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
                             {/* Rol Cotizado */}
                             <td className="py-3.5 px-3">
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#f5f3ff] text-[#501f92] border border-[#e9d5ff]">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-bold bg-[#f5f3ff] text-[#501f92] border border-[#e9d5ff]">
                                 {task.budgetedRole || 'Especialista'}
                               </span>
                             </td>
@@ -1686,7 +1686,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                             {/* Fechas & Baseline */}
                             <td className="py-3.5 px-3">
                               <div className="text-[11px] font-medium text-[#334155]">
-                                {task.startDate ? task.startDate.slice(5) : '15 Ago'} → {task.dueDate ? task.dueDate.slice(5) : '31 Dic'}
+                                {formatDateRange(task.startDate, task.dueDate)}
                               </div>
                               {hasBaselineShift && (
                                 <div className="text-[9px] font-bold text-[#d97706] flex items-center gap-0.5 mt-0.5" title={`Línea base original: ${task.baselineDueDate}`}>
@@ -1760,7 +1760,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                 </div>
 
                 {/* 1. Matriz por Rol */}
-                <div className="bg-white rounded-3xl border border-[#e2e8f0] shadow-xs overflow-hidden">
+                <div className="bg-white rounded-2xl border border-[#e2e8f0] shadow-xs overflow-hidden">
                   <div className="p-4 border-b border-[#f1f5f9] flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <User className="w-4 h-4 text-[#501f92]" />
@@ -1810,7 +1810,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                               <td className="py-3.5 px-4">
                                 <div className="flex flex-wrap gap-1">
                                   {r.assigneesList.map((name) => (
-                                    <span key={name} className="px-2 py-0.5 rounded-md bg-[#f1f5f9] text-[10px] font-semibold text-[#475569]">
+                                    <span key={name} className="px-2 py-0.5 rounded-lg bg-[#f1f5f9] text-[10px] font-semibold text-[#475569]">
                                       {name}
                                     </span>
                                   ))}
@@ -1839,7 +1839,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                 </div>
 
                 {/* 2. Matriz por Frente */}
-                <div className="bg-white rounded-3xl border border-[#e2e8f0] shadow-xs overflow-hidden">
+                <div className="bg-white rounded-2xl border border-[#e2e8f0] shadow-xs overflow-hidden">
                   <div className="p-4 border-b border-[#f1f5f9] flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <FolderKanban className="w-4 h-4 text-[#501f92]" />
@@ -1995,7 +1995,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
           >
-            <div className="bg-white rounded-3xl max-w-lg w-full border border-[#e2e8f0] shadow-2xl p-6 sm:p-7 space-y-5 animate-in zoom-in-95">
+            <div className="bg-white rounded-2xl max-w-lg w-full border border-[#e2e8f0] shadow-2xl p-6 sm:p-7 space-y-5 animate-in zoom-in-95">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-2xl bg-[#501f92]/10 text-[#501f92] flex items-center justify-center shrink-0">
@@ -2060,7 +2060,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                     </select>
                     {scheduleKickoffDate && (
                       <span className="text-[11px] text-[#64748b] block">
-                        Contrato: {scheduleBreakdown?.startDate || scheduleKickoffDate} → {computeContractEnd(scheduleBreakdown?.startDate || scheduleKickoffDate, scheduleContractMonths)} · {currentProject.budgetedHours}h por mes · las tareas del alcance son la plantilla del mes 1.
+                        Contrato: {formatDateRange(scheduleBreakdown?.startDate || scheduleKickoffDate, computeContractEnd(scheduleBreakdown?.startDate || scheduleKickoffDate, scheduleContractMonths))} · {currentProject.budgetedHours}h por mes · las tareas del alcance son la plantilla del mes 1.
                       </span>
                     )}
                   </label>
@@ -2139,10 +2139,10 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                         <Calendar className="w-4 h-4 text-[#501f92] shrink-0" />
                         <div>
                           <span className="text-[10.5px] text-[#64748b] block">Entrega (línea base)</span>
-                          <strong className="text-[#501f92] font-bold text-xs">{scheduleBreakdown.endDate}</strong>
+                          <strong className="text-[#501f92] font-bold text-xs">{formatDate(scheduleBreakdown.endDate)}</strong>
                         </div>
                       </div>
-                      <span className="text-[10px] font-semibold text-[#64748b] bg-white px-2 py-1 rounded-md border border-[#e9d5ff]">
+                      <span className="text-[10px] font-semibold text-[#64748b] bg-white px-2 py-1 rounded-lg border border-[#e9d5ff]">
                         {scheduleBreakdown.totalBusinessDays} días hábiles
                       </span>
                     </div>
@@ -2230,7 +2230,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
           >
-            <div className="bg-white rounded-3xl max-w-lg w-full border border-[#e2e8f0] shadow-2xl p-6 sm:p-7 space-y-5 animate-in zoom-in-95">
+            <div className="bg-white rounded-2xl max-w-lg w-full border border-[#e2e8f0] shadow-2xl p-6 sm:p-7 space-y-5 animate-in zoom-in-95">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-2xl bg-[#501f92]/10 text-[#501f92] flex items-center justify-center shrink-0">
@@ -2358,25 +2358,10 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   // --- PORTFOLIO VIEW (List of all Projects) ---
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
-      {/* Top Header */}
-      <div className="flex items-center justify-between gap-3 pb-1">
-        <h1 className="text-xl sm:text-2xl font-bold text-[#0f172a] tracking-tight">
-          Proyectos
-        </h1>
-      </div>
-
-      {/* KPI Stats Bar (Solo Proyectos Activos) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
-        <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-[#e2e8f0] shadow-xs flex items-center gap-3 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-[#f2ecfb] text-[#501f92] flex items-center justify-center font-bold shrink-0">
-            <Briefcase className="w-5 h-5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <span className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider block truncate">Proyectos Activos</span>
-            <div className="text-base sm:text-lg lg:text-xl font-extrabold text-[#0f172a] truncate">{totalActiveProjects} en curso</div>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        title="Proyectos"
+        description={`${totalActiveProjects} ${totalActiveProjects === 1 ? 'proyecto en curso' : 'proyectos en curso'}`}
+      />
 
       {/* Search, Filters & Action Button */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-[#e2e8f0] shadow-2xs">
@@ -2423,7 +2408,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold shadow-2xs cursor-pointer transition-all shrink-0 w-full sm:w-auto"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Nuevo Proyecto</span>
+            <span>Nuevo proyecto</span>
           </button>
         </div>
       </div>
@@ -2439,14 +2424,14 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             <div
               key={prj.id}
               onClick={() => handleCardClick(prj.id)}
-              className="bg-white rounded-3xl p-5 border border-[#e2e8f0] shadow-xs hover:shadow-md hover:border-[#8a4dff]/40 transition-all cursor-pointer flex flex-col justify-between group space-y-4"
+              className="bg-white rounded-2xl p-5 border border-[#e2e8f0] shadow-xs hover:shadow-md hover:border-[#8a4dff]/40 transition-all cursor-pointer flex flex-col justify-between group space-y-4"
             >
               <div>
                 {/* Header Pills */}
                 <div className="flex items-center justify-between gap-2 mb-2">
                   <div className="flex items-center gap-2">
                     <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${
                         prj.projectType === 'fee_monthly'
                           ? 'bg-[#d4ff4a]/20 text-[#2e5e04]'
                           : 'bg-[#eff6ff] text-[#2563eb]'
@@ -2455,29 +2440,29 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                       {prj.projectType === 'fee_monthly' ? 'Fee mensual' : 'Proyecto único'}
                     </span>
                     {prj.status === 'Archivado' ? (
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-[#f1f5f9] text-[#64748b]">
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-lg bg-[#f1f5f9] text-[#64748b]">
                         Archivado
                       </span>
                     ) : ((prj.status as string) === 'completed' || (prj.status as string) === 'Cerrado' || (prj.status as string) === 'Completado') ? (
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-[#ecfdf5] text-[#065f46] border border-[#a7f3d0]">
-                        Completado
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-lg bg-[#ecfdf5] text-[#065f46] border border-[#a7f3d0]">
+                        Cerrado
                       </span>
-                    ) : (!prj.startDate || prj.startDate > todayStr) ? (
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-[#eff6ff] text-[#1d4ed8] border border-[#bfdbfe]">
-                        Por empezar
+                    ) : !prj.startDate ? (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-lg bg-[#eff6ff] text-[#1d4ed8] border border-[#bfdbfe]">
+                        Por iniciar
+                      </span>
+                    ) : prj.startDate > todayStr ? (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-lg bg-[#eff6ff] text-[#1d4ed8] border border-[#bfdbfe]">
+                        Programado
                       </span>
                     ) : (
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-[#ecfdf5] text-[#047857] border border-[#a7f3d0]">
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-lg bg-[#ecfdf5] text-[#047857] border border-[#a7f3d0]">
                         En ejecución
                       </span>
                     )}
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-semibold text-[#94a3b8]">
-                      Salud: Pendiente
-                    </span>
-
                     {/* Quick Menu Button */}
                     <div className="relative project-menu-container" onClick={(e) => e.stopPropagation()}>
                       <button
@@ -2571,7 +2556,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
           }}
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
         >
-          <div className="bg-white rounded-3xl max-w-md w-full border border-[#e2e8f0] shadow-2xl p-6 space-y-4 animate-in zoom-in-95">
+          <div className="bg-white rounded-2xl max-w-md w-full border border-[#e2e8f0] shadow-2xl p-6 space-y-4 animate-in zoom-in-95">
             <div className="w-12 h-12 rounded-2xl bg-[#fee2e2] text-[#dc2626] flex items-center justify-center mx-auto shadow-xs">
               <Trash2 className="w-6 h-6" />
             </div>

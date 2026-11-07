@@ -324,7 +324,7 @@ export const SOWModal: React.FC<SOWModalProps> = ({
       onClick={onClose}
     >
       <div
-        className="bg-white w-full max-w-5xl rounded-3xl shadow-2xl border border-[#e2e8f0] overflow-hidden flex flex-col max-h-[94vh]"
+        className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl border border-[#e2e8f0] overflow-hidden flex flex-col max-h-[94vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header con estilo Uhura Black & Purple */}

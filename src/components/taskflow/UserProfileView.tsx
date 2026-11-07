@@ -86,7 +86,7 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
   const [capacityHours, setCapacityHours] = useState<string>(
     user.capacityHours !== undefined ? Number(user.capacityHours).toFixed(2) : '42.00'
   );
-  const [joinedDate, setJoinedDate] = useState<string>(user.joinedDate || '01 / 07 / 2024');
+  const [joinedDate, setJoinedDate] = useState<string>(user.joinedDate || '');
   const [birthDate, setBirthDate] = useState<string>(
     user.birthDate || user.birthDateFormatted || '26 / 10 / 1993'
   );
@@ -288,7 +288,7 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
       )}
 
       {/* 2. CARD PRINCIPAL: Identidad, Datos de Colaborador y Acceso */}
-      <div className="bg-white rounded-3xl border border-[#e2e8f0] p-6 sm:p-8 shadow-xs space-y-6">
+      <div className="bg-white rounded-2xl border border-[#e2e8f0] p-6 sm:p-8 shadow-xs space-y-6">
         {/* Cabecera del Perfil */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-2">
           <div className="flex items-center gap-4">
@@ -642,7 +642,7 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
       )}
 
       {/* Historial de cambios del perfil (previsualización) */}
-      <div className="bg-white rounded-3xl border border-[#e2e8f0] p-5 shadow-xs space-y-2">
+      <div className="bg-white rounded-2xl border border-[#e2e8f0] p-5 shadow-xs space-y-2">
         <h2 className="text-base font-bold text-[#0f172a] tracking-tight">Historial de cambios del perfil</h2>
         {(user.profileHistory || []).length === 0 ? (
           <p className="text-xs text-[#94a3b8]">Sin cambios registrados.</p>
@@ -668,7 +668,7 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
       {/* ========================================================================= */}
       {showChangePhotoModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl border border-[#e2e8f0] shadow-xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-150 p-6 space-y-4">
+          <div className="bg-white rounded-2xl border border-[#e2e8f0] shadow-xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-150 p-6 space-y-4">
             <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-3">
               <div className="flex items-center gap-2.5">
                 <Camera className="w-4 h-4 text-[#501f92]" />

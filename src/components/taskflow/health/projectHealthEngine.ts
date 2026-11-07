@@ -38,6 +38,12 @@ const COLOMBIAN_HOLIDAYS_2026: Set<string> = new Set([
   '2027-11-15', '2027-12-08', '2027-12-25'
 ]);
 
+/** Próximo festivo (Colombia) desde una fecha ISO, o null si no hay en el calendario cargado. */
+export function nextColombianHoliday(fromIso: string): string | null {
+  const next = Array.from(COLOMBIAN_HOLIDAYS_2026).sort().find((d) => d >= fromIso);
+  return next || null;
+}
+
 /**
  * Determina si una fecha dada es un día hábil (lunes a viernes, no festivo).
  */

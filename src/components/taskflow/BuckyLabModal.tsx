@@ -141,7 +141,7 @@ export const BuckyLabModal: React.FC<BuckyLabModalProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold text-white">Bucky Lab</h2>
+                <h2 className="text-base font-bold text-white">ECO Lab</h2>
                 <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-[#ec4899]/20 text-[#f472b6] border border-[#ec4899]/30">
                   Dev / Admin Only
                 </span>
@@ -186,7 +186,7 @@ export const BuckyLabModal: React.FC<BuckyLabModalProps> = ({
 
               <img
                 src={getImagePath(selectedPose)}
-                alt="Bucky Test Pose"
+                alt="ECO Test Pose"
                 className="w-48 h-56 object-contain select-none transition-transform hover:scale-105"
               />
 

@@ -135,7 +135,7 @@ export const ProjectDependenciesSection: React.FC<ProjectDependenciesSectionProp
   };
 
   return (
-    <div className="bg-white rounded-3xl border border-[#e2e8f0] p-4 sm:p-5 shadow-xs space-y-3.5 mb-5">
+    <div className="bg-white rounded-2xl border border-[#e2e8f0] p-4 sm:p-5 shadow-xs space-y-3.5 mb-5">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#f1f5f9] pb-3.5">
         <div className="flex items-center gap-3">
@@ -216,7 +216,7 @@ export const ProjectDependenciesSection: React.FC<ProjectDependenciesSectionProp
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold transition-all cursor-pointer shadow-2xs"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Nuevo Insumo / Gate</span>
+              <span>Nuevo insumo</span>
             </button>
           )}
         </div>
@@ -270,15 +270,15 @@ export const ProjectDependenciesSection: React.FC<ProjectDependenciesSectionProp
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-bold text-[#0f172a]">{dep.title}</span>
                         {dep.blocking && (
-                          <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-[#fee2e2] text-[#991b1b]">
+                          <span className="px-2 py-0.5 rounded-lg text-[10px] font-extrabold bg-[#fee2e2] text-[#991b1b]">
                             Bloqueante
                           </span>
                         )}
-                        <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#f1f5f9] text-[#475569]">
+                        <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-[#f1f5f9] text-[#475569]">
                           {dep.type === 'approval' ? 'Aprobación Gate' : dep.type === 'client_input' ? 'Insumo Cliente' : dep.type === 'access' ? 'Accesos' : 'Kickoff'}
                         </span>
                         {isOverdue && (
-                          <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-[#fef2f2] text-[#b91c1c] border border-[#fecaca]">
+                          <span className="px-2 py-0.5 rounded-lg text-[10px] font-extrabold bg-[#fef2f2] text-[#b91c1c] border border-[#fecaca]">
                             Vencido: +{delayDays} días hábiles
                           </span>
                         )}
@@ -295,7 +295,7 @@ export const ProjectDependenciesSection: React.FC<ProjectDependenciesSectionProp
                       </div>
 
                       {dep.followUpNotes && (
-                        <p className="text-[11px] text-[#475569] mt-1 italic bg-black/5 px-2 py-0.5 rounded-md">
+                        <p className="text-[11px] text-[#475569] mt-1 italic bg-black/5 px-2 py-0.5 rounded-lg">
                           "{dep.followUpNotes}"
                         </p>
                       )}
@@ -348,11 +348,11 @@ export const ProjectDependenciesSection: React.FC<ProjectDependenciesSectionProp
       {/* MODAL: REGISTRAR INSUMO / GATE */}
       {isNewDependencyModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white text-[#0f172a] rounded-3xl max-w-md w-full p-6 shadow-2xl border border-[#e2e8f0] space-y-4 animate-in zoom-in-95 duration-150">
+          <div className="bg-white text-[#0f172a] rounded-2xl max-w-md w-full p-6 shadow-2xl border border-[#e2e8f0] space-y-4 animate-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-3">
               <div className="flex items-center gap-2">
                 <Hourglass className="w-4 h-4 text-[#501f92]" />
-                <h3 className="text-base font-extrabold text-[#0f172a]">Registrar Insumo o Gate</h3>
+                <h3 className="text-base font-extrabold text-[#0f172a]">Registrar insumo</h3>
               </div>
               <button
                 type="button"
@@ -369,7 +369,7 @@ export const ProjectDependenciesSection: React.FC<ProjectDependenciesSectionProp
                 <input
                   type="text"
                   required
-                  placeholder="Ej: Manual de Marca, Aprobación Gate 1, Credenciales hosting"
+                  placeholder="Ej: Manual de Marca, Aprobación ronda 1, Credenciales hosting"
                   value={newDepTitle}
                   onChange={(e) => setNewDepTitle(e.target.value)}
                   style={{ color: '#0f172a', backgroundColor: '#ffffff', WebkitTextFillColor: '#0f172a' }}
@@ -463,7 +463,7 @@ export const ProjectDependenciesSection: React.FC<ProjectDependenciesSectionProp
                     type="checkbox"
                     checked={newDepBlocking}
                     onChange={(e) => setNewDepBlocking(e.target.checked)}
-                    className="w-4 h-4 text-[#501f92] rounded-md focus:ring-0"
+                    className="w-4 h-4 text-[#501f92] rounded-lg focus:ring-0"
                   />
                   <span className="font-bold text-xs text-[#991b1b]">
                     Insumo Crítico / Bloqueante (Detiene la ruta crítica si se atrasa)
@@ -483,7 +483,7 @@ export const ProjectDependenciesSection: React.FC<ProjectDependenciesSectionProp
                   type="submit"
                   className="px-4 py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold cursor-pointer shadow-xs"
                 >
-                  Guardar Insumo / Gate
+                  Guardar insumo
                 </button>
               </div>
             </form>
@@ -494,11 +494,11 @@ export const ProjectDependenciesSection: React.FC<ProjectDependenciesSectionProp
       {/* MODAL: SEGUIMIENTO DE DEPENDENCIA */}
       {isFollowUpModalOpen && selectedDependencyForFollowUp && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white text-[#0f172a] rounded-3xl max-w-md w-full p-6 shadow-2xl border border-[#e2e8f0] space-y-4 animate-in zoom-in-95 duration-150">
+          <div className="bg-white text-[#0f172a] rounded-2xl max-w-md w-full p-6 shadow-2xl border border-[#e2e8f0] space-y-4 animate-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-3">
               <div className="flex items-center gap-2">
                 <MessageSquare className="w-4 h-4 text-[#501f92]" />
-                <h3 className="text-base font-extrabold text-[#0f172a]">Gestionar Insumo de Cliente</h3>
+                <h3 className="text-base font-extrabold text-[#0f172a]">Gestionar insumo del cliente</h3>
               </div>
               <button
                 type="button"

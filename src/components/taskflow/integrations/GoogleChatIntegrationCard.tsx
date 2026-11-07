@@ -275,7 +275,7 @@ export const GoogleChatIntegrationCard: React.FC<GoogleChatIntegrationCardProps>
       {/* Confirmación explícita de eliminación */}
       {confirmDelete && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl border border-[#e2e8f0] space-y-3">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-[#e2e8f0] space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="font-extrabold text-sm text-[#0f172a]">¿Eliminar la integración?</h3>
               <button onClick={() => setConfirmDelete(false)} className="p-1 text-[#64748b] hover:bg-[#f1f5f9] rounded-lg cursor-pointer">

@@ -219,7 +219,7 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
               <Building2 className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="font-extrabold text-base text-[#0f172a]">Crear Nueva Cuenta de Cliente</h2>
+              <h2 className="font-extrabold text-base text-[#0f172a]">Crear cuenta de cliente</h2>
               <p className="text-xs text-[#64748b]">Marca sombrilla operativa · No bloquea por falta de NIT</p>
             </div>
           </div>
@@ -354,7 +354,7 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
                         <button
                           type="button"
                           onClick={() => handleTogglePrimaryTax(idx)}
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold cursor-pointer transition-colors ${
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-bold cursor-pointer transition-colors ${
                             tax.isPrimary
                               ? 'bg-[#501f92] text-white'
                               : 'bg-white text-[#64748b] border border-[#cbd5e1] hover:text-[#501f92]'
@@ -369,7 +369,7 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
                       <button
                         type="button"
                         onClick={() => handleRemoveTaxEntity(idx)}
-                        className="p-1 rounded-md text-[#94a3b8] hover:text-[#ef4444] hover:bg-[#fee2e2] transition-colors cursor-pointer"
+                        className="p-1 rounded-lg text-[#94a3b8] hover:text-[#ef4444] hover:bg-[#fee2e2] transition-colors cursor-pointer"
                         title="Eliminar razón social (no reasigna principal automáticamente)"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -464,7 +464,7 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
                       <button
                         type="button"
                         onClick={() => handleTogglePrimaryContact(idx)}
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold cursor-pointer transition-colors ${
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-bold cursor-pointer transition-colors ${
                           contact.isPrimary
                             ? 'bg-[#501f92] text-white'
                             : 'bg-white text-[#64748b] border border-[#cbd5e1] hover:text-[#501f92]'
@@ -480,7 +480,7 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
                       <button
                         type="button"
                         onClick={() => handleRemoveContact(idx)}
-                        className="p-1 rounded-md text-[#94a3b8] hover:text-[#ef4444] hover:bg-[#fee2e2] transition-colors cursor-pointer"
+                        className="p-1 rounded-lg text-[#94a3b8] hover:text-[#ef4444] hover:bg-[#fee2e2] transition-colors cursor-pointer"
                         title="Eliminar contacto (no reasigna automáticamente)"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -567,7 +567,7 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
               className="px-5 py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] disabled:opacity-50 text-white font-bold shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
             >
               <Check className="w-4 h-4" />
-              <span>Crear Cuenta de Cliente</span>
+              <span>Crear cuenta de cliente</span>
             </button>
           </div>
         </form>

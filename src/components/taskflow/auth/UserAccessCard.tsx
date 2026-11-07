@@ -109,7 +109,7 @@ export const UserAccessCard: React.FC<Props> = ({ user, allUsers, adminName, onU
   const labelCls = 'block text-[11px] font-bold uppercase tracking-wider text-[#475569] mb-1.5';
 
   return (
-    <section className="bg-white rounded-3xl border border-[#e2e8f0] p-5 sm:p-6 shadow-xs space-y-4" aria-labelledby="access-title">
+    <section className="bg-white rounded-2xl border border-[#e2e8f0] p-5 sm:p-6 shadow-xs space-y-4" aria-labelledby="access-title">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 id="access-title" className="text-base font-bold text-[#0f172a] tracking-tight">Acceso a ECO</h2>
         <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${status.cls}`}>{status.label}</span>

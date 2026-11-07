@@ -61,7 +61,7 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({
       <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-[#e5e7eb] animate-in zoom-in-95 duration-100">
         <div className="flex items-center justify-between pb-4 border-b border-[#f1f5f9]">
           <div>
-            <h3 className="text-base font-bold text-[#0f172a]">Invitar Colaborador</h3>
+            <h3 className="text-base font-bold text-[#0f172a]">Invitar colaborador</h3>
             <p className="text-xs text-[#64748b] mt-0.5">Agrega un nuevo miembro al equipo de ECO</p>
           </div>
           <button

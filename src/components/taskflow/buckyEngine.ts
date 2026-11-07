@@ -87,7 +87,7 @@ export interface BuckyContext {
 // ==========================================
 
 /**
- * Configuración UX de ventana horaria permitida para sonidos de Bucky.
+ * Configuración UX de ventana horaria permitida para sonidos de ECO.
  * 
  * NOTA DE DISEÑO & EXPERIENCIA (UX):
  * Esta regla opera exclusivamente como protección de experiencia de usuario para evitar
@@ -98,8 +98,8 @@ export interface BuckyContext {
  * Reglas de comportamiento:
  * 1. Ventana por defecto: Lunes a viernes, de 08:00 a 18:00 en zona horaria 'America/Bogota'.
  * 2. La preferencia manual del usuario tiene prioridad absoluta: si el usuario desactiva
- *    el sonido (localStorage 'orbit_bucky_muted' === 'true'), Bucky nunca suena, incluso dentro de la ventana.
- * 3. Fuera de la ventana, Bucky permanece visualmente activo (poses, animaciones, globos de diálogo),
+ *    el sonido (localStorage 'orbit_bucky_muted' === 'true'), ECO nunca suena, incluso dentro de la ventana.
+ * 3. Fuera de la ventana, ECO permanece visualmente activo (poses, animaciones, globos de diálogo),
  *    pero con cero audio automático, alertas ni celebraciones sonoras.
  * 4. Queda centralizada aquí para que pueda ajustarse fácilmente en el futuro sin modificar componentes.
  */
@@ -160,7 +160,7 @@ export function isWithinBuckySoundWindow(date: Date = new Date(), config: BuckyS
 export const isWithinWorkingHours = isWithinBuckySoundWindow;
 
 /**
- * Determina si Bucky tiene permitido emitir sonido:
+ * Determina si ECO tiene permitido emitir sonido:
  * Debe cumplirse: (1) no estar silenciado por el usuario Y (2) encontrarse dentro de la ventana UX.
  */
 export function isBuckySoundAllowed(date: Date = new Date()): boolean {

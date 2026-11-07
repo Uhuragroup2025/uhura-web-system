@@ -393,16 +393,16 @@ const GameOverScreen: React.FC<GameOverScreenProps> = ({
             Semana: <strong className="text-[#d4ff4a] font-bold font-mono">#{rank}</strong>
           </div>
 
-          {/* Bucky como host narrativo */}
+          {/* ECO como host narrativo */}
           <div className="max-w-xs mx-auto pt-1 flex items-center justify-center gap-2.5 bg-black/30 p-2.5 rounded-2xl border border-white/5">
             <img
               src={buckyCelebratingImg}
-              alt="Bucky celebrando"
+              alt="ECO celebrando"
               className="w-10 h-10 object-contain shrink-0"
             />
             <p className="text-xs text-white/90 text-left font-medium leading-snug">
               {score >= leaderScore
-                ? '¡Eres la marca número 1 de la semana! Bucky está orgulloso 🦫👑'
+                ? '¡Eres la marca número 1 de la semana! ECO está orgulloso 🦫👑'
                 : `Te faltaron ${leaderScore - score} pts para superar a ${leaderName} 👀`}
             </p>
           </div>
@@ -773,7 +773,7 @@ const ReflejosNenufarMinigame: React.FC<MinigameSubProps> = ({
     return (
       <GameIntroScreen
         title="Reflejos de Nenúfar"
-        oneRule="Toca la hoja donde aparezca Bucky 🦫 tan rápido como puedas antes de que salte a otra."
+        oneRule="Toca la hoja donde aparezca ECO 🦫 tan rápido como puedas antes de que salte a otra."
         gameId="nenufar"
         activeChallenge={activeChallenge}
         onStart={() => {
@@ -855,7 +855,7 @@ const ReflejosNenufarMinigame: React.FC<MinigameSubProps> = ({
       </div>
 
       <p className="text-[11px] text-center text-[#c9b7ff]">
-        👆 Reacciona tocando el nenúfar donde salta Bucky
+        👆 Reacciona tocando el nenúfar donde salta ECO
       </p>
     </div>
   );

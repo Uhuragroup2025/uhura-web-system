@@ -84,7 +84,7 @@ export const HubSpotSyncModal: React.FC<HubSpotSyncModalProps> = ({
       onClick={onClose}
     >
       <div
-        className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-[#e2e8f0] overflow-hidden flex flex-col max-h-[92vh]"
+        className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-[#e2e8f0] overflow-hidden flex flex-col max-h-[92vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

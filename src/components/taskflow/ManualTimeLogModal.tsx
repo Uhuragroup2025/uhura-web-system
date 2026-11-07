@@ -153,7 +153,7 @@ export const ManualTimeLogModal: React.FC<ManualTimeLogModalProps> = ({
     >
       <div
         id="manual-time-log-container"
-        className="bg-white sm:rounded-3xl shadow-2xl border-0 sm:border sm:border-[#e2e8f0] w-full max-w-lg h-full sm:h-auto overflow-hidden flex flex-col sm:max-h-[92vh] animate-in zoom-in-95 duration-150"
+        className="bg-white sm:rounded-2xl shadow-2xl border-0 sm:border sm:border-[#e2e8f0] w-full max-w-lg h-full sm:h-auto overflow-hidden flex flex-col sm:max-h-[92vh] animate-in zoom-in-95 duration-150"
       >
         {/* Header */}
         <div className="px-5 sm:px-6 py-4 bg-[#0f172a] text-white flex items-center justify-between border-b border-[#334155] shrink-0">
@@ -368,28 +368,28 @@ export const ManualTimeLogModal: React.FC<ManualTimeLogModalProps> = ({
                   <button
                     type="button"
                     onClick={() => { setHours('1'); setMinutes('0'); }}
-                    className="px-2 py-0.5 rounded-md bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[10px] font-bold text-[#475569] cursor-pointer"
+                    className="px-2 py-0.5 rounded-lg bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[10px] font-bold text-[#475569] cursor-pointer"
                   >
                     1h
                   </button>
                   <button
                     type="button"
                     onClick={() => { setHours('2'); setMinutes('0'); }}
-                    className="px-2 py-0.5 rounded-md bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[10px] font-bold text-[#475569] cursor-pointer"
+                    className="px-2 py-0.5 rounded-lg bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[10px] font-bold text-[#475569] cursor-pointer"
                   >
                     2h
                   </button>
                   <button
                     type="button"
                     onClick={() => { setHours('4'); setMinutes('0'); }}
-                    className="px-2 py-0.5 rounded-md bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[10px] font-bold text-[#475569] cursor-pointer"
+                    className="px-2 py-0.5 rounded-lg bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[10px] font-bold text-[#475569] cursor-pointer"
                   >
                     4h
                   </button>
                   <button
                     type="button"
                     onClick={() => { setHours('8'); setMinutes('0'); }}
-                    className="px-2 py-0.5 rounded-md bg-[#f2ecfb] hover:bg-[#e9d5ff] text-[10px] font-bold text-[#501f92] cursor-pointer"
+                    className="px-2 py-0.5 rounded-lg bg-[#f2ecfb] hover:bg-[#e9d5ff] text-[10px] font-bold text-[#501f92] cursor-pointer"
                     title="Jornada completa"
                   >
                     8h

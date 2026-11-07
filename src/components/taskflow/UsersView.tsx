@@ -234,7 +234,7 @@ export const UsersView: React.FC<UsersViewProps> = ({
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#501f92] text-white text-xs font-bold hover:bg-[#381566] shadow-2xs transition-all cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>Invitar Colaborador</span>
+              <span>Invitar colaborador</span>
             </button>
           )}
         </div>
@@ -420,7 +420,7 @@ export const UsersView: React.FC<UsersViewProps> = ({
                               className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-[#501f92] hover:bg-[#f3e8ff] transition-colors cursor-pointer"
                               title="Ver perfil completo del colaborador"
                             >
-                              <span>Ver Perfil</span>
+                              <span>Ver perfil</span>
                               <ChevronRight className="w-3.5 h-3.5" />
                             </button>
                             {onDeleteUser && (

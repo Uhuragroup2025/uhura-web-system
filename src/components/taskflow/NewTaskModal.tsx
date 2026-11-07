@@ -310,7 +310,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
     }
   }, [activeProject]);
 
-  // Bucky Copiloto: Chequeo proactivo de disponibilidad y vacaciones
+  // ECO: Chequeo proactivo de disponibilidad y vacaciones
   const vacationAlerts = useMemo(() => {
     const alerts: { name: string; message: string; returnDate?: string }[] = [];
     const allAssigned = Array.from(new Set([...collaborators, projectLeadName]));
@@ -502,7 +502,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
       }}
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-[#090513]/70 backdrop-blur-xs animate-in fade-in duration-200"
     >
-      <div className="bg-white rounded-3xl shadow-2xl border border-[#e2e8f0] w-full max-w-2xl max-h-[94vh] flex flex-col overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-2xl border border-[#e2e8f0] w-full max-w-2xl max-h-[94vh] flex flex-col overflow-hidden">
         {/* Modal Header */}
         <div className="p-5 bg-[#0f172a] text-white flex items-center justify-between shrink-0 border-b border-[#334155]">
           <div className="flex items-center gap-3">
@@ -510,7 +510,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
               <CheckSquare className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-bold text-sm text-white">Nueva Tarea</h3>
+              <h3 className="font-bold text-sm text-white">Nueva tarea</h3>
               <p className="text-[11px] text-[#94a3b8]">
                 Asociada a un Proyecto (Cliente → Proyecto → Frente / Fase → Tarea)
               </p>
@@ -535,7 +535,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
                 <span>1. Cliente y Proyecto Asociado</span>
               </span>
               {isContextLocked && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#e0e7ff] text-[#3730a3]">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-[#e0e7ff] text-[#3730a3]">
                   Contexto Bloqueado
                 </span>
               )}
@@ -555,7 +555,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
                 </div>
                 <div>
                   <span
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${
                       activeProject.projectType === 'fee_monthly'
                         ? 'bg-[#d4ff4a]/20 text-[#2e5e04]'
                         : activeProject.projectType === 'fixed_project'
@@ -911,19 +911,16 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
             {/* AVISO DE COPILOTO OPERATIVO BUCKY: VACACIONES / AUSENCIAS */}
             {vacationAlerts.length > 0 && (
               <div className="p-3.5 rounded-2xl bg-[#fffbeb] border border-[#fde68a] text-xs flex items-start gap-3 animate-in fade-in">
-                <div className="w-8 h-8 rounded-xl bg-[#fef3c7] text-[#92400e] flex items-center justify-center text-lg shrink-0 shadow-2xs">
-                  🦫
-                </div>
                 <div className="space-y-1 flex-1">
                   <div className="font-bold text-[#78350f] flex items-center gap-2">
-                    <span>Bucky Copiloto: Aviso Operativo de Disponibilidad</span>
+                    <span>ECO: Aviso Operativo de Disponibilidad</span>
                     <span className="text-[10px] bg-[#fef08a] text-[#713f12] px-2 py-0.5 rounded-full font-black">
                       Vacaciones Aprobadas
                     </span>
                   </div>
                   {vacationAlerts.map((a) => (
                     <p key={a.name} className="text-[#92400e] leading-relaxed text-[11px]">
-                      <strong>{a.name}</strong> está en período de descanso aprobado hasta el <strong>{a.returnDate || 'próxima semana'}</strong>. Durante su ausencia, Bucky te recuerda coordinar un respaldo o ajustar la fecha de entrega para no sobrecargar su retorno.
+                      <strong>{a.name}</strong> está en período de descanso aprobado hasta el <strong>{a.returnDate || 'próxima semana'}</strong>. Durante su ausencia, ECO te recuerda coordinar un respaldo o ajustar la fecha de entrega para no sobrecargar su retorno.
                     </p>
                   ))}
                 </div>

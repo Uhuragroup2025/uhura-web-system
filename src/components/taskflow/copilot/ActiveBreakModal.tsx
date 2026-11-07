@@ -205,7 +205,7 @@ export const ActiveBreakModal: React.FC<ActiveBreakModalProps> = ({
       onClick={onClose}
     >
       <div
-        className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-[#e2e8f0] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
+        className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-[#e2e8f0] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* HEADER */}
@@ -247,7 +247,7 @@ export const ActiveBreakModal: React.FC<ActiveBreakModalProps> = ({
           <div className="p-6 sm:p-8 text-center space-y-4">
             <img
               src={buckyCelebratingImg}
-              alt="Bucky Celebrando"
+              alt="ECO Celebrando"
               className="w-24 h-24 mx-auto object-contain drop-shadow-md"
             />
             <div className="space-y-1">

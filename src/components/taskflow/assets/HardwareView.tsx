@@ -64,7 +64,7 @@ export const HardwareView: React.FC<HardwareViewProps> = ({ assets, users, proje
     const perHour = monthly !== null ? monthly / PRODUCTIVE_HOURS_PER_MONTH : null;
     const perService = perHour !== null && editing.isDirectCost && editing.serviceTemplateIds.length > 0 ? perHour / editing.serviceTemplateIds.length : null;
     return (
-      <div className="max-w-3xl bg-white rounded-3xl border border-[#e2e8f0] p-6 shadow-xs space-y-5">
+      <div className="max-w-3xl bg-white rounded-2xl border border-[#e2e8f0] p-6 shadow-xs space-y-5">
         <div>
           <h2 className="text-lg font-extrabold text-[#0f172a]">{editing.id ? 'Editar equipo' : 'Nuevo equipo'}</h2>
           <p className="text-xs text-[#64748b]">Activo físico. Si es costo directo, su depreciación se imputa a los servicios y proyectos que lo usan.</p>
@@ -161,7 +161,7 @@ export const HardwareView: React.FC<HardwareViewProps> = ({ assets, users, proje
     <div className="space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-extrabold text-[#0f172a]">Hardware y equipos</h2>
+          <h1 className="text-xl sm:text-2xl font-bold text-[#0f172a] tracking-tight">Hardware</h1>
           <p className="text-sm text-[#64748b]">Activos físicos (laptops, cámaras…) — costo directo de operación por depreciación.</p>
         </div>
         {canEdit && (
@@ -174,7 +174,7 @@ export const HardwareView: React.FC<HardwareViewProps> = ({ assets, users, proje
         <Search className="w-4 h-4 text-[#94a3b8] absolute left-3 top-1/2 -translate-y-1/2" />
         <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por nombre, tipo, marca, serial o colaborador…" className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-[#e2e8f0] bg-white text-xs" />
       </div>
-      <div className="bg-white rounded-3xl border border-[#e2e8f0] overflow-x-auto">
+      <div className="bg-white rounded-2xl border border-[#e2e8f0] overflow-x-auto">
         <table className="w-full text-xs min-w-[820px]">
           <thead>
             <tr className="text-[10px] uppercase font-bold text-[#64748b] bg-[#f8fafc] border-b border-[#f1f5f9]">

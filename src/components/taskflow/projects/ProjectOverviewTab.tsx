@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { formatDate, formatDateRange } from '../../../utils/formatters';
 import {
   Clock,
   Calendar,
@@ -180,7 +181,7 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
 
       {/* PROYECTO CERRADO: foto final del cierre */}
       {project.closure && (
-        <div className="bg-white rounded-3xl border border-[#e2e8f0] p-5 shadow-xs space-y-3">
+        <div className="bg-white rounded-2xl border border-[#e2e8f0] p-5 shadow-xs space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h3 className="font-extrabold text-sm text-[#0f172a]">🏁 Proyecto cerrado</h3>
             <span className="text-[11px] text-[#64748b]">
@@ -201,7 +202,7 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
             <div className="p-3 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
               <span className="text-[10px] uppercase font-bold text-[#64748b] block">Fecha real</span>
               <span className="font-bold text-[#0f172a]">
-                {project.closure.actualEndDate}
+                {formatDate(project.closure.actualEndDate)}
                 {typeof project.closure.deviationBusinessDays === 'number' && project.closure.deviationBusinessDays !== 0 && (
                   <span className={project.closure.deviationBusinessDays > 0 ? 'text-[#b91c1c]' : 'text-[#15803d]'}>
                     {' '}({project.closure.deviationBusinessDays > 0 ? '+' : ''}{project.closure.deviationBusinessDays} d)
@@ -222,7 +223,7 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
 
       {/* BANNER DE SUGERENCIA DE REFORECAST (SI HAY ATRASO CRÍTICO DE CLIENTE) */}
       {isFixed && pendingBlockingOverdueDeps.length > 0 && (
-        <div className="bg-[#fffbeb] border border-[#fde68a] rounded-3xl p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4 animate-in fade-in duration-200">
+        <div className="bg-[#fffbeb] border border-[#fde68a] rounded-2xl p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4 animate-in fade-in duration-200">
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 rounded-2xl bg-[#f59e0b]/20 text-[#b45309] flex items-center justify-center shrink-0 mt-0.5">
               <AlertTriangle className="w-5 h-5" />
@@ -240,11 +241,11 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
                 El insumo <strong className="text-[#92400e] font-bold">"{pendingBlockingOverdueDeps[0].title}"</strong> presenta{' '}
                 {suggestedShiftDays} días de demora. El cronograma original proyectaba entrega el{' '}
                 <strong className="underline decoration-[#d97706]">
-                  {project.baselineEndDate || project.endDate || 'fin de mes'}
+                  {formatDate(project.baselineEndDate || project.endDate)}
                 </strong>
                 . El forecast calculado sugiere actualizar al{' '}
                 <strong className="underline decoration-[#d97706]">
-                  {addBusinessDays(project.forecastEndDate || project.baselineEndDate || '2026-10-30', suggestedShiftDays)}
+                  {project.forecastEndDate || project.baselineEndDate ? formatDate(addBusinessDays((project.forecastEndDate || project.baselineEndDate)!, suggestedShiftDays)) : 'Sin fecha base'}
                 </strong>.
               </p>
             </div>
@@ -276,7 +277,7 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
       )}
 
       {/* 1. ESTRUCTURA OPERATIVA Y ENTREGABLES HEREDADOS (SOLUCIÓN DIRECTA A "NO VI TAREAS") */}
-      <div className="bg-white rounded-3xl border border-[#e2e8f0] p-6 shadow-xs space-y-5">
+      <div className="bg-white rounded-2xl border border-[#e2e8f0] p-6 shadow-xs space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#f1f5f9] pb-4">
           <div>
             <div className="flex items-center gap-2">
@@ -321,7 +322,7 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
               >
                 <div>
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-[#ede9fe] text-[#501f92]">
+                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-lg bg-[#ede9fe] text-[#501f92]">
                       Entregable {del.order || idx + 1}
                     </span>
                     <span className="text-[11px] font-mono text-[#64748b]">
@@ -363,7 +364,7 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
 
       {/* 2. GOBERNANZA DE ALCANCE & APROBACIONES (PROYECTO ÚNICO) */}
       {isFixed && (
-        <div className="bg-white rounded-3xl border border-[#e2e8f0] p-6 shadow-xs space-y-4">
+        <div className="bg-white rounded-2xl border border-[#e2e8f0] p-6 shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#f1f5f9] pb-4">
             <div>
               <div className="flex items-center gap-2">
@@ -413,7 +414,7 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
                 {scheduleHistory.length} reforecast{scheduleHistory.length !== 1 ? 's' : ''}
               </p>
               <span className="text-[11px] text-[#64748b] mt-0.5 block">
-                {project.baselineEndDate ? `Línea base: ${project.baselineEndDate}` : 'Línea base al iniciar el proyecto'}
+                {project.baselineEndDate ? `Línea base: ${formatDate(project.baselineEndDate)}` : 'Línea base al iniciar el proyecto'}
               </span>
             </div>
           </div>
@@ -422,7 +423,7 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
 
       {/* RECURSOS EXTERNOS (subcontratados): costo del proyecto, fuera de capacidad y roles. No visible para colaboradores. */}
       {(project.externalResources || []).length > 0 && currentUser?.accessLevel !== 'collaborator' && (
-        <div className="bg-white rounded-3xl border border-[#e2e8f0] p-5 shadow-xs space-y-2">
+        <div className="bg-white rounded-2xl border border-[#e2e8f0] p-5 shadow-xs space-y-2">
           <div className="flex items-center justify-between gap-2">
             <h3 className="font-extrabold text-sm text-[#0f172a]">Recursos externos</h3>
             <span className="text-xs font-bold text-[#0f172a]">
@@ -460,7 +461,7 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
       {/* MODAL: RECALCULAR CRONOGRAMA (REFORECAST CONFIRMADO POR LÍDER) */}
       {isReforecastModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white text-[#0f172a] rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-[#e2e8f0] space-y-5 animate-in zoom-in-95 duration-150">
+          <div className="bg-white text-[#0f172a] rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-[#e2e8f0] space-y-5 animate-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-[#501f92]/10 text-[#501f92] flex items-center justify-center">
@@ -484,16 +485,16 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
               <div className="p-3 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] space-y-1">
                 <div className="flex justify-between">
                   <span className="text-[#64748b]">Baseline inmutable:</span>
-                  <span className="font-bold text-[#0f172a]">{project.baselineEndDate || project.endDate || 'No fijada'}</span>
+                  <span className="font-bold text-[#0f172a]">{formatDate(project.baselineEndDate || project.endDate, 'No fijada')}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-[#64748b]">Forecast vigente:</span>
-                  <span className="font-bold text-[#0f172a]">{project.forecastEndDate || project.baselineEndDate || 'No fijada'}</span>
+                  <span className="font-bold text-[#0f172a]">{formatDate(project.forecastEndDate || project.baselineEndDate, 'No fijada')}</span>
                 </div>
                 <div className="flex justify-between border-t border-[#e2e8f0] pt-1 mt-1 text-[#501f92]">
                   <span className="font-bold">Nuevo forecast proyectado:</span>
                   <span className="font-extrabold">
-                    {addBusinessDays(project.forecastEndDate || project.baselineEndDate || '2026-10-30', reforecastDeltaDays)}
+                    {project.forecastEndDate || project.baselineEndDate ? formatDate(addBusinessDays((project.forecastEndDate || project.baselineEndDate)!, reforecastDeltaDays)) : 'Sin fecha base'}
                   </span>
                 </div>
               </div>

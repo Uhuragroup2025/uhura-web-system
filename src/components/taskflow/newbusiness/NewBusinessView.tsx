@@ -1109,7 +1109,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                   className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] text-xs font-bold text-white shadow-2xs transition-colors cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>Nueva Oportunidad</span>
+                  <span>Nueva oportunidad</span>
                 </button>
               </div>
             )}
@@ -1313,12 +1313,12 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                                 {opp.prospectAccountName || 'Nuevo Prospecto'}
                               </span>
                               {opp.hubspotDealId && (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-[#ff5c35]/10 text-[#ff5c35] border border-[#ff5c35]/20">
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.2 rounded-lg bg-[#ff5c35]/10 text-[#ff5c35] border border-[#ff5c35]/20">
                                   HubSpot
                                 </span>
                               )}
                               {opp.driveFolderUrl && (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.2 rounded-md bg-[#f1f5f9] text-[#64748b]">
+                                <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.2 rounded-lg bg-[#f1f5f9] text-[#64748b]">
                                   📁 Drive
                                 </span>
                               )}
@@ -1452,16 +1452,16 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                     {/* Metadata tags */}
                     <div className="flex items-center gap-2 flex-wrap text-[11px] text-[#64748b]">
                       {opp.clientId ? (
-                        <span className="px-2 py-0.5 rounded-md bg-[#6366f1]/10 text-[#6366f1] font-medium">
+                        <span className="px-2 py-0.5 rounded-lg bg-[#6366f1]/10 text-[#6366f1] font-medium">
                           Cliente ECO
                         </span>
                       ) : (
-                        <span className="px-2 py-0.5 rounded-md bg-[#f59e0b]/15 text-[#b45309] font-medium">
+                        <span className="px-2 py-0.5 rounded-lg bg-[#f59e0b]/15 text-[#b45309] font-medium">
                           Prospecto Nuevo
                         </span>
                       )}
 
-                      <span className="px-2 py-0.5 rounded-md bg-[#f1f5f9] text-[#475569] font-bold">
+                      <span className="px-2 py-0.5 rounded-lg bg-[#f1f5f9] text-[#475569] font-bold">
                         {totalHours}h
                       </span>
 
@@ -1756,7 +1756,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                     title="Ver ficha del Cliente"
                   >
                     <Building2 className="w-3.5 h-3.5 text-[#501f92]" />
-                    <span>Ver Cliente</span>
+                    <span>Ver cliente</span>
                   </button>
                   <button
                     type="button"
@@ -1932,7 +1932,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                       className="inline-flex items-center gap-1 text-[11px] font-bold text-[#501f92] hover:underline cursor-pointer"
                     >
                       <Pencil className="w-3 h-3" />
-                      <span>Editar Brief</span>
+                      <span>Editar brief</span>
                     </button>
                   )}
                 </div>
@@ -2511,7 +2511,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
 
                       if (item.hubspotSyncStatus === 'syncing') {
                         return (
-                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-[#eff6ff] text-[#1d4ed8] border border-[#bfdbfe] animate-pulse">
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[10.5px] font-bold bg-[#eff6ff] text-[#1d4ed8] border border-[#bfdbfe] animate-pulse">
                             <RefreshCw className="w-3 h-3 animate-spin text-[#1d4ed8]" />
                             <span>Sincronizando con HubSpot...</span>
                           </span>
@@ -2520,7 +2520,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
 
                       if (item.hubspotSyncStatus === 'error') {
                         return (
-                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-[#fef2f2] text-[#b91c1c] border border-[#fecaca]">
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[10.5px] font-bold bg-[#fef2f2] text-[#b91c1c] border border-[#fecaca]">
                             <AlertCircle className="w-3 h-3 text-red-500" />
                             <span>Error de sincronización</span>
                             <button
@@ -2536,7 +2536,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
 
                       if (item.hubspotSyncStatus === 'synced') {
                         return (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-[#ecfdf5] text-[#047857] border border-[#a7f3d0]">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10.5px] font-bold bg-[#ecfdf5] text-[#047857] border border-[#a7f3d0]">
                             <CheckCircle2 className="w-3 h-3 text-[#10b981]" />
                             <span>Sincronizado</span>
                           </span>
@@ -2549,7 +2549,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                             <select
                               value={item.hubspotDealStage || 'Presentación a cliente'}
                               onChange={(e) => handleUpdateStageFromOrbit(item.serviceId, e.target.value as HubSpotDealStage)}
-                              className={`text-[10.5px] font-bold px-2 py-0.5 rounded-md border transition-all cursor-pointer focus:ring-1 focus:ring-[#ea580c] ${
+                              className={`text-[10.5px] font-bold px-2 py-0.5 rounded-lg border transition-all cursor-pointer focus:ring-1 focus:ring-[#ea580c] ${
                                 item.hubspotDealStage === 'Cierre ganado'
                                   ? 'bg-[#ecfdf5] text-[#047857] border-[#a7f3d0]'
                                   : item.hubspotDealStage === 'Enviado para facturar'
@@ -2571,7 +2571,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
 
                       return (
                         <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 ${
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-lg flex items-center gap-1 ${
                             item.hubspotDealStage === 'Cierre ganado'
                               ? 'bg-[#ecfdf5] text-[#047857] border border-[#a7f3d0]'
                               : item.hubspotDealStage === 'Enviado para facturar'
@@ -2611,11 +2611,11 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                                   Cierre perdido / Descartado
                                 </span>
                               )}
-                              <span className="text-[11px] px-2 py-0.5 rounded-md bg-[#f8fafc] text-[#64748b] border border-[#f1f5f9]">
+                              <span className="text-[11px] px-2 py-0.5 rounded-lg bg-[#f8fafc] text-[#64748b] border border-[#f1f5f9]">
                                 {item.weeksRef || 0} {item.weeksRef === 1 ? 'semana' : 'semanas'}
                               </span>
                               <span
-                                className={`text-[11px] font-semibold px-2 py-0.5 rounded-md ${
+                                className={`text-[11px] font-semibold px-2 py-0.5 rounded-lg ${
                                   isFixed
                                     ? 'bg-[#501f92]/10 text-[#501f92]'
                                     : 'bg-[#059669]/10 text-[#047857]'
@@ -2624,7 +2624,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                                 {isFixed ? 'Proyecto único' : 'Fee mensual'}
                               </span>
                               {item.hubspotDealId && (
-                                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-[#fff7ed] text-[#c2410c] border border-[#fed7aa] font-semibold flex items-center gap-1">
+                                <span className="text-[10px] font-mono px-2 py-0.5 rounded-lg bg-[#fff7ed] text-[#c2410c] border border-[#fed7aa] font-semibold flex items-center gap-1">
                                   <span className="w-1.5 h-1.5 rounded-full bg-[#ea580c] inline-block" />
                                   <span>Deal: {item.hubspotDealId}</span>
                                 </span>
@@ -2694,7 +2694,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                                 Cierre perdido
                               </span>
                             )}
-                            <span className="text-[11px] px-2 py-0.5 rounded-md bg-[#f8fafc] text-[#64748b] border border-[#f1f5f9]">
+                            <span className="text-[11px] px-2 py-0.5 rounded-lg bg-[#f8fafc] text-[#64748b] border border-[#f1f5f9]">
                               {item.weeksRef || 0} {item.weeksRef === 1 ? 'semana' : 'semanas'} en alcance
                             </span>
                             {item.hubspotDealId && (
@@ -2718,7 +2718,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                                   )
                                 );
                               }}
-                              className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                                 isFixed
                                   ? 'bg-[#501f92] text-white shadow-2xs'
                                   : 'text-[#64748b] hover:text-[#0f172a]'
@@ -2737,7 +2737,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                                   )
                                 );
                               }}
-                              className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                                 isFee
                                   ? 'bg-[#059669] text-white shadow-2xs'
                                   : 'text-[#64748b] hover:text-[#0f172a]'
@@ -3204,7 +3204,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
       {/* Modal de Confirmación Granular: Marcar Servicios Ganados */}
       {isMarkWonModalOpen && activeOpp && activeQuote && (
         <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl border border-[#e2e8f0] p-6 space-y-5 animate-in zoom-in-95 duration-150">
+          <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl border border-[#e2e8f0] p-6 space-y-5 animate-in zoom-in-95 duration-150">
             {/* Header */}
             <div className="flex items-start justify-between gap-3 border-b border-[#f1f5f9] pb-4">
               <div className="flex items-center gap-3">
@@ -3216,7 +3216,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                     <h3 className="text-base font-extrabold text-[#0f172a]">
                       Confirmar Servicios Ganados
                     </h3>
-                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-[#d4ff4a]/20 text-[#2e5e04] border border-[#d4ff4a]/50">
+                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-lg bg-[#d4ff4a]/20 text-[#2e5e04] border border-[#d4ff4a]/50">
                       Cierre Comercial
                     </span>
                   </div>
@@ -3540,14 +3540,14 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
         />
       )}
 
-      {/* Modal Fiesta Bucky: ¡Propuesta Ganada! */}
+      {/* Modal Fiesta ECO: ¡Propuesta Ganada! */}
       {wonCelebrationOpp && (
         <div
           className="fixed inset-0 z-80 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
           onClick={() => setWonCelebrationOpp(null)}
         >
           <div
-            className="relative bg-gradient-to-b from-[#140b24] via-[#241142] to-[#0f172a] text-white w-full max-w-xl rounded-3xl p-6 sm:p-8 shadow-2xl border-2 border-[#d4ff4a]/60 text-center overflow-hidden animate-in zoom-in-95 duration-200"
+            className="relative bg-gradient-to-b from-[#140b24] via-[#241142] to-[#0f172a] text-white w-full max-w-xl rounded-2xl p-6 sm:p-8 shadow-2xl border-2 border-[#d4ff4a]/60 text-center overflow-hidden animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Confeti festivo animado en cascada */}
@@ -3594,12 +3594,12 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
               <X className="w-5 h-5" />
             </button>
 
-            {/* Bucky Celebrando con aura de fiesta */}
+            {/* ECO Celebrando con aura de fiesta */}
             <div className="relative mx-auto w-36 h-36 sm:w-44 sm:h-44 mb-3 flex items-center justify-center">
               <div className="absolute inset-0 bg-gradient-to-tr from-[#d4ff4a]/30 to-[#a78bfa]/30 rounded-full blur-2xl scale-110 animate-pulse" />
               <img
                 src="/brand/eco-celebrating.webp"
-                alt="Bucky Celebrando Propuesta Ganada"
+                alt="ECO Celebrando Propuesta Ganada"
                 className="relative w-full h-full object-contain drop-shadow-[0_12px_32px_rgba(212,255,74,0.45)] animate-bounce"
                 style={{ animationDuration: '1.8s' }}
               />

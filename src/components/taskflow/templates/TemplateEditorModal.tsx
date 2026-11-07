@@ -383,7 +383,7 @@ export const TemplateEditorModal: React.FC<TemplateEditorModalProps> = ({
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#8a4dff] bg-[#8a4dff]/10 hover:bg-[#8a4dff]/20 rounded-lg transition-colors cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Agregar Entregable</span>
+                <span>Agregar entregable</span>
               </button>
             </div>
 
@@ -427,7 +427,7 @@ export const TemplateEditorModal: React.FC<TemplateEditorModalProps> = ({
                       </div>
 
                       <div className="flex items-center gap-3">
-                        <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-[#8a4dff]/10 text-[#8a4dff]">
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-lg bg-[#8a4dff]/10 text-[#8a4dff]">
                           {Math.round(delHours * 10) / 10}h
                         </span>
                         <button
@@ -467,7 +467,7 @@ export const TemplateEditorModal: React.FC<TemplateEditorModalProps> = ({
                                   onChange={(e) =>
                                     handleUpdateActivity(del.id, act.id, 'title', e.target.value)
                                   }
-                                  className="w-full text-xs text-[#0f172a] px-2 py-1.5 rounded-md border border-[#cbd5e1] bg-white focus:outline-hidden focus:ring-1 focus:ring-[#8a4dff]"
+                                  className="w-full text-xs text-[#0f172a] px-2 py-1.5 rounded-lg border border-[#cbd5e1] bg-white focus:outline-hidden focus:ring-1 focus:ring-[#8a4dff]"
                                 />
                               </div>
 
@@ -478,7 +478,7 @@ export const TemplateEditorModal: React.FC<TemplateEditorModalProps> = ({
                                   onChange={(e) =>
                                     handleUpdateActivity(del.id, act.id, 'roleId', e.target.value)
                                   }
-                                  className={`w-full text-xs px-2 py-1.5 rounded-md border bg-white focus:outline-hidden focus:ring-1 focus:ring-[#8a4dff] ${
+                                  className={`w-full text-xs px-2 py-1.5 rounded-lg border bg-white focus:outline-hidden focus:ring-1 focus:ring-[#8a4dff] ${
                                     act.roleId === ROLE_PENDING_DEFINITION || act.roleName === ROLE_PENDING_DEFINITION
                                       ? 'border-[#f59e0b] text-[#b45309] font-medium bg-[#fffbeb]'
                                       : 'border-[#cbd5e1] text-[#334155]'
@@ -515,7 +515,7 @@ export const TemplateEditorModal: React.FC<TemplateEditorModalProps> = ({
                                       parseFloat(e.target.value) || 0
                                     )
                                   }
-                                  className="w-18 text-xs text-right font-semibold text-[#0f172a] px-2 py-1.5 rounded-md border border-[#cbd5e1] bg-white focus:outline-hidden focus:ring-1 focus:ring-[#8a4dff]"
+                                  className="w-18 text-xs text-right font-semibold text-[#0f172a] px-2 py-1.5 rounded-lg border border-[#cbd5e1] bg-white focus:outline-hidden focus:ring-1 focus:ring-[#8a4dff]"
                                 />
                                 <span className="text-[11px] font-medium text-[#64748b]">hrs</span>
                               </div>
@@ -552,7 +552,7 @@ export const TemplateEditorModal: React.FC<TemplateEditorModalProps> = ({
                           className="w-full py-1.5 border border-dashed border-[#cbd5e1] hover:border-[#8a4dff] text-[#8a4dff] text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 bg-[#fcfaff]/50 transition-colors cursor-pointer mt-2"
                         >
                           <Plus className="w-3.5 h-3.5" />
-                          <span>Agregar Actividad Técnica</span>
+                          <span>Agregar actividad técnica</span>
                         </button>
                       </div>
                     )}
@@ -573,7 +573,7 @@ export const TemplateEditorModal: React.FC<TemplateEditorModalProps> = ({
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-[#c9b7ff]">Total de la Plantilla:</span>
-                <span className="text-sm font-black text-[#d4ff4a] px-2.5 py-0.5 rounded-md bg-[#d4ff4a]/15">
+                <span className="text-sm font-black text-[#d4ff4a] px-2.5 py-0.5 rounded-lg bg-[#d4ff4a]/15">
                   {liveTotalHours} hrs
                 </span>
               </div>

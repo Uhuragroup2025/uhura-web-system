@@ -241,7 +241,7 @@ export function getTaskRiskAnalysis(task: TaskItem, referenceDate?: string): Tas
 }
 
 /**
- * Estructura de eventos desacoplados para Bucky
+ * Estructura de eventos desacoplados para ECO
  */
 export type TaskEventType =
   | 'TASK_CREATED'

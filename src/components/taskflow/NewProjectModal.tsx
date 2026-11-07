@@ -265,7 +265,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
     return map;
   }, [deliverables]);
 
-  // Proactive Bucky team alerts (vacations or overcapacity)
+  // Proactive ECO team alerts (vacations or overcapacity)
   const teamOperationalAlerts = useMemo(() => {
     const alerts: { memberName: string; type: 'vacation' | 'capacity'; message: string }[] = [];
     assignedMemberIds.forEach((mId) => {
@@ -592,7 +592,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
               <Briefcase className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-[#0f172a]">Nuevo Proyecto en ECO</h2>
+              <h2 className="text-lg font-bold text-[#0f172a]">Nuevo proyecto en ECO</h2>
               <p className="text-xs text-[#64748b]">
                 Paso {currentStep} de 3: {
                   currentStep === 1 ? 'Identidad & Marco Operativo' :
@@ -927,7 +927,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
               <div className="p-4 bg-linear-to-r from-[#501f92]/8 via-[#7c3aed]/5 to-[#f8fafc] border border-[#501f92]/20 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-2xs">
                 <div className="max-w-md">
                   <div className="flex items-center gap-2">
-                    <span className="p-1 rounded-md bg-[#501f92] text-white">
+                    <span className="p-1 rounded-lg bg-[#501f92] text-white">
                       <Layers className="w-3.5 h-3.5" />
                     </span>
                     <h4 className="text-xs font-bold uppercase tracking-wider text-[#501f92]">
@@ -970,13 +970,12 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                 </div>
               </div>
 
-              {/* Bucky Copilot Proactive Alerts */}
+              {/* ECO Copilot Proactive Alerts */}
               {teamOperationalAlerts.length > 0 && (
                 <div className="p-3 bg-[#fffbeb] border border-[#fde68a] rounded-xl text-xs text-[#92400e] flex items-start gap-2.5">
-                  <span className="text-base shrink-0 leading-none">🦫</span>
-                  <div className="space-y-1 flex-1">
+                                    <div className="space-y-1 flex-1">
                     <div className="font-bold flex items-center gap-1.5">
-                      <span>Copiloto Bucky: Alertas operativas del equipo asignado</span>
+                      <span>Alertas del equipo asignado</span>
                     </div>
                     <ul className="list-disc pl-4 space-y-0.5 text-[11px] text-[#78350f]">
                       {teamOperationalAlerts.map((alt, i) => (
@@ -1040,7 +1039,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-[#501f92] bg-[#501f92]/10 hover:bg-[#501f92]/15 rounded-lg transition-colors cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>Agregar Frente</span>
+                    <span>Agregar frente</span>
                   </button>
                 </div>
 
@@ -1106,7 +1105,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                             className="text-[#501f92] hover:underline flex items-center gap-1 font-bold cursor-pointer"
                           >
                             <Plus className="w-3 h-3" />
-                            <span>Añadir Rol</span>
+                            <span>Añadir rol</span>
                           </button>
                         </div>
 
@@ -1375,14 +1374,14 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                           </div>
 
                           {userAvail.isOnVacation && (
-                            <div className="text-[10px] bg-[#fffbeb] text-[#92400e] px-2 py-1 rounded-md font-medium flex items-center gap-1">
+                            <div className="text-[10px] bg-[#fffbeb] text-[#92400e] px-2 py-1 rounded-lg font-medium flex items-center gap-1">
                               <span>🏖️</span>
                               <span>De vacaciones (retorna el {userAvail.returnDate || 'próxima semana'})</span>
                             </div>
                           )}
 
                           {isOverloaded && (
-                            <div className="text-[10px] bg-[#fef2f2] text-[#ef4444] px-2 py-1 rounded-md font-medium flex items-center gap-1">
+                            <div className="text-[10px] bg-[#fef2f2] text-[#ef4444] px-2 py-1 rounded-lg font-medium flex items-center gap-1">
                               <AlertCircle className="w-3 h-3 shrink-0" />
                               <span>Supera la disponibilidad semanal ({weeklyHours}h vs {freeCapacity}h libres)</span>
                             </div>
@@ -1600,7 +1599,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
             <div className="px-5 py-4 border-b border-[#f1f5f9] flex items-center justify-between bg-[#f8fafc]/80">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#501f92] bg-[#501f92]/10 px-2 py-0.5 rounded-md">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#501f92] bg-[#501f92]/10 px-2 py-0.5 rounded-lg">
                     Asignación Inmediata
                   </span>
                   <span className="text-xs font-bold text-[#64748b]">

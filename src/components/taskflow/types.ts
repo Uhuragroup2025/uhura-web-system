@@ -1066,7 +1066,7 @@ export type TeamAbsenceSource = 'google_calendar' | 'manual';
 /**
  * Entidad canónica de ausencia/bloqueo de disponibilidad del equipo en ECO.
  * Google Calendar es la fuente externa para vacaciones y licencias.
- * Bucky y Capacidad consumen esta entidad internamente desde ECO.
+ * ECO y Capacidad consumen esta entidad internamente desde ECO.
  */
 export interface TeamAbsenceEvent {
   id: string;                          // UUID único de ECO
@@ -1088,7 +1088,7 @@ export interface TeamAbsenceEvent {
 }
 
 /**
- * Evento humano/operativo de equipo consumido por Bucky y los módulos de ECO
+ * Evento humano/operativo de equipo consumido por ECO y los módulos de ECO
  */
 export interface TeamLifeEvent {
   id: string;

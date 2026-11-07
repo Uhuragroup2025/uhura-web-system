@@ -2,7 +2,7 @@
  * ============================================================================
  * COLONIA DIORAMA · LIVING AMBIENT HABITAT (ECO BY UHURA)
  * ============================================================================
- * Espacio visual relajante y experiencial. Bucky vive en su hábitat ribereño,
+ * Espacio visual relajante y experiencial. ECO vive en su hábitat ribereño,
  * con río animado, constelaciones orbitales y rincones interactivos.
  * No requiere economía ni administración: es puro disfrute y ambientación.
  */
@@ -181,7 +181,7 @@ export const ColoniaDiorama: React.FC<ColoniaDioramaProps> = ({
             icon: '🪨🪵',
             name: 'Represa de Piedra y Cedro',
             description: 'Regula el caudal del río cristalino para mantener el hábitat en serenidad constante.',
-            hint: 'Bucky inspecciona las compuertas cada mañana antes de su primer café.'
+            hint: 'ECO inspecciona las compuertas cada mañana antes de su primer café.'
           })
         }
         className="absolute bottom-16 left-1/2 -translate-x-1/2 z-20 cursor-pointer group"
@@ -249,7 +249,7 @@ export const ColoniaDiorama: React.FC<ColoniaDioramaProps> = ({
           setSelectedStructure({
             icon: '🌿🌸',
             name: 'Jardín de Nenúfares y Juncos',
-            description: 'Hogar de nenúfares flotantes donde Bucky practica sus reflejos rápidos.',
+            description: 'Hogar de nenúfares flotantes donde ECO practica sus reflejos rápidos.',
             hint: '¡De aquí nacen los retos de Reflejos de Nenúfar!'
           })
         }
@@ -271,20 +271,20 @@ export const ColoniaDiorama: React.FC<ColoniaDioramaProps> = ({
         onClick={() =>
           setSelectedStructure({
             icon: '🏡',
-            name: 'Cabaña Taller de Bucky',
+            name: 'Cabaña Taller de ECO',
             description: 'El taller de diseño y carpintería de cedro con planos y pizarra de retos.',
-            hint: 'Bucky guarda aquí la lista de récords semanales de Uhura Group.'
+            hint: 'ECO guarda aquí la lista de récords semanales de Uhura Group.'
           })
         }
         className="absolute top-24 left-[45%] sm:left-[48%] -translate-x-1/2 z-15 cursor-pointer group"
-        title="Cabaña Taller de Bucky"
+        title="Cabaña Taller de ECO"
       >
         <div className="relative flex flex-col items-center">
           <div className="text-5xl sm:text-6xl filter drop-shadow-[0_12px_24px_rgba(0,0,0,0.6)] transform group-hover:scale-105 transition-transform">
             🏡
           </div>
           <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#501f92] text-[#d4ff4a] border border-[#8a4dff] shadow-md mt-1 flex items-center gap-1">
-            <span>Taller de Bucky</span>
+            <span>Taller de ECO</span>
             <Sparkles className="w-2.5 h-2.5" />
           </span>
         </div>
@@ -347,7 +347,7 @@ export const ColoniaDiorama: React.FC<ColoniaDioramaProps> = ({
       <div
         onClick={handleBuckyInteract}
         className="absolute bottom-20 left-[42%] sm:left-[45%] z-30 cursor-pointer group"
-        title="Haz clic en Bucky para charlar"
+        title="Haz clic en ECO para charlar"
       >
         <div className="relative flex flex-col items-center">
           {/* Globo de diálogo interactivo */}
@@ -358,7 +358,7 @@ export const ColoniaDiorama: React.FC<ColoniaDioramaProps> = ({
           {/* Halo luminoso */}
           <div className="absolute inset-0 bg-[#8a4dff]/30 rounded-full blur-xl transform group-hover:scale-125 transition-all" />
 
-          {/* Sprite de Bucky */}
+          {/* Sprite de ECO */}
           <img
             src={
               buckyMood === 'celebrating'
@@ -367,7 +367,7 @@ export const ColoniaDiorama: React.FC<ColoniaDioramaProps> = ({
                 ? buckyFocusImg
                 : buckyHoodieHappyImg
             }
-            alt="Bucky en La Colonia"
+            alt="ECO en La Colonia"
             className="w-24 h-24 sm:w-28 sm:h-28 object-contain filter drop-shadow-[0_10px_20px_rgba(0,0,0,0.6)] transform group-hover:scale-110 transition-all duration-200"
           />
 
@@ -376,10 +376,10 @@ export const ColoniaDiorama: React.FC<ColoniaDioramaProps> = ({
         </div>
       </div>
 
-      {/* Indicador sutil de clic en Bucky */}
+      {/* Indicador sutil de clic en ECO */}
       <div className="absolute bottom-4 left-4 z-20 flex items-center gap-2 text-[11px] text-white/50 bg-black/40 px-3 py-1.5 rounded-xl border border-white/5 backdrop-blur-xs">
         <MessageSquare className="w-3.5 h-3.5 text-[#d4ff4a]" />
-        <span>Haz clic en Bucky o en las estructuras para explorar su hábitat</span>
+        <span>Haz clic en ECO o en las estructuras para explorar su hábitat</span>
       </div>
 
       {/* ================================================================= */}

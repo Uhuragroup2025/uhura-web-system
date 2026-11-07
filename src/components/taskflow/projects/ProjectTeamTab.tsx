@@ -92,7 +92,7 @@ export const ProjectTeamTab: React.FC<ProjectTeamTabProps> = ({
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-3xl border border-[#e2e8f0] shadow-xs overflow-hidden">
+      <div className="bg-white rounded-2xl border border-[#e2e8f0] shadow-xs overflow-hidden">
         <div className="p-4 border-b border-[#f1f5f9] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="space-y-0.5">
             <div className="flex items-center gap-2">
@@ -245,7 +245,7 @@ export const ProjectTeamTab: React.FC<ProjectTeamTabProps> = ({
 
       {/* 4. SEGUIDORES & STAKEHOLDERS (Solo si existen seguidores registrados) */}
       {stakeholders.length > 0 && (
-        <div className="bg-white rounded-3xl p-5 border border-[#e2e8f0] shadow-xs space-y-3">
+        <div className="bg-white rounded-2xl p-5 border border-[#e2e8f0] shadow-xs space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Eye className="w-4 h-4 text-[#64748b]" />
@@ -258,7 +258,7 @@ export const ProjectTeamTab: React.FC<ProjectTeamTabProps> = ({
               className="text-xs font-bold text-[#501f92] hover:underline cursor-pointer flex items-center gap-1"
             >
               <Plus className="w-3 h-3" />
-              <span>Añadir Seguidor</span>
+              <span>Añadir seguidor</span>
             </button>
           </div>
 
@@ -300,9 +300,9 @@ export const ProjectTeamTab: React.FC<ProjectTeamTabProps> = ({
       {/* 6. MODAL: AGREGAR STAKEHOLDER / SEGUIDOR */}
       {showStakeholderModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-[#e2e8f0] space-y-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-[#e2e8f0] space-y-4">
             <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-3">
-              <h3 className="font-extrabold text-base text-[#0f172a]">Añadir Seguidor / Stakeholder</h3>
+              <h3 className="font-extrabold text-base text-[#0f172a]">Añadir seguidor</h3>
               <button onClick={() => setShowStakeholderModal(false)} className="p-1 text-[#64748b] hover:bg-[#f1f5f9] rounded-lg">
                 <X className="w-5 h-5" />
               </button>

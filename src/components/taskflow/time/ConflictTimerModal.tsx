@@ -35,7 +35,7 @@ export const ConflictTimerModal: React.FC<ConflictTimerModalProps> = ({
     >
       <div
         id="conflict-timer-modal"
-        className="bg-white rounded-3xl shadow-2xl border border-[#e2e8f0] w-full max-w-md overflow-hidden flex flex-col animate-in zoom-in-95 duration-150"
+        className="bg-white rounded-2xl shadow-2xl border border-[#e2e8f0] w-full max-w-md overflow-hidden flex flex-col animate-in zoom-in-95 duration-150"
       >
         {/* Header */}
         <div className="px-5 py-4 bg-[#0f172a] text-white flex items-center justify-between">

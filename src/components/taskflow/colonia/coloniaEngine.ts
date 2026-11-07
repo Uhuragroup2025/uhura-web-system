@@ -44,7 +44,7 @@ export const INITIAL_STRUCTURES: ColonyStructure[] = [
   {
     id: 'muelle_troncos',
     name: 'Muelle de Troncos Pulidos',
-    description: 'Punto de reunión ribereño donde Bucky revisa los planos y toma café al sol.',
+    description: 'Punto de reunión ribereño donde ECO revisa los planos y toma café al sol.',
     level: 1,
     category: 'base',
     cost: { wood: 10, energy: 4, orbs: 0 },
@@ -65,7 +65,7 @@ export const INITIAL_STRUCTURES: ColonyStructure[] = [
     unlocked: true,
     builtAt: '2026-09-06',
     gridSlot: 'shore_left',
-    tooltipAction: 'Bucky se sienta aquí durante las pausas de bienestar.'
+    tooltipAction: 'ECO se sienta aquí durante las pausas de bienestar.'
   },
   {
     id: 'jardin_ribereno',
@@ -83,7 +83,7 @@ export const INITIAL_STRUCTURES: ColonyStructure[] = [
   // NIVEL 2: La Cabaña Taller
   {
     id: 'cabana_taller',
-    name: 'Cabaña Taller de Bucky',
+    name: 'Cabaña Taller de ECO',
     description: 'Estructura principal de diseño y carpintería con mesa de corte y estanterías.',
     level: 2,
     category: 'arquitectura',
@@ -103,7 +103,7 @@ export const INITIAL_STRUCTURES: ColonyStructure[] = [
     icon: '🌉',
     unlocked: false,
     gridSlot: 'river_cross',
-    tooltipAction: 'Facilita el paso continuo de Bucky con materiales secos.'
+    tooltipAction: 'Facilita el paso continuo de ECO con materiales secos.'
   },
   {
     id: 'faroles_solares',
@@ -141,7 +141,7 @@ export const INITIAL_STRUCTURES: ColonyStructure[] = [
     icon: '🔭',
     unlocked: false,
     gridSlot: 'summit_peak',
-    tooltipAction: 'Permite a Bucky otear proyectos en el horizonte con semanas de anticipación.'
+    tooltipAction: 'Permite a ECO otear proyectos en el horizonte con semanas de anticipación.'
   },
   {
     id: 'baliza_estelar',
@@ -211,7 +211,7 @@ export const INITIAL_ACCESSORIES: BuckyAccessory[] = [
   {
     id: 'luciernagas_orbitales',
     name: 'Enjambre de Luciérnagas Moradas',
-    description: 'Pequeños puntos de bioluminiscencia orbital que flotan con delicadeza alrededor de Bucky.',
+    description: 'Pequeños puntos de bioluminiscencia orbital que flotan con delicadeza alrededor de ECO.',
     type: 'ambient',
     cost: { orbs: 4 },
     icon: '✨',
@@ -504,7 +504,7 @@ export function rewardMinigameCompletion(
     id: 'mini-' + Date.now(),
     timestamp: 'Hoy, ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     title,
-    description: 'Micro-pausa activa de 20s. Bucky y tu mente descansaron.',
+    description: 'Micro-pausa activa de 20s. ECO y tu mente descansaron.',
     rewardType: rewardEnergy ? 'energy' : 'wood',
     amount: rewardEnergy || rewardWood,
     source: 'plan_completed'

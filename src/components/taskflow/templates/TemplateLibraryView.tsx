@@ -341,7 +341,7 @@ export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] text-xs font-bold text-white shadow-2xs transition-colors cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>Nueva Plantilla</span>
+              <span>Nueva plantilla</span>
             </button>
           )}
         </div>
@@ -453,7 +453,7 @@ export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
                       {/* Sub-línea 1: Categoría · Versión · Estado */}
                       <div className="flex items-center gap-2 text-xs text-[#64748b] flex-wrap">
                         <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${
                             catMeta ? `${catMeta.badgeBg} ${catMeta.badgeText}` : 'bg-gray-100 text-gray-700'
                           }`}
                         >
@@ -463,7 +463,7 @@ export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
                         <span className="text-[11px] font-mono text-[#64748b]">v{tmpl.version}</span>
                         <span className="text-[#cbd5e1]">•</span>
                         <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${
                             tmpl.status === 'active'
                               ? 'bg-[#10b981]/15 text-[#059669]'
                               : tmpl.status === 'draft'
@@ -587,7 +587,7 @@ export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
                                   className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[#10b981]/10 text-left text-[#059669] font-medium cursor-pointer"
                                 >
                                   <Check className="w-3.5 h-3.5" />
-                                  <span>Marcar como Activa</span>
+                                  <span>Marcar como activa</span>
                                 </button>
                               )}
 
@@ -713,7 +713,7 @@ export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
                               <span>
                                 {dIdx + 1}. {del.name}
                               </span>
-                              <span className="text-[11px] font-mono font-bold text-[#8a4dff] bg-[#8a4dff]/10 px-2 py-0.5 rounded-md">
+                              <span className="text-[11px] font-mono font-bold text-[#8a4dff] bg-[#8a4dff]/10 px-2 py-0.5 rounded-lg">
                                 {del.totalHoursRollup} h
                               </span>
                             </div>

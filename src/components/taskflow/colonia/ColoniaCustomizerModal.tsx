@@ -37,7 +37,7 @@ export const ColoniaCustomizerModal: React.FC<ColoniaCustomizerModalProps> = ({
             <span className="text-2xl">🎨</span>
             <div>
               <h3 className="text-base font-black text-white">
-                Personalización de Bucky · La Colonia
+                Personalización de ECO · La Colonia
               </h3>
               <p className="text-xs text-[#c9b7ff]">
                 Accesorios y herramientas de carpintería y órbita. Buzo oficial Uhura siempre presente.
@@ -54,12 +54,12 @@ export const ColoniaCustomizerModal: React.FC<ColoniaCustomizerModalProps> = ({
 
         {/* Preview y Recursos */}
         <div className="flex flex-col sm:flex-row items-center gap-6 p-4 rounded-2xl bg-gradient-to-r from-[#1b0e36] to-[#251342] border border-[#8a4dff]/20">
-          {/* Avatar de Bucky con preview */}
+          {/* Avatar de ECO con preview */}
           <div className="relative w-28 h-28 flex items-center justify-center shrink-0">
             <div className="absolute inset-0 bg-[#8a4dff]/20 rounded-full blur-lg" />
             <img
               src={buckyHoodieHappyImg}
-              alt="Bucky Uhura"
+              alt="ECO Uhura"
               className="w-24 h-24 object-contain filter drop-shadow-lg"
             />
           </div>

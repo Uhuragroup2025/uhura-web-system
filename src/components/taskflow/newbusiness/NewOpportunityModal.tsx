@@ -329,7 +329,7 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
       onClick={onClose}
     >
       <div
-        className="bg-white w-full max-w-xl rounded-3xl shadow-2xl border border-[#e2e8f0] overflow-hidden flex flex-col max-h-[92vh]"
+        className="bg-white w-full max-w-xl rounded-2xl shadow-2xl border border-[#e2e8f0] overflow-hidden flex flex-col max-h-[92vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header con icono, badge y Segmented Control (Traer desde HubSpot / Crear manualmente) */}
@@ -341,7 +341,7 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
               </span>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-base font-extrabold tracking-tight">Nueva Oportunidad</h3>
+                  <h3 className="text-base font-extrabold tracking-tight">Nueva oportunidad</h3>
                   <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-[#d4ff4a]/20 text-[#d4ff4a] border border-[#d4ff4a]/30">
                     Handoff Comercial
                   </span>

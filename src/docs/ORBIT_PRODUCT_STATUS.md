@@ -1209,6 +1209,20 @@ Durante la auditoría end-to-end de UAT se detectaron y reconciliaron las siguie
 
 ---
 
+### 8.1 Estándar visual de la interfaz (pulido 07 Nov 2026)
+Reglas de presentación que el frontend de producción debe mantener (no cambian lógica):
+1. **Encabezado de pantalla único** (`PageHeader`): título igual al nombre del menú, una línea de contexto y acciones a la derecha. La barra superior muestra solo la ruta («Operación › Proyectos»).
+2. **Botones en mayúscula inicial** («Nuevo proyecto», «Nueva oportunidad», «Guardar insumo»). Los nombres propios conservan su forma (ECO, HubSpot).
+3. **Estados del proyecto con un solo vocabulario:** Por iniciar · Programado · En ejecución · Cerrado · Archivado. No se repite el estado en dos chips.
+4. **Fechas:** formato «15 ago 2026» (día civil, sin corrimientos de zona horaria). **Nunca se inventan fechas:** si no existe, se muestra «Sin fecha» (o «Por definir» / «No fijada» según el contexto). Ninguna pantalla rellena con fechas de ejemplo ni con «Hoy».
+5. **Solo datos reales:** indicadores y gráficos se calculan desde tareas, registros y calendarios; si no hay datos, se muestra un estado vacío claro (p. ej. Capacidad: «Aún no tienes horas planificadas»). No hay series de ejemplo fijas. «Salud» solo se muestra cuando existe el cálculo.
+6. **Menú lateral:** íconos de línea (sin emojis) y sin etiquetas decorativas; un contador solo cuando hay algo pendiente.
+7. **Alertas:** tarjetas neutras con franja de color a la izquierda según severidad (rojo vencido/bloqueante, naranja desvío, ámbar atención), en lugar de fondos de color completos.
+8. **Cifras** con la tipografía de la interfaz y dígitos tabulares (alineados), no con fuente monoespaciada.
+9. **Esquinas:** `lg` etiquetas y controles pequeños · `xl` botones y campos · `2xl` tarjetas y paneles · `full` píldoras.
+10. **Estados vacíos con acción** («Quitar filtros», «Nueva tarea») y textos neutros en género.
+11. El marco del prototipo (barra del sistema de diseño, barra de navegador simulada y Simulador QA) **no** forma parte de ECO en producción.
+
 ## 9. Gaps de Portabilidad y Plan de Cierre
 
 ### Gaps Críticos que Bloquean Portabilidad (Deben resolverse primero en Backend):

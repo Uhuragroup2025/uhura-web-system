@@ -121,7 +121,7 @@ export const ManagePhasesModal: React.FC<ManagePhasesModalProps> = ({
       }}
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150 overflow-y-auto"
     >
-      <div className="bg-white rounded-2xl sm:rounded-3xl w-full max-w-3xl overflow-hidden shadow-2xl border border-[#e2e8f0] flex flex-col max-h-[92vh] my-auto">
+      <div className="bg-white rounded-2xl sm:rounded-2xl w-full max-w-3xl overflow-hidden shadow-2xl border border-[#e2e8f0] flex flex-col max-h-[92vh] my-auto">
         {/* Header */}
         <div className="p-4 sm:p-5 md:p-6 border-b border-[#e2e8f0] flex items-center justify-between bg-[#f8fafc] shrink-0">
           <div className="flex items-center gap-3 min-w-0">
@@ -299,7 +299,7 @@ export const ManagePhasesModal: React.FC<ManagePhasesModalProps> = ({
               }`}
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Agregar Fase</span>
+              <span>Agregar fase</span>
             </button>
           </form>
         </div>

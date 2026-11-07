@@ -1,4 +1,6 @@
 import React, { useState, useMemo } from 'react';
+import { formatDate, formatDateRange } from '../../utils/formatters';
+import { PageHeader } from './PageHeader';
 import {
   Clock,
   CheckCircle2,
@@ -345,7 +347,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
   }, [absenceEvents]);
 
   // Fecha de referencia canónica de ECO UAT actual: 19 de Octubre 2026
-  const referenceDateStr = '2026-10-19';
+  const referenceDateStr = new Date().toISOString().slice(0, 10); // fecha real de hoy
 
   // Radar de ausencias próximas (próximos 14 días o activas)
   const upcomingVacations = useMemo(() => {
@@ -431,6 +433,13 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
+      <PageHeader
+        title="Mi Día"
+        description={(() => {
+          const d = new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
+          return `${d.charAt(0).toUpperCase()}${d.slice(1)} · ${currentUserName.split(' ')[0]}, esto es lo tuyo para hoy`;
+        })()}
+      />
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-[#0f172a] text-white text-xs font-semibold shadow-xl border border-white/10 animate-in slide-in-from-bottom-2">
@@ -448,24 +457,24 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
 
           {/* NIVEL 1: ¿QUÉ REQUIERE MI ATENCIÓN? (CONDICIONAL ESTRICTO: 0 SI NO HAY ACCIONES) */}
           {hasAttentionItems && (
-            <div className="bg-[#fffbeb] rounded-3xl p-5 border border-[#fde68a] shadow-xs space-y-3.5">
-              <div className="flex items-center justify-between pb-2 border-b border-[#fef3c7]">
+            <div className="bg-white rounded-2xl p-5 border border-[#e2e8f0] border-l-4 border-l-[#f59e0b] shadow-xs space-y-3.5">
+              <div className="flex items-center justify-between pb-2 border-b border-[#f1f5f9]">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-xl bg-[#f59e0b]/20 text-[#b45309] flex items-center justify-center">
                     <AlertTriangle className="w-4 h-4" />
                   </div>
                   <div>
-                    <h2 className="text-sm font-bold text-[#92400e]">
+                    <h2 className="text-sm font-bold text-[#0f172a]">
                       ¿Qué requiere mi atención?
                     </h2>
-                    <p className="text-[11px] text-[#b45309]">
+                    <p className="text-[11px] text-[#64748b]">
                       {totalAttentionCount} asunto{totalAttentionCount > 1 ? 's' : ''} que demanda{totalAttentionCount > 1 ? 'n' : ''} acción o decisión hoy
                     </p>
                   </div>
                 </div>
 
-                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#fde68a] text-[#78350f]">
-                  Prioritario
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#fffbeb] text-[#b45309] border border-[#fde68a]">
+                  {totalAttentionCount}
                 </span>
               </div>
 
@@ -476,7 +485,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                   <div
                     key={`rework-${t.id}`}
                     onClick={() => onOpenTaskDetail(t.id)}
-                    className="p-3 rounded-2xl bg-white border border-[#fde68a] hover:border-[#dc2626] hover:bg-[#fef2f2]/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs cursor-pointer transition-all group shadow-2xs"
+                    className="p-3 rounded-xl bg-white border border-[#e2e8f0] hover:border-[#dc2626] hover:bg-[#fef2f2]/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs cursor-pointer transition-all group shadow-2xs"
                   >
                     <div className="flex items-start gap-2.5">
                       <Repeat className="w-4 h-4 text-[#dc2626] shrink-0 mt-0.5" />
@@ -505,7 +514,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                   <div
                     key={`review-${t.id}`}
                     onClick={() => onOpenTaskDetail(t.id)}
-                    className="p-3 rounded-2xl bg-white border border-[#fde68a] hover:border-[#8a4dff] hover:bg-[#faf5ff]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs cursor-pointer transition-all group shadow-2xs"
+                    className="p-3 rounded-xl bg-white border border-[#e2e8f0] hover:border-[#8a4dff] hover:bg-[#faf5ff]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs cursor-pointer transition-all group shadow-2xs"
                   >
                     <div className="flex items-center gap-2.5">
                       <ShieldCheck className="w-4 h-4 text-[#8a4dff] shrink-0" />
@@ -526,10 +535,10 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                     onClick={() => {
                       if (onNavigateToView) onNavigateToView('proyectos');
                     }}
-                    className={`p-3.5 rounded-2xl bg-white border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs cursor-pointer transition-all group shadow-2xs ${
+                    className={`p-3 rounded-xl bg-white border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs cursor-pointer transition-all group shadow-2xs ${
                       dep.delayDays > 0
-                        ? 'border-[#fca5a5] bg-[#fff5f5] hover:border-[#dc2626]'
-                        : 'border-[#fde68a] hover:border-[#64748b] hover:bg-[#f8fafc]'
+                        ? 'border-[#e2e8f0] border-l-4 border-l-[#dc2626] hover:border-[#dc2626]'
+                        : 'border-[#e2e8f0] hover:border-[#64748b] hover:bg-[#f8fafc]'
                     }`}
                   >
                     <div className="flex items-start gap-2.5">
@@ -573,7 +582,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                   <div
                     key={`blocked-${t.id}`}
                     onClick={() => onOpenTaskDetail(t.id)}
-                    className="p-3 rounded-2xl bg-white border border-[#fecaca] hover:border-[#dc2626] hover:bg-[#fef2f2]/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs cursor-pointer transition-all group shadow-2xs"
+                    className="p-3 rounded-xl bg-white border border-[#e2e8f0] border-l-4 border-l-[#dc2626] hover:border-[#dc2626] hover:bg-[#fef2f2]/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs cursor-pointer transition-all group shadow-2xs"
                   >
                     <div className="flex items-start gap-2.5">
                       <AlertOctagon className="w-4 h-4 text-[#ef4444] shrink-0 mt-0.5" />
@@ -599,14 +608,14 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                     <div
                       key={`overtime-${t.id}`}
                       onClick={() => onOpenTaskDetail(t.id)}
-                      className="p-3 rounded-2xl bg-white border border-[#fed7aa] hover:border-[#ea580c] hover:bg-[#fff7ed]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs cursor-pointer transition-all group shadow-2xs"
+                      className="p-3 rounded-xl bg-white border border-[#e2e8f0] border-l-4 border-l-[#ea580c] hover:border-[#ea580c] hover:bg-[#fff7ed]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs cursor-pointer transition-all group shadow-2xs"
                     >
                       <div className="flex items-center gap-2 min-w-0 flex-wrap">
                         <Flame className="w-4 h-4 text-[#ea580c] shrink-0" />
                         <span className="font-bold text-[#0f172a] group-hover:text-[#ea580c] transition-colors truncate">
                           {t.title}
                         </span>
-                        <span className="px-2 py-0.5 rounded-md bg-[#fff7ed] text-[#c2410c] font-bold border border-[#fed7aa] text-[10px] inline-flex items-center gap-1 shrink-0">
+                        <span className="px-2 py-0.5 rounded-lg bg-[#fff7ed] text-[#c2410c] font-bold border border-[#fed7aa] text-[10px] inline-flex items-center gap-1 shrink-0">
                           <AlertTriangle className="w-3 h-3" />
                           <span>Desvío {consumedHrs}h / {t.budgetedHours}h cotizadas</span>
                         </span>
@@ -698,7 +707,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                 {fiscalPendingActions.slice(0, 2).map((c) => (
                   <div
                     key={`fiscal-${c.id}`}
-                    className="p-3 rounded-2xl bg-white border border-[#fde68a] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                    className="p-3 rounded-xl bg-white border border-[#e2e8f0] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
                   >
                     <div className="flex items-start gap-2.5">
                       <Building2 className="w-4 h-4 text-[#64748b] shrink-0 mt-0.5" />
@@ -725,7 +734,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
           )}
 
           {/* NIVEL 2: ¿QUÉ TENGO QUE HACER HOY? (PROTAGONISTA) */}
-          <div className="bg-white rounded-3xl p-5 sm:p-6 border border-[#e2e8f0] shadow-xs space-y-4">
+          <div className="bg-white rounded-2xl p-5 sm:p-6 border border-[#e2e8f0] shadow-xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#f1f5f9]">
               <div>
                 <div className="flex items-center gap-2">
@@ -787,7 +796,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                           onClick={() => onOpenTaskDetail(t.id)}
                           className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border border-[#e2e8f0] bg-white hover:border-[#cbd5e1] text-left text-xs cursor-pointer"
                         >
-                          {isUrgentTask(t) && <span className="shrink-0 px-1.5 py-0.5 rounded-md bg-[#fef2f2] text-[#dc2626] text-[10px] font-bold">Urgente</span>}
+                          {isUrgentTask(t) && <span className="shrink-0 px-1.5 py-0.5 rounded-lg bg-[#fef2f2] text-[#dc2626] text-[10px] font-bold">Urgente</span>}
                           <span className="flex-1 min-w-0 truncate font-semibold text-[#0f172a]">{t.title}</span>
                           <span className="shrink-0 text-[#64748b]">{taskScheduleDate(t) || t.dueText || 'Sin fecha'}</span>
                           <ChevronRight className="w-4 h-4 text-[#94a3b8] shrink-0" />
@@ -950,7 +959,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
 
           {/* NIVEL 3: ¿CÓMO VOY? (BALANCE COMPACTO, TIMER, CARGA RÁPIDA Y LOGS DE HOY) */}
           {!isExecutive && (
-            <div className="bg-white rounded-3xl p-5 sm:p-6 border border-[#e2e8f0] shadow-xs space-y-4">
+            <div className="bg-white rounded-2xl p-5 sm:p-6 border border-[#e2e8f0] shadow-xs space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#f1f5f9]">
                 <div>
                   <h2 className="text-base sm:text-lg font-bold text-[#0f172a] tracking-tight">
@@ -1018,12 +1027,12 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
         {/* ==================================================================== */}
         <aside className="w-full xl:w-84 shrink-0 space-y-4">
           {/* Tarjeta Principal del Radar de Ausencias */}
-          <div className="bg-white rounded-3xl p-5 border border-[#ede9fe] shadow-xs space-y-4 transition-all">
+          <div className="bg-white rounded-2xl p-5 border border-[#e2e8f0] shadow-xs space-y-4 transition-all">
             {/* Header del Sidebar */}
             <div className="flex items-center justify-between pb-3 border-b border-[#f1f5f9]">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-[#faf5ff] border border-[#ede9fe] flex items-center justify-center text-sm">
-                  🦫
+                <div className="w-8 h-8 rounded-xl bg-[#faf5ff] border border-[#ede9fe] flex items-center justify-center text-[#501f92]">
+                  <Users className="w-4 h-4" />
                 </div>
                 <div>
                   <h3 className="text-xs font-bold text-[#0f172a] uppercase tracking-wider">
@@ -1036,8 +1045,8 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
               </div>
 
               {upcomingVacations.length > 0 && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#fef3c7] text-[#b45309] border border-[#fde68a] animate-pulse">
-                  {upcomingVacations.length} vacación próxima
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#fffbeb] text-[#b45309] border border-[#fde68a]">
+                  {upcomingVacations.length} {upcomingVacations.length === 1 ? 'ausencia próxima' : 'ausencias próximas'}
                 </span>
               )}
             </div>
@@ -1046,31 +1055,31 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
             {upcomingVacations.length > 0 ? (
               <div className="space-y-3">
                 {upcomingVacations.map((vac) => {
-                  const isLuisa = vac.userId === 'u-3' || vac.userName.toLowerCase().includes('luisa');
+                  const isSoon = vac.daysRemaining <= 2; // resalta solo por cercanía, nunca por persona
                   const daysBadgeText = vac.daysRemaining === 0
                     ? 'Inicia hoy'
                     : vac.daysRemaining === 1
                     ? 'Mañana'
                     : vac.daysRemaining === 2
-                    ? 'Sale en 2 días · Pasado mañana'
+                    ? 'En 2 días'
                     : `En ${vac.daysRemaining} días`;
 
                   return (
                     <div
                       key={vac.id}
                       className={`p-4 rounded-2xl border transition-all ${
-                        isLuisa
-                          ? 'bg-gradient-to-br from-[#fffbeb] to-[#fef3c7] border-[#f59e0b] shadow-2xs'
+                        isSoon
+                          ? 'bg-white border-[#fde68a] border-l-4 border-l-[#f59e0b]'
                           : 'bg-[#f8fafc] border-[#e2e8f0]'
                       }`}
                     >
                       <div className="flex items-center justify-between gap-2 mb-2">
                         <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
-                          isLuisa
-                            ? 'bg-[#b45309] text-white'
+                          isSoon
+                            ? 'bg-[#fffbeb] text-[#b45309] border border-[#fde68a]'
                             : 'bg-[#0284c7]/10 text-[#0284c7]'
                         }`}>
-                          🏖️ {daysBadgeText}
+                          {daysBadgeText}
                         </span>
                         <span className="text-[10px] font-mono text-[#64748b]">
                           {vac.daysDuration} días
@@ -1079,24 +1088,24 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
 
                       <div className="flex items-start gap-3">
                         <div className="w-10 h-10 rounded-xl bg-[#0284c7] text-white font-bold flex items-center justify-center shrink-0 shadow-2xs">
-                          {vac.user?.initials || 'LU'}
+                          {vac.user?.initials || vac.userName.split(' ').map((n) => n[0]).join('').slice(0, 2)}
                         </div>
                         <div className="min-w-0 flex-1">
                           <h4 className="text-xs font-bold text-[#0f172a] truncate">
                             {vac.userName}
                           </h4>
                           <p className="text-[11px] text-[#64748b] truncate mt-0.5">
-                            {vac.user?.jobTitle || 'Operaciones & Cuentas'}
+                            {vac.user?.jobTitle || ''}
                           </p>
-                          <p className="text-[10px] font-medium text-[#78350f] mt-1 bg-white/60 p-1.5 rounded-lg border border-[#fde68a]/60">
-                            📅 <strong>{vac.startDate} al {vac.endDate}</strong>
+                          <p className="text-[11px] font-medium text-[#334155] mt-1">
+                            <strong>{formatDate(vac.startDate)} al {formatDate(vac.endDate)}</strong>
                           </p>
                         </div>
                       </div>
 
                       {/* Prompt funcional y empático */}
-                      <div className="mt-3 text-[11px] text-[#78350f] leading-relaxed bg-white/70 p-2.5 rounded-xl border border-[#fde68a]">
-                        💡 <strong>Para tener en cuenta:</strong> {vac.userName.split(' ')[0]} saldrá a vacaciones pronto. Si tienes tareas, dudas o temas de clientes con ella, coordina entregas y handoffs antes de su salida.
+                      <div className="mt-3 text-[11px] text-[#475569] leading-relaxed">
+                        <strong className="text-[#0f172a]">Para tener en cuenta:</strong> {vac.userName.split(' ')[0]} estará ausente. Si compartes tareas o clientes, coordina entregas antes de esa fecha.
                       </div>
                     </div>
                   );
@@ -1153,8 +1162,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                   className="w-full p-2.5 rounded-2xl bg-[#faf5ff] hover:bg-[#ede9fe] border border-[#ddd6fe] text-[#501f92] text-xs font-bold transition-all flex items-center justify-between cursor-pointer group"
                 >
                   <div className="flex items-center gap-2">
-                    <span>🦫</span>
-                    <span>Cónoce la colonia Uhureña</span>
+                    <span>Conoce La Colonia</span>
                   </div>
                   <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                 </button>
@@ -1167,7 +1175,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
       {/* MODAL DE COORDINACIÓN DE TRASPASO POR VACACIONES DE LUISA */}
       {isLuisaHandoffModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-5 border border-[#e2e8f0] shadow-2xl animate-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-5 border border-[#e2e8f0] shadow-2xl animate-in zoom-in-95 duration-150">
             <div className="flex items-start justify-between gap-3 pb-3 border-b border-[#f1f5f9]">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-[#fffbeb] border border-[#fde68a] flex items-center justify-center text-xl">

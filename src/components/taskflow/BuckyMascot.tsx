@@ -522,7 +522,7 @@ export const BuckyMascot: React.FC<BuckyMascotProps> = ({
               {speechText || meta.defaultSpeech}
             </span>
           </div>
-          {/* Speech bubble tail pointing directly down to Bucky */}
+          {/* Speech bubble tail pointing directly down to ECO */}
           <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-[#140b24] border-r border-b border-[#8a4dff]/50 transform rotate-45" />
         </div>
       )}
@@ -596,7 +596,7 @@ export const BuckyMascot: React.FC<BuckyMascotProps> = ({
         <div className={`relative ${getMotionAnimationClass()}`}>
           <img
             src={getImageSrc()}
-            alt={`Bucky el Castor de ECO - ${meta.label}`}
+            alt={`ECO, la mascota - ${meta.label}`}
             referrerPolicy="no-referrer"
             draggable={false}
             className={`${sizeClasses} object-contain filter drop-shadow-[0_14px_24px_rgba(20,11,36,0.28)] select-none pointer-events-none transition-all duration-300`}
@@ -611,7 +611,7 @@ export const BuckyMascot: React.FC<BuckyMascotProps> = ({
 
       {/* 3. OPTIONAL INTERACTIVE 12-STATE SELECTOR BAR (For testing & showcase) */}
       {showSelector && (
-        <div className="mt-4 w-full max-w-xl bg-white/95 backdrop-blur-md rounded-3xl p-4 border border-[#e2e8f0] shadow-xl space-y-3">
+        <div className="mt-4 w-full max-w-xl bg-white/95 backdrop-blur-md rounded-2xl p-4 border border-[#e2e8f0] shadow-xl space-y-3">
           <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-2">
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-[#8a4dff]" />

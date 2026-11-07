@@ -2309,7 +2309,7 @@ export const initialUsers: UserItem[] = [
 /**
  * Eventos iniciales de ausencia estructurada en ECO.
  * Google Calendar es el Source of Truth externo para vacaciones y licencias.
- * Bucky y el motor de Capacidad de ECO consumen estos datos sin acoplarse a Google Calendar API.
+ * ECO y el motor de Capacidad de ECO consumen estos datos sin acoplarse a Google Calendar API.
  */
 export const initialAbsenceEvents: TeamAbsenceEvent[] = [
   {

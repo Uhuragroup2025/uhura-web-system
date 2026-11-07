@@ -54,7 +54,7 @@ export const ProjectNotificationsModal: React.FC<ProjectNotificationsModalProps>
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl border border-[#e2e8f0] space-y-4">
+      <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl border border-[#e2e8f0] space-y-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-[#501f92]/10 text-[#501f92] flex items-center justify-center shrink-0">

@@ -206,9 +206,9 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
       {/* 1. TOP HEADER & RESUMEN EN UNA SOLA LÍNEA */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
         <div>
-          <h2 className="text-xl sm:text-2xl font-extrabold text-[#0f172a] tracking-tight">
-            Cartera de Clientes
-          </h2>
+          <h1 className="text-xl sm:text-2xl font-bold text-[#0f172a] tracking-tight">
+            Clientes
+          </h1>
           {/* Resumen ejecutivo en una sola línea */}
           <div className="flex items-center flex-wrap gap-2 text-xs text-[#64748b] mt-1 font-medium">
             <span className="font-bold text-[#0f172a]">{clients.length} cuentas</span>
@@ -451,7 +451,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                       {cli.commercialInfo.brands.slice(0, 3).map((b, idx) => (
                         <span
                           key={idx}
-                          className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-[#f8fafc] text-[#475569] border border-[#e2e8f0]"
+                          className="text-[10px] font-medium px-2 py-0.5 rounded-lg bg-[#f8fafc] text-[#475569] border border-[#e2e8f0]"
                         >
                           {b}
                         </span>

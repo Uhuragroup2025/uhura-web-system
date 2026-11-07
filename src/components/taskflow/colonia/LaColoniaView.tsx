@@ -10,7 +10,7 @@
  * - Cuadrícula de 3 columnas de tarjetas humanas de colaboradores
  * - Integración con TeamHumanProfileModal para editar o ver detalles
  * - Acceso directo a "Mi Ficha"
- * - Toggle para disfrutar del Hábitat interactivo y minijuegos de Bucky
+ * - Toggle para disfrutar del Hábitat interactivo y minijuegos de ECO
  */
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -88,7 +88,7 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
   const [selectedFilter, setSelectedFilter] = useState<FilterCategory>('todos');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Estados para el hábitat de Bucky y minijuegos
+  // Estados para el hábitat de ECO y minijuegos
   const [activeGame, setActiveGame] = useState<ColonyGameId | null>(null);
   const [activeChallengeToPlay, setActiveChallengeToPlay] = useState<ColonyChallenge | null>(null);
   const [challenges, setChallenges] = useState<ColonyChallenge[]>(loadColonyChallenges);
@@ -101,7 +101,7 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
   const [isNewChallengeModalOpen, setIsNewChallengeModalOpen] = useState(false);
   const [newChallengeGame, setNewChallengeGame] = useState<ColonyGameId>('torre');
 
-  // Estado del host Bucky
+  // Estado del host ECO
   const [lastGameResult, setLastGameResult] = useState<{ gameId: ColonyGameId; score: number } | null>(null);
   const [buckyMood, setBuckyMood] = useState<'happy' | 'focus' | 'celebrating'>('happy');
   const [buckyPhraseIndex, setBuckyPhraseIndex] = useState(0);
@@ -272,7 +272,7 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
                 type="button"
                 onClick={() => setActiveTabMode('habitat')}
                 className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#2e1859] hover:bg-[#1a0f30] text-white text-xs font-bold transition-all shadow-xs cursor-pointer shrink-0 ml-1"
-                title="Jugar en la colonía · Minijuegos de Bucky"
+                title="Jugar en la colonía · Minijuegos de ECO"
               >
                 <Gamepad2 className="w-3.5 h-3.5 text-[#d4ff4a]" />
                 <span>Jugar en la colonía</span>
@@ -409,11 +409,11 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
             </div>
           )}
 
-          {/* Sticker de Bucky flotante en la esquina inferior derecha (Fiel a Staging) */}
+          {/* Sticker de ECO flotante en la esquina inferior derecha (Fiel a Staging) */}
           <div className="fixed bottom-6 right-8 pointer-events-none z-30 hidden sm:block">
             <img
               src={buckyHoodieHappyImg}
-              alt="Bucky Uhura"
+              alt="ECO Uhura"
               className="w-24 h-24 object-contain drop-shadow-xl"
             />
           </div>
@@ -477,7 +477,7 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
                   </div>
                   <img
                     src={buckyFocusImg}
-                    alt="Bucky"
+                    alt="ECO"
                     className="w-14 h-14 object-contain"
                   />
                 </div>
@@ -508,7 +508,7 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
                       Salto de Nenúfares
                     </h4>
                     <p className="text-[11px] text-white/60 mt-1">
-                      Salta con Bucky calculando el ritmo del río.
+                      Salta con ECO calculando el ritmo del río.
                     </p>
                   </button>
                 </div>
