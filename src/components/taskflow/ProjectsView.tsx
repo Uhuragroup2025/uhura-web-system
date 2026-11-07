@@ -797,8 +797,8 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
               </div>
             </div>
 
-            {/* Schedule Kickoff Action Button & Project Options Menu */}
-            <div className="flex items-center gap-2 flex-wrap">
+            {/* Schedule Kickoff Action Button & Project Options Menu (siempre en la misma fila) */}
+            <div className="flex items-center gap-2 flex-nowrap min-w-0 max-w-full">
               {isProjectPendingToStart ? (
                 <button
                   type="button"
@@ -813,7 +813,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsScheduleModalOpen(true)}
-                  className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white hover:bg-[#f8fafc] border border-[#cbd5e1] hover:border-[#501f92] text-[#0f172a] text-xs font-bold transition-all shadow-xs cursor-pointer group"
+                  className="flex flex-wrap md:flex-nowrap md:whitespace-nowrap items-center gap-x-2 gap-y-0.5 min-w-0 text-left px-4 py-2 rounded-2xl bg-white hover:bg-[#f8fafc] border border-[#cbd5e1] hover:border-[#501f92] text-[#0f172a] text-xs font-bold transition-all shadow-xs cursor-pointer group"
                   title="Proyecto iniciado. Clic para ajustar fechas o recalcular cronograma"
                 >
                   <span className="w-2 h-2 rounded-full bg-[#10b981] inline-block" />
@@ -833,7 +833,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
               )}
 
               {/* Project Actions Menu (3 dots) */}
-              <div className="relative project-menu-container">
+              <div className="relative project-menu-container shrink-0">
                 <button
                   onClick={() => setActiveProjectMenu(activeProjectMenu === currentProject.id ? null : currentProject.id)}
                   className="p-2.5 rounded-2xl bg-white hover:bg-[#f8fafc] text-[#64748b] hover:text-[#0f172a] border border-[#cbd5e1] hover:border-[#501f92] transition-colors cursor-pointer shadow-xs"
