@@ -39,7 +39,7 @@ export const RoleChip: React.FC<RoleChipProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen]);
 
-  const displayRole = role || 'Diseñador Gráfico';
+  const displayRole = role || 'Creative Designer';
 
   if (!interactive || !onChange) {
     return (

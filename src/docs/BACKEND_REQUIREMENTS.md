@@ -435,6 +435,13 @@ Para no bloquear New Business cuando la app privada de HubSpot esté caída o si
 
 ---
 
+### 12.8 Catálogo de roles y recursos externos
+* `budgeted_role` de tareas, presupuestos por entregable y plantillas solo acepta roles del catálogo oficial (`STANDARD_UHURA_ROLES`). Los datos heredados fuera del catálogo se migran a un rol oficial.
+* Nueva entidad `external_resources` (por cotización y heredada al proyecto): `description`, `provider_name`, `cost_model` (`fixed` | `hourly`), `hours`, `hourly_rate`, `total_cost`, `currency`, `service_id`. Suma al costo real del proyecto (rentabilidad); **no** participa en capacidad, `planned_hours`, Mi Día ni la matriz de horas por rol.
+* Creación de tareas: `scheduled_date` y `due_date` son **obligatorias** (`due_date >= scheduled_date`); una tarea nueva no nace bloqueada ni marcada como retrabajo (esos estados se aplican después en el detalle de la tarea).
+
+---
+
 ## 13. Módulo Capacidad: Jornada de 42h, Cálculo de Planificado vs. Ejecutado y Filtro por Área
 
 ### 13.1 Jornada Base y Deducción de Festivos/Ausencias

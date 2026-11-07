@@ -148,9 +148,9 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
         order: 1,
         status: 'in_progress',
         roleBudgets: [
-          { id: 'rb-1', roleId: 'Diseñador Gráfico', roleName: 'Diseñador Gráfico', quotedHours: 24 },
+          { id: 'rb-1', roleId: 'Creative Designer', roleName: 'Creative Designer', quotedHours: 24 },
           { id: 'rb-2', roleId: 'Community Manager', roleName: 'Community Manager', quotedHours: 4 },
-          { id: 'rb-3', roleId: 'Content Strategist', roleName: 'Content Strategist', quotedHours: 4 }
+          { id: 'rb-3', roleId: 'Digital Content Specialist', roleName: 'Digital Content Specialist', quotedHours: 4 }
         ],
         totalQuotedHours: 32,
         totalExecutedHours: 14.5,
@@ -165,9 +165,9 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
         status: 'in_progress',
         roleBudgets: [
           { id: 'rb-4', roleId: 'Product Lead', roleName: 'Product Lead', quotedHours: 2 },
-          { id: 'rb-5', roleId: 'Copywriter', roleName: 'Copywriter', quotedHours: 3 },
-          { id: 'rb-6', roleId: 'Web Designer', roleName: 'Web Designer', quotedHours: 6 },
-          { id: 'rb-7', roleId: 'Front End', roleName: 'Front End', quotedHours: 8 }
+          { id: 'rb-5', roleId: 'Content Creator', roleName: 'Content Creator', quotedHours: 3 },
+          { id: 'rb-6', roleId: 'Digital Designer', roleName: 'Digital Designer', quotedHours: 6 },
+          { id: 'rb-7', roleId: 'Front-End Dev', roleName: 'Front-End Dev', quotedHours: 8 }
         ],
         totalQuotedHours: 19,
         totalExecutedHours: 8.5,
@@ -181,7 +181,7 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
         order: 3,
         status: 'in_progress',
         roleBudgets: [
-          { id: 'rb-8', roleId: 'Trafficker', roleName: 'Trafficker', quotedHours: 8 }
+          { id: 'rb-8', roleId: 'Trafficker Media', roleName: 'Trafficker Media', quotedHours: 8 }
         ],
         totalQuotedHours: 8,
         totalExecutedHours: 4.0,
@@ -189,10 +189,10 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
       }
     ],
     coreTeam: [
-      { id: 'u-2', name: 'Paola Monsalve', role: 'Lead PM', avatarBg: 'bg-[#501f92]', initials: 'PM', isLead: true, weeklyAllocatedHours: 4 },
-      { id: 'u-7', name: 'Diego Cadavid', role: 'Diseñador Gráfico', avatarBg: 'bg-[#dc2626]', initials: 'DC', weeklyAllocatedHours: 12 },
+      { id: 'u-2', name: 'Paola Monsalve', role: 'Product Lead', avatarBg: 'bg-[#501f92]', initials: 'PM', isLead: true, weeklyAllocatedHours: 4 },
+      { id: 'u-7', name: 'Diego Cadavid', role: 'Creative Designer', avatarBg: 'bg-[#dc2626]', initials: 'DC', weeklyAllocatedHours: 12 },
       { id: 'u-8', name: 'Sara Rivera', role: 'Community Manager', avatarBg: 'bg-[#ec4899]', initials: 'SR', weeklyAllocatedHours: 4 },
-      { id: 'u-16', name: 'Sebastián Caicedo', role: 'Trafficker', avatarBg: 'bg-[#10b981]', initials: 'SC', weeklyAllocatedHours: 4 }
+      { id: 'u-16', name: 'Sebastián Caicedo', role: 'Trafficker Media', avatarBg: 'bg-[#10b981]', initials: 'SC', weeklyAllocatedHours: 4 }
     ],
     // Asignaciones nativas con soporte multirol (Paola en Gobernanza + Ejecución Digital Designer)
     assignments: [
@@ -200,7 +200,7 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
         id: 'asg-yam-1',
         projectId: 'prj-yam-navidad',
         userId: 'u-2', // Paola Monsalve
-        roleId: 'Lead Project Manager',
+        roleId: 'Product Lead',
         nature: 'governance',
         deliverableId: null,
         allocations: [
@@ -238,7 +238,7 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
         id: 'asg-yam-3',
         projectId: 'prj-yam-navidad',
         userId: 'u-7', // Diego Cadavid
-        roleId: 'Diseñador Gráfico',
+        roleId: 'Creative Designer',
         nature: 'core_execution',
         deliverableId: 'del-yam-rs',
         allocations: [
@@ -274,7 +274,7 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
         id: 'asg-yam-5',
         projectId: 'prj-yam-navidad',
         userId: 'u-16', // Sebastián Caicedo
-        roleId: 'Trafficker',
+        roleId: 'Trafficker Media',
         nature: 'core_execution',
         deliverableId: 'del-yam-pd',
         allocations: [
@@ -292,7 +292,7 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
         id: 'asg-yam-6',
         projectId: 'prj-yam-navidad',
         userId: 'u-3', // Laura Gómez
-        roleId: 'Front End',
+        roleId: 'Front-End Dev',
         nature: 'temporary_support',
         deliverableId: 'del-yam-lp',
         allocations: [
@@ -332,7 +332,7 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
         projectId: 'prj-yam-navidad',
         assignmentId: 'asg-yam-6',
         userId: 'u-3',
-        roleId: 'Front End',
+        roleId: 'Front-End Dev',
         action: 'created',
         previousWeeklyHours: null,
         newWeeklyHours: 4,
@@ -348,7 +348,7 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
         projectId: 'prj-yam-navidad',
         assignmentId: 'asg-yam-1',
         userId: 'u-2',
-        roleId: 'Lead Project Manager',
+        roleId: 'Product Lead',
         action: 'created',
         previousWeeklyHours: null,
         newWeeklyHours: 3,
@@ -483,7 +483,7 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
         description: 'Diseño en Figma de vistas desktop y mobile',
         order: 2,
         status: 'in_progress',
-        roleBudgets: [{ id: 'rb-b2', roleId: 'Web Designer', roleName: 'Web Designer', quotedHours: 36 }],
+        roleBudgets: [{ id: 'rb-b2', roleId: 'Digital Designer', roleName: 'Digital Designer', quotedHours: 36 }],
         totalQuotedHours: 36,
         totalExecutedHours: 22,
         progressPercentage: 60
@@ -495,7 +495,7 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
         description: 'Configuración de Liquid, checkout y pasarelas',
         order: 3,
         status: 'pending',
-        roleBudgets: [{ id: 'rb-b3', roleId: 'Front End', roleName: 'Front End', quotedHours: 48 }],
+        roleBudgets: [{ id: 'rb-b3', roleId: 'Front-End Dev', roleName: 'Front-End Dev', quotedHours: 48 }],
         totalQuotedHours: 48,
         totalExecutedHours: 0,
         progressPercentage: 0
@@ -507,7 +507,7 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
         description: 'Pruebas de pago, inventario y capacitación',
         order: 4,
         status: 'pending',
-        roleBudgets: [{ id: 'rb-b4', roleId: 'Lead PM', roleName: 'Lead PM', quotedHours: 12 }],
+        roleBudgets: [{ id: 'rb-b4', roleId: 'Product Lead', roleName: 'Product Lead', quotedHours: 12 }],
         totalQuotedHours: 12,
         totalExecutedHours: 0,
         progressPercentage: 0
@@ -515,7 +515,7 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
     ],
     coreTeam: [
       { id: 'u-paola', name: 'Paola Monsalve', role: 'Product Lead', avatarBg: 'bg-[#501f92]', initials: 'PM', isLead: true, weeklyAllocatedHours: 4 },
-      { id: 'u-oscar', name: 'Oscar Cerpa', role: 'Desarrollador Web Front-End', avatarBg: 'bg-[#f59e0b]', initials: 'OC', weeklyAllocatedHours: 8 },
+      { id: 'u-oscar', name: 'Oscar Cerpa', role: 'Front-End Dev', avatarBg: 'bg-[#f59e0b]', initials: 'OC', weeklyAllocatedHours: 8 },
       { id: 'u-catalina', name: 'Catalina Tejada', role: 'Directora Comercial', avatarBg: 'bg-[#7c3aed]', initials: 'CT', weeklyAllocatedHours: 15 },
       { id: 'u-laura', name: 'Laura Isabel Gómez', role: 'Digital Designer', avatarBg: 'bg-[#0284c7]', initials: 'LG', weeklyAllocatedHours: 18 }
     ]
@@ -548,7 +548,7 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
         description: 'Modelado de Cliente, Proyecto, Tareas y Capacidad',
         order: 1,
         status: 'in_progress',
-        roleBudgets: [{ id: 'rb-oc1', roleId: 'Tech Lead', roleName: 'Tech Lead', quotedHours: 0 }],
+        roleBudgets: [{ id: 'rb-oc1', roleId: 'Product Lead', roleName: 'Product Lead', quotedHours: 0 }],
         totalQuotedHours: 0,
         totalExecutedHours: 42,
         progressPercentage: 65
@@ -568,7 +568,7 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
     ],
     coreTeam: [
       { id: 'u-paola', name: 'Paola Monsalve', role: 'Product Lead', avatarBg: 'bg-[#501f92]', initials: 'PM', isLead: true, weeklyAllocatedHours: 5 },
-      { id: 'u-oscar', name: 'Oscar Cerpa', role: 'Desarrollador Web Front-End', avatarBg: 'bg-[#f59e0b]', initials: 'OC', weeklyAllocatedHours: 10 }
+      { id: 'u-oscar', name: 'Oscar Cerpa', role: 'Front-End Dev', avatarBg: 'bg-[#f59e0b]', initials: 'OC', weeklyAllocatedHours: 10 }
     ]
   },
   {
@@ -595,7 +595,7 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
         name: 'Soporte Web & Ajustes',
         order: 1,
         status: 'in_progress',
-        roleBudgets: [{ id: 'rb-t1', roleId: 'Front End', roleName: 'Front End', quotedHours: 45 }]
+        roleBudgets: [{ id: 'rb-t1', roleId: 'Front-End Dev', roleName: 'Front-End Dev', quotedHours: 45 }]
       }
     ]
   },
@@ -623,7 +623,7 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
         name: 'Gestión de Pauta & Ads',
         order: 1,
         status: 'in_progress',
-        roleBudgets: [{ id: 'rb-fl1', roleId: 'Trafficker', roleName: 'Trafficker', quotedHours: 60 }]
+        roleBudgets: [{ id: 'rb-fl1', roleId: 'Trafficker Media', roleName: 'Trafficker Media', quotedHours: 60 }]
       }
     ]
   },
@@ -872,7 +872,7 @@ export const TaskFlowPrototype: React.FC = () => {
       elapsedSeconds: 0,
       isPaused: false,
       deliverableId: task.deliverableId,
-      budgetedRoleId: task.budgetedRoleId || task.budgetedRole || 'Diseñador Gráfico',
+      budgetedRoleId: task.budgetedRoleId || task.budgetedRole || 'Creative Designer',
       isOutsideRegularSchedule: isWeekend
     });
   };
@@ -976,7 +976,7 @@ export const TaskFlowPrototype: React.FC = () => {
       id: `log-${Date.now()}`,
       taskId: activeTimer.taskId,
       userId: currentUser?.id || targetTask.assignee?.id || 'u-pao',
-      budgetedRoleId: activeTimer.budgetedRoleId || targetTask.budgetedRoleId || targetTask.budgetedRole || 'Diseñador Gráfico',
+      budgetedRoleId: activeTimer.budgetedRoleId || targetTask.budgetedRoleId || targetTask.budgetedRole || 'Creative Designer',
       durationSeconds: sessionSeconds,
       date: todayFormatted,
       source: 'timer',
@@ -2163,7 +2163,11 @@ export const TaskFlowPrototype: React.FC = () => {
             reworkRoundDays: (projItem as any).scheduleConfig?.reworkRoundDays ?? 5,
             productionWeeks: (projItem as any).scheduleConfig?.productionWeeks
           },
-          healthNote: `Proyecto independiente creado a partir del servicio ganado "${projItem.serviceName}"`
+          healthNote: `Proyecto independiente creado a partir del servicio ganado "${projItem.serviceName}"`,
+          // Recursos externos del servicio; los que no tienen servicio van al primer proyecto
+          externalResources: (quote.externalResources || []).filter((r) =>
+            r.serviceId ? r.serviceId === projItem.serviceId : pIdx === 0
+          )
         };
 
         projectsToCreate.push(newPrj);
@@ -2883,7 +2887,7 @@ export const TaskFlowPrototype: React.FC = () => {
       projectName: projectName,
       categoryType: category,
       userId: 'u-pao',
-      budgetedRoleId: 'Diseñador Gráfico',
+      budgetedRoleId: 'Creative Designer',
       source: 'manual',
       createdAt: new Date().toISOString(),
       userName: 'Paola Monsalve',

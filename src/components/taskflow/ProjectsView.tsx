@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { TaskItem, ActiveTimerState, ClientProfile, ProjectType, ProjectPhaseItem, ProjectSummaryItem, TaskPriority, UserItem, normalizeProjectType } from './types';
+import { TaskItem, ActiveTimerState, ClientProfile, ProjectType, ProjectPhaseItem, ProjectSummaryItem, TaskPriority, UserItem, normalizeProjectType, STANDARD_UHURA_ROLES } from './types';
 export type { ProjectSummaryItem };
 import { BoardView } from './BoardView';
 import { ManagePhasesModal } from './ManagePhasesModal';
@@ -213,7 +213,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   const [quickTitle, setQuickTitle] = useState('');
   const [quickFase, setQuickFase] = useState('');
   const [quickFrente, setQuickFrente] = useState('');
-  const [quickRole, setQuickRole] = useState('Front End');
+  const [quickRole, setQuickRole] = useState('Front-End Dev');
   const [quickHours, setQuickHours] = useState('4');
   const [quickAssignee, setQuickAssignee] = useState('Catalina Tejada');
   const [budgetSubView, setBudgetSubView] = useState<'matrix' | 'deliverables'>('matrix');
@@ -1373,11 +1373,9 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                         onChange={(e) => setQuickRole(e.target.value)}
                         className="px-2 py-2 text-xs bg-white text-[#0f172a] font-semibold border border-[#cbd5e1] rounded-xl focus:outline-none focus:border-[#501f92] focus:ring-1 focus:ring-[#501f92]"
                       >
-                        <option value="Front End">Front End</option>
-                        <option value="Back End">Back End</option>
-                        <option value="UI/UX Designer">UI/UX</option>
-                        <option value="QA Tester">QA Tester</option>
-                        <option value="Tech Lead">Tech Lead</option>
+                        {STANDARD_UHURA_ROLES.map((r) => (
+                          <option key={r} value={r}>{r}</option>
+                        ))}
                       </select>
                       <input
                         type="number"

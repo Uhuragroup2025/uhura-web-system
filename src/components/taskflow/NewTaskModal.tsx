@@ -197,7 +197,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
   const [customFrenteText, setCustomFrenteText] = useState('');
 
   const [title, setTitle] = useState('');
-  const [budgetedRole, setBudgetedRole] = useState<string>('Web Designer');
+  const [budgetedRole, setBudgetedRole] = useState<string>('Digital Designer');
   const [projectLeadName, setProjectLeadName] = useState('Paola (Lead PM)');
   const [collaborators, setCollaborators] = useState<string[]>(['Catalina Tejada']);
   const [followers, setFollowers] = useState<string[]>([]);
@@ -332,10 +332,10 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
   // Available templates based on serviceBase
   const availableTemplates = FEE_ACTIVITY_TEMPLATES[activeProject.serviceBase] || [
     { name: 'Conceptualización & Estructura', defaultHours: 2.0, role: 'Product Lead' },
-    { name: 'Redacción de Copys & Contenidos', defaultHours: 1.0, role: 'Copywriter' },
-    { name: 'Prototipo & Diseño UI', defaultHours: 6.0, role: 'Web Designer' },
-    { name: 'Implementación Frontend & Testing', defaultHours: 8.0, role: 'Front End' },
-    { name: 'Carga & Optimización de Pauta', defaultHours: 3.0, role: 'Trafficker' }
+    { name: 'Redacción de Copys & Contenidos', defaultHours: 1.0, role: 'Content Creator' },
+    { name: 'Prototipo & Diseño UI', defaultHours: 6.0, role: 'Digital Designer' },
+    { name: 'Implementación Frontend & Testing', defaultHours: 8.0, role: 'Front-End Dev' },
+    { name: 'Carga & Optimización de Pauta', defaultHours: 3.0, role: 'Trafficker Media' }
   ];
 
   const handleApplyTemplate = (templateName: string) => {
@@ -346,11 +346,11 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
       setBudgetedHours(tpl.defaultHours.toString());
       if (tpl.role.includes('Designer')) {
         setCollaborators(['Catalina Tejada']);
-        setBudgetedRole('Web Designer');
+        setBudgetedRole('Digital Designer');
       } else if (tpl.role.includes('Tech') || tpl.role.includes('Front') || tpl.role.includes('Dev')) {
         setCollaborators(['Oscar Cerpa']);
         setBudgetedRole('Front-End Dev');
-      } else if (tpl.role.includes('Trafficker') || tpl.role.includes('Growth')) {
+      } else if (tpl.role.includes('Trafficker Media') || tpl.role.includes('Growth')) {
         setCollaborators(['Juan Sebastian']);
         setBudgetedRole('Trafficker Media');
       } else if (tpl.role.includes('Copy') || tpl.role.includes('Content')) {

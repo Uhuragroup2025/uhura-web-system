@@ -124,7 +124,7 @@ export const ManualTimeLogModal: React.FC<ManualTimeLogModalProps> = ({
       projectName: selectedTask.projectName || selectedTask.board,
       categoryType: selectedTask.categoryType,
       userId: selectedTask.assignee?.id || 'u-pao',
-      budgetedRoleId: selectedTask.budgetedRoleId || selectedTask.budgetedRole || 'Diseñador Gráfico',
+      budgetedRoleId: selectedTask.budgetedRoleId || selectedTask.budgetedRole || 'Creative Designer',
       userName: selectedTask.assignee?.name || 'Usuario',
       userInitials: selectedTask.assignee?.initials || 'US',
       userAvatarBg: selectedTask.assignee?.avatarBg || 'bg-[#501f92]',

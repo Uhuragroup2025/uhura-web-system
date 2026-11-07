@@ -259,10 +259,10 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
   // Local team & responsibility tracking
   const [projectLead, setProjectLead] = useState<TaskItem['projectLead']>(
-    task?.projectLead || { name: 'Paola (Lead PM)', initials: 'PL', avatarBg: 'bg-[#501f92]', role: 'Lead PM' }
+    task?.projectLead || { name: 'Paola (Lead PM)', initials: 'PL', avatarBg: 'bg-[#501f92]', role: 'Product Lead' }
   );
   const [assignee, setAssignee] = useState<TaskItem['assignee']>(
-    task?.assignee || { name: 'Catalina Tejada', initials: 'CT', avatarBg: 'bg-[#501f92]', role: 'Diseñador Gráfico' }
+    task?.assignee || { name: 'Catalina Tejada', initials: 'CT', avatarBg: 'bg-[#501f92]', role: 'Creative Designer' }
   );
   const [collaborators, setCollaborators] = useState<NonNullable<TaskItem['collaborators']>>(
     task?.collaborators || []
@@ -272,7 +272,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   );
   const [reviewer, setReviewer] = useState<TaskItem['reviewer']>(task?.reviewer);
   const [requestedBy, setRequestedBy] = useState<string>(task?.requestedBy || 'Paola Monsalve');
-  const [budgetedRole, setBudgetedRole] = useState<string>(task?.budgetedRole || 'Diseñador Gráfico');
+  const [budgetedRole, setBudgetedRole] = useState<string>(task?.budgetedRole || 'Creative Designer');
   const [requiresValidation, setRequiresValidation] = useState<boolean>(task?.requiresValidation ?? false);
   const [assigneeAllocations, setAssigneeAllocations] = useState<TaskAssigneeAllocation[]>(
     task?.assigneeAllocations || []
@@ -381,16 +381,16 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   useEffect(() => {
     if (task) {
       setProjectLead(
-        task.projectLead || { name: 'Paola (Lead PM)', initials: 'PL', avatarBg: 'bg-[#501f92]', role: 'Lead PM' }
+        task.projectLead || { name: 'Paola (Lead PM)', initials: 'PL', avatarBg: 'bg-[#501f92]', role: 'Product Lead' }
       );
       setAssignee(
-        task.assignee || { name: 'Catalina Tejada', initials: 'CT', avatarBg: 'bg-[#501f92]', role: 'Diseñador Gráfico' }
+        task.assignee || { name: 'Catalina Tejada', initials: 'CT', avatarBg: 'bg-[#501f92]', role: 'Creative Designer' }
       );
       setCollaborators(task.collaborators || []);
       setFollowers(task.followers || []);
       setReviewer(task.reviewer);
       setRequestedBy(task.requestedBy || 'Paola Monsalve');
-      setBudgetedRole(task.budgetedRole || 'Diseñador Gráfico');
+      setBudgetedRole(task.budgetedRole || 'Creative Designer');
       setRequiresValidation(task.requiresValidation ?? false);
       setAssigneeAllocations(task.assigneeAllocations || []);
       setIsEditingHoursSplit(false);
@@ -3363,7 +3363,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                         name: 'Catalina Tejada',
                         initials: 'CT',
                         avatarBg: 'bg-[#501f92]',
-                        role: 'Diseñador Gráfico'
+                        role: 'Creative Designer'
                       };
                       const rest = selectedMembers.slice(1).map((m) => ({
                         name: m.name,

@@ -7,7 +7,8 @@ import {
   TaskPriority,
   UserItem,
   TaskAssigneeAllocation,
-  ActiveTimerState
+  ActiveTimerState,
+  STANDARD_UHURA_ROLES,
 } from '../types';
 import {
   normalizeTaskStatus,
@@ -89,6 +90,10 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
 
   // Modal para Crear / Editar Tarea
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  // Nuevo entregable (frente de trabajo); las tareas se crean desde «+ Tarea» de cada entregable
+  const [isDeliverableModalOpen, setIsDeliverableModalOpen] = useState(false);
+  const [newDeliverableName, setNewDeliverableName] = useState('');
+  const [newDeliverableDescription, setNewDeliverableDescription] = useState('');
   const [editingTask, setEditingTask] = useState<TaskItem | null>(null);
 
   // Estado del Formulario
@@ -97,7 +102,8 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
   const [formDeliverableId, setFormDeliverableId] = useState('');
   const [formRoleId, setFormRoleId] = useState('');
   const [formPriority, setFormPriority] = useState<TaskPriority>('Medium');
-  const [formTargetDate, setFormTargetDate] = useState('');
+  const [formTargetDate, setFormTargetDate] = useState('');   // Fecha de entrega (obligatoria)
+  const [formStartDate, setFormStartDate] = useState('');     // Fecha de inicio (obligatoria)
   const [formIsDeadlineStrict, setFormIsDeadlineStrict] = useState(false);
   const [formRequiresReview, setFormRequiresReview] = useState(true);
   const [formIsBlocked, setFormIsBlocked] = useState(false);
@@ -133,8 +139,8 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
         status: 'in_progress' as const,
         roleBudgets: [
           { id: 'rb-gen-1', roleId: 'Product Lead', roleName: 'Product Lead', quotedHours: 10 },
-          { id: 'rb-gen-2', roleId: 'Diseñador Gráfico', roleName: 'Diseñador Gráfico', quotedHours: 20 },
-          { id: 'rb-gen-3', roleId: 'Front End', roleName: 'Front End', quotedHours: 20 }
+          { id: 'rb-gen-2', roleId: 'Creative Designer', roleName: 'Creative Designer', quotedHours: 20 },
+          { id: 'rb-gen-3', roleId: 'Front-End Dev', roleName: 'Front-End Dev', quotedHours: 20 }
         ]
       }
     ];
@@ -145,21 +151,21 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
     return selectableDeliverables.find((d) => d.id === formDeliverableId) || selectableDeliverables[0];
   }, [selectableDeliverables, formDeliverableId]);
 
-  // Roles cotizados disponibles en el entregable seleccionado
+  // Roles cotizables: SOLO el catálogo oficial de Uhura (STANDARD_UHURA_ROLES).
+  // Se muestran primero los que tienen horas cotizadas en el entregable seleccionado.
   const availableRolesForDeliverable = useMemo(() => {
-    if (currentSelectedDeliverable && currentSelectedDeliverable.roleBudgets) {
-      return currentSelectedDeliverable.roleBudgets.map((rb) => ({
-        id: rb.roleId,
-        name: rb.roleName || rb.roleId,
-        quotedHours: rb.quotedHours
-      }));
+    const budgets = currentSelectedDeliverable?.roleBudgets || [];
+    const quotedFor = (role: string) =>
+      budgets
+        .filter((rb) => (rb.roleName || rb.roleId) === role || rb.roleId === role)
+        .reduce((sum, rb) => sum + (rb.quotedHours || 0), 0);
+    const list = STANDARD_UHURA_ROLES.map((role) => ({ id: role as string, name: role as string, quotedHours: quotedFor(role) }));
+    // Compatibilidad: si una tarea existente usa un rol fuera del catálogo, se conserva visible para no perderlo
+    if (formRoleId && !list.some((r) => r.id === formRoleId)) {
+      list.push({ id: formRoleId, name: `${formRoleId} (fuera del catálogo)`, quotedHours: quotedFor(formRoleId) });
     }
-    return [
-      { id: 'Product Lead', name: 'Product Lead', quotedHours: 10 },
-      { id: 'Diseñador Gráfico', name: 'Diseñador Gráfico', quotedHours: 20 },
-      { id: 'Front End', name: 'Front End', quotedHours: 20 }
-    ];
-  }, [currentSelectedDeliverable]);
+    return list.sort((x, y) => Number(y.quotedHours > 0) - Number(x.quotedHours > 0));
+  }, [currentSelectedDeliverable, formRoleId]);
 
   // Horas totales estimadas para el formulario actual
   const currentFormTotalHours = useMemo(() => {
@@ -230,6 +236,29 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
     });
   }, [tasks, searchTerm, filterRole, filterStatus, filterBlockedOnly]);
 
+  const handleCreateDeliverable = () => {
+    const name = newDeliverableName.trim();
+    if (!name || !onUpdateProject) return;
+    const current = project.deliverables || [];
+    const newDel: ProjectDeliverable = {
+      id: `del-${project.id}-${Date.now()}`,
+      projectId: project.id,
+      name,
+      description: newDeliverableDescription.trim() || undefined,
+      order: current.length + 1,
+      status: 'pending',
+      roleBudgets: [],
+      totalQuotedHours: 0,
+      totalExecutedHours: 0,
+      progressPercentage: 0
+    };
+    onUpdateProject({ ...project, deliverables: [...current, newDel] });
+    setExpandedDeliverables((prev) => ({ ...prev, [newDel.id]: true }));
+    setNewDeliverableName('');
+    setNewDeliverableDescription('');
+    setIsDeliverableModalOpen(false);
+  };
+
   // Abrir modal de creación
   const handleOpenCreateModal = (preselectedDelId?: string) => {
     setEditingTask(null);
@@ -239,11 +268,16 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
     setFormDeliverableId(defaultDelId);
 
     const del = selectableDeliverables.find((d) => d.id === defaultDelId);
-    const defaultRole = del?.roleBudgets?.[0]?.roleId || 'Diseñador Gráfico';
-    setFormRoleId(defaultRole);
+    const quotedOfficial = (del?.roleBudgets || [])
+      .map((rb) => rb.roleName || rb.roleId)
+      .find((r) => (STANDARD_UHURA_ROLES as readonly string[]).includes(r));
+    setFormRoleId(quotedOfficial || STANDARD_UHURA_ROLES[0]);
 
     setFormPriority('Medium');
-    setFormTargetDate(project.endDate || '');
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const defaultStart = project.startDate && project.startDate > todayIso ? project.startDate : todayIso;
+    setFormStartDate(defaultStart);
+    setFormTargetDate('');
     setFormIsDeadlineStrict(false);
     setFormRequiresReview(true);
     setFormIsBlocked(false);
@@ -272,7 +306,8 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
     setFormTitle(task.title);
     setFormDescription(task.description || '');
     setFormDeliverableId(task.deliverableId || selectableDeliverables[0]?.id || '');
-    setFormRoleId(task.budgetedRoleId || task.budgetedRole || 'Diseñador Gráfico');
+    setFormRoleId(task.budgetedRoleId || task.budgetedRole || STANDARD_UHURA_ROLES[0]);
+    setFormStartDate(task.scheduledDate || task.startDate || task.date || '');
     setFormPriority(task.priority || 'Medium');
     setFormTargetDate(task.targetDate || task.dueDate || '');
     setFormIsDeadlineStrict(!!task.isDeadlineStrict);
@@ -306,7 +341,7 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
 
   // Guardar tarea (creación o edición)
   const handleSaveTask = () => {
-    if (!formTitle.trim() || !formDeliverableId || !formRoleId) return;
+    if (!formTitle.trim() || !formDeliverableId || !formRoleId || !formStartDate || !formTargetDate || formTargetDate < formStartDate) return;
 
     // Resolver asignaciones y horas estimadas
     let resolvedAllocations: TaskAssigneeAllocation[] = [];
@@ -358,23 +393,26 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
       status: isEdit ? editingTask!.status : 'To Do',
       completed: isEdit ? editingTask!.completed : false,
       date: isEdit ? editingTask!.date : nowIso.split('T')[0],
-      dueDate: formTargetDate || project.endDate || nowIso.split('T')[0],
-      targetDate: formTargetDate || null,
+      scheduledDate: formStartDate,
+      startDate: formStartDate,
+      dueDate: formTargetDate,
+      targetDate: formTargetDate,
       isDeadlineStrict: formIsDeadlineStrict,
       dueStatus: 'normal',
-      dueText: formTargetDate ? `Para ${formTargetDate}` : 'Ciclo mensual',
+      dueText: `Deadline: ${formTargetDate}`,
       requiresReview: formRequiresReview,
-      isBlocked: formIsBlocked,
-      blockedReason: formIsBlocked ? formBlockedReason : null,
-      blockedAt: formIsBlocked ? (editingTask?.blockedAt || nowIso) : null,
-      isRework: formIsRework,
-      reworkReason: formIsRework ? formReworkReason : null,
+      isBlocked: isEdit ? formIsBlocked : false,
+      blockedReason: isEdit && formIsBlocked ? formBlockedReason : null,
+      blockedAt: isEdit && formIsBlocked ? (editingTask?.blockedAt || nowIso) : null,
+      isRework: isEdit ? formIsRework : false,
+      reworkReason: isEdit && formIsRework ? formReworkReason : null,
       budgetedHours: totalHours,
       estimatedHours: totalHours,
       consumedSeconds: isEdit ? editingTask!.consumedSeconds : 0,
       assigneeAllocations: resolvedAllocations,
       assigneeIds: resolvedAllocations.map((a) => a.userId),
       assignee: {
+        id: primaryAssigneeUser.id,
         name: primaryAssigneeUser.name,
         initials: primaryAssigneeUser.initials,
         avatarBg: primaryAssigneeUser.avatarBg,
@@ -570,11 +608,13 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
           </div>
 
           <button
-            onClick={() => handleOpenCreateModal()}
-            className="px-4 py-2 text-xs font-bold text-white bg-[#501f92] hover:bg-[#3f1675] rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
+            onClick={() => setIsDeliverableModalOpen(true)}
+            disabled={!onUpdateProject}
+            className="px-4 py-2 text-xs font-bold text-white bg-[#501f92] hover:bg-[#3f1675] disabled:opacity-50 rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
+            title="Agregar un entregable o frente de trabajo. Las tareas se crean desde «+ Tarea» en cada entregable."
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Nueva tarea</span>
+            <span>Nuevo entregable</span>
           </button>
         </div>
       </div>
@@ -1007,6 +1047,46 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
       )}
 
       {/* 6. MODAL: CREAR O EDITAR TAREA CON VALIDACIÓN DE ROL Y MÚLTIPLES COLABORADORES */}
+      {isDeliverableModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4" onClick={(e) => { if (e.target === e.currentTarget) setIsDeliverableModalOpen(false); }}>
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-[#e2e8f0] space-y-4">
+            <div>
+              <h3 className="font-extrabold text-base text-[#0f172a]">Nuevo entregable</h3>
+              <p className="text-xs text-[#64748b] mt-0.5">Frente de trabajo que agrupa tareas. Las horas se cotizan en el alcance; aquí nace sin horas.</p>
+            </div>
+            <label className="block space-y-1 text-xs">
+              <span className="font-bold text-[#334155]">Nombre <span className="text-[#ef4444]">*</span></span>
+              <input
+                autoFocus
+                value={newDeliverableName}
+                onChange={(e) => setNewDeliverableName(e.target.value)}
+                placeholder="Ej: Landing de temporada"
+                className="w-full px-3.5 py-2 rounded-xl bg-[#f8fafc] border border-[#cbd5e1] text-[#0f172a] focus:outline-none focus:border-[#501f92]"
+              />
+            </label>
+            <label className="block space-y-1 text-xs">
+              <span className="font-bold text-[#334155]">Descripción</span>
+              <textarea
+                rows={2}
+                value={newDeliverableDescription}
+                onChange={(e) => setNewDeliverableDescription(e.target.value)}
+                className="w-full px-3.5 py-2 rounded-xl bg-[#f8fafc] border border-[#cbd5e1] text-[#0f172a] focus:outline-none focus:border-[#501f92]"
+              />
+            </label>
+            <div className="flex justify-end gap-2 pt-2 border-t border-[#f1f5f9]">
+              <button onClick={() => setIsDeliverableModalOpen(false)} className="px-4 py-2 text-xs font-bold text-[#64748b] hover:bg-[#f1f5f9] rounded-xl cursor-pointer">Cancelar</button>
+              <button
+                onClick={handleCreateDeliverable}
+                disabled={!newDeliverableName.trim()}
+                className="px-4 py-2 text-xs font-bold text-white bg-[#501f92] hover:bg-[#3f1675] disabled:opacity-50 rounded-xl cursor-pointer"
+              >
+                Crear entregable
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isTaskModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
           <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-[#e2e8f0] space-y-4 animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
@@ -1072,7 +1152,7 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
                   >
                     {availableRolesForDeliverable.map((r) => (
                       <option key={r.id} value={r.id}>
-                        {r.name} ({r.quotedHours}h cotizadas)
+                        {r.name}{r.quotedHours > 0 ? ` · ${r.quotedHours}h cotizadas` : ' · sin horas en este entregable'}
                       </option>
                     ))}
                   </select>
@@ -1211,17 +1291,31 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
                 )}
               </div>
 
-              {/* Fecha objetivo (opcional) & Prioridad */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Cronograma de la tarea (obligatorio) & Prioridad */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block font-bold text-[#334155] mb-1">
-                    Fecha Objetivo (Opcional)
+                    Fecha de inicio <span className="text-[#ef4444]">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={formStartDate}
+                    onChange={(e) => setFormStartDate(e.target.value)}
+                    className="w-full px-3 py-1.5 rounded-xl bg-[#f8fafc] border border-[#cbd5e1] text-[#0f172a]"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-[#334155] mb-1">
+                    Fecha de entrega <span className="text-[#ef4444]">*</span>
                   </label>
                   <input
                     type="date"
                     value={formTargetDate}
+                    min={formStartDate || undefined}
                     onChange={(e) => setFormTargetDate(e.target.value)}
-                    className="w-full px-3 py-1.5 rounded-xl bg-[#f8fafc] border border-[#cbd5e1] text-[#0f172a]"
+                    className={`w-full px-3 py-1.5 rounded-xl bg-[#f8fafc] border text-[#0f172a] ${
+                      formTargetDate && formStartDate && formTargetDate < formStartDate ? 'border-[#ef4444]' : 'border-[#cbd5e1]'
+                    }`}
                   />
                 </div>
 
@@ -1256,7 +1350,8 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
                 </span>
               </div>
 
-              {/* Decisión 5: Flag de Bloqueo y Retrabajo */}
+              {/* Decisión 5: Flag de Bloqueo y Retrabajo (solo al editar; una tarea nueva no nace bloqueada ni como retrabajo) */}
+              {editingTask && (
               <div className="space-y-2 pt-1 border-t border-[#f1f5f9]">
                 <div className="flex items-center justify-between">
                   <label className="flex items-center gap-2 cursor-pointer font-bold text-[#334155]">
@@ -1290,6 +1385,7 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
                   />
                 )}
               </div>
+              )}
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#f1f5f9]">
@@ -1303,7 +1399,7 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
               <button
                 type="button"
                 onClick={handleSaveTask}
-                disabled={!formTitle.trim() || !formDeliverableId || !formRoleId}
+                disabled={!formTitle.trim() || !formDeliverableId || !formRoleId || !formStartDate || !formTargetDate || formTargetDate < formStartDate}
                 className="px-4 py-2 text-xs font-bold text-white bg-[#501f92] hover:bg-[#3f1675] disabled:opacity-50 rounded-xl shadow-xs cursor-pointer"
               >
                 {editingTask ? 'Guardar cambios' : 'Crear tarea'}

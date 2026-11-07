@@ -828,6 +828,8 @@ Asignación formal de personas del equipo a los proyectos, garantizando que el t
 - **Rol Cotizado (`budgetedRoleId`):** Perfil conceptual presupuestado en New Business (ej. *Front-End Dev*, tarifa de costo nómina según tarifario).
 - **Persona Real (`assignedUserId`):** Colaborador específico de la empresa (ej. *Juan Pérez*, desarrollador real contratado).
 - Orbit permite comparar si la persona asignada coincide con el perfil cotizado o si hubo un cambio de seniorities que altere la rentabilidad real del proyecto.
+- **Catálogo cerrado (07 Nov 2026):** solo los roles oficiales de `STANDARD_UHURA_ROLES` se cotizan, se sugieren y aparecen en selectores (alcance, tareas, plantillas). No se crean roles por funciones puntuales: QA, backend ligero o soporte son **actividades** cotizadas bajo un rol oficial; quién las ejecutó lo registra la tarea («cubre rol», §14.3). Roles heredados fuera del catálogo se muestran como «fuera del catálogo» para no perder datos, pero no se ofrecen para nuevas tareas.
+- **Recursos externos / subcontratados** (backend, arquitectura de servidores, etc.): no son roles de Uhura. Se registran en la cotización como costo (valor fijo u horas × tarifa del proveedor), viajan al proyecto en la conversión (por servicio; sin servicio → primer proyecto) y se ven en Resumen para perfiles no colaboradores. No consumen capacidad, no aparecen en Mi Día ni en la Matriz de horas por rol.
 
 #### 14.3 Equipo derivado de las tareas (🟢 Decisión aprobada - 07 Nov 2026)
 Se elimina la asignación manual de colaboradores al proyecto (modal «Asignar / Modificar asignación de rol»). En la práctica el equipo reasigna directamente en la tarea, y el modal quedaba desactualizado (p. ej. 8 h/sem fijas).

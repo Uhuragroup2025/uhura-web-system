@@ -36,6 +36,7 @@ import { HubSpotCreateDealsModal } from './HubSpotCreateDealsModal';
 import { HubSpotSyncModal } from './HubSpotSyncModal';
 import { UHURA_LEGAL_SIGNER } from './slaEngine';
 import { formatCurrency, formatHours } from '../../../utils/formatters';
+import { ExternalResourcesEditor } from './ExternalResourcesEditor';
 import {
   Target,
   Plus,
@@ -2946,6 +2947,15 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                   </p>
                 )}
               </div>
+
+              {/* Recursos externos / subcontratados (no son roles de Uhura ni consumen capacidad) */}
+              <ExternalResourcesEditor
+                items={activeQuote.externalResources || []}
+                editable={activeOpp.status !== 'won'}
+                currency={activeQuote.currency || 'COP'}
+                services={currentScopeServices.map((sv) => ({ id: sv.id, name: sv.name }))}
+                onChange={(items) => handleUpdateQuote({ ...activeQuote, externalResources: items })}
+              />
             </div>
 
             {/* Footer con CTA Guardar cambios a la derecha como primer botón */}

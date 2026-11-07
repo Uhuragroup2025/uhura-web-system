@@ -392,7 +392,8 @@ export interface ProjectSummaryItem {
   baselineEndDate?: string;
   forecastEndDate?: string;
   actualEndDate?: string | null;
-  closure?: ProjectClosureRecord | null;     // Registro de cierre (autor, fecha, motivo y foto final)
+  closure?: ProjectClosureRecord | null;
+  externalResources?: ExternalResourceItem[];     // Heredados de la cotización     // Registro de cierre (autor, fecha, motivo y foto final)
   isKickedOff?: boolean;
   scheduleConfig?: ProjectScheduleConfig;
 
@@ -1544,6 +1545,22 @@ export interface HubSpotSyncAuditEntry {
  * Cotización (Quote Proposal)
  * Cada oportunidad puede tener 1..N cotizaciones simultáneas (Decisión 2)
  */
+/**
+ * Recurso externo / subcontratado (ej. backend, arquitectura de servidores).
+ * NO es un rol de Uhura: no entra al catálogo de roles, a la capacidad del equipo,
+ * a Mi Día ni a la matriz de horas por rol. Suma al costo del proyecto.
+ */
+export interface ExternalResourceItem {
+  id: string;
+  description: string;                 // Ej. 'Arquitectura de servidores'
+  providerName?: string;               // Proveedor o freelance
+  costModel: 'fixed' | 'hourly';       // Valor fijo u horas × tarifa del proveedor
+  hours?: number;                      // Solo 'hourly'
+  hourlyRate?: number;                 // Solo 'hourly'
+  totalCost: number;                   // Costo total en la moneda de la cotización
+  serviceId?: string | null;           // Servicio al que pertenece (conversión 1:1)
+}
+
 export interface QuoteProposal {
   id: string;
   opportunityId: string;
@@ -1576,6 +1593,7 @@ export interface QuoteProposal {
   convertedToProjectId?: string | null; // Idempotencia: evita reconversiones duplicadas
   createdAt: string;
   updatedAt: string;
+  externalResources?: ExternalResourceItem[];   // Costos subcontratados (fuera de capacidad y roles)
 }
 
 /**
