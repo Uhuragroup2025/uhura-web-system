@@ -74,7 +74,7 @@ export const ColoniaCustomizerModal: React.FC<ColoniaCustomizerModalProps> = ({
               </span>
             </div>
             <p className="text-xs text-white/80 leading-relaxed">
-              Equipa herramientas ganadas con tus hábitos de orden y anticipación de riesgo en Orbit.
+              Equipa herramientas ganadas con tus hábitos de orden y anticipación de riesgo en ECO.
             </p>
             {/* Saldo de recursos */}
             <div className="flex items-center justify-center sm:justify-start gap-3 pt-1 text-xs font-mono font-bold">
@@ -157,7 +157,7 @@ export const ColoniaCustomizerModal: React.FC<ColoniaCustomizerModalProps> = ({
         <div className="flex items-center justify-between border-t border-white/10 pt-4 text-xs text-[#c9b7ff]/70">
           <div className="flex items-center gap-1.5">
             <ShieldCheck className="w-4 h-4 text-[#d4ff4a]" />
-            <span>Los recursos provienen exclusivamente de tu orden en Orbit.</span>
+            <span>Los recursos provienen exclusivamente de tu orden en ECO.</span>
           </div>
           <button
             onClick={onClose}

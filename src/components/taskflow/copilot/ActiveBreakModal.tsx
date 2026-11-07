@@ -220,7 +220,7 @@ export const ActiveBreakModal: React.FC<ActiveBreakModalProps> = ({
                 <span className="text-xs text-white/80">3 minutos guiados</span>
               </div>
               <h3 className="text-sm font-black text-white mt-0.5">
-                Bienestar & Ergonomía en Orbit
+                Bienestar & Ergonomía en ECO
               </h3>
             </div>
           </div>
@@ -258,7 +258,7 @@ export const ActiveBreakModal: React.FC<ActiveBreakModalProps> = ({
                 Cuerpo relajado, mente oxigenada
               </h3>
               <p className="text-xs text-[#64748b] max-w-sm mx-auto leading-relaxed">
-                Tus ojos, cuello y muñecas te lo agradecen. ¡Regresas a Orbit con mejor ritmo y energía saludable!
+                Tus ojos, cuello y muñecas te lo agradecen. ¡Regresas a ECO con mejor ritmo y energía saludable!
               </p>
             </div>
 

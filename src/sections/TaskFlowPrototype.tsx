@@ -523,7 +523,7 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
   {
     id: 'prj-uhura-orbit',
     code: 'UHU-ORB-03',
-    name: 'Orbit 3.0 · Sistema Operativo Uhura',
+    name: 'ECO 3.0 · Sistema Operativo Uhura',
     clientId: 'cli-uhura-internal',
     clientName: 'UHURA Group Internal',
     taxEntityId: null,
@@ -557,7 +557,7 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
         id: 'del-orb-ux',
         projectId: 'prj-uhura-orbit',
         name: 'Diseño de Interfaz & Componentes UI',
-        description: 'Design System de Orbit y ergonomía operativa',
+        description: 'Design System de ECO y ergonomía operativa',
         order: 2,
         status: 'in_progress',
         roleBudgets: [{ id: 'rb-oc2', roleId: 'Product Lead', roleName: 'Product Lead', quotedHours: 0 }],
@@ -1368,7 +1368,7 @@ export const TaskFlowPrototype: React.FC = () => {
             id: `alt-${Date.now()}`,
             type: 'ASIGNACIÓN',
             title: existingTask.title,
-            client: existingTask.clientName || 'Orbit',
+            client: existingTask.clientName || 'ECO',
             description: `Asignado a ${addedNames.join(', ')} · Prioridad ${prioLabel}`,
             impactLevel: prioLabel === 'Alta' ? 'alto' : 'medio',
             severity: prioLabel === 'Alta' ? 'high' : 'info',
@@ -2052,7 +2052,7 @@ export const TaskFlowPrototype: React.FC = () => {
     const newTasksToCreate: TaskItem[] = [];
 
     if (payload.projects && payload.projects.length > 0) {
-      // Regla 1:1:1: 1 servicio en Orbit = 1 negocio en HubSpot = 1 proyecto en Orbit si se gana.
+      // Regla 1:1:1: 1 servicio en ECO = 1 negocio en HubSpot = 1 proyecto en ECO si se gana.
       payload.projects.forEach((projItem, pIdx) => {
         const prjId = `prj-${Date.now()}-${pIdx + 1}`;
         const serviceDeliverables = quote.deliverables.filter((qd) =>
@@ -2623,7 +2623,7 @@ export const TaskFlowPrototype: React.FC = () => {
       });
     }
 
-    // Actualizar Cliente en Orbit
+    // Actualizar Cliente en ECO
     if (!resolvedClientId) {
       resolvedClientId = `cli-${Date.now()}`;
       projectsToCreate.forEach((p) => { p.clientId = resolvedClientId!; });
@@ -2903,7 +2903,7 @@ export const TaskFlowPrototype: React.FC = () => {
   const getHeaderTitle = () => {
     switch (currentView) {
       case 'mi-dia':
-        return 'Mi Día · Bucky el Castor de Orbit 🦫';
+        return 'Mi Día · Bucky el Castor de ECO 🦫';
       case 'la-colonia':
         return 'La Colonia Uhureña 🦫';
       case 'dashboard':
@@ -2963,7 +2963,7 @@ export const TaskFlowPrototype: React.FC = () => {
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#f2ecfb] text-[#501f92] text-[11px] font-bold">
               <Sparkles className="w-3 h-3 text-[#501f92]" />
-              <span>ORBIT</span>
+              <span>ECO</span>
             </span>
             <span className="text-xs text-[#c9b7ff] font-medium hidden sm:inline">
               Sistema Operativo Uhura Group
@@ -3465,7 +3465,7 @@ export const TaskFlowPrototype: React.FC = () => {
                       <span className="text-sm font-bold text-[#0f172a]">{getHeaderTitle()}</span>
                     </div>
                     <p className="text-xs text-[#64748b] leading-relaxed">
-                      Módulo integrado en Orbit para análisis predictivo de desvíos en entregas y rentabilidad.
+                      Módulo integrado en ECO para análisis predictivo de desvíos en entregas y rentabilidad.
                     </p>
                   </div>
                 )}

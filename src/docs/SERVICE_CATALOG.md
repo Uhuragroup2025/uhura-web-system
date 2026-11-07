@@ -8,7 +8,7 @@
 > - Definiciones y Datos Maestros: [`src/components/taskflow/templates/templateData.ts`](../components/taskflow/templates/templateData.ts)
 > - Motor de Clonación y Cálculo: [`src/components/taskflow/templates/templateEngine.ts`](../components/taskflow/templates/templateEngine.ts)
 > - Tipos y Roles Canónicos: [`src/components/taskflow/types.ts`](../components/taskflow/types.ts)
-> - Cálculo Financiero: Google Sheet oficial de Finanzas (desacoplado de Orbit)
+> - Cálculo Financiero: Google Sheet oficial de Finanzas (desacoplado de ECO)
 > - Interfaz de Biblioteca: [`src/components/taskflow/templates/TemplateLibraryView.tsx`](../components/taskflow/templates/TemplateLibraryView.tsx)
 > - Modal de Clonación e Integración con New Business: [`src/components/taskflow/templates/CloneToQuoteModal.tsx`](../components/taskflow/templates/CloneToQuoteModal.tsx)
 
@@ -19,14 +19,14 @@
 
 ## 1. Estado de Validación y Gobernanza
 
-El Catálogo de Servicios de Orbit actúa como la biblioteca oficial de especificaciones y estimaciones técnicas de Uhura Group. Para evitar confusiones entre datos definitivos, requerimientos específicos y supuestos en evolución, toda definición se rige bajo la siguiente matriz de gobernanza:
+El Catálogo de Servicios de ECO actúa como la biblioteca oficial de especificaciones y estimaciones técnicas de Uhura Group. Para evitar confusiones entre datos definitivos, requerimientos específicos y supuestos en evolución, toda definición se rige bajo la siguiente matriz de gobernanza:
 
 ### 1.1 Leyenda Oficial de Clasificación
 
 1. 🟢 **Base operativa confirmada:** Datos, actividades y horas base explícitamente sustentados en la documentación fuente oficial (PDF de procesos por área Uhura 2026).
-2. 🔵 **Propuesta técnica:** Especificaciones complementarias, estructuraciones de arquitectura o plantillas modulares abiertas (ej. `tmpl-custom-blank`) implementadas en Orbit para soportar New Business sin alterar la fuente canónica.
+2. 🔵 **Propuesta técnica:** Especificaciones complementarias, estructuraciones de arquitectura o plantillas modulares abiertas (ej. `tmpl-custom-blank`) implementadas en ECO para soportar New Business sin alterar la fuente canónica.
 3. 🟡 **Pendiente de validación operativa:** Elementos metodológicos, dependencias de software o condiciones de servicio que dependen de acuerdos por SOW con cada cliente y no constituyen restricciones absolutas del sistema.
-4. 🟠 **Validación financiera externa:** Parámetros tributarios, tasas de cambio o tarifas horarias que son gobernados exclusivamente por Finanzas en el Google Sheet oficial, no por Orbit ni el catálogo técnico.
+4. 🟠 **Validación financiera externa:** Parámetros tributarios, tasas de cambio o tarifas horarias que son gobernados exclusivamente por Finanzas en el Google Sheet oficial, no por ECO ni el catálogo técnico.
 
 ### 1.2 Anotaciones Críticas de Gobernanza
 
@@ -34,7 +34,7 @@ Para salvaguardar la exactitud del modelo operativo, se establecen las siguiente
 
 - **“Freeze Funcional” en Gates de Aprobación:** *(🟡 Pendiente de validación operativa)*. Es una buena práctica metodológica de gestión de proyectos y UAT para mitigar el *scope creep*, pero no representa un bloqueo contractual inflexible del sistema.
 - **IVA 19% Colombia y TRM:** *(🟠 Validación financiera externa)*. La configuración tributaria y la tasa representativa del mercado son variables externas calculadas por Finanzas en el Google Sheet oficial, según la residencia fiscal del cliente y corte de cotización.
-- **Tarifas Horarias y Márgenes Financieros:** *(🟠 Desacoplamiento Financiero canónico)*. Las plantillas del catálogo y Orbit gobiernan exclusivamente **horas técnicas y roles asignados**. El cálculo de costos, salarios brutos, factores multiplicadores, precios de venta y márgenes es responsabilidad exclusiva de Finanzas en su Google Sheet oficial. Orbit registra el resultado comercial final acordado.
+- **Tarifas Horarias y Márgenes Financieros:** *(🟠 Desacoplamiento Financiero canónico)*. Las plantillas del catálogo y ECO gobiernan exclusivamente **horas técnicas y roles asignados**. El cálculo de costos, salarios brutos, factores multiplicadores, precios de venta y márgenes es responsabilidad exclusiva de Finanzas en su Google Sheet oficial. ECO registra el resultado comercial final acordado.
 - **Builders de WordPress (Elementor Pro / Bricks Builder):** *(🟡 Pendiente de validación operativa)*. Constituyen herramientas de referencia estándar sugeridas en el proceso operativo de Producto Digital; su uso específico se valida según el stack técnico del cliente y no es obligatorio por defecto.
 - **Pasarelas de Pago E-commerce (Wompi / PayU / MercadoPago / Shopify Payments):** *(🟡 Pendiente de validación operativa)*. Opciones sugeridas del mercado. La integración definitiva depende de las comisiones, cuenta bancaria y modelo comercial de cada cliente.
 - **Aseguramiento de Calidad (QA) y Personas Reales:** *(🟢 Base operativa confirmada / Normalizada a Rol)*. Las menciones a personas específicas en la fuente se desacoplan a roles canónicos operativos (`Product Lead` para QA técnico/funcional; `Client Relationship Strategist` para validación de cara al cliente). Las referencias a fundadores o directores se reservan exclusivamente como sign-off ejecutivo de gobernanza.
@@ -44,7 +44,7 @@ Para salvaguardar la exactitud del modelo operativo, se establecen las siguiente
 
 ## 2. Principios de Desacoplamiento e Inmutabilidad de Plantillas
 
-Orbit implementa un modelo de datos robusto para la evolución del catálogo:
+ECO implementa un modelo de datos robusto para la evolución del catálogo:
 
 1. **Evolución por Versionamiento:** Cuando un líder autorizado edita una plantilla maestra para optimizar un proceso, el sistema genera o actualiza una nueva versión de la plantilla (ej. de `2026.1` a `2026.2`).
 2. **Inmutabilidad de Cotizaciones Históricas:** La modificación de una plantilla maestra **nunca altera ni retroalimenta cotizaciones, presupuestos o proyectos ya creados**. Cada cotización en New Business opera sobre una copia profunda y desacoplada del alcance vigente al momento de su creación.
@@ -59,7 +59,7 @@ Orbit implementa un modelo de datos robusto para la evolución del catálogo:
 
 ## 3. Catálogo Oficial de 13 Roles Canónicos y Normalización de Personas
 
-Orbit estandariza los perfiles requeridos para la ejecución técnica y comercial en un catálogo cerrado de **13 roles canónicos cotizables**, complementados por el estado de reserva **`Pendiente de definición`**.
+ECO estandariza los perfiles requeridos para la ejecución técnica y comercial en un catálogo cerrado de **13 roles canónicos cotizables**, complementados por el estado de reserva **`Pendiente de definición`**.
 
 ### 3.1 Matriz Oficial de Roles Canónicos
 
@@ -96,14 +96,14 @@ Siguiendo el principio de **"interpretar la función y no convertir personas en 
 
 ## 4. Clasificación del Inventario Multiarea de Uhura
 
-A partir del análisis exhaustivo del documento fuente oficial (PDF de procesos por área Uhura 2026), los elementos identificados se clasifican formalmente en 4 categorías operativas. **Únicamente los elementos clasificados como "Servicio comercializable / plantilla de catálogo" se incorporan como plantillas maestras en Orbit**.
+A partir del análisis exhaustivo del documento fuente oficial (PDF de procesos por área Uhura 2026), los elementos identificados se clasifican formalmente en 4 categorías operativas. **Únicamente los elementos clasificados como "Servicio comercializable / plantilla de catálogo" se incorporan como plantillas maestras en ECO**.
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │                                INVENTARIO MULTIAREA DE PROCESOS UHURA                                  │
 ├────────────────────────────────┬───────────────────────────────┬───────────────────────────────────────┤
 │ 1. SERVICIOS COMERCIALIZABLES  │ 2. PROCESOS INTERNOS          │ 3. RITUALES / GOBERNANZA              │
-│    (Plantillas Maestras Orbit) │    (Ejecución Operativa)      │    (No paquetizables como plantilla)  │
+│    (Plantillas Maestras ECO) │    (Ejecución Operativa)      │    (No paquetizables como plantilla)  │
 ├────────────────────────────────┼───────────────────────────────┼───────────────────────────────────────┤
 │ • 7 Servicios Producto Digital │ • SEO Monthly (Contenido)     │ • Planteamiento Propuesta Growth      │
 │ • 3 Servicios Growth           │ • Implementación Pauta        │ • Servicio & Relacionamiento Cuentas  │

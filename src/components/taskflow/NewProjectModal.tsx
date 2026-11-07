@@ -592,7 +592,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
               <Briefcase className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-[#0f172a]">Nuevo Proyecto en Orbit</h2>
+              <h2 className="text-lg font-bold text-[#0f172a]">Nuevo Proyecto en ECO</h2>
               <p className="text-xs text-[#64748b]">
                 Paso {currentStep} de 3: {
                   currentStep === 1 ? 'Identidad & Marco Operativo' :

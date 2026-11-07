@@ -13,7 +13,7 @@ interface ConflictTimerModalProps {
 
 /**
  * Modal interactivo de resolución de conflicto de Timer.
- * En Orbit solo puede existir un único timer global activo.
+ * En ECO solo puede existir un único timer global activo.
  * Si el usuario intenta iniciar un timer en otra tarea mientras ya hay uno corriendo,
  * esta interfaz explícita le permite:
  * 1. Detener y registrar la sesión del timer actual para luego iniciar el nuevo.
@@ -59,7 +59,7 @@ export const ConflictTimerModal: React.FC<ConflictTimerModalProps> = ({
         {/* Body */}
         <div className="p-5 space-y-4 text-xs">
           <p className="text-[#334155] leading-relaxed">
-            Ya tienes un cronómetro activo corriendo en otra tarea. Orbit no reasigna ni transfiere tiempo silenciosamente entre tareas para proteger la exactitud de los costos reales.
+            Ya tienes un cronómetro activo corriendo en otra tarea. ECO no reasigna ni transfiere tiempo silenciosamente entre tareas para proteger la exactitud de los costos reales.
           </p>
 
           {/* Tarea actualmente cronometrada */}

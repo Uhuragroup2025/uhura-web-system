@@ -83,7 +83,7 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
       }`}
     >
       <div className="space-y-4 overflow-y-auto pr-1 custom-scrollbar flex-1 min-h-0">
-        {/* Brand Header: Orbit UHURA GROUP */}
+        {/* Brand Header: ECO UHURA GROUP */}
         {collapsed ? (
           <div className="flex flex-col items-center gap-2 py-1.5 mb-2 border-b border-[#261845]/70">
             <button
@@ -117,7 +117,7 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <span className="font-extrabold text-base tracking-tight text-white">Orbit</span>
+                  <span className="font-extrabold text-base tracking-tight text-white">ECO</span>
                   <span className="text-[10px] uppercase font-bold tracking-widest px-1.5 py-0.5 rounded bg-[#8a4dff]/30 text-[#c9b7ff]">
                     v2.6
                   </span>
@@ -161,7 +161,7 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
 
             {(openSections.operacion || collapsed) && (
               <div className="space-y-0.5 pl-0.5">
-                {/* Mi Día · Home Contextual de Orbit */}
+                {/* Mi Día · Home Contextual de ECO */}
                 {canMiDia && (
                   <button
                     onClick={() => onSelectView('mi-dia')}
@@ -452,7 +452,7 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
       {/* Footer */}
       {!collapsed && (
         <div className="pt-3 mt-2 border-t border-[#261845] text-[11px] text-[#c9b7ff]/60 flex items-center justify-between px-2">
-          <span>Uhura OS · Orbit</span>
+          <span>Uhura OS · ECO</span>
           <span className="font-mono text-[10px]">v2.6</span>
         </div>
       )}

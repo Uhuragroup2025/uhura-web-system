@@ -188,7 +188,7 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
 
   // Copiar credenciales
   const handleCopyCredentials = () => {
-    const text = `Acceso a Orbit Uhura Group:\nUsuario: ${email}\nContraseña temporal: ${tempPassword}\nEnlace: https://orbit-rvfp6uj2va-uc.a.run.app/app/`;
+    const text = `Acceso a ECO Uhura Group:\nUsuario: ${email}\nContraseña temporal: ${tempPassword}\nEnlace: https://orbit-rvfp6uj2va-uc.a.run.app/app/`;
     navigator.clipboard.writeText(text);
     setCopiedCredentials(true);
     setTimeout(() => setCopiedCredentials(false), 2500);
@@ -200,7 +200,7 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
     setShowChangePhotoModal(false);
   };
 
-  // Definición de tarjetas "Qué puede hacer en Orbit" según el rol
+  // Definición de tarjetas "Qué puede hacer en ECO" según el rol
   const getPermissionScopeDescription = (moduleKey: string): string => {
     if (accessLevel === 'system_admin' || accessLevel === 'executive') {
       return 'ver, crear, editar, administrar · toda la organización';
@@ -562,10 +562,10 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
         </div>
       </div>
 
-      {/* 3. SECCIÓN INFERIOR: Qué puede hacer en Orbit */}
+      {/* 3. SECCIÓN INFERIOR: Qué puede hacer en ECO */}
       <div className="space-y-3 pt-2">
         <h2 className="text-base font-bold text-[#0f172a] tracking-tight">
-          Qué puede hacer en Orbit
+          Qué puede hacer en ECO
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
@@ -691,7 +691,7 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
                       Activación inmediata sin depender de servidores de correo
                     </p>
                     <p className="text-[11px] text-[#64748b] leading-relaxed">
-                      Define o genera una contraseña para que el colaborador pueda entrar a Orbit ahora mismo durante pruebas UAT o inducción.
+                      Define o genera una contraseña para que el colaborador pueda entrar a ECO ahora mismo durante pruebas UAT o inducción.
                     </p>
                   </div>
 

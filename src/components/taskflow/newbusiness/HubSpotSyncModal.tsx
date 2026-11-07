@@ -250,7 +250,7 @@ export const HubSpotSyncModal: React.FC<HubSpotSyncModalProps> = ({
             className="px-6 py-2.5 rounded-xl bg-[#ff5c35] hover:bg-[#ea580c] text-white text-xs font-bold shadow-md shadow-[#ff5c35]/20 transition-all cursor-pointer flex items-center gap-2 hover:scale-[1.01]"
           >
             <RefreshCw className={`w-4 h-4 text-white ${isSyncing ? 'animate-spin' : ''}`} />
-            <span>Sincronizar cambios a Orbit →</span>
+            <span>Sincronizar cambios a ECO →</span>
           </button>
         </div>
       </div>

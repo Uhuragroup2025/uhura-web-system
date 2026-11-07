@@ -674,7 +674,7 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
         duration = 3000;
         break;
       case 'walk':
-        phrase = phrase || '¡De paseo por el sistema Orbit! 🚶‍♂️ Caminando con energía.';
+        phrase = phrase || '¡De paseo por el sistema ECO! 🚶‍♂️ Caminando con energía.';
         duration = 2600;
         break;
       case 'alert':
@@ -686,7 +686,7 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
         duration = 2800;
         break;
       default:
-        phrase = phrase || '¡Todo listo en la nave Orbit!';
+        phrase = phrase || '¡Todo listo en la nave ECO!';
         duration = 2000;
     }
 
@@ -793,7 +793,7 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
       const randomY = Math.floor(Math.random() * (maxY - minY)) + minY;
 
       const roamPhrases = [
-        '¡Explorando la nave Orbit! 🚀',
+        '¡Explorando la nave ECO! 🚀',
         '¡Paseo libre para estirar las patitas! 🐾',
         '¡Supervisando el flujo de trabajo en Uhura! 🦫',
         '¡Qué buen ritmo llevamos hoy! 🌟',
@@ -807,7 +807,7 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
     return () => clearInterval(roamInterval);
   }, [isFreeRoamActive, isDragging, isWalking, isOpen, activeBreakActive, coords]);
 
-  // Event listener for global Orbit Habitat reactions
+  // Event listener for global ECO Habitat reactions
   useEffect(() => {
     const handleMascotReaction = (e: Event) => {
       const customEvent = e as CustomEvent<{ action: BuckyAction; phrase: string }>;
@@ -1344,7 +1344,7 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
               >
                 <img
                   src={isWarningActive ? buckyAlertImg : getCurrentBeaverImage()}
-                  alt="Bucky Orbit"
+                  alt="Bucky ECO"
                   className={`w-auto ${getBeaverSizeClass()} object-contain drop-shadow-[0_12px_28px_rgba(0,0,0,0.55)] select-none pointer-events-none transition-all duration-300`}
                 />
                 {isWarningActive && (
@@ -1375,7 +1375,7 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
                 <h4 className="text-xs font-black text-white tracking-wide uppercase">
                   Bucky
                 </h4>
-                <p className="text-[10px] text-[#c9b7ff]">Orbit Companion</p>
+                <p className="text-[10px] text-[#c9b7ff]">ECO Companion</p>
               </div>
             </div>
 

@@ -246,7 +246,7 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
     if (opportunity.clientId && !matchedExistingClient) return;
 
     // Regla canónica 1:1:1:
-    // 1 servicio en Orbit = 1 negocio en HubSpot = 1 proyecto independiente en Orbit
+    // 1 servicio en ECO = 1 negocio en HubSpot = 1 proyecto independiente en ECO
     // Cada proyecto tiene su propio Líder Operativo asignado por Comercial
     const fallbackLeadId = selectedLeadUsers[0]?.id || initialLeadUser?.id || eligibleLeaders[0]?.id;
 
@@ -621,7 +621,7 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
             <div className="p-3 rounded-xl bg-[#faf5ff] border border-[#e9d5ff] text-[11px] text-[#501f92] flex items-start gap-2">
               <Calendar className="w-4 h-4 shrink-0 mt-0.5" />
               <span>
-                Las fechas de inicio y entrega <strong>no se definen aquí</strong>. Cada proyecto nace <strong>Por iniciar</strong> y el líder fija el arranque con <strong>«Iniciar proyecto 🚀»</strong>, donde Orbit calcula la entrega con las semanas del alcance, los gates y las tandas de ajuste.
+                Las fechas de inicio y entrega <strong>no se definen aquí</strong>. Cada proyecto nace <strong>Por iniciar</strong> y el líder fija el arranque con <strong>«Iniciar proyecto 🚀»</strong>, donde ECO calcula la entrega con las semanas del alcance, los gates y las tandas de ajuste.
               </span>
             </div>
           </div>

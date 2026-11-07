@@ -39,7 +39,7 @@ export const DEFAULT_OPERATIONAL_MILESTONES: OperationalMilestone[] = [
     date: '2026-09-30',
     formattedDate: '30 de Sep',
     clientOrDepartment: 'Administración & Finanzas',
-    description: 'Corte de horas reportadas en Orbit OS y emisión de cobros recurrentes de clientes.',
+    description: 'Corte de horas reportadas en ECO OS y emisión de cobros recurrentes de clientes.',
     impactLevel: 'critico'
   }
 ];
@@ -292,7 +292,7 @@ export function processTeamLifeEvents(
     }
   });
 
-  // 4. AUSENCIAS ESTRUCTURADAS (Google Calendar -> Orbit TeamAbsenceEvent)
+  // 4. AUSENCIAS ESTRUCTURADAS (Google Calendar -> ECO TeamAbsenceEvent)
   const refIso = referenceDate.toISOString().slice(0, 10);
   absenceEvents.forEach((abs) => {
     if (abs.status !== 'active') return;
@@ -400,7 +400,7 @@ export function checkAssigneeAvailability(
     };
   }
 
-  // 1. Verificar ausencia activa hoy (TeamAbsenceEvent de Orbit / Google Calendar)
+  // 1. Verificar ausencia activa hoy (TeamAbsenceEvent de ECO / Google Calendar)
   const activeAbsence = absenceEvents.find(
     (abs) =>
       abs.userId === user.id &&

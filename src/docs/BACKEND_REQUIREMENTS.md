@@ -1,4 +1,6 @@
-# Requerimientos de Backend y Modelo de Datos (Orbit)
+# Requerimientos de Backend y Modelo de Datos (ECO)
+
+> **Nombre del producto:** **ECO** — *Espacio de Creación y Operaciones* (antes «Orbit», renombrado en noviembre de 2026). Los identificadores técnicos (`OrbitAccessLevel`, `CanonicalOrbitAccessLevel`, nombres de archivo como `ORBIT_PRODUCT_STATUS.md`) se conservan para no romper contratos de código ni enlaces.
 
 > **Documento de Especificación Técnica para Implementación Backend (Indunova)**
 > **Fecha de Actualización:** 07 de noviembre de 2026 (Cronograma calculado al «Iniciar proyecto», gates y tandas editables, equipo derivado de tareas). Anterior: 04 de noviembre de 2026 (arquitectura 1:1:1 por servicio, ticket #132 y modo desacoplado manual)
@@ -14,7 +16,7 @@
 
 ## 1. Modelo de Jerarquía y Taxonomía Limpia
 
-Orbit adopta una jerarquía conceptual directa y sin sobrecarga taxonómica:
+ECO adopta una jerarquía conceptual directa y sin sobrecarga taxonómica:
 
 $$\text{Cliente} \longrightarrow \text{Proyecto} \longrightarrow \text{Frente / Fase (Opcionales)} \longrightarrow \text{Tarea} \longrightarrow \text{TimeLog (Horas inmutables)}$$
 
@@ -75,7 +77,7 @@ interface TimeLogBackendRecord {
 
 ---
 
-## 5. Nomenclatura Estándar de Estados de Tarea en Orbit
+## 5. Nomenclatura Estándar de Estados de Tarea en ECO
 
 Para mantener consistencia en todo el ecosistema (API, UI, Notificaciones, Webhooks):
 
@@ -121,7 +123,7 @@ Los endpoints de consulta (`GET /api/users/`, `GET /api/users/<id>/`, `GET /api/
 ```
 
 ### 6.3 Definición de Almacenamiento Físico
-* **Desacople Arquitectónico:** El frontend de Orbit consume exclusivamente la URL suministrada por el backend y **no depende ni asume** un directorio local estático como `public/assets/team/`.
+* **Desacople Arquitectónico:** El frontend de ECO consume exclusivamente la URL suministrada por el backend y **no depende ni asume** un directorio local estático como `public/assets/team/`.
 * **Proveedor de Almacenamiento:** Indunova define la infraestructura física de almacenamiento persistente (ej. Google Cloud Storage, AWS S3, MinIO o CDN dedicada).
 * **Manejo de Fallbacks:**
   * Si `avatar_url` es `null`, cadena vacía o si el archivo no puede cargarse (error 404 / 500 / red), el frontend ejecuta automáticamente el fallback canónico: iniciales en texto con el fondo de color institucional (`avatarBg`).
@@ -131,7 +133,7 @@ Los endpoints de consulta (`GET /api/users/`, `GET /api/users/<id>/`, `GET /api/
 ```markdown
 ### [Issue #6] Soporte de Carga y Exposición de Fotografía de Perfil (avatar_url)
 
-**Objetivo:** Permitir que los colaboradores cuenten con su fotografía de perfil persistida en backend y servida vía CDN/Storage hacia el frontend de Orbit.
+**Objetivo:** Permitir que los colaboradores cuenten con su fotografía de perfil persistida en backend y servida vía CDN/Storage hacia el frontend de ECO.
 
 **Alcance Técnico para Indunova:**
 1. Agregar campo `avatar_url = models.URLField(null=True, blank=True, max_length=500)` al modelo `UserProfile`.
@@ -177,7 +179,7 @@ Los endpoints de consulta (`GET /api/users/`, `GET /api/users/<id>/`, `GET /api/
   }
   ```
 
-**2. Proyectos Operativos (Orbit Projects):**
+**2. Proyectos Operativos (ECO Projects):**
 * Permitir 1..N líderes del proyecto en `Project`:
   * Relación Many-to-Many `project_leads` o array `project_lead_ids`.
   * Mantener `lead_user_id` / `lead_name` como compatibilidad con el líder principal.
@@ -212,8 +214,8 @@ Cuando backend exponga el soporte multi-lead:
 
 ### 8.1 Responsable Comercial (`commercialOwner` en New Business)
 * **Contrato actual:** `commercialOwner?: string` en la entidad `Opportunity`.
-* **Derivación de UI:** El selector de la interfaz se alimenta del catálogo de usuarios de Orbit con nivel/capacidad `commercial` (`OrbitAccessLevel: 'commercial'` o funciones comerciales equivalentes). Al seleccionar un usuario de la lista, el valor guardado en `commercialOwner` es el nombre canónico del usuario (`user.name`), preservando compatibilidad exacta con el contrato de persistencia actual de Indunova sin crear campos no soportados (como `commercialOwnerId`).
-* **Sincronización HubSpot:** Si el Deal importado trae un owner comercial (`deal.commercialOwner`), la UI busca coincidencia con los usuarios de Orbit. Si no existe mapeo unívoco, se deja en blanco para selección explícita del usuario sin suposiciones ni hardcoding.
+* **Derivación de UI:** El selector de la interfaz se alimenta del catálogo de usuarios de ECO con nivel/capacidad `commercial` (`OrbitAccessLevel: 'commercial'` o funciones comerciales equivalentes). Al seleccionar un usuario de la lista, el valor guardado en `commercialOwner` es el nombre canónico del usuario (`user.name`), preservando compatibilidad exacta con el contrato de persistencia actual de Indunova sin crear campos no soportados (como `commercialOwnerId`).
+* **Sincronización HubSpot:** Si el Deal importado trae un owner comercial (`deal.commercialOwner`), la UI busca coincidencia con los usuarios de ECO. Si no existe mapeo unívoco, se deja en blanco para selección explícita del usuario sin suposiciones ni hardcoding.
 
 ### 8.2 Responsable de Cliente (`accountManagerId` / `accountManagerName` en Proyecto)
 * **Contrato en ClientProfile:** La entidad canónica de cliente almacena `accountManagerId?: string` y `accountManagerName?: string`.
@@ -331,7 +333,7 @@ Indunova deberá implementar en sus scripts de migración y conciliación de bas
    - Preservar íntegramente su historial en proyectos pasados cerrados.
 3. **Universo Canónico de Colaboradores Activos (18 Colaboradores):**
    - El universo activo queda cerrado y formalizado en **exactamente 18 colaboradores activos** según se define en *Equipo Canónico Privado*.
-   - **Gobernanza del Perfil Ejecutivo (`executive`):** El perfil `executive` adicional definido en Equipo Canónico Privado forma parte de los 18 colaboradores activos y debe contar con usuario Orbit. Su asociación con Backend User ID se resolverá durante el crosswalk con Indunova.
+   - **Gobernanza del Perfil Ejecutivo (`executive`):** El perfil `executive` adicional definido en Equipo Canónico Privado forma parte de los 18 colaboradores activos y debe contar con usuario ECO. Su asociación con Backend User ID se resolverá durante el crosswalk con Indunova.
    - **Gobernanza de `system_admin`:** Existen dos usuarios iniciales con Access Level `system_admin` con idénticos permisos técnicos en plataforma. La diferenciación funcional y operativa (soporte técnico / producto digital vs. soporte administrativo y configuración de capacidades/calendarios) corresponde a su rol en la organización, según se define en Equipo Canónico Privado.
    - No afirmar que la conciliación ya fue ejecutada en base de datos: corresponde a las especificaciones y reglas para la ejecución de scripts por parte de Indunova.
 
@@ -342,7 +344,7 @@ Indunova deberá implementar en sus scripts de migración y conciliación de bas
 
 ### 12.1 Arquitectura Relacional 1:1:1
 En la versión oficial (HEAD de la rama `feat/hubspot-commercial-sync-flow`), la propuesta comercial se descompone a nivel atómico:
-* **1 Servicio en Alcance = 1 Bloque Comercial en Cotización = 1 Deal en HubSpot (si aplica) = 1 Proyecto Independiente en Orbit**.
+* **1 Servicio en Alcance = 1 Bloque Comercial en Cotización = 1 Deal en HubSpot (si aplica) = 1 Proyecto Independiente en ECO**.
 * La relación entre una Cotización (`QuoteProposal`) y sus servicios comerciales es de **1 a N** (`QuoteProposal` $\longrightarrow$ `ServiceCommercialItem[]`).
 * Cada servicio define de manera independiente:
   * `modality`: `'fixed_project'` o `'fee_monthly'`
@@ -445,7 +447,7 @@ Para no bloquear New Business cuando la app privada de HubSpot esté caída o si
 ## 13. Módulo Capacidad: Jornada de 42h, Cálculo de Planificado vs. Ejecutado y Filtro por Área
 
 ### 13.1 Jornada Base y Deducción de Festivos/Ausencias
-* La capacidad semanal predeterminada de todo colaborador activo en Orbit es de **`42.0 horas semanales`** (`8.4h/día` hábil de lunes a viernes).
+* La capacidad semanal predeterminada de todo colaborador activo en ECO es de **`42.0 horas semanales`** (`8.4h/día` hábil de lunes a viernes).
 * Al descontar 1 día festivo oficial (ej. lunes festivo en Colombia), la capacidad neta de esa semana es `42.0 - 8.4 = 33.6h`.
 
 ### 13.2 Corrección de Cálculo de `Planificado` vs. `Ejecutado` (Hallazgo UAT #2)
@@ -571,7 +573,7 @@ class MonthlyCommercialOverride(models.Model):
         unique_together = ('year', 'month')
 ```
 * **Recálculo Automático:** Al actualizar `annual_target_cop`, el backend recalcula automáticamente `monthly_target_cop = annual_target_cop / 12`.
-* **Prioridad de Cifra Efectiva Mensual:** Si existe un registro en `MonthlyCommercialOverride` para un mes específico, ese valor sustituye al cálculo automático de Orbit (salvando delays con contabilidad mientras no haya integración). Si no existe, se calcula como: `Vendido New Business ganado en el mes + Base mensual de fees activos`.
+* **Prioridad de Cifra Efectiva Mensual:** Si existe un registro en `MonthlyCommercialOverride` para un mes específico, ese valor sustituye al cálculo automático de ECO (salvando delays con contabilidad mientras no haya integración). Si no existe, se calcula como: `Vendido New Business ganado en el mes + Base mensual de fees activos`.
 
 ### 17.2 Stub / Hook Desacoplado de Alegra (Cero Datos Simulados)
 * **Regla estricta:** Indunova **NO debe crear modelos de cartera ficticia, saldos en mora ni facturas simuladas**.

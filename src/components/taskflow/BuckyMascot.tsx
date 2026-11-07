@@ -596,7 +596,7 @@ export const BuckyMascot: React.FC<BuckyMascotProps> = ({
         <div className={`relative ${getMotionAnimationClass()}`}>
           <img
             src={getImageSrc()}
-            alt={`Bucky el Castor de Orbit - ${meta.label}`}
+            alt={`Bucky el Castor de ECO - ${meta.label}`}
             referrerPolicy="no-referrer"
             draggable={false}
             className={`${sizeClasses} object-contain filter drop-shadow-[0_14px_24px_rgba(20,11,36,0.28)] select-none pointer-events-none transition-all duration-300`}

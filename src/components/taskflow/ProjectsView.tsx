@@ -1604,7 +1604,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                       Análisis Operativo: Horas Cotizadas vs. Horas Reales por Rol
                     </h4>
                     <p className="text-[11px] text-[#64748b] mt-0.5 leading-relaxed">
-                      Orbit compara la matriz de roles comercialmente cotizados contra las horas reales que el equipo ejecutó. 
+                      ECO compara la matriz de roles comercialmente cotizados contra las horas reales que el equipo ejecutó. 
                       Esta data nutre directamente el historial de estimaciones de Uhura para futuros proyectos y cotizaciones.
                     </p>
                   </div>

@@ -129,7 +129,7 @@ export const ROLE_PERMISSIONS_MATRIX: Record<
 };
 
 /**
- * Mapeo de vistas de la UI (OrbitView) a módulos canónicos de Orbit (OrbitModule).
+ * Mapeo de vistas de la UI (OrbitView) a módulos canónicos de ECO (OrbitModule).
  */
 export function viewToModule(view: OrbitView | string): OrbitModule {
   switch (view) {
@@ -176,7 +176,7 @@ export function getUserAccessLevel(user: UserItem | null | undefined): OrbitAcce
 }
 
 /**
- * Determina si un usuario tiene acceso de lectura (view) a un módulo de Orbit.
+ * Determina si un usuario tiene acceso de lectura (view) a un módulo de ECO.
  * Usado por el Sidebar para visibilidad y por los Guards de navegación.
  */
 export function canAccessModule(

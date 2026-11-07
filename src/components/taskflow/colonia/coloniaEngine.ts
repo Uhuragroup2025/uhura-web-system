@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * LA COLONIA · ENGINE & REPUTATION SYSTEM (ORBIT BY UHURA)
+ * LA COLONIA · ENGINE & REPUTATION SYSTEM (ECO BY UHURA)
  * ============================================================================
  * 
  * Reglas Fundamentales:
@@ -146,7 +146,7 @@ export const INITIAL_STRUCTURES: ColonyStructure[] = [
   {
     id: 'baliza_estelar',
     name: 'Baliza de Sincronización Uhura',
-    description: 'Emisor de frecuencias suaves que mantiene a La Colonia en sintonía con el núcleo de Orbit.',
+    description: 'Emisor de frecuencias suaves que mantiene a La Colonia en sintonía con el núcleo de ECO.',
     level: 3,
     category: 'orbital',
     cost: { wood: 70, energy: 35, orbs: 6 },
@@ -290,7 +290,7 @@ export function saveColonyState(state: ColonyState): void {
 }
 
 /**
- * Evalúa hábitos reales de Orbit para otorgar recursos sin penalizar capacidad libre:
+ * Evalúa hábitos reales de ECO para otorgar recursos sin penalizar capacidad libre:
  */
 export function evaluateOrbitHabitsForColony(
   currentState: ColonyState,
@@ -450,7 +450,7 @@ export function buildStructure(
 }
 
 /**
- * Recompensar una alerta temprana de riesgo disparada en Orbit
+ * Recompensar una alerta temprana de riesgo disparada en ECO
  */
 export function recordEarlyRiskAlertReward(state: ColonyState, taskTitle: string): ColonyState {
   const orbsReward = 1;
@@ -526,7 +526,7 @@ export function rewardMinigameCompletion(
 
 /**
  * ============================================================================
- * NATIVE ORBIT CHALLENGES & WEEKLY LEADERBOARDS (PROTOTYPE PERSISTENCE)
+ * NATIVE ECO CHALLENGES & WEEKLY LEADERBOARDS (PROTOTYPE PERSISTENCE)
  * ============================================================================
  * 
  * 1. Persistencia de Prototipo:
@@ -546,8 +546,8 @@ export function rewardMinigameCompletion(
  *    generada a partir de los GameResult de la semana corriente. No asume una tabla
  *    con persistencia relacional propia.
  * 
- * 4. Notificaciones de Orbit:
- *    El sistema central de notificaciones de Orbit (in-app / campana) es el requisito
+ * 4. Notificaciones de ECO:
+ *    El sistema central de notificaciones de ECO (in-app / campana) es el requisito
  *    funcional indispensable para conectar los retos enviados y resueltos en cuanto
  *    el backend esté disponible. Las notificaciones push quedan como capacidad
  *    evolutiva futura, no como dependencia actual.

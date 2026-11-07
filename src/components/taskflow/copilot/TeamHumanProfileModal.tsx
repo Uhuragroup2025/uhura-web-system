@@ -34,7 +34,7 @@ interface TeamHumanProfileModalProps {
 
 /**
  * Calcula la edad en años en runtime a partir de la fecha de nacimiento (ISO 'YYYY-MM-DD').
- * Regla de Gobernanza de Orbit: La edad NO se persiste como dato estático.
+ * Regla de Gobernanza de ECO: La edad NO se persiste como dato estático.
  */
 function calculateAgeFromBirthDate(birthDate?: string): number | null {
   if (!birthDate) return null;
@@ -89,7 +89,7 @@ function parseMonthAndDay(dateStr?: string): { month: number; day: number } | nu
  */
 function getAnnualEventInfo(
   dateStr?: string,
-  refDate: Date = new Date(2026, 8, 16) // Fecha base simulada canónica de Orbit (16 Sep 2026)
+  refDate: Date = new Date(2026, 8, 16) // Fecha base simulada canónica de ECO (16 Sep 2026)
 ): {
   days: number;
   isToday: boolean;

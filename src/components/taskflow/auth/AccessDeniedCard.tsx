@@ -39,7 +39,7 @@ export const AccessDeniedCard: React.FC<AccessDeniedCardProps> = ({
         </p>
 
         <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-left text-xs text-slate-600 mb-6 space-y-1">
-          <p className="font-medium text-slate-800">Directiva de seguridad Orbit:</p>
+          <p className="font-medium text-slate-800">Directiva de seguridad ECO:</p>
           <p className="text-[11px] text-slate-500">
             La visibilidad en el frontend acompaña las políticas de seguridad del backend. Toda petición HTTP a este recurso es rechazada con código 403 Forbidden.
           </p>

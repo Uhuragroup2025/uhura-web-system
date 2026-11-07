@@ -67,7 +67,7 @@ export const MobileTimerMiniPlayer: React.FC<MobileTimerMiniPlayerProps> = ({
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] font-bold text-[#c9b7ff] truncate">
-                {activeTimer.clientName || 'Orbit'} · {activeTimer.projectName || 'Proyecto'}
+                {activeTimer.clientName || 'ECO'} · {activeTimer.projectName || 'Proyecto'}
               </span>
             </div>
             <h4 className="text-xs font-bold text-white truncate group-hover:text-[#d4ff4a] transition-colors">

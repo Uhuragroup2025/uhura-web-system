@@ -331,7 +331,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
     return absenceEvents && absenceEvents.length > 0 ? absenceEvents : initialAbsenceEvents;
   }, [absenceEvents]);
 
-  // Fecha de referencia canónica de Orbit UAT actual: 19 de Octubre 2026
+  // Fecha de referencia canónica de ECO UAT actual: 19 de Octubre 2026
   const referenceDateStr = '2026-10-19';
 
   // Radar de ausencias próximas (próximos 14 días o activas)
@@ -1128,7 +1128,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
 
             <div className="space-y-3 text-xs">
               <p className="text-[#334155] leading-relaxed">
-                Antes de salir el <strong>miércoles 21 de Octubre</strong>, estas son las cuentas activas asignadas a Luisa en Orbit:
+                Antes de salir el <strong>miércoles 21 de Octubre</strong>, estas son las cuentas activas asignadas a Luisa en ECO:
               </p>
 
               <div className="space-y-2">

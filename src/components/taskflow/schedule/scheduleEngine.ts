@@ -1,5 +1,5 @@
 /**
- * Motor de Cronograma (línea base) — Orbit
+ * Motor de Cronograma (línea base) — ECO
  *
  * Regla de negocio:
  *  - La conversión de una oportunidad NO define fechas. El proyecto nace «Por iniciar».

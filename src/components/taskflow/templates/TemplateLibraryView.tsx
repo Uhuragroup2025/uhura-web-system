@@ -293,7 +293,7 @@ export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
                 <div className="flex items-center justify-between mb-2.5 pb-2 border-b border-white/10">
                   <span className="font-bold flex items-center gap-1.5 text-[#d4ff4a] text-xs">
                     <Sparkles className="w-3.5 h-3.5" />
-                    Flujo Oficial Orbit
+                    Flujo Oficial ECO
                   </span>
                   <button
                     type="button"

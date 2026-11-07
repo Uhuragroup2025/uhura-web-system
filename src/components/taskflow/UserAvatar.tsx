@@ -28,7 +28,7 @@ const sizeConfig: Record<
 };
 
 /**
- * Componente unificado y transversal de Avatar para colaboradores de Uhura Group (Orbit).
+ * Componente unificado y transversal de Avatar para colaboradores de Uhura Group (ECO).
  * 
  * Reglas de resolución canónicas:
  * 1. Si `avatarUrl` (o `user.avatarUrl`) existe y carga sin errores → muestra la fotografía con object-cover.

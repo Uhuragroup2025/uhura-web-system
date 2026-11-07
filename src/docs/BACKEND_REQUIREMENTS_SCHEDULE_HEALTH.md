@@ -1,7 +1,7 @@
 # Requerimientos de Backend e Infraestructura (Indunova) — Evolución de Cronograma, Dependencias y ProjectHealth
 
 > **Destinatario:** Indunova (Equipo de Backend Django REST Framework / PostgreSQL)  
-> **Origen:** Especificación Aprobada de Producto Uhura Group (Orbit 3.0)  
+> **Origen:** Especificación Aprobada de Producto Uhura Group (ECO 3.0)  
 > **Objetivo:** Definir el modelo de datos relacional, endpoints REST y reglas invariantes para soportar la gestión de cronograma, dependencias de clientes, rondas de ajustes y el motor de salud multivectorial.
 
 ---

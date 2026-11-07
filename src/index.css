@@ -30,7 +30,7 @@
   --color-neutral-900: var(--uhura-ink);
   --color-neutral-950: var(--uhura-dark);
 
-  /* CANONICAL ORBIT FORM TOKENS */
+  /* CANONICAL ECO FORM TOKENS */
   --orbit-text-primary: #0f172a;
   --orbit-text-secondary: #64748b;
   --orbit-text-placeholder: #7C8AA0;
@@ -103,7 +103,7 @@ body {
   color: var(--uhura-ink);
 }
 
-/* Orbit SaaS Specific Typography */
+/* ECO SaaS Specific Typography */
 .font-saas {
   font-family: var(--font-family-saas);
   letter-spacing: -0.012em;
@@ -297,7 +297,7 @@ select option:disabled {
   font-weight: 400;
 }
 
-/* Orbit Semantic Form Control Classes */
+/* ECO Semantic Form Control Classes */
 .orbit-input {
   color: var(--orbit-text-primary);
   background-color: var(--orbit-bg-input);

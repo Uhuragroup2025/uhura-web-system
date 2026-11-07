@@ -129,7 +129,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }
   };
 
-  // Operational Tasks & Capacity Model (Orbit: Capacidad disponible = Disponibilidad configurada - Carga planificada)
+  // Operational Tasks & Capacity Model (ECO: Capacidad disponible = Disponibilidad configurada - Carga planificada)
   const todayTasks = tasks.length > 0 ? tasks.slice(0, 5) : [];
   const loggedHoursToday = 3.5;
   const assignedHoursToday = 4.5;
@@ -1139,7 +1139,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           {/* Bottom Info Note */}
           <div className="pt-4 mt-4 border-t border-[#f3f4f6] text-[11px] text-[#64748b] flex items-center justify-between">
-            <span>Sincronizado con Google Calendar & Orbit</span>
+            <span>Sincronizado con Google Calendar & ECO</span>
             <span className="w-2 h-2 rounded-full bg-[#10b981]" />
           </div>
         </div>
@@ -1271,7 +1271,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
 
               <div className="p-3 rounded-xl bg-[#ecfdf5] border border-[#a7f3d0] text-xs text-[#065f46]">
-                <p className="font-bold">Acción recomendada por Orbit:</p>
+                <p className="font-bold">Acción recomendada por ECO:</p>
                 <p className="text-[11px] mt-0.5">
                   Convocar reunión con el Account Lead para renegociar el alcance o autorizar adición de horas en cotizador.
                 </p>

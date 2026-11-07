@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * COLONIA DIORAMA · LIVING AMBIENT HABITAT (ORBIT BY UHURA)
+ * COLONIA DIORAMA · LIVING AMBIENT HABITAT (ECO BY UHURA)
  * ============================================================================
  * Espacio visual relajante y experiencial. Bucky vive en su hábitat ribereño,
  * con río animado, constelaciones orbitales y rincones interactivos.
@@ -28,7 +28,7 @@ const BUCKY_PHRASES = [
   '¡Diego tiene 120 pts en la Torre de Cedro! ¿Crees que lo puedes superar? 🪵⚡',
   'Un cafecito bien caliente con el equipo y volvemos con toda la claridad ☕🦫',
   '¡Oscar aceptó tu reto! A ver quién tiene mejores reflejos en el nenúfar ⚔️',
-  'Orbit cuida tus proyectos; aquí venimos a respirar y compartir unas risas 💜'
+  'ECO cuida tus proyectos; aquí venimos a respirar y compartir unas risas 💜'
 ];
 
 type AmbientTime = 'night' | 'sunset' | 'day';
@@ -319,7 +319,7 @@ export const ColoniaDiorama: React.FC<ColoniaDioramaProps> = ({
           setSelectedStructure({
             icon: '🔭✨',
             name: 'Observatorio Orbital',
-            description: 'Telescopio de latón orientado a las constelaciones de Orbit.',
+            description: 'Telescopio de latón orientado a las constelaciones de ECO.',
             hint: 'Desde aquí se mira el horizonte sin apuros.'
           })
         }

@@ -378,7 +378,7 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({
                 <div className="flex items-center justify-between gap-2 mb-1.5">
                   <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#64748b] truncate">
                     <span className="text-[#501f92] font-bold truncate">
-                      {task.clientName || 'Orbit'}
+                      {task.clientName || 'ECO'}
                     </span>
                     <span>›</span>
                     <span className="truncate">{task.projectName || task.board}</span>

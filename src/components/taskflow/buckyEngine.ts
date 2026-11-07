@@ -334,7 +334,7 @@ export function resolveBuckyState(ctx: BuckyContext): BuckyResolvedState {
       badgeText: 'Día completo',
       badgeColor: 'bg-[#ecfdf5] text-[#059669] border-[#a7f3d0]',
       headline: '¡Listo por hoy! 🎉',
-      speech: '¡Todas las metas encajadas! Cierra Orbit con orgullo y ve a descansar 🛋️✨',
+      speech: '¡Todas las metas encajadas! Cierra ECO con orgullo y ve a descansar 🛋️✨',
       description: 'Todas las piezas de hoy fueron encajadas a tiempo y con precisión.',
       isAlert: false,
       cta: {
@@ -373,7 +373,7 @@ export function resolveBuckyState(ctx: BuckyContext): BuckyResolvedState {
       badgeColor: 'bg-[#f5f3ff] text-[#7c3aed] border-[#ddd6fe]',
       headline: 'Cuidemos tu bienestar ☕',
       speech: 'Tu salud y energía son lo primero. Tómate 2 minutos para estirar el cuerpo, descansar la vista y tomar agua 🌿💧',
-      description: 'Sugerencia de bienestar, ergonomía física y descanso saludable. En Orbit priorizamos tu salud antes que cualquier métrica.',
+      description: 'Sugerencia de bienestar, ergonomía física y descanso saludable. En ECO priorizamos tu salud antes que cualquier métrica.',
       isAlert: false,
       cta: {
         label: 'Iniciar pausa activa (2 min)',
@@ -400,7 +400,7 @@ export function resolveBuckyState(ctx: BuckyContext): BuckyResolvedState {
     };
   }
 
-  // 7. INACTIVITY_IDLE (Orbit en reposo prolongado)
+  // 7. INACTIVITY_IDLE (ECO en reposo prolongado)
   if (ctx.isInactiveIdle) {
     return {
       internalKey: 'INACTIVITY_IDLE',

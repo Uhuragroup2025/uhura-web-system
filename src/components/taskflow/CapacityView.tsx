@@ -72,7 +72,7 @@ const COLOMBIA_HOLIDAYS_2026: { date: string; name: string; month: number; day: 
   { date: '2026-12-25', name: 'Navidad', month: 12, day: 25 },
 ];
 
-// Configuración de Capacidad Orbit:
+// Configuración de Capacidad ECO:
 // Fórmula canónica: availableCapacity = configuredAvailability - plannedLoad
 // La disponibilidad semanal proviene de la disponibilidad configurada del usuario para el periodo.
 // Puede haber colaboradores con dedicación completa, media jornada, permisos o vacaciones.
@@ -379,7 +379,7 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
     return 'Área Producto';
   };
 
-  // Distribución del equipo completo conectado con UserItem y TeamAbsenceEvent (Google Calendar / Orbit)
+  // Distribución del equipo completo conectado con UserItem y TeamAbsenceEvent (Google Calendar / ECO)
   const teamMembersData = useMemo(() => {
     const effectiveUsers = users && users.length > 0 ? users : initialUsers;
     const effectiveAbsences = absenceEvents && absenceEvents.length > 0 ? absenceEvents : initialAbsenceEvents;
@@ -390,7 +390,7 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
       const baseCap = getUserConfiguredCapacity(memberWeeklyHours, timeframe);
 
       // Calcular deducción por ausencias estructuradas (vacaciones, licencias)
-      // Regla canónica Orbit: Por cada día hábil de ausencia: availableCapacity -= impactHoursPerDay (excluyendo fines de semana y festivos)
+      // Regla canónica ECO: Por cada día hábil de ausencia: availableCapacity -= impactHoursPerDay (excluyendo fines de semana y festivos)
       let absenceDeduction = 0;
       let activeAbsence: TeamAbsenceEvent | undefined;
 
@@ -530,7 +530,7 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
   }, [teamMembersData, effectiveUsers, currentUser]);
 
   // 2. Perspectiva ORGANIZACIÓN: "Organización"
-  // Muestra todos los colaboradores activos de Orbit.
+  // Muestra todos los colaboradores activos de ECO.
   // Departamento es filtro secundario dentro de Organización.
   const organizationMembers = useMemo(() => {
     if (selectedDepartment === 'all') return teamMembersData;
@@ -577,7 +577,7 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
       { name: 'Campaña Navidad 2026 (Danone)', client: 'Danone S.A.', hours: 14.5, type: 'Fee', color: '#501f92' },
       { name: 'Campaña Navidad Yamaha', client: 'INCOLMOTOS YAMAHA S.A.', hours: 11.0, type: 'Proyecto', color: '#8a4dff' },
       { name: 'Fee Mantenimiento Web Prisma', client: 'Prisma Kiddos', hours: 7.5, type: 'Fee', color: '#0284c7' },
-      { name: 'Innovación & Orbit OS Labs', client: 'Uhura Interno', hours: 5.0, type: 'Interno', color: '#64748b' },
+      { name: 'Innovación & ECO OS Labs', client: 'Uhura Interno', hours: 5.0, type: 'Interno', color: '#64748b' },
     ];
   }, []);
 
@@ -1223,7 +1223,7 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
                       </span>
                     </div>
 
-                    {/* Banner de Ausencia Estructurada (Google Calendar / Orbit) */}
+                    {/* Banner de Ausencia Estructurada (Google Calendar / ECO) */}
                     {member.absenceDeduction > 0 && (
                       <div className="mt-2.5 flex items-center justify-between text-[11px] px-2.5 py-1 rounded-lg bg-[#fffbeb] border border-[#fef3c7] text-[#92400e]">
                         <span className="flex items-center gap-1.5 font-medium truncate">

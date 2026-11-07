@@ -619,7 +619,7 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
         </div>
       </div>
 
-      {/* 4. VISTA 1: AGRUPADA POR ENTREGABLE (MODO RECOMENDADO ORBIT) */}
+      {/* 4. VISTA 1: AGRUPADA POR ENTREGABLE (MODO RECOMENDADO ECO) */}
       {viewMode === 'deliverables' && (
         <div className="space-y-4">
           {selectableDeliverables.map((del) => {

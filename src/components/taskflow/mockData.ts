@@ -200,7 +200,7 @@ export const clientProjectHierarchy: ClientProjectNode[] = [
     projects: [
       {
         id: 'prj-uhu-1',
-        name: 'Innovación & Orbit OS Labs',
+        name: 'Innovación & ECO OS Labs',
         budgetedHours: 25.0,
         projectType: 'fixed_project',
         startDate: '01 Jul 2026',
@@ -384,9 +384,9 @@ export const initialTimeLogs: TimeLog[] = [
   {
     id: 'log-2',
     taskId: 't-4',
-    taskTitle: 'Desarrollo de Módulo de Tiempos Orbit OS',
+    taskTitle: 'Desarrollo de Módulo de Tiempos ECO OS',
     clientName: '🏢 Uhura Interno / No Facturable',
-    projectName: 'Innovación & Orbit OS Labs',
+    projectName: 'Innovación & ECO OS Labs',
     userName: 'Oscar Cerpa',
     userInitials: 'OC',
     userAvatarBg: 'bg-[#f59e0b]',
@@ -1687,11 +1687,11 @@ export const initialTasks: TaskItem[] = [
   },
   {
     id: 't-4',
-    title: 'Desarrollo de Módulo de Tiempos & Zero-Scroll Orbit OS',
+    title: 'Desarrollo de Módulo de Tiempos & Zero-Scroll ECO OS',
     department: 'Innovación & Labs',
     board: 'Labs',
     clientName: '🏢 Uhura Interno / No Facturable',
-    projectName: 'Innovación & Orbit OS Labs',
+    projectName: 'Innovación & ECO OS Labs',
     projectType: 'fixed_project',
     phase: 'Implementación / Dev',
     categoryType: 'internal',
@@ -2298,9 +2298,9 @@ export const initialUsers: UserItem[] = [
 ];
 
 /**
- * Eventos iniciales de ausencia estructurada en Orbit.
+ * Eventos iniciales de ausencia estructurada en ECO.
  * Google Calendar es el Source of Truth externo para vacaciones y licencias.
- * Bucky y el motor de Capacidad de Orbit consumen estos datos sin acoplarse a Google Calendar API.
+ * Bucky y el motor de Capacidad de ECO consumen estos datos sin acoplarse a Google Calendar API.
  */
 export const initialAbsenceEvents: TeamAbsenceEvent[] = [
   {
@@ -2436,7 +2436,7 @@ export const UHURA_INTERNAL_CLIENT: ClientProfile = {
     contactEmail: 'ana@uhuragroup.com',
     contactPhone: '+57 (310) 887-2341',
     clientSince: '1 de Enero de 2024',
-    brands: ['UHURA Group', 'Orbit', 'Uhura Labs']
+    brands: ['UHURA Group', 'ECO', 'Uhura Labs']
   },
   behavior: {
     rentabilidad: 100,
@@ -2458,9 +2458,9 @@ export const UHURA_INTERNAL_CLIENT: ClientProfile = {
     },
     {
       id: 'prj-uhu-2',
-      name: 'Innovación, Producto & Orbit Labs',
+      name: 'Innovación, Producto & ECO Labs',
       tag: 'DEV',
-      brand: 'Orbit',
+      brand: 'ECO',
       status: 'Activo',
       quotedValueCOP: '$0',
       realMarginPercent: null,

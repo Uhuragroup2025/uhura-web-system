@@ -1,6 +1,8 @@
-# Orbit · Uhura Web System
+# ECO · Uhura Web System
 
-Repositorio del prototipo funcional de **Orbit**, el sistema operativo interno de Uhura Group para conectar operación, capacidad, proyectos, tareas, horas y la ingeniería de propuestas comerciales.
+> **Nombre del producto:** **ECO** — *Espacio de Creación y Operaciones* (antes «Orbit», renombrado en noviembre de 2026). Los identificadores técnicos (`OrbitAccessLevel`, `CanonicalOrbitAccessLevel`, nombres de archivo como `ORBIT_PRODUCT_STATUS.md`) se conservan para no romper contratos de código ni enlaces.
+
+Repositorio del prototipo funcional de **ECO**, el sistema operativo interno de Uhura Group para conectar operación, capacidad, proyectos, tareas, horas y la ingeniería de propuestas comerciales.
 
 ## Estado actual
 
@@ -36,7 +38,7 @@ El producto cuenta con una base funcional completa y alineada para:
 - [`design-system/`](./design-system/) — tokens, estilos y documentación del sistema visual.
 - [`INDEX.md`](./INDEX.md) — índice histórico del Design System.
 
-## Flujo objetivo de Orbit
+## Flujo objetivo de ECO
 
 ```text
 New Business
@@ -56,7 +58,7 @@ New Business
 ## Frontera entre sistemas
 
 - **HubSpot**: CRM, pipeline y seguimiento comercial.
-- **Orbit**: ingeniería de propuesta, backlog, cotización y operación.
+- **ECO**: ingeniería de propuesta, backlog, cotización y operación.
 - **Alegra**: realidad fiscal, facturación y cartera.
 
 ## Desarrollo local

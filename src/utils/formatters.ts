@@ -1,5 +1,5 @@
 /**
- * Utilidades de formateo para Orbit (moneda, números, fechas)
+ * Utilidades de formateo para ECO (moneda, números, fechas)
  * Centralizadas para evitar dependencias de módulos financieros retirados.
  */
 

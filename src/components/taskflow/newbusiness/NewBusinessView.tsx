@@ -423,7 +423,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
     }
   }, [activeOpp?.id]);
 
-  // Orbit determina automáticamente el tipo general de la propuesta:
+  // ECO determina automáticamente el tipo general de la propuesta:
   // - todos los servicios son proyecto único → Proyecto único
   // - todos son fee mensual → Fee mensual
   // - existen servicios de ambas modalidades → Propuesta mixta
@@ -792,7 +792,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
     });
   };
 
-  // Cambiar etapa comercial directamente desde Orbit (Sincronización bidireccional Orbit -> HubSpot)
+  // Cambiar etapa comercial directamente desde ECO (Sincronización bidireccional ECO -> HubSpot)
   const handleUpdateStageFromOrbit = (serviceId: string, newStage: HubSpotDealStage) => {
     if (!hasCommercialPermissions || !activeOpp || !activeQuote) return;
     const targetService = commercialStructureDraft.find((s) => s.serviceId === serviceId);
@@ -828,7 +828,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
           userId: currentUser?.id || 'u-pao',
           userName: currentUser?.name || 'Paola Monsalve',
           timestamp: new Date().toISOString(),
-          origin: 'Orbit',
+          origin: 'ECO',
           syncStatus: 'error',
           errorMessage: 'Error 503: Timeout de conexión con HubSpot Deals API',
           syncedFields: {
@@ -882,7 +882,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
         userId: currentUser?.id || 'u-pao',
         userName: currentUser?.name || 'Paola Monsalve',
         timestamp: nowIso,
-        origin: 'Orbit',
+        origin: 'ECO',
         syncStatus: 'success',
         syncedFields: {
           dealName: `${targetService.serviceName} — ${activeOpp.prospectAccountName}`,
@@ -1077,7 +1077,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                         4
                       </span>
                       <p>
-                        <strong className="text-[#d4ff4a]">Conversión a Proyecto:</strong> Al ganar la propuesta, se habilita en Orbit el proyecto operativo listo para asignación.
+                        <strong className="text-[#d4ff4a]">Conversión a Proyecto:</strong> Al ganar la propuesta, se habilita en ECO el proyecto operativo listo para asignación.
                       </p>
                     </div>
                   </div>
@@ -1453,7 +1453,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                     <div className="flex items-center gap-2 flex-wrap text-[11px] text-[#64748b]">
                       {opp.clientId ? (
                         <span className="px-2 py-0.5 rounded-md bg-[#6366f1]/10 text-[#6366f1] font-medium">
-                          Cliente Orbit
+                          Cliente ECO
                         </span>
                       ) : (
                         <span className="px-2 py-0.5 rounded-md bg-[#f59e0b]/15 text-[#b45309] font-medium">
@@ -1591,7 +1591,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
             {activeOpp.status === 'won' ? (
               <span className="text-[10.5px] font-bold px-2.5 py-0.5 rounded-full bg-[#10b981]/15 text-[#059669] flex items-center gap-1 border border-[#10b981]/25">
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>Ganada · Proyecto en Orbit</span>
+                <span>Ganada · Proyecto en ECO</span>
               </span>
             ) : activeOpp.status === 'internal_review' ? (
               <span className="text-[10.5px] font-bold px-2.5 py-0.5 rounded-full bg-[#f59e0b]/15 text-[#b45309] border border-[#f59e0b]/25">
@@ -2474,7 +2474,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                     type="button"
                     onClick={() => setIsAuditTrailOpen(true)}
                     className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[#fed7aa] bg-[#fff7ed] hover:bg-[#ffedd5] text-xs font-bold text-[#c2410c] transition-colors cursor-pointer"
-                    title="Ver registro de auditoría y trazabilidad de sincronización bidireccional Orbit ⇄ HubSpot"
+                    title="Ver registro de auditoría y trazabilidad de sincronización bidireccional ECO ⇄ HubSpot"
                   >
                     <History className="w-3.5 h-3.5 text-[#ea580c]" />
                     <span>Trazabilidad HubSpot</span>
@@ -2558,7 +2558,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                                   ? 'bg-[#fff1f2] text-[#be123c] border-[#fecdd3]'
                                   : 'bg-[#fffbeb] text-[#b45309] border-[#fde68a]'
                               }`}
-                              title="Cambiar etapa en Orbit y sincronizar con HubSpot"
+                              title="Cambiar etapa en ECO y sincronizar con HubSpot"
                             >
                               <option value="Presentación a cliente">Presentación a cliente</option>
                               <option value="Cierre ganado">Cierre ganado 🏆</option>
@@ -3155,7 +3155,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                 Marcar Oportunidad como Perdida
               </h3>
               <p className="text-xs text-[#64748b]">
-                Registra el motivo para estadísticas de cierre comercial en Orbit.
+                Registra el motivo para estadísticas de cierre comercial en ECO.
               </p>
             </div>
 
@@ -3455,7 +3455,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                     userId: currentUser?.id || 'commercial-manual',
                     userName: currentUser?.name || 'Aprobación Comercial Manual',
                     timestamp: nowIso,
-                    origin: 'Orbit' as const,
+                    origin: 'ECO' as const,
                     syncStatus: 'success' as const,
                     syncedFields: {
                       dealName: `${s.serviceName} — ${activeOpp.prospectAccountName}`,
@@ -3839,7 +3839,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                     </span>
                   </div>
                   <p className="text-xs text-[#64748b] mt-0.5">
-                    Historial de cambios de etapa y sincronizaciones bidireccionales entre Orbit y HubSpot Deals API.
+                    Historial de cambios de etapa y sincronizaciones bidireccionales entre ECO y HubSpot Deals API.
                   </p>
                 </div>
               </div>
@@ -3856,7 +3856,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
             <div className="px-5 py-3 bg-[#f0fdf4] border-b border-[#bbf7d0] text-xs text-[#166534] flex items-start gap-2.5 shrink-0">
               <ShieldCheck className="w-4 h-4 text-[#16a34a] shrink-0 mt-0.5" />
               <div className="text-[11.5px] leading-relaxed">
-                <strong className="font-bold">Desacoplamiento garantizado:</strong> La sincronización bidireccional impacta exclusivamente datos comerciales del negocio (Etapa, Valor, Moneda, Nombre, Contacto y Comercial). Los campos operativos de Orbit (modalidad de contratación, duración en semanas, entregables, horas, enlace de cálculo y supuestos) se mantienen bajo estricto control interno y nunca son alterados ni sobreescritos por HubSpot.
+                <strong className="font-bold">Desacoplamiento garantizado:</strong> La sincronización bidireccional impacta exclusivamente datos comerciales del negocio (Etapa, Valor, Moneda, Nombre, Contacto y Comercial). Los campos operativos de ECO (modalidad de contratación, duración en semanas, entregables, horas, enlace de cálculo y supuestos) se mantienen bajo estricto control interno y nunca son alterados ni sobreescritos por HubSpot.
               </div>
             </div>
 
@@ -3867,14 +3867,14 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                   <Clock className="w-8 h-8 text-[#94a3b8] mx-auto opacity-70" />
                   <p className="font-bold text-[#475569]">Sin registros de sincronización aún</p>
                   <p className="text-xs text-[#64748b] max-w-sm mx-auto">
-                    Los cambios de etapa efectuados desde Orbit o recibidos desde HubSpot se registrarán aquí automáticamente con fecha, usuario y campos transmitidos.
+                    Los cambios de etapa efectuados desde ECO o recibidos desde HubSpot se registrarán aquí automáticamente con fecha, usuario y campos transmitidos.
                   </p>
                 </div>
               ) : (
                 syncAuditTrail.map((entry) => {
                   const isWonStage = entry.newStage === 'Cierre ganado' || entry.newStage === 'Enviado para facturar';
                   const isLostStage = entry.newStage === 'Cierre perdido';
-                  const isOutbound = entry.origin === 'Orbit';
+                  const isOutbound = entry.origin === 'ECO';
 
                   return (
                     <div
@@ -3894,12 +3894,12 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                           }`}>
                             {isOutbound ? (
                               <>
-                                <span>Orbit → HubSpot</span>
+                                <span>ECO → HubSpot</span>
                                 <span className="text-[9px] font-normal opacity-75">(Saliente)</span>
                               </>
                             ) : (
                               <>
-                                <span>HubSpot → Orbit</span>
+                                <span>HubSpot → ECO</span>
                                 <span className="text-[9px] font-normal opacity-75">(Entrante)</span>
                               </>
                             )}
@@ -4084,7 +4084,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                   Simulación de Permisos de Usuario
                 </span>
                 <p className="text-[11px] text-[#64748b]">
-                  Regla 2 y 5: Sólo usuarios con permisos comerciales pueden cambiar la etapa desde Orbit. Los demás roles la ven como sólo lectura.
+                  Regla 2 y 5: Sólo usuarios con permisos comerciales pueden cambiar la etapa desde ECO. Los demás roles la ven como sólo lectura.
                 </p>
                 <div className="grid grid-cols-2 gap-2 pt-1">
                   <button
@@ -4115,7 +4115,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
               {/* Control 3: Simular Webhook entrante desde HubSpot */}
               <div className="p-3.5 rounded-xl border border-[#cbd5e1] bg-[#f8fafc] space-y-2">
                 <span className="font-bold text-[#0f172a] block">
-                  Simular Evento Webhook Entrante (HubSpot → Orbit)
+                  Simular Evento Webhook Entrante (HubSpot → ECO)
                 </span>
                 <p className="text-[11px] text-[#64748b]">
                   Simula que un vendedor o directivo actualizó la etapa directamente en HubSpot.

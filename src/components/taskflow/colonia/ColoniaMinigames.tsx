@@ -7,7 +7,7 @@
  * 1. 🌿 La Torre de Cedro (timing / precisión)
  * 2. ⚡ Reflejos de Nenúfar (reflejos / velocidad)
  * 
- * Flujo de retos nativo en Orbit: Juegas -> Puntuación -> Retar compañero -> Comparación.
+ * Flujo de retos nativo en ECO: Juegas -> Puntuación -> Retar compañero -> Comparación.
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -322,7 +322,7 @@ const GameOverScreen: React.FC<GameOverScreenProps> = ({
   };
 
   const handleCopySlack = () => {
-    const text = `🌿 Reto en Orbit (La Colonia Uhura): ¡Hice ${score} puntos en "${gameName}"! ¿Quién del equipo me supera en 15 segundos? 🦫⚡ Entra a La Colonia y descúbrelo.`;
+    const text = `🌿 Reto en ECO (La Colonia Uhura): ¡Hice ${score} puntos en "${gameName}"! ¿Quién del equipo me supera en 15 segundos? 🦫⚡ Entra a La Colonia y descúbrelo.`;
     navigator.clipboard.writeText(text);
     setCopiedSlack(true);
     setTimeout(() => setCopiedSlack(false), 3000);

@@ -347,7 +347,7 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
                   </span>
                 </div>
                 <p className="text-[11px] text-white/75 mt-0.5">
-                  Cuando una oportunidad calificada requiere scoping de un líder, Orbit activa el SLA e inicia su tarea de preventa
+                  Cuando una oportunidad calificada requiere scoping de un líder, ECO activa el SLA e inicia su tarea de preventa
                 </p>
               </div>
             </div>

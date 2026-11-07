@@ -685,7 +685,7 @@ export type AppAction = 'view' | 'create' | 'edit' | 'approve' | 'administer';
 export type AccessScope = 'own' | 'assigned' | 'team' | 'accounts' | 'all';
 
 /**
- * Niveles de acceso funcionales canónicos de Orbit (7 niveles).
+ * Niveles de acceso funcionales canónicos de ECO (7 niveles).
  */
 export type CanonicalOrbitAccessLevel =
   | 'collaborator'
@@ -697,7 +697,7 @@ export type CanonicalOrbitAccessLevel =
   | 'system_admin';
 
 /**
- * Niveles de acceso al sistema (Orbit Access Levels).
+ * Niveles de acceso al sistema (ECO Access Levels).
  * Incluye los 7 niveles canónicos más el estado transitorio 'pending'.
  * 'pending' NO es un nivel funcional: representa un usuario invitado/sin asignar
  * bajo política deny-by-default y con acceso mínimo seguro (Mi Día propio).
@@ -1005,12 +1005,12 @@ export type TeamAbsenceStatus = 'active' | 'cancelled';
 export type TeamAbsenceSource = 'google_calendar' | 'manual';
 
 /**
- * Entidad canónica de ausencia/bloqueo de disponibilidad del equipo en Orbit.
+ * Entidad canónica de ausencia/bloqueo de disponibilidad del equipo en ECO.
  * Google Calendar es la fuente externa para vacaciones y licencias.
- * Bucky y Capacidad consumen esta entidad internamente desde Orbit.
+ * Bucky y Capacidad consumen esta entidad internamente desde ECO.
  */
 export interface TeamAbsenceEvent {
-  id: string;                          // UUID único de Orbit
+  id: string;                          // UUID único de ECO
   userId: string;                      // FK al colaborador (UserItem.id)
   userName?: string;                   // Nombre para display rápido
   type: TeamAbsenceType;
@@ -1029,7 +1029,7 @@ export interface TeamAbsenceEvent {
 }
 
 /**
- * Evento humano/operativo de equipo consumido por Bucky y los módulos de Orbit
+ * Evento humano/operativo de equipo consumido por Bucky y los módulos de ECO
  */
 export interface TeamLifeEvent {
   id: string;
@@ -1286,7 +1286,7 @@ export interface ClientProjectNode {
 }
 
 // ============================================================================
-// MODELO FUNCIONAL: NEW BUSINESS → COTIZACIÓN → PROYECTO EN ORBIT
+// MODELO FUNCIONAL: NEW BUSINESS → COTIZACIÓN → PROYECTO EN ECO
 // ============================================================================
 
 /**
@@ -1360,7 +1360,7 @@ export interface ProductBacklogTemplate {
 /**
  * Contrato de interoperabilidad con Google Sheets de Finanzas.
  * Finanzas / Sheets gobierna fórmulas salariales, overhead y márgenes;
- * Orbit consolida el rollup de horas por rol presupuestadas y registra el valor cotizado.
+ * ECO consolida el rollup de horas por rol presupuestadas y registra el valor cotizado.
  */
 export interface CommercialCalculatorContract {
   quoteId: string;
@@ -1484,13 +1484,13 @@ export type HubSpotDealStage =
   | 'Enviado para facturar';
 
 /**
- * Tipo general de la propuesta calculado automáticamente por Orbit
+ * Tipo general de la propuesta calculado automáticamente por ECO
  */
 export type ProposalCommercialType = 'fixed_project' | 'fee_monthly' | 'mixed';
 
 /**
  * Estructura comercial por servicio definida en Cotización
- * Relación 1:1: 1 servicio en Orbit = 1 negocio en HubSpot = 1 proyecto en Orbit si se gana
+ * Relación 1:1: 1 servicio en ECO = 1 negocio en HubSpot = 1 proyecto en ECO si se gana
  */
 export interface ServiceCommercialItem {
   serviceId: string;
@@ -1515,7 +1515,7 @@ export interface ServiceCommercialItem {
 }
 
 /**
- * Registro de trazabilidad y auditoría para sincronización bidireccional Orbit <-> HubSpot
+ * Registro de trazabilidad y auditoría para sincronización bidireccional ECO <-> HubSpot
  */
 export interface HubSpotSyncAuditEntry {
   id: string;
@@ -1527,7 +1527,7 @@ export interface HubSpotSyncAuditEntry {
   userId: string;
   userName: string;
   timestamp: string;
-  origin: 'Orbit' | 'HubSpot';
+  origin: 'ECO' | 'HubSpot';
   syncStatus: 'success' | 'pending' | 'error';
   errorMessage?: string;
   syncedFields: {

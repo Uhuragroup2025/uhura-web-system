@@ -123,7 +123,7 @@ export const DireccionFinanzasView: React.FC<DireccionFinanzasViewProps> = ({
     return billedFromClients > 0 ? billedFromClients : 165000000; // $165M COP en fees base
   }, [clients]);
 
-  // TOTAL COMERCIAL CALCULADO POR ORBIT PARA EL MES SELECCIONADO
+  // TOTAL COMERCIAL CALCULADO POR ECO PARA EL MES SELECCIONADO
   const computedCommercialForSelectedMonthCOP = useMemo(() => {
     if (selectedMonth === '2026-01') return 365000000;
     if (selectedMonth === '2026-02') return 340000000;
@@ -540,7 +540,7 @@ export const DireccionFinanzasView: React.FC<DireccionFinanzasViewProps> = ({
                         type="button"
                         onClick={handleResetMonthCommercial}
                         className="text-[9px] text-[#501f92] hover:underline flex items-center gap-0.5 cursor-pointer"
-                        title="Restaurar al cálculo automático de Orbit"
+                        title="Restaurar al cálculo automático de ECO"
                       >
                         <RotateCcw className="w-2.5 h-2.5" />
                         <span>Auto</span>
@@ -592,7 +592,7 @@ export const DireccionFinanzasView: React.FC<DireccionFinanzasViewProps> = ({
                   )}
 
                   <span className="text-[9px] text-[#8a4dff] block mt-0.5 truncate">
-                    {isManuallyAdjusted ? 'Ajustado por Dirección' : 'Cálculo automático Orbit'}
+                    {isManuallyAdjusted ? 'Ajustado por Dirección' : 'Cálculo automático ECO'}
                   </span>
                 </div>
 

@@ -394,7 +394,7 @@ export const UsersView: React.FC<UsersViewProps> = ({
         <div className="space-y-4">
           <div className="p-4 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0]">
             <p className="text-xs text-[#475569] leading-relaxed">
-              La seguridad y navegación de Orbit se rigen por la <strong>Matriz Central RBAC</strong>. Cada nivel de acceso delimita estrictamente la visibilidad en el menú lateral y las acciones autorizadas (crear, editar, aprobar o auditar).
+              La seguridad y navegación de ECO se rigen por la <strong>Matriz Central RBAC</strong>. Cada nivel de acceso delimita estrictamente la visibilidad en el menú lateral y las acciones autorizadas (crear, editar, aprobar o auditar).
             </p>
           </div>
 

@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * LA COLONIA & FICHAS HUMANAS (ORBIT CULTURA UHURA)
+ * LA COLONIA & FICHAS HUMANAS (ECO CULTURA UHURA)
  * ============================================================================
  * 
  * Réplica fiel de la vista de Staging (Captura #1):

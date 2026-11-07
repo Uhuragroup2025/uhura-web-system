@@ -93,7 +93,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             <div className="flex items-center justify-between pb-3 border-b border-[#261845] mb-3">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-[#d4ff4a]" />
-                <span className="font-extrabold text-sm text-white">Módulos Orbit</span>
+                <span className="font-extrabold text-sm text-white">Módulos ECO</span>
               </div>
               <button
                 onClick={() => setIsMoreMenuOpen(false)}

@@ -240,7 +240,7 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
                 <Building2 className="w-3.5 h-3.5" />
                 <span>1. Marca Sombrilla / Cuenta Operativa</span>
               </h3>
-              <span className="text-[11px] text-[#64748b]">Identificador comercial en Orbit</span>
+              <span className="text-[11px] text-[#64748b]">Identificador comercial en ECO</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

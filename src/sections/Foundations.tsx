@@ -383,12 +383,12 @@ export const Foundations: React.FC = () => {
               Arquitectura Tipográfica Unificada 2026
             </h2>
             <p className="text-xs text-[#616161]">
-              Diferenciación estratégica entre la narrativa web/branding y la densidad de interfaz del software SaaS (Orbit).
+              Diferenciación estratégica entre la narrativa web/branding y la densidad de interfaz del software SaaS (ECO).
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="purple" size="sm">Montserrat (Web)</Badge>
-            <Badge variant="cyan" size="sm">Plus Jakarta Sans (Orbit SaaS)</Badge>
+            <Badge variant="cyan" size="sm">Plus Jakarta Sans (ECO SaaS)</Badge>
             <Badge variant="subtle" size="sm">Playfair Display (Énfasis)</Badge>
           </div>
         </div>
@@ -411,7 +411,7 @@ export const Foundations: React.FC = () => {
           <div className="p-4 rounded-2xl bg-[#d4ff4a]/10 border border-[#d4ff4a]/40 space-y-2 text-xs text-[#17131f]">
             <div className="flex items-center gap-2 font-bold text-sm text-[#17131f]">
               <span className="w-2.5 h-2.5 rounded-full bg-[#10b981]" />
-              <span>2. Orbit Platform (SaaS Exception)</span>
+              <span>2. ECO Platform (SaaS Exception)</span>
             </div>
             <p className="text-[#616161] leading-relaxed">
               <strong>Plus Jakarta Sans</strong> (con fallback a <strong>Inter</strong>) para UI de alta densidad, tablas financieras, badges, semáforos y métricas con <code className="font-mono text-[11px] bg-white px-1 py-0.5 rounded border border-[#d4ff4a]/50">tabular-nums</code>.

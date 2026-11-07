@@ -1,10 +1,12 @@
-# ORBIT — Especificación Funcional Maestra de Producto y Arquitectura de Dominio
+# ECO — Especificación Funcional Maestra de Producto y Arquitectura de Dominio
+
+> **Nombre del producto:** **ECO** — *Espacio de Creación y Operaciones* (antes «Orbit», renombrado en noviembre de 2026). Los identificadores técnicos (`OrbitAccessLevel`, `CanonicalOrbitAccessLevel`, nombres de archivo como `ORBIT_PRODUCT_STATUS.md`) se conservan para no romper contratos de código ni enlaces.
 
 > **Documento:** Especificación Funcional Maestra para Portabilidad, Backend y Modelo de Datos
 > **Destinatario Técnico Principal:** Indunova (Backend Django REST Framework / PostgreSQL) y Equipo de Producto Uhura Group
 > **Fecha de Actualización:** 07 de noviembre de 2026 (cronograma al «Iniciar proyecto», gates/tandas editables, equipo derivado de tareas, hallazgos E2E §10.4.1, cierre de proyecto §11.7)
 > **Versión:** 3.4.0 (Aprobación Canónica UAT 2: 1 Servicio = 1 Proyecto, Decimales, Líderes por Servicio y Modo Desacoplado)
-> **Estado:** Especificación Maestra Canónica Reconciliada — Fuente de Verdad Funcional de Orbit
+> **Estado:** Especificación Maestra Canónica Reconciliada — Fuente de Verdad Funcional de ECO
 >
 > **Convención de Estados de Implementación:**
 > - 🟢 **Decisión funcional aprobada:** Definición canónica cerrada y acordada por Producto Uhura.
@@ -53,12 +55,12 @@
 
 ## 1. Propósito del Documento y Concepto de Freeze Funcional
 
-Este documento constituye la **especificación funcional y de arquitectura de dominio maestra** de Orbit, reconciliada directamente con el prototipo de producto y la experiencia aprobada en pruebas UAT. Ha sido estructurado específicamente para que el equipo de backend e infraestructura (**Indunova**) disponga del diseño relacional, reglas invariantes, contratos de transferencia y fronteras de integración necesarios para construir la persistencia en PostgreSQL y los servicios REST en Django.
+Este documento constituye la **especificación funcional y de arquitectura de dominio maestra** de ECO, reconciliada directamente con el prototipo de producto y la experiencia aprobada en pruebas UAT. Ha sido estructurado específicamente para que el equipo de backend e infraestructura (**Indunova**) disponga del diseño relacional, reglas invariantes, contratos de transferencia y fronteras de integración necesarios para construir la persistencia en PostgreSQL y los servicios REST en Django.
 
 ### Definición de Freeze Funcional
 > **El "Freeze Funcional" NO significa que todas las pantallas estén visualmente terminadas o que no puedan pulirse detalles estéticos de UI.**
 > Significa que **la topología de entidades, las relaciones, las reglas de negocio, los estados de transición, la persistencia requerida y las fronteras con sistemas externos quedan congelados y formalizados**. Ningún cambio posterior alterará la lógica de datos aquí establecida sin un proceso formal de control de versiones.
-> **Regla de oro de UAT:** Un defecto puntual de implementación en staging no cambia la especificación funcional; documenta el comportamiento esperado aprobado de Orbit frente a las discrepancias.
+> **Regla de oro de UAT:** Un defecto puntual de implementación en staging no cambia la especificación funcional; documenta el comportamiento esperado aprobado de ECO frente a las discrepancias.
 
 ### Clasificación de Componentes para Portabilidad:
 1. **Core para Portabilidad (Crítico):** Bloquea la base de datos y los flujos indispensables de negocio. Debe implementarse con máxima prioridad (Clientes, Proyectos, Entregables, Tareas, New Business, Quotes, Time Tracking, Capacidad, Mi Día).
@@ -69,7 +71,7 @@ Este documento constituye la **especificación funcional y de arquitectura de do
 
 ## 2. Frontera de Sistemas y Cuadrilátero de Responsabilidades
 
-Orbit **no es un CRM generalista, ni una calculadora contable, ni un ERP tributario**. Su frontera funcional está delimitada por cuatro sistemas y un repositorio documental:
+ECO **no es un CRM generalista, ni una calculadora contable, ni un ERP tributario**. Su frontera funcional está delimitada por cuatro sistemas y un repositorio documental:
 
 ```text
            ┌─────────────────────────────────────────┐
@@ -82,7 +84,7 @@ Orbit **no es un CRM generalista, ni una calculadora contable, ni un ERP tributa
                                 │ (Handoff por Brief: Creación de Oportunidad)
                                 ▼
            ┌─────────────────────────────────────────┐
-           │       ORBIT (Operating System)          │
+           │       ECO (Operating System)          │
            │ • Dimensionamiento Técnico (Alcance)    │
            │ • Entregables, Actividades y Roles      │
            │ • Horas Técnicas Totales y por Rol      │
@@ -105,8 +107,8 @@ Orbit **no es un CRM generalista, ni una calculadora contable, ni un ERP tributa
                                 │
                                 ▼ (Cliente Aprueba Propuesta Económica)
            ┌─────────────────────────────────────────┐
-           │         CONVERSIÓN EN ORBIT             │
-           │ • Deal Ganado en HubSpot / Orbit        │
+           │         CONVERSIÓN EN ECO             │
+           │ • Deal Ganado en HubSpot / ECO        │
            │ • Oportunidad Ganada ➔ Proyecto Activo   │
            │ • Entregables y Tareas creados 1:1      │
            │ • Horas Cotizadas heredadas a control   │
@@ -125,8 +127,8 @@ Orbit **no es un CRM generalista, ni una calculadora contable, ni un ERP tributa
 ```
 
 * **HubSpot:** Dueño de la relación comercial y fuente de verdad del estado del deal (`won` / `lost`).
-* **Google Sheet Oficial / Calculadora Comercial:** Fuente de verdad del pricing y cálculo financiero (márgenes, costos internos, tarifas, IVA y TRM). **Orbit no calcula internamente tarifas ni márgenes**.
-* **Orbit:** Dueño del alcance, dimensionamiento técnico, horas técnicas, conversión a proyectos, entregables, tareas, ejecución operativa, Mi Día y capacidad.
+* **Google Sheet Oficial / Calculadora Comercial:** Fuente de verdad del pricing y cálculo financiero (márgenes, costos internos, tarifas, IVA y TRM). **ECO no calcula internamente tarifas ni márgenes**.
+* **ECO:** Dueño del alcance, dimensionamiento técnico, horas técnicas, conversión a proyectos, entregables, tareas, ejecución operativa, Mi Día y capacidad.
 * **Alegra:** Dueño de la facturación electrónica, los impuestos y el recaudo.
 * **Google Drive:** Repositorio pasivo de archivos, minutas, briefs, presentaciones y entregables.
 
@@ -166,19 +168,19 @@ SISTEMA / ADMINISTRACIÓN
 
 ## 4. Mapa Macro de Dependencias y Ciclo de Vida
 
-El flujo lineal de la información y los handoffs entre roles a través de Orbit se rige por la siguiente cadena de valor:
+El flujo lineal de la información y los handoffs entre roles a través de ECO se rige por la siguiente cadena de valor:
 
 ```text
 [1. HUBSPOT: Brief Recibido & Oportunidad Comercial]
          │
          ▼
-[2. COMERCIAL EN ORBIT (Commercial / Client Relationship)]
+[2. COMERCIAL EN ECO (Commercial / Client Relationship)]
          │ • Crea Oportunidad en New Business
          │ • Registra prospecto, brief y contacto
          │ • Asigna Líder de Alcance (ej. Product Lead / Creative Strategy Lead)
          │
          ▼ (Handoff 1: Notificación en campana y acción en Mi Día del Líder)
-[3. LÍDER DE ALCANCE EN ORBIT (Product Lead / Creative Lead)]
+[3. LÍDER DE ALCANCE EN ECO (Product Lead / Creative Lead)]
          │ • Recibe la oportunidad asignada en su bandeja de Mi Día
          │ • Ingresa a New Business ➔ "Alcance y propuesta"
          │ • Elige estructurar desde Catálogo de Servicios o desde cero
@@ -192,9 +194,9 @@ El flujo lineal de la información y los handoffs entre roles a través de Orbit
          ▼ (Handoff 2: Oportunidad pasa a status: 'internal_review')
 [4. COMERCIAL RECIBE HANDOFF (Mi Día & Notificaciones)]
          │ • Recibe alerta de alcance técnico finalizado
-         │ • Extrae horas técnicas y resumen de perfiles desde Orbit
+         │ • Extrae horas técnicas y resumen de perfiles desde ECO
          │ • Realiza el cálculo financiero en el Google Sheet Oficial / Calculadora
-         │ • Registra en Orbit el resultado comercial acordado:
+         │ • Registra en ECO el resultado comercial acordado:
          │     - Valor cotizado final y moneda (COP / USD)
          │     - Versión de propuesta (V1, V2...)
          │     - URL de la Calculadora de Finanzas / Google Sheet
@@ -206,7 +208,7 @@ El flujo lineal de la información y los handoffs entre roles a través de Orbit
 [5. APROBACIÓN POR CLIENTE Y HUBSPOT]
          │ • Cliente aprueba propuesta técnica y comercial
          │ • HubSpot refleja Deal Ganado ('won') ── Fuente de verdad comercial
-         │ • Comercial marca Oportunidad como Ganada en Orbit
+         │ • Comercial marca Oportunidad como Ganada en ECO
          │
          ▼
 [6. CONVERSIÓN A PROYECTO OPERATIVO (ConvertOpportunityModal)]
@@ -275,8 +277,8 @@ El journey punta a punta de New Business está estructurado en 10 pasos coordina
 5. **Líder marca "Alcance listo / Notificar a Comercial":** Al pulsar el botón `Marcar alcance listo (X h)`, el sistema valida que estén diligenciados: (a) Enlace a la propuesta técnica/PPT en Drive, (b) Semanas productivas de entrega (para proyectos únicos), y (c) Horas técnicas en el alcance. La oportunidad pasa automáticamente a estado `internal_review` (*"Alcance listo · En revisión de pricing y margen"*).
 6. **Comercial recibe el handoff:** Mi Día y la campana alertan a Comercial que la oportunidad está lista para cotización financiera.
 7. **Comercial realiza cálculo financiero externo:** Abre el **Google Sheet Oficial / Calculadora Comercial** de Uhura Group y calcula el pricing, salarios, overhead, margen comercial e impuestos.
-8. **Comercial registra el resultado comercial en Orbit:** Registra en la cotización el monto total cotizado final, la moneda (`COP` o `USD`), la versión, la URL del Google Sheet de Finanzas y la URL del PDF/PPT de la propuesta comercial.
-9. **Cliente aprueba la propuesta:** Tras presentar la propuesta formal, el cliente manifiesta su aprobación técnica y económica. HubSpot refleja el estado Cerrado Ganado (`won`). Comercial actualiza el estado a Ganada en Orbit.
+8. **Comercial registra el resultado comercial en ECO:** Registra en la cotización el monto total cotizado final, la moneda (`COP` o `USD`), la versión, la URL del Google Sheet de Finanzas y la URL del PDF/PPT de la propuesta comercial.
+9. **Cliente aprueba la propuesta:** Tras presentar la propuesta formal, el cliente manifiesta su aprobación técnica y económica. HubSpot refleja el estado Cerrado Ganado (`won`). Comercial actualiza el estado a Ganada en ECO.
 10. **Conversión a Proyecto Operativo:** Comercial o Líder ejecuta `Convertir a Proyecto Operativo`, transfiriendo el alcance y las horas aprobadas a la ejecución.
 
 #### 1.3 Estado Actual
@@ -288,7 +290,7 @@ La navegación por pestañas (`Resumen`, `Alcance y propuesta`, `Documentos`) es
   - `id`: UUID (ej. `opp-2026-001`).
   - `title`: String (Nombre del requerimiento/proyecto).
   - `prospectAccountName`: String (Nombre de la empresa prospecto).
-  - `clientId`: UUID (Opcional, si el cliente ya existe en Orbit).
+  - `clientId`: UUID (Opcional, si el cliente ya existe en ECO).
   - `leadUserId` / `leadUserName`: String (Líder asignado canónico: *Product Lead, Creative Strategy Lead, Growth Manager, CEO, Directora Comercial*).
   - `commercialOwner`: String (Usuario comercial o de relación con cliente asignado).
   - `leadUserIds`: Array de UUIDs (Opcional, preparación interna desacoplada para asignación múltiple concurrente 1..N).
@@ -420,25 +422,25 @@ Entregable (Servicio / Frente Operativo)
 ### Módulo 4: Alcance Técnico y Registro Comercial (Desacoplamiento Financiero)
 
 #### 4.1 Regla Arquitectónica Vigente: Desacoplamiento de Responsabilidades
-En Orbit rige la siguiente división estricta de dominios:
+En ECO rige la siguiente división estricta de dominios:
 
 > **Finanzas / Google Sheet Oficial = Fuente de verdad del cálculo financiero y pricing.**
-> Finanzas gobierna y evoluciona externamente la estructura salarial, costos de nómina, multiplicadores prestacionales, overhead operativo, bandas de margen comercial, tratamiento tributario (IVA) y TRM oficial. **Orbit no calcula tarifas, márgenes, IVA, bandas financieras ni fórmulas salariales internas.**
+> Finanzas gobierna y evoluciona externamente la estructura salarial, costos de nómina, multiplicadores prestacionales, overhead operativo, bandas de margen comercial, tratamiento tributario (IVA) y TRM oficial. **ECO no calcula tarifas, márgenes, IVA, bandas financieras ni fórmulas salariales internas.**
 
-> **Orbit = Alcance Técnico + Horas por Rol + Registro del Acuerdo Comercial Cotizado**
-> Orbit es la plataforma operativa y de gestión de entrega. Los líderes estructuran entregables, actividades y roles requeridos; el rollup consolidado de horas alimenta el análisis de Finanzas; y Comercial registra en Orbit el resultado comercial cotizado final acordado (monto cotizado, moneda, versión, enlaces al Google Sheet y PDF/PPT de propuesta, condiciones comerciales y trazabilidad hacia la creación del proyecto operativo).
+> **ECO = Alcance Técnico + Horas por Rol + Registro del Acuerdo Comercial Cotizado**
+> ECO es la plataforma operativa y de gestión de entrega. Los líderes estructuran entregables, actividades y roles requeridos; el rollup consolidado de horas alimenta el análisis de Finanzas; y Comercial registra en ECO el resultado comercial cotizado final acordado (monto cotizado, moneda, versión, enlaces al Google Sheet y PDF/PPT de propuesta, condiciones comerciales y trazabilidad hacia la creación del proyecto operativo).
 
-#### 4.2 Retiro del Motor Financiero Interno de Orbit
-Se retiraron formalmente de Orbit:
+#### 4.2 Retiro del Motor Financiero Interno de ECO
+Se retiraron formalmente de ECO:
 - El motor algorítmico interno (`financialEngine.ts`).
 - Las constantes salariales y tarifarios hardcodeados (`constants.ts`).
 - La vista de simulador comercial con sliders de margen (`FinancialCalculatorView.tsx`).
 - Cualquier cálculo de overhead, margen o IVA en tiempo real dentro del frontend.
 
-Orbit no es un cotizador contable ni una calculadora comercial; Orbit registra el resultado acordado externamente para gobernanza, emisión de SOW y conversión operativa.
+ECO no es un cotizador contable ni una calculadora comercial; ECO registra el resultado acordado externamente para gobernanza, emisión de SOW y conversión operativa.
 
 #### 4.3 Entidad y Campos de Propuesta (`QuoteProposal`)
-La entidad de cotización en Orbit conserva exclusivamente los campos de alcance técnico y trazabilidad comercial:
+La entidad de cotización en ECO conserva exclusivamente los campos de alcance técnico y trazabilidad comercial:
 - **`id`:** UUID inmutable.
 - **`opportunityId`:** UUID (FK a `NewBusinessOpportunity`).
 - **`versionLabel`:** String (ej. `V1 - Alcance Inicial`, `V2 - Alcance Ajustado`).
@@ -451,12 +453,12 @@ La entidad de cotización en Orbit conserva exclusivamente los campos de alcance
 - **`externalFinanceSheetUrl`:** Enlace directo al Google Sheet de Finanzas donde se calculó el pricing.
 - **`commercialProposalUrl`:** Enlace al documento/PDF formal o PPT de la propuesta presentada al cliente.
 - **`commercialNotes`:** Términos y condiciones comerciales acordadas (forma de pago, hitos, vigencia).
-- **`convertedToProjectId`:** Puntero idempotente al proyecto operativo en Orbit tras la conversión.
+- **`convertedToProjectId`:** Puntero idempotente al proyecto operativo en ECO tras la conversión.
 
 #### 4.4 Separación entre Propuesta Aprobada y Cierre Ganado (HubSpot)
 1. **Propuesta Aprobada (`status === 'approved'`):** Refleja la aceptación técnica y comercial por parte del cliente del alcance presentado.
 2. **Deal Cerrado Ganado en HubSpot (`status === 'won'`):** Es la fuente de verdad comercial formal de Uhura Group.
-3. **Regla de Conversión Canónica:** La conversión a proyecto operativo en Orbit **está habilitada cuando el Deal alcanza el estado 'Cerrado Ganado' en HubSpot o se marca como Ganada en Orbit**. Mientras la integración bidireccional automática con HubSpot esté en desarrollo, Comercial puede completar manualmente el flujo Ganada ➔ Convertir a proyecto en Orbit.
+3. **Regla de Conversión Canónica:** La conversión a proyecto operativo en ECO **está habilitada cuando el Deal alcanza el estado 'Cerrado Ganado' en HubSpot o se marca como Ganada en ECO**. Mientras la integración bidireccional automática con HubSpot esté en desarrollo, Comercial puede completar manualmente el flujo Ganada ➔ Convertir a proyecto en ECO.
 
 ---
 
@@ -485,7 +487,7 @@ Gobernanza y trazabilidad de los archivos asociados a la oportunidad y al proyec
   - **Pestaña Documental en New Business:** [`src/components/taskflow/newbusiness/DocumentsDriveTab.tsx`](../components/taskflow/newbusiness/DocumentsDriveTab.tsx)
 
 #### 6.2 Estructura Estándar de Carpetas (Uhura Drive)
-Toda oportunidad y proyecto en Orbit se organiza bajo la siguiente convención:
+Toda oportunidad y proyecto en ECO se organiza bajo la siguiente convención:
 ```text
 PROSPECTOS / [Nombre Empresa] (en fase comercial)
   └─ CLIENTES / [Nombre Empresa] / [Código Proyecto] (al ganar el negocio)
@@ -498,7 +500,7 @@ PROSPECTOS / [Nombre Empresa] (en fase comercial)
 #### 6.3 Comportamiento Actual vs. Integración Futura
 - **Hoy (Manual):** El usuario pega los links a la carpeta y al brief en campos de texto de la UI.
 - **Backend Futuro (Google Drive API):**
-  - Al crear el prospecto en Orbit, un worker de backend creará automáticamente la carpeta en Drive con la estructura `00..03` y guardará los `folderId` en Orbit.
+  - Al crear el prospecto en ECO, un worker de backend creará automáticamente la carpeta en Drive con la estructura `00..03` y guardará los `folderId` en ECO.
   - Al ganar el proyecto, el backend moverá la carpeta desde `PROSPECTOS` hacia `CLIENTES / [Nombre Empresa]`.
 
 ---
@@ -553,13 +555,13 @@ Asegurar una transición ordenada y atómica entre la oportunidad comercial apro
 #### 8.3 Arquitectura de Conversión Aprobada: Regla 1:1:1 y Cronograma Paralelo (🟢 Decisión funcional aprobada - 04 Nov 2026)
 
 Conforme a las definiciones acordadas para la UAT 2 (Ticket #132 y rama `feat/hubspot-commercial-sync-flow`):
-1. **Regla Canónica 1:1:1:** Cada servicio ganado genera un proyecto independiente en la tabla `projects` de Orbit. Todos quedan asociados al mismo Cliente en el Directorio sin duplicarlo.
+1. **Regla Canónica 1:1:1:** Cada servicio ganado genera un proyecto independiente en la tabla `projects` de ECO. Todos quedan asociados al mismo Cliente en el Directorio sin duplicarlo.
 2. **Asignación Granular de Líder Operativo:** En el modal de conversión, cada tarjeta de servicio ganado cuenta con su propio selector de Líder Operativo (`leadUserId`), permitiendo asignar líderes distintos o el mismo líder según la especialidad de cada servicio.
 3. **Exclusión Estricta de Servicios Perdidos:** Cualquier servicio con etapa confirmada de `'Cierre perdido'` queda excluido de la conversión y NUNCA genera proyectos ni tareas.
 4. **Estados Operativos y Botón «Iniciar proyecto 🚀»:**
    - *(Actualizado 07 Nov 2026)* La conversión **no define fechas de inicio ni de entrega**: cerrar el negocio no hace el proyecto ejecutable. Todo proyecto convertido nace **`Por iniciar`** con el botón **`Iniciar proyecto 🚀`**.
    - En la conversión se definen, por servicio de **proyecto único**, las **rondas de ajuste incluidas** y los **días hábiles por ronda** (una ronda = el cliente revisa una entrega, devuelve ajustes y aprueba; reemplaza el modelo anterior de gates × tandas). Son campos visibles y editables; los valores sugeridos (2 rondas × 5 días) solo precargan. Fee mensual no tiene rondas. Las semanas de producción se heredan del Alcance.
-   - Al pulsar **`Iniciar proyecto 🚀`**, el líder fija la fecha de arranque y Orbit calcula la línea base en días hábiles: entrega de insumos del cliente + producción + rondas de ajuste × días por ronda. Se congelan `baselineStartDate`/`baselineEndDate` y se programan inicio y vencimiento de cada tarea.
+   - Al pulsar **`Iniciar proyecto 🚀`**, el líder fija la fecha de arranque y ECO calcula la línea base en días hábiles: entrega de insumos del cliente + producción + rondas de ajuste × días por ronda. Se congelan `baselineStartDate`/`baselineEndDate` y se programan inicio y vencimiento de cada tarea.
    - Desde ese momento el proyecto queda **`En ejecución`**.
 5. **Modo Desacoplado / Manual:** La conversión opera 100% de manera autónoma cuando HubSpot no está disponible o el token está inactivo, registrando la trazabilidad en la auditoría de New Business para reconciliación posterior.
 
@@ -603,7 +605,7 @@ Entidad que representa la cuenta comercial, operativa y de marca sombrilla con l
 3. **Fuentes de Verdad e Integraciones Futuras:**
    - **HubSpot:** Fuente de verdad del estado comercial (empresas, contactos, pipeline y cierre de deals).
    - **Alegra:** Fuente de verdad fiscal y tributaria (terceros, NIT/RUT validado, facturas electrónicas e impuestos).
-   - **Orbit:** Centro de gravedad operativo que preserva la trazabilidad mediante identificadores externos (`hubspotDealId`, `alegraContactId`). Los cambios o bajas en los sistemas fuente se reflejarán bajo reglas de sincronización auditadas sin alterar el histórico de ejecución.
+   - **ECO:** Centro de gravedad operativo que preserva la trazabilidad mediante identificadores externos (`hubspotDealId`, `alegraContactId`). Los cambios o bajas en los sistemas fuente se reflejarán bajo reglas de sincronización auditadas sin alterar el histórico de ejecución.
 
 ---
 
@@ -626,8 +628,8 @@ Gestión de datos de facturación electrónica y articulación con el sistema co
   - `alegraContactId`: String (ID del tercero en la base de datos de Alegra).
 
 #### 10.3 Reglas de Integración con Alegra
-1. **Orbit NO es un sistema de contabilidad:** Orbit no calcula balances contables, cuentas contables PUC, ni retenciones en la fuente complejas.
-2. **Alegra es la Fuente de Verdad Fiscal:** Orbit solo necesita almacenar el `alegraContactId` del cliente y, a futuro, recibir el número de factura y estado de pago de los hitos cobrados.
+1. **ECO NO es un sistema de contabilidad:** ECO no calcula balances contables, cuentas contables PUC, ni retenciones en la fuente complejas.
+2. **Alegra es la Fuente de Verdad Fiscal:** ECO solo necesita almacenar el `alegraContactId` del cliente y, a futuro, recibir el número de factura y estado de pago de los hitos cobrados.
 
 ---
 
@@ -827,7 +829,7 @@ Asignación formal de personas del equipo a los proyectos, garantizando que el t
 #### 14.2 Diferencia Crítica: Rol Cotizado vs. Persona Asignada
 - **Rol Cotizado (`budgetedRoleId`):** Perfil conceptual presupuestado en New Business (ej. *Front-End Dev*, tarifa de costo nómina según tarifario).
 - **Persona Real (`assignedUserId`):** Colaborador específico de la empresa (ej. *Juan Pérez*, desarrollador real contratado).
-- Orbit permite comparar si la persona asignada coincide con el perfil cotizado o si hubo un cambio de seniorities que altere la rentabilidad real del proyecto.
+- ECO permite comparar si la persona asignada coincide con el perfil cotizado o si hubo un cambio de seniorities que altere la rentabilidad real del proyecto.
 - **Catálogo cerrado (07 Nov 2026):** solo los roles oficiales de `STANDARD_UHURA_ROLES` se cotizan, se sugieren y aparecen en selectores (alcance, tareas, plantillas). No se crean roles por funciones puntuales: QA, backend ligero o soporte son **actividades** cotizadas bajo un rol oficial; quién las ejecutó lo registra la tarea («cubre rol», §14.3). Roles heredados fuera del catálogo se muestran como «fuera del catálogo» para no perder datos, pero no se ofrecen para nuevas tareas.
 - **Recursos externos / subcontratados** (backend, arquitectura de servidores, etc.): no son roles de Uhura. Se registran en la cotización como costo (valor fijo u horas × tarifa del proveedor), viajan al proyecto en la conversión (por servicio; sin servicio → primer proyecto) y se ven en Resumen para perfiles no colaboradores. No consumen capacidad, no aparecen en Mi Día ni en la Matriz de horas por rol.
 
@@ -951,7 +953,7 @@ Captura fidedigna, sin fricción y auditable de las horas realmente invertidas p
 ### Módulo 17: Mi Día (Home Contextual y Bandeja de Acción)
 
 #### 17.1 Propósito
-Pantalla principal de inicio para todo usuario de Orbit, diseñada como una bandeja de acción contextual viva que responde en tiempo real a la pregunta: *"¿Quién tiene la siguiente acción?"*. Elimina la dispersión entre dashboards analíticos y listas de tareas desconectadas, organizando el día en tres niveles esenciales:
+Pantalla principal de inicio para todo usuario de ECO, diseñada como una bandeja de acción contextual viva que responde en tiempo real a la pregunta: *"¿Quién tiene la siguiente acción?"*. Elimina la dispersión entre dashboards analíticos y listas de tareas desconectadas, organizando el día en tres niveles esenciales:
 1. **¿Qué requiere mi atención hoy?** (Bandeja dinámica de excepciones y handoffs por rol; si el contador es 0, la sección desaparece).
 2. **¿Qué tengo que hacer hoy?** (Lista priorizada de tareas asignadas para hoy con timer integrado y botón para solicitar revisión).
 3. **¿Cómo voy?** (Progreso de horas de la jornada, carga rápida y consulta de registros de tiempo).
@@ -966,7 +968,7 @@ Mi Día adapta dinámicamente sus secciones de atención según el rol activo de
 
 - **1. Comercial (Access Level `commercial` / `client_relationship`):**
   - **Asignación de Líder:** Detecta oportunidades comerciales creadas que aún no tienen líder de alcance asignado.
-  - **Registro de Cotización Externa (Handoff de Alcance Listo):** Detecta oportunidades en estado `internal_review` donde el Líder ya marcó el alcance técnico como listo (`Marcar alcance listo`). Muestra la acción para realizar el cálculo financiero en el Google Sheet oficial y registrar el valor cotizado en Orbit.
+  - **Registro de Cotización Externa (Handoff de Alcance Listo):** Detecta oportunidades en estado `internal_review` donde el Líder ya marcó el alcance técnico como listo (`Marcar alcance listo`). Muestra la acción para realizar el cálculo financiero en el Google Sheet oficial y registrar el valor cotizado en ECO.
   - **Formalización Administrativa:** Detecta oportunidades ganadas que requieren checklist de facturación (RUT, correo de facturación) o conversión formal a proyecto operativo.
 
 - **2. Líder de Alcance (Product Lead / Creative Strategy Lead / Growth Manager):**
@@ -990,7 +992,7 @@ Mi Día adapta dinámicamente sus secciones de atención según el rol activo de
   - Excepciones financieras y operativas de alto nivel sin ruido administrativo menor.
 
 #### 17.3 Articulación entre Mi Día y la Campana de Notificaciones
-Orbit utiliza un modelo complementario de comunicación:
+ECO utiliza un modelo complementario de comunicación:
 - **Mi Día:** Es la **bandeja de trabajo estructurada** donde el usuario encuentra sus tareas prioritarias, pendientes de revisión y handoffs accionables organizados por jerarquía.
 - **Campana de Notificaciones (In-App):** Es el **canal de eventos inmediatos** que notifica en tiempo real cuando ocurre un handoff (ej. *"Comercial te asignó la oportunidad X"*, *"Líder de alcance marcó el alcance listo para la oportunidad Y"*, *"Colaborador solicitó revisión en la tarea Z"*). Ambos sistemas consumen el mismo modelo de eventos sin duplicar lógica de negocio.
 
@@ -1006,8 +1008,8 @@ Mi Día puede mostrar de forma discreta y no invasiva:
 ### Módulo 18: Bucky y La Colonia (Espacio Social & Lúdico)
 
 #### 18.1 Propósito y Definición Funcional Cerrada
-- **Bucky:** Asistente contextual de Orbit que acompaña la jornada laboral, alerta sobre timers olvidados, tareas bloqueadas y deadlines. En la vista global de Orbit actúa como widget flotante; al ingresar a La Colonia, el widget flotante global desaparece para dar paso al Bucky protagonista dentro de su hábitat.
-- **La Colonia:** *"La Colonia es el espacio social y lúdico de Orbit para desconectarse unos minutos y compartir pequeños retos con el equipo."*
+- **Bucky:** Asistente contextual de ECO que acompaña la jornada laboral, alerta sobre timers olvidados, tareas bloqueadas y deadlines. En la vista global de ECO actúa como widget flotante; al ingresar a La Colonia, el widget flotante global desaparece para dar paso al Bucky protagonista dentro de su hábitat.
+- **La Colonia:** *"La Colonia es el espacio social y lúdico de ECO para desconectarse unos minutos y compartir pequeños retos con el equipo."*
 - **Alcance Funcional Simplificado & Presentación Inmersiva (Videojuego):**
   1. **Pantalla Principal Inmersiva (Hábitat Completo):** En lugar de un dashboard corporativo con tarjetas fragmentadas, el Diorama Ribereño es el escenario interactivo completo. Las estructuras funcionan como portales visuales de navegación directa:
      - 🏡 **Taller de Cedro (Izquierda):** Portal directo a La Torre de Cedro (15s).
@@ -1044,8 +1046,8 @@ Mi Día puede mostrar de forma discreta y no invasiva:
     `id` (UUID), `gameId` (`'torre'` | `'nenufar'`), `challengerUserId` (FK a User), `challengerScore` (Integer), `challengedUserId` (FK a User), `challengedScore` (Integer, opcional hasta resolución), `status` (`'pending'` | `'completed'`), `winnerUserId` (FK a User, opcional / derivado a partir de la comparación de puntuaciones; no debe introducir persistencia redundante obligatoria en base de datos), `createdAt` (Timestamp), `completedAt` (Timestamp, opcional).
   - **`WeeklyLeaderboardEntry` (Read Model Proyectado / No Requiere Tabla Propia):**
     Funciona como una estructura derivada / consulta agregada sobre `GameResult` filtrada por la semana civil en curso (`weekStartDate` a `weekEndDate`) calculando `MAX(score)` agrupado por `userId`. **Indunova no debe asumir que requiere una tabla física con persistencia propia en PostgreSQL.**
-- **5. Conexión con Sistema de Notificaciones de Orbit:**
-  Los avisos de reto ("Te han retado en La Torre de Cedro / Reflejos de Nenúfar", "Han superado tu marca", "Reto completado") deberán conectarse al **sistema central de notificaciones de Orbit** (in-app / campana) como requisito funcional una vez el backend esté disponible. Las notificaciones push quedan como capacidad evolutiva futura, no como dependencia actual.
+- **5. Conexión con Sistema de Notificaciones de ECO:**
+  Los avisos de reto ("Te han retado en La Torre de Cedro / Reflejos de Nenúfar", "Han superado tu marca", "Reto completado") deberán conectarse al **sistema central de notificaciones de ECO** (in-app / campana) como requisito funcional una vez el backend esté disponible. Las notificaciones push quedan como capacidad evolutiva futura, no como dependencia actual.
 - **No deben frenar la portabilidad ni la construcción del backend transaccional de Indunova.**
 - Bucky consume eventos emitidos por el core (ej. `EVENT_TIMER_EXCEEDED_4H`, `EVENT_PROJECT_OVER_BUDGET`), no debe inventar lógica de negocio aislada.
 - **Consumo Contextual de Datos de Equipo:**
@@ -1073,7 +1075,7 @@ Mi Día puede mostrar de forma discreta y no invasiva:
 ├─────────────┼───────────────────┼──────────────────────┼─────────────────┼─────────────┤
 │ HubSpot     │ Manual en UI      │ `hubspotDealId`      │ Webhook Deal    │ Duplicidad  │
 │ (CRM)       │ (pegar link / ID) │ `hubspotDealUrl`     │ "Won" en CRM    │ si se crea  │
-│             │                   │                      │ importa a Orbit │ manual      │
+│             │                   │                      │ importa a ECO │ manual      │
 ├─────────────┼───────────────────┼──────────────────────┼─────────────────┼─────────────┤
 │ Google      │ Manual en UI      │ `driveFolderUrl`     │ Creación de     │ Desorden de │
 │ Drive       │ (pegar link)      │ `briefUrl`           │ Prospecto crea  │ carpetas si │
@@ -1091,7 +1093,7 @@ Mi Día puede mostrar de forma discreta y no invasiva:
 
 > **Aclaración de Estado de Implementación:** Este repositorio frontend/contrato de TypeScript deja preparada la especificación canónica, tipos, vistas y validaciones de interfaz para que **Indunova implemente el backend real** (persistencia en PostgreSQL, endpoints en Django REST Framework, transacciones ACID y cálculo/persistencia definitiva del SLA e integraciones). **El backend Django/PostgreSQL no está implementado en este repositorio.**
 
-| Módulo Orbit | Estado Frontend / Contrato | UI | Lógica Dominio Frontend | Persistencia Requerida en Backend | Backend a implementar por Indunova | Dependencias Directas | Bloquea Portabilidad? |
+| Módulo ECO | Estado Frontend / Contrato | UI | Lógica Dominio Frontend | Persistencia Requerida en Backend | Backend a implementar por Indunova | Dependencias Directas | Bloquea Portabilidad? |
 |---|---|---|---|---|---|---|---|
 | **Clientes** | Preparado (Frontend) | Completa | Completa | PostgreSQL | Modelos `Client`, `TaxEntity` | Ninguna | **SÍ (Core)** |
 | **Catálogo / Plantillas** | Preparado (Frontend) | Completa | Completa | PostgreSQL | Modelos `ProductTemplate` | Roles | **SÍ (Core)** |
@@ -1129,13 +1131,13 @@ Durante la auditoría end-to-end de UAT se detectaron y reconciliaron las siguie
 5. **Staffing Automático Vacío y Tareas no en Blanco:**
    Las tareas se crean correctamente a partir de las actividades cotizadas con su presupuesto de horas y su rol cotizado correspondiente (`budgetedRole`, `budgetedRoleId`). Nacen con `assigneeAllocations = []` (sin persona física asignada) pero listas para la ejecución operativa; el equipo no empieza desde cero.
 6. **Desacoplamiento de Cálculos Salariales:**
-   Los cálculos salariales, prestaciones y márgenes de pricing están desacoplados de Orbit y gobernados por Finanzas externamente; Orbit no mantiene tarifas hardcodeadas ni calcula márgenes.
+   Los cálculos salariales, prestaciones y márgenes de pricing están desacoplados de ECO y gobernados por Finanzas externamente; ECO no mantiene tarifas hardcodeadas ni calcula márgenes.
 7. **Regla de Cronómetro / Timer en Pausa:**
    El tiempo transcurrido con el cronómetro en estado `PAUSED` **bajo ninguna circunstancia cuenta como tiempo efectivo de trabajo**. Únicamente los lapsos en estado activo `RUNNING` suman a la duración total del `TimeLog` al momento de hacer `Stop`.
 8. **Disparador Canónico de New Business (Brief + Scoping):**
    New Business no se inicia cuando un deal se marca como "ganado" en el CRM ni sustituye la prospección comercial en frío. Se dispara exclusivamente cuando **se recibe un brief comercial calificado desde HubSpot que exige dimensionamiento técnico de entregables (scoping) y costeo operativo**.
 9. **Desacoplamiento Financiero y Fuente de Verdad Económica:**
-   La fuente de verdad financiera de Uhura Group es el **Google Sheet oficial de Finanzas**. Orbit desacopló y retiró su motor financiero interno (`financialEngine.ts`, constantes salariales y calculadora de márgenes). Orbit estructura el alcance técnico y las horas por rol, y registra con fidelidad el resultado comercial acordado externamente.
+   La fuente de verdad financiera de Uhura Group es el **Google Sheet oficial de Finanzas**. ECO desacopló y retiró su motor financiero interno (`financialEngine.ts`, constantes salariales y calculadora de márgenes). ECO estructura el alcance técnico y las horas por rol, y registra con fidelidad el resultado comercial acordado externamente.
 10. **Eliminación de Cotizaciones Huérfanas y Única Fuente de Verdad:**
     En el prototipo existía un contenedor huérfano (`createdQuotes`) y una vista independiente (`cotizador`) desconectada de las oportunidades. **Corrección de dominio:** Se eliminó la vista y el estado paralelo. Toda cotización (`QuoteProposal`) debe existir y persistirse exclusivamente dentro de una `NewBusinessOpportunity`. En el flujo "Usar en New Business" del catálogo de plantillas, la oportunidad debe existir previamente antes de fijar y persistir el snapshot de cotización.
 11. **Detalle de Tarea y Ciclo Operativo (`TaskDetailModal`):**
@@ -1160,7 +1162,7 @@ Durante la auditoría end-to-end de UAT se detectaron y reconciliaron las siguie
 2. **Creación automática de carpetas mediante Google Drive API.**
 3. **Generación binaria de PDFs en servidor (Puppeteer / ReportLab).**
 4. **Retos asíncronos y ranking semanal de La Colonia (modelos mínimos de backend `GameResult` y `ColonyChallenge`).**
-5. **Evolución a Progressive Web App (PWA):** Orbit deberá poder evolucionar a una Progressive Web App (PWA) instalable en dispositivos móviles, sin requerir inicialmente distribución vía App Store/Play Store. No hace parte del alcance actual ni bloquea el backend. La arquitectura de API y autenticación/sesiones no debería introducir dependencias que dificulten esta evolución posteriormente.
+5. **Evolución a Progressive Web App (PWA):** ECO deberá poder evolucionar a una Progressive Web App (PWA) instalable en dispositivos móviles, sin requerir inicialmente distribución vía App Store/Play Store. No hace parte del alcance actual ni bloquea el backend. La arquitectura de API y autenticación/sesiones no debería introducir dependencias que dificulten esta evolución posteriormente.
 
 ### 9.3 Delimitación de Responsabilidades: Comportamiento Funcional vs. Decisiones Técnicas de Indunova
 
@@ -1172,7 +1174,7 @@ Para asegurar una frontera limpia de trabajo entre Producto (Uhura) y la Fábric
 2. **Integridad de Fechas Calendario:**
    Fechas como `fecha_ingreso`, `birthDate` y los rangos de vacaciones (`startDate`, `endDate`) deben mantenerse íntegras en el día calendario civil correspondiente, sin desplazamientos o corrimientos de fecha provocados por conversiones de huso horario entre cliente y servidor.
 3. **Fidelidad del Registro Comercial y Horas Cotizadas:**
-   Orbit debe preservar íntegramente el rollup de horas técnicas por rol presupuestadas, el monto cotizado, la moneda (`COP` o `USD`) y los enlaces a los documentos oficiales de soporte (Google Sheet de Finanzas y propuesta formal presentada).
+   ECO debe preservar íntegramente el rollup de horas técnicas por rol presupuestadas, el monto cotizado, la moneda (`COP` o `USD`) y los enlaces a los documentos oficiales de soporte (Google Sheet de Finanzas y propuesta formal presentada).
 4. **Atomicidad en la Conversión de Oportunidades:**
    La creación de cliente, proyecto, entregables y tareas a partir de una oportunidad ganada debe ser atómica (todo o nada), garantizando que jamás existan estados a medias o proyectos sin entregables por fallos en la operación.
 5. **Exclusividad del Cronómetro:**
@@ -1190,7 +1192,7 @@ Para asegurar una frontera limpia de trabajo entre Producto (Uhura) y la Fábric
 
 #### C. Coordinación y Gestión de Dependencias entre Uhura e Indunova:
 1. **Desacoplamiento con Finanzas:**
-   El backend no implementa cálculos de salarios ni márgenes en la API. El backend de Orbit únicamente persiste y expone los campos comerciales de `QuoteProposal` (horas rollup, valor cotizado, moneda, estado y URLs de soporte).
+   El backend no implementa cálculos de salarios ni márgenes en la API. El backend de ECO únicamente persiste y expone los campos comerciales de `QuoteProposal` (horas rollup, valor cotizado, moneda, estado y URLs de soporte).
 2. **Acceso a Google Calendar:**
    Cuando Indunova defina el mecanismo técnico de integración, deberá indicar a Uhura qué calendario, permisos y credenciales necesita para staging/producción. Uhura facilitará el acceso correspondiente al calendario corporativo gestionado por Administrativa.
 
@@ -1201,11 +1203,11 @@ Para asegurar una frontera limpia de trabajo entre Producto (Uhura) y la Fábric
 ### 10.1. Principio Arquitectónico Fundamental de Seguridad
 > **"Ocultar botones en React NO constituye seguridad."**
 > Toda regla de visibilidad, creación, edición, aprobación o administración aquí definida es de cumplimiento obligatorio y vinculante para el backend de Indunova (Django REST Framework / PostgreSQL).
-> La interfaz web de Orbit adapta dinámicamente sus menús, controles y vistas según el usuario activo, pero **cada endpoint de la API REST (`/api/...`) debe validar de manera estricta la identidad del usuario (`request.user`), su rol profesional, su nivel de acceso (`OrbitAccessLevel`) y el alcance territorial/operativo autorizado (`AccessScope`)** mediante `PermissionClasses` o decoradores a nivel de vista y filtrado estricto de QuerySets en el ORM.
+> La interfaz web de ECO adapta dinámicamente sus menús, controles y vistas según el usuario activo, pero **cada endpoint de la API REST (`/api/...`) debe validar de manera estricta la identidad del usuario (`request.user`), su rol profesional, su nivel de acceso (`OrbitAccessLevel`) y el alcance territorial/operativo autorizado (`AccessScope`)** mediante `PermissionClasses` o decoradores a nivel de vista y filtrado estricto de QuerySets en el ORM.
 
 ### 10.2. Taxonomía de Identidad: Roles Canónicos vs. Perfiles de Sistema
 
-Orbit separa tajantemente entre **rol profesional/cotizable** (el oficio operativo de la persona que factura o ejecuta horas en proyectos de clientes) y **perfil interno de sistema** (funciones de dirección o soporte que no se cotizan en proyectos de clientes).
+ECO separa tajantemente entre **rol profesional/cotizable** (el oficio operativo de la persona que factura o ejecuta horas en proyectos de clientes) y **perfil interno de sistema** (funciones de dirección o soporte que no se cotizan en proyectos de clientes).
 
 #### 1. Roles Profesionales Canónicos (`StandardUhuraRole`):
 Existen exactamente 13 roles oficiales en el catálogo de servicios de Uhura:
@@ -1237,7 +1239,7 @@ Roles operativos no cotizables para tareas operativas estándar:
   - Asignación formal del Líder de Alcance.
   - Recepción del handoff de alcance listo (`internal_review`) en Mi Día.
   - Realización del cálculo financiero externo en el Google Sheet oficial.
-  - Registro del resultado comercial en Orbit (monto cotizado, moneda, versión y URLs).
+  - Registro del resultado comercial en ECO (monto cotizado, moneda, versión y URLs).
   - Marcación de oportunidad como Ganada (`won`) tras aprobación del cliente.
   - Ejecución de la conversión a proyecto operativo.
 - **Líder de Alcance / Project Lead (Product Lead / Creative Strategy Lead / Líderes de Área):**
@@ -1461,7 +1463,7 @@ El backend debe persistir en base de datos como mínimo los siguientes campos de
 #### 4. Gestión Canónica de Fotografía de Perfil (`avatar_url`) y Fallback Visual:
 - **Soporte Canónico:** La entidad `UserProfile` en backend y `UserItem` en frontend soportan el campo `avatar_url` / `avatarUrl` (URL nullable).
 - **Desacople de Almacenamiento Físico:** El backend de Indunova define la infraestructura y proveedor de almacenamiento de medios físicos (e.g. Google Cloud Storage, Amazon S3, MinIO o CDN dedicada) y expone en la API únicamente la URL resultante (`avatar_url`). El frontend nunca asume dependencias locales de almacenamiento.
-- **Consumo Unificado en Frontend:** Toda la interfaz de Orbit consume las imágenes de perfil a través del componente centralizado `UserAvatar`.
+- **Consumo Unificado en Frontend:** Toda la interfaz de ECO consume las imágenes de perfil a través del componente centralizado `UserAvatar`.
 - **Tratamiento Visual Estricto:** Relación de aspecto 1:1, centrado, `object-cover`, sin deformación ni alteración de la composición de tarjetas, headers o tablas.
 - **Fallback Automático Resiliente:** Si el campo es `null`, vacío o si la imagen falla al cargar (`onError`), el componente automáticamente muestra las iniciales del colaborador sobre el color temático asignado (`avatarBg`).
 
@@ -1491,7 +1493,7 @@ Campos sujetos a auditoría obligatoria en backend:
 #### 6. Frontera Arquitectónica con el Futuro People Master:
 Para la separación estricta entre la identidad operativa actual de `UserProfile` y la futura evolución administrativa de personas (contratos, salarios, dotación, SST), consultar la subsección [11.4.1. Frontera Arquitectónica: Perfil Operativo (UserProfile) vs. Evolución People Master](#1141-frontera-arquitectónica-perfil-operativo-userprofile-vs-evolución-people-master) y la guía técnica de referencia [`src/docs/PEOPLE_MASTER_EVOLUTION.md`](./PEOPLE_MASTER_EVOLUTION.md).
 
-*El frontend de Orbit ya se encuentra totalmente preparado para emitir y previsualizar esta estructura bajo el contrato acordado sin asumir persistencia autoritativa local.*
+*El frontend de ECO ya se encuentra totalmente preparado para emitir y previsualizar esta estructura bajo el contrato acordado sin asumir persistencia autoritativa local.*
 
 ---
 
@@ -1500,18 +1502,18 @@ Para la separación estricta entre la identidad operativa actual de `UserProfile
 ### 11.1. Principio Rector: Integraciones Silenciosas e Invisibles
 > **PRINCIPIO ARQUITECTÓNICO DE UHURA:**
 > **"Las integraciones deben sentirse casi invisibles."**
-> En Orbit no existen botones de "Sincronizar ahora", pantallas de configuración de tokens para usuarios finales, ni paneles que emulen dashboards de APIs externas. Orbit es un sistema de gestión operativa enfocado en la claridad del trabajo. La interoperabilidad ocurre a nivel de modelo de dominio y claves foráneas canónicas, permitiendo que la capa de backend (Indunova) orqueste workers y webhooks sin obligar al frontend a rediseñar sus pantallas ni sus entidades principales.
+> En ECO no existen botones de "Sincronizar ahora", pantallas de configuración de tokens para usuarios finales, ni paneles que emulen dashboards de APIs externas. ECO es un sistema de gestión operativa enfocado en la claridad del trabajo. La interoperabilidad ocurre a nivel de modelo de dominio y claves foráneas canónicas, permitiendo que la capa de backend (Indunova) orqueste workers y webhooks sin obligar al frontend a rediseñar sus pantallas ni sus entidades principales.
 
 ---
 
-> **Excepción aprobada (07 Nov 2026 · ticket #149):** la **administración de webhooks de Google Chat** es la única pantalla de configuración de integraciones visible en Orbit/ECO, y está restringida a `system_admin` (ver §11.8). El resto de usuarios nunca ve URLs, tokens ni botones de sincronización.
+> **Excepción aprobada (07 Nov 2026 · ticket #149):** la **administración de webhooks de Google Chat** es la única pantalla de configuración de integraciones visible en ECO, y está restringida a `system_admin` (ver §11.8). El resto de usuarios nunca ve URLs, tokens ni botones de sincronización.
 
 ### 11.2. Frontera Canónica de Sistemas (Sources of Truth)
 
-| Sistema Externo | Rol en el Ecosistema | Source of Truth Canónico | Entidades Vinculadas en Orbit | Claves Foráneas & Hooks en Orbit |
+| Sistema Externo | Rol en el Ecosistema | Source of Truth Canónico | Entidades Vinculadas en ECO | Claves Foráneas & Hooks en ECO |
 | :--- | :--- | :--- | :--- | :--- |
 | **HubSpot** | Comercial & CRM | Prospectos, empresas, contactos, deals, pipeline y actividad comercial | `NewBusinessOpportunity`, `ProjectSummaryItem` | `hubspotDealId`, `hubspotDealUrl`, `hubspotCompanyId`, `hubspotContactId` |
-| **Orbit** | Operativo & Capacidad | Alcance técnico, dimensionamiento, cotizaciones, proyectos, entregables, tareas, staffing, capacidad y horas | Todo el Core de Orbit | Entidades maestras de Orbit (`ProjectSummaryItem`, `TaskItem`, `UserItem`, etc.) |
+| **ECO** | Operativo & Capacidad | Alcance técnico, dimensionamiento, cotizaciones, proyectos, entregables, tareas, staffing, capacidad y horas | Todo el Core de ECO | Entidades maestras de ECO (`ProjectSummaryItem`, `TaskItem`, `UserItem`, etc.) |
 | **Alegra** | Fiscal & Contable | Terceros fiscales (Razón Social / NIT), facturación electrónica, impuestos, cartera y recaudo | `ClientTaxEntity`, `ClientProfile`, `ProjectSummaryItem` | `taxEntityId` (selección fiscal operativa inicial hacia `ClientTaxEntity`), `alegraContactId` |
 | **Google Drive** | Repositorio Documental | Almacenamiento seguro de archivos, briefs, contratos firmados, entregables y propuestas | `NewBusinessOpportunity`, `ProjectSummaryItem` | `driveFolderId`, `driveFolderUrl`, `briefUrl`, `briefFileId` |
 | **Google Calendar** | Calendario de Disponibilidad | Vacaciones y licencias/permisos laborales aprobados del equipo | `TeamAbsenceEvent`, `CapacityView`, `BuckyEngine` | `TeamAbsenceEvent` (`externalCalendarEventId`, `externalCalendarId`, `source: 'google_calendar'`) |
@@ -1521,11 +1523,11 @@ Para la separación estricta entre la identidad operativa actual de `UserProfile
 ### 11.3. Regla Canónica de Disparo: Cuándo se Activa New Business
 > **CORRECCIÓN CRÍTICA DE GOBERNANZA:**
 > **New Business NO se activa con "Deal Won" en HubSpot.**
-> - **El Disparador Real:** New Business se activa en Orbit tan pronto como existe un **Brief Comercial Calificado** que requiere **Dimensionamiento Técnico Operativo (Scoping)**.
-> - **Razón:** Para poder cotizar y ganar el Deal en HubSpot, la Directora Comercial necesita que el Product Lead / Líder de Área desglose el alcance en entregables, actividades y horas por rol en Orbit.
+> - **El Disparador Real:** New Business se activa en ECO tan pronto como existe un **Brief Comercial Calificado** que requiere **Dimensionamiento Técnico Operativo (Scoping)**.
+> - **Razón:** Para poder cotizar y ganar el Deal en HubSpot, la Directora Comercial necesita que el Product Lead / Líder de Área desglose el alcance en entregables, actividades y horas por rol en ECO.
 > - **Ciclo de Vida:**
 >   1. Oportunidad creada en HubSpot (`hubspotDealId`).
->   2. Se activa en Orbit para scoping técnico y generación de propuestas (`QuoteProposal`).
+>   2. Se activa en ECO para scoping técnico y generación de propuestas (`QuoteProposal`).
 >   3. Una vez el cliente aprueba la propuesta económica y se formaliza el acuerdo, la oportunidad se convierte en Proyecto Activo (`handleConvertOpportunityToProject`), propagando las referencias comerciales y de repositorio (`hubspotDealId`, `driveFolderUrl`) y la entidad fiscal inicial seleccionada (`taxEntityId`) como punto de partida administrativo (sin restringir que el proyecto definitivo pueda facturarse a múltiples NITs).
 
 ---
@@ -1549,12 +1551,12 @@ Para la separación estricta entre la identidad operativa actual de `UserProfile
 >    - **Aniversarios próximos:** Se calculan evaluando la proximidad de la fecha anual derivada de `fecha_ingreso`.
 >    - Mi Día y Bucky consumen directamente estos campos estructurados del perfil para visibilidad de equipo y avisos contextuales, sin requerir llamadas externas a servicios terceros.
 > 5. **Hobbies y Mascotas (`hobbies?: string`, `petNames?: string`):**
->    - Campos opcionales del perfil en Orbit para enriquecimiento de experiencia y contexto de Bucky. **No forman parte del contrato obligatorio de interoperabilidad técnica**.
+>    - Campos opcionales del perfil en ECO para enriquecimiento de experiencia y contexto de Bucky. **No forman parte del contrato obligatorio de interoperabilidad técnica**.
 > 6. **Google Calendar NO es la Fuente de Cumpleaños ni Aniversarios:**
->    - La privacidad de fechas de nacimiento y datos contractuales reside exclusivamente en la base de datos interna de Orbit (`UserItem`). Google Calendar se reserva de forma estricta para la programación operacional de ausencias y licencias.
+>    - La privacidad de fechas de nacimiento y datos contractuales reside exclusivamente en la base de datos interna de ECO (`UserItem`). Google Calendar se reserva de forma estricta para la programación operacional de ausencias y licencias.
 
 #### Estructura y Reglas Canónicas del Perfil del Colaborador
-El perfil del colaborador en Orbit define la identidad funcional, contractual y de seguridad del usuario en el sistema. Los campos se estructuran bajo las siguientes reglas:
+El perfil del colaborador en ECO define la identidad funcional, contractual y de seguridad del usuario en el sistema. Los campos se estructuran bajo las siguientes reglas:
 
 1. **Campos Canónicos Persistidos (Almacenados en Base de Datos):**
    - **`name` / `fullName`:** Nombre completo del colaborador (string, obligatorio).
@@ -1591,7 +1593,7 @@ El perfil del colaborador en Orbit define la identidad funcional, contractual y 
    - **Universo Canónico Vigente:**
      La matriz **Equipo Canónico Privado** continúa siendo la fuente autoritativa para colaboradores activos, `accessLevel`, roles y relación con el backend. El universo canónico vigente queda formalmente cerrado y confirmado en **exactamente 18 colaboradores activos**. La referencia anterior a 19 colaboradores ha sido corregida y descartada en la fuente autoritativa.
    - **Gobernanza del Perfil Ejecutivo (`executive`):**
-     El perfil `executive` adicional definido en Equipo Canónico Privado forma parte de los 18 colaboradores activos y debe contar con usuario Orbit. Su asociación con Backend User ID se resolverá durante el crosswalk con Indunova.
+     El perfil `executive` adicional definido en Equipo Canónico Privado forma parte de los 18 colaboradores activos y debe contar con usuario ECO. Su asociación con Backend User ID se resolverá durante el crosswalk con Indunova.
    - **Gobernanza de `system_admin`:**
      Existen dos usuarios iniciales con Access Level `system_admin` con idénticos permisos técnicos en plataforma. La diferenciación funcional y operativa (soporte técnico / producto digital vs. soporte administrativo y configuración de capacidades/calendarios) corresponde a su rol en la organización, según se define en Equipo Canónico Privado.
    - **Cuentas Duplicadas e Históricas identificadas para conciliación por Indunova:**
@@ -1613,7 +1615,7 @@ El perfil del colaborador en Orbit define la identidad funcional, contractual y 
 > **Esta definición NO amplía el alcance actual ni bloquea la integración frontend ↔ backend con Indunova.**
 
 #### 1. Alcance Actual: `UserProfile` como Identidad Operativa y de Acceso
-El modelo actual de colaborador en Orbit (`UserProfile` en backend Django / `UserItem` en frontend React) representa de manera suficiente y exhaustiva la **identidad operativa, jerárquica y de autorización** requerida para el flujo de trabajo core de la agencia:
+El modelo actual de colaborador en ECO (`UserProfile` en backend Django / `UserItem` en frontend React) representa de manera suficiente y exhaustiva la **identidad operativa, jerárquica y de autorización** requerida para el flujo de trabajo core de la agencia:
 - **Campos Core Actuales Persistidos:**
   - `id` (Identificador único UUID)
   - `name` / `fullName` (Nombre completo)
@@ -1667,14 +1669,14 @@ A futuro, el módulo de **Equipo & Accesos** podrá evolucionar para permitir la
 - **Reglas de Seguridad Indiscutibles:**
   1. **Nunca versionarse:** Prohibido commitear datos personales o de nómina reales en repositorios Git ni dejarlos en mocks de frontend.
   2. **No visibilidad por defecto:** Estos datos no son visibles para el equipo general ni para perfiles de liderazgo operativo.
-  3. **No crear `hr_admin` como nivel RBAC:** Se mantienen estrictamente intactos los 7 niveles canónicos de Orbit (`collaborator`, `leader`, `client_relationship`, `commercial`, `administrative`, `executive`, `system_admin`). La visibilidad futura de datos sensibles de RRHH se gobernará mediante permisos/capacidades específicas independientes del `accessLevel` (ej. `people.hr.read`, `people.compensation.read`, `people.sst.read`, referenciales).
+  3. **No crear `hr_admin` como nivel RBAC:** Se mantienen estrictamente intactos los 7 niveles canónicos de ECO (`collaborator`, `leader`, `client_relationship`, `commercial`, `administrative`, `executive`, `system_admin`). La visibilidad futura de datos sensibles de RRHH se gobernará mediante permisos/capacidades específicas independientes del `accessLevel` (ej. `people.hr.read`, `people.compensation.read`, `people.sst.read`, referenciales).
   4. **Aislamiento de permisos técnicos:** `system_admin` **NO** obtiene por defecto acceso a información salarial, contractual, médica o sensible por el mero hecho de tener permisos técnicos de administración sobre la plataforma.
   5. **Controles de protección y auditoría:** Los datos sensibles deberán contar con controles reforzados de acceso, auditoría y protección en reposo. La estrategia técnica definitiva de persistencia y cifrado se definirá con backend e infraestructura antes de implementar People Master.
-  6. **Criterio de necesidad para datos SST/médicos:** No debe asumirse que todo dato administrativo existente en las bases actuales deba migrarse a Orbit; su incorporación futura dependerá de necesidad funcional real, privacidad y gobernanza.
+  6. **Criterio de necesidad para datos SST/médicos:** No debe asumirse que todo dato administrativo existente en las bases actuales deba migrarse a ECO; su incorporación futura dependerá de necesidad funcional real, privacidad y gobernanza.
 
 #### 6. Matriz de Alcance: Core Actual vs. People Master Evolutivo
 
-| Dimensión | Ahora (Core Personas en Orbit) | Evolutivo (Futuro People Master) |
+| Dimensión | Ahora (Core Personas en ECO) | Evolutivo (Futuro People Master) |
 | :--- | :--- | :--- |
 | **Identidad** | Nombre, email, avatar, ciudad | Documento legal, tipo de identificación, nacionalidad, dirección |
 | **Puesto & Rol** | `jobTitle`, `officialRoles` (Catálogo), `department`, `leaderId` | Centro de costos, banda salarial, organigrama formal corporativo |
@@ -1693,20 +1695,20 @@ A futuro, el módulo de **Equipo & Accesos** podrá evolucionar para permitir la
 ### 11.5. Ausencias / Vacaciones y Google Calendar: Proceso Operacional y Modelo `TeamAbsenceEvent`
 
 #### Proceso Funcional Actual de Aprobación de Ausencias en Uhura:
-El flujo corporativo vigente para la solicitud y programación de vacaciones o ausencias opera por fuera de la capa transaccional de Orbit a través de los siguientes 5 pasos estrictos:
+El flujo corporativo vigente para la solicitud y programación de vacaciones o ausencias opera por fuera de la capa transaccional de ECO a través de los siguientes 5 pasos estrictos:
 1. **Solicitud Inicial:** El colaborador solicita formalmente la ausencia o periodo de vacaciones a su líder directo de área.
 2. **Aprobación del Líder:** El líder de área evalúa la disponibilidad del equipo y aprueba la solicitud.
 3. **Escalamiento por Rol:** Si quien solicita la ausencia es un **líder de área**, la aprobación corresponde de manera exclusiva a la **Dirección General (Access Level `executive`)**.
 4. **Formalización Administrativa:** Una vez obtenida la aprobación del líder (o de la Dirección General), la novedad se formaliza mediante correo electrónico remitido al **Área Administrativa (Administrativa & RRHH)**, con copia obligatoria al líder de área correspondiente.
 5. **Programación en Calendario Corporativo:** El Área Administrativa registra y programa formalmente la ausencia en el Google Calendar corporativo oficial de Uhura Group (ej. `ausencias@uhuragroup.com`).
 
-#### Decisiones de Producto y Arquitectura Orbit:
-- **Orbit NO Requiere Crear un Workflow Interno de Aprobación:**
-  En esta fase, Orbit no implementa un motor transaccional de solicitudes ni bandejas de aprobación burocrática de vacaciones. El proceso operativo existente por canales corporativos (Líder / Dirección General ➔ Correo Área Administrativa ➔ Google Calendar) funciona eficientemente.
+#### Decisiones de Producto y Arquitectura ECO:
+- **ECO NO Requiere Crear un Workflow Interno de Aprobación:**
+  En esta fase, ECO no implementa un motor transaccional de solicitudes ni bandejas de aprobación burocrática de vacaciones. El proceso operativo existente por canales corporativos (Líder / Dirección General ➔ Correo Área Administrativa ➔ Google Calendar) funciona eficientemente.
 - **Google Calendar como Fuente Operacional Externa:**
   El Google Calendar corporativo administrado por el Área Administrativa actúa como la **fuente de verdad operacional de las ausencias ya aprobadas y programadas**.
 - **Consumo Unificado vía `TeamAbsenceEvent`:**
-  Orbit sincroniza y consume estas ausencias a través de la entidad canónica `TeamAbsenceEvent`. Se prohíbe taxativamente crear modelos paralelos de ausencias en el backend de Indunova.
+  ECO sincroniza y consume estas ausencias a través de la entidad canónica `TeamAbsenceEvent`. Se prohíbe taxativamente crear modelos paralelos de ausencias en el backend de Indunova.
 - **Afectación Estricta a Capacidad:**
   **Únicamente las ausencias aprobadas y programadas en `TeamAbsenceEvent` descuentan capacidad/disponibilidad operativa.** Ausencias en borrador, tentativas no formalizadas o eventos de otra índole jamás descuentan horas.
 - **Frontera de Google Calendar:**
@@ -1733,7 +1735,7 @@ export type TeamAbsenceSource =
   | 'manual';
 
 export interface TeamAbsenceEvent {
-  id: string;                          // UUID único de Orbit
+  id: string;                          // UUID único de ECO
   userId: string;                      // FK al colaborador (UserItem.id)
   userName?: string;                   // Nombre para display rápido
   type: TeamAbsenceType;
@@ -1752,7 +1754,7 @@ export interface TeamAbsenceEvent {
 }
 ```
 
-#### Regla Matemática de Deducción de Capacidad en Orbit:
+#### Regla Matemática de Deducción de Capacidad en ECO:
 1. **Deducción de Días Hábiles:** Por cada día hábil (lunes a viernes) comprendido entre `startDate` y `endDate`, se descuentan `impactHoursPerDay` (o la cuota diaria `capacityHours / 5`) de la disponibilidad del colaborador:
    $$\text{Capacidad Neta} = \max(0, (\text{Capacidad Semanal Configurada} - \text{Festivos}) - \sum \text{Deducción Ausencias Aprobadas})$$
 2. **Exclusión de Fines de Semana y Festivos:** Si una ausencia coincide con un fin de semana o un día festivo oficial (calendario colombiano), ese día NO resta horas adicionales, porque los festivos ya descuentan su cuota diaria (`capacityHours / 5`) de la semana laboral y los fines de semana tienen disponibilidad proyectada 0h.
@@ -1901,5 +1903,5 @@ Para evitar duplicidades con tableros existentes, la vista se compone estrictame
 
 ---
 
-*Fin del Documento Maestro — Uhura Orbit 2026*
+*Fin del Documento Maestro — Uhura ECO 2026*
 

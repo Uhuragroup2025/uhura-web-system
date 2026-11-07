@@ -1,6 +1,6 @@
-# Orbit (Uhura Web System) — Especificación Canónica de Arquitectura & Operación
+# ECO (Uhura Web System) — Especificación Canónica de Arquitectura & Operación
 
-Este documento compila las definiciones oficiales de arquitectura y reglas de negocio del sistema Orbit (Uhura Web System), acordadas entre el equipo de Producto/Operaciones de Uhura Group (Paola Monsalve, Catalina Tejada) y el equipo de desarrollo de Indunnova.
+Este documento compila las definiciones oficiales de arquitectura y reglas de negocio del sistema ECO (Uhura Web System), acordadas entre el equipo de Producto/Operaciones de Uhura Group (Paola Monsalve, Catalina Tejada) y el equipo de desarrollo de Indunnova.
 
 ---
 
@@ -8,7 +8,7 @@ Este documento compila las definiciones oficiales de arquitectura y reglas de ne
 
 ```
                      ┌──────────────────────────────┐
-                     │ Oportunidad Comercial (Orbit)│
+                     │ Oportunidad Comercial (ECO)│
                      └──────────────┬───────────────┘
                                     │
            ┌────────────────────────┼────────────────────────┐
@@ -97,7 +97,7 @@ En la vista de detalle de cada Cliente (`/clientes` -> Proyectos de la Cuenta):
 
 ## 8. Módulo de Capacidad: Jornada de 42h, Barras Duales y Vista Unificada por Área
 
-- **Jornada Base Estándar:** `42 horas semanales` (`8.4h/día` para deducción de festivos y ausencias aprobadas en Google Calendar / Orbit).
+- **Jornada Base Estándar:** `42 horas semanales` (`8.4h/día` para deducción de festivos y ausencias aprobadas en Google Calendar / ECO).
 - **Dos Barras Independientes por Colaborador:**
   1. **Barra 1 — `Planificado`:** Suma las horas presupuestadas/asignadas (`budgetedHours`) de las tareas asignadas al colaborador en el periodo frente a su capacidad neta semanal.
   2. **Barra 2 — `Ejecutado` (en amarillo `#f59e0b`):** Suma las horas reales registradas (`TimeLog`) por el colaborador en el periodo frente a su capacidad neta semanal.

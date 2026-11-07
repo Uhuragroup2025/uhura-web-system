@@ -88,7 +88,7 @@ export const AssistedTimerRecoveryModal: React.FC<AssistedTimerRecoveryModalProp
                 Tu timer lleva {currentElapsedHours}h activo en &ldquo;{activeTimer.taskTitle}&rdquo;
               </p>
               <p className="leading-relaxed">
-                Parece que pudo quedar encendido por error tras concluir tu sesión de trabajo. En Orbit protegemos la exactitud de los costos reales sin imponer cortes automáticos arbitrarios.
+                Parece que pudo quedar encendido por error tras concluir tu sesión de trabajo. En ECO protegemos la exactitud de los costos reales sin imponer cortes automáticos arbitrarios.
               </p>
             </div>
           </div>
