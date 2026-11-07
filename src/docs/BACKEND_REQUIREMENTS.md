@@ -1,11 +1,14 @@
 # Requerimientos de Backend y Modelo de Datos (Orbit)
 
 > **Documento de Especificación Técnica para Implementación Backend (Indunova)**
-> **Fecha de Actualización:** 04 de noviembre de 2026 (Alineación con decisiones confirmadas de producto, arquitectura 1:1:1 por servicio, ticket #132 y modo desacoplado manual)
+> **Fecha de Actualización:** 07 de noviembre de 2026 (Cronograma calculado al «Iniciar proyecto», gates y tandas editables, equipo derivado de tareas). Anterior: 04 de noviembre de 2026 (arquitectura 1:1:1 por servicio, ticket #132 y modo desacoplado manual)
 > Este documento consolida las deudas técnicas, relaciones inmutables y reglas de producto identificadas en el QA de **Proyectos, Tareas, New Business, Cotización y Conversión a Proyectos**.
 
 > **AVISO DE PRIVACIDAD Y GOBERNANZA:**
 > La documentación pública define reglas, estructuras y comportamientos. La identidad nominal de colaboradores, correos, relaciones de reporte, calendarios individuales y crosswalk con backend se administra exclusivamente mediante **Equipo Canónico Privado**.
+
+> **COMPONENTES EXCLUSIVOS DEL PROTOTIPO (NO VAN A PRODUCCIÓN):**
+> El **«Simulador QA»** (selector flotante para cambiar de usuario y probar visibilidad por `accessLevel`) es una herramienta de desarrollo del prototipo. **No debe implementarse en producción**: allí la identidad y el `accessLevel` se obtienen únicamente de la sesión autenticada del usuario.
 
 ---
 
@@ -397,7 +400,10 @@ Para no bloquear New Business cuando la app privada de HubSpot esté caída o si
 ### 12.5 Estados Operativos de Proyecto («Por iniciar» vs «En ejecución»)
 * **La conversión NO define fechas.** Cerrar un negocio y convertirlo en Cliente + Proyecto no lo hace ejecutable: el proyecto nace con `start_date = NULL`, `end_date = NULL`, `is_kicked_off = false` y se presenta como **«Por iniciar»** con la acción **«Iniciar proyecto 🚀»**.
 * La conversión solo persiste la configuración contractual del cronograma en `schedule_config` por proyecto:
-  `included_rework_rounds` (default 2), `rework_round_days` (default 3 días hábiles), `production_weeks` (= `weeksRef` del servicio en el Alcance), `gate_count` (2), `gate_approval_wait_days` (5), `client_kickoff_wait_days` (3).
+  `gate_count`, `gate_approval_wait_days`, `included_rework_rounds`, `rework_round_days` y `production_weeks` (= `weeksRef` del servicio en el Alcance), más `client_kickoff_wait_days`.
+  - Todos son **visibles y editables** por servicio en la conversión y se confirman en «Iniciar proyecto». No hay valores implícitos: los sugeridos (2 gates · 5 días de revisión · 2 tandas · 3 días por tanda · 3 días de kickoff) solo precargan los campos. Un proyecto pequeño puede tener 1 gate; uno grande, varios.
+  - **Solo proyectos únicos** tienen gates y tandas. Fee mensual: `gate_count = 0`, `included_rework_rounds = 0`.
+  - Si hay más gates que entregables, los gates sobrantes se acumulan al final del último entregable.
 * Las tareas creadas en la conversión nacen sin fechas (`scheduled_date` y `due_date` vacíos).
 * **«Iniciar proyecto 🚀»** (líder del proyecto) fija la fecha de arranque y calcula la línea base en **días hábiles** (excluye fines de semana y festivos de Colombia):
   ```
@@ -491,7 +497,7 @@ Para no bloquear New Business cuando la app privada de HubSpot esté caída o si
 
 ### 15.1 Criterio de Filtrado de «Mi Día»
 * El endpoint/vista de **`Mi Día`** debe devolver estrictamente:
-  1. Tareas donde el usuario es **Colaborador** (`assignee` o `collaborators`) con `due_date == hoy` (o `scheduled_date == hoy`, o vencidas sin completar).
+  1. Tareas donde el usuario es **Colaborador** (`assignee` o `collaborators`) con `due_date == hoy`, `scheduled_date == hoy`, **ventana en curso** (`scheduled_date <= hoy <= due_date`, no completada) o vencidas sin completar.
   2. Tareas en estado **`Review`** que requieran su **revisión o aprobación** (`reviewer_id == user.id` o `project_lead_id == user.id`).
   3. La tarea con el **timer activo** del usuario.
 * Ordenamiento por defecto: pendientes primero, ordenadas por **prioridad** (`urgent` > `high` > `medium` > `low`), dejando las completadas de hoy tachadas al final.

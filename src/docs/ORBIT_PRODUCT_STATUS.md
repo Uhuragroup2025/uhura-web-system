@@ -2,7 +2,7 @@
 
 > **Documento:** Especificación Funcional Maestra para Portabilidad, Backend y Modelo de Datos
 > **Destinatario Técnico Principal:** Indunova (Backend Django REST Framework / PostgreSQL) y Equipo de Producto Uhura Group
-> **Fecha de Actualización:** 04 de noviembre de 2026
+> **Fecha de Actualización:** 07 de noviembre de 2026 (cronograma al «Iniciar proyecto», gates/tandas editables, equipo derivado de tareas, hallazgos E2E §10.5)
 > **Versión:** 3.4.0 (Aprobación Canónica UAT 2: 1 Servicio = 1 Proyecto, Decimales, Líderes por Servicio y Modo Desacoplado)
 > **Estado:** Especificación Maestra Canónica Reconciliada — Fuente de Verdad Funcional de Orbit
 >
@@ -558,7 +558,7 @@ Conforme a las definiciones acordadas para la UAT 2 (Ticket #132 y rama `feat/hu
 3. **Exclusión Estricta de Servicios Perdidos:** Cualquier servicio con etapa confirmada de `'Cierre perdido'` queda excluido de la conversión y NUNCA genera proyectos ni tareas.
 4. **Estados Operativos y Botón «Iniciar proyecto 🚀»:**
    - *(Actualizado 07 Nov 2026)* La conversión **no define fechas de inicio ni de entrega**: cerrar el negocio no hace el proyecto ejecutable. Todo proyecto convertido nace **`Por iniciar`** con el botón **`Iniciar proyecto 🚀`**.
-   - En la conversión solo se definen, por servicio, las **tandas de ajuste incluidas** (default 2) y los **días hábiles por tanda** (default 3); las semanas de producción se heredan del Alcance.
+   - En la conversión se definen, por servicio de **proyecto único**, los **gates de aprobación**, los **días de revisión por gate**, las **tandas de ajuste por gate** y los **días por tanda**. Son campos visibles y editables (los valores sugeridos solo precargan); un proyecto pequeño puede tener 1 gate y uno grande varios. Fee mensual no tiene gates ni tandas. Las semanas de producción se heredan del Alcance.
    - Al pulsar **`Iniciar proyecto 🚀`**, el líder fija la fecha de arranque y Orbit calcula la línea base en días hábiles: espera de kickoff + producción + gates × aprobación + gates × tandas × días por tanda. Se congelan `baselineStartDate`/`baselineEndDate` y se programan inicio y vencimiento de cada tarea.
    - Desde ese momento el proyecto queda **`En ejecución`**.
 5. **Modo Desacoplado / Manual:** La conversión opera 100% de manera autónoma cuando HubSpot no está disponible o el token está inactivo, registrando la trazabilidad en la auditoría de New Business para reconciliación posterior.
@@ -1259,6 +1259,18 @@ Roles operativos no cotizables para tareas operativas estándar:
    Se requiere formalizar si ciertas tipologías de tareas operativas menores o no cotizables (ej. rituales internos de equipo, standups de 15 minutos, soporte ad-hoc) pueden auto-completarse directamente por el colaborador sin transicionar obligatoriamente por el estado `Review` del Líder.
 2. **[Pendiente de decisión de Producto] Parametrización Multi-NIT por Proyecto:**
    Definir con la Dirección General y Administración si la facturación de un proyecto distribuido entre más de una entidad fiscal (`ClientTaxEntity`) se parametriza una sola vez a nivel global del proyecto o si puede variar por hito/factura emitida, y si se calcula mediante porcentajes, montos fijos o ambas modalidades.
+
+---
+
+### 10.5. Hallazgos del recorrido E2E pendientes (07 Nov 2026)
+Recorrido Comercial → PM → Colaborador sobre el prototipo. Lo ya resuelto quedó documentado en §8.3 (cronograma al «Iniciar proyecto») y §14.3 (equipo derivado de tareas). Pendiente:
+1. **New Business — «Fecha máx. de entrega»:** es el plazo del scoping técnico, pero se lee como entrega del proyecto. Renombrar (p. ej. «Fecha límite de dimensionamiento»).
+2. **Alcance — «Marcar como listo»:** los requisitos (enlace de Drive + Guardar) solo se ven en un tooltip del botón deshabilitado. Mostrarlos como checklist visible.
+3. **Alcance — semanas por servicio:** al importar una plantilla el campo queda vacío y el resumen muestra «0 Sem.». Precargar desde la plantilla.
+4. **Cotización — HubSpot:** muestra «HubSpot: closedwon» y a la vez «Sin negocio en HubSpot» en modo manual. Unificar el estado.
+5. **Matriz Horas por Rol:** los entregables aparecen «En Ejecución» aunque el proyecto esté «Por iniciar».
+6. **Cierre de proyecto:** no existe flujo de cierre (solo «Archivar»). Definir checklist de cierre (entregables aprobados, horas reales vs. cotizadas, tandas usadas, fecha real). `ProjectSettingsTab.tsx` no se usa (código muerto).
+7. **Datos mock:** proyectos de ejemplo con roles fuera de `STANDARD_UHURA_ROLES` («Tech Lead», «QA Tester», «Front End») y ausencias con fechas vencidas en el radar de Mi Día.
 
 ---
 

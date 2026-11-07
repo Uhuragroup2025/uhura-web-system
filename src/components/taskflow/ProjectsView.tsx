@@ -128,6 +128,9 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   const [scheduleDurationWeeks, setScheduleDurationWeeks] = useState<number>(4);
   const [scheduleReworkRounds, setScheduleReworkRounds] = useState<number>(2);
   const [scheduleReworkRoundDays, setScheduleReworkRoundDays] = useState<number>(3);
+  const [scheduleGateCount, setScheduleGateCount] = useState<number>(2);
+  const [scheduleGateDays, setScheduleGateDays] = useState<number>(5);
+  const [scheduleKickoffWaitDays, setScheduleKickoffWaitDays] = useState<number>(3);
   const [scheduleRecalculateTasks, setScheduleRecalculateTasks] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'fee_monthly' | 'fixed_project' | 'internal_non_billable' | 'risk'>('all');
@@ -563,6 +566,9 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
       setScheduleKickoffDate(currentProject.startDate || new Date().toISOString().slice(0, 10));
       setScheduleReworkRounds(currentProject.scheduleConfig?.includedReworkRounds ?? 2);
       setScheduleReworkRoundDays(currentProject.scheduleConfig?.reworkRoundDays ?? 3);
+      setScheduleGateCount(currentProject.scheduleConfig?.gateCount ?? 2);
+      setScheduleGateDays(currentProject.scheduleConfig?.gateApprovalWaitDays ?? 5);
+      setScheduleKickoffWaitDays(currentProject.scheduleConfig?.clientKickoffWaitDays ?? 3);
       // Semanas de producción: fuente de verdad = Alcance (productionWeeks heredado de la conversión)
       const scopeWeeks = currentProject.scheduleConfig?.productionWeeks;
       if (scopeWeeks && scopeWeeks > 0) {
@@ -577,11 +583,13 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   const isCurrentProjectFee = normalizeProjectType(currentProject?.projectType) === 'fee_monthly';
 
   const scheduleConfigDraft = useMemo(() => ({
-    ...(currentProject?.scheduleConfig || {}),
+    clientKickoffWaitDays: scheduleKickoffWaitDays,
+    gateApprovalWaitDays: scheduleGateDays,
+    gateCount: scheduleGateCount,
     includedReworkRounds: scheduleReworkRounds,
     reworkRoundDays: scheduleReworkRoundDays,
     productionWeeks: scheduleDurationWeeks
-  }), [currentProject?.scheduleConfig, scheduleReworkRounds, scheduleReworkRoundDays, scheduleDurationWeeks]);
+  }), [scheduleKickoffWaitDays, scheduleGateDays, scheduleGateCount, scheduleReworkRounds, scheduleReworkRoundDays, scheduleDurationWeeks]);
 
   const scheduleBreakdown = useMemo(() => {
     if (!scheduleKickoffDate) return null;
@@ -632,14 +640,9 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
       forecastEndDate: finalEndDate,
       deliverables: updatedDeliverables,
       isKickedOff: true,
-      scheduleConfig: {
-        clientKickoffWaitDays: currentProject.scheduleConfig?.clientKickoffWaitDays ?? 3,
-        gateApprovalWaitDays: currentProject.scheduleConfig?.gateApprovalWaitDays ?? 5,
-        gateCount: currentProject.scheduleConfig?.gateCount ?? 2,
-        includedReworkRounds: scheduleReworkRounds,
-        reworkRoundDays: scheduleReworkRoundDays,
-        productionWeeks: scheduleDurationWeeks
-      },
+      scheduleConfig: isCurrentProjectFee
+        ? { ...scheduleConfigDraft, gateCount: currentProject.scheduleConfig?.gateCount ?? 0 }
+        : scheduleConfigDraft,
       healthNote: `Proyecto iniciado formalmente el ${finalStartDate} con cronograma alineado.`
     };
 
@@ -1791,118 +1794,109 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                   </div>
                 </div>
 
-                {/* 2. Duración en Semanas & Fecha de Fin */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <label className="font-bold text-[#334155]">
-                      Semanas de producción{currentProject.scheduleConfig?.productionWeeks ? ' (del alcance)' : ''}:
-                    </label>
-                    <div className="flex items-center gap-1">
-                      {[2, 4, 6, 8, 12].map((w) => (
-                        <button
-                          key={w}
-                          type="button"
-                          onClick={() => setScheduleDurationWeeks(w)}
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors cursor-pointer ${
-                            scheduleDurationWeeks === w
-                              ? 'bg-[#501f92] text-white'
-                              : 'bg-[#f1f5f9] text-[#64748b] hover:bg-[#e2e8f0]'
-                          }`}
-                        >
-                          {w}s
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                {/* 2. Semanas de producción (del Alcance) */}
+                <label className="space-y-1.5 block">
+                  <span className="font-bold text-[#334155] block">
+                    Semanas de producción{currentProject.scheduleConfig?.productionWeeks ? ' (del alcance)' : ''}
+                  </span>
                   <input
-                    type="number"
-                    min="1"
-                    max="52"
-                    value={scheduleDurationWeeks}
-                    onChange={(e) => setScheduleDurationWeeks(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                    className="w-full p-2.5 rounded-xl border border-[#cbd5e1] font-semibold text-xs text-[#0f172a] focus:ring-2 focus:ring-[#501f92]"
-                  />
-
-                  {/* Desglose de la línea base en días hábiles */}
-                  {scheduleBreakdown && (
-                    <div className="p-3 rounded-xl bg-[#faf5ff] border border-[#e9d5ff] text-xs mt-2 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Calendar className="w-4 h-4 text-[#501f92] shrink-0" />
-                          <div>
-                            <span className="text-[10.5px] text-[#64748b] block">Entrega (línea base):</span>
-                            <strong className="text-[#501f92] font-bold text-xs">{scheduleBreakdown.endDate}</strong>
-                          </div>
-                        </div>
-                        <span className="text-[10px] font-semibold text-[#64748b] bg-white px-2 py-1 rounded-md border border-[#e9d5ff]">
-                          {scheduleBreakdown.totalBusinessDays} días hábiles
-                        </span>
-                      </div>
-                      <ul className="text-[10.5px] text-[#475569] space-y-0.5 border-t border-[#e9d5ff] pt-2">
-                        <li className="flex justify-between"><span>Producción ({scheduleDurationWeeks} sem.)</span><strong>{scheduleBreakdown.productionDays} d</strong></li>
-                        <li className="flex justify-between"><span>Devolución de kickoff (cliente)</span><strong>{scheduleBreakdown.kickoffWaitDays} d</strong></li>
-                        {scheduleBreakdown.gateCount > 0 && (
-                          <>
-                            <li className="flex justify-between"><span>Aprobación cliente ({scheduleBreakdown.gateCount} gates × {scheduleBreakdown.gateApprovalDays / scheduleBreakdown.gateCount} d)</span><strong>{scheduleBreakdown.gateApprovalDays} d</strong></li>
-                            <li className="flex justify-between"><span>Tandas de ajuste ({scheduleBreakdown.gateCount} gates × {scheduleBreakdown.reworkRounds} tandas × {scheduleBreakdown.reworkRoundDays} d)</span><strong>{scheduleBreakdown.reworkDays} d</strong></li>
-                          </>
-                        )}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-
-                {/* 3. Tandas de ajuste permitidas por gate / entrega */}
-                {!isCurrentProjectFee && (
-                <div className="space-y-1.5 p-3.5 rounded-xl bg-[#faf5ff] border border-[#e9d5ff]">
-                  <div className="flex items-center justify-between">
-                    <label className="font-bold text-[#334155] flex items-center gap-1.5">
-                      <span>Tandas de ajuste permitidas por gate / entrega:</span>
-                    </label>
-                    <div className="flex items-center gap-1">
-                      {[1, 2, 3, 4].map((r) => (
-                        <button
-                          key={r}
-                          type="button"
-                          onClick={() => setScheduleReworkRounds(r)}
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors cursor-pointer ${
-                            scheduleReworkRounds === r
-                              ? 'bg-[#501f92] text-white'
-                              : 'bg-white text-[#64748b] hover:bg-[#ede9fe] border border-[#d8b4fe]'
-                          }`}
-                        >
-                          {r} {r === 2 ? '(Estándar)' : ''}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 pt-1">
-                    <input
                       type="number"
                       min="1"
+                      max="52"
+                      value={scheduleDurationWeeks}
+                      onChange={(e) => setScheduleDurationWeeks(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                      className="w-full p-2.5 rounded-xl border border-[#cbd5e1] font-bold text-xs text-[#0f172a] focus:ring-2 focus:ring-[#501f92] bg-white"
+                    />
+                </label>
+
+                {/* 3. Tiempos del cliente (editables, sin valores ocultos) */}
+                <div className="space-y-2">
+                  <span className="font-bold text-[#334155] block">Tiempos del cliente (días hábiles)</span>
+                  <div className="grid grid-cols-2 gap-3">
+                  <label className="space-y-1 block col-span-2">
+                    <span className="text-[11px] font-semibold text-[#475569] block">Devolución del kickoff</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="30"
+                      value={scheduleKickoffWaitDays}
+                      onChange={(e) => setScheduleKickoffWaitDays(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                      className="w-full p-2 rounded-xl border border-[#cbd5e1] font-bold text-xs text-[#0f172a] focus:ring-2 focus:ring-[#501f92] bg-white"
+                    />
+                  </label>
+                    {!isCurrentProjectFee && (
+                      <>
+                  <label className="space-y-1 block">
+                    <span className="text-[11px] font-semibold text-[#475569] block">Gates de aprobación</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="20"
+                      value={scheduleGateCount}
+                      onChange={(e) => setScheduleGateCount(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                      className="w-full p-2 rounded-xl border border-[#cbd5e1] font-bold text-xs text-[#0f172a] focus:ring-2 focus:ring-[#501f92] bg-white"
+                    />
+                  </label>
+                  <label className="space-y-1 block">
+                    <span className="text-[11px] font-semibold text-[#475569] block">Días de revisión por gate</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="30"
+                      value={scheduleGateDays}
+                      onChange={(e) => setScheduleGateDays(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                      className="w-full p-2 rounded-xl border border-[#cbd5e1] font-bold text-xs text-[#0f172a] focus:ring-2 focus:ring-[#501f92] bg-white"
+                    />
+                  </label>
+                  <label className="space-y-1 block">
+                    <span className="text-[11px] font-semibold text-[#475569] block">Tandas de ajuste por gate</span>
+                    <input
+                      type="number"
+                      min="0"
                       max="10"
                       value={scheduleReworkRounds}
-                      onChange={(e) => setScheduleReworkRounds(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                      className="w-20 p-2 rounded-xl border border-[#cbd5e1] font-bold text-xs text-[#0f172a] focus:ring-2 focus:ring-[#501f92] bg-white"
+                      onChange={(e) => setScheduleReworkRounds(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                      className="w-full p-2 rounded-xl border border-[#cbd5e1] font-bold text-xs text-[#0f172a] focus:ring-2 focus:ring-[#501f92] bg-white"
                     />
-                    <span className="text-[11px] text-[#64748b] leading-tight">
-                      rondas de feedback incluidas contractualmente por cada hito formal antes de cobrar sobrecostos.
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 pt-1">
+                  </label>
+                  <label className="space-y-1 block">
+                    <span className="text-[11px] font-semibold text-[#475569] block">Días por tanda</span>
                     <input
                       type="number"
-                      min="1"
+                      min="0"
                       max="15"
                       value={scheduleReworkRoundDays}
-                      onChange={(e) => setScheduleReworkRoundDays(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                      className="w-20 p-2 rounded-xl border border-[#cbd5e1] font-bold text-xs text-[#0f172a] focus:ring-2 focus:ring-[#501f92] bg-white"
+                      onChange={(e) => setScheduleReworkRoundDays(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                      className="w-full p-2 rounded-xl border border-[#cbd5e1] font-bold text-xs text-[#0f172a] focus:ring-2 focus:ring-[#501f92] bg-white"
                     />
-                    <span className="text-[11px] text-[#64748b] leading-tight">
-                      días hábiles por tanda (feedback del cliente + aplicación de ajustes). Incluidas en el plan: no cuentan como desvío.
-                    </span>
+                  </label>
+                      </>
+                    )}
                   </div>
                 </div>
+
+                {/* Resultado: entrega calculada */}
+                {scheduleBreakdown && (
+                  <div className="p-3 rounded-xl bg-[#faf5ff] border border-[#e9d5ff] text-xs space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-[#501f92] shrink-0" />
+                        <div>
+                          <span className="text-[10.5px] text-[#64748b] block">Entrega (línea base)</span>
+                          <strong className="text-[#501f92] font-bold text-xs">{scheduleBreakdown.endDate}</strong>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-semibold text-[#64748b] bg-white px-2 py-1 rounded-md border border-[#e9d5ff]">
+                        {scheduleBreakdown.totalBusinessDays} días hábiles
+                      </span>
+                    </div>
+                    <p className="text-[10.5px] text-[#475569] border-t border-[#e9d5ff] pt-2">
+                      Producción {scheduleBreakdown.productionDays} d · Kickoff {scheduleBreakdown.kickoffWaitDays} d
+                      {scheduleBreakdown.gateCount > 0 && (
+                        <> · Revisión {scheduleBreakdown.gateApprovalDays} d · Tandas {scheduleBreakdown.reworkDays} d</>
+                      )}
+                    </p>
+                  </div>
                 )}
 
                 {/* 4. Recálculo automático de Deadlines */}

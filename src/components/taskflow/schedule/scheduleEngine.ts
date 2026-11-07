@@ -158,7 +158,12 @@ export function planProjectSchedule(params: ScheduleInput & {
     return d.totalQuotedHours || fromTasks || 1;
   });
   const delDays = allocate(baseline.productionDays, delHours).map((n) => Math.max(1, n));
-  const gateIdx = new Set(detectGateDeliverables(dels, cfg.gateCount));
+  // Gates por entregable: si hay más gates que entregables, los sobrantes se acumulan en el último
+  const gateIdxList = detectGateDeliverables(dels, cfg.gateCount);
+  const gatesAt = new Map<number, number>();
+  gateIdxList.forEach((i) => gatesAt.set(i, 1));
+  const extraGates = Math.max(0, cfg.gateCount - gateIdxList.length);
+  if (extraGates > 0) gatesAt.set(dels.length - 1, (gatesAt.get(dels.length - 1) || 0) + extraGates);
   const gateTailDays = cfg.gateApprovalWaitDays + cfg.includedReworkRounds * cfg.reworkRoundDays;
 
   let cursor = 0; // índice de día hábil desde el arranque
@@ -184,8 +189,9 @@ export function planProjectSchedule(params: ScheduleInput & {
     });
 
     cursor += prodDays;
-    const hasGate = gateIdx.has(i);
-    if (hasGate) cursor += gateTailDays;
+    const gatesHere = gatesAt.get(i) || 0;
+    const hasGate = gatesHere > 0;
+    cursor += gatesHere * gateTailDays;
     if (i === 0) cursor += cfg.clientKickoffWaitDays;
 
     plannedDels.push({
