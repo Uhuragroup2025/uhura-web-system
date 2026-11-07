@@ -613,6 +613,18 @@ class MonthlyCommercialOverride(models.Model):
 
 ---
 
+### 17.4 Mejoras de lógica en «Tablero» y «Finanzas» (07 Nov 2026)
+Detalle funcional en `ORBIT_PRODUCT_STATUS.md` §11.7 (punto 3). Requisitos de backend:
+* **P&G con costos reales:** `project_cost = Σ(time_logs.hours × person_hourly_cost vigente a la work_date) + depreciación de hardware imputada + licencias imputadas + external_resources`. Si alguna fuente no tiene datos para el periodo, la respuesta incluye `margin_available = false` y la UI no muestra 100 %.
+* **Tabla de costos por persona/rol:** `person_hourly_costs` (`user_id` o `role`, `hourly_cost_cop`, `effective_from`). Retirar el costo hora de `financial_goals`.
+* **Facturas:** `invoices.project_id` (o `client_id` + `service_id`) obligatorio al causar; las facturas importadas de Alegra sin vínculo quedan en estado `unreconciled` y se listan como «Por conciliar».
+* **Metas:** `financial_goals` anual con distribución mensual automática (`monthly_goals`), sobrescribible por mes con auditoría (`changed_by`, `changed_at`, `reason`).
+* **Proyección:** `forecast(month) = Σ fees activos (contract monthly value, mientras month ≤ contract_end_date) + hitos de facturación pendientes de proyectos únicos + Σ(oportunidades abiertas × probabilidad)`. Mantener la proyección lineal como referencia opcional.
+* **TRM:** tabla única `exchange_rates` (`date`, `currency`, `rate_to_cop`), usada por licencias, cotizaciones, recursos externos y P&G; consulta por la fecha del hecho económico.
+* **Alertas:** endpoint de alertas que devuelve solo proyectos en riesgo con `recommended_action`; el semáforo usa conteos agregados.
+
+---
+
 ## 18. Integración con Google Chat (Ticket #149)
 Especificación funcional y permisos en `ORBIT_PRODUCT_STATUS.md` §11.8. Requisitos de backend:
 

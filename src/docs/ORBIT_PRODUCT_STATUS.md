@@ -1912,7 +1912,7 @@ Desactivar la integración del cliente detiene los proyectos que heredan; un pro
 
 #### 1. Ubicación y Control de Acceso (RBAC)
 - **Ubicación Canónica:** Pestaña primaria dentro del grupo **COMERCIAL** en la barra lateral, situada jerárquicamente **inmediatamente encima de New Business**.
-- **Público Objetivo:** Exclusivo para perfiles de Liderazgo y Dirección (`executive`, `system_admin`, `commercial`, `leader`, `client_relationship`).
+- **Público Objetivo:** `executive`, `system_admin`, `commercial` y `client_relationship` (módulo RBAC `direccion-finanzas`). *(Actualizado 07 Nov 2026: `leader` ya no tiene acceso, alineado con producción; ver §10.4.2.)*
 - **Restricción Estricta:** Acceso denegado a colaboradores operativos (`collaborator`), evitando filtración de metas de facturación o cifras comerciales consolidadas.
 
 #### 2. Definición de los 3 Bloques No Redundantes
@@ -1934,6 +1934,17 @@ Para evitar duplicidades con tableros existentes, la vista se compone estrictame
      - 🟡 **Alerta:** Consumo entre 75% y 100% de la bolsa.
      - 🔴 **Excedido / Sobrecosto:** Consumo superior al 100% de las horas presupuestadas.
    - Integra la visualización de entregables vencidos por proyecto (`dueDate < hoy` y `status !== 'Done'`), consolidando las alertas operativas en un solo punto sin tarjetas redundantes.
+
+#### 3. Reconciliación con producción: «Tablero» y «Finanzas» (07 Nov 2026)
+En producción, Indunova separó este módulo en **Tablero** (salud comercial y operativa) y **Finanzas** (cartera, P&G, proyecciones, facturas, metas). Cubren la misma necesidad que Dirección y Finanzas del prototipo, por lo que **no se requieren pantallas nuevas**. Las mejoras pendientes son de **lógica y fuentes de datos**:
+
+1. **Costos reales en el P&G.** Hoy el margen aparece en 100 % porque los costos están en $0. El costo de un proyecto = horas registradas × costo hora de la persona + depreciación de hardware + licencias imputadas + recursos externos (BACKEND §12.8, §12.10). Si falta alguna fuente, mostrar «margen no disponible» en lugar de 100 %.
+2. **Facturas ligadas a proyecto o servicio.** «Rentabilidad por servicio» muestra un bloque «(Sin proyecto)» con la mayoría de la facturación. Cada factura debe asociarse a proyecto (o cliente + servicio) al causarse; las no asociadas se muestran como **«Por conciliar»**, no como un servicio.
+3. **Costo hora fuera de «Metas financieras».** El costo hora es un parámetro de costo por persona o rol con vigencia (tabla de costos), no una meta del periodo.
+4. **Meta del mes desde la meta anual.** La meta anual se reparte por mes (como en el prototipo) y cada mes puede ajustarse manualmente con trazabilidad. Así «Meta del mes» y «Cumplimiento presupuestal» nunca quedan vacíos si hay meta anual.
+5. **Proyección basada en contratos, no solo lineal.** Proyección = fees vigentes (valor mensual × meses restantes del contrato, §11.6.1) + facturación pendiente de proyectos únicos por hitos + pipeline de New Business ponderado por probabilidad. La regresión lineal puede quedar como referencia secundaria.
+6. **Una sola tabla de TRM.** Licencias muestra «TRM sin configurar». Finanzas administra una tabla única (fecha, moneda, valor) que usan licencias, cotizaciones en USD, recursos externos y P&G.
+7. **Alertas sin duplicar el semáforo.** «Alertas operativas» y «Proyectos · semáforo» repiten la misma lista. El semáforo muestra conteos y la lista completa; las alertas solo los proyectos en **riesgo** con la acción recomendada (ej. reforecast, ronda adicional, sobrecosto).
 
 ---
 
