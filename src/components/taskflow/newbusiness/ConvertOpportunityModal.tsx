@@ -576,9 +576,9 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
                               onChange={(e) => setServiceRollover((prev) => ({ ...prev, [service.serviceId]: e.target.value as 'none' | 'carry_over' | 'contractual_cap' }))}
                               className="w-full p-2 rounded-xl border border-[#cbd5e1] text-[#0f172a] text-xs font-bold focus:ring-2 focus:ring-[#501f92] bg-white shadow-2xs"
                             >
-                              <option value="none">No se acumulan</option>
-                              <option value="carry_over">Pasan al mes siguiente</option>
-                              <option value="contractual_cap">Pasan hasta un 25 %</option>
+                              <option value="none">No se acumulan (regla general)</option>
+                              <option value="carry_over">Excepción: pasan al mes siguiente</option>
+                              <option value="contractual_cap">Excepción: pasan hasta un 25 %</option>
                             </select>
                           </label>
                         </div>

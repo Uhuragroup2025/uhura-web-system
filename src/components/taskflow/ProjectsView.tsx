@@ -138,6 +138,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   const [scheduleReworkRoundDays, setScheduleReworkRoundDays] = useState<number>(5);
   const [scheduleKickoffWaitDays, setScheduleKickoffWaitDays] = useState<number>(3);
   const [scheduleContractMonths, setScheduleContractMonths] = useState<number>(6); // Fee: vigencia
+  const [scheduleRollover, setScheduleRollover] = useState<'none' | 'carry_over' | 'contractual_cap'>('none'); // Fee: horas no usadas
   const [scheduleRecalculateTasks, setScheduleRecalculateTasks] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'fee_monthly' | 'fixed_project' | 'internal_non_billable' | 'risk'>('all');
@@ -613,6 +614,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
       setScheduleReworkRoundDays(currentProject.scheduleConfig?.reworkRoundDays ?? 5);
       setScheduleKickoffWaitDays(currentProject.scheduleConfig?.clientKickoffWaitDays ?? 3);
       setScheduleContractMonths(currentProject.contractMonths ?? 6);
+      setScheduleRollover((currentProject.rolloverPolicy as 'none' | 'carry_over' | 'contractual_cap') || 'none');
       // Semanas de producción: fuente de verdad = Alcance (productionWeeks heredado de la conversión)
       const scopeWeeks = currentProject.scheduleConfig?.productionWeeks;
       if (scopeWeeks && scopeWeeks > 0) {
@@ -690,7 +692,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
       ? buildFeeCycles({
           contractStartDate: finalStartDate,
           periods: [{ months: scheduleContractMonths, monthlyHours: currentProject.budgetedHours }],
-          rolloverPolicy: currentProject.rolloverPolicy,
+          rolloverPolicy: scheduleRollover,
           tasks: feeTasksForCycles,
           generatedKeys: [feeStartKey]
         })
@@ -707,6 +709,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
       ...(isCurrentProjectFee
         ? {
             contractMonths: scheduleContractMonths,
+            rolloverPolicy: scheduleRollover,
             contractStartDate: finalStartDate,
             contractEndDate: feeContractEnd,
             monthlyCycles: feeCycles,
@@ -2045,6 +2048,16 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                       onChange={(e) => setScheduleContractMonths(Math.max(1, parseInt(e.target.value, 10) || 1))}
                       className="w-full p-2.5 rounded-xl border border-[#cbd5e1] font-bold text-xs text-[#0f172a] focus:ring-2 focus:ring-[#501f92] bg-white"
                     />
+                    <span className="font-bold text-[#334155] block pt-2">Horas no usadas del mes</span>
+                    <select
+                      value={scheduleRollover}
+                      onChange={(e) => setScheduleRollover(e.target.value as 'none' | 'carry_over' | 'contractual_cap')}
+                      className="w-full p-2.5 rounded-xl border border-[#cbd5e1] font-bold text-xs text-[#0f172a] focus:ring-2 focus:ring-[#501f92] bg-white"
+                    >
+                      <option value="none">No se acumulan (regla general)</option>
+                      <option value="carry_over">Excepción: pasan al mes siguiente</option>
+                      <option value="contractual_cap">Excepción: pasan hasta un 25 %</option>
+                    </select>
                     {scheduleKickoffDate && (
                       <span className="text-[11px] text-[#64748b] block">
                         Contrato: {scheduleBreakdown?.startDate || scheduleKickoffDate} → {computeContractEnd(scheduleBreakdown?.startDate || scheduleKickoffDate, scheduleContractMonths)} · {currentProject.budgetedHours}h por mes · las tareas del alcance son la plantilla del mes 1.

@@ -727,6 +727,7 @@ Entidad persistente para insumos, accesos o gates que condicionan la ruta críti
 #### 11.6.1 Fee mensual: vigencia, ciclos y renovación (🟢 Decisión aprobada · 🟣 Implementado en prototipo · 07 Nov 2026)
 - **Un fee es un solo proyecto** con ciclos mensuales; no se crea un proyecto por mes.
 - **Conversión:** por servicio fee se confirma la **vigencia en meses** (precargada de la cotización, editable: 3, 6, 12…) y la política de **horas no usadas**: `No se acumulan` (`none`) · `Pasan al mes siguiente` (`carry_over`) · `Pasan hasta un 25 %` (`contractual_cap`).
+- **Regla general: las horas no usadas no se acumulan.** Trasladarlas es una excepción pactada con el cliente: se propone en la conversión y se **confirma o cambia en «Iniciar proyecto»** (y en «Ajustar»).
 - **Iniciar proyecto:** fija el inicio del contrato y calcula el fin (`inicio + vigencia − 1 día`). Las tareas del alcance son la **plantilla del mes 1** y se reparten en ese mes. No aplica cronograma de rondas.
 - **Ciclo mensual:** bolsa mensual de horas por rol (la del alcance) + horas trasladadas según la política. Cada tarea pertenece a un ciclo (`cycleKey = 'YYYY-MM'`; si falta, se deriva de su fecha).
 - **Tareas recurrentes:** en producción, ECO crea el día 1 de cada mes las tareas del ciclo a partir de la plantilla del mes 1 (sin tiempo, estado ni registros). En el prototipo se hace con «Generar tareas de <mes>».
