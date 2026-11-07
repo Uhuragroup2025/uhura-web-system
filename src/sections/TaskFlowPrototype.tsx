@@ -2137,6 +2137,12 @@ export const TaskFlowPrototype: React.FC = () => {
           driveFolderUrl: opp.driveFolderUrl || null,
           status: 'Activo',
           healthStatus: 'verde',
+          scheduleConfig: {
+            clientKickoffWaitDays: (projItem as any).scheduleConfig?.clientKickoffWaitDays ?? 3,
+            gateApprovalWaitDays: (projItem as any).scheduleConfig?.gateApprovalWaitDays ?? 5,
+            gateCount: (projItem as any).scheduleConfig?.gateCount ?? 2,
+            includedReworkRounds: (projItem as any).scheduleConfig?.includedReworkRounds ?? (projItem as any).includedReworkRounds ?? 2
+          },
           healthNote: `Proyecto independiente creado a partir del servicio ganado "${projItem.serviceName}"`
         };
 
@@ -2281,6 +2287,12 @@ export const TaskFlowPrototype: React.FC = () => {
         driveFolderUrl: opp.driveFolderUrl || null,
         status: 'Activo',
         healthStatus: 'verde',
+        scheduleConfig: {
+          clientKickoffWaitDays: (payload as any).scheduleConfig?.clientKickoffWaitDays ?? 3,
+          gateApprovalWaitDays: (payload as any).scheduleConfig?.gateApprovalWaitDays ?? 5,
+          gateCount: (payload as any).scheduleConfig?.gateCount ?? 2,
+          includedReworkRounds: (payload as any).scheduleConfig?.includedReworkRounds ?? (payload as any).includedReworkRounds ?? 2
+        },
         healthNote: 'Proyecto puntual de propuesta mixta ganado en New Business'
       };
 
@@ -2336,6 +2348,12 @@ export const TaskFlowPrototype: React.FC = () => {
         driveFolderUrl: opp.driveFolderUrl || null,
         status: 'Activo',
         healthStatus: 'verde',
+        scheduleConfig: {
+          clientKickoffWaitDays: (payload as any).scheduleConfig?.clientKickoffWaitDays ?? 3,
+          gateApprovalWaitDays: (payload as any).scheduleConfig?.gateApprovalWaitDays ?? 5,
+          gateCount: (payload as any).scheduleConfig?.gateCount ?? 2,
+          includedReworkRounds: (payload as any).scheduleConfig?.includedReworkRounds ?? (payload as any).includedReworkRounds ?? 2
+        },
         healthNote: 'Proyecto fee mensual de propuesta mixta ganado en New Business'
       };
 
@@ -2514,6 +2532,12 @@ export const TaskFlowPrototype: React.FC = () => {
         driveFolderUrl: opp.driveFolderUrl || null,
         status: 'Activo',
         healthStatus: 'verde',
+        scheduleConfig: {
+          clientKickoffWaitDays: (payload as any).scheduleConfig?.clientKickoffWaitDays ?? 3,
+          gateApprovalWaitDays: (payload as any).scheduleConfig?.gateApprovalWaitDays ?? 5,
+          gateCount: (payload as any).scheduleConfig?.gateCount ?? 2,
+          includedReworkRounds: (payload as any).scheduleConfig?.includedReworkRounds ?? (payload as any).includedReworkRounds ?? 2
+        },
         healthNote: 'Proyecto recién ganado y aprobado en New Business'
       };
 

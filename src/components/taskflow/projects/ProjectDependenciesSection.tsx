@@ -33,7 +33,9 @@ export const ProjectDependenciesSection: React.FC<ProjectDependenciesSectionProp
   onUpdateProject
 }) => {
   const dependencies = project.dependencies || [];
-  const [isExpanded, setIsExpanded] = useState(true);
+  const pendingCount = dependencies.filter((d) => d.status === 'pending').length;
+  const blockingCount = dependencies.filter((d) => d.blocking && d.status === 'pending').length;
+  const [isExpanded, setIsExpanded] = useState(blockingCount > 0);
   const [depFilter, setDepFilter] = useState<'all' | 'blocking' | 'pending' | 'received'>('all');
 
   // Modal states
@@ -57,9 +59,6 @@ export const ProjectDependenciesSection: React.FC<ProjectDependenciesSectionProp
     if (depFilter === 'received') return d.status === 'received';
     return true;
   });
-
-  const pendingCount = dependencies.filter((d) => d.status === 'pending').length;
-  const blockingCount = dependencies.filter((d) => d.blocking && d.status === 'pending').length;
 
   const handleMarkReceived = (depId: string) => {
     if (!onUpdateProject) return;

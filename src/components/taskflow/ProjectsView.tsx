@@ -6,7 +6,6 @@ import { ManagePhasesModal } from './ManagePhasesModal';
 import { ImportBacklogModal } from './ImportBacklogModal';
 import { ProjectOverviewTab } from './projects/ProjectOverviewTab';
 import { ProjectDeliverablesTab } from './projects/ProjectDeliverablesTab';
-import { ProjectSettingsTab } from './projects/ProjectSettingsTab';
 import { ProjectTeamTab } from './projects/ProjectTeamTab';
 import { ProjectTasksTab } from './projects/ProjectTasksTab';
 import { ScheduleProjectModal } from './ScheduleProjectModal';
@@ -63,7 +62,8 @@ import {
   MoreVertical,
   Archive,
   Trash2,
-  X
+  X,
+  Pencil
 } from 'lucide-react';
 
 interface ProjectsViewProps {
@@ -91,7 +91,7 @@ interface ProjectsViewProps {
   users?: UserItem[];
 }
 
-type ProjectDetailTab = 'overview' | 'deliverables' | 'tasks' | 'team' | 'settings' | 'backlog' | 'budget' | 'activity';
+type ProjectDetailTab = 'overview' | 'deliverables' | 'tasks' | 'team' | 'matrix' | 'backlog';
 type TasksGroupBy = 'frente' | 'fase' | 'kanban' | 'lista';
 
 export const ProjectsView: React.FC<ProjectsViewProps> = ({
@@ -125,6 +125,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   const [scheduleSuccessMessage, setScheduleSuccessMessage] = useState<string | null>(null);
   const [scheduleKickoffDate, setScheduleKickoffDate] = useState<string>('');
   const [scheduleDurationWeeks, setScheduleDurationWeeks] = useState<number>(4);
+  const [scheduleReworkRounds, setScheduleReworkRounds] = useState<number>(2);
   const [scheduleRecalculateTasks, setScheduleRecalculateTasks] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'fee_monthly' | 'fixed_project' | 'internal_non_billable' | 'risk'>('all');
@@ -206,6 +207,15 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   const [quickHours, setQuickHours] = useState('4');
   const [quickAssignee, setQuickAssignee] = useState('Catalina Tejada');
   const [budgetSubView, setBudgetSubView] = useState<'matrix' | 'deliverables'>('matrix');
+  const [teamBudgetSubView, setTeamBudgetSubView] = useState<'team' | 'matrix' | 'deliverables'>('team');
+
+  // Edit Project Modal State (Reemplaza la pestaña de configuración)
+  const [isEditProjectModalOpen, setIsEditProjectModalOpen] = useState(false);
+  const [editProjectName, setEditProjectName] = useState('');
+  const [editProjectCode, setEditProjectCode] = useState('');
+  const [editProjectLead, setEditProjectLead] = useState('');
+  const [editProjectStatus, setEditProjectStatus] = useState<string>('Activo');
+  const [editProjectBrief, setEditProjectBrief] = useState('');
 
   // Compute metrics for each project based on tasks (dynamic calculation)
   const enrichedProjects = useMemo(() => {
@@ -549,6 +559,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   useEffect(() => {
     if (currentProject) {
       setScheduleKickoffDate(currentProject.startDate || new Date().toISOString().slice(0, 10));
+      setScheduleReworkRounds(currentProject.scheduleConfig?.includedReworkRounds || 2);
       if (currentProject.startDate && currentProject.endDate) {
         const start = new Date(currentProject.startDate).getTime();
         const end = new Date(currentProject.endDate).getTime();
@@ -598,6 +609,12 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
       endDate: finalEndDate,
       deliverables: updatedDeliverables,
       isKickedOff: true,
+      scheduleConfig: {
+        clientKickoffWaitDays: currentProject.scheduleConfig?.clientKickoffWaitDays ?? 3,
+        gateApprovalWaitDays: currentProject.scheduleConfig?.gateApprovalWaitDays ?? 5,
+        gateCount: currentProject.scheduleConfig?.gateCount ?? 2,
+        includedReworkRounds: scheduleReworkRounds
+      },
       healthNote: `Proyecto iniciado formalmente el ${scheduleKickoffDate} con cronograma alineado.`
     };
 
@@ -667,7 +684,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
           </div>
         )}
 
-        {/* Navigation Breadcrumb & Project Actions */}
+        {/* Navigation Breadcrumb */}
         <div className="flex items-center justify-between gap-2">
           {/* Breadcrumbs Estandarizadas */}
           <div className="flex items-center gap-2 text-xs text-[#64748b]">
@@ -681,57 +698,6 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             <span className="font-bold text-[#0f172a] truncate max-w-xs sm:max-w-md">
               {currentProject.clientName}
             </span>
-          </div>
-
-          <div className="flex items-center gap-2 relative">
-            {onOpenNewTaskModalWithProject && (
-              <button
-                onClick={() => onOpenNewTaskModalWithProject(currentProject.name, currentProject.clientName)}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Nueva tarea</span>
-              </button>
-            )}
-
-            {/* Project Actions Menu (Archive & Delete) */}
-            <div className="relative project-menu-container">
-              <button
-                onClick={() => setActiveProjectMenu(activeProjectMenu === currentProject.id ? null : currentProject.id)}
-                className="p-2 rounded-xl bg-white hover:bg-[#f8fafc] text-[#64748b] hover:text-[#0f172a] border border-[#e2e8f0] transition-colors cursor-pointer"
-                title="Opciones del proyecto"
-              >
-                <MoreVertical className="w-4 h-4" />
-              </button>
-
-              {activeProjectMenu === currentProject.id && (
-                <div className="absolute right-0 top-full mt-1.5 w-48 bg-white rounded-2xl shadow-xl border border-[#e2e8f0] py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
-                  <button
-                    onClick={() => {
-                      if (onArchiveProject) {
-                        onArchiveProject(currentProject.id);
-                      }
-                      setActiveProjectMenu(null);
-                    }}
-                    className="w-full px-3.5 py-2 text-left text-xs font-semibold text-[#334155] hover:bg-[#f8fafc] flex items-center gap-2 cursor-pointer transition-colors"
-                  >
-                    <Archive className="w-3.5 h-3.5 text-[#501f92]" />
-                    <span>{currentProject.status === 'Archivado' ? 'Desarchivar proyecto' : 'Archivar proyecto'}</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setProjectPendingDelete(currentProject);
-                      setActiveProjectMenu(null);
-                    }}
-                    className="w-full px-3.5 py-2 text-left text-xs font-semibold text-[#dc2626] hover:bg-[#fee2e2]/40 flex items-center gap-2 cursor-pointer transition-colors"
-                  >
-                    <Trash2 className="w-3.5 h-3.5 text-[#dc2626]" />
-                    <span>Eliminar proyecto</span>
-                  </button>
-                </div>
-              )}
-            </div>
           </div>
         </div>
 
@@ -814,17 +780,17 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
               </div>
             </div>
 
-            {/* Schedule Kickoff Action Button */}
-            <div className="flex items-center gap-2.5 flex-wrap">
+            {/* Schedule Kickoff Action Button & Project Options Menu */}
+            <div className="flex items-center gap-2 flex-wrap">
               {isProjectPendingToStart ? (
                 <button
                   type="button"
                   onClick={() => setIsScheduleModalOpen(true)}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-[#d4ff4a] hover:bg-[#bceb34] text-[#0f172a] text-xs font-black shadow-md hover:shadow-lg transition-all hover:scale-[1.02] cursor-pointer"
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold shadow-md hover:shadow-lg transition-all hover:scale-[1.02] cursor-pointer"
                   title="Fijar fecha oficial de arranque y sincronizar automáticamente los deadlines de las actividades del equipo"
                 >
-                  <Play className="w-4 h-4 fill-current text-[#0f172a]" />
-                  <span className="text-sm font-black tracking-tight">Iniciar proyecto 🚀</span>
+                  <Play className="w-4 h-4 fill-current text-[#d4ff4a]" />
+                  <span className="text-sm font-black tracking-tight">Iniciar proyecto</span>
                 </button>
               ) : (
                 <button
@@ -848,6 +814,61 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                   </span>
                 </button>
               )}
+
+              {/* Project Actions Menu (3 dots) */}
+              <div className="relative project-menu-container">
+                <button
+                  onClick={() => setActiveProjectMenu(activeProjectMenu === currentProject.id ? null : currentProject.id)}
+                  className="p-2.5 rounded-2xl bg-white hover:bg-[#f8fafc] text-[#64748b] hover:text-[#0f172a] border border-[#cbd5e1] hover:border-[#501f92] transition-colors cursor-pointer shadow-xs"
+                  title="Opciones del proyecto"
+                >
+                  <MoreVertical className="w-4 h-4" />
+                </button>
+
+                {activeProjectMenu === currentProject.id && (
+                  <div className="absolute right-0 top-full mt-1.5 w-48 bg-white rounded-2xl shadow-xl border border-[#e2e8f0] py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+                    <button
+                      onClick={() => {
+                        setEditProjectName(currentProject.name);
+                        setEditProjectCode(currentProject.code || '');
+                        setEditProjectLead(currentProject.leadName || '');
+                        setEditProjectStatus(currentProject.status || 'Activo');
+                        setEditProjectBrief(currentProject.brief || '');
+                        setIsEditProjectModalOpen(true);
+                        setActiveProjectMenu(null);
+                      }}
+                      className="w-full px-3.5 py-2 text-left text-xs font-semibold text-[#334155] hover:bg-[#f8fafc] flex items-center gap-2 cursor-pointer transition-colors"
+                    >
+                      <Pencil className="w-3.5 h-3.5 text-[#501f92]" />
+                      <span>Editar proyecto</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        if (onArchiveProject) {
+                          onArchiveProject(currentProject.id);
+                        }
+                        setActiveProjectMenu(null);
+                      }}
+                      className="w-full px-3.5 py-2 text-left text-xs font-semibold text-[#334155] hover:bg-[#f8fafc] flex items-center gap-2 cursor-pointer transition-colors"
+                    >
+                      <Archive className="w-3.5 h-3.5 text-[#501f92]" />
+                      <span>{currentProject.status === 'Archivado' ? 'Desarchivar proyecto' : 'Archivar proyecto'}</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setProjectPendingDelete(currentProject);
+                        setActiveProjectMenu(null);
+                      }}
+                      className="w-full px-3.5 py-2 text-left text-xs font-semibold text-[#dc2626] hover:bg-[#fee2e2]/40 flex items-center gap-2 cursor-pointer transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-[#dc2626]" />
+                      <span>Eliminar proyecto</span>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -922,7 +943,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
           </div>
         </div>
 
-        {/* Main Tabs: Resumen | Tareas | Equipo | Matriz Horas | Backlog? | Actividad | Configuración */}
+        {/* Main Tabs: Resumen | Tareas | Matriz Horas | Backlog? */}
         <div className="flex items-center gap-2 border-b border-[#e2e8f0] pb-1 overflow-x-auto custom-scrollbar">
           <button
             onClick={() => setActiveTab('overview')}
@@ -949,27 +970,17 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
           </button>
 
           <button
-            onClick={() => setActiveTab('team')}
+            onClick={() => {
+              setActiveTab('matrix');
+            }}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
-              activeTab === 'team'
+              activeTab === 'matrix' || activeTab === 'team'
                 ? 'bg-[#f5f3ff] text-[#501f92] border border-[#ddd6fe] shadow-2xs'
                 : 'text-[#64748b] hover:text-[#501f92] hover:bg-[#f8fafc] border border-transparent'
             }`}
           >
-            <Users className="w-3.5 h-3.5 text-current" />
-            <span>Equipo ({currentProject.assignments?.length || currentProject.coreTeam?.length || 0})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('budget')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
-              activeTab === 'budget'
-                ? 'bg-[#f5f3ff] text-[#501f92] border border-[#ddd6fe] shadow-2xs'
-                : 'text-[#64748b] hover:text-[#501f92] hover:bg-[#f8fafc] border border-transparent'
-            }`}
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-current" />
-            <span>Matriz Horas</span>
+            <TableIcon className="w-3.5 h-3.5 text-current" />
+            <span>Matriz Horas por Rol ({rolesBreakdown.length})</span>
           </button>
 
           {!isFeeProject && currentProject.phasesList && currentProject.phasesList.length > 0 && (
@@ -994,30 +1005,6 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
               </span>
             </button>
           )}
-
-          <button
-            onClick={() => setActiveTab('activity')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
-              activeTab === 'activity'
-                ? 'bg-[#f5f3ff] text-[#501f92] border border-[#ddd6fe] shadow-2xs'
-                : 'text-[#64748b] hover:text-[#501f92] hover:bg-[#f8fafc] border border-transparent'
-            }`}
-          >
-            <Activity className="w-3.5 h-3.5 text-current" />
-            <span>Actividad</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('settings')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
-              activeTab === 'settings'
-                ? 'bg-[#f5f3ff] text-[#501f92] border border-[#ddd6fe] shadow-2xs'
-                : 'text-[#64748b] hover:text-[#501f92] hover:bg-[#f8fafc] border border-transparent'
-            }`}
-          >
-            <Settings2 className="w-3.5 h-3.5 text-current" />
-            <span>Configuración</span>
-          </button>
         </div>
 
         {/* TAB 0: RESUMEN EJECUTIVO (OVERVIEW) */}
@@ -1026,59 +1013,22 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             project={currentProject}
             deliverables={currentProject.deliverables || []}
             coreTeam={currentProject.coreTeam || []}
+            allProjects={projectsList}
             currentUser={currentUser}
             allUsers={users || initialUsers}
             onUpdateProject={onUpdateProject}
             onNavigateToDeliverables={() => {
-              setActiveTab('budget');
-              setBudgetSubView('deliverables');
+              setActiveTab('overview');
             }}
             onNavigateToTasks={(frenteName) => {
               setActiveTab('tasks');
               if (frenteName) setSelectedFrenteFilter(frenteName);
             }}
-            onNavigateToTeam={() => setActiveTab('team')}
+            onNavigateToTeam={() => {
+              setActiveTab('overview');
+            }}
             onSelectClient={(cName) => {
               if (onNavigateToClient) onNavigateToClient(cName);
-            }}
-          />
-        )}
-
-        {/* TAB DELIVERABLES: FRENTES & ROLES (Ruta de retrocompatibilidad) */}
-        {activeTab === 'deliverables' && (
-          <ProjectDeliverablesTab
-            deliverables={currentProject.deliverables || []}
-            tasks={currentProject.tasks}
-            projectName={currentProject.name}
-            onUpdateDeliverables={(newDeliverables) => {
-              if (onUpdateProject) {
-                const newTotalQuoted = newDeliverables.reduce(
-                  (sum, d) => sum + (d.roleBudgets?.reduce((rSum, r) => rSum + (r.quotedHours || 0), 0) || 0),
-                  0
-                );
-                onUpdateProject({
-                  ...currentProject,
-                  deliverables: newDeliverables,
-                  budgetedHours: newTotalQuoted > 0 ? newTotalQuoted : currentProject.budgetedHours
-                });
-              }
-            }}
-            onNavigateToTasksWithFilter={(frenteName) => {
-              setActiveTab('tasks');
-              setSelectedFrenteFilter(frenteName);
-            }}
-          />
-        )}
-
-        {/* TAB SETTINGS: CONFIGURACIÓN & NIT/DESACOPLADO */}
-        {activeTab === 'settings' && (
-          <ProjectSettingsTab
-            project={currentProject}
-            client={clients.find((c) => c.id === currentProject.clientId || c.name === currentProject.clientName)}
-            onUpdateProject={(updated) => {
-              if (onUpdateProject) {
-                onUpdateProject(updated);
-              }
             }}
           />
         )}
@@ -1554,324 +1504,197 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
           </div>
         )}
 
-        {/* TAB 3: HORAS & PRESUPUESTO (La vista analítica y de rentabilidad unificada) */}
-        {activeTab === 'budget' && (
+        {/* TAB 3: MATRIZ HORAS POR ROL */}
+        {(activeTab === 'matrix' || activeTab === 'team') && (
           <div className="space-y-5">
-            {/* Sub-view Switcher: Matriz de Horas vs Configurar Servicios */}
-            <div className="flex items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-[#e2e8f0] shadow-xs flex-wrap">
-              <div className="flex items-center gap-2">
-                <FileSpreadsheet className="w-4 h-4 text-[#501f92]" />
-                <span className="font-extrabold text-sm text-[#0f172a]">Matriz de Horas & Servicios</span>
-              </div>
-              <div className="flex items-center bg-[#f1f5f9] p-1 rounded-xl text-xs font-semibold">
-                <button
-                  type="button"
-                  onClick={() => setBudgetSubView('matrix')}
-                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-                    budgetSubView === 'matrix' ? 'bg-white text-[#501f92] shadow-2xs font-bold' : 'text-[#64748b] hover:text-[#0f172a]'
-                  }`}
-                >
-                  <TableIcon className="w-3.5 h-3.5" />
-                  <span>Matriz Analítica (Rol & Servicio)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setBudgetSubView('deliverables')}
-                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-                    budgetSubView === 'deliverables' ? 'bg-white text-[#501f92] shadow-2xs font-bold' : 'text-[#64748b] hover:text-[#0f172a]'
-                  }`}
-                >
-                  <Layers className="w-3.5 h-3.5" />
-                  <span>Configurar Servicios & Roles ({currentProject.deliverables?.length || 0})</span>
-                </button>
-              </div>
-            </div>
-
-            {budgetSubView === 'deliverables' ? (
-              <ProjectDeliverablesTab
-                deliverables={currentProject.deliverables || []}
-                tasks={currentProject.tasks}
-                projectName={currentProject.name}
-                onUpdateDeliverables={(newDeliverables) => {
-                  if (onUpdateProject) {
-                    const newTotalQuoted = newDeliverables.reduce(
-                      (sum, d) => sum + (d.roleBudgets?.reduce((rSum, r) => rSum + (r.quotedHours || 0), 0) || 0),
-                      0
-                    );
-                    onUpdateProject({
-                      ...currentProject,
-                      deliverables: newDeliverables,
-                      budgetedHours: newTotalQuoted > 0 ? newTotalQuoted : currentProject.budgetedHours
-                    });
-                  }
-                }}
-                onNavigateToTasksWithFilter={(frenteName) => {
-                  setActiveTab('tasks');
-                  setSelectedFrenteFilter(frenteName);
-                }}
-              />
-            ) : (
-              <>
                 {/* Top Analysis Notice */}
                 <div className="p-4 rounded-2xl bg-gradient-to-r from-[#f5f3ff] to-[#f8fafc] border border-[#e9d5ff] flex items-start gap-3">
                   <Sparkles className="w-5 h-5 text-[#501f92] shrink-0 mt-0.5" />
                   <div>
                     <h4 className="font-bold text-xs text-[#0f172a]">
-                  Análisis Operativo: Horas Cotizadas vs. Horas Reales por Rol
-                </h4>
-                <p className="text-[11px] text-[#64748b] mt-0.5 leading-relaxed">
-                  Orbit compara la matriz de roles comercialmente cotizados contra las horas reales que el equipo ejecutó. 
-                  Esta data nutre directamente el historial de estimaciones de Uhura para futuros proyectos y cotizaciones.
-                </p>
-              </div>
-            </div>
-
-            {/* 1. Matriz por Rol */}
-            <div className="bg-white rounded-3xl border border-[#e2e8f0] shadow-xs overflow-hidden">
-              <div className="p-4 border-b border-[#f1f5f9] flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <User className="w-4 h-4 text-[#501f92]" />
-                  <h3 className="font-extrabold text-sm text-[#0f172a]">Consolidado de Horas por Rol</h3>
-                </div>
-                <span className="text-xs text-[#64748b]">Total roles cotizados: {rolesBreakdown.length}</span>
-              </div>
-
-              <div className="overflow-x-auto custom-scrollbar">
-                <table className="w-full text-left text-xs min-w-[680px]">
-                  <thead>
-                    <tr className="border-b border-[#f1f5f9] text-[10px] font-bold text-[#64748b] uppercase tracking-wider bg-[#f8fafc]">
-                      <th className="py-3 px-5 min-w-[140px]">ROL COTIZADO</th>
-                      <th className="py-3 px-4 text-right min-w-[100px]">HORAS COTIZADAS</th>
-                      <th className="py-3 px-4 text-right min-w-[100px]">HORAS EJECUTADAS</th>
-                      <th className="py-3 px-4 text-right min-w-[110px]">DESVIACIÓN (VAR)</th>
-                      <th className="py-3 px-4 min-w-[140px]">RESPONSABLES REALES</th>
-                      <th className="py-3 px-5 text-right pr-6 min-w-[120px]">SALUD / ALERTA</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#f1f5f9]">
-                    {rolesBreakdown.map((r) => {
-                      return (
-                        <tr key={r.role} className="hover:bg-[#f8fafc] transition-colors">
-                          <td className="py-3.5 px-5 font-bold text-[#0f172a]">
-                            <span className="text-xs">{r.role}</span>
-                          </td>
-
-                          <td className="py-3.5 px-4 text-right font-mono font-bold text-[#501f92]">
-                            {r.budgetedHours.toFixed(1)} h
-                          </td>
-
-                          <td className="py-3.5 px-4 text-right font-mono font-bold text-[#0f172a]">
-                            {r.executedHours.toFixed(1)} h
-                          </td>
-
-                          <td className="py-3.5 px-4 text-right font-mono font-bold">
-                            {r.diff === 0 ? (
-                              <span className="text-[#64748b]">0.0 h</span>
-                            ) : r.diff > 0 ? (
-                              <span className="text-[#ef4444]">+{r.diff.toFixed(1)} h ⚠️</span>
-                            ) : (
-                              <span className="text-[#10b981]">{r.diff.toFixed(1)} h</span>
-                            )}
-                          </td>
-
-                          <td className="py-3.5 px-4">
-                            <div className="flex flex-wrap gap-1">
-                              {r.assigneesList.map((name) => (
-                                <span key={name} className="px-2 py-0.5 rounded-md bg-[#f1f5f9] text-[10px] font-semibold text-[#475569]">
-                                  {name}
-                                </span>
-                              ))}
-                            </div>
-                          </td>
-
-                          <td className="py-3.5 px-5 text-right pr-6">
-                            {r.isOverbudget ? (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#fef2f2] text-[#dc2626] border border-[#fecaca]">
-                                <AlertTriangle className="w-3 h-3" />
-                                <span>Sobreconsumo</span>
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#ecfdf5] text-[#047857] border border-[#a7f3d0]">
-                                <Check className="w-3 h-3" />
-                                <span>En Presupuesto</span>
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* 2. Matriz por Frente */}
-            <div className="bg-white rounded-3xl border border-[#e2e8f0] shadow-xs overflow-hidden">
-              <div className="p-4 border-b border-[#f1f5f9] flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <FolderKanban className="w-4 h-4 text-[#501f92]" />
-                  <h3 className="font-extrabold text-sm text-[#0f172a]">Consolidado de Horas por Servicio</h3>
-                </div>
-              </div>
-
-              <div className="overflow-x-auto custom-scrollbar">
-                <table className="w-full text-left text-xs min-w-[650px]">
-                  <thead>
-                    <tr className="border-b border-[#f1f5f9] text-[10px] font-bold text-[#64748b] uppercase tracking-wider bg-[#f8fafc]">
-                      <th className="py-3 px-5 min-w-[150px]">SERVICIO / ENTREGABLE</th>
-                      <th className="py-3 px-4 text-right min-w-[100px]">HORAS COTIZADAS</th>
-                      <th className="py-3 px-4 text-right min-w-[100px]">HORAS EJECUTADAS</th>
-                      <th className="py-3 px-4 text-right min-w-[100px]">DESVIACIÓN</th>
-                      <th className="py-3 px-4 text-center min-w-[80px]">AVANCE</th>
-                      <th className="py-3 px-5 text-right pr-6 min-w-[110px]">ESTADO</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#f1f5f9]">
-                    {frentesBreakdown.map((f) => {
-                      const diff = f.consumedHours - f.budgetedHours;
-                      const percent = f.budgetedHours > 0 ? Math.round((f.consumedHours / f.budgetedHours) * 100) : 0;
-
-                      return (
-                        <tr key={f.name} className="hover:bg-[#f8fafc] transition-colors">
-                          <td className="py-3.5 px-5 font-bold text-[#0f172a]">
-                            <span className="text-xs">{f.name}</span>
-                            <span className="text-[10px] text-[#64748b] block font-normal">{f.tasks.length} tareas asociadas</span>
-                          </td>
-
-                          <td className="py-3.5 px-4 text-right font-mono font-bold text-[#501f92]">
-                            {f.budgetedHours.toFixed(1)} h
-                          </td>
-
-                          <td className="py-3.5 px-4 text-right font-mono font-bold text-[#0f172a]">
-                            {f.consumedHours.toFixed(1)} h
-                          </td>
-
-                          <td className="py-3.5 px-4 text-right font-mono font-bold">
-                            {diff > 0 ? (
-                              <span className="text-[#ef4444]">+{diff.toFixed(1)} h ⚠️</span>
-                            ) : (
-                              <span className="text-[#10b981]">{diff.toFixed(1)} h</span>
-                            )}
-                          </td>
-
-                          <td className="py-3.5 px-4 text-center font-mono">
-                            <span className="font-bold text-xs">{percent}%</span>
-                          </td>
-
-                          <td className="py-3.5 px-5 text-right pr-6">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                              f.completedCount === f.tasks.length && f.tasks.length > 0
-                                ? 'bg-[#ecfdf5] text-[#065f46]'
-                                : 'bg-[#f1f5f9] text-[#475569]'
-                            }`}>
-                              {f.completedCount === f.tasks.length && f.tasks.length > 0 ? 'Entregado' : 'En Ejecución'}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                  <tfoot>
-                    <tr className="bg-[#f8fafc] border-t-2 border-[#e2e8f0] font-bold text-xs">
-                      <td className="py-3.5 px-5 text-[#0f172a]">TOTAL PROYECTO</td>
-                      <td className="py-3.5 px-4 text-right font-mono text-[#501f92]">
-                        {currentProject.budgetedHours.toFixed(1)} h
-                      </td>
-                      <td className="py-3.5 px-4 text-right font-mono text-[#0f172a]">
-                        {currentProject.consumedHours.toFixed(1)} h
-                      </td>
-                      <td className="py-3.5 px-4 text-right font-mono">
-                        {(currentProject.consumedHours - currentProject.budgetedHours) > 0 ? (
-                          <span className="text-[#ef4444]">
-                            +{(currentProject.consumedHours - currentProject.budgetedHours).toFixed(1)} h
-                          </span>
-                        ) : (
-                          <span className="text-[#10b981]">
-                            {(currentProject.consumedHours - currentProject.budgetedHours).toFixed(1)} h
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3.5 px-4 text-center font-mono">{percentHours}%</td>
-                      <td className="py-3.5 px-5 text-right pr-6 text-[#501f92]">{currentProject.status}</td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-    )}
-
-        {/* TAB 3: EQUIPO Y ASIGNACIONES */}
-        {activeTab === 'team' && (
-          <ProjectTeamTab
-            project={currentProject}
-            allProjects={projectsList}
-            tasks={currentProject.tasks}
-            onUpdateProject={(updated) => {
-              if (onUpdateProject) {
-                onUpdateProject(updated);
-              }
-            }}
-          />
-        )}
-
-        {/* TAB 5: ACTIVIDAD */}
-        {activeTab === 'activity' && (
-          <div className="bg-white rounded-3xl p-6 border border-[#e2e8f0] space-y-3">
-            <h3 className="font-extrabold text-sm text-[#0f172a]">Historial de Entregables y Actividad</h3>
-            <p className="text-xs text-[#64748b]">
-              Registro cronológico de tareas movidas de estado, aprobaciones y carga de tiempo en este proyecto.
-            </p>
-            <div className="space-y-2 pt-2">
-              {currentProject.tasks.slice(0, 10).map((t) => {
-                const getStatusStyle = (status: string, completed?: boolean) => {
-                  if (completed || status === 'Done') {
-                    return 'bg-[#ecfdf5] text-[#065f46] border-[#a7f3d0]';
-                  }
-                  if (status === 'Review') {
-                    return 'bg-[#f5f3ff] text-[#501f92] border-[#ddd6fe]';
-                  }
-                  if (status === 'In Progress') {
-                    return 'bg-[#fffbeb] text-[#92400e] border-[#fde68a]';
-                  }
-                  return 'bg-[#f1f5f9] text-[#334155] border-[#cbd5e1]';
-                };
-
-                const getStatusText = (status: string, completed?: boolean) => {
-                  if (completed || status === 'Done') return 'Listo';
-                  if (status === 'Review') return 'En revisión';
-                  if (status === 'In Progress') return 'En proceso';
-                  return 'Por hacer';
-                };
-
-                return (
-                  <div
-                    key={t.id}
-                    onClick={() => onOpenTaskDetail(t)}
-                    className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] hover:border-[#cbd5e1] transition-colors flex items-center justify-between gap-3 text-xs cursor-pointer"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <strong className="text-[#0f172a] block truncate">{t.title}</strong>
-                      <span className="text-[10px] text-[#64748b] block mt-0.5 truncate">
-                        Asignada a {t.assignee.name} · Frente: {t.frente || 'General'}
-                      </span>
-                    </div>
-                    <span
-                      className={`text-[10px] font-bold px-2.5 py-1 rounded-md border shrink-0 ${getStatusStyle(
-                        t.status,
-                        t.completed
-                      )}`}
-                    >
-                      {getStatusText(t.status, t.completed)}
-                    </span>
+                      Análisis Operativo: Horas Cotizadas vs. Horas Reales por Rol
+                    </h4>
+                    <p className="text-[11px] text-[#64748b] mt-0.5 leading-relaxed">
+                      Orbit compara la matriz de roles comercialmente cotizados contra las horas reales que el equipo ejecutó. 
+                      Esta data nutre directamente el historial de estimaciones de Uhura para futuros proyectos y cotizaciones.
+                    </p>
                   </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+                </div>
+
+                {/* 1. Matriz por Rol */}
+                <div className="bg-white rounded-3xl border border-[#e2e8f0] shadow-xs overflow-hidden">
+                  <div className="p-4 border-b border-[#f1f5f9] flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4 text-[#501f92]" />
+                      <h3 className="font-extrabold text-sm text-[#0f172a]">Consolidado de Horas por Rol</h3>
+                    </div>
+                    <span className="text-xs text-[#64748b]">Total roles cotizados: {rolesBreakdown.length}</span>
+                  </div>
+
+                  <div className="overflow-x-auto custom-scrollbar">
+                    <table className="w-full text-left text-xs min-w-[680px]">
+                      <thead>
+                        <tr className="border-b border-[#f1f5f9] text-[10px] font-bold text-[#64748b] uppercase tracking-wider bg-[#f8fafc]">
+                          <th className="py-3 px-5 min-w-[140px]">ROL COTIZADO</th>
+                          <th className="py-3 px-4 text-right min-w-[100px]">HORAS COTIZADAS</th>
+                          <th className="py-3 px-4 text-right min-w-[100px]">HORAS EJECUTADAS</th>
+                          <th className="py-3 px-4 text-right min-w-[110px]">DESVIACIÓN (VAR)</th>
+                          <th className="py-3 px-4 min-w-[140px]">RESPONSABLES REALES</th>
+                          <th className="py-3 px-5 text-right pr-6 min-w-[120px]">SALUD / ALERTA</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#f1f5f9]">
+                        {rolesBreakdown.map((r) => {
+                          return (
+                            <tr key={r.role} className="hover:bg-[#f8fafc] transition-colors">
+                              <td className="py-3.5 px-5 font-bold text-[#0f172a]">
+                                <span className="text-xs">{r.role}</span>
+                              </td>
+
+                              <td className="py-3.5 px-4 text-right font-mono font-bold text-[#501f92]">
+                                {r.budgetedHours.toFixed(1)} h
+                              </td>
+
+                              <td className="py-3.5 px-4 text-right font-mono font-bold text-[#0f172a]">
+                                {r.executedHours.toFixed(1)} h
+                              </td>
+
+                              <td className="py-3.5 px-4 text-right font-mono font-bold">
+                                {r.diff === 0 ? (
+                                  <span className="text-[#64748b]">0.0 h</span>
+                                ) : r.diff > 0 ? (
+                                  <span className="text-[#ef4444]">+{r.diff.toFixed(1)} h ⚠️</span>
+                                ) : (
+                                  <span className="text-[#10b981]">{r.diff.toFixed(1)} h</span>
+                                )}
+                              </td>
+
+                              <td className="py-3.5 px-4">
+                                <div className="flex flex-wrap gap-1">
+                                  {r.assigneesList.map((name) => (
+                                    <span key={name} className="px-2 py-0.5 rounded-md bg-[#f1f5f9] text-[10px] font-semibold text-[#475569]">
+                                      {name}
+                                    </span>
+                                  ))}
+                                </div>
+                              </td>
+
+                              <td className="py-3.5 px-5 text-right pr-6">
+                                {r.isOverbudget ? (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#fef2f2] text-[#dc2626] border border-[#fecaca]">
+                                    <AlertTriangle className="w-3 h-3" />
+                                    <span>Sobreconsumo</span>
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#ecfdf5] text-[#047857] border border-[#a7f3d0]">
+                                    <Check className="w-3 h-3" />
+                                    <span>En Presupuesto</span>
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* 2. Matriz por Frente */}
+                <div className="bg-white rounded-3xl border border-[#e2e8f0] shadow-xs overflow-hidden">
+                  <div className="p-4 border-b border-[#f1f5f9] flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <FolderKanban className="w-4 h-4 text-[#501f92]" />
+                      <h3 className="font-extrabold text-sm text-[#0f172a]">Consolidado de Horas por Servicio</h3>
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto custom-scrollbar">
+                    <table className="w-full text-left text-xs min-w-[650px]">
+                      <thead>
+                        <tr className="border-b border-[#f1f5f9] text-[10px] font-bold text-[#64748b] uppercase tracking-wider bg-[#f8fafc]">
+                          <th className="py-3 px-5 min-w-[150px]">SERVICIO / ENTREGABLE</th>
+                          <th className="py-3 px-4 text-right min-w-[100px]">HORAS COTIZADAS</th>
+                          <th className="py-3 px-4 text-right min-w-[100px]">HORAS EJECUTADAS</th>
+                          <th className="py-3 px-4 text-right min-w-[100px]">DESVIACIÓN</th>
+                          <th className="py-3 px-4 text-center min-w-[80px]">AVANCE</th>
+                          <th className="py-3 px-5 text-right pr-6 min-w-[110px]">ESTADO</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#f1f5f9]">
+                        {frentesBreakdown.map((f) => {
+                          const diff = f.consumedHours - f.budgetedHours;
+                          const percent = f.budgetedHours > 0 ? Math.round((f.consumedHours / f.budgetedHours) * 100) : 0;
+
+                          return (
+                            <tr key={f.name} className="hover:bg-[#f8fafc] transition-colors">
+                              <td className="py-3.5 px-5 font-bold text-[#0f172a]">
+                                <span className="text-xs">{f.name}</span>
+                                <span className="text-[10px] text-[#64748b] block font-normal">{f.tasks.length} tareas asociadas</span>
+                              </td>
+
+                              <td className="py-3.5 px-4 text-right font-mono font-bold text-[#501f92]">
+                                {f.budgetedHours.toFixed(1)} h
+                              </td>
+
+                              <td className="py-3.5 px-4 text-right font-mono font-bold text-[#0f172a]">
+                                {f.consumedHours.toFixed(1)} h
+                              </td>
+
+                              <td className="py-3.5 px-4 text-right font-mono font-bold">
+                                {diff > 0 ? (
+                                  <span className="text-[#ef4444]">+{diff.toFixed(1)} h ⚠️</span>
+                                ) : (
+                                  <span className="text-[#10b981]">{diff.toFixed(1)} h</span>
+                                )}
+                              </td>
+
+                              <td className="py-3.5 px-4 text-center font-mono">
+                                <span className="font-bold text-xs">{percent}%</span>
+                              </td>
+
+                              <td className="py-3.5 px-5 text-right pr-6">
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                  f.completedCount === f.tasks.length && f.tasks.length > 0
+                                    ? 'bg-[#ecfdf5] text-[#065f46]'
+                                    : 'bg-[#f1f5f9] text-[#475569]'
+                                }`}>
+                                  {f.completedCount === f.tasks.length && f.tasks.length > 0 ? 'Entregado' : 'En Ejecución'}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      <tfoot>
+                        <tr className="bg-[#f8fafc] border-t-2 border-[#e2e8f0] font-bold text-xs">
+                          <td className="py-3.5 px-5 text-[#0f172a]">TOTAL PROYECTO</td>
+                          <td className="py-3.5 px-4 text-right font-mono text-[#501f92]">
+                            {currentProject.budgetedHours.toFixed(1)} h
+                          </td>
+                          <td className="py-3.5 px-4 text-right font-mono text-[#0f172a]">
+                            {currentProject.consumedHours.toFixed(1)} h
+                          </td>
+                          <td className="py-3.5 px-4 text-right font-mono">
+                            {(currentProject.consumedHours - currentProject.budgetedHours) > 0 ? (
+                              <span className="text-[#ef4444]">
+                                +{(currentProject.consumedHours - currentProject.budgetedHours).toFixed(1)} h
+                              </span>
+                            ) : (
+                              <span className="text-[#10b981]">
+                                {(currentProject.consumedHours - currentProject.budgetedHours).toFixed(1)} h
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-4 text-center font-mono">{percentHours}%</td>
+                          <td className="py-3.5 px-5 text-right pr-6 text-[#501f92]">{currentProject.status}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
 
         {/* Manage Phases Modal */}
         <ManagePhasesModal
@@ -1995,7 +1818,45 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                   )}
                 </div>
 
-                {/* 3. Recálculo automático de Deadlines */}
+                {/* 3. Tandas de ajuste permitidas por gate / entrega */}
+                <div className="space-y-1.5 p-3.5 rounded-xl bg-[#faf5ff] border border-[#e9d5ff]">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-[#334155] flex items-center gap-1.5">
+                      <span>Tandas de ajuste permitidas por gate / entrega:</span>
+                    </label>
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3, 4].map((r) => (
+                        <button
+                          key={r}
+                          type="button"
+                          onClick={() => setScheduleReworkRounds(r)}
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors cursor-pointer ${
+                            scheduleReworkRounds === r
+                              ? 'bg-[#501f92] text-white'
+                              : 'bg-white text-[#64748b] hover:bg-[#ede9fe] border border-[#d8b4fe]'
+                          }`}
+                        >
+                          {r} {r === 2 ? '(Estándar)' : ''}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 pt-1">
+                    <input
+                      type="number"
+                      min="1"
+                      max="10"
+                      value={scheduleReworkRounds}
+                      onChange={(e) => setScheduleReworkRounds(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                      className="w-20 p-2 rounded-xl border border-[#cbd5e1] font-bold text-xs text-[#0f172a] focus:ring-2 focus:ring-[#501f92] bg-white"
+                    />
+                    <span className="text-[11px] text-[#64748b] leading-tight">
+                      rondas de feedback incluidas contractualmente por cada hito formal antes de cobrar sobrecostos.
+                    </span>
+                  </div>
+                </div>
+
+                {/* 4. Recálculo automático de Deadlines */}
                 <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-2">
                   <label className="flex items-start gap-2.5 cursor-pointer">
                     <input
@@ -2061,6 +1922,136 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             </div>
           </div>
         )}
+
+        {/* Modal: Editar Información del Proyecto */}
+        {isEditProjectModalOpen && (
+          <div
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setIsEditProjectModalOpen(false);
+            }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+          >
+            <div className="bg-white rounded-3xl max-w-lg w-full border border-[#e2e8f0] shadow-2xl p-6 sm:p-7 space-y-5 animate-in zoom-in-95">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-[#501f92]/10 text-[#501f92] flex items-center justify-center shrink-0">
+                    <Pencil className="w-6 h-6 text-[#501f92]" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-base sm:text-lg text-[#0f172a]">
+                      Editar Proyecto
+                    </h3>
+                    <p className="text-xs text-[#64748b]">
+                      {currentProject.clientName}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsEditProjectModalOpen(false)}
+                  className="p-1 rounded-lg text-[#94a3b8] hover:text-[#0f172a] hover:bg-[#f1f5f9] transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (onUpdateProject) {
+                    onUpdateProject({
+                      ...currentProject,
+                      name: editProjectName.trim(),
+                      code: editProjectCode.trim() || undefined,
+                      leadName: editProjectLead.trim(),
+                      status: editProjectStatus as any,
+                      brief: editProjectBrief.trim() || undefined
+                    });
+                  }
+                  setIsEditProjectModalOpen(false);
+                }}
+                className="space-y-4 text-xs"
+              >
+                <div>
+                  <label className="block font-bold text-[#475569] mb-1">Nombre del Proyecto *</label>
+                  <input
+                    type="text"
+                    value={editProjectName}
+                    onChange={(e) => setEditProjectName(e.target.value)}
+                    required
+                    className="w-full px-3 py-2 border border-[#cbd5e1] rounded-xl text-xs text-[#0f172a] focus:ring-2 focus:ring-[#501f92]"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-[#475569] mb-1">Código Operativo</label>
+                    <input
+                      type="text"
+                      value={editProjectCode}
+                      onChange={(e) => setEditProjectCode(e.target.value)}
+                      placeholder="Ej: PRJ-01"
+                      className="w-full px-3 py-2 border border-[#cbd5e1] rounded-xl text-xs font-mono text-[#0f172a] placeholder:text-[#7C8AA0] focus:ring-2 focus:ring-[#501f92]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-[#475569] mb-1">Estado</label>
+                    <select
+                      value={editProjectStatus}
+                      onChange={(e) => setEditProjectStatus(e.target.value)}
+                      className="w-full px-3 py-2 border border-[#cbd5e1] rounded-xl text-xs font-semibold text-[#0f172a] bg-white focus:ring-2 focus:ring-[#501f92]"
+                    >
+                      <option value="Activo">Activo (En ejecución)</option>
+                      <option value="Planificación">Planificación / Arranque</option>
+                      <option value="En Pausa">En Pausa</option>
+                      <option value="Cerrado">Cerrado (Completado)</option>
+                      <option value="Archivado">Archivado</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-[#475569] mb-1">Líder del Proyecto</label>
+                  <input
+                    type="text"
+                    value={editProjectLead}
+                    onChange={(e) => setEditProjectLead(e.target.value)}
+                    required
+                    className="w-full px-3 py-2 border border-[#cbd5e1] rounded-xl text-xs text-[#0f172a] focus:ring-2 focus:ring-[#501f92]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-[#475569] mb-1">Brief / Alcance General</label>
+                  <textarea
+                    value={editProjectBrief}
+                    onChange={(e) => setEditProjectBrief(e.target.value)}
+                    rows={3}
+                    placeholder="Objetivo y contexto estratégico del proyecto..."
+                    className="w-full px-3 py-2 border border-[#cbd5e1] rounded-xl text-xs text-[#0f172a] focus:ring-2 focus:ring-[#501f92]"
+                  />
+                </div>
+
+                <div className="pt-2 flex items-center justify-end gap-2.5 border-t border-[#f1f5f9]">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditProjectModalOpen(false)}
+                    className="px-4 py-2 rounded-xl border border-[#e2e8f0] bg-white hover:bg-[#f8fafc] text-xs font-semibold text-[#64748b] transition-colors cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 rounded-xl bg-[#501f92] hover:bg-[#3d1572] text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+                  >
+                    Guardar Cambios
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -2068,27 +2059,14 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   // --- PORTFOLIO VIEW (List of all Projects) ---
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
-      {/* Top Header Estandarizado (Benchmark Clientes) */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-[#0f172a] tracking-tight">
-            Proyectos ({projectsList.length})
-          </h1>
-          <p className="text-xs sm:text-sm text-[#64748b] mt-1">
-            Portafolio en ejecución, frentes operativos, horas por rol y trazabilidad
-          </p>
-        </div>
-
-        <button
-          onClick={onOpenNewProjectModal}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold shadow-2xs cursor-pointer self-start sm:self-auto transition-all"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>Nuevo Proyecto</span>
-        </button>
+      {/* Top Header */}
+      <div className="flex items-center justify-between gap-3 pb-1">
+        <h1 className="text-xl sm:text-2xl font-bold text-[#0f172a] tracking-tight">
+          Proyectos
+        </h1>
       </div>
 
-      {/* KPI Stats Bar (Desktop/Tablet summary; responsive grid) */}
+      {/* KPI Stats Bar (Solo Proyectos Activos) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
         <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-[#e2e8f0] shadow-xs flex items-center gap-3 min-w-0">
           <div className="w-10 h-10 rounded-xl bg-[#f2ecfb] text-[#501f92] flex items-center justify-center font-bold shrink-0">
@@ -2099,33 +2077,9 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             <div className="text-base sm:text-lg lg:text-xl font-extrabold text-[#0f172a] truncate">{totalActiveProjects} en curso</div>
           </div>
         </div>
-
-        <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-[#e2e8f0] shadow-xs flex items-center gap-3 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-[#eff6ff] text-[#2563eb] flex items-center justify-center font-bold shrink-0">
-            <Clock className="w-5 h-5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <span className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider block truncate">Horas Presupuestadas</span>
-            <div className="text-base sm:text-lg lg:text-xl font-extrabold text-[#0f172a] truncate">
-              {totalConsumedHours.toFixed(0)}h / {totalBudgetedHours}h
-            </div>
-          </div>
-        </div>
-
-        <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-[#e2e8f0] shadow-xs flex items-center gap-3 min-w-0 sm:col-span-2 xl:col-span-1">
-          <div className="w-10 h-10 rounded-xl bg-[#ecfdf5] text-[#059669] flex items-center justify-center font-bold shrink-0">
-            <TrendingUp className="w-5 h-5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <span className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider block truncate">Salud Operativa</span>
-            <div className="text-base sm:text-lg lg:text-xl font-extrabold text-[#0f172a] truncate">
-              {Math.round((onTrackCount / (enrichedProjects.length || 1)) * 100)}% en fecha y horas
-            </div>
-          </div>
-        </div>
       </div>
 
-      {/* Search & Filters */}
+      {/* Search, Filters & Action Button */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-[#e2e8f0] shadow-2xs">
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <Search className="w-4 h-4 text-[#94a3b8] shrink-0" />
@@ -2138,8 +2092,8 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
           />
         </div>
 
-        {/* Filters dropdown */}
-        <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto shrink-0">
+        {/* Filters dropdown & Reubicado Nuevo Proyecto */}
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto shrink-0">
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value as any)}
@@ -2164,6 +2118,14 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
               </option>
             ))}
           </select>
+
+          <button
+            onClick={onOpenNewProjectModal}
+            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold shadow-2xs cursor-pointer transition-all shrink-0 w-full sm:w-auto"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Nuevo Proyecto</span>
+          </button>
         </div>
       </div>
 

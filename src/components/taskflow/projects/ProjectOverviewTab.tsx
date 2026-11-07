@@ -28,6 +28,7 @@ import {
 } from '../types';
 import { UserAvatar } from '../UserAvatar';
 import { evaluateProjectHealth, calculateBusinessDays, addBusinessDays } from '../health/projectHealthEngine';
+import { ProjectTeamTab } from './ProjectTeamTab';
 
 interface ProjectOverviewTabProps {
   project: ProjectSummaryItem & {
@@ -36,6 +37,7 @@ interface ProjectOverviewTabProps {
   };
   deliverables: ProjectDeliverable[];
   coreTeam: ProjectTeamMember[];
+  allProjects?: ProjectSummaryItem[];
   currentUser?: UserItem;
   allUsers?: UserItem[];
   onNavigateToDeliverables: () => void;
@@ -49,6 +51,7 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
   project,
   deliverables,
   coreTeam,
+  allProjects = [],
   currentUser,
   allUsers = [],
   onNavigateToDeliverables,
@@ -366,54 +369,16 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
         </div>
       )}
 
-      {/* 3. EQUIPO DEL PROYECTO & ASIGNACIÓN */}
-      <div className="bg-white rounded-3xl border border-[#e2e8f0] p-6 shadow-xs space-y-4">
-        <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-3">
-          <div className="flex items-center gap-2">
-            <Users className="w-4 h-4 text-[#501f92]" />
-            <h3 className="font-extrabold text-sm text-[#0f172a]">
-              Equipo Asignado al Proyecto
-            </h3>
-            <span className="text-xs text-[#64748b]">
-              ({coreTeam.length} colaboradores)
-            </span>
-          </div>
-
-          <button
-            type="button"
-            onClick={onNavigateToTeam}
-            className="text-xs font-bold text-[#501f92] hover:underline cursor-pointer flex items-center gap-1"
-          >
-            <span>Ver equipo completo</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-          {coreTeam.map((member) => (
-            <div
-              key={member.id}
-              className="p-3 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] flex items-center gap-3"
-            >
-              <UserAvatar
-                user={{
-                  name: member.name,
-                  avatarBg: member.avatarBg || 'bg-[#501f92]',
-                  initials: member.initials || member.name.slice(0, 2).toUpperCase()
-                }}
-                size="md"
-              />
-              <div className="min-w-0">
-                <span className="font-bold text-xs text-[#0f172a] block truncate">
-                  {member.name}
-                </span>
-                <span className="text-[11px] text-[#64748b] block truncate">
-                  {member.isLead ? '👑 Líder' : member.role}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
+      {/* 3. EQUIPO DEL PROYECTO & ASIGNACIÓN (TABLA COMPLETA CON CAPACIDAD GLOBAL) */}
+      <div className="pt-2">
+        <ProjectTeamTab
+          hideHeaderMetrics={true}
+          project={project}
+          allProjects={allProjects}
+          users={allUsers}
+          tasks={project.tasks}
+          onUpdateProject={(updated) => onUpdateProject?.(updated)}
+        />
       </div>
 
       {/* MODAL: RECALCULAR CRONOGRAMA (REFORECAST CONFIRMADO POR LÍDER) */}

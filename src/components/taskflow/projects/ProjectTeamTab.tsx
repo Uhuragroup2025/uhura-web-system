@@ -41,6 +41,7 @@ interface ProjectTeamTabProps {
   users?: UserItem[];
   tasks?: TaskItem[];
   onUpdateProject: (updated: ProjectSummaryItem) => void;
+  hideHeaderMetrics?: boolean;
 }
 
 export const ProjectTeamTab: React.FC<ProjectTeamTabProps> = ({
@@ -48,7 +49,8 @@ export const ProjectTeamTab: React.FC<ProjectTeamTabProps> = ({
   allProjects,
   users = initialUsers,
   tasks = [],
-  onUpdateProject
+  onUpdateProject,
+  hideHeaderMetrics = false
 }) => {
   // Lista de asignaciones asegurando el adaptador transitorio si no existen asignaciones nativas aún
   const assignments: ProjectAssignment[] = useMemo(() => {
@@ -449,87 +451,89 @@ export const ProjectTeamTab: React.FC<ProjectTeamTabProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* 1. BARRA SUPERIOR DE MÉTRICAS DE EQUIPO Y CAPACIDAD */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-3xl p-5 border border-[#e2e8f0] shadow-2xs">
-          <div className="flex items-center justify-between text-[#64748b] text-xs font-semibold">
-            <span>Carga Semanal Activa</span>
-            <Clock className="w-4 h-4 text-[#501f92]" />
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-black font-mono text-[#0f172a]">
-              {totalWeeklyPlannedThisProject.toFixed(1)}h
-            </span>
-            <span className="text-xs text-[#64748b]">/ semana</span>
-          </div>
-          <p className="text-[11px] text-[#64748b] mt-1">
-            Suma de dedicación activa del equipo en este proyecto
-          </p>
-        </div>
-
-        <div className="bg-white rounded-3xl p-5 border border-[#e2e8f0] shadow-2xs">
-          <div className="flex items-center justify-between text-[#64748b] text-xs font-semibold">
-            <span>Proyección Mensual</span>
-            <Calendar className="w-4 h-4 text-[#0284c7]" />
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-black font-mono text-[#0f172a]">
-              {(totalWeeklyPlannedThisProject * 4.333).toFixed(1)}h
-            </span>
-            <span className="text-xs text-[#64748b]">
-              vs {project.budgetedHours}h cotizadas
-            </span>
-          </div>
-          <p className="text-[11px] text-[#64748b] mt-1">
-            {totalWeeklyPlannedThisProject * 4.333 > project.budgetedHours ? (
-              <span className="text-[#b45309] font-semibold">⚠️ Proyección supera bolsa cotizada</span>
-            ) : (
-              <span className="text-[#15803d]">✓ Proyección alineada con presupuesto</span>
-            )}
-          </p>
-        </div>
-
-        <div className="bg-white rounded-3xl p-5 border border-[#e2e8f0] shadow-2xs">
-          <div className="flex items-center justify-between text-[#64748b] text-xs font-semibold">
-            <span>Colaboradores Únicos</span>
-            <Users className="w-4 h-4 text-[#10b981]" />
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-black font-mono text-[#0f172a]">
-              {teamByPerson.length}
-            </span>
-            <span className="text-xs text-[#64748b]">
-              ({assignments.length} asignaciones rol)
-            </span>
-          </div>
-          <p className="text-[11px] text-[#64748b] mt-1">
-            Permite personas con roles simultáneos
-          </p>
-        </div>
-
-        <div className="bg-white rounded-3xl p-5 border border-[#e2e8f0] shadow-2xs">
-          <div className="flex items-center justify-between text-[#64748b] text-xs font-semibold">
-            <span>Gobernanza y Alertas</span>
-            <Shield className="w-4 h-4 text-[#f59e0b]" />
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            {Array.from(userCapacities.values()).some((c) => c.overallocatedWeekly > 0) ? (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#fef2f2] text-[#dc2626] text-xs font-bold border border-[#fecaca]">
-                <AlertTriangle className="w-3.5 h-3.5" />
-                Sobreasignación detectada
+      {/* 1. BARRA SUPERIOR DE MÉTRICAS DE EQUIPO Y CAPACIDAD (Opcional) */}
+      {!hideHeaderMetrics && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white rounded-3xl p-5 border border-[#e2e8f0] shadow-2xs">
+            <div className="flex items-center justify-between text-[#64748b] text-xs font-semibold">
+              <span>Carga Semanal Activa</span>
+              <Clock className="w-4 h-4 text-[#501f92]" />
+            </div>
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="text-2xl font-black font-mono text-[#0f172a]">
+                {totalWeeklyPlannedThisProject.toFixed(1)}h
               </span>
-            ) : (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#ecfdf5] text-[#15803d] text-xs font-bold border border-[#bbf7d0]">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                Capacidad balanceada
-              </span>
-            )}
+              <span className="text-xs text-[#64748b]">/ semana</span>
+            </div>
+            <p className="text-[11px] text-[#64748b] mt-1">
+              Suma de dedicación activa del equipo en este proyecto
+            </p>
           </div>
-          <p className="text-[11px] text-[#64748b] mt-1">
-            Auditoría de sobrecupo y disponibilidad global
-          </p>
+
+          <div className="bg-white rounded-3xl p-5 border border-[#e2e8f0] shadow-2xs">
+            <div className="flex items-center justify-between text-[#64748b] text-xs font-semibold">
+              <span>Proyección Mensual</span>
+              <Calendar className="w-4 h-4 text-[#0284c7]" />
+            </div>
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="text-2xl font-black font-mono text-[#0f172a]">
+                {(totalWeeklyPlannedThisProject * 4.333).toFixed(1)}h
+              </span>
+              <span className="text-xs text-[#64748b]">
+                vs {project.budgetedHours}h cotizadas
+              </span>
+            </div>
+            <p className="text-[11px] text-[#64748b] mt-1">
+              {totalWeeklyPlannedThisProject * 4.333 > project.budgetedHours ? (
+                <span className="text-[#b45309] font-semibold">⚠️ Proyección supera bolsa cotizada</span>
+              ) : (
+                <span className="text-[#15803d]">✓ Proyección alineada con presupuesto</span>
+              )}
+            </p>
+          </div>
+
+          <div className="bg-white rounded-3xl p-5 border border-[#e2e8f0] shadow-2xs">
+            <div className="flex items-center justify-between text-[#64748b] text-xs font-semibold">
+              <span>Colaboradores Únicos</span>
+              <Users className="w-4 h-4 text-[#10b981]" />
+            </div>
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="text-2xl font-black font-mono text-[#0f172a]">
+                {teamByPerson.length}
+              </span>
+              <span className="text-xs text-[#64748b]">
+                ({assignments.length} asignaciones rol)
+              </span>
+            </div>
+            <p className="text-[11px] text-[#64748b] mt-1">
+              Permite personas con roles simultáneos
+            </p>
+          </div>
+
+          <div className="bg-white rounded-3xl p-5 border border-[#e2e8f0] shadow-2xs">
+            <div className="flex items-center justify-between text-[#64748b] text-xs font-semibold">
+              <span>Gobernanza y Alertas</span>
+              <Shield className="w-4 h-4 text-[#f59e0b]" />
+            </div>
+            <div className="mt-2 flex items-baseline gap-2">
+              {Array.from(userCapacities.values()).some((c) => c.overallocatedWeekly > 0) ? (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#fef2f2] text-[#dc2626] text-xs font-bold border border-[#fecaca]">
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  Sobreasignación detectada
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#ecfdf5] text-[#15803d] text-xs font-bold border border-[#bbf7d0]">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Capacidad balanceada
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-[#64748b] mt-1">
+              Auditoría de sobrecupo y disponibilidad global
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* 2. ACCIONES Y CONTROL DE EQUIPO */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white p-4 rounded-3xl border border-[#e2e8f0] shadow-2xs">
@@ -585,7 +589,7 @@ export const ProjectTeamTab: React.FC<ProjectTeamTabProps> = ({
           <div className="flex items-center gap-2">
             <Users className="w-4 h-4 text-[#501f92]" />
             <h3 className="font-extrabold text-sm text-[#0f172a]">
-              Equipo Asignado ({teamByPerson.length} colaboradores · {assignments.length} asignaciones)
+              Equipo Asignado ({teamByPerson.length})
             </h3>
           </div>
           <span className="text-[11px] text-[#64748b]">
@@ -746,29 +750,29 @@ export const ProjectTeamTab: React.FC<ProjectTeamTabProps> = ({
         </div>
       </div>
 
-      {/* 4. SEGUIDORES & STAKEHOLDERS (Relación independiente sin rol cotizado ni consumo de horas) */}
-      <div className="bg-white rounded-3xl p-5 border border-[#e2e8f0] shadow-xs space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Eye className="w-4 h-4 text-[#64748b]" />
-            <h4 className="font-extrabold text-xs text-[#0f172a]">
-              Seguidores & Stakeholders ({stakeholders.length})
-            </h4>
+      {/* 4. SEGUIDORES & STAKEHOLDERS (Solo si existen seguidores registrados) */}
+      {stakeholders.length > 0 && (
+        <div className="bg-white rounded-3xl p-5 border border-[#e2e8f0] shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Eye className="w-4 h-4 text-[#64748b]" />
+              <h4 className="font-extrabold text-xs text-[#0f172a]">
+                Seguidores & Stakeholders ({stakeholders.length})
+              </h4>
+            </div>
+            <button
+              onClick={() => setShowStakeholderModal(true)}
+              className="text-xs font-bold text-[#501f92] hover:underline cursor-pointer flex items-center gap-1"
+            >
+              <Plus className="w-3 h-3" />
+              <span>Añadir Seguidor</span>
+            </button>
           </div>
-          <button
-            onClick={() => setShowStakeholderModal(true)}
-            className="text-xs font-bold text-[#501f92] hover:underline cursor-pointer flex items-center gap-1"
-          >
-            <Plus className="w-3 h-3" />
-            <span>Añadir Seguidor</span>
-          </button>
-        </div>
 
-        <p className="text-[11px] text-[#64748b] leading-relaxed">
-          Personas que requieren visibilidad del proyecto (reportes, cambios de estado o hitos) sin representar un rol comercial cotizado ni consumir capacidad operativa.
-        </p>
+          <p className="text-[11px] text-[#64748b] leading-relaxed">
+            Personas que requieren visibilidad del proyecto (reportes o hitos) sin rol cotizado ni consumo de horas.
+          </p>
 
-        {stakeholders.length > 0 ? (
           <div className="flex flex-wrap gap-2 pt-1">
             {stakeholders.map((s) => {
               const u = resolveUser(s.userId);
@@ -797,12 +801,8 @@ export const ProjectTeamTab: React.FC<ProjectTeamTabProps> = ({
               );
             })}
           </div>
-        ) : (
-          <div className="p-3 rounded-2xl bg-[#f8fafc] border border-dashed border-[#e2e8f0] text-center text-xs text-[#64748b]">
-            No hay stakeholders o seguidores externos en este proyecto.
-          </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* 5. MODAL: ASIGNAR / EDITAR COLABORADOR (SOPORTE MULTIROL) */}
       {showAddModal && (

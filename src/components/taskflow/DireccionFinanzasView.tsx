@@ -361,14 +361,9 @@ export const DireccionFinanzasView: React.FC<DireccionFinanzasViewProps> = ({
             <TrendingUp className="w-5 h-5 text-[#501f92]" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-bold text-[#0f172a] tracking-tight">
-                Dirección y Finanzas
-              </h1>
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#f2ecfb] text-[#501f92] border border-[#8a4dff]/20">
-                Liderazgo & Dirección
-              </span>
-            </div>
+            <h1 className="text-xl sm:text-2xl font-bold text-[#0f172a] tracking-tight">
+              Dirección y Finanzas
+            </h1>
           </div>
         </div>
       </div>

@@ -467,68 +467,21 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* 1. BARRA SUPERIOR DE MÉTRICAS OPERATIVAS DE TAREAS */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <div className="bg-white rounded-3xl p-4 border border-[#e2e8f0] shadow-2xs">
-          <div className="text-[11px] font-semibold text-[#64748b]">Total Tareas</div>
-          <div className="mt-1 flex items-baseline gap-1.5">
-            <span className="text-xl font-black font-mono text-[#0f172a]">{tasks.length}</span>
-            <span className="text-[10px] text-[#64748b]">unidades</span>
+      {/* Alerta contextual única sólo si existen bloqueos reales */}
+      {statusCounts.blocked > 0 && (
+        <div className="p-3 rounded-2xl bg-[#fef2f2] border border-[#fecaca] flex items-center justify-between text-xs text-[#dc2626]">
+          <div className="flex items-center gap-2 font-bold">
+            <AlertTriangle className="w-4 h-4 text-[#dc2626]" />
+            <span>{statusCounts.blocked} tarea{statusCounts.blocked !== 1 ? 's' : ''} bloqueada{statusCounts.blocked !== 1 ? 's' : ''} requieren atención</span>
           </div>
+          <button
+            onClick={() => setFilterBlockedOnly(!filterBlockedOnly)}
+            className="font-bold underline text-xs cursor-pointer hover:text-[#b91c1c]"
+          >
+            {filterBlockedOnly ? 'Ver todas' : 'Filtrar bloqueadas'}
+          </button>
         </div>
-
-        <div className="bg-white rounded-3xl p-4 border border-[#e2e8f0] shadow-2xs">
-          <div className="text-[11px] font-semibold text-[#64748b]">Horas Estimadas</div>
-          <div className="mt-1 flex items-baseline gap-1.5">
-            <span className="text-xl font-black font-mono text-[#501f92]">
-              {totalEstimatedHours.toFixed(1)}h
-            </span>
-            <span className="text-[10px] text-[#64748b]">/ {project.budgetedHours}h cot.</span>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-3xl p-4 border border-[#e2e8f0] shadow-2xs">
-          <div className="text-[11px] font-semibold text-[#64748b]">Horas Reales</div>
-          <div className="mt-1 flex items-baseline gap-1.5">
-            <span className="text-xl font-black font-mono text-[#0f172a]">
-              {totalConsumedHours.toFixed(1)}h
-            </span>
-            <span className="text-[10px] text-[#64748b]">consumidas</span>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-3xl p-4 border border-[#e2e8f0] shadow-2xs">
-          <div className="text-[11px] font-semibold text-[#b45309]">En Proceso / Rev.</div>
-          <div className="mt-1 flex items-baseline gap-1.5">
-            <span className="text-xl font-black font-mono text-[#b45309]">
-              {statusCounts.in_progress + statusCounts.in_review}
-            </span>
-            <span className="text-[10px] text-[#64748b]">activas</span>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-3xl p-4 border border-[#e2e8f0] shadow-2xs">
-          <div className="text-[11px] font-semibold text-[#15803d]">Completadas</div>
-          <div className="mt-1 flex items-baseline gap-1.5">
-            <span className="text-xl font-black font-mono text-[#15803d]">
-              {statusCounts.completed}
-            </span>
-            <span className="text-[10px] text-[#64748b]">
-              ({tasks.length > 0 ? Math.round((statusCounts.completed / tasks.length) * 100) : 0}%)
-            </span>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-3xl p-4 border border-[#e2e8f0] shadow-2xs">
-          <div className="text-[11px] font-semibold text-[#dc2626]">Bloqueos / Ajustes</div>
-          <div className="mt-1 flex items-baseline gap-1.5">
-            <span className="text-xl font-black font-mono text-[#dc2626]">
-              {statusCounts.blocked}
-            </span>
-            <span className="text-[10px] text-[#64748b]">bloq · {statusCounts.rework} rew</span>
-          </div>
-        </div>
-      </div>
+      )}
 
       {/* 2. GESTIÓN DE DEPENDENCIAS, INSUMOS & GATES DE CLIENTE */}
       <ProjectDependenciesSection

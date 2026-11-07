@@ -34,6 +34,13 @@ export interface ConvertedProjectPlan {
   deliverableIds: string[];
   leadUserId?: string;
   leadUserName?: string;
+  includedReworkRounds?: number;
+  scheduleConfig?: {
+    clientKickoffWaitDays?: number;
+    gateApprovalWaitDays?: number;
+    gateCount: number;
+    includedReworkRounds: number;
+  };
 }
 
 export interface ConvertOpportunityPayload {
@@ -46,6 +53,13 @@ export interface ConvertOpportunityPayload {
   endDate?: string;
   initialFormalizationStatus?: 'pendiente_formalizacion' | 'activo';
   startConditionsConfig?: any;
+  includedReworkRounds?: number;
+  scheduleConfig?: {
+    clientKickoffWaitDays?: number;
+    gateApprovalWaitDays?: number;
+    gateCount: number;
+    includedReworkRounds: number;
+  };
 
   // Legacy fallback compatibility
   projectName: string;
@@ -145,6 +159,8 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
   const [projectNames, setProjectNames] = useState<Record<string, string>>({});
   // Líder operativo asignado independientemente por cada servicio ganado
   const [serviceLeadUserIds, setServiceLeadUserIds] = useState<Record<string, string>>({});
+  // Tandas de ajustes permitidas por servicio (default: 2)
+  const [serviceReworkRounds, setServiceReworkRounds] = useState<Record<string, number>>({});
 
   useEffect(() => {
     setProjectNames((prev) => {
@@ -242,6 +258,7 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
       const serviceDeliverables = getDeliverablesForService(svc);
       const svcLeadId = serviceLeadUserIds[svc.serviceId] || fallbackLeadId;
       const svcLeadUser = users.find((u) => u.id === svcLeadId);
+      const reworkRounds = serviceReworkRounds[svc.serviceId] ?? 2;
 
       return {
         serviceId: svc.serviceId,
@@ -255,7 +272,12 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
         monthsDuration: svc.modality === 'fee_monthly' ? svc.monthsDuration : undefined,
         deliverableIds: serviceDeliverables.map((d) => d.id),
         leadUserId: svcLeadId,
-        leadUserName: svcLeadUser?.name || 'Líder de Proyecto'
+        leadUserName: svcLeadUser?.name || 'Líder de Proyecto',
+        includedReworkRounds: reworkRounds,
+        scheduleConfig: {
+          gateCount: 2,
+          includedReworkRounds: reworkRounds
+        }
       };
     });
 
@@ -285,6 +307,11 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
         fiscalDocsRequiredBeforeBilling: true,
         fiscalDocsCompleted: false,
         onboardingCompleted: false
+      },
+      includedReworkRounds: convertedProjects[0]?.includedReworkRounds || 2,
+      scheduleConfig: {
+        gateCount: 2,
+        includedReworkRounds: convertedProjects[0]?.includedReworkRounds || 2
       },
       // Compatibilidad legacy
       projectName: convertedProjects[0]?.projectName || `${clientName} — Proyecto`,
@@ -517,6 +544,37 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
                             </span>
                           </span>
                         ))}
+                      </div>
+                    </div>
+
+                    {/* Tandas de ajuste permitidas */}
+                    <div className="space-y-1 pt-2 border-t border-[#f1f5f9]">
+                      <div className="flex items-center justify-between">
+                        <label className="font-bold text-[#475569] block text-[11px]">
+                          Tandas de ajuste permitidas por gate / entrega:
+                        </label>
+                        <span className="text-[10px] text-[#501f92] font-semibold">
+                          (Por defecto: 2 tandas)
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min="1"
+                          max="10"
+                          value={serviceReworkRounds[service.serviceId] ?? 2}
+                          onChange={(e) => {
+                            const val = Math.max(1, parseInt(e.target.value, 10) || 1);
+                            setServiceReworkRounds((prev) => ({
+                              ...prev,
+                              [service.serviceId]: val
+                            }));
+                          }}
+                          className="w-20 p-2 rounded-xl border border-[#cbd5e1] text-[#0f172a] text-xs font-bold focus:ring-2 focus:ring-[#501f92] bg-white shadow-2xs"
+                        />
+                        <span className="text-[10.5px] text-[#64748b]">
+                          rondas de feedback incluidas contractualmente antes de cobrar sobrecostos.
+                        </span>
                       </div>
                     </div>
                   </div>
