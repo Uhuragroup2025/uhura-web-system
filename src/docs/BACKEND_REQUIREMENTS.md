@@ -10,6 +10,8 @@
 > La documentación pública define reglas, estructuras y comportamientos. La identidad nominal de colaboradores, correos, relaciones de reporte, calendarios individuales y crosswalk con backend se administra exclusivamente mediante **Equipo Canónico Privado**.
 
 > **COMPONENTES EXCLUSIVOS DEL PROTOTIPO (NO VAN A PRODUCCIÓN):**
+> **Principio de reconciliación con producción:** lo que ya funciona en la plataforma de producción de Indunova se conserva tal cual. Esta documentación solo pide cambios donde lo dice de forma explícita («mejora», «nuevo», «reemplaza»). Si un comportamiento descrito aquí ya existe en producción con otra regla, prevalece producción y se avisa a Uhura para decidir.
+>
 > El **«Simulador QA»** (selector flotante para cambiar de usuario y probar visibilidad por `accessLevel`) es una herramienta de desarrollo del prototipo. **No debe implementarse en producción**: allí la identidad y el `accessLevel` se obtienen únicamente de la sesión autenticada del usuario.
 
 ---
@@ -735,5 +737,5 @@ Especificación funcional en `ORBIT_PRODUCT_STATUS.md` Módulo 18.
 * `colony_challenges` (`id`, `game_id`, `challenger_user_id`, `challenger_score`, `challenged_user_id`, `challenged_score` null hasta jugar, `status` = `pending` | `completed`, `created_at`, `completed_at`). Ganador derivado: mayor puntaje; igual = empate. Un reto se resuelve una sola vez.
 * Rivales: solo usuarios activos de Equipo & Accesos, nunca uno mismo.
 * Notificaciones en la campana: «X te retó en {juego} con N pts» (al retado) y «{Resultado} contra X» (a ambos, al resolverse).
-* Recordatorio de horas de la mascota (§21 y Módulo 18): se calcula en el frontend con las horas registradas de hoy; si se quiere también por Google Chat o correo, debe usar el mismo umbral (70 % de la jornada) y la misma hora (4:00 p. m.), respetando ausencias y festivos.
+* **Recordatorio de horas (ya existe en producción):** no se reimplementa ni se cambia. Lo que hace hoy la plataforma de Indunova (umbral del 70 %, hora, canales) es la referencia; el prototipo solo replica la reacción de la mascota. Cualquier diferencia se resuelve a favor de producción.
 

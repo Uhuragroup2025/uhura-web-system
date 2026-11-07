@@ -40,6 +40,7 @@ import {
 import buckyHoodieHappyImg from '../../../assets/images/eco/eco-thumbs-up.webp';
 import buckyFocusImg from '../../../assets/images/eco/eco-focus.webp';
 import buckyCelebratingImg from '../../../assets/images/eco/eco-celebrating.webp';
+import { ECO_EMOTION_IMAGES, mascotImage, useMascotSkin } from '../mascot/ecoMascot';
 
 import {
   Swords,
@@ -124,6 +125,7 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
   });
 
   const activeUserId = currentUser?.id || 'anon';
+  const { skin: mascotSkin } = useMascotSkin();
   const [activeChallenge, setActiveChallenge] = useState<ColonyChallenge | null>(null);
   // Compañeros para retar: Equipo & Accesos, activos, sin la persona que juega
   const teammates: TeammateOption[] = useMemo(
@@ -448,256 +450,299 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
       {/* ==================================================================== */}
       {/* VISTA 2: EL HÁBITAT Y MINIJUEGOS DE BUCKY (EXPERIENCIAL / LÚDICO) */}
       {/* ==================================================================== */}
-      {activeTabMode === 'habitat' && (
-        <div className="p-6 lg:p-8 space-y-6 max-w-7xl mx-auto w-full">
-          {/* Top Bar Hábitat */}
-          <div className="flex items-center justify-between gap-4 pb-4 border-b border-white/10">
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setActiveTabMode('fichas')}
-                className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
-              >
-                <ArrowRight className="w-3.5 h-3.5 rotate-180" />
-                <span>Volver a Fichas Humanas</span>
-              </button>
-              <span className="text-xs text-white/60">•</span>
-              <h2 className="text-sm font-bold text-white flex items-center gap-1.5">
-                <span>🪵</span>
-                <span>Jugar en La Colonia · Minijuegos</span>
-              </h2>
+      {activeTabMode === 'habitat' && (() => {
+        // ── Datos reales para el universo de juegos ──
+        const GAMES: { id: ColonyGameId; emoji: string; tagline: string; planet: string; ring: string; glow: string }[] = [
+          { id: 'torre', emoji: '🪵', tagline: 'Suelta cada tronco alineado y apila lo más alto posible.', planet: 'radial-gradient(circle at 30% 30%, #fde68a, #f59e0b 45%, #92400e 100%)', ring: 'border-[#fbbf24]/60', glow: 'shadow-[0_0_60px_rgba(245,158,11,0.45)]' },
+          { id: 'nenufar', emoji: '🪷', tagline: 'Toca el nenúfar donde aparezca ECO lo más rápido que puedas.', planet: 'radial-gradient(circle at 30% 30%, #a7f3d0, #10b981 45%, #065f46 100%)', ring: 'border-[#34d399]/60', glow: 'shadow-[0_0_60px_rgba(16,185,129,0.45)]' }
+        ];
+        const statsFor = (g: ColonyGameId) => {
+          const board = weeklyBoards[g] || [];
+          const idx = board.findIndex((e) => e.userId === activeUserId);
+          return { best: idx >= 0 ? board[idx].score : null, rank: idx >= 0 ? idx + 1 : null, leader: board[0] || null };
+        };
+        const nobodyPlayed = GAMES.every((g) => (weeklyBoards[g.id] || []).length === 0);
+        const pending = myChallenges.received[0];
+        const outcome = latestResult ? challengeOutcomeFor(latestResult, activeUserId) : null;
+        const rivalOf = (c: ColonyChallenge) => (c.challengerUserId === activeUserId ? c.challengedName : c.challengerName).split(' ')[0];
+        const hostLine = pending
+          ? `${pending.challengerName.split(' ')[0]} te retó en ${COLONY_GAME_NAMES[pending.gameId]} con ${pending.challengerScore} pts. ¿Lo superas?`
+          : latestResult && outcome === 'won'
+          ? `¡Le ganaste a ${rivalOf(latestResult)}! ¿Otra partida?`
+          : latestResult && outcome === 'lost'
+          ? `${rivalOf(latestResult)} te ganó esta vez. ¿Revancha?`
+          : nobodyPlayed
+          ? 'Nadie ha jugado esta semana. ¡Estrena el ranking!'
+          : '¿Jugamos una partida rápida? Son 15 segundos.';
+        const hostImg = pending ? ECO_EMOTION_IMAGES.surprised : outcome === 'won' ? ECO_EMOTION_IMAGES.celebrating : mascotImage('ok', mascotSkin);
+        const sky =
+          ambientTime === 'night'
+            ? 'linear-gradient(180deg, #05010f 0%, #140733 45%, #2a0f5c 100%)'
+            : ambientTime === 'sunset'
+            ? 'linear-gradient(180deg, #12052b 0%, #4a1460 45%, #b4532a 100%)'
+            : 'linear-gradient(180deg, #1e1b6b 0%, #4c3bb8 50%, #8b7cf6 100%)';
+        const board = weeklyBoards[rankingGame] || [];
+        const podium = [board[1], board[0], board[2]];
+
+        return (
+          <div className="relative overflow-hidden flex-1" style={{ background: sky }}>
+            {/* Estrellas */}
+            <div aria-hidden="true" className="absolute inset-0 pointer-events-none">
+              {Array.from({ length: 46 }, (_, i) => (
+                <span
+                  key={i}
+                  className="eco-star"
+                  style={{ left: `${(i * 53) % 100}%`, top: `${(i * 37) % 70}%`, width: `${1 + (i % 3)}px`, height: `${1 + (i % 3)}px`, animationDelay: `${(i % 7) * 0.4}s` }}
+                />
+              ))}
+              <div className="absolute -bottom-40 left-1/2 -translate-x-1/2 w-[140%] h-72 rounded-[50%] bg-[#0b0420]/70 blur-sm" />
             </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setIsInboxOpen(true)}
-                className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold cursor-pointer flex items-center gap-1.5"
-              >
-                <span>⚔️ Retos</span>
-                {myChallenges.received.length > 0 && (
-                  <span className="px-1.5 rounded-full bg-[#d4ff4a] text-[#120822] text-[10px] font-black">{myChallenges.received.length}</span>
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsRankingOpen(true)}
-                className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold cursor-pointer flex items-center gap-1.5"
-              >
-                <Trophy className="w-3.5 h-3.5 text-[#fbbf24]" />
-                <span>Ranking</span>
-              </button>
-              <button
-                onClick={() => setSoundOn(!soundOn)}
-                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white cursor-pointer"
-                title={soundOn ? 'Silenciar sonidos' : 'Activar sonidos'}
-              >
-                {soundOn ? <Volume2 className="w-4 h-4 text-[#d4ff4a]" /> : <VolumeX className="w-4 h-4 text-white/60" />}
-              </button>
-              <button
-                onClick={handleToggleAmbient}
-                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white cursor-pointer"
-                title="Cambiar iluminación del hábitat"
-              >
-                {ambientTime === 'night' ? <Moon className="w-4 h-4 text-[#c9b7ff]" /> : ambientTime === 'sunset' ? <Sunset className="w-4 h-4 text-[#f59e0b]" /> : <Sun className="w-4 h-4 text-[#fbbf24]" />}
-              </button>
-            </div>
-          </div>
-
-          {/* Contenido de Minijuegos y Retos */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Columna Izquierda: Retador y Minijuegos Activos */}
-            <div className="lg:col-span-2 space-y-6">
-              <div className="p-6 rounded-3xl bg-gradient-to-br from-[#1e113a] to-[#2e1859] border border-white/10 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#d4ff4a] bg-white/10 px-2 py-0.5 rounded-full">
-                      Pausa Saludable · 15 Segundos
-                    </span>
-                    <h3 className="text-lg font-black text-white mt-1">
-                      Minijuegos Rápidos de la Colonia
-                    </h3>
-                  </div>
-                  <img
-                    src={buckyFocusImg}
-                    alt="ECO"
-                    className="w-14 h-14 object-contain"
-                  />
+            <div className="relative p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto w-full">
+              {/* HUD */}
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTabMode('fichas')}
+                    className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white cursor-pointer"
+                    aria-label="Volver a La Colonia"
+                    title="Volver a La Colonia"
+                  >
+                    <ArrowRight className="w-4 h-4 rotate-180" />
+                  </button>
+                  <h2 className="text-lg sm:text-xl font-black text-white tracking-tight">Universo de juegos</h2>
                 </div>
-                <p className="text-xs text-white/80 leading-relaxed">
-                  Despeja la mente entre tareas: cada partida dura 15 segundos. Juega, reta a alguien del equipo y mira quién gana.
-                </p>
+                <div className="flex flex-wrap items-center gap-2 p-1.5 rounded-2xl bg-black/30 border border-white/10 backdrop-blur-md">
+                  <button
+                    type="button"
+                    onClick={() => setIsInboxOpen(true)}
+                    className="px-3 py-1.5 rounded-xl hover:bg-white/10 text-white text-xs font-bold cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Swords className="w-3.5 h-3.5 text-[#d4ff4a]" />
+                    <span>Retos</span>
+                    {myChallenges.received.length > 0 && (
+                      <span className="px-1.5 rounded-full bg-[#d4ff4a] text-[#120822] text-[10px] font-black">{myChallenges.received.length}</span>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsRankingOpen(true)}
+                    className="px-3 py-1.5 rounded-xl hover:bg-white/10 text-white text-xs font-bold cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Trophy className="w-3.5 h-3.5 text-[#fbbf24]" />
+                    <span>Ranking</span>
+                    {statsFor(rankingGame).rank && <span className="text-[#fbbf24]">· vas #{statsFor(rankingGame).rank}</span>}
+                  </button>
+                  <span className="w-px h-5 bg-white/15" />
+                  <button
+                    onClick={() => setSoundOn(!soundOn)}
+                    className="p-1.5 rounded-xl hover:bg-white/10 text-white cursor-pointer"
+                    title={soundOn ? 'Silenciar sonidos' : 'Activar sonidos'}
+                    aria-label={soundOn ? 'Silenciar sonidos' : 'Activar sonidos'}
+                  >
+                    {soundOn ? <Volume2 className="w-4 h-4 text-[#d4ff4a]" /> : <VolumeX className="w-4 h-4 text-white/60" />}
+                  </button>
+                  <button
+                    onClick={handleToggleAmbient}
+                    className="p-1.5 rounded-xl hover:bg-white/10 text-white cursor-pointer"
+                    title="Cambiar el cielo"
+                    aria-label="Cambiar el cielo"
+                  >
+                    {ambientTime === 'night' ? <Moon className="w-4 h-4 text-[#c9b7ff]" /> : ambientTime === 'sunset' ? <Sunset className="w-4 h-4 text-[#f59e0b]" /> : <Sun className="w-4 h-4 text-[#fde68a]" />}
+                  </button>
+                </div>
+              </div>
 
-                {/* Retos: lo pendiente y el último resultado, a la vista */}
-                {(myChallenges.received.length > 0 || latestResult) && (
-                  <div className="space-y-2">
-                    {myChallenges.received.slice(0, 2).map((ch) => (
-                      <div key={ch.id} className="p-3 rounded-2xl bg-[#501f92]/40 border border-[#d4ff4a]/60 flex items-center justify-between gap-3 text-xs">
-                        <span className="text-white">
-                          <strong>{ch.challengerName.split(' ')[0]}</strong> te retó en {COLONY_GAME_NAMES[ch.gameId]} con{' '}
-                          <strong className="text-[#d4ff4a]">{ch.challengerScore} pts</strong>
-                          <span className="text-white/50"> · {relativeTimeEs(ch.createdAt)}</span>
-                        </span>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Escena: ECO anfitrión + planetas */}
+                <div className="lg:col-span-2 space-y-6">
+                  {/* ECO anfitrión */}
+                  <div className="flex items-end gap-3">
+                    <img src={hostImg} alt="ECO" className="w-20 sm:w-24 h-auto object-contain drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)] eco-float" />
+                    <div className="relative mb-6 px-4 py-3 rounded-2xl rounded-bl-sm bg-white text-[#120822] text-sm font-bold shadow-xl max-w-md">
+                      {hostLine}
+                      {pending && (
                         <button
                           type="button"
                           onClick={() => {
-                            setActiveChallenge(ch);
-                            setActiveGame(ch.gameId);
+                            setActiveChallenge(pending);
+                            setActiveGame(pending.gameId);
                           }}
-                          className="shrink-0 px-3 py-1.5 rounded-xl bg-[#d4ff4a] text-[#120822] font-black cursor-pointer"
+                          className="mt-2 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#501f92] text-white text-xs font-black cursor-pointer"
                         >
-                          Aceptar reto
+                          <Swords className="w-3.5 h-3.5" /> Aceptar reto
                         </button>
-                      </div>
-                    ))}
-                    {latestResult && (() => {
-                      const outcome = challengeOutcomeFor(latestResult, activeUserId);
-                      const iAmChallenger = latestResult.challengerUserId === activeUserId;
-                      const mine = iAmChallenger ? latestResult.challengerScore : latestResult.challengedScore ?? 0;
-                      const theirs = iAmChallenger ? latestResult.challengedScore ?? 0 : latestResult.challengerScore;
-                      const rival = (iAmChallenger ? latestResult.challengedName : latestResult.challengerName).split(' ')[0];
+                      )}
+                      {!pending && latestResult && (
+                        <button
+                          type="button"
+                          onClick={() => setActiveGame(latestResult.gameId)}
+                          className="mt-2 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#501f92] text-white text-xs font-black cursor-pointer"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" /> {outcome === 'lost' ? 'Revancha' : 'Jugar otra'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Planetas: un juego por planeta */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 items-end">
+                    {GAMES.map((g, i) => {
+                      const st = statsFor(g.id);
                       return (
-                        <div className={`p-3 rounded-2xl border text-xs flex items-center justify-between gap-3 ${outcome === 'won' ? 'bg-[#d4ff4a]/10 border-[#d4ff4a]/50' : 'bg-white/5 border-white/10'}`}>
-                          <span className="text-white">
-                            {outcome === 'won' ? '🏆 ' : outcome === 'lost' ? '😅 ' : '🤝 '}
-                            <strong>
-                              {outcome === 'won'
-                                ? `Ganaste ${mine} a ${theirs} contra ${rival}`
-                                : outcome === 'lost'
-                                ? `${rival} te ganó ${theirs} a ${mine}`
-                                : `Empate ${mine} a ${theirs} con ${rival}`}
-                            </strong>
-                            <span className="text-white/50"> · {COLONY_GAME_NAMES[latestResult.gameId]} · {relativeTimeEs(latestResult.completedAt)}</span>
+                        <button
+                          key={g.id}
+                          type="button"
+                          onClick={() => setActiveGame(g.id)}
+                          className="group text-center cursor-pointer focus:outline-none"
+                          aria-label={`Jugar ${COLONY_GAME_NAMES[g.id]}`}
+                        >
+                          <div className="relative mx-auto w-32 h-32 sm:w-36 sm:h-36 eco-float" style={{ animationDelay: `${i * 1.2}s` }}>
+                            <div className={`absolute -inset-3 rounded-full border-2 border-dashed ${g.ring} eco-orbit-ring`} />
+                            <div
+                              className={`absolute inset-0 rounded-full ${g.glow} transition-transform duration-300 group-hover:scale-110 group-focus-visible:scale-110 flex items-center justify-center`}
+                              style={{ background: g.planet }}
+                            >
+                              <span className="text-5xl drop-shadow">{g.emoji}</span>
+                            </div>
+                            <span className="absolute -top-1 -right-1 px-2 py-0.5 rounded-full bg-[#d4ff4a] text-[#120822] text-[10px] font-black">15 s</span>
+                          </div>
+                          <h3 className="mt-4 text-base font-black text-white group-hover:text-[#d4ff4a] transition-colors">{COLONY_GAME_NAMES[g.id]}</h3>
+                          <p className="text-[11px] text-white/70 mt-1 px-2">{g.tagline}</p>
+                          <p className="mt-2 text-[11px] text-white/80">
+                            {st.best !== null ? (
+                              <>Tu mejor: <strong className="text-[#d4ff4a]">{st.best}</strong> · #{st.rank}</>
+                            ) : (
+                              'Aún no juegas esta semana'
+                            )}
+                          </p>
+                          {st.leader && (
+                            <p className="text-[10px] text-white/50">Récord: {st.leader.score} · {st.leader.name.split(' ')[0]}</p>
+                          )}
+                          <span className="mt-3 inline-flex items-center gap-1.5 px-5 py-2 rounded-2xl bg-[#d4ff4a] text-[#120822] text-sm font-black shadow-lg group-hover:shadow-[0_0_24px_rgba(212,255,74,0.6)] transition-shadow">
+                            <Play className="w-4 h-4 fill-[#120822]" /> Jugar
                           </span>
-                          <button type="button" onClick={() => setActiveGame(latestResult.gameId)} className="shrink-0 text-[#d4ff4a] font-bold hover:underline cursor-pointer">
-                            Revancha
-                          </button>
-                        </div>
+                        </button>
                       );
-                    })()}
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                  <button
-                    onClick={() => setActiveGame('torre')}
-                    className="p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-left transition-all cursor-pointer group"
-                  >
-                    <div className="text-2xl mb-2">🪵</div>
-                    <h4 className="font-bold text-white text-sm group-hover:text-[#d4ff4a] transition-colors">
-                      Torre de Troncos
-                    </h4>
-                    <p className="text-[11px] text-white/60 mt-1">
-                      Suelta cada tronco alineado con la base y apila lo más alto posible.
-                    </p>
-                  </button>
-
-                  <button
-                    onClick={() => setActiveGame('nenufar')}
-                    className="p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-left transition-all cursor-pointer group"
-                  >
-                    <div className="text-2xl mb-2">🌿</div>
-                    <h4 className="font-bold text-white text-sm group-hover:text-[#d4ff4a] transition-colors">
-                      Salto de Nenúfares
-                    </h4>
-                    <p className="text-[11px] text-white/60 mt-1">
-                      Toca el nenúfar donde aparezca ECO lo más rápido que puedas.
-                    </p>
-                  </button>
-                </div>
-              </div>
-
-              {/* Si hay un juego activo */}
-              {activeGame && (
-                <div className="p-6 rounded-3xl bg-[#140b27] border border-[#8a4dff]/40 shadow-xl space-y-4">
-                  <div className="flex items-center justify-between pb-3 border-b border-white/10">
-                    <h4 className="font-bold text-white text-sm flex items-center gap-2">
-                      <Gamepad2 className="w-4 h-4 text-[#d4ff4a]" />
-                      <span>Jugando: {activeGame === 'torre' ? 'Torre de Troncos' : 'Salto de Nenúfares'}</span>
-                    </h4>
-                    <button
-                      onClick={() => setActiveGame(null)}
-                      className="text-xs text-white/60 hover:text-white cursor-pointer"
-                    >
-                      Cerrar juego ×
-                    </button>
-                  </div>
-
-                  <ColoniaMinigames
-                    type={activeGame}
-                    activeChallenge={activeChallenge}
-                    teammates={teammates}
-                    currentUser={currentUser}
-                    onChallengeCreated={(ch) => {
-                      refreshColonyData();
-                      showToast(`Reto enviado a ${ch.challengedName.split(' ')[0]} ⚔️`);
-                    }}
-                    onComplete={(gameId: ColonyGameId, score: number) => {
-                      setLastGameResult({ gameId, score });
-                      setActiveChallenge(null);
-                      refreshColonyData();
-                      setActiveGame(null);
-                    }}
-                    onClose={() => {
-                      setActiveChallenge(null);
-                      refreshColonyData();
-                      setActiveGame(null);
-                    }}
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Columna Derecha: Ranking semanal (mejor puntaje de cada persona; se reinicia el lunes) */}
-            <div className="space-y-6">
-              <div className="p-5 rounded-2xl bg-[#180d32] border border-white/10 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Trophy className="w-4 h-4 text-[#fbbf24]" />
-                    <h4 className="text-xs font-bold text-white uppercase tracking-wider">Ranking semanal</h4>
-                  </div>
-                  <span className="text-[10px] text-white/50">Se reinicia el lunes</span>
-                </div>
-                <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-white/5 text-[11px] font-bold">
-                  {(['torre', 'nenufar'] as ColonyGameId[]).map((g) => (
-                    <button
-                      key={g}
-                      type="button"
-                      onClick={() => setRankingGame(g)}
-                      className={`py-1.5 rounded-lg cursor-pointer ${rankingGame === g ? 'bg-[#d4ff4a] text-[#120822]' : 'text-white/70 hover:text-white'}`}
-                    >
-                      {COLONY_GAME_NAMES[g]}
-                    </button>
-                  ))}
-                </div>
-                <div className="space-y-2">
-                  {(weeklyBoards[rankingGame] || []).length === 0 && (
-                    <p className="p-3 rounded-xl bg-white/5 text-xs text-white/60 text-center">
-                      Nadie ha jugado esta semana. ¡Marca el primer puntaje!
-                    </p>
-                  )}
-                  {(weeklyBoards[rankingGame] || []).slice(0, 5).map((entry, idx) => {
-                    const isMe = entry.userId === activeUserId;
-                    return (
-                      <div
-                        key={entry.userId}
-                        className={`p-2.5 rounded-xl border flex items-center justify-between text-xs ${isMe ? 'bg-[#501f92]/40 border-[#d4ff4a]/60' : 'bg-white/5 border-white/5'}`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-[#d4ff4a] w-5">{idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`}</span>
-                          <span className="font-medium text-white">{entry.name}</span>
-                          {isMe && <span className="text-[9px] font-black px-1.5 rounded bg-[#d4ff4a] text-[#120822]">Tú</span>}
+                    })}
+                    {/* Próximamente */}
+                    <div className="text-center opacity-60" aria-label="Próximamente un juego nuevo">
+                      <div className="relative mx-auto w-24 h-24 sm:w-28 sm:h-28 eco-float" style={{ animationDelay: '2.4s' }}>
+                        <div
+                          className="absolute inset-0 rounded-full flex items-center justify-center"
+                          style={{ background: 'radial-gradient(circle at 30% 30%, #e2e8f0, #64748b 50%, #1e293b 100%)' }}
+                        >
+                          <span className="text-3xl">🔒</span>
                         </div>
-                        <span className="text-white/80 font-bold">{entry.score} pts</span>
                       </div>
-                    );
-                  })}
+                      <h3 className="mt-4 text-sm font-black text-white">Próximamente</h3>
+                      <p className="text-[11px] text-white/60 mt-1">Un juego nuevo para retar al equipo.</p>
+                    </div>
+                  </div>
+
+                  {/* Retos recibidos (si hay más de uno) */}
+                  {myChallenges.received.length > 1 && (
+                    <div className="p-3 rounded-2xl bg-black/30 border border-white/10 backdrop-blur-md text-xs text-white flex items-center justify-between gap-3">
+                      <span>Tienes {myChallenges.received.length} retos por responder.</span>
+                      <button type="button" onClick={() => setIsInboxOpen(true)} className="text-[#d4ff4a] font-bold hover:underline cursor-pointer">
+                        Ver retos
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Ranking con podio */}
+                <div className="p-5 rounded-2xl bg-black/35 border border-white/10 backdrop-blur-md space-y-4 h-fit">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Trophy className="w-4 h-4 text-[#fbbf24]" />
+                      <h4 className="text-xs font-black text-white uppercase tracking-wider">Ranking semanal</h4>
+                    </div>
+                    <span className="text-[10px] text-white/50">Se reinicia el lunes</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-white/5 text-[11px] font-bold">
+                    {GAMES.map((g) => (
+                      <button
+                        key={g.id}
+                        type="button"
+                        onClick={() => setRankingGame(g.id)}
+                        className={`py-1.5 rounded-lg cursor-pointer ${rankingGame === g.id ? 'bg-[#d4ff4a] text-[#120822]' : 'text-white/70 hover:text-white'}`}
+                      >
+                        {COLONY_GAME_NAMES[g.id]}
+                      </button>
+                    ))}
+                  </div>
+                  {board.length === 0 ? (
+                    <p className="p-4 rounded-xl bg-white/5 text-xs text-white/70 text-center">Nadie ha jugado esta semana. ¡Marca el primer puntaje!</p>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-3 items-end gap-2 pt-2">
+                        {podium.map((e, i) => {
+                          const place = i === 1 ? 1 : i === 0 ? 2 : 3;
+                          const h = place === 1 ? 'h-20' : place === 2 ? 'h-14' : 'h-10';
+                          const medal = place === 1 ? 'from-[#fde68a] to-[#f59e0b]' : place === 2 ? 'from-[#e2e8f0] to-[#94a3b8]' : 'from-[#fdba74] to-[#c2410c]';
+                          return (
+                            <div key={place} className="flex flex-col items-center">
+                              {e ? (
+                                <>
+                                  <div className={`w-11 h-11 rounded-full bg-gradient-to-br ${medal} p-0.5 ${e.userId === activeUserId ? 'ring-2 ring-[#d4ff4a]' : ''}`}>
+                                    <div className={`w-full h-full rounded-full ${e.avatarBg} flex items-center justify-center text-[11px] font-black text-white`}>{e.initials}</div>
+                                  </div>
+                                  <span className="mt-1 text-[11px] font-bold text-white truncate max-w-full">{e.userId === activeUserId ? 'Tú' : e.name.split(' ')[0]}</span>
+                                  <span className="text-[10px] text-[#d4ff4a] font-black">{e.score} pts</span>
+                                </>
+                              ) : (
+                                <span className="text-[10px] text-white/30 mb-1">—</span>
+                              )}
+                              <div className={`mt-1 w-full ${h} rounded-t-xl bg-gradient-to-b ${medal} opacity-80 flex items-start justify-center pt-1 text-sm font-black text-[#120822]`}>{place}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className="space-y-1.5">
+                        {board.slice(3, 6).map((entry, idx) => (
+                          <div
+                            key={entry.userId}
+                            className={`p-2 rounded-xl border flex items-center justify-between text-xs ${entry.userId === activeUserId ? 'bg-[#501f92]/40 border-[#d4ff4a]/60' : 'bg-white/5 border-white/5'}`}
+                          >
+                            <span className="text-white"><span className="text-white/50 mr-2">#{idx + 4}</span>{entry.userId === activeUserId ? 'Tú' : entry.name}</span>
+                            <span className="text-[#d4ff4a] font-bold">{entry.score} pts</span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
+
+            {activeGame && (
+              <ColoniaMinigames
+                type={activeGame}
+                activeChallenge={activeChallenge}
+                teammates={teammates}
+                currentUser={currentUser}
+                onChallengeCreated={(ch) => {
+                  refreshColonyData();
+                  showToast(`Reto enviado a ${ch.challengedName.split(' ')[0]} ⚔️`);
+                }}
+                onComplete={(gameId: ColonyGameId, score: number) => {
+                  setLastGameResult({ gameId, score });
+                  setActiveChallenge(null);
+                  refreshColonyData();
+                  setActiveGame(null);
+                }}
+                onClose={() => {
+                  setActiveChallenge(null);
+                  refreshColonyData();
+                  setActiveGame(null);
+                }}
+              />
+            )}
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       <ColoniaSocialInbox
         isOpen={isInboxOpen}

@@ -570,3 +570,14 @@ select option {
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
 }
+
+/* ── ECO · La Colonia: mini universo (solo CSS) ──────────────────────────── */
+@keyframes eco-twinkle { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+@keyframes eco-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@keyframes eco-spin { to { transform: rotate(360deg); } }
+.eco-star { position: absolute; border-radius: 9999px; background: #fff; animation: eco-twinkle 3s ease-in-out infinite; }
+.eco-float { animation: eco-float 5s ease-in-out infinite; }
+.eco-orbit-ring { animation: eco-spin 18s linear infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .eco-star, .eco-float, .eco-orbit-ring { animation: none; }
+}
