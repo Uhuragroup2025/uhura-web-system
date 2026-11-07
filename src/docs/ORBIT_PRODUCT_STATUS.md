@@ -4,7 +4,7 @@
 
 > **Documento:** Especificación Funcional Maestra para Portabilidad, Backend y Modelo de Datos
 > **Destinatario Técnico Principal:** Indunova (Backend Django REST Framework / PostgreSQL) y Equipo de Producto Uhura Group
-> **Fecha de Actualización:** 07 de noviembre de 2026 (cronograma al «Iniciar proyecto», gates/tandas editables, equipo derivado de tareas, hallazgos E2E §10.4.1, cierre de proyecto §11.7)
+> **Fecha de Actualización:** 07 de noviembre de 2026 (cronograma al «Iniciar proyecto», rondas de ajuste editables, equipo derivado de tareas, hallazgos E2E §10.2.3, cierre de proyecto Módulo 11 §11.7, visibilidad de tareas Módulo 17 §17.5, arranque en producción §9.4, integraciones Google Chat §11.8 y Google Calendar §11.5.1, mascota ECO Módulo 18)
 > **Versión:** 3.4.0 (Aprobación Canónica UAT 2: 1 Servicio = 1 Proyecto, Decimales, Líderes por Servicio y Modo Desacoplado)
 > **Estado:** Especificación Maestra Canónica Reconciliada — Fuente de Verdad Funcional de ECO
 >
@@ -30,20 +30,21 @@
    - [Módulo 2: Catálogo de Servicios y Plantillas de Producto](#módulo-2-catálogo-de-servicios-y-plantillas-de-producto)
    - [Módulo 3: Alcance & Backlog (Scoping de Entregables y Actividades)](#módulo-3-alcance--backlog)
    - [Módulo 4: Alcance Técnico y Registro Comercial (Desacoplamiento Financiero)](#módulo-4-alcance-técnico-y-registro-comercial-desacoplamiento-financiero)
-   - [Módulo 5: Cotización / Propuesta Económica (Quotes)](#módulo-5-cotización--propuesta-económica)
+   - [Módulo 5: Cotización / Propuesta Económica (Quotes)](#módulo-5-cotización--propuesta-económica-quotes)
    - [Módulo 6: Documentos y Repositorio Google Drive](#módulo-6-documentos-y-repositorio-google-drive)
    - [Módulo 7: Statement of Work (SOW Contractual)](#módulo-7-statement-of-work-sow-contractual)
    - [Módulo 8: Formalización, Conversión a Proyecto y Gates](#módulo-8-formalización-conversión-a-proyecto-y-gates)
    - [Módulo 9: Clientes (Cuentas y Entidades Fiscales)](#módulo-9-clientes)
    - [Módulo 10: Administración Fiscal y Frontera con Alegra](#módulo-10-administración-fiscal-y-frontera-con-alegra)
-   - [Módulo 11: Proyectos (Estructura Operativa, Gobernanza y Vistas)](#módulo-11-proyectos)
+   - [Módulo 11: Proyectos (Estructura Operativa, Gobernanza y Vistas)](#módulo-11-proyectos-estructura-operativa-gobernanza-y-vistas)
    - [Módulo 12: Entregables (Componentes Operativos)](#módulo-12-entregables)
    - [Módulo 13: Tareas y Detalle Operativo (TaskDetailModal)](#módulo-13-tareas-y-detalle-operativo-taskdetailmodal)
    - [Módulo 14: Staffing y Asignaciones](#módulo-14-staffing-y-asignaciones)
    - [Módulo 15: Capacidad del Equipo](#módulo-15-capacidad-del-equipo)
-   - [Módulo 16: Time Tracking (Registro de Tiempo)](#módulo-16-time-tracking)
-   - [Módulo 17: Mi Día (Home Contextual y Bandeja de Acción)](#módulo-17-mi-día)
-   - [Módulo 18: Bucky y La Colonia (Copiloto y Gamificación)](#módulo-18-bucky-y-la-colonia)
+   - [Módulo 16: Time Tracking (Registro de Tiempo)](#módulo-16-time-tracking-registro-y-corrección-de-tiempo)
+   - [Módulo 17: Mi Día (Home Contextual y Bandeja de Acción)](#módulo-17-mi-día-home-contextual-y-bandeja-de-acción)
+   - [Módulo 18: Mascota ECO y La Colonia (Copiloto y Gamificación)](#módulo-18-mascota-eco-antes-bucky-y-la-colonia-espacio-social--lúdico)
+   - [Módulo 19: Costos de operación — Hardware y Licencias](#módulo-19-costos-de-operación--hardware-y-licencias--implementado-en-prototipo--07-nov-2026-existente-en-producción)
 6. [Integraciones Externas: Arquitectura y Comportamiento](#6-integraciones-externas-arquitectura-y-comportamiento)
 7. [Matriz Global de Portabilidad por Módulo](#7-matriz-global-de-portabilidad-por-módulo)
 8. [Auditoría de Inconsistencias entre Prototipo UI y Especificación](#8-auditoría-de-inconsistencias-entre-prototipo-ui-y-especificación)
@@ -223,7 +224,7 @@ El flujo lineal de la información y los handoffs entre roles a través de ECO s
          │
          ▼
 [7. EJECUCIÓN OPERATIVA EN PROYECTO]
-         ├─ Encabezado: Reglas Contractuales (Gates: 2, Rondas de ajuste: max 2, Kickoff: 3d)
+         ├─ Encabezado: Reglas Contractuales (Rondas de ajuste: 2 × 5 días · Insumos del cliente: 3d)
          ├─ Pestaña Resumen: Scope, gobernanza y equipo asignado (sin KPIs redundantes)
          ├─ Pestaña Tareas:
          │    - Bloque de Dependencias, Insumos y Aprobaciones arriba de la lista
@@ -647,12 +648,12 @@ Contenedor principal de la ejecución operativa, control presupuestal de horas, 
 #### 11.2 Estructura Aprobada de Navegación Interna del Proyecto
 La ficha de proyecto se organiza en la siguiente estructura de pestañas oficial:
 ```text
-1. Resumen: Entregables, cronograma y rondas de ajuste, y Equipo Asignado (derivado de tareas, §14.3).
+1. Resumen: Entregables, cronograma y rondas de ajuste, y Equipo Asignado (derivado de tareas, Módulo 14 §14.3).
 2. Tareas: Tablero operativo y lista de tareas con entregables colapsados por defecto y bloque de dependencias.
 3. Matriz Horas por Rol: Horas cotizadas vs. ejecutadas por rol y por entregable. No visible para `collaborator`.
 4. Backlog (Opcional): Visible únicamente cuando el proyecto contiene fases estructuradas.
 ```
-*(Actualizado 07 Nov 2026)* Ya no existen pestañas «Equipo» (se integró en Resumen), «Actividad» ni «Configuración». Las acciones del proyecto viven en el menú ⋮: Editar, Notificaciones (§11.8), Archivar y Eliminar.
+*(Actualizado 07 Nov 2026)* Ya no existen pestañas «Equipo» (se integró en Resumen), «Actividad» ni «Configuración». Las acciones del proyecto viven en el menú ⋮: Editar, Notificaciones (Google Chat, §11.8), Archivar y Eliminar.
 
 **Vista por perfil:**
 - `collaborator`: Resumen y Tareas en solo lectura del proyecto (sin menú ⋮, sin «Iniciar proyecto» ni «Ajustar», sin Matriz Horas). Su trabajo diario está en Mi Día y Tareas.
@@ -686,9 +687,10 @@ En el encabezado del proyecto, especialmente para proyectos de alcance único (`
     - `actualEndDate`: Date | null (Fecha real de cierre al culminar la ejecución).
   - `scheduleConfig`:
     - `clientKickoffWaitDays`: Integer (Default: 3 días hábiles. No consume capacidad).
-    - `gateApprovalWaitDays`: Integer (Default: 5 días hábiles por gate. No consume capacidad).
-    - `gateCount`: Integer (Default: 2 gates).
-    - `includedReworkRounds`: Integer (Default: 2 rondas incluidas).
+    - `includedReworkRounds`: Integer (Default sugerido: 2 rondas de ajuste incluidas).
+    - `reworkRoundDays`: Integer (Default sugerido: 5 días hábiles por ronda. No consume capacidad).
+    - `productionWeeks`: Integer (Semanas de producción heredadas del Alcance).
+    - *Obsoletos:* `gateCount` y `gateApprovalWaitDays` (modelo anterior de gates × tandas); no se usan para calcular.
   - `leadUserId`: UUID (Líder del proyecto).
   - `soldHours`: Decimal (Total de horas vendidas según cotización aprobada — Fuente de verdad presupuestal canónica).
   - `soldValueCOP`: Decimal (Valor económico del contrato).
@@ -733,7 +735,7 @@ Entidad persistente para insumos, accesos o gates que condicionan la ruta críti
 - **Tareas recurrentes:** en producción, ECO crea el día 1 de cada mes las tareas del ciclo a partir de la plantilla del mes 1 (sin tiempo, estado ni registros). En el prototipo se hace con «Generar tareas de <mes>».
 - **Consultar un mes (p. ej. enero):** selector **Ciclo** en el encabezado del proyecto; KPIs, Resumen, Tareas y Matriz se filtran a ese mes. Opción «Contrato completo» para ver todo.
 - **Histórico corto:** el selector y la tabla de Resumen muestran mes anterior, actual y siguiente; el resto queda agrupado por año bajo demanda («Ver los N meses del contrato»). Cada mes es una fila: bolsa (+ trasladadas), ejecutadas, desvío y estado.
-- **Renovación:** aviso 30 días antes del fin del contrato. «Renovar fee» agrega meses (nuevo periodo) con la bolsa mensual acordada y una nota; el histórico se conserva. Si no se renueva, se usa el cierre de proyecto (§11.7).
+- **Renovación:** aviso 30 días antes del fin del contrato. «Renovar fee» agrega meses (nuevo periodo) con la bolsa mensual acordada y una nota; el histórico se conserva. Si no se renueva, se usa el cierre de proyecto (Módulo 11 §11.7).
 - Referencias: `src/components/taskflow/schedule/feeCycles.ts`, `projects/FeeContractSection.tsx`.
 
 #### 11.7 Cierre del Proyecto (🟢 Decisión aprobada · 🟣 Implementado en prototipo · 07 Nov 2026)
@@ -994,7 +996,7 @@ Mi Día adapta dinámicamente sus secciones de atención según el rol activo de
   - **Dependencias e Insumos Críticos Vencidos:** Insumos o accesos de clientes (`ownerType: 'client'`) que han superado la fecha límite y amenazan la ruta crítica.
 
 - **4. Colaborador / Operativo (Front-End Dev, Diseñadores, Copywriters, etc.):**
-  - **Tareas Asignadas para Hoy:** Lista clara y priorizada de tareas asignadas activas en orden de urgencia.
+  - **Tareas Asignadas para Hoy:** Solo las tareas propias que el cronograma pone para hoy (y vencidas), ordenadas por fecha y prioridad; si no hay, «Próximas» (ver §17.5).
   - **Acción Operativa Directa:** Inicio directo de cronómetro (timer), registro de horas y botón `Solicitar revisión ->` al terminar los entregables para pasar la tarea al líder.
   - **Retrabajos Asignados:** Notificación destacada de tareas devueltas en revisión o con retrabajo registrado que requieren corrección prioritaria.
 
@@ -1026,7 +1028,7 @@ Mi Día puede mostrar de forma discreta y no invasiva:
 
 ---
 
-### Módulo 18: Bucky y La Colonia (Espacio Social & Lúdico)
+### Módulo 18: Mascota ECO (antes «Bucky») y La Colonia (Espacio Social & Lúdico)
 
 > **Nombre (07 Nov 2026):** la mascota se llama **ECO**, igual que la plataforma (antes «Bucky»). Los textos visibles usan «ECO»; los nombres internos de código (`buckyEngine`, `BuckyLabModal`) se mantienen por compatibilidad.
 >
@@ -1299,7 +1301,7 @@ Roles operativos no cotizables para tareas operativas estándar:
 2. `Administrativa` (Datos fiscales, RUT, facturación en Alegra y cartera)
 3. `Admin de Sistema` (TI y gobernanza de plataforma)
 
-### 10.3. Responsabilidades Operativas Clave por Rol en los Journeys Aprobados
+### 10.2.1. Responsabilidades Operativas Clave por Rol en los Journeys Aprobados
 - **Comercial (Access Level `commercial` / `client_relationship`):**
   - Creación de oportunidades en New Business a partir de briefs.
   - Asignación formal del Líder de Alcance.
@@ -1324,7 +1326,7 @@ Roles operativos no cotizables para tareas operativas estándar:
   - Monitoreo de capacidad global del equipo semana a semana.
   - Aprobación de excepciones de cronograma (reforecasts oficiales) y condiciones especiales.
 
-### 10.4. Pendientes de Decisión de Producto
+### 10.2.2. Pendientes de Decisión de Producto
 1. **[Pendiente de decisión de Producto] Tipologías de Tarea Exentas de Revisión:**
    Se requiere formalizar si ciertas tipologías de tareas operativas menores o no cotizables (ej. rituales internos de equipo, standups de 15 minutos, soporte ad-hoc) pueden auto-completarse directamente por el colaborador sin transicionar obligatoriamente por el estado `Review` del Líder.
 2. **[Pendiente de decisión de Producto] Parametrización Multi-NIT por Proyecto:**
@@ -1332,16 +1334,16 @@ Roles operativos no cotizables para tareas operativas estándar:
 
 ---
 
-### 10.4.1. Hallazgos del recorrido E2E (07 Nov 2026)
+### 10.2.3. Hallazgos del recorrido E2E (07 Nov 2026)
 Recorrido Comercial → PM → Colaborador sobre el prototipo.
 
-**Resueltos en el prototipo:** cronograma al «Iniciar proyecto» (§8.3), rondas de ajuste (§11.3), equipo derivado de tareas (§14.3), cierre de proyecto (§11.7), «Fecha límite del alcance» en Nueva Oportunidad (antes «Fecha máx. de entrega»), checklist visible de requisitos para «Marcar como listo», semanas del servicio precargadas desde `estimatedDurationWeeks` de la plantilla, etapa de HubSpot visible solo con negocio vinculado (si no: «Ganada manualmente · conciliar con HubSpot»), estados «Por iniciar» coherentes en la Matriz y eliminación de componentes sin uso (`ProjectSettingsTab`, `ScheduleProjectModal`, `ProjectDeliverablesTab`, `assignmentAdapter`).
+**Resueltos en el prototipo:** cronograma al «Iniciar proyecto» (Módulo 8 §8.3), rondas de ajuste (Módulo 11 §11.3), equipo derivado de tareas (Módulo 14 §14.3), cierre de proyecto (Módulo 11 §11.7), «Fecha límite del alcance» en Nueva Oportunidad (antes «Fecha máx. de entrega»), checklist visible de requisitos para «Marcar como listo», semanas del servicio precargadas desde `estimatedDurationWeeks` de la plantilla, etapa de HubSpot visible solo con negocio vinculado (si no: «Ganada manualmente · conciliar con HubSpot»), estados «Por iniciar» coherentes en la Matriz y eliminación de componentes sin uso (`ProjectSettingsTab`, `ScheduleProjectModal`, `ProjectDeliverablesTab`, `assignmentAdapter`).
 
 **Pendiente:**
 1. **Datos mock:** proyectos de ejemplo con roles fuera de `STANDARD_UHURA_ROLES` («Tech Lead», «QA Tester», «Front End») y ausencias con fechas vencidas en el radar de Mi Día. Solo afecta al prototipo.
 
 
-### 10.4.2. Acceso a Dirección y Finanzas (07 Nov 2026)
+### 10.2.4. Acceso a Dirección y Finanzas (07 Nov 2026)
 El módulo **Dirección y Finanzas** del prototipo (en producción: **Tablero** y **Finanzas**) es visible solo para `commercial`, `client_relationship`, `executive` y `system_admin` (módulo RBAC `direccion-finanzas`). Antes heredaba el permiso de New Business y los líderes lo veían.
 
 ---
@@ -1435,9 +1437,12 @@ Solo existen 5 alcances autorizados:
 | **Clientes (`clientes`)** | Denegado | team (view) | accounts (view/edit) | all (view/create/edit) | all (view/edit) | all (view) | all (administer) |
 | **Catálogo (`plantillas-producto`)** | **Denegado** | all (view) | all (view) | all (view) | Denegado | all (view) | all (view/administer) |
 | **New Business (`new-business`)** | Denegado | team scoping (view/edit) | accounts (view) | all (view/create/edit/approve) | all (view/edit formalization) | all (view/approve) | all (administer) |
-| **Finanzas (`finanzas`)** | Denegado | Denegado | Denegado | own/quotes (view) | all (view/edit fiscal) | all (view/approve) | all (administer) |
+| **Dirección y Finanzas (`direccion-finanzas`)** *(act. 07 Nov 2026, §10.2.4)* | Denegado | Denegado | all (view) | all (view/edit) | Denegado | all (view/edit) | all (administer) |
+| **Costos de operación (`costos-operacion`: Licencias y Hardware)** *(07 Nov 2026)* | Denegado | Denegado | Denegado | Denegado | all (view/create/edit) | all (view) | all (administer) |
 | **Usuarios & Roles (`usuarios`)** | Denegado | team (view) | Denegado | Denegado | all (view) | all (view) | all (administer) |
 | **La Colonia (`la-colonia`)** | all (view/edit) | all (view/edit) | all (view/edit) | all (view/edit) | all (view/edit) | all (view/edit) | all (administer) |
+
+> **Configuraciones exclusivas de `system_admin` (07 Nov 2026):** webhooks de Google Chat (§11.8), conexión de Google Calendar y eventos por asociar en *Equipo & Accesos → Integraciones* (§11.5.1; `executive` solo consulta), «Acceso a ECO» en el perfil (usuario de ingreso, contraseña temporal, desactivar; §10.8) y apariencia de la mascota (Módulo 18).
 
 ### 10.6. Reglas de Negocio de Autorización Específica
 
@@ -1957,11 +1962,11 @@ Desactivar la integración del cliente detiene los proyectos que heredan; un pro
 - Caso de adopción: cliente **Neroli Fragancias** con integración activa (mock sin URL) y su proyecto «Fee mensual — Neroli Fragancias» heredándola.
 - Referencias de código: `src/components/taskflow/integrations/googleChat.ts` (reglas), `GoogleChatIntegrationCard.tsx`, `ProjectNotificationsModal.tsx`.
 
-### 11.7. Módulo de Dirección y Finanzas: Lógica Comercial, Metas y Gancho con Alegra
+### 11.9. Módulo de Dirección y Finanzas: Lógica Comercial, Metas y Gancho con Alegra
 
 #### 1. Ubicación y Control de Acceso (RBAC)
 - **Ubicación Canónica:** Pestaña primaria dentro del grupo **COMERCIAL** en la barra lateral, situada jerárquicamente **inmediatamente encima de New Business**.
-- **Público Objetivo:** `executive`, `system_admin`, `commercial` y `client_relationship` (módulo RBAC `direccion-finanzas`). *(Actualizado 07 Nov 2026: `leader` ya no tiene acceso, alineado con producción; ver §10.4.2.)*
+- **Público Objetivo:** `executive`, `system_admin`, `commercial` y `client_relationship` (módulo RBAC `direccion-finanzas`). *(Actualizado 07 Nov 2026: `leader` ya no tiene acceso, alineado con producción; ver §10.2.4.)*
 - **Restricción Estricta:** Acceso denegado a colaboradores operativos (`collaborator`), evitando filtración de metas de facturación o cifras comerciales consolidadas.
 
 #### 2. Definición de los 3 Bloques No Redundantes
@@ -1991,7 +1996,7 @@ En producción, Indunova separó este módulo en **Tablero** (salud comercial y 
 2. **Facturas ligadas a proyecto o servicio.** «Rentabilidad por servicio» muestra un bloque «(Sin proyecto)» con la mayoría de la facturación. Cada factura debe asociarse a proyecto (o cliente + servicio) al causarse; las no asociadas se muestran como **«Por conciliar»**, no como un servicio.
 3. **Costo hora fuera de «Metas financieras».** El costo hora es un parámetro de costo por persona o rol con vigencia (tabla de costos), no una meta del periodo.
 4. **Meta del mes desde la meta anual.** La meta anual se reparte por mes (como en el prototipo) y cada mes puede ajustarse manualmente con trazabilidad. Así «Meta del mes» y «Cumplimiento presupuestal» nunca quedan vacíos si hay meta anual.
-5. **Proyección basada en contratos, no solo lineal.** Proyección = fees vigentes (valor mensual × meses restantes del contrato, §11.6.1) + facturación pendiente de proyectos únicos por hitos + pipeline de New Business ponderado por probabilidad. La regresión lineal puede quedar como referencia secundaria.
+5. **Proyección basada en contratos, no solo lineal.** Proyección = fees vigentes (valor mensual × meses restantes del contrato, Módulo 11 §11.6.1) + facturación pendiente de proyectos únicos por hitos + pipeline de New Business ponderado por probabilidad. La regresión lineal puede quedar como referencia secundaria.
 6. **Una sola tabla de TRM.** Licencias muestra «TRM sin configurar». Finanzas administra una tabla única (fecha, moneda, valor) que usan licencias, cotizaciones en USD, recursos externos y P&G.
 7. **Alertas sin duplicar el semáforo.** «Alertas operativas» y «Proyectos · semáforo» repiten la misma lista. El semáforo muestra conteos y la lista completa; las alertas solo los proyectos en **riesgo** con la acción recomendada (ej. reforecast, ronda adicional, sobrecosto).
 

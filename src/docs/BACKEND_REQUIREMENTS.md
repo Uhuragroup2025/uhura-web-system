@@ -3,7 +3,7 @@
 > **Nombre del producto:** **ECO** — *Espacio de Creación y Operaciones* (antes «Orbit», renombrado en noviembre de 2026). Los identificadores técnicos (`OrbitAccessLevel`, `CanonicalOrbitAccessLevel`, nombres de archivo como `ORBIT_PRODUCT_STATUS.md`) se conservan para no romper contratos de código ni enlaces.
 
 > **Documento de Especificación Técnica para Implementación Backend (Indunova)**
-> **Fecha de Actualización:** 07 de noviembre de 2026 (Cronograma calculado al «Iniciar proyecto», gates y tandas editables, equipo derivado de tareas). Anterior: 04 de noviembre de 2026 (arquitectura 1:1:1 por servicio, ticket #132 y modo desacoplado manual)
+> **Fecha de Actualización:** 07 de noviembre de 2026 (Cronograma calculado al «Iniciar proyecto», rondas de ajuste editables, equipo derivado de tareas, visibilidad de tareas §15.1, arranque en producción §19, Google Chat §18, Google Calendar §20, mascota §21, acceso desde el perfil §16.1.1). Anterior: 04 de noviembre de 2026 (arquitectura 1:1:1 por servicio, ticket #132 y modo desacoplado manual)
 > Este documento consolida las deudas técnicas, relaciones inmutables y reglas de producto identificadas en el QA de **Proyectos, Tareas, New Business, Cotización y Conversión a Proyectos**.
 
 > **AVISO DE PRIVACIDAD Y GOBERNANZA:**
@@ -433,7 +433,7 @@ Para no bloquear New Business cuando la app privada de HubSpot esté caída o si
 ### 12.7 Cierre de proyecto
 * Endpoint de cierre que **rechaza** la operación si existen tareas no completadas del proyecto.
 * Persiste `status = 'closed'`, `actual_end_date` y un registro inmutable `project_closures`: `closed_by_user_id`, `closed_at`, `reason` (`delivered_approved` | `closed_early` | `cancelled_by_client`), `note` (obligatoria) y la foto final (`quoted_hours`, `executed_hours`, `included_rework_rounds`, `used_rework_rounds`, `baseline_end_date`, `deviation_business_days`).
-* No modifica ni elimina `time_logs`, tareas ni asignaciones históricas. Detalle funcional: `ORBIT_PRODUCT_STATUS.md` §11.7.
+* No modifica ni elimina `time_logs`, tareas ni asignaciones históricas. Detalle funcional: `ORBIT_PRODUCT_STATUS.md` Módulo 11 §11.7.
 
 ---
 
@@ -562,7 +562,7 @@ Para no bloquear New Business cuando la app privada de HubSpot esté caída o si
   * **Project Lead / Seguidor / Revisor:** **no** debe ver `Solicitar revisión`; tiene habilitado `Completar y aprobar` (y al marcar manualmente la tarea como completada, se asume aprobada en `Done`). Cuando la tarea entra en `Review`, se le habilitan **`Devolver`** (`Review → In Progress`) y **`Aprobar y Completar`** (`Review → Done`).
 
 ### 15.4 Visibilidad de Desvíos Presupuestales
-* Cuando una tarea supera sus horas cotizadas (`logged_hours > budgeted_hours`), el endpoint de alertas/atención debe exponer el desvío (`Desvío X.Xh / Yh cotizadas`) **a Comercial (`commercial` / `client_relationship`) y al Líder del proyecto asignado (`project_lead_id` / `leader` de ese proyecto)**.
+* Cuando una tarea supera sus horas cotizadas (`logged_hours > budgeted_hours`), el endpoint de alertas/atención debe exponer el desvío (`Desvío X.Xh / Yh cotizadas`) **a Comercial (`commercial` / `client_relationship`) y al Líder del proyecto asignado (`project_lead_id` / `leader` de ese proyecto)**, siempre limitado a los proyectos de los que cada uno es responsable (§15.1); `executive` y `system_admin` ven todos.
 
 ---
 
@@ -634,7 +634,7 @@ class MonthlyCommercialOverride(models.Model):
 ---
 
 ### 17.4 Mejoras de lógica en «Tablero» y «Finanzas» (07 Nov 2026)
-Detalle funcional en `ORBIT_PRODUCT_STATUS.md` §11.7 (punto 3). Requisitos de backend:
+Detalle funcional en `ORBIT_PRODUCT_STATUS.md` §11.9 (punto 3). Requisitos de backend:
 * **P&G con costos reales:** `project_cost = Σ(time_logs.hours × person_hourly_cost vigente a la work_date) + depreciación de hardware imputada + licencias imputadas + external_resources`. Si alguna fuente no tiene datos para el periodo, la respuesta incluye `margin_available = false` y la UI no muestra 100 %.
 * **Tabla de costos por persona/rol:** `person_hourly_costs` (`user_id` o `role`, `hourly_cost_cop`, `effective_from`). Retirar el costo hora de `financial_goals`.
 * **Facturas:** `invoices.project_id` (o `client_id` + `service_id`) obligatorio al causar; las facturas importadas de Alegra sin vínculo quedan en estado `unreconciled` y se listan como «Por conciliar».

@@ -80,8 +80,8 @@ La operación de New Business y Comercial en Uhura **nunca se bloquea por falta 
 ## 6. Estados Operativos Dinámicos y Botón de Inicio («Iniciar proyecto 🚀»)
 
 Para evitar confusiones en los proyectos activos en `/proyectos`:
-- **Badge de Estado unificado:** Ubicado inmediatamente debajo del nombre del proyecto como primer chip antes de los Gates contractuales:
-  `Estado: Pendiente de iniciar` (badge azul) o `Estado: En ejecución` (badge verde) seguido de `🛡️ Gates incluidos: 2` y `🔄 Tandas de ajuste: 2 por gate`.
+- **Badge de Estado unificado:** Ubicado inmediatamente debajo del nombre del proyecto como primer chip:
+  `Estado: Pendiente de iniciar` (aún no se pulsa «Iniciar proyecto»), `Programado · inicia [fecha]` (iniciado con fecha futura), `En ejecución`, `Cerrado` o `Archivado`, seguido del chip de rondas de ajuste incluidas (p. ej. `🔄 Rondas de ajuste: 2 × 5 días`, solo proyectos únicos). *(Actualizado 07 Nov 2026: el modelo de gates × tandas se reemplazó por rondas de ajuste.)*
 - **Botón diferenciador antes de iniciar:** Si el proyecto no ha sido formalmente iniciado o su fecha de arranque es futura, se muestra el botón prioritario **`Iniciar proyecto 🚀`** (en verde lima `#d4ff4a`, alto contraste).
 - **Botón de seguimiento una vez iniciado:** Al iniciar el proyecto formalmente, el botón cambia a **`Iniciado | 📅 Inicio: [fecha] · Fin: [fecha] (Ajustar)`**, informando que está en curso y permitiendo ajustar las fechas en caso de replanificación.
 

@@ -22,7 +22,7 @@ actual_end_date = models.DateField(null=True, blank=True, help_text="Fecha real 
 schedule_config = models.JSONField(
     default=dict,
     blank=True,
-    help_text="Configuración de tiempos de espera: {clientKickoffWaitDays: 3, gateApprovalWaitDays: 5, gateCount: 2, includedReworkRounds: 2}"
+    help_text="Configuración del cronograma: {clientKickoffWaitDays: 3, includedReworkRounds: 2, reworkRoundDays: 5, productionWeeks: N}. gateCount y gateApprovalWaitDays quedan obsoletos (modelo anterior de gates × tandas)."
 )
 ```
 
