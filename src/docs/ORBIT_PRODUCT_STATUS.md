@@ -829,14 +829,20 @@ Asignación formal de personas del equipo a los proyectos, garantizando que el t
 - **Persona Real (`assignedUserId`):** Colaborador específico de la empresa (ej. *Juan Pérez*, desarrollador real contratado).
 - Orbit permite comparar si la persona asignada coincide con el perfil cotizado o si hubo un cambio de seniorities que altere la rentabilidad real del proyecto.
 
-#### 14.3 Entidad `ProjectAssignment`
-- `id`: UUID.
-- `projectId`: UUID.
-- `userId`: UUID.
-- `roleId`: String (Rol que asume en este proyecto).
-- `nature`: Enum (`governance` | `core_execution` | `temporary_support`).
-- `weeklyHours`: Decimal (Horas comprometidas por semana).
-- `startDate`, `endDate`: Date.
+#### 14.3 Equipo derivado de las tareas (🟢 Decisión aprobada - 07 Nov 2026)
+Se elimina la asignación manual de colaboradores al proyecto (modal «Asignar / Modificar asignación de rol»). En la práctica el equipo reasigna directamente en la tarea, y el modal quedaba desactualizado (p. ej. 8 h/sem fijas).
+- **Fuente única de verdad:** la tarea (`budgetedRole` + asignados + `scheduledDate`/`dueDate` + `timeLogs`).
+- **El rol lo define la actividad, no la persona:** las horas registradas en una tarea de *Front-End Dev* consumen la bolsa de Front-End aunque las ejecute un Product Lead. Las horas cotizadas de la actividad **nunca cambian** al reasignar.
+- **«Cubre rol»:** si el rol de la tarea no está entre los roles oficiales de la persona (`officialRole(s)` / `professionalRole(s)`), se marca para análisis de costo (líder ejecutando trabajo de un rol de menor tarifa).
+- **Equipo Asignado (Resumen del proyecto)** se calcula por persona:
+  - Roles desempeñados con horas cotizadas asignadas y ejecutadas por rol.
+  - Carga de esta semana = horas de tareas no completadas prorrateadas en días hábiles sobre su ventana `scheduledDate → dueDate`.
+  - Pendiente = horas de tareas no completadas; Ejecutado = `timeLogs` del usuario.
+  - Capacidad global = misma carga semanal sumando todos los proyectos vs. `capacityHours`.
+- **Gobernanza** (seguimiento, checkpoints, comités) se modela como tareas del líder dentro del alcance.
+- **Seguidores/Stakeholders** se mantienen (visibilidad sin horas ni rol).
+- La entidad `ProjectAssignment` queda **obsoleta para operación**; el backend puede exponer el equipo como vista/consulta agregada sobre `tasks` y `time_logs`.
+- Referencia de implementación: `src/components/taskflow/projects/teamFromTasks.ts`.
 
 ---
 

@@ -415,6 +415,14 @@ Para no bloquear New Business cuando la app privada de HubSpot esté caída o si
 
 ---
 
+### 12.6 Equipo del proyecto derivado de tareas
+* No existe endpoint de asignación manual de colaboradores a proyecto. El equipo es una **consulta agregada** sobre `tasks` (asignados, `budgeted_role`, `scheduled_date`, `due_date`, `budgeted_hours`) y `time_logs` (`user_id`, `budgeted_role_id`).
+* Por persona y proyecto: roles desempeñados (horas cotizadas asignadas y ejecutadas por rol), carga de la semana (prorrateo en días hábiles sobre la ventana de cada tarea no completada), horas pendientes y ejecutadas.
+* `covers_role = true` cuando `task.budgeted_role` no pertenece a los roles oficiales del usuario (insumo para costo real vs. cotizado).
+* Reasignar una tarea **no** modifica sus horas cotizadas.
+
+---
+
 ## 13. Módulo Capacidad: Jornada de 42h, Cálculo de Planificado vs. Ejecutado y Filtro por Área
 
 ### 13.1 Jornada Base y Deducción de Festivos/Ausencias

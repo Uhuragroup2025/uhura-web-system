@@ -38,6 +38,7 @@ interface ProjectOverviewTabProps {
   deliverables: ProjectDeliverable[];
   coreTeam: ProjectTeamMember[];
   allProjects?: ProjectSummaryItem[];
+  allTasks?: TaskItem[]; // Todas las tareas (capacidad global del equipo)
   currentUser?: UserItem;
   allUsers?: UserItem[];
   onNavigateToDeliverables: () => void;
@@ -52,6 +53,7 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
   deliverables,
   coreTeam,
   allProjects = [],
+  allTasks,
   currentUser,
   allUsers = [],
   onNavigateToDeliverables,
@@ -377,6 +379,7 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
           allProjects={allProjects}
           users={allUsers}
           tasks={project.tasks}
+          allTasks={allTasks}
           onUpdateProject={(updated) => onUpdateProject?.(updated)}
         />
       </div>

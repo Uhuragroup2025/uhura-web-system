@@ -1035,6 +1035,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             deliverables={currentProject.deliverables || []}
             coreTeam={currentProject.coreTeam || []}
             allProjects={projectsList}
+            allTasks={tasks}
             currentUser={currentUser}
             allUsers={users || initialUsers}
             onUpdateProject={onUpdateProject}
