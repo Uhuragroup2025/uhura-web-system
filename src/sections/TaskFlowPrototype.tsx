@@ -3051,7 +3051,7 @@ export const TaskFlowPrototype: React.FC = () => {
               <span className="w-2.5 h-2.5 rounded-full bg-[#f59e0b] inline-block" />
               <span className="w-2.5 h-2.5 rounded-full bg-[#10b981] inline-block" />
               <span className="ml-3 font-mono font-bold text-white text-[11px]">
-                orbit.uhuragroup.com / {currentView}
+                app.uhuragroup.com / {currentView}
               </span>
             </div>
             <div className="hidden sm:flex items-center gap-4 text-[11px]">

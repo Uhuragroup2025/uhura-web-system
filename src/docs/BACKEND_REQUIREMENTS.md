@@ -481,6 +481,7 @@ Para no bloquear New Business cuando la app privada de HubSpot esté caída o si
 
 ### 13.3 Vista Unificada `Organización` y Permisos RBAC
 * Se unifica la visibilidad de equipo y compañía en una sola vista **`Organización`** (eliminando la pestaña redundante *Mi Equipo*), habilitada para `leader`, `commercial`, `administrative`, `executive`, `client_relationship` y `system_admin`.
+* **Todos** los perfiles ven **`Mi Capacidad`** (su capacidad individual), incluido `executive` (que abre por defecto en `Organización`).
 * El perfil `collaborator` mantiene acceso exclusivo a **`Mi Capacidad`**.
 * El endpoint debe devolver el campo `department` normalizado (`Área Creatividad`, `Área Growth`, `Área Producto`, `Área Administrativa`, `Área Comercial`, `C-Level`) para soportar el filtrado por área en el frontend.
 
@@ -676,6 +677,12 @@ Especificación funcional en `ORBIT_PRODUCT_STATUS.md` §9.4.
 * **No se migra:** proyectos, entregables, tareas, comentarios, timers ni registros de horas de COR ni de la plataforma que hoy opera Indunova. Ningún script de seed o migración puede crear proyectos o tareas con fecha anterior al arranque (**corte: 1 de noviembre de 2026**).
 * Los datos de demostración del prototipo (proyectos, tareas, oportunidades, mocks) **no** se cargan en producción, igual que el Simulador QA.
 * COR queda como archivo histórico de solo lectura. Antes de apagarlo, Uhura exporta (CSV/PDF) las horas y proyectos que finanzas necesite conservar; esos archivos no se importan a ECO.
+
+### 19.1.1 Dominio y URL anterior
+* Dominio final de producción: **`app.uhuragroup.com`**. Indunova debe enviar a Uhura los registros DNS requeridos (CNAME del subdominio, TXT de verificación de dominio y los que pida el certificado TLS). Uhura los configura; Indunova confirma la emisión del certificado y el despliegue.
+* Solo HTTPS. Las URLs de la app (enlaces de Google Chat, correos, notificaciones) se generan con este dominio.
+* La URL anterior de producción se retira cuando `app.uhuragroup.com` esté activo; durante la transición puede redirigir (301) al dominio nuevo.
+* El acceso a **Equipo & Accesos** (módulo `administracion`) queda solo para `executive` (consulta) y `system_admin` (administración).
 
 ### 19.2 Proyectos vigentes al arranque
 * Se crean **a mano desde la interfaz** por el líder o comercial responsable, con el flujo normal: proyecto nuevo (o conversión desde New Business si existe la oportunidad) → «Iniciar proyecto».

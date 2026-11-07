@@ -1265,6 +1265,8 @@ Para asegurar una frontera limpia de trabajo entre Producto (Uhura) y la Fábric
   - **Fee de Cristar** (inicia en noviembre y se crea en ECO en diciembre): se inicia con fecha 1 de noviembre; noviembre queda como «Mes 1 · fuera de ECO» sin tareas y se generan solo las tareas de diciembre (Mes 2). Si el contrato tuviera la excepción de acumular horas, el saldo se registra como ajuste manual con nota.
 - **Recomendación:** crear a mano los proyectos vigentes al iniciar cada mes mientras sean pocos (es la oportunidad de depurar alcance, líder y horas). Solo si al arranque hubiera más de los que se pueden crear en un día, usar la carga única por plantilla descrita en `BACKEND_REQUIREMENTS.md` §19.3: crea proyectos, nunca tareas ni horas, y pasa por una prueba antes de aplicarse.
 - COR queda como archivo de consulta. Lo que finanzas necesite conservar se exporta antes de apagarlo; no se importa a ECO.
+- **Dominio final: `app.uhuragroup.com`.** Indunova entrega a Uhura los registros DNS necesarios (CNAME del subdominio y TXT de verificación, más los que requiera el certificado TLS); Uhura los configura en su DNS. ECO solo se publica en ese dominio con HTTPS.
+- **URL anterior de producción:** se retira cuando `app.uhuragroup.com` quede activo (se recomienda redirigirla al dominio nuevo durante la transición y luego darla de baja).
 
 ## 10. Roles, Niveles de Acceso y Matriz de Permisos (RBAC)
 
@@ -1439,7 +1441,8 @@ Solo existen 5 alcances autorizados:
 | **New Business (`new-business`)** | Denegado | team scoping (view/edit) | accounts (view) | all (view/create/edit/approve) | all (view/edit formalization) | all (view/approve) | all (administer) |
 | **Dirección y Finanzas (`direccion-finanzas`)** *(act. 07 Nov 2026, §10.2.4)* | Denegado | Denegado | all (view) | all (view/edit) | Denegado | all (view/edit) | all (administer) |
 | **Costos de operación (`costos-operacion`: Licencias y Hardware)** *(07 Nov 2026)* | Denegado | Denegado | Denegado | Denegado | all (view/create/edit) | all (view) | all (administer) |
-| **Usuarios & Roles (`usuarios`)** | Denegado | team (view) | Denegado | Denegado | all (view) | all (view) | all (administer) |
+| **Equipo & Accesos (`usuarios` / módulo `administracion`)** *(act. 07 Nov 2026)* | Denegado | Denegado | Denegado | Denegado | Denegado | all (view) | all (administer) |
+| **Capacidad (`capacidad`)** *(07 Nov 2026)* | own: «Mi Capacidad» | own + «Organización» (all) | own + «Organización» (all) | own + «Organización» (all) | own + «Organización» (all) | own + «Organización» (all) | own + «Organización» (administer) |
 | **La Colonia (`la-colonia`)** | all (view/edit) | all (view/edit) | all (view/edit) | all (view/edit) | all (view/edit) | all (view/edit) | all (administer) |
 
 > **Configuraciones exclusivas de `system_admin` (07 Nov 2026):** webhooks de Google Chat (§11.8), conexión de Google Calendar y eventos por asociar en *Equipo & Accesos → Integraciones* (§11.5.1; `executive` solo consulta), «Acceso a ECO» en el perfil (usuario de ingreso, contraseña temporal, desactivar; §10.8) y apariencia de la mascota (Módulo 18).
@@ -1889,7 +1892,7 @@ Se eliminaron cards decorativas y accesos secundarios redundantes de la barra de
    - Mi Día (Home contextual del usuario).
    - Proyectos (Portafolio y entregables).
    - Tareas (Tableros operativos Kanban y Lista).
-   - Capacidad (Disponibilidad, asignación y carga; se respeta el scope RBAC: `own` para colaboradores, `team` para líderes/CRS y `all` para administración/ejecutivo).
+   - Capacidad (Disponibilidad, asignación y carga). Todo el mundo ve su capacidad individual («Mi Capacidad»); `leader`, `client_relationship`, `commercial`, `administrative`, `executive` y `system_admin` ven además «Organización». `collaborator` solo ve la suya.
    - *Nota:* Se retiró `Horas` de la navegación primaria; Mi Día absorbió el timer, la carga manual y rápida, el progreso de jornada y los registros de hoy. El acceso a la auditoría histórica de timesheets se mantiene de forma contextual secundaria.
 2. **Comercial:**
    - **Dirección y Finanzas:** Métricas de valor vendido vs meta, base de fees recurrentes, top clientes y semáforo de proyectos (exclusivo para perfiles de Liderazgo y Dirección).

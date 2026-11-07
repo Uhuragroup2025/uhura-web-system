@@ -97,14 +97,15 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
   const userAccessLevel = currentUser ? getUserAccessLevel(currentUser) : 'leader';
 
   // Identificación de roles canónicos según matriz de permisos:
-  // - collaborator: únicamente "Mi Capacidad"
-  // - leader / client_relationship / commercial / administrative / system_admin: "Mi Capacidad" | "Organización" (con filtro por área)
-  // - executive: únicamente "Organización" como vista principal (sin balance personal)
+  // - Todos ven «Mi Capacidad» (su capacidad individual).
+  // - collaborator: únicamente «Mi Capacidad».
+  // - leader / client_relationship / commercial / administrative / executive / system_admin: además «Organización» (con filtro por área).
+  // - executive abre por defecto en «Organización».
   const isCollaborator = userAccessLevel === 'collaborator';
   const isExecutive = userAccessLevel === 'executive';
 
   // Visibilidad de pestañas de perspectiva
-  const showPersonalTab = !isExecutive; // CEO / executive solo consulta Organización
+  const showPersonalTab = true; // Todo el mundo ve su capacidad individual
   const showOrgTab = !isCollaborator;   // Organización disponible para líderes, comercial, administrativa, executive, CRS y admin
 
   // Perspectiva inicial según rol
@@ -122,7 +123,7 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
   // Sincronizar perspectiva si cambia el usuario en sesión (ej. DevQaRoleSimulator)
   useEffect(() => {
     if (isExecutive) {
-      setPerspective('org');
+      setPerspective('org'); // vista inicial; puede cambiar a «Mi Capacidad»
     } else if (isCollaborator) {
       setPerspective('personal');
     }
@@ -594,7 +595,7 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
         {/* Izquierda: Selector de Perspectiva (Mi Capacidad vs Equipo vs Organización) */}
         <div className="flex items-center overflow-x-auto pb-1 md:pb-0 scrollbar-none w-full md:w-auto">
           <div className="flex items-center bg-[#f1f5f9] p-1 rounded-xl text-xs font-bold shrink-0 w-full sm:w-auto justify-between sm:justify-start gap-1">
-            {/* Pestaña 1: Mi Capacidad (Oculto para Executive, que tiene Organización como vista única) */}
+            {/* Pestaña 1: Mi Capacidad (todos los perfiles) */}
             {showPersonalTab && (
               <button
                 onClick={() => setPerspective('personal')}
