@@ -62,7 +62,8 @@ export const ROLE_PERMISSIONS_MATRIX: Record<
     'clientes': { allowedActions: ['view', 'create', 'edit'], scope: 'accounts' },
     'new-business': { allowedActions: ['view', 'create', 'edit'], scope: 'accounts' },
     'plantillas-producto': { allowedActions: ['view', 'create', 'edit'], scope: 'all' },
-    'la-colonia': { allowedActions: ['view', 'edit'], scope: 'own' }
+    'la-colonia': { allowedActions: ['view', 'edit'], scope: 'own' },
+    'direccion-finanzas': { allowedActions: ['view'], scope: 'all' }
   },
 
   // D. DIRECTORA COMERCIAL
@@ -75,7 +76,8 @@ export const ROLE_PERMISSIONS_MATRIX: Record<
     'clientes': { allowedActions: ['view', 'create', 'edit'], scope: 'all' },
     'new-business': { allowedActions: ['view', 'create', 'edit', 'approve'], scope: 'all' },
     'plantillas-producto': { allowedActions: ['view', 'create', 'edit'], scope: 'all' },
-    'la-colonia': { allowedActions: ['view', 'edit'], scope: 'own' }
+    'la-colonia': { allowedActions: ['view', 'edit'], scope: 'own' },
+    'direccion-finanzas': { allowedActions: ['view', 'edit'], scope: 'all' }
   },
 
   // E. ADMINISTRATIVA (Vivian / Fiscal / Facturación)
@@ -87,7 +89,8 @@ export const ROLE_PERMISSIONS_MATRIX: Record<
     'capacidad': { allowedActions: ['view'], scope: 'all' },
     'clientes': { allowedActions: ['view', 'edit'], scope: 'all' },
     'new-business': { allowedActions: ['view', 'edit'], scope: 'all' },
-    'la-colonia': { allowedActions: ['view', 'edit'], scope: 'own' }
+    'la-colonia': { allowedActions: ['view', 'edit'], scope: 'own' },
+    'costos-operacion': { allowedActions: ['view', 'create', 'edit'], scope: 'all' }
   },
 
   // F. CEO / DIRECCIÓN (Lectura transversal - No superusuario operativo)
@@ -101,7 +104,9 @@ export const ROLE_PERMISSIONS_MATRIX: Record<
     'new-business': { allowedActions: ['view', 'create', 'edit'], scope: 'all' },
     'plantillas-producto': { allowedActions: ['view', 'create', 'edit'], scope: 'all' },
     'la-colonia': { allowedActions: ['view', 'edit'], scope: 'own' },
-    'administracion': { allowedActions: ['view'], scope: 'all' }
+    'costos-operacion': { allowedActions: ['view'], scope: 'all' },
+    'administracion': { allowedActions: ['view'], scope: 'all' },
+    'direccion-finanzas': { allowedActions: ['view', 'edit'], scope: 'all' }
   },
 
   // G. ADMIN DE SISTEMA
@@ -115,7 +120,9 @@ export const ROLE_PERMISSIONS_MATRIX: Record<
     'new-business': { allowedActions: ['view', 'create', 'edit', 'administer'], scope: 'all' },
     'plantillas-producto': { allowedActions: ['view', 'create', 'edit', 'administer'], scope: 'all' },
     'la-colonia': { allowedActions: ['view', 'edit'], scope: 'own' },
-    'administracion': { allowedActions: ['view', 'create', 'edit', 'administer'], scope: 'all' }
+    'costos-operacion': { allowedActions: ['view', 'create', 'edit', 'administer'], scope: 'all' },
+    'administracion': { allowedActions: ['view', 'create', 'edit', 'administer'], scope: 'all' },
+    'direccion-finanzas': { allowedActions: ['view', 'edit', 'administer'], scope: 'all' }
   },
 
   // ESTADO TRANSITORIO: 'pending'
@@ -147,11 +154,15 @@ export function viewToModule(view: OrbitView | string): OrbitModule {
     case 'clientes':
       return 'clientes';
     case 'finanzas':
+      return 'direccion-finanzas';
     case 'new-business':
     case 'cotizador':
       return 'new-business';
     case 'plantillas-producto':
       return 'plantillas-producto';
+    case 'hardware':
+    case 'licencias':
+      return 'costos-operacion';
     case 'la-colonia':
     case 'el-muro':
       return 'la-colonia';
@@ -205,6 +216,8 @@ function isOrbitModule(val: string): val is OrbitModule {
     'new-business',
     'plantillas-producto',
     'la-colonia',
+    'costos-operacion',
+    'direccion-finanzas',
     'administracion'
   ];
   return modules.includes(val as OrbitModule);

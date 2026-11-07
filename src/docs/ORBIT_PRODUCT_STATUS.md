@@ -1075,6 +1075,22 @@ Mi Día puede mostrar de forma discreta y no invasiva:
     - Aviso preventivo de ausencia próxima ("Recuerda coordinar entregables con [Nombre], estará en vacaciones a partir del jueves 🌴").
   - *Regla Estricta:* **No crear lógica avanzada de bienestar, workflows de aprobación de vacaciones ni automatizaciones complejas adicionales.**
 
+
+---
+
+### Módulo 19: Costos de operación — Hardware y Licencias (🟣 Implementado en prototipo · 07 Nov 2026; existente en producción)
+Reconciliado con los módulos que ya existen en producción. Acceso: **ver** `executive`, `administrative`, `system_admin`; **crear/editar** `administrative`, `system_admin`.
+
+**Hardware (activo físico):** nombre*, tipo (texto con sugerencias), marca, modelo, **serial / placa de inventario**, **estado** (en uso · en reparación · de baja), **colaborador asignado** (o «compartido»), ubicación, valor de compra (COP)*, fecha de compra, vida útil (meses), garantía hasta, «es costo directo», servicios y proyectos que lo usan, notas.
+- Depreciación mensual = valor ÷ vida útil; por hora = mensual ÷ 182 h (42 h × 52 ÷ 12). Si es costo directo, la depreciación por hora se reparte en partes iguales entre los servicios seleccionados. El formulario muestra el cálculo en vivo.
+- La tabla marca garantías vencidas.
+
+**Licencias (suscripción):** aplicación*, plan, área*, **responsable de la cuenta**, cantidad (cupos)*, frecuencia* (mensual · trimestral · anual), **próxima renovación**, moneda*, valor unitario*, **personas con cupo** (≤ cantidad), proyectos activos que la usan, pendiente de verificar + nota, estado activa/inactiva.
+- Total = cantidad × valor unitario; costo mensual = total ÷ meses de la frecuencia; reparto igual entre proyectos (vacío = costo general). Moneda extranjera → COP con la **TRM vigente de Finanzas**.
+- La tabla resalta renovaciones en los próximos 15 días.
+
+**UX:** las listas de servicios, proyectos y personas usan búsqueda con casillas y chips (sin Ctrl/Cmd+clic).
+- Referencias: `src/components/taskflow/assets/HardwareView.tsx`, `LicensesView.tsx`, `ChipMultiSelect.tsx`.
 ---
 
 ## 6. Integraciones Externas: Arquitectura y Comportamiento
@@ -1286,6 +1302,10 @@ Recorrido Comercial → PM → Colaborador sobre el prototipo.
 **Pendiente:**
 1. **Datos mock:** proyectos de ejemplo con roles fuera de `STANDARD_UHURA_ROLES` («Tech Lead», «QA Tester», «Front End») y ausencias con fechas vencidas en el radar de Mi Día. Solo afecta al prototipo.
 
+
+### 10.4.2. Acceso a Dirección y Finanzas (07 Nov 2026)
+El módulo **Dirección y Finanzas** del prototipo (en producción: **Tablero** y **Finanzas**) es visible solo para `commercial`, `client_relationship`, `executive` y `system_admin` (módulo RBAC `direccion-finanzas`). Antes heredaba el permiso de New Business y los líderes lo veían.
+
 ---
 
 ### 10.3. Niveles de Acceso Canónicos (`CanonicalOrbitAccessLevel`)
@@ -1439,6 +1459,8 @@ Solo existen 5 alcances autorizados:
 ---
 
 ### 10.8. Definición Funcional y Gobernanza: Perfil del Colaborador (Equipo & Accesos)
+
+> **Reconciliación con producción (07 Nov 2026):** el perfil del prototipo se alinea con el de producción: **rol profesional** como desplegable de selección múltiple (solo catálogo oficial; el primero es el principal), **calendario laboral** (Colombia/México) con **vigente desde** (las semanas anteriores no se recalculan), **desactivar usuario** (conserva su historia de horas y proyectos) e **historial de cambios del perfil** (rol, nivel de acceso, líder, área, capacidad, calendario). El historial autoritativo lo genera el backend (`UserProfileAuditEntry`).
 
 > **CIERRE DE DEFINICIÓN FUNCIONAL (EQUIPO & ACCESOS → PERFIL DEL COLABORADOR):**
 > Se formaliza la separación estricta entre **identidad profesional**, **nivel RBAC funcional** y **compatibilidad técnica secundaria**, garantizando que la matriz RBAC permanezca cerrada y con una única fuente de verdad.

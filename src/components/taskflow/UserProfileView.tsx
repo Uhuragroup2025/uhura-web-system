@@ -1,3 +1,4 @@
+import { RoleMultiSelect } from '../ui/RoleMultiSelect';
 import React, { useState } from 'react';
 import {
   UserItem,
@@ -81,9 +82,18 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
   const [officialRoleName, setOfficialRoleName] = useState<string>(
     user.officialRole || user.jobTitle || 'Growth Manager'
   );
+  // Roles profesionales (uno o varios; el primero es el principal). Solo catálogo oficial.
+  const [professionalRoles, setProfessionalRoles] = useState<string[]>(() => {
+    const fromUser = (user.officialRoles && user.officialRoles.length > 0 ? user.officialRoles : [user.officialRole || user.professionalRole])
+      .filter((r): r is StandardUhuraRole => Boolean(r) && (STANDARD_UHURA_ROLES as readonly string[]).includes(r as string));
+    return fromUser.length > 0 ? fromUser : [];
+  });
   const [accessLevel, setAccessLevel] = useState<OrbitAccessLevel>(user.accessLevel || 'leader');
   const [leaderId, setLeaderId] = useState<string>(user.leaderId || '');
   const [department, setDepartment] = useState<string>(user.department || 'Operativo (Medios)');
+  const [workCalendar, setWorkCalendar] = useState<'CO' | 'MX'>(user.workCalendar || 'CO');
+  const [workCalendarSince, setWorkCalendarSince] = useState<string>(user.workCalendarSince || '');
+  const [confirmDeactivate, setConfirmDeactivate] = useState(false);
   const [capacityHours, setCapacityHours] = useState<string>(
     user.capacityHours !== undefined ? Number(user.capacityHours).toFixed(2) : '42.00'
   );
@@ -152,9 +162,11 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
     const updated: UserItem = {
       ...user,
       email: email.trim(),
-      jobTitle: officialRoleName.trim(),
-      officialRole: officialRoleName as StandardUhuraRole,
-      professionalRole: officialRoleName as StandardUhuraRole,
+      jobTitle: professionalRoles[0] || officialRoleName.trim(),
+      officialRole: (professionalRoles[0] || officialRoleName) as StandardUhuraRole,
+      professionalRole: (professionalRoles[0] || officialRoleName) as StandardUhuraRole,
+      officialRoles: professionalRoles as StandardUhuraRole[],
+      professionalRoles: professionalRoles as StandardUhuraRole[],
       department: department.trim(),
       leaderId: leaderId || undefined,
       reportsTo: leaderId || undefined,
@@ -168,8 +180,34 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
       hobbies: hobbies.trim() || undefined,
       personalDream: personalDream.trim() || undefined,
       accessLevel,
-      avatarUrl
+      avatarUrl,
+      workCalendar,
+      workCalendarSince: workCalendarSince || null
     };
+
+    // Historial de cambios (previsualización; en producción lo genera el backend)
+    const nowIso = new Date().toISOString();
+    const tracked: Array<[string, string | null | undefined, string | null | undefined]> = [
+      ['Rol profesional', (user.officialRoles || [user.officialRole]).filter(Boolean).join(', '), professionalRoles.join(', ')],
+      ['Nivel de acceso', user.accessLevel, accessLevel],
+      ['Líder directo', user.leaderName, updatedLeaderName],
+      ['Área', user.department, department.trim()],
+      ['Capacidad semanal', String(user.capacityHours ?? ''), String(parseFloat(capacityHours) || 42)],
+      ['Calendario laboral', user.workCalendar || 'CO', workCalendar + (workCalendarSince ? ` desde ${workCalendarSince}` : '')]
+    ];
+    const newEntries = tracked
+      .filter(([, prev, next]) => (prev || '') !== (next || ''))
+      .map(([field, prev, next], i) => ({
+        id: `audit-${Date.now()}-${i}`,
+        userId: user.id,
+        field,
+        previousValue: prev || null,
+        newValue: next || null,
+        changedAt: nowIso,
+        changedByUserId: 'current-user',
+        changedByUserName: 'Tú'
+      }));
+    updated.profileHistory = [...newEntries, ...(user.profileHistory || [])];
 
     onUpdateUser(updated);
     setSaveSuccess(true);
@@ -313,7 +351,7 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
                 {user.name}
               </h1>
               <p className="text-xs text-[#64748b] font-medium">
-                {officialRoleName} · {department}
+                {(professionalRoles.length > 0 ? professionalRoles.join(' · ') : officialRoleName)} · {department}
               </p>
               <div className="flex flex-wrap items-center gap-2.5 pt-1">
                 <span className="px-3 py-0.5 rounded-full text-xs font-semibold bg-[#f3e8ff] text-[#6b21a8] border border-[#e9d5ff]">
@@ -377,12 +415,15 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
             <label className="block text-[11px] font-bold text-[#64748b] tracking-wider uppercase mb-1.5">
               ROL PROFESIONAL
             </label>
-            <input
-              type="text"
-              value={officialRoleName}
-              onChange={(e) => setOfficialRoleName(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-white border border-[#e2e8f0] rounded-xl text-xs text-[#0f172a] focus:outline-none focus:ring-2 focus:ring-[#8a4dff] transition-all"
+            <RoleMultiSelect
+              options={STANDARD_UHURA_ROLES}
+              selected={professionalRoles}
+              onChange={(roles) => {
+                setProfessionalRoles(roles);
+                if (roles[0]) setOfficialRoleName(roles[0]);
+              }}
             />
+            <span className="text-[10.5px] text-[#64748b] mt-1 block">Uno o varios. El primero es el principal. Distinto del nivel de acceso.</span>
           </div>
 
           {/* Row 2: NIVEL DE ACCESO | LÍDER DIRECTO */}
@@ -460,6 +501,34 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
               onChange={(e) => setCapacityHours(e.target.value)}
               className="w-full px-3.5 py-2.5 bg-white border border-[#e2e8f0] rounded-xl text-xs text-[#0f172a] focus:outline-none focus:ring-2 focus:ring-[#8a4dff] transition-all"
             />
+          </div>
+
+          {/* Calendario laboral (festivos que descuentan capacidad) */}
+          <div>
+            <label className="block text-[11px] font-bold text-[#64748b] tracking-wider uppercase mb-1.5">
+              CALENDARIO LABORAL
+            </label>
+            <select
+              value={workCalendar}
+              onChange={(e) => setWorkCalendar(e.target.value as 'CO' | 'MX')}
+              className="w-full px-3.5 py-2.5 bg-white border border-[#e2e8f0] rounded-xl text-xs text-[#0f172a] focus:outline-none focus:ring-2 focus:ring-[#8a4dff]"
+            >
+              <option value="CO">Colombia</option>
+              <option value="MX">México</option>
+            </select>
+            <span className="text-[10.5px] text-[#64748b] mt-1 block">Define qué festivos descuentan su capacidad.</span>
+          </div>
+          <div>
+            <label className="block text-[11px] font-bold text-[#64748b] tracking-wider uppercase mb-1.5">
+              CALENDARIO VIGENTE DESDE
+            </label>
+            <input
+              type="date"
+              value={workCalendarSince}
+              onChange={(e) => setWorkCalendarSince(e.target.value)}
+              className="w-full px-3.5 py-2.5 bg-white border border-[#e2e8f0] rounded-xl text-xs text-[#0f172a] focus:outline-none focus:ring-2 focus:ring-[#8a4dff]"
+            />
+            <span className="text-[10.5px] text-[#64748b] mt-1 block">Las semanas anteriores no se recalculan.</span>
           </div>
 
           {/* Row 4: FECHA DE INGRESO | CUMPLEAÑOS */}
@@ -620,6 +689,47 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
       </div>
 
       {/* ========================================================================= */}
+      {/* Desactivar usuario (conserva historia de horas y proyectos) */}
+      {onUpdateUser && (
+        <div className="bg-white rounded-3xl border border-[#e2e8f0] p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <p className="text-xs text-[#475569]">
+            {user.status === 'Inactive'
+              ? 'Usuario desactivado: no puede entrar ni aparece para asignar trabajo. Su historia se conserva.'
+              : 'Al desactivarlo no puede entrar ni aparece para asignar trabajo. Su historia de horas y proyectos se conserva.'}
+          </p>
+          {user.status === 'Inactive' ? (
+            <button onClick={() => onUpdateUser({ ...user, status: 'Active' })} className="px-4 py-2 rounded-xl border border-[#16a34a] text-[#166534] text-xs font-bold cursor-pointer shrink-0">Reactivar usuario</button>
+          ) : confirmDeactivate ? (
+            <div className="flex gap-2 shrink-0">
+              <button onClick={() => setConfirmDeactivate(false)} className="px-3 py-2 rounded-xl text-xs font-bold text-[#64748b] cursor-pointer">Cancelar</button>
+              <button onClick={() => { onUpdateUser({ ...user, status: 'Inactive' }); setConfirmDeactivate(false); }} className="px-4 py-2 rounded-xl bg-[#dc2626] text-white text-xs font-bold cursor-pointer">Confirmar desactivación</button>
+            </div>
+          ) : (
+            <button onClick={() => setConfirmDeactivate(true)} className="px-4 py-2 rounded-xl border border-[#fecaca] text-[#b91c1c] text-xs font-bold cursor-pointer shrink-0">Desactivar usuario</button>
+          )}
+        </div>
+      )}
+
+      {/* Historial de cambios del perfil (previsualización) */}
+      <div className="bg-white rounded-3xl border border-[#e2e8f0] p-5 shadow-xs space-y-2">
+        <h2 className="text-base font-bold text-[#0f172a] tracking-tight">Historial de cambios del perfil</h2>
+        {(user.profileHistory || []).length === 0 ? (
+          <p className="text-xs text-[#94a3b8]">Sin cambios registrados.</p>
+        ) : (
+          <ul className="space-y-1.5">
+            {(user.profileHistory || []).slice(0, 12).map((h) => (
+              <li key={h.id || `${h.field}-${h.changedAt}`} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 rounded-xl border border-[#f1f5f9] text-xs">
+                <span>
+                  <strong className="text-[#0f172a]">{h.field}:</strong>{' '}
+                  <span className="text-[#94a3b8]">{h.previousValue || 'vacío'}</span> → <strong className="text-[#0f172a]">{h.newValue || 'vacío'}</strong>
+                </span>
+                <span className="text-[10.5px] text-[#94a3b8]">{h.changedByUserName || h.changedByUserId} · {new Date(h.changedAt).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
       {/* 4. MODAL: RESTABLECER ACCESO / ASIGNAR CONTRASEÑA (AJUSTE SOLICITADO)      */}
       {/* ========================================================================= */}
       {showResetAccessModal && (

@@ -454,6 +454,13 @@ Para no bloquear New Business cuando la app privada de HubSpot esté caída o si
 
 ---
 
+### 12.10 Costos de operación: hardware, licencias y recursos externos en el P&G
+* `hardware_assets`: agregar `serial_number`, `status` (`active` | `repair` | `retired`) y `assigned_user_id` (FK opcional a usuarios) a lo existente. Depreciación mensual = `purchase_value / useful_life_months`; por hora = mensual / 182.
+* `software_licenses`: agregar `owner_user_id`, `next_renewal_date` y `license_seats` (relación licencia ↔ usuario, máximo `quantity`). Conversión a COP con la tabla única de TRM de Finanzas (fecha, moneda, valor).
+* **Costo real del proyecto (P&G)** = horas registradas × costo hora de la persona + depreciación de hardware imputada + licencias imputadas + recursos externos (§12.8). Mientras alguna fuente de costo no esté disponible, el P&G debe mostrar «margen no disponible» en lugar de 100 %.
+
+---
+
 ## 13. Módulo Capacidad: Jornada de 42h, Cálculo de Planificado vs. Ejecutado y Filtro por Área
 
 ### 13.1 Jornada Base y Deducción de Festivos/Ausencias

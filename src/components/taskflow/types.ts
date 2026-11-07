@@ -47,6 +47,8 @@ export type OrbitView =
   | 'el-muro'
   | 'reportes'
   | 'nova-ia'
+  | 'hardware'
+  | 'licencias'
   | 'config-roles'
   | 'config-permisos'
   | 'usuarios'
@@ -345,6 +347,46 @@ export interface ProjectHealthResult {
   };
   triggeredGuardrail?: string; // ej. 'G-R1', 'G-A3', etc.
   evaluatedAt: string;
+}
+
+/** Activo físico (hardware) — costo directo de operación vía depreciación. */
+export interface HardwareAsset {
+  id: string;
+  name: string;
+  type?: string;                    // Laptop, Cámara, Monitor… (texto libre con sugerencias)
+  brand?: string;
+  model?: string;
+  serialNumber?: string;            // Serial o placa de inventario
+  assignedUserId?: string | null;   // Colaborador asignado
+  location?: string;                // Ubicación física u oficina (opcional)
+  purchaseValue: number;            // Valor de compra (COP)
+  purchaseDate?: string | null;
+  usefulLifeMonths?: number | null; // Para depreciación
+  warrantyEndDate?: string | null;
+  isDirectCost: boolean;            // Su depreciación se imputa a servicios/proyectos
+  serviceTemplateIds: string[];     // Servicios (plantillas) que lo usan
+  projectIds: string[];             // Proyectos que lo usan
+  status: 'active' | 'repair' | 'retired';
+  notes?: string;
+}
+
+/** Licencia o suscripción de software — costo directo de operación. */
+export interface SoftwareLicense {
+  id: string;
+  application: string;
+  plan?: string;
+  quantity: number;
+  frequency: 'monthly' | 'quarterly' | 'annual';
+  currency: 'COP' | 'USD' | 'MXN' | 'EUR';
+  unitValue: number;
+  area: 'Operativos' | 'Comercial' | 'Admin' | 'Varios';
+  ownerUserId?: string | null;      // Responsable de la cuenta (pagos, accesos, renovación)
+  assignedUserIds: string[];        // Personas que usan los cupos (≤ cantidad)
+  nextRenewalDate?: string | null;  // Próximo cobro / renovación
+  projectIds: string[];             // Proyectos activos que la usan (reparto del costo)
+  pendingVerification: boolean;
+  verificationNote?: string;
+  status: 'active' | 'inactive';
 }
 
 export type ProjectClosureReason = 'delivered_approved' | 'closed_early' | 'cancelled_by_client';
@@ -724,6 +766,8 @@ export type OrbitModule =
   | 'new-business'
   | 'plantillas-producto'
   | 'la-colonia'
+  | 'costos-operacion'   // Hardware y Licencias (costos directos de operación)
+  | 'direccion-finanzas' // Dirección y Finanzas (en producción: «Tablero» y «Finanzas»)
   | 'administracion';
 
 /**
@@ -931,6 +975,9 @@ export interface UserItem {
   tasksCount: number;
   joinedDate: string;
   capacityHours?: number;
+  workCalendar?: 'CO' | 'MX';          // Calendario laboral (festivos que descuentan capacidad)
+  workCalendarSince?: string | null;   // Vigente desde (las semanas anteriores no se recalculan)
+  profileHistory?: UserProfileAuditEntry[]; // Previsualización; el historial autoritativo es del backend
   utilizedPercent?: number;
   jobTitle?: string;
   officialRole?: StandardUhuraRole; // Rol cotizable principal (compatibilidad)

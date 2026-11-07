@@ -72,7 +72,10 @@ import { MobileTimerMiniPlayer } from '../components/taskflow/MobileTimerMiniPla
 import { NewBusinessView } from '../components/taskflow/newbusiness/NewBusinessView';
 import { DireccionFinanzasView } from '../components/taskflow/DireccionFinanzasView';
 import { INITIAL_NEW_BUSINESS_OPPORTUNITIES } from '../components/taskflow/newbusiness/mockOpportunities';
-import { canAccessModule, viewToModule } from '../components/taskflow/auth/permissions';
+import { canAccessModule, viewToModule, can } from '../components/taskflow/auth/permissions';
+import { HardwareView } from '../components/taskflow/assets/HardwareView';
+import { LicensesView } from '../components/taskflow/assets/LicensesView';
+import type { HardwareAsset, SoftwareLicense } from '../components/taskflow/types';
 import { AccessDeniedCard } from '../components/taskflow/auth/AccessDeniedCard';
 import { DevQaRoleSimulator } from '../components/taskflow/auth/DevQaRoleSimulator';
 import {
@@ -738,6 +741,18 @@ export const TaskFlowPrototype: React.FC = () => {
   const [activities, setActivities] = useState(initialActivities);
   const [timeLogs, setTimeLogs] = useState<TimeLog[]>(initialTimeLogs);
   const [productTemplates, setProductTemplates] = useState<ProductBacklogTemplate[]>(INITIAL_PRODUCT_BACKLOG_TEMPLATES);
+  // Costos de operación (datos de ejemplo; en producción vienen del backend)
+  const [hardwareAssets, setHardwareAssets] = useState<HardwareAsset[]>([
+    { id: 'hw-1', name: 'MacBook Pro diseño 01', type: 'Laptop', brand: 'Apple', model: 'MacBook Pro 14" M3', serialNumber: 'C02-UH-001', assignedUserId: 'u-7', location: 'Oficina Medellín', purchaseValue: 9800000, purchaseDate: '2025-02-10', usefulLifeMonths: 36, warrantyEndDate: '2026-02-10', isDirectCost: true, serviceTemplateIds: [], projectIds: [], status: 'active' },
+    { id: 'hw-2', name: 'Cámara de producción', type: 'Cámara', brand: 'Sony', model: 'A7 IV', assignedUserId: null, location: 'Estudio', purchaseValue: 11500000, purchaseDate: '2025-06-01', usefulLifeMonths: 48, warrantyEndDate: '2027-06-01', isDirectCost: true, serviceTemplateIds: [], projectIds: [], status: 'active' }
+  ]);
+  const [softwareLicenses, setSoftwareLicenses] = useState<SoftwareLicense[]>([
+    { id: 'lic-1', application: 'ADOBE', plan: 'Creative Cloud All Apps', quantity: 5, frequency: 'monthly', currency: 'COP', unitValue: 359000, area: 'Operativos', assignedUserIds: [], nextRenewalDate: '2026-11-15', projectIds: [], pendingVerification: false, status: 'active' },
+    { id: 'lic-2', application: 'FIGMA', plan: 'Premium', quantity: 1, frequency: 'monthly', currency: 'USD', unitValue: 20, area: 'Operativos', assignedUserIds: [], projectIds: [], pendingVerification: false, status: 'active' },
+    { id: 'lic-3', application: 'GOOGLE', plan: 'Workspace Business Standard', quantity: 23, frequency: 'monthly', currency: 'USD', unitValue: 16.8, area: 'Varios', assignedUserIds: [], projectIds: [], pendingVerification: false, status: 'active' },
+    { id: 'lic-4', application: 'HUBSPOT', quantity: 5, frequency: 'quarterly', currency: 'USD', unitValue: 0.01, area: 'Comercial', assignedUserIds: [], projectIds: [], pendingVerification: true, verificationNote: 'Confirmar valor y plan vigente', status: 'active' },
+    { id: 'lic-5', application: 'FREEPIK', plan: 'Freepik Premium Yearly', quantity: 1, frequency: 'annual', currency: 'COP', unitValue: 460000, area: 'Operativos', assignedUserIds: [], projectIds: [], pendingVerification: false, status: 'active' }
+  ]);
   const [opportunities, setOpportunities] = useState<NewBusinessOpportunity[]>(INITIAL_NEW_BUSINESS_OPPORTUNITIES);
   // Estado de demostración del frontend; no agrega campos al contrato de datos.
   const [scopeUi, setScopeUi] = useState<Record<string, { saved: boolean; services: ScopeServiceDraft[] }>>({});
@@ -2932,6 +2947,10 @@ export const TaskFlowPrototype: React.FC = () => {
         return 'New Business · Scoping & Oportunidades';
       case 'finanzas':
         return 'Finanzas';
+      case 'hardware':
+        return 'Hardware';
+      case 'licencias':
+        return 'Licencias';
       case 'el-muro':
         return 'El Muro';
       case 'reportes':
@@ -3160,6 +3179,27 @@ export const TaskFlowPrototype: React.FC = () => {
                     teamUsers={users}
                     onNavigateToView={handleSelectView}
                     onUpdateUser={handleUpdateUser}
+                  />
+                )}
+
+                {/* COSTOS DE OPERACIÓN */}
+                {currentView === 'hardware' && (
+                  <HardwareView
+                    assets={hardwareAssets}
+                    users={users}
+                    projects={projectsList}
+                    services={productTemplates.map((t) => ({ id: t.id, name: t.name, code: (t as any).code }))}
+                    canEdit={can(currentUser, 'edit', 'costos-operacion')}
+                    onChange={setHardwareAssets}
+                  />
+                )}
+                {currentView === 'licencias' && (
+                  <LicensesView
+                    licenses={softwareLicenses}
+                    users={users}
+                    projects={projectsList}
+                    canEdit={can(currentUser, 'edit', 'costos-operacion')}
+                    onChange={setSoftwareLicenses}
                   />
                 )}
 

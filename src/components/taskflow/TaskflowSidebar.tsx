@@ -20,7 +20,8 @@ import {
   PanelLeftOpen,
   BookOpen,
   Target,
-  Sparkles
+  Sparkles,
+  Monitor
 } from 'lucide-react';
 
 interface TaskflowSidebarProps {
@@ -42,6 +43,7 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
     operacion: true,
     comercial: true,
     experiencia: true,
+    costos: false,
     sistema: false
   });
 
@@ -75,6 +77,7 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
   const hasComercial = canFinanzas || canNewBusiness || canClientes || canPlantillas;
   const hasExperiencia = canColonia;
   const hasSistema = canUsuarios;
+  const canCostos = canAccessModule(currentUser, 'costos-operacion');
 
   return (
     <aside
@@ -91,10 +94,7 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
               className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#8a4dff] via-[#501f92] to-[#140b24] p-0.5 flex items-center justify-center shrink-0 shadow-sm ring-1 ring-[#8a4dff]/40 hover:scale-105 transition-transform cursor-pointer"
               title="Desplegar menú lateral (Sidebar)"
             >
-              <div className="w-full h-full bg-[#0d0718] rounded-[10px] flex items-center justify-center relative overflow-hidden">
-                <div className="w-5 h-5 rounded-full border-2 border-t-[#d4ff4a] border-r-[#8a4dff] border-b-[#4be5ff] border-l-transparent animate-spin-slow" />
-                <div className="w-2 h-2 rounded-full bg-[#d4ff4a] absolute" />
-              </div>
+              <img src="/brand/eco-icon-128.png" alt="ECO" className="w-full h-full rounded-[10px] object-cover" />
             </button>
             {onToggleCollapse && (
               <button
@@ -109,12 +109,7 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
         ) : (
           <div className="flex items-center gap-3 px-2 py-2.5 mb-2 border-b border-[#261845]/70 justify-between">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#8a4dff] via-[#501f92] to-[#140b24] p-0.5 flex items-center justify-center shrink-0 shadow-sm ring-1 ring-[#8a4dff]/40">
-                <div className="w-full h-full bg-[#0d0718] rounded-[10px] flex items-center justify-center relative overflow-hidden">
-                  <div className="w-5 h-5 rounded-full border-2 border-t-[#d4ff4a] border-r-[#8a4dff] border-b-[#4be5ff] border-l-transparent animate-spin-slow" />
-                  <div className="w-2 h-2 rounded-full bg-[#d4ff4a] absolute" />
-                </div>
-              </div>
+              <img src="/brand/eco-icon-128.png" alt="ECO" className="w-9 h-9 rounded-xl object-cover shrink-0 shadow-sm ring-1 ring-[#8a4dff]/40" />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
                   <span className="font-extrabold text-base tracking-tight text-white">ECO</span>
@@ -401,6 +396,51 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
                   </button>
                 )}
 
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* COSTOS DE OPERACIÓN (Hardware y Licencias) */}
+        {canCostos && (
+          <div className="space-y-1 pt-1">
+            {!collapsed ? (
+              <button
+                onClick={() => toggleSection('costos')}
+                className="w-full flex items-center justify-between px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-[#c9b7ff]/70 hover:text-white transition-colors"
+              >
+                <span>COSTOS DE OPERACIÓN</span>
+                {openSections.costos ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+              </button>
+            ) : (
+              <div className="h-px bg-[#261845] my-2" />
+            )}
+            {(openSections.costos || collapsed) && (
+              <div className="space-y-0.5 pl-0.5">
+                <button
+                  onClick={() => onSelectView('licencias')}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                    currentView === 'licencias' ? 'bg-[#1e113a] text-white font-semibold' : 'text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white'
+                  }`}
+                  title="Licencias y suscripciones de software"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <KeyRound className="w-3.5 h-3.5 text-[#8a4dff]" />
+                    {!collapsed && <span>Licencias</span>}
+                  </div>
+                </button>
+                <button
+                  onClick={() => onSelectView('hardware')}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                    currentView === 'hardware' ? 'bg-[#1e113a] text-white font-semibold' : 'text-[#c9b7ff]/80 hover:bg-[#160c2b] hover:text-white'
+                  }`}
+                  title="Hardware y equipos"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Monitor className="w-3.5 h-3.5 text-[#8a4dff]" />
+                    {!collapsed && <span>Hardware</span>}
+                  </div>
+                </button>
               </div>
             )}
           </div>

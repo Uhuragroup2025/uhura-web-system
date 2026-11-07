@@ -154,9 +154,7 @@ export const Overview: React.FC<OverviewProps> = ({ onNavigate }) => {
               </span>
             </div>
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-xl bg-[#4f46e5]/10 flex items-center justify-center text-[#4f46e5] group-hover:bg-[#4f46e5] group-hover:text-white transition-colors duration-150">
-                <Box className="w-5 h-5" />
-              </div>
+              <img src="/brand/eco-icon-128.png" alt="ECO" className="w-10 h-10 rounded-xl object-cover shadow-2xs" />
               <div>
                 <h3 className="text-base font-bold text-[#17131f]">Ver prototipo ECO</h3>
                 <span className="text-xs text-[#616161]">Prototipo SaaS interactivo</span>
