@@ -2254,6 +2254,27 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                 })()}
               </div>
             </div>
+            {/* Requisitos visibles para «Marcar como listo» */}
+            {(() => {
+              const isAlreadyMarked = activeOpp.status === 'internal_review' || activeOpp.status === 'proposal_sent' || activeOpp.status === 'negotiation' || activeOpp.status === 'won';
+              if (isAlreadyMarked) return null;
+              const checks = [
+                { ok: scopeState.services.length > 0 && activeQuote.deliverables.some((d) => d.backlogItems.some((a) => a.estimatedHours > 0)), label: 'Al menos un servicio con actividades y horas' },
+                { ok: scopeState.services.length > 0 && scopeState.services.every((sv) => Number(sv.weeks) >= 1 && serviceValidationMessages(sv).length === 0), label: 'Semanas definidas en cada servicio' },
+                { ok: Boolean(activeQuote.commercialProposalUrl?.trim() && activeQuote.commercialProposalUrl.trim().length > 5), label: 'Enlace de la presentación en Drive' },
+                { ok: Boolean(scopeState.saved), label: 'Alcance guardado' }
+              ];
+              return (
+                <ul className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] mt-2" aria-label="Requisitos para marcar el alcance como listo">
+                  {checks.map((c) => (
+                    <li key={c.label} className={`flex items-center gap-1 ${c.ok ? 'text-[#15803d]' : 'text-[#64748b]'}`}>
+                      <span aria-hidden>{c.ok ? '✓' : '○'}</span>
+                      {c.label}
+                    </li>
+                  ))}
+                </ul>
+              );
+            })()}
             {isScopeReadOnly ? (
               <div className="space-y-2 text-xs text-[#334155]" aria-label="Datos generales del alcance guardado">
                 <p>Presentación / propuesta técnica general: {activeQuote.commercialProposalUrl ? <a className="underline text-[#501f92]" href={activeQuote.commercialProposalUrl} target="_blank" rel="noreferrer">Abrir presentación</a> : 'Pendiente'}</p>
@@ -2383,11 +2404,16 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                             : 'Proyecto único'}
                         </span>
                       </span>
-                      {activeOpp.hubspotDealStage && (
+                      {/* La etapa de HubSpot solo se muestra si existe un negocio real vinculado */}
+                      {activeOpp.hubspotDealStage && (activeOpp.hubspotDealId || activeQuote.commercialStructure?.some((sv) => sv.hubspotDealId)) ? (
                         <span className="text-[10.5px] font-semibold px-2 py-0.5 rounded-full bg-[#fff7ed] text-[#c2410c] border border-[#fed7aa]">
-                          HubSpot: {activeOpp.hubspotDealStage}
+                          HubSpot: {activeOpp.hubspotDealStage === 'closedwon' ? 'Cierre ganado' : activeOpp.hubspotDealStage}
                         </span>
-                      )}
+                      ) : activeOpp.status === 'won' ? (
+                        <span className="text-[10.5px] font-semibold px-2 py-0.5 rounded-full bg-[#f1f5f9] text-[#475569] border border-[#e2e8f0]">
+                          Ganada manualmente · conciliar con HubSpot
+                        </span>
+                      ) : null}
                     </div>
                   </div>
                 </div>

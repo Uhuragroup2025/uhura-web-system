@@ -407,8 +407,10 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
       ...newCollapsedState
     }));
 
+    // Semanas precargadas desde la plantilla (el líder puede ajustarlas)
     onChangeServices([...services, { id: importId, name: tpl.name,
-      deliverableIds: importedDeliverables.map((deliverable) => deliverable.id), weeks: '', saved: false }]);
+      deliverableIds: importedDeliverables.map((deliverable) => deliverable.id),
+      weeks: tpl.estimatedDurationWeeks ? String(tpl.estimatedDurationWeeks) : '', saved: false }]);
     const updated = recomputeQuoteRollups([...quote.deliverables, ...importedDeliverables]);
     onUpdateQuote(updated);
     setIsImportModalOpen(false);

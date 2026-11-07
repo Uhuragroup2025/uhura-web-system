@@ -836,14 +836,14 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
             </div>
           </div>
 
-          {/* Fecha max. de entrega (sin hora) */}
+          {/* Fecha límite del dimensionamiento técnico (no es la entrega del proyecto) */}
           <div className="space-y-1">
             <div className="flex items-center justify-between">
               <label className="font-bold text-[#475569] block">
-                Fecha max. de entrega: <span className="text-red-500">*</span>
+                Fecha límite del alcance: <span className="text-red-500">*</span>
               </label>
               <span className="text-[10px] font-semibold text-[#501f92] bg-[#f5f3ff] px-2 py-0.5 rounded">
-                Fecha de entrega
+                Para el líder técnico
               </span>
             </div>
             <input

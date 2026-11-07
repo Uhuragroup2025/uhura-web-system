@@ -163,6 +163,48 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* PROYECTO CERRADO: foto final del cierre */}
+      {project.closure && (
+        <div className="bg-white rounded-3xl border border-[#e2e8f0] p-5 shadow-xs space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="font-extrabold text-sm text-[#0f172a]">🏁 Proyecto cerrado</h3>
+            <span className="text-[11px] text-[#64748b]">
+              {project.closure.closedByName} · {new Date(project.closure.closedAt).toLocaleDateString('es-CO')}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+            <div className="p-3 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
+              <span className="text-[10px] uppercase font-bold text-[#64748b] block">Motivo</span>
+              <span className="font-bold text-[#0f172a]">
+                {project.closure.reason === 'delivered_approved' ? 'Entregado y aprobado' : project.closure.reason === 'closed_early' ? 'Cierre anticipado' : 'Cancelado por el cliente'}
+              </span>
+            </div>
+            <div className="p-3 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
+              <span className="text-[10px] uppercase font-bold text-[#64748b] block">Horas</span>
+              <span className="font-bold font-mono text-[#0f172a]">{project.closure.executedHours}h / {project.closure.quotedHours}h</span>
+            </div>
+            <div className="p-3 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
+              <span className="text-[10px] uppercase font-bold text-[#64748b] block">Fecha real</span>
+              <span className="font-bold text-[#0f172a]">
+                {project.closure.actualEndDate}
+                {typeof project.closure.deviationBusinessDays === 'number' && project.closure.deviationBusinessDays !== 0 && (
+                  <span className={project.closure.deviationBusinessDays > 0 ? 'text-[#b91c1c]' : 'text-[#15803d]'}>
+                    {' '}({project.closure.deviationBusinessDays > 0 ? '+' : ''}{project.closure.deviationBusinessDays} d)
+                  </span>
+                )}
+              </span>
+            </div>
+            {typeof project.closure.usedReworkRounds === 'number' && (
+              <div className="p-3 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
+                <span className="text-[10px] uppercase font-bold text-[#64748b] block">Rondas de ajuste</span>
+                <span className="font-bold text-[#0f172a]">{project.closure.usedReworkRounds} de {project.closure.includedReworkRounds}</span>
+              </div>
+            )}
+          </div>
+          <p className="text-xs text-[#475569] whitespace-pre-line"><strong>Aprendizajes:</strong> {project.closure.note}</p>
+        </div>
+      )}
+
       {/* BANNER DE SUGERENCIA DE REFORECAST (SI HAY ATRASO CRÍTICO DE CLIENTE) */}
       {isFixed && pendingBlockingOverdueDeps.length > 0 && (
         <div className="bg-[#fffbeb] border border-[#fde68a] rounded-3xl p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4 animate-in fade-in duration-200">

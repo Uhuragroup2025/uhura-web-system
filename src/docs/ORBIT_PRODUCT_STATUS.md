@@ -2,7 +2,7 @@
 
 > **Documento:** Especificación Funcional Maestra para Portabilidad, Backend y Modelo de Datos
 > **Destinatario Técnico Principal:** Indunova (Backend Django REST Framework / PostgreSQL) y Equipo de Producto Uhura Group
-> **Fecha de Actualización:** 07 de noviembre de 2026 (cronograma al «Iniciar proyecto», gates/tandas editables, equipo derivado de tareas, hallazgos E2E §10.5)
+> **Fecha de Actualización:** 07 de noviembre de 2026 (cronograma al «Iniciar proyecto», gates/tandas editables, equipo derivado de tareas, hallazgos E2E §10.4.1, cierre de proyecto §11.7)
 > **Versión:** 3.4.0 (Aprobación Canónica UAT 2: 1 Servicio = 1 Proyecto, Decimales, Líderes por Servicio y Modo Desacoplado)
 > **Estado:** Especificación Maestra Canónica Reconciliada — Fuente de Verdad Funcional de Orbit
 >
@@ -722,16 +722,14 @@ Entidad persistente para insumos, accesos o gates que condicionan la ruta críti
 - `note`: String (Justificación obligatoria).
 - `createdAt`: DateTime inmutable.
 
-#### 11.7 Propuesta de Protocolo de Cierre del Proyecto (⚠️ Propuesta funcional pendiente de aprobación e implementación)
-
-> **NOTA DE ALCANCE:**
-> Las reglas detalladas de cierre vinculadas a la nueva propuesta de activación, estados de capacidad y líneas base corresponden a una **propuesta funcional en evaluación para una fase posterior**.
-> **NO hacen parte de las decisiones cerradas de esta actualización ni están implementadas en el core vigente**. Se trabajarán en un ticket y prototipo independientes.
-
-##### Aspectos Conceptuales en Evaluación:
-- **Preservación Inmutable del Histórico:** Las horas registradas históricamente (`TimeLog`) y las asignaciones pasadas se conservan para auditoría y rentabilidad.
-- **Resolución de Tareas:** Las tareas pendientes se resuelven o cancelan formalmente antes de consolidar el cierre.
-- **Trazabilidad:** Almacenar usuario autor, fecha/hora y motivo de cierre.
+#### 11.7 Cierre del Proyecto (🟢 Decisión aprobada · 🟣 Implementado en prototipo · 07 Nov 2026)
+Acción **⋮ → Cerrar proyecto**, disponible para perfiles con edición de proyectos cuando el proyecto ya inició y no está cerrado ni archivado.
+- **Tareas resueltas antes de cerrar:** si hay tareas sin completar, el cierre se bloquea y ofrece «Ir a Tareas».
+- **Foto final (solo lectura):** horas ejecutadas vs. cotizadas, rondas de ajuste usadas vs. incluidas (proyecto único) y desviación de la fecha real frente a la línea base en días hábiles.
+- **Datos obligatorios:** fecha real de entrega, motivo (`Entregado y aprobado por el cliente` · `Cerrado anticipadamente` · `Cancelado por el cliente`) y aprendizajes/observaciones.
+- **Resultado:** `status = Cerrado`, `actualEndDate` y registro `closure` (autor, fecha/hora, motivo, nota y la foto final). El histórico de horas (`TimeLog`) y de tareas se conserva intacto; Resumen muestra la tarjeta «Proyecto cerrado».
+- Archivar sigue siendo una acción distinta (ocultar del portafolio activo).
+- Referencia: `src/components/taskflow/projects/CloseProjectModal.tsx`.
 
 ---
 
@@ -1264,15 +1262,13 @@ Roles operativos no cotizables para tareas operativas estándar:
 
 ---
 
-### 10.5. Hallazgos del recorrido E2E pendientes (07 Nov 2026)
-Recorrido Comercial → PM → Colaborador sobre el prototipo. Lo ya resuelto quedó documentado en §8.3 (cronograma al «Iniciar proyecto») y §14.3 (equipo derivado de tareas). Pendiente:
-1. **New Business — «Fecha máx. de entrega»:** es el plazo del scoping técnico, pero se lee como entrega del proyecto. Renombrar (p. ej. «Fecha límite de dimensionamiento»).
-2. **Alcance — «Marcar como listo»:** los requisitos (enlace de Drive + Guardar) solo se ven en un tooltip del botón deshabilitado. Mostrarlos como checklist visible.
-3. **Alcance — semanas por servicio:** al importar una plantilla el campo queda vacío y el resumen muestra «0 Sem.». Precargar desde la plantilla.
-4. **Cotización — HubSpot:** muestra «HubSpot: closedwon» y a la vez «Sin negocio en HubSpot» en modo manual. Unificar el estado.
-5. **Matriz Horas por Rol:** los entregables aparecen «En Ejecución» aunque el proyecto esté «Por iniciar».
-6. **Cierre de proyecto:** no existe flujo de cierre (solo «Archivar»). Definir checklist de cierre (entregables aprobados, horas reales vs. cotizadas, tandas usadas, fecha real). `ProjectSettingsTab.tsx` no se usa (código muerto).
-7. **Datos mock:** proyectos de ejemplo con roles fuera de `STANDARD_UHURA_ROLES` («Tech Lead», «QA Tester», «Front End») y ausencias con fechas vencidas en el radar de Mi Día.
+### 10.4.1. Hallazgos del recorrido E2E (07 Nov 2026)
+Recorrido Comercial → PM → Colaborador sobre el prototipo.
+
+**Resueltos en el prototipo:** cronograma al «Iniciar proyecto» (§8.3), rondas de ajuste (§11.3), equipo derivado de tareas (§14.3), cierre de proyecto (§11.7), «Fecha límite del alcance» en Nueva Oportunidad (antes «Fecha máx. de entrega»), checklist visible de requisitos para «Marcar como listo», semanas del servicio precargadas desde `estimatedDurationWeeks` de la plantilla, etapa de HubSpot visible solo con negocio vinculado (si no: «Ganada manualmente · conciliar con HubSpot»), estados «Por iniciar» coherentes en la Matriz y eliminación de componentes sin uso (`ProjectSettingsTab`, `ScheduleProjectModal`, `ProjectDeliverablesTab`, `assignmentAdapter`).
+
+**Pendiente:**
+1. **Datos mock:** proyectos de ejemplo con roles fuera de `STANDARD_UHURA_ROLES` («Tech Lead», «QA Tester», «Front End») y ausencias con fechas vencidas en el radar de Mi Día. Solo afecta al prototipo.
 
 ---
 

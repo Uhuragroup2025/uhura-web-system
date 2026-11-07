@@ -428,6 +428,13 @@ Para no bloquear New Business cuando la app privada de HubSpot esté caída o si
 
 ---
 
+### 12.7 Cierre de proyecto
+* Endpoint de cierre que **rechaza** la operación si existen tareas no completadas del proyecto.
+* Persiste `status = 'closed'`, `actual_end_date` y un registro inmutable `project_closures`: `closed_by_user_id`, `closed_at`, `reason` (`delivered_approved` | `closed_early` | `cancelled_by_client`), `note` (obligatoria) y la foto final (`quoted_hours`, `executed_hours`, `included_rework_rounds`, `used_rework_rounds`, `baseline_end_date`, `deviation_business_days`).
+* No modifica ni elimina `time_logs`, tareas ni asignaciones históricas. Detalle funcional: `ORBIT_PRODUCT_STATUS.md` §11.7.
+
+---
+
 ## 13. Módulo Capacidad: Jornada de 42h, Cálculo de Planificado vs. Ejecutado y Filtro por Área
 
 ### 13.1 Jornada Base y Deducción de Festivos/Ausencias

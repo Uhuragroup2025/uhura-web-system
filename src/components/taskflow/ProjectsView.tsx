@@ -5,13 +5,12 @@ import { BoardView } from './BoardView';
 import { ManagePhasesModal } from './ManagePhasesModal';
 import { ImportBacklogModal } from './ImportBacklogModal';
 import { ProjectOverviewTab } from './projects/ProjectOverviewTab';
-import { ProjectDeliverablesTab } from './projects/ProjectDeliverablesTab';
 import { ProjectTeamTab } from './projects/ProjectTeamTab';
 import { ProjectTasksTab } from './projects/ProjectTasksTab';
-import { ScheduleProjectModal } from './ScheduleProjectModal';
 import { initialUsers } from './mockData';
 import { computeScheduleBaseline, planProjectSchedule } from './schedule/scheduleEngine';
 import { ProjectNotificationsModal } from './integrations/ProjectNotificationsModal';
+import { CloseProjectModal } from './projects/CloseProjectModal';
 import { canViewProjectNotifications } from './integrations/googleChat';
 import { calculateBusinessDays } from './health/projectHealthEngine';
 import { can } from './auth/permissions';
@@ -69,7 +68,8 @@ import {
   Trash2,
   X,
   Pencil,
-  Bell
+  Bell,
+  Flag
 } from 'lucide-react';
 
 interface ProjectsViewProps {
@@ -129,6 +129,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   const [projectPendingDelete, setProjectPendingDelete] = useState<ProjectSummaryItem | null>(null);
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [isNotificationsModalOpen, setIsNotificationsModalOpen] = useState(false);
+  const [isCloseProjectModalOpen, setIsCloseProjectModalOpen] = useState(false);
   const [scheduleSuccessMessage, setScheduleSuccessMessage] = useState<string | null>(null);
   const [scheduleKickoffDate, setScheduleKickoffDate] = useState<string>('');
   const [scheduleDurationWeeks, setScheduleDurationWeeks] = useState<number>(4);
@@ -687,10 +688,16 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
     const isProjectCompleted = (currentProject.status as string) === 'completed' || (currentProject.status as string) === 'Cerrado' || (currentProject.status as string) === 'Completado';
     const isProjectArchived = currentProject.status === 'Archivado';
+    // «Por iniciar» = aún no se ha pulsado «Iniciar proyecto». Si ya se inició con fecha futura
+    // (p. ej. arranque el lunes), queda «Programado», no vuelve a pedir el arranque.
     const isProjectPendingToStart = !isProjectCompleted && !isProjectArchived && (
       !currentProject.isKickedOff ||
-      (!currentProject.startDate || currentProject.startDate > todayStr || currentProject.status === 'Planificación' || (currentProject.status as string) === 'Por empezar')
+      !currentProject.startDate ||
+      currentProject.status === 'Planificación' ||
+      (currentProject.status as string) === 'Por empezar'
     );
+    const isProjectScheduled = !isProjectPendingToStart && !isProjectCompleted && !isProjectArchived &&
+      Boolean(currentProject.startDate && currentProject.startDate > todayStr);
 
     return (
       <div className="space-y-6 animate-in fade-in duration-200">
@@ -783,7 +790,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                     }`}
                   />
                   <span>
-                    Estado: {isProjectArchived ? 'Archivado' : isProjectCompleted ? 'Completado' : isProjectPendingToStart ? 'Pendiente de iniciar' : 'En ejecución'}
+                    Estado: {isProjectArchived ? 'Archivado' : isProjectCompleted ? 'Cerrado' : isProjectPendingToStart ? 'Pendiente de iniciar' : isProjectScheduled ? `Programado · inicia ${currentProject.startDate}` : 'En ejecución'}
                   </span>
                 </span>
 
@@ -802,7 +809,11 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
             {/* Schedule Kickoff Action Button & Project Options Menu (siempre en la misma fila) */}
             <div className="flex items-center gap-2 flex-nowrap min-w-0 max-w-full">
-              {isProjectPendingToStart && !canEditProject ? (
+              {isProjectCompleted ? (
+                <span className="px-4 py-2 rounded-2xl bg-[#f1f5f9] border border-[#e2e8f0] text-[#334155] text-xs font-bold">
+                  🏁 Cerrado · Fin real: {currentProject.actualEndDate || currentProject.closure?.actualEndDate || '—'}
+                </span>
+              ) : isProjectPendingToStart && !canEditProject ? (
                 <span className="px-4 py-2 rounded-2xl bg-[#faf5ff] border border-[#e9d5ff] text-[#501f92] text-xs font-bold">
                   Por iniciar
                 </span>
@@ -825,7 +836,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                   title="Proyecto iniciado. Clic para ajustar fechas o recalcular cronograma"
                 >
                   <span className="w-2 h-2 rounded-full bg-[#10b981] inline-block" />
-                  <span className="font-extrabold text-[#065f46]">Iniciado</span>
+                  <span className="font-extrabold text-[#065f46]">{isProjectScheduled ? 'Programado' : 'Iniciado'}</span>
                   <span className="text-[#cbd5e1]">|</span>
                   <Calendar className="w-3.5 h-3.5 text-[#501f92]" />
                   <span className="text-xs text-[#334155] font-semibold">
@@ -883,6 +894,19 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                       >
                         <Bell className="w-3.5 h-3.5 text-[#501f92]" />
                         <span>Notificaciones</span>
+                      </button>
+                    )}
+
+                    {canEditProject && !isProjectPendingToStart && !isProjectCompleted && !isProjectArchived && (
+                      <button
+                        onClick={() => {
+                          setIsCloseProjectModalOpen(true);
+                          setActiveProjectMenu(null);
+                        }}
+                        className="w-full px-3.5 py-2 text-left text-xs font-semibold text-[#334155] hover:bg-[#f8fafc] flex items-center gap-2 cursor-pointer transition-colors"
+                      >
+                        <Flag className="w-3.5 h-3.5 text-[#501f92]" />
+                        <span>Cerrar proyecto</span>
                       </button>
                     )}
 
@@ -1788,6 +1812,25 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
         />
 
         {/* Modal: Programar Inicio de Proyecto / Kick-off Operativo */}
+        {isCloseProjectModalOpen && (
+          <CloseProjectModal
+            project={currentProject}
+            tasks={currentProject.tasks}
+            currentUser={currentUser}
+            onClose={() => setIsCloseProjectModalOpen(false)}
+            onGoToTasks={() => {
+              setIsCloseProjectModalOpen(false);
+              setActiveTab('tasks');
+            }}
+            onConfirm={(updated) => {
+              onUpdateProject?.(updated);
+              setIsCloseProjectModalOpen(false);
+              setScheduleSuccessMessage(`🏁 Proyecto "${currentProject.name}" cerrado. El histórico de horas y tareas se conserva.`);
+              setTimeout(() => setScheduleSuccessMessage(null), 6000);
+            }}
+          />
+        )}
+
         {isNotificationsModalOpen && (
           <ProjectNotificationsModal
             project={currentProject}

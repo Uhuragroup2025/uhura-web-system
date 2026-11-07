@@ -2743,8 +2743,11 @@ export const TaskFlowPrototype: React.FC = () => {
   const handleSaveQuoteToOpportunity = (opportunityId: string, quote: QuoteProposal) => {
     const current = getOperationalQuote(opportunities.find((item) => item.id === opportunityId));
     const targetQuoteId = current?.id || quote.id;
-    const service = { id: quote.id, name: productTemplates.find((item) => item.id === quote.templateId)?.name || 'Servicio importado',
-      deliverableIds: quote.deliverables.map((_, index) => `qdel-import-${quote.id}-${index}`), weeks: '', saved: false };
+    const importedTemplate = productTemplates.find((item) => item.id === quote.templateId);
+    // Semanas precargadas desde la plantilla (editables por el líder)
+    const service = { id: quote.id, name: importedTemplate?.name || 'Servicio importado',
+      deliverableIds: quote.deliverables.map((_, index) => `qdel-import-${quote.id}-${index}`),
+      weeks: importedTemplate?.estimatedDurationWeeks ? String(importedTemplate.estimatedDurationWeeks) : '', saved: false };
     setScopeUi((previous) => ({ ...previous, [targetQuoteId]: { saved: false,
       services: [...(previous[targetQuoteId]?.services || []).filter((item) => item.id !== service.id), service] } }));
     setOpportunities((prev) =>
@@ -2796,9 +2799,11 @@ export const TaskFlowPrototype: React.FC = () => {
     };
 
     if (quote.templateId) {
+      const importedTemplate = productTemplates.find((item) => item.id === quote.templateId);
       setScopeUi((previous) => ({ ...previous, [finalizedQuote.id]: { saved: false, services: [{
-        id: quote.id, name: productTemplates.find((item) => item.id === quote.templateId)?.name || 'Servicio importado',
-        deliverableIds: quote.deliverables.map((item) => item.id), weeks: '', saved: false
+        id: quote.id, name: importedTemplate?.name || 'Servicio importado',
+        deliverableIds: quote.deliverables.map((item) => item.id),
+        weeks: importedTemplate?.estimatedDurationWeeks ? String(importedTemplate.estimatedDurationWeeks) : '', saved: false
       }] } }));
     }
     const newOpp: NewBusinessOpportunity = {

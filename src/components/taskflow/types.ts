@@ -345,6 +345,24 @@ export interface ProjectHealthResult {
   evaluatedAt: string;
 }
 
+export type ProjectClosureReason = 'delivered_approved' | 'closed_early' | 'cancelled_by_client';
+
+/** Cierre formal del proyecto: conserva histórico y deja trazabilidad inmutable. */
+export interface ProjectClosureRecord {
+  closedAt: string;                 // ISO timestamp del cierre
+  closedByName: string;
+  actualEndDate: string;            // Fecha real de entrega (YYYY-MM-DD)
+  reason: ProjectClosureReason;
+  note: string;                     // Aprendizajes / observaciones (obligatorio)
+  // Foto final para rentabilidad e historial de estimaciones
+  quotedHours: number;
+  executedHours: number;
+  includedReworkRounds?: number;
+  usedReworkRounds?: number;
+  baselineEndDate?: string | null;
+  deviationBusinessDays?: number | null;  // + atraso / − adelanto vs. línea base
+}
+
 export interface ProjectSummaryItem {
   id: string;
   code?: string;
@@ -374,6 +392,7 @@ export interface ProjectSummaryItem {
   baselineEndDate?: string;
   forecastEndDate?: string;
   actualEndDate?: string | null;
+  closure?: ProjectClosureRecord | null;     // Registro de cierre (autor, fecha, motivo y foto final)
   isKickedOff?: boolean;
   scheduleConfig?: ProjectScheduleConfig;
 
