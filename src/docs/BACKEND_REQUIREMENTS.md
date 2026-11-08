@@ -653,17 +653,17 @@ Especificación funcional y permisos en `ORBIT_PRODUCT_STATUS.md` §11.8. Requis
 
 ### 18.1 Modelo
 * `client_google_chat_integrations` (1:1 con `clients`): `space_name`, `webhook_url_encrypted`, `webhook_last4`, `status` (`pending_test` | `active` | `inactive` | `error`), `is_default_for_projects` (default `true`), `last_test_at`, `last_test_result`, `last_test_error`, `updated_by_user_id`, `updated_at`.
-* En `projects`: `google_chat_mode` (`inherit_client` | `disabled` | `custom`, default `inherit_client`) y, si es `custom`, una integración propia con los mismos campos.
+* En `projects`: `google_chat_enabled` (boolean, **default `false`**). Activado = usa el webhook del cliente. No hay webhook propio por proyecto ni `is_default_for_projects` (simplificado 07 Nov 2026). En el prototipo: `googleChatMode` `inherit_client` (activado) / `disabled`.
 * Bitácora de cambios de integración (quién, cuándo, acción) sin almacenar la URL.
 
 ### 18.2 Seguridad
 * **Autogestión:** el webhook lo registra `system_admin` desde la ficha del cliente. Indunova **no** necesita recibir los webhooks de los clientes; solo construye la pantalla, el guardado cifrado y el envío. Para probar, usar un espacio de prueba propio.
 * La URL del webhook se guarda **cifrada** y **nunca** se devuelve por API; las respuestas solo incluyen `webhook_last4` / máscara.
-* Solo `system_admin` puede crear, probar, activar, desactivar, reemplazar o eliminar. `leader` solo puede cambiar `google_chat_mode` entre `inherit_client` y `disabled`.
+* Solo `system_admin` puede crear, probar, activar, desactivar, reemplazar o eliminar el webhook (también desde el proyecto, si el cliente no tiene uno: se guarda en el cliente). `leader` solo puede activar o desactivar `google_chat_enabled` en sus proyectos.
 * Las URLs no se registran en logs, tickets ni documentación.
 
 ### 18.3 Envío
-* Resolución del destino según la precedencia de §11.8 (proyecto activo → desactivado → cliente activo predeterminado → solo in-app).
+* Resolución del destino según §11.8: proyecto sin activar → no se envía; activado → webhook activo del cliente; si el cliente no tiene uno activo → solo in-app.
 * «Guardar y probar» envía un mensaje real de prueba; si falla, `status = error` con el detalle.
 * Eventos que se publican: nueva tarea/asignación relevante, solicitud de revisión, comentario con mención o solicitud de revisión, devolución, aprobación, cambio a prioridad urgente y recordatorio de pendientes sin repetición. **No** se publican eventos de timer ni cambios sin acción requerida.
 * Envío asíncrono con reintentos **idempotentes** (clave por evento y destino): un reintento no duplica mensajes. Una falla de Google Chat **no** impide guardar la acción en ECO.

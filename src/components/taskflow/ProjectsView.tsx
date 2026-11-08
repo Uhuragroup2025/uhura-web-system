@@ -91,6 +91,7 @@ interface ProjectsViewProps {
   onToggleTask: (taskId: string) => void;
   onNavigateToClient?: (clientName: string) => void;
   onUpdateProject?: (updatedProject: ProjectSummaryItem) => void;
+  onUpdateClient?: (updatedClient: ClientProfile) => void;
   onAddTaskToProject?: (newTask: Partial<TaskItem>) => void;
   onImportTasksToProject?: (importedTasks: Partial<TaskItem>[]) => void;
   onArchiveProject?: (projectId: string) => void;
@@ -106,6 +107,7 @@ type TasksGroupBy = 'frente' | 'fase' | 'kanban' | 'lista';
 export const ProjectsView: React.FC<ProjectsViewProps> = ({
   tasks,
   clients,
+  onUpdateClient,
   projectsList,
   selectedProjectId: initialSelectedProjectId = null,
   onSelectProject,
@@ -1983,6 +1985,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             project={currentProject}
             client={clients.find((c) => c.id === currentProject.clientId || c.name === currentProject.clientName) || null}
             currentUser={currentUser}
+            onUpdateClient={onUpdateClient}
             onClose={() => setIsNotificationsModalOpen(false)}
             onUpdateProject={(updated) => onUpdateProject?.(updated)}
           />

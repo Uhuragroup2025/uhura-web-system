@@ -389,12 +389,12 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
             <div>
               <h3 className="font-extrabold text-sm text-[#0f172a]">Integraciones</h3>
               <p className="text-[11px] text-[#64748b]">
-                Configuración predeterminada que heredan los proyectos y fees del cliente.
+                Espacio de Google Chat del cliente. Cada proyecto decide si lo activa (por defecto no envía).
                 {(() => {
                   const inheriting = projects.filter(
                     (p) => (p.clientId === client.id || p.clientName === client.name) && getProjectChatMode(p) === 'inherit_client'
                   ).length;
-                  return inheriting > 0 ? ` ${inheriting} proyecto(s) la heredan.` : '';
+                  return inheriting > 0 ? ` ${inheriting} proyecto(s) la tienen activada.` : '';
                 })()}
               </p>
             </div>
@@ -403,10 +403,9 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
             config={client.googleChat}
             canManage={canManageGoogleChat(currentUser?.accessLevel)}
             showMask={canManageGoogleChat(currentUser?.accessLevel)}
-            showDefaultToggle
             contextLabel={`los proyectos de ${client.name}`}
             userName={currentUser?.name || 'Sistema'}
-            onChange={(next) => onUpdateClient?.({ ...client, googleChat: next ? { ...next, isDefaultForProjects: next.isDefaultForProjects ?? true } : null })}
+            onChange={(next) => onUpdateClient?.({ ...client, googleChat: next ? { ...next, isDefaultForProjects: true } : null })}
           />
         </section>
       )}

@@ -1,14 +1,11 @@
 /**
- * Google Chat — reglas de negocio del prototipo.
+ * Google Chat — reglas de negocio del prototipo (simplificado 07 Nov 2026).
  *
- * Precedencia (resolveGoogleChatTarget):
- *  1. Proyecto con webhook propio activo  → se usa el del proyecto.
- *  2. Proyecto con Google Chat desactivado → no se envía.
- *  3. Proyecto que hereda                  → se usa el webhook ACTIVO del cliente (si es predeterminado).
- *  4. Sin configuración válida             → solo notificación in-app.
- *
- * Desactivar la integración del cliente detiene los proyectos que heredan.
- * Un proyecto con webhook propio sigue activo aunque el cliente esté desactivado.
+ * Cada cliente tiene UN espacio de Google Chat (webhook) que registra system_admin en la ficha
+ * del cliente → Integraciones. Cada proyecto decide solo dos cosas:
+ *  - «Activar notificaciones»  → se envían al espacio del cliente (si está activo).
+ *  - «No enviar» (predeterminado) → solo notificaciones dentro de ECO.
+ * Ya no existe un espacio propio por proyecto ni la marca «predeterminado para sus proyectos».
  *
  * Seguridad: la URL solo vive en el input mientras se escribe. Al guardar se valida el
  * formato, se calcula una máscara y la URL se descarta. Las pruebas son SIMULADAS:
@@ -27,30 +24,26 @@ export type GoogleChatTarget =
   | { source: 'client'; spaceName: string; clientName: string }
   | { source: 'none'; reason: string };
 
+/** 'inherit_client' = activado (usa el espacio del cliente); cualquier otro valor = no se envía. */
 export function getProjectChatMode(project: Pick<ProjectSummaryItem, 'googleChatMode'>): GoogleChatNotificationMode {
-  return project.googleChatMode || 'inherit_client';
+  // Compatibilidad: el antiguo «espacio propio» ('custom') se trata como activado con el espacio del cliente.
+  if (project.googleChatMode === 'inherit_client' || project.googleChatMode === 'custom') return 'inherit_client';
+  return 'disabled';
 }
+
+export const isProjectChatEnabled = (project: Pick<ProjectSummaryItem, 'googleChatMode'>) =>
+  getProjectChatMode(project) === 'inherit_client';
 
 export function resolveGoogleChatTarget(
   project: Pick<ProjectSummaryItem, 'googleChatMode' | 'googleChat'>,
   client?: Pick<ClientProfile, 'name' | 'googleChat'> | null
 ): GoogleChatTarget {
-  const mode = getProjectChatMode(project);
-  if (mode === 'custom') {
-    if (project.googleChat?.hasWebhook && project.googleChat.status === 'active') {
-      return { source: 'project', spaceName: project.googleChat.spaceName };
-    }
-    return { source: 'none', reason: 'El espacio propio del proyecto no está activo.' };
-  }
-  if (mode === 'disabled') {
-    return { source: 'none', reason: 'Google Chat está desactivado para este proyecto.' };
+  if (!isProjectChatEnabled(project)) {
+    return { source: 'none', reason: 'Google Chat no está activado para este proyecto.' };
   }
   const cfg = client?.googleChat;
   if (!cfg || !cfg.hasWebhook) {
     return { source: 'none', reason: 'El cliente no tiene Google Chat configurado.' };
-  }
-  if (!cfg.isDefaultForProjects) {
-    return { source: 'none', reason: 'La integración del cliente no está marcada como predeterminada para sus proyectos.' };
   }
   if (cfg.status !== 'active') {
     return { source: 'none', reason: 'La integración del cliente está inactiva o con error.' };
@@ -71,7 +64,7 @@ export const canViewClientIntegrations = (level?: OrbitAccessLevel) =>
 export const canViewProjectNotifications = (level?: OrbitAccessLevel) =>
   level === 'system_admin' || level === 'executive' || level === 'leader';
 
-/** Elegir entre heredar del cliente o no enviar (sin registrar URLs). */
+/** Activar o desactivar Google Chat en un proyecto (sin registrar URLs). */
 export const canChooseProjectChatMode = (level?: OrbitAccessLevel) =>
   level === 'system_admin' || level === 'leader';
 

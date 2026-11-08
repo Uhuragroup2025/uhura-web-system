@@ -3299,6 +3299,7 @@ export const TaskFlowPrototype: React.FC = () => {
                     tasks={tasks}
                     onUpdateAllTasks={setTasks}
                     clients={clients}
+                    onUpdateClient={handleUpdateClient}
                     projectsList={projectsList}
                     currentUser={currentUser}
                     users={users}

@@ -15,26 +15,29 @@ interface ProjectNotificationsModalProps {
   currentUser?: UserItem;
   onClose: () => void;
   onUpdateProject: (updated: ProjectSummaryItem) => void;
+  /** Para que system_admin registre aquí mismo el espacio del cliente si aún no existe. */
+  onUpdateClient?: (updated: ClientProfile) => void;
 }
 
 const OPTIONS: Array<{ id: GoogleChatNotificationMode; label: string; hint: string }> = [
-  { id: 'inherit_client', label: 'Usar la integración del cliente', hint: 'Recomendado. Se administra desde la ficha del cliente.' },
-  { id: 'disabled', label: 'No enviar notificaciones a Google Chat', hint: 'Las novedades quedan solo dentro de ECO.' },
-  { id: 'custom', label: 'Usar un espacio diferente para este proyecto', hint: 'Requiere que un administrador registre el webhook.' }
+  { id: 'inherit_client', label: 'Activar notificaciones', hint: 'Las novedades importantes llegan al espacio de Google Chat del cliente.' },
+  { id: 'disabled', label: 'No enviar notificaciones a Google Chat', hint: 'Predeterminado. Las novedades quedan solo dentro de ECO.' }
 ];
 
 /**
- * Proyecto → ⋮ → Notificaciones.
- * - system_admin: elige cualquier modo y registra/gestiona el webhook propio.
- * - leader: elige heredar o no enviar; consulta estado y espacio (sin URL ni máscara).
- * - executive: solo consulta.
+ * Proyecto → ⋮ → Notificaciones (simplificado 07 Nov 2026).
+ * - Dos opciones: activar (usa el espacio del cliente) o no enviar (predeterminado).
+ * - Si el cliente aún no tiene espacio: system_admin lo registra aquí mismo (queda en el
+ *   cliente y sirve para todos sus proyectos); los demás ven a quién pedírselo.
+ * - leader: activa o desactiva; executive: solo consulta.
  */
 export const ProjectNotificationsModal: React.FC<ProjectNotificationsModalProps> = ({
   project,
   client,
   currentUser,
   onClose,
-  onUpdateProject
+  onUpdateProject,
+  onUpdateClient
 }) => {
   const level = currentUser?.accessLevel;
   const isAdmin = canManageGoogleChat(level);
@@ -45,7 +48,6 @@ export const ProjectNotificationsModal: React.FC<ProjectNotificationsModalProps>
 
   const setMode = (next: GoogleChatNotificationMode) => {
     if (!canChoose) return;
-    if (next === 'custom' && !isAdmin && !project.googleChat?.hasWebhook) return;
     onUpdateProject({ ...project, googleChatMode: next });
   };
 
@@ -72,15 +74,15 @@ export const ProjectNotificationsModal: React.FC<ProjectNotificationsModalProps>
 
         {/* Destino efectivo según la regla de precedencia */}
         <div className={`p-3 rounded-xl border text-xs ${target.source === 'none' ? 'bg-[#f8fafc] border-[#e2e8f0] text-[#475569]' : 'bg-[#ecfdf5] border-[#bbf7d0] text-[#166534]'}`}>
-          {target.source === 'project' && <>Las novedades se envían al espacio propio <strong>«{target.spaceName}»</strong>.</>}
-          {target.source === 'client' && <>Las novedades se envían a <strong>«{target.spaceName}»</strong>, heredado de {target.clientName}.</>}
+          {target.source === 'project' && <>Las novedades se envían a <strong>«{target.spaceName}»</strong>.</>}
+          {target.source === 'client' && <>Las novedades se envían a <strong>«{target.spaceName}»</strong>, el espacio de {target.clientName}.</>}
           {target.source === 'none' && <>Solo notificaciones dentro de ECO. {target.reason}</>}
         </div>
 
         <div className="space-y-2">
           <span className="text-xs font-bold text-[#334155] block">Google Chat</span>
           {OPTIONS.map((opt) => {
-            const disabled = !canChoose || (opt.id === 'custom' && !isAdmin && !project.googleChat?.hasWebhook);
+            const disabled = !canChoose;
             return (
               <label
                 key={opt.id}
@@ -105,33 +107,43 @@ export const ProjectNotificationsModal: React.FC<ProjectNotificationsModalProps>
           })}
         </div>
 
-        {/* Detalle del modo heredado */}
+        {/* Activado: espacio del cliente (o registrarlo si aún no existe) */}
         {mode === 'inherit_client' && (
-          <div className="rounded-2xl border border-[#e2e8f0] p-3 space-y-1.5 text-[11px]">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-[#64748b]">Espacio heredado</span>
-              {clientCfg?.hasWebhook ? <GoogleChatStatusBadge status={clientCfg.status} /> : <span className="text-[#94a3b8]">Sin configurar</span>}
+          clientCfg?.hasWebhook ? (
+            <div className="rounded-2xl border border-[#e2e8f0] p-3 space-y-1.5 text-[11px]">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[#64748b]">Espacio del cliente</span>
+                <GoogleChatStatusBadge status={clientCfg.status} />
+              </div>
+              <p className="font-bold text-[#0f172a]">{clientCfg.spaceName}</p>
+              <p className="flex items-start gap-1 text-[#64748b]">
+                <Info className="w-3 h-3 mt-0.5 shrink-0" />
+                Es el mismo espacio para todos los proyectos de {client?.name || project.clientName}. Se cambia en la ficha del cliente → Integraciones.
+              </p>
             </div>
-            <p className="font-bold text-[#0f172a]">{clientCfg?.hasWebhook ? clientCfg.spaceName : '—'}</p>
-            <p className="text-[#64748b]">Cliente: {client?.name || project.clientName}</p>
-            <p className="flex items-start gap-1 text-[#64748b]">
-              <Info className="w-3 h-3 mt-0.5 shrink-0" />
-              Esta configuración se administra desde la ficha del cliente (Integraciones).
-            </p>
-          </div>
-        )}
-
-        {/* Espacio propio del proyecto */}
-        {mode === 'custom' && (
-          <GoogleChatIntegrationCard
-            config={project.googleChat}
-            canManage={isAdmin}
-            showMask={isAdmin}
-            contextLabel="este proyecto"
-            previewProjectName={project.name}
-            userName={currentUser?.name || 'Sistema'}
-            onChange={(next) => onUpdateProject({ ...project, googleChat: next })}
-          />
+          ) : isAdmin && client && onUpdateClient ? (
+            <div className="space-y-2">
+              <p className="text-[11px] text-[#64748b]">
+                {client.name} aún no tiene espacio de Google Chat. Regístralo aquí: quedará en la ficha del cliente y servirá para todos sus proyectos.
+              </p>
+              <GoogleChatIntegrationCard
+                config={client.googleChat}
+                canManage
+                showMask
+                contextLabel={`los proyectos de ${client.name}`}
+                previewProjectName={project.name}
+                userName={currentUser?.name || 'Sistema'}
+                onChange={(next) => onUpdateClient({ ...client, googleChat: next ? { ...next, isDefaultForProjects: true } : null })}
+              />
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-[#fde68a] bg-[#fffbeb] p-3 text-[11px] text-[#92400e] flex items-start gap-1.5">
+              <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+              <span>
+                Quedará activo cuando un administrador del sistema registre el webhook de {client?.name || project.clientName} (ficha del cliente → Integraciones). Mientras tanto, las novedades quedan dentro de ECO.
+              </span>
+            </div>
+          )
         )}
 
         {!canChoose && (

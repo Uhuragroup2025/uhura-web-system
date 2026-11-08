@@ -13,7 +13,8 @@ import {
   buildSowHtml,
   getDefaultSowRisks,
   getDefaultSowGates,
-  renderPlaceholder
+  renderPlaceholder,
+  SOW_AI_CLAUSES
 } from './sowTemplates';
 import {
   FileText,
@@ -691,11 +692,13 @@ export const SOWModal: React.FC<SOWModalProps> = ({
                     7. Uso de Inteligencia Artificial y Tratamiento de Datos
                   </h2>
                   <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-2 text-[#334155] leading-relaxed">
+                    {SOW_AI_CLAUSES.map((c, i) => (
+                      <p key={c.title}>
+                        <strong>7.{i + 1}. {c.title}:</strong> {c.text}
+                      </p>
+                    ))}
                     <p>
-                      <strong>Confidencialidad en IA:</strong> UHURA garantiza que <strong>NO utilizará datos sensibles, secretos industriales ni información confidencial del CLIENTE para entrenar modelos públicos de IA</strong>. Toda interacción con herramientas de IA asistida se realiza bajo protocolos de anonimización y con curaduría y responsabilidad humana al 100%.
-                    </p>
-                    <p>
-                      <strong>Tratamiento de Datos (Ley 1581):</strong> El CLIENTE es el único "Responsable del Tratamiento" de los datos captados. UHURA actúa exclusivamente como "Encargado del Tratamiento" a nivel técnico.
+                      <strong>7.8. Tratamiento de datos (Ley 1581):</strong> El CLIENTE es el único "Responsable del Tratamiento" de los datos captados. UHURA actúa exclusivamente como "Encargado del Tratamiento" a nivel técnico.
                     </p>
                   </div>
                 </div>

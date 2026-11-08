@@ -534,6 +534,7 @@ Generador de la plantilla contractual técnica entre Uhura Group y el Cliente, e
 - **Dónde se abre:** New Business → oportunidad → SOW, y **Cliente → Proyectos de la cuenta → «Ver SOW»** (columna SOW; «—» si el proyecto no viene de una oportunidad).
 - **Qué hace Comercial:** revisa la «Vista documento final», completa o corrige los datos en **«Completar y ajustar»** y pulsa **«Copiar para Docs»** para pegarlo en un documento de Google Drive, donde lo ajusta si quiere y lo envía a firma del cliente. «Guardar SOW» conserva lo completado en ECO.
 - **Datos del acuerdo editables (se habían quedado sin campo):** NIT del cliente (precargado con la razón social elegida o la principal), orden de compra, supervisor del cliente y su cargo, representante legal del cliente con cédula y cargo, y supervisor de Uhura. Lo que falte aparece como «[COMPLETAR: …]» con el acceso «Completar ahora».
+- **Cláusula de uso de IA (revisada 07 Nov 2026):** declara que Uhura usa IA como apoyo en investigación, prototipado, diseño, redacción, desarrollo, pruebas y documentación, como parte de su metodología. Cubre: supervisión humana de todo lo entregado; confidencialidad (no se usan datos del cliente para entrenar modelos; versiones empresariales o anonimización; Ley 1581); propiedad intelectual (el cliente recibe los derechos al pagar, pero lo generado con IA puede no ser protegible por derecho de autor ni exclusivo, y Uhura conserva sus herramientas, plantillas y prompts); diligencia y límites de responsabilidad (no responde por insumos del cliente, usos fuera del alcance ni cambios en herramientas de terceros; responsabilidad total limitada al valor pagado); validación del cliente antes de publicar; y la opción de pedir trabajo sin IA mediante Orden de Cambio. Fuente única: `SOW_AI_CLAUSES` en `sowTemplates.ts` (la vista, la copia para Docs y el HTML dicen lo mismo). **Debe validarla el asesor legal de Uhura antes de usarla con clientes.**
 - **Secciones del documento:** 1. Antecedentes y objetivo · 2. Alcance y entregables · 3. Responsabilidades e insumos · 4. Pruebas (UAT) y silencio positivo · 5. Riesgos y mitigación · 6. Gates y control · 7. Uso de IA y datos · 8. Gestión de cambios · 9. Inversión y condiciones de pago · 10. Garantía técnica · Aceptación y firmas.
 
 ---
@@ -2022,15 +2023,15 @@ Mi Día deja de ser un dashboard de métricas decorativas para convertirse en el
 Objetivo: publicar en el espacio de Google Chat de cada cliente las novedades que requieren atención (asignación, solicitud de revisión, mención, devolución, aprobación, prioridad urgente), con mensajes breves y un enlace a la tarea. No se envían eventos de timer, cambios visuales ni actividad sin acción requerida. La notificación in-app sigue siendo la fuente principal.
 
 **Dónde se configura**
-- **Cliente → Integraciones → Google Chat:** integración predeterminada que heredan sus proyectos y fees. Muestra estado (`Pendiente de prueba` · `Conectado` · `Inactivo` · `Error`), espacio, si los proyectos la heredan, última prueba y su resultado, y quién hizo la última modificación.
-- **Proyecto → ⋮ → Notificaciones:** tres modos excluyentes: `Usar la integración del cliente` (por defecto) · `No enviar notificaciones a Google Chat` · `Usar un espacio diferente para este proyecto`. Muestra siempre el destino efectivo.
+- **Cliente → Integraciones → Google Chat:** el **único espacio** de Google Chat del cliente (un webhook por cliente). Muestra estado (`Pendiente de prueba` · `Conectado` · `Inactivo` · `Error`), espacio, cuántos proyectos lo tienen activado, última prueba y su resultado, y quién hizo la última modificación.
+- **Proyecto → ⋮ → Notificaciones (simplificado 07 Nov 2026):** solo dos opciones: **`Activar notificaciones`** (las novedades llegan al espacio del cliente) y **`No enviar notificaciones a Google Chat`** (**predeterminado**: los proyectos nuevos no envían hasta que alguien lo active). Si se activa y el cliente aún no tiene espacio, `system_admin` lo registra ahí mismo (queda guardado en el cliente y sirve para todos sus proyectos); los demás perfiles ven que falta y a quién pedírselo. Ya no existe un espacio propio por proyecto. Muestra siempre el destino efectivo.
 
 **Permisos**
 | Perfil | Cliente | Proyecto |
 |---|---|---|
-| `system_admin` | Registra, guarda y prueba, desactiva, reactiva, reemplaza y elimina. Ve la referencia enmascarada. | Elige cualquier modo y gestiona el webhook propio. |
+| `system_admin` | Registra, guarda y prueba, desactiva, reactiva, reemplaza y elimina. Ve la referencia enmascarada. | Activa o desactiva; si el cliente no tiene espacio, lo registra desde el proyecto. |
 | `executive` | Consulta estado, espacio, última prueba y última modificación. No ve URL ni máscara. | Consulta. |
-| `leader` | Sin acceso a la sección del cliente. | Consulta estado y espacio; puede elegir **heredar** o **no enviar** (no registra URLs). |
+| `leader` | Sin acceso a la sección del cliente. | Consulta estado y espacio; puede **activar** o **no enviar** (no registra URLs). |
 | Demás perfiles | Sin acceso. | Sin acceso. |
 
 **Acciones**
@@ -2040,11 +2041,10 @@ Objetivo: publicar en el espacio de Google Chat de cada cliente las novedades qu
 - *Eliminar:* borra la vinculación (requiere confirmación explícita); para volver a usar Google Chat se registra un webhook nuevo. Desactivar y eliminar son botones distintos.
 
 **Regla de resolución (precedencia)**
-1. Proyecto con webhook propio activo → se usa el del proyecto.
-2. Proyecto con Google Chat desactivado → no se envía.
-3. Proyecto que hereda → se usa el webhook **activo** del cliente marcado como predeterminado.
-4. Sin configuración válida → solo notificación in-app.
-Desactivar la integración del cliente detiene los proyectos que heredan; un proyecto con webhook propio sigue activo.
+1. Proyecto con Google Chat sin activar (predeterminado) → no se envía.
+2. Proyecto activado → se usa el webhook **activo** del cliente.
+3. Activado pero el cliente no tiene espacio, o está inactivo o con error → solo notificación in-app.
+Desactivar la integración del cliente detiene los envíos de todos sus proyectos activados.
 
 **Seguridad**
 - Tras guardar, la URL no se vuelve a mostrar: solo una referencia enmascarada (`••••••••••••aB92`).
