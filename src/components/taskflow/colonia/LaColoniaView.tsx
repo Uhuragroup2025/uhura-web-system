@@ -37,10 +37,7 @@ import {
   playTapSound
 } from './coloniaAudio';
 
-import buckyHoodieHappyImg from '../../../assets/images/eco/eco-thumbs-up.webp';
-import buckyFocusImg from '../../../assets/images/eco/eco-focus.webp';
-import buckyCelebratingImg from '../../../assets/images/eco/eco-celebrating.webp';
-import { ECO_EMOTION_IMAGES, mascotImage, useMascotSkin } from '../mascot/ecoMascot';
+import { mascotImage, useMascotSkin } from '../mascot/ecoMascot';
 
 import {
   Swords,
@@ -439,7 +436,7 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
           {/* Sticker de ECO flotante en la esquina inferior derecha (Fiel a Staging) */}
           <div className="fixed bottom-6 right-8 pointer-events-none z-30 hidden sm:block">
             <img
-              src={buckyHoodieHappyImg}
+              src={mascotImage('ok', mascotSkin)}
               alt="ECO Uhura"
               className="w-24 h-24 object-contain drop-shadow-xl"
             />
@@ -474,7 +471,7 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
           : nobodyPlayed
           ? 'Nadie ha jugado esta semana. ¡Estrena el ranking!'
           : '¿Jugamos una partida rápida? Son 15 segundos.';
-        const hostImg = pending ? ECO_EMOTION_IMAGES.surprised : outcome === 'won' ? ECO_EMOTION_IMAGES.celebrating : mascotImage('ok', mascotSkin);
+        const hostImg = mascotImage(pending ? 'surprised' : outcome === 'won' ? 'celebrating' : 'ok', mascotSkin);
         const sky =
           ambientTime === 'night'
             ? 'linear-gradient(180deg, #05010f 0%, #140733 45%, #2a0f5c 100%)'

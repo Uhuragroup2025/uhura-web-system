@@ -43,7 +43,7 @@ import { TeamLifeEventsModal } from './copilot/TeamLifeEventsModal';
 import { ActiveBreakModal } from './copilot/ActiveBreakModal';
 import { initialUsers, initialAbsenceEvents } from './mockData';
 import { Snowfall } from './seasonal/christmasMode';
-import { useMascotSkin, setMascotSkin, setSnowEnabled, mascotImage, ECO_EMOTION_IMAGES, EcoEmotion, MascotSkin, MASCOT_SKIN_LABEL, ambientMoodsFor, EcoAmbientMoodDef } from './mascot/ecoMascot';
+import { useMascotSkin, setMascotSkin, setSnowEnabled, mascotImage, EcoEmotion, MascotSkin, MASCOT_SKIN_LABEL, ambientMoodsFor, EcoAmbientMoodDef } from './mascot/ecoMascot';
 import { isScheduledForDay, makeTaskComparator, taskScheduleDate } from './auth/taskVisibility';
 import { getUserAccessLevel } from './auth/permissions';
 import { isBusinessDay } from './health/projectHealthEngine';
@@ -1388,7 +1388,7 @@ const FloatingBeaverCore: React.FC<FloatingBeaverCoreProps> = ({
                 title="Arrastra a ECO para moverlo • Clic para opciones"
               >
                 <img
-                  src={ECO_EMOTION_IMAGES.focus}
+                  src={mascotImage('focus', skin)}
                   alt="ECO en foco"
                   className={`w-auto ${getBeaverSizeClass()} object-contain drop-shadow-[0_12px_28px_rgba(0,0,0,0.55)] select-none pointer-events-none transition-all duration-300`}
                 />

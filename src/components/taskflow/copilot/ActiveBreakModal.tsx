@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Play, Pause, ChevronRight, ChevronLeft, Droplets, Eye, Activity, Smile, Sparkles } from 'lucide-react';
-import buckyCelebratingImg from '../../../assets/images/eco/eco-celebrating.webp';
-import buckyRestingImg from '../../../assets/images/eco/eco-coffee.webp';
+import { useMascotImage } from '../mascot/ecoMascot';
 
 interface ActiveBreakModalProps {
   isOpen: boolean;
@@ -106,6 +105,8 @@ export const ActiveBreakModal: React.FC<ActiveBreakModalProps> = ({ isOpen, onCl
   const completedRef = useRef(false);
 
   const currentExercise = EXERCISES_3MIN[currentStepIndex];
+  const buckyCelebratingImg = useMascotImage('celebrating');
+  const buckyRestingImg = useMascotImage('coffee');
 
   const playStepChime = () => {
     try {

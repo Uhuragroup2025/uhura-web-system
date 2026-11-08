@@ -49,14 +49,29 @@ export const MASCOT_SKIN_LABEL: Record<MascotSkin, string> = {
 };
 
 /**
- * Con la apariencia de temporada, los estados tranquilos (todo en orden, saludo, sin agenda)
- * usan el personaje de temporada. Las emociones que piden atención (sorpresa, preocupación,
- * tristeza, celebración, foco, café) conservan su imagen para que se sigan entendiendo.
+ * Con la apariencia de Navidad, ECO usa SOLO imágenes navideñas: nunca se cruza con el buzo
+ * morado. Cada emoción se lleva a la pose navideña más cercana; las que todavía no tienen
+ * versión navideña (sorprendido, preocupado, triste, en foco) usan la pose navideña base y el
+ * mensaje del globo explica el motivo.
  */
-const SEASONAL_EMOTIONS: EcoEmotion[] = ['ok', 'thinking'];
+const CHRISTMAS_IMAGES: Record<EcoEmotion, string> = {
+  ok: ecoChristmas,
+  thinking: ecoXmasHello,
+  celebrating: ecoXmasCheer,
+  coffee: ecoXmasCoffee,
+  focus: ecoChristmas,
+  surprised: ecoChristmas,
+  worried: ecoChristmas,
+  sad: ecoChristmas
+};
 export function mascotImage(emotion: EcoEmotion, skin: MascotSkin): string {
-  if (skin === 'christmas' && SEASONAL_EMOTIONS.includes(emotion)) return ECO_CHRISTMAS_IMAGE;
-  return ECO_EMOTION_IMAGES[emotion];
+  return skin === 'christmas' ? CHRISTMAS_IMAGES[emotion] : ECO_EMOTION_IMAGES[emotion];
+}
+
+/** Imagen de ECO para una emoción con la apariencia vigente de la organización. */
+export function useMascotImage(emotion: EcoEmotion): string {
+  const { skin } = useMascotSkin();
+  return mascotImage(emotion, skin);
 }
 
 // ── Moods de ambiente: rotan a lo largo del día cuando ECO está tranquilo ──
@@ -120,21 +135,35 @@ export function ambientMoodsFor(skin: MascotSkin): EcoAmbientMoodDef[] {
 const SKIN_KEY = 'eco_mascot_skin';
 const SNOW_KEY = 'eco_snow_off';
 const EVENT = 'eco:mascot-skin';
-export const DEFAULT_MASCOT_SKIN: MascotSkin = 'christmas';
+
+/**
+ * Temporada: noviembre y diciembre = Navidad; el resto del año = estándar (buzo morado).
+ * Si system_admin cambia la apariencia, el cambio vale solo para la temporada en curso:
+ * al empezar la siguiente (1 de noviembre o 1 de enero) vuelve el valor por defecto.
+ */
+export const isChristmasSeason = (d: Date = new Date()) => d.getMonth() >= 10;
+export const seasonalDefaultSkin = (d: Date = new Date()): MascotSkin => (isChristmasSeason(d) ? 'christmas' : 'standard');
+const seasonKey = (d: Date = new Date()) => `${isChristmasSeason(d) ? 'navidad' : 'regular'}-${d.getFullYear()}`;
+/** @deprecated se conserva por compatibilidad: hoy el valor por defecto depende de la fecha. */
+export const DEFAULT_MASCOT_SKIN: MascotSkin = seasonalDefaultSkin();
 
 const readSkin = (): MascotSkin => {
   try {
-    const v = localStorage.getItem(SKIN_KEY);
-    return v === 'standard' || v === 'christmas' ? v : DEFAULT_MASCOT_SKIN;
+    const raw = localStorage.getItem(SKIN_KEY);
+    if (raw && raw.startsWith('{')) {
+      const v = JSON.parse(raw) as { skin?: MascotSkin; season?: string };
+      if ((v.skin === 'christmas' || v.skin === 'standard') && v.season === seasonKey()) return v.skin;
+    }
   } catch {
-    return DEFAULT_MASCOT_SKIN;
+    /* sin almacenamiento */
   }
+  return seasonalDefaultSkin();
 };
 
 /** Solo system_admin debe llamar esto (la UI lo restringe; en producción, el backend). */
 export function setMascotSkin(skin: MascotSkin) {
   try {
-    localStorage.setItem(SKIN_KEY, skin);
+    localStorage.setItem(SKIN_KEY, JSON.stringify({ skin, season: seasonKey() }));
   } catch {
     /* sin almacenamiento */
   }

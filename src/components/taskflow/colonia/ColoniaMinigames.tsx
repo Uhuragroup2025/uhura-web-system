@@ -13,8 +13,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ColonyGameId, ColonyChallenge, WeeklyLeaderboardEntry, TeammateOption } from './types';
 import { UserItem } from '../types';
-import buckyCelebratingImg from '../../../assets/images/eco/eco-celebrating.webp';
-import buckyFocusImg from '../../../assets/images/eco/eco-focus.webp';
+import { useMascotImage } from '../mascot/ecoMascot';
 import {
   loadWeeklyLeaderboards,
   recordWeeklyScore,
@@ -250,6 +249,7 @@ const GameOverScreen: React.FC<GameOverScreenProps> = ({
   onChallengeCreated,
   onClaimAndClose
 }) => {
+  const buckyCelebratingImg = useMascotImage('celebrating');
   const [isChallenging, setIsChallenging] = useState(false);
   const [selectedTeammate, setSelectedTeammate] = useState<TeammateOption | null>(null);
   const [challengeSentSuccess, setChallengeSentSuccess] = useState<string | null>(null);

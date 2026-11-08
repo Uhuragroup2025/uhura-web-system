@@ -725,7 +725,9 @@ Especificación funcional en `ORBIT_PRODUCT_STATUS.md` §11.5 y §11.5.1.
 
 ## 21. Mascota ECO: apariencia de temporada (07 Nov 2026)
 Especificación funcional en `ORBIT_PRODUCT_STATUS.md` (Módulo 18, reglas de la mascota).
-* Configuración de organización `mascot_skin` (`christmas` | `standard`), editable **solo por `system_admin`**; lectura para todos los usuarios autenticados. En el prototipo vive en el navegador (`eco_mascot_skin`); en producción debe persistirse en backend y quedar en bitácora (quién y cuándo la cambió).
+* **Valor por defecto según la fecha:** noviembre y diciembre = `christmas`; enero a octubre = `standard`. No hace falta que nadie lo active.
+* Configuración de organización `mascot_skin` (`christmas` | `standard`) como **cambio manual para la temporada en curso**, editable **solo por `system_admin`**; lectura para todos los usuarios autenticados. Se guarda junto con la temporada (`navidad-2026` / `regular-2027`) y deja de aplicar al empezar la siguiente (1 de noviembre o 1 de enero). En el prototipo vive en el navegador (`eco_mascot_skin`); en producción debe persistirse en backend y quedar en bitácora (quién y cuándo la cambió).
+* Imágenes: las 13 de `src/assets/images/eco/` (8 estándar + 5 navideñas `eco-christmas` y `eco-xmas-*`) van en el build; no se cargan desde backend.
 * Preferencias personales (no requieren backend o pueden ir en el perfil): mascota apagada, sonido y nieve.
 * Las emociones de la mascota se calculan en el frontend con las tareas propias del usuario (§15.1); no requieren endpoints nuevos.
 * **Moods de ambiente (cafecito, hola, crack, agua) y la duración de las emociones:** son solo frontend (imágenes y frases en `mascot/ecoMascot.ts`, rotación aleatoria por persona en el navegador). **No requieren backend ni endpoints.** Producción solo debe incluir las imágenes `eco-xmas-*.webp` en el build. Si a futuro Uhura quiere editar las frases sin desplegar, se haría como configuración de organización (igual que `mascot_skin`); hoy no es necesario.
