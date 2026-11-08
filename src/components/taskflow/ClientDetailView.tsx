@@ -3,6 +3,7 @@ import { ClientProfile, ClientProjectHistoryItem, ClientTaxEntity, ClientContact
 import { GoogleChatIntegrationCard } from './integrations/GoogleChatIntegrationCard';
 import { canManageGoogleChat, canViewClientIntegrations, getProjectChatMode } from './integrations/googleChat';
 import { ClientRadarChart } from './ClientRadarChart';
+import { computeClientMetrics, HEALTH_STYLE, DIM_DOT } from './clientMetrics';
 import {
   Building2,
   ChevronRight,
@@ -62,31 +63,9 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
   const [portalActive, setPortalActive] = useState(client.portalActive);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Dynamic projects resolution: Combines stored history with real projects in projectsList
-  const effectiveProjects = useMemo(() => {
-    const list: ClientProjectHistoryItem[] = [...(client.projectsHistory || [])];
-    if (projects && projects.length > 0) {
-      projects.forEach((p) => {
-        const isMatch =
-          p.clientId === client.id ||
-          (p.clientName && p.clientName.toLowerCase() === client.name.toLowerCase()) ||
-          (p.brand && p.brand.toLowerCase() === client.name.toLowerCase());
-        if (isMatch && !list.some((existing) => existing.id === p.id || existing.name === p.name)) {
-          list.unshift({
-            id: p.id,
-            name: p.name,
-            brand: p.brand || client.name,
-            tag: p.projectType === 'fee_monthly' ? 'FEE' : 'PRJ',
-            status: p.status === 'Archivado' ? 'Cerrado' : 'Activo',
-            quotedValueCOP: p.soldValue ? `$${p.soldValue.toLocaleString('es-CO')} ${p.soldCurrency || 'COP'}` : 'Por definir',
-            realMarginPercent: null,
-            trafficLight: 'verde'
-          });
-        }
-      });
-    }
-    return list;
-  }, [client.projectsHistory, client.id, client.name, projects]);
+  // Métricas con datos reales (clientMetrics.ts): nunca se inventan valores.
+  const metrics = useMemo(() => computeClientMetrics(client, projects), [client, projects]);
+  const effectiveProjects = metrics.rows;
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -104,49 +83,6 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
     }
     showToast(nextState ? `Acceso a portal habilitado para ${client.name}` : `Acceso a portal deshabilitado`);
   };
-
-  // Detailed Health Breakdown Dimensions
-  const getHealthDimensions = () => {
-    const margin = client.averageMarginPercent ?? 0;
-    const rentStatus = margin >= 35 ? 'verde' : margin >= 25 ? 'amarillo' : 'rojo';
-    const rentNote =
-      margin >= 35
-        ? `Margen operativo promedio ${margin}% (supera meta >30%)`
-        : margin >= 25
-        ? `Margen operativo ${margin}% (cercano al piso operativo 25%)`
-        : `Margen bajo: ${margin}% (riesgo financiero)`;
-
-    const carteraScore = client.behavior?.cartera ?? 90;
-    const isOverdue = client.receivableStatus?.toLowerCase().includes('mora') || client.receivableStatus?.toLowerCase().includes('cobro');
-    const cartStatus = carteraScore >= 80 && !isOverdue ? 'verde' : carteraScore >= 60 ? 'amarillo' : 'rojo';
-    const cartNote =
-      cartStatus === 'verde'
-        ? `Facturación al día · Sin facturas vencidas (${client.billedInvoicesCount || 0} facturas emitidas)`
-        : `Cartera en mora: ${client.receivableCOP} pendiente de pago`;
-
-    const cumplScore = client.behavior?.cumplimiento ?? 90;
-    const cumplStatus = cumplScore >= 85 ? 'verde' : cumplScore >= 70 ? 'amarillo' : 'rojo';
-    const cumplNote =
-      cumplScore >= 85
-        ? `${cumplScore}% de entregas a tiempo en proyectos y entregables`
-        : `${cumplScore}% de cumplimiento · Alerta de desvíos en horas`;
-
-    const recScore = client.behavior?.relacion ?? client.behavior?.recurrencia ?? 80;
-    const recStatus = recScore >= 80 ? 'verde' : recScore >= 60 ? 'amarillo' : 'rojo';
-    const recNote =
-      recScore >= 80
-        ? `Relación sólida con la cuenta · Operación continua`
-        : `Relación en desarrollo · Proyectos por demanda puntual`;
-
-    return {
-      rentabilidad: { status: rentStatus, title: 'Rentabilidad', note: rentNote, score: `${margin}%` },
-      cartera: { status: cartStatus, title: 'Cartera & Cobranza', note: cartNote, score: `${carteraScore}/100` },
-      cumplimiento: { status: cumplStatus, title: 'Cumplimiento & Plazos', note: cumplNote, score: `${cumplScore}%` },
-      relacion: { status: recStatus, title: 'Recurrencia / Relación', note: recNote, score: `${recScore}%` }
-    };
-  };
-
-  const healthDims = getHealthDimensions();
 
   // Primary tax entity & contact
   const primaryTax = client.taxEntities?.find((t) => t.isPrimary) || client.taxEntities?.[0];
@@ -221,16 +157,11 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
             )}
             <span>•</span>
             <span
-              className={`inline-flex items-center gap-1.5 font-bold ${
-                client.healthStatus === 'Saludable' ? 'text-[#16a34a]' : 'text-[#d97706]'
-              }`}
+              className={`inline-flex items-center gap-1.5 font-bold ${HEALTH_STYLE[metrics.health].text}`}
+              title="Salud calculada con las dimensiones que tienen datos (rentabilidad, cartera, cumplimiento y recurrencia)."
             >
-              <span
-                className={`w-2 h-2 rounded-full ${
-                  client.healthStatus === 'Saludable' ? 'bg-[#10b981]' : 'bg-[#f59e0b]'
-                }`}
-              />
-              {client.healthStatus}
+              <span className={`w-2 h-2 rounded-full ${HEALTH_STYLE[metrics.health].dot}`} />
+              {metrics.health === 'Sin datos' ? 'Salud: sin datos suficientes' : metrics.health}
             </span>
           </div>
         </div>
@@ -282,62 +213,27 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
         </div>
       </div>
 
-      {/* 4 Top KPI Metric Cards */}
+      {/* 4 KPIs calculados con datos reales (clientMetrics.ts) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: PROYECTOS */}
         <div className="p-5 rounded-2xl bg-white border border-[#e2e8f0] shadow-xs space-y-1">
-          <span className="text-[11px] font-bold tracking-wider uppercase text-[#64748b]">
-            PROYECTOS
-          </span>
-          <div className="text-3xl font-extrabold text-[#0f172a]">
-            {client.projectsCount || 0}
-          </div>
-          <p className="text-xs text-[#64748b]">
-            {client.activeProjectsCount || 0} activos • {client.closedProjectsCount || 0} cerrados
-          </p>
+          <span className="text-[11px] font-bold tracking-wider uppercase text-[#64748b]">Proyectos</span>
+          <div className="text-2xl sm:text-3xl font-extrabold text-[#0f172a]">{metrics.total}</div>
+          <p className="text-xs text-[#64748b]">{metrics.active} activos • {metrics.closed} cerrados</p>
         </div>
-
-        {/* Card 2: MARGEN PROMEDIO */}
         <div className="p-5 rounded-2xl bg-white border border-[#e2e8f0] shadow-xs space-y-1">
-          <span className="text-[11px] font-bold tracking-wider uppercase text-[#64748b]">
-            MARGEN PROMEDIO
-          </span>
-          <div className="text-2xl sm:text-3xl font-extrabold text-[#0f172a]">
-            {client.averageMarginPercent !== null && client.averageMarginPercent !== undefined
-              ? `${client.averageMarginPercent}%`
-              : 'Sin proyectos'}
-          </div>
-          <p className="text-xs text-[#64748b]">
-            {client.averageMarginPercent !== null && client.averageMarginPercent !== undefined
-              ? 'Margen operativo consolidado'
-              : 'Sin histórico cerrado'}
-          </p>
+          <span className="text-[11px] font-bold tracking-wider uppercase text-[#64748b]">Valor vendido</span>
+          <div className="text-2xl sm:text-3xl font-extrabold text-[#0f172a]">{metrics.soldValueCOP > 0 ? '$' + metrics.soldValueCOP.toLocaleString('es-CO') : '—'}</div>
+          <p className="text-xs text-[#64748b]">{metrics.soldProjectsCount > 0 ? `COP en ${metrics.soldProjectsCount} proyecto${metrics.soldProjectsCount === 1 ? '' : 's'} de ECO` : 'Sin valor vendido registrado'}</p>
         </div>
-
-        {/* Card 3: FACTURADO */}
         <div className="p-5 rounded-2xl bg-white border border-[#e2e8f0] shadow-xs space-y-1">
-          <span className="text-[11px] font-bold tracking-wider uppercase text-[#64748b]">
-            FACTURADO
-          </span>
-          <div className="text-2xl sm:text-3xl font-extrabold text-[#0f172a]">
-            {client.billedCOP || '$0'}
-          </div>
-          <p className="text-xs text-[#64748b]">
-            {client.billedInvoicesCount || 0} facturas emitidas
-          </p>
+          <span className="text-[11px] font-bold tracking-wider uppercase text-[#64748b]">Margen promedio</span>
+          <div className="text-2xl sm:text-3xl font-extrabold text-[#0f172a]">{metrics.averageMargin !== null ? `${metrics.averageMargin} %` : '—'}</div>
+          <p className="text-xs text-[#64748b]">{metrics.averageMargin !== null ? 'De los proyectos cerrados' : 'Se calcula al cerrar proyectos'}</p>
         </div>
-
-        {/* Card 4: POR COBRAR */}
         <div className="p-5 rounded-2xl bg-white border border-[#e2e8f0] shadow-xs space-y-1">
-          <span className="text-[11px] font-bold tracking-wider uppercase text-[#64748b]">
-            POR COBRAR
-          </span>
-          <div className="text-2xl sm:text-3xl font-extrabold text-[#0f172a]">
-            {client.receivableCOP || '$0'}
-          </div>
-          <p className="text-xs text-[#64748b]">
-            Estado: <strong className="text-[#0f172a]">{client.receivableStatus || 'al día'}</strong>
-          </p>
+          <span className="text-[11px] font-bold tracking-wider uppercase text-[#64748b]">Facturación y cartera</span>
+          <div className="text-2xl sm:text-3xl font-extrabold text-[#0f172a]">—</div>
+          <p className="text-xs text-[#64748b]">Pendiente de la integración con facturación (Alegra)</p>
         </div>
       </div>
 
@@ -526,77 +422,18 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-          {/* Dimension 1: Rentabilidad */}
-          <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-1.5">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-[#334155]">{healthDims.rentabilidad.title}</span>
-              <span
-                className={`w-2.5 h-2.5 rounded-full ${
-                  healthDims.rentabilidad.status === 'verde'
-                    ? 'bg-[#10b981]'
-                    : healthDims.rentabilidad.status === 'amarillo'
-                    ? 'bg-[#f59e0b]'
-                    : 'bg-[#ef4444]'
-                }`}
-              />
+          {metrics.dims.map((d) => (
+            <div key={d.key} className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-bold text-[#334155]">{d.title}</span>
+                <span className="flex items-center gap-1.5">
+                  {d.score !== null && <span className="font-mono text-[11px] text-[#475569]">{d.score}</span>}
+                  <span className={`w-2.5 h-2.5 rounded-full ${DIM_DOT[d.status]}`} aria-label={d.status === 'sin_datos' ? 'Sin datos' : d.status} />
+                </span>
+              </div>
+              <p className="text-[11px] text-[#64748b] leading-relaxed">{d.note}</p>
             </div>
-            <p className="text-[11px] text-[#64748b] leading-relaxed">
-              {healthDims.rentabilidad.note}
-            </p>
-          </div>
-
-          {/* Dimension 2: Cartera */}
-          <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-1.5">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-[#334155]">{healthDims.cartera.title}</span>
-              <span
-                className={`w-2.5 h-2.5 rounded-full ${
-                  healthDims.cartera.status === 'verde'
-                    ? 'bg-[#10b981]'
-                    : 'bg-[#ef4444]'
-                }`}
-              />
-            </div>
-            <p className="text-[11px] text-[#64748b] leading-relaxed">
-              {healthDims.cartera.note}
-            </p>
-          </div>
-
-          {/* Dimension 3: Cumplimiento */}
-          <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-1.5">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-[#334155]">{healthDims.cumplimiento.title}</span>
-              <span
-                className={`w-2.5 h-2.5 rounded-full ${
-                  healthDims.cumplimiento.status === 'verde'
-                    ? 'bg-[#10b981]'
-                    : healthDims.cumplimiento.status === 'amarillo'
-                    ? 'bg-[#f59e0b]'
-                    : 'bg-[#ef4444]'
-                }`}
-              />
-            </div>
-            <p className="text-[11px] text-[#64748b] leading-relaxed">
-              {healthDims.cumplimiento.note}
-            </p>
-          </div>
-
-          {/* Dimension 4: Relación */}
-          <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-1.5">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-[#334155]">{healthDims.relacion.title}</span>
-              <span
-                className={`w-2.5 h-2.5 rounded-full ${
-                  healthDims.relacion.status === 'verde'
-                    ? 'bg-[#10b981]'
-                    : 'bg-[#f59e0b]'
-                }`}
-              />
-            </div>
-            <p className="text-[11px] text-[#64748b] leading-relaxed">
-              {healthDims.relacion.note}
-            </p>
-          </div>
+          ))}
         </div>
       </div>
 
@@ -610,15 +447,27 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
               <p className="text-[11px] text-[#64748b]">4 Dimensiones clave</p>
             </div>
             <span className="text-xs font-extrabold px-2.5 py-1 rounded-full bg-[#f2ecfb] text-[#501f92] border border-[#8a4dff]/20">
-              Salud: {client.behavior ? Math.round((client.behavior.rentabilidad + (client.behavior.cartera ?? 90) + client.behavior.cumplimiento + (client.behavior.relacion ?? client.behavior.recurrencia ?? 80)) / 4) : 90}/100
+              Salud: {metrics.healthScore !== null ? `${metrics.healthScore}/100` : 'sin datos'}
             </span>
           </div>
 
           <div className="flex-1 flex items-center justify-center py-2">
-            {client.behavior ? (
-              <ClientRadarChart scores={client.behavior} size={280} />
+            {metrics.dims.every((d) => d.score !== null) ? (
+              <ClientRadarChart
+                scores={{
+                  rentabilidad: metrics.dims[0].score as number,
+                  cartera: metrics.dims[1].score as number,
+                  cumplimiento: metrics.dims[2].score as number,
+                  relacion: metrics.dims[3].score as number,
+                  recurrencia: metrics.dims[3].score as number
+                }}
+                size={280}
+              />
             ) : (
-              <div className="text-center text-[#64748b] py-12 text-xs">Sin histórico suficiente para radar</div>
+              <div className="text-center text-[#64748b] py-12 text-xs px-4">
+                El radar aparece cuando las 4 dimensiones tienen datos. Hoy faltan:{' '}
+                {metrics.dims.filter((d) => d.score === null).map((d) => d.title.toLowerCase()).join(', ')}.
+              </div>
             )}
           </div>
 
@@ -802,16 +651,16 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
                     {/* Semáforo */}
                     <td className="py-3.5 px-3 text-center">
                       <div className="flex items-center justify-center">
-                        <span
-                          className={`w-3 h-3 rounded-full ${
-                            prj.trafficLight === 'verde'
-                              ? 'bg-[#10b981] shadow-xs'
-                              : prj.trafficLight === 'amarillo'
-                              ? 'bg-[#f59e0b] shadow-xs'
-                              : 'bg-[#ef4444] shadow-xs'
-                          }`}
-                          title={`Estado: ${prj.trafficLight}`}
-                        />
+                        {prj.trafficLight ? (
+                          <span
+                            className={`w-3 h-3 rounded-full shadow-xs ${
+                              prj.trafficLight === 'verde' ? 'bg-[#10b981]' : prj.trafficLight === 'amarillo' ? 'bg-[#f59e0b]' : 'bg-[#ef4444]'
+                            }`}
+                            title={`Salud del proyecto: ${prj.trafficLight}`}
+                          />
+                        ) : (
+                          <span className="text-[11px] text-[#94a3b8]" title="Sin evaluación de salud todavía">—</span>
+                        )}
                       </div>
                     </td>
                   </tr>

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { computeClientMetrics, HEALTH_STYLE, type AccountHealth } from './clientMetrics';
 import { ClientProfile, ClientStatus, UserItem, ProjectSummaryItem } from './types';
 import { ClientDetailView } from './ClientDetailView';
 import { EditClientModal } from './EditClientModal';
@@ -49,7 +50,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   const [selectedClientId, setSelectedClientId] = useState<string | null>(initialSelectedClientId);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | ClientStatus>('all');
-  const [filterHealth, setFilterHealth] = useState<'all' | 'Saludable' | 'En Riesgo'>('all');
+  const [filterHealth, setFilterHealth] = useState<'all' | AccountHealth>('all');
   const [showArchivedList, setShowArchivedList] = useState(false);
 
   // Card action menu state
@@ -165,8 +166,11 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   const activeClients = clients.filter((c) => (c.status || 'active') === 'active');
   const pausedClients = clients.filter((c) => c.status === 'paused');
   const archivedClients = clients.filter((c) => c.status === 'archived');
-  const totalProjects = clients.reduce((acc, c) => acc + (c.projectsCount || 0), 0);
-  const atRiskCount = clients.filter((c) => c.healthStatus === 'En Riesgo').length;
+  // Métricas reales por cliente (clientMetrics.ts): mismas cifras que la ficha, sin inventar.
+  const metricsById = new Map(clients.map((c) => [c.id, computeClientMetrics(c, projects)]));
+  const metricsOf = (c: ClientProfile) => metricsById.get(c.id) || computeClientMetrics(c, projects);
+  const totalProjects = clients.reduce((acc, c) => acc + metricsOf(c).total, 0);
+  const atRiskCount = clients.filter((c) => metricsOf(c).health === 'En riesgo').length;
 
   // Filter clients
   const filterClientsList = (list: ClientProfile[]) =>
@@ -183,7 +187,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
         c.commercialInfo?.brands?.some((b) => b.toLowerCase().includes(searchQuery.toLowerCase()));
 
       const matchesStatus = filterStatus === 'all' || (c.status || 'active') === filterStatus;
-      const matchesHealth = filterHealth === 'all' || c.healthStatus === filterHealth;
+      const matchesHealth = filterHealth === 'all' || metricsOf(c).health === filterHealth;
 
       return matchesSearch && matchesStatus && matchesHealth;
     });
@@ -274,7 +278,9 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
           >
             <option value="all">Salud: Todas</option>
             <option value="Saludable">Saludables</option>
-            <option value="En Riesgo">En riesgo</option>
+            <option value="Atención">Atención</option>
+            <option value="En riesgo">En riesgo</option>
+            <option value="Sin datos">Sin datos</option>
           </select>
 
           {(searchQuery || filterStatus !== 'all' || filterHealth !== 'all') && (
@@ -335,17 +341,9 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                         </span>
                         <span className="text-[#cbd5e1]">·</span>
                         <span className="flex items-center gap-1">
-                          <span
-                            className={`w-1.5 h-1.5 rounded-full ${
-                              cli.healthStatus === 'Saludable' ? 'bg-[#10b981]' : 'bg-[#f59e0b]'
-                            }`}
-                          />
-                          <span
-                            className={
-                              cli.healthStatus === 'Saludable' ? 'text-[#16a34a]' : 'text-[#d97706]'
-                            }
-                          >
-                            {cli.healthStatus}
+                          <span className={`w-1.5 h-1.5 rounded-full ${HEALTH_STYLE[metricsOf(cli).health].dot}`} />
+                          <span className={HEALTH_STYLE[metricsOf(cli).health].text}>
+                            {metricsOf(cli).health === 'Sin datos' ? 'Salud sin datos' : metricsOf(cli).health}
                           </span>
                         </span>
                       </div>
@@ -433,10 +431,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                         {primaryContact ? primaryContact.name : (cli.commercialInfo?.contactName || 'Sin contacto')}
                       </span>
                       {(() => {
-                        const matchedCount = projects.filter(
-                          (p) => p.clientId === cli.id || (p.clientName && p.clientName.toLowerCase() === cli.name.toLowerCase())
-                        ).length;
-                        const totalCount = Math.max(matchedCount, cli.projectsHistory?.length || 0, cli.projectsCount || 0);
+                        const totalCount = metricsOf(cli).total;
                         return (
                           <span className="text-[11px] text-[#64748b] font-semibold shrink-0">
                             {totalCount} {totalCount === 1 ? 'proyecto' : 'proyectos'}
@@ -470,29 +465,25 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                   {isCommercialOrAdmin ? (
                     <>
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] text-[#64748b] uppercase font-bold">Facturado</span>
-                        <span className="font-bold text-[#501f92]">{cli.billedCOP || '$0'}</span>
+                        <span className="text-[10px] text-[#64748b] uppercase font-bold">Vendido</span>
+                        <span className="font-bold text-[#501f92]">
+                          {metricsOf(cli).soldValueCOP > 0 ? '$' + metricsOf(cli).soldValueCOP.toLocaleString('es-CO') : '—'}
+                        </span>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <span className="text-[10px] text-[#64748b] uppercase font-bold">Margen</span>
                         <span className="font-bold text-[#0f172a]">
-                          {cli.averageMarginPercent !== null && cli.averageMarginPercent !== undefined
-                            ? `${cli.averageMarginPercent}%`
-                            : '—'}
+                          {metricsOf(cli).averageMargin !== null ? `${metricsOf(cli).averageMargin} %` : '—'}
                         </span>
                       </div>
                     </>
                   ) : (
                     <>
                       <span className="text-[11px] text-[#475569] font-medium">
-                        {cli.projectsCount || 0} proyectos en cartera
+                        {metricsOf(cli).active} {metricsOf(cli).active === 1 ? 'proyecto activo' : 'proyectos activos'}
                       </span>
-                      <span
-                        className={`text-[11px] font-bold ${
-                          cli.healthStatus === 'Saludable' ? 'text-emerald-700' : 'text-amber-700'
-                        }`}
-                      >
-                        {cli.healthStatus === 'Saludable' ? 'Al día' : '1 en riesgo'}
+                      <span className={`text-[11px] font-bold ${HEALTH_STYLE[metricsOf(cli).health].text}`}>
+                        {metricsOf(cli).health === 'Sin datos' ? 'Salud sin datos' : metricsOf(cli).health}
                       </span>
                     </>
                   )}

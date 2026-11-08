@@ -816,3 +816,12 @@ Las notificaciones in-app siguen siendo la fuente principal; el correo y Google 
 * Credenciales y webhooks protegidos: nunca en tickets ni documentación abierta. Pruebas controladas para no notificar al equipo por error.
 * HubSpot: pendiente de credenciales y autorizaciones de Ana (§12.4 cubre la operación manual mientras tanto).
 
+---
+
+## 27. Métricas de la ficha del cliente (07 Nov 2026)
+Especificación en `ORBIT_PRODUCT_STATUS.md` §9.4; lógica de referencia en `src/components/taskflow/clientMetrics.ts`.
+* **Todo calculado, nada fijo:** proyectos (total, activos, cerrados), valor vendido (suma de `sold_value_cop`), margen promedio (proyectos cerrados con margen real), salud por dimensión y salud general. No persistir `projects_count`, `average_margin_percent`, `billed_cop`, `receivable_cop`, `health_status` ni `behavior` como valores editables; si se guardan, que sea como caché recalculada.
+* **Facturado y por cobrar:** solo cuando exista la integración con Alegra (§ Módulo 10). Mientras tanto la API devuelve `null` y la UI muestra «Pendiente de la integración con facturación».
+* **Salud general:** requiere al menos 2 dimensiones con datos; si no, `null` («Sin datos suficientes»). Mismo cálculo para la ficha y la lista de clientes.
+* Endpoint sugerido: `GET /api/clients/{id}/metrics` y, para la lista, las mismas métricas resumidas en `GET /api/clients`.
+

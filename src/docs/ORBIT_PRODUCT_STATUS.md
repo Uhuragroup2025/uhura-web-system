@@ -580,8 +580,9 @@ Conforme a las definiciones acordadas para la UAT 2 (Ticket #132 y rama `feat/hu
 #### 9.1 Propósito
 Entidad que representa la cuenta comercial, operativa y de marca sombrilla con la que trabaja Uhura Group.
 - **Referencias de Código:**
-  - **Vista Principal de Clientes:** [`src/components/taskflow/clients/ClientsView.tsx`](../components/taskflow/clients/ClientsView.tsx)
-  - **Modal Nuevo Cliente:** [`src/components/taskflow/clients/NewClientModal.tsx`](../components/taskflow/clients/NewClientModal.tsx)
+  - **Vista Principal de Clientes:** [`src/components/taskflow/ClientsView.tsx`](../components/taskflow/ClientsView.tsx) · **Ficha:** [`ClientDetailView.tsx`](../components/taskflow/ClientDetailView.tsx)
+  - **Modal Nuevo Cliente:** [`src/components/taskflow/CreateClientModal.tsx`](../components/taskflow/CreateClientModal.tsx)
+  - **Métricas de la cuenta:** [`src/components/taskflow/clientMetrics.ts`](../components/taskflow/clientMetrics.ts)
   - **Tipos de Dominio:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`ClientProfile`, `ClientContact`, `ClientTaxEntity`)
 
 #### 9.2 Entidades y Campos Principales
@@ -614,6 +615,26 @@ Entidad que representa la cuenta comercial, operativa y de marca sombrilla con l
    - **HubSpot:** Fuente de verdad del estado comercial (empresas, contactos, pipeline y cierre de deals).
    - **Alegra:** Fuente de verdad fiscal y tributaria (terceros, NIT/RUT validado, facturas electrónicas e impuestos).
    - **ECO:** Centro de gravedad operativo que preserva la trazabilidad mediante identificadores externos (`hubspotDealId`, `alegraContactId`). Los cambios o bajas en los sistemas fuente se reflejarán bajo reglas de sincronización auditadas sin alterar el histórico de ejecución.
+
+#### 9.4 Ficha del cliente: de dónde sale cada dato (revisado 07 Nov 2026)
+Regla: **nada se inventa**. Si no hay datos, la ficha dice «—» o «Sin datos» y explica por qué. La lista de Clientes usa el mismo cálculo, así que ficha y lista siempre coinciden.
+
+| Módulo | Fuente |
+|---|---|
+| Encabezado (estado, NIT, responsable) | Datos del cliente; se editan en «Editar cuenta». |
+| Proyectos (total · activos · cerrados) | Proyectos de ECO del cliente + historial guardado, sin duplicar. Cerrado = con registro de cierre (§11.7), cerrado, completado o archivado. |
+| Valor vendido | Suma del valor vendido en COP de sus proyectos de ECO. Proyectos en USD no se suman (no se convierte). |
+| Margen promedio | Promedio del margen real de los proyectos cerrados que lo tengan. Sin cierres con margen: «—». |
+| Facturación y cartera | «Pendiente de la integración con facturación (Alegra)». ECO no inventa facturado ni por cobrar. |
+| Razones sociales y Contactos | Captura manual («Gestionar NITs» / «Gestionar contactos»). |
+| Integraciones | Google Chat; solo `system_admin` (gestiona) y `executive` (consulta). Otros perfiles no ven esta sección. |
+| Salud de la cuenta (4 dimensiones) | **Rentabilidad:** margen promedio (≥ 35 % verde, ≥ 25 % amarillo, menor rojo). **Cartera:** sin datos hasta Alegra. **Cumplimiento:** % de proyectos cerrados entregados a tiempo (desvío ≤ 0 días hábiles); si aún no hay cierres, % de proyectos activos con salud «Saludable» (≥ 85 % verde, ≥ 70 % amarillo). **Recurrencia:** fee activo o 3+ proyectos = verde; 1–2 proyectos = amarillo. |
+| Salud general | Se califica solo con **al menos 2 dimensiones con datos**: cualquier rojo = «En riesgo», cualquier amarillo = «Atención», si no «Saludable». Con menos de 2: «Salud: sin datos suficientes». |
+| Radar | Aparece cuando las 4 dimensiones tienen datos; si no, dice cuáles faltan. |
+| Marcas y Notas | Captura manual en la edición del cliente. |
+| Tabla de proyectos | Estado real del proyecto; semáforo = salud calculada del proyecto (Saludable/Atención/Riesgo) o «—» si aún no tiene evaluación; margen real solo al cerrar; columna SOW para proyectos que vienen de una oportunidad (§7.4). |
+
+Los campos guardados `projectsCount`, `averageMarginPercent`, `billedCOP`, `receivableCOP`, `healthStatus` y `behavior` del cliente **ya no se muestran**: todo se calcula. En producción no deben persistirse como valores fijos.
 
 ---
 
