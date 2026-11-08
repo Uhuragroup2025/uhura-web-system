@@ -2,6 +2,8 @@
 
 > **Nombre del producto:** **ECO** — *Espacio de Creación y Operaciones* (antes «Orbit», renombrado en noviembre de 2026). Los identificadores técnicos (`OrbitAccessLevel`, `CanonicalOrbitAccessLevel`, nombres de archivo como `ORBIT_PRODUCT_STATUS.md`) se conservan para no romper contratos de código ni enlaces.
 
+> **Para Indunova — empezar por [§8.0 Reconciliación con producción y guía de entrega](#80-reconciliación-con-producción-y-guía-de-entrega-07-nov-2026--leer-primero):** qué ya está en producción (#132–#147) y no se rehace, y qué es nuevo en esta entrega.
+>
 > **Documento:** Especificación Funcional Maestra para Portabilidad, Backend y Modelo de Datos
 > **Destinatario Técnico Principal:** Indunova (Backend Django REST Framework / PostgreSQL) y Equipo de Producto Uhura Group
 > **Fecha de Actualización:** 07 de noviembre de 2026 (cronograma al «Iniciar proyecto», rondas de ajuste editables, equipo derivado de tareas, hallazgos E2E §10.2.3, cierre de proyecto Módulo 11 §11.7, visibilidad de tareas Módulo 17 §17.5, arranque en producción §9.4, ECO como PWA §9.5, integraciones Google Chat §11.8 y Google Calendar §11.5.1, mascota ECO Módulo 18)
@@ -1052,6 +1054,7 @@ Mi Día puede mostrar de forma discreta y no invasiva:
 - **Tareas = todo, ordenado por fecha.** Primero las vencidas, luego las urgentes con fecha hoy o mañana y después el resto por fecha más cercana.
 - **Mis prioridades = solo lo que me pertenece.** En «Qué tengo que hacer hoy» y en «Mis tareas» aparecen únicamente las tareas donde la persona es responsable de ejecución (asignada o colaboradora) y las que le toca revisar. Nunca tareas de otras personas, aunque compartan rol, área o primer nombre.
 - **Seguidores, sin la misma urgencia.** Quien está como seguidor para revisar o estar al tanto ve la tarea en **«Siguiendo»** (bloque plegado en Mi Día y pestaña en Tareas). No cuenta como pendiente, no suma a su carga ni a la bandeja de atención.
+- **Mi Día es personal para todos los perfiles (#147, en producción):** `system_admin`, `administrative`, `commercial` y `client_relationship` ven en la atención solo lo que ejecutan o lideran; solo `executive` conserva las excepciones de toda la organización y `leader` las de su equipo. Las tareas propias **urgentes, que inician hoy o vencen hoy** van de primeras en «¿Qué requiere mi atención?» (#146).
 - **Comercial y líder: lo de sus proyectos permea su día.** Insumos y dependencias del cliente, bloqueos, desvíos de horas y retrabajos llegan a la bandeja «¿Qué requiere mi atención?» (parte superior de Mi Día) solo de los proyectos de los que la persona es responsable (líder del proyecto o responsable de cuenta). Dirección y administración del sistema ven en esa misma bandeja las excepciones de todos los proyectos (además del semáforo de Proyectos y del Tablero de Dirección y Finanzas), pero no las tareas de otros en su lista personal.
 - **Tareas · «Equipo»:** el colaborador no lo ve. Líder y comercial ven las tareas de sus proyectos; Dirección y administración, todas.
 - Requisito técnico y criterios de aceptación: `BACKEND_REQUIREMENTS.md` §15.1. Implementación en el prototipo: `auth/taskVisibility.ts`, usada por `MiDiaView.tsx` y `MyTasksView.tsx`.
@@ -1222,6 +1225,41 @@ Reconciliado con los módulos que ya existen en producción. Acceso: **ver** `ex
 ---
 
 ## 8. Auditoría de Inconsistencias entre Prototipo UI y Especificación
+
+### 8.0 Reconciliación con producción y guía de entrega (07 Nov 2026) — LEER PRIMERO
+
+**Cómo tomar esta entrega.** La rama `entrega-final-indunova` contiene **todo `main`** (incluidos los commits de referencia `97bf2e30` de #132/#133 y `f77f43ac`/`7b18456c` de #143) **más 38 commits nuevos**. Se toma **completa** (no por partes): la regla funcional es este documento y `BACKEND_REQUIREMENTS.md`; el código del prototipo es la referencia visual y de cálculo. Lo que ya está en producción se conserva; solo se implementa lo marcado como «Nuevo en esta entrega».
+
+**1. Tickets que ya están en producción (orbit-00092-jns): el prototipo quedó alineado, no se rehacen.**
+
+| Ticket | Lo que ya hizo Indunova | Estado del prototipo y de la documentación |
+|---|---|---|
+| **#147** Mi Día personal | Mi Día es personal también para perfiles globales. «¿Qué requiere mi atención?» para `system_admin`, `administrative`, `commercial` y `client_relationship`: solo lo que ejecutan o lideran (sus bloqueos y ajustes, revisiones de tareas que lideran, pendientes de cliente de sus proyectos, oportunidades que lideran o les tocan). `leader` conserva las alertas de su equipo; `executive` la vista de excepciones de la organización; desvíos de horas a Comercial y Relación con clientes (§15.4). Consulta global en Tareas → Equipo. | ✅ Alineado (07 Nov 2026). Antes el prototipo trataba a `system_admin` como vista global y mostraba a Comercial todas las oportunidades; se corrigió. Formalizaciones fiscales: solo `administrative`. |
+| **#146** Reasignación y urgentes | Aviso al nuevo colaborador («Luisa te asignó…»), abre la tarea; las tareas propias abiertas **urgentes, que inician hoy o vencen hoy van de primeras** en la atención; al retirar al responsable, pasa al siguiente colaborador; sin avisos repetidos al volver a guardar. «Mis tareas» mantiene las vencidas primero. | ✅ Alineado. Se agregó al prototipo el bloque de urgentes/inicio hoy/entrega hoy al inicio de la atención. Regla en `BACKEND_REQUIREMENTS.md` §15.1–§15.2. |
+| **#145** Comercial en tareas | Comercial crea tareas en proyectos, comenta con @menciones y adjuntos, ajusta horas, cronograma y estado, con historial; avisa al líder y colaboradores. **No reasigna personas.** | ✅ Alineado. La matriz RBAC del prototipo tenía a Comercial solo con lectura en Tareas; se corrigió (§10.5). |
+| **#144** Rol en el perfil | El encabezado y todas las vistas leen el rol profesional del perfil. | ✅ Ya coincidía. Se quitó un rol de respaldo inventado («Growth Manager»). |
+| **#143** Capacidad | Planificado desde el cronograma, Libre = neto − máx(planificado, registrado), estados 75/85/100 %, dos barras, KPIs y Organización por área. | ✅ Coincide (el prototipo fue la referencia). Ver nota sobre 80 % vs 85 % abajo. |
+| **#132** Cotización por servicio | Un proyecto por servicio aprobado, modalidad y valor por servicio, aprobación por servicio, nombre editable, mismo cliente. | ✅ Coincide (referencia `97bf2e30`). |
+| **#133** HubSpot | Conexión construida en pruebas: traer empresa/contacto/nota, crear un negocio por servicio sin duplicar, etapas sincronizadas, aprobación manual con trazabilidad si HubSpot falla, «Cierre perdido» nunca genera proyecto, reintentos y aviso a la hora. Espera token nuevo. | ✅ Coincide. Lo que solo existe en producción (reintentos, «Sin vincular a HubSpot», «Pendiente de enviar», aviso de una hora) **prevalece**; el prototipo no lo contradice. |
+
+**2. Nuevo en esta entrega (no existe en producción): implementar.**
+- **Proyectos y cronograma:** línea base desde el alcance, rondas de ajuste editables, equipo derivado de las tareas, cierre de proyecto, fee mensual con ciclos y renovación, política de horas no usadas al iniciar (Módulo 11).
+- **Mi Día:** regla del cronograma de hoy y «Próximas» (§17.5), racha de días cargados, «Cerrar mi día», tarjeta «En racha» (§9.4.1).
+- **Horas:** modal «Registrar tiempo» igual a «Cargar horas»; la X y Esc no descartan (§Módulo 16).
+- **Meta única de 80 %** para el recordatorio diario, la racha, «Cerrar mi día» y el correo semanal (`BACKEND_REQUIREMENTS.md` §26.2). Si el recordatorio de producción usa otro porcentaje, solo se cambia ese valor.
+- **Clientes:** ficha y lista calculadas con datos reales, sin valores fijos (§9.4); SOW con datos del acuerdo editables y cláusula de IA nueva (Módulo 7.4).
+- **Google Chat por proyecto:** dos opciones, «Activar» o «No enviar» (predeterminado); webhook único por cliente, registrable por `system_admin` también desde el proyecto (§11.8). Reemplaza el modelo de tres modos del commit `3278aca`.
+- **Notificaciones por correo y recordatorio semanal** (`BACKEND_REQUIREMENTS.md` §26).
+- **Mascota ECO y La Colonia:** emociones temporales, moods navideños, temporada automática noviembre–diciembre, retos y ranking (Módulo 18). Hardware y Licencias (Módulo 19). Acceso a ECO en el perfil (§10.8). Google Calendar admin (§11.5.1).
+- **Móvil y PWA:** «Más» con permisos, sin hamburguesa; ECO instalable (§9.5).
+
+**3. Puntos que podrían confundirse (no son contradicciones).**
+- **80 % vs 85 %:** el 85 % de #143 es la **meta productiva de carga** en Capacidad (cuánto planear). El 80 % es el **mínimo de horas registradas** para recordatorios y racha. Son métricas distintas y conviven.
+- **Mi Día por cronograma (§17.5):** es una decisión posterior a #147. «Qué tengo que hacer hoy» muestra solo lo programado para hoy y lo vencido; si no hay nada, «Próximas». No cambia la regla de #147 (solo lo propio) ni el orden de #146 (vencidas primero en «Mis tareas»).
+- **SOW con varios servicios:** hoy el SOW se arma con la oportunidad completa y cada proyecto que viene de ella abre ese mismo SOW. *Pendiente de decisión de Uhura:* un SOW por oportunidad (solo con los servicios aprobados) o uno por servicio.
+
+**4. Lo que solo es del prototipo (no va a producción):** Simulador QA, laboratorio de la mascota (`?buckyLab=true`), `?ecoMoods=fast`, datos de demostración y la comparación de personas por nombre.
+
 
 Durante la auditoría end-to-end de UAT se detectaron y reconciliaron las siguientes inconsistencias funcionales:
 
@@ -1521,7 +1559,7 @@ Solo existen 5 alcances autorizados:
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Mi Día (`mi-dia`)** | own (view/edit) | own + team (view/edit) | own (view/edit) | own (view/edit) | own (view/edit) | own + all (view/edit) | own (view/edit) |
 | **Proyectos (`proyectos`)** | assigned (view) | team (view/create/edit) | accounts (view/edit) | all (view) | all (view) | all (view/approve) | all (administer) |
-| **Tareas (`tareas`)** | assigned (view/edit/create) | team (view/create/edit/approve) | accounts (view/create) | all (view) | all (view) | all (view) | all (administer) |
+| **Tareas (`tareas`)** | assigned (view/edit/create) | team (view/create/edit/approve) | accounts (view/create) | all (view/create/edit; **no reasigna personas** · #145) | all (view) | all (view) | all (administer) |
 | **Timesheets (`timesheets`)** | own (view/create) | team (view/edit) | accounts (view) | all (view) | all (view) | all (view) | all (administer) |
 | **Clientes (`clientes`)** | Denegado | team (view) | accounts (view/edit) | all (view/create/edit) | all (view/edit) | all (view) | all (administer) |
 | **Catálogo (`plantillas-producto`)** | **Denegado** | all (view) | all (view) | all (view) | Denegado | all (view) | all (view/administer) |

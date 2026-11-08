@@ -11,6 +11,7 @@
 
 > **COMPONENTES EXCLUSIVOS DEL PROTOTIPO (NO VAN A PRODUCCIÓN):**
 > **Principio de reconciliación con producción:** lo que ya funciona en la plataforma de producción de Indunova se conserva tal cual. Esta documentación solo pide cambios donde lo dice de forma explícita («mejora», «nuevo», «reemplaza»). Si un comportamiento descrito aquí ya existe en producción con otra regla, prevalece producción y se avisa a Uhura para decidir.
+> **Antes de implementar, leer `ORBIT_PRODUCT_STATUS.md` §8.0:** lista ticket por ticket (#132–#147) qué ya está en producción y no se rehace, y qué es nuevo en esta entrega.
 >
 > El **«Simulador QA»** (selector flotante para cambiar de usuario y probar visibilidad por `accessLevel`) es una herramienta de desarrollo del prototipo. **No debe implementarse en producción**: allí la identidad y el `accessLevel` se obtienen únicamente de la sesión autenticada del usuario.
 
@@ -550,12 +551,17 @@ Para no bloquear New Business cuando la app privada de HubSpot esté caída o si
 * **Aceptación (QA):** con dos usuarios que comparten primer nombre (p. ej. dos «Diego» o dos «Laura»), cada uno ve únicamente sus tareas. Un colaborador no ve el selector «Equipo». Un seguidor ve la tarea en «Siguiendo» y no en «Qué tengo que hacer hoy». Una tarea urgente con fecha de mañana aparece primera en Tareas y no aparece en Mi Día de hoy.
 * Implementación de referencia en el prototipo: `src/components/taskflow/auth/taskVisibility.ts` (la comparación por nombre del prototipo existe solo porque los datos de demostración no traen ID; en producción no se usa).
 
+* **Mi Día personal (#147, en producción orbit-00092-jns):** la bandeja «Qué requiere mi atención» de `system_admin`, `administrative`, `commercial` y `client_relationship` incluye solo lo que la persona ejecuta o lidera directamente (sus bloqueos y ajustes, revisiones de las tareas que lidera, pendientes de cliente de sus proyectos, oportunidades que lidera o le tocan; formalizaciones fiscales solo para `administrative`). `leader` conserva las de su equipo y `executive` las de la organización. Desvíos de horas a Comercial y Relación con clientes según §15.4.
+* **Urgentes de hoy primero (#146, en producción):** las tareas propias abiertas con prioridad `urgent`, `scheduled_date == hoy` o `due_date == hoy` van de primeras en la bandeja de atención, con su prioridad y fecha actuales.
+
 ### 15.2 Sincronización en Tiempo Real al Modificar Colaboradores y Notificaciones
 * **Retiro / Reemplazo de Colaborador:** Al quitar a un usuario de `collaborators` / `assignee`, el backend debe excluir esa tarea de su carga **Planificada** en Capacidad, de **Mi Día** y de **Mis Tareas** de forma inmediata.
 * **Adición / Asignación de Colaborador:** Al asignar o sumar a un usuario como colaborador o revisor:
   1. La tarea debe aparecer inmediatamente en **Mis Tareas** (y en **Mi Día** si vence hoy o requiere su revisión) respetando su **prioridad**.
   2. Se debe disparar una **notificación** (`Notification` / alerta en campanita) al usuario asignado con: `task_id`, `task_title`, `client_name`, `priority` y `type = 'TASK_ASSIGNED'` (o `'REVIEW_REQUESTED'`).
   3. Al abrir el panel de notificaciones, el cliente marca las alertas como `read = true` automáticamente.
+* **Como quedó en producción (#146):** el aviso dice «{Quién} te asignó "{Tarea}" ({Cliente} · {Proyecto}). Prioridad {P}, entrega {fecha}.» y abre el detalle de la tarea. Si se retira a quien era responsable, la responsabilidad pasa al siguiente colaborador. Volver a guardar la tarea o cambiar horas a la misma persona **no** repite el aviso.
+* **Comercial (#145, en producción):** crea tareas en proyectos y actualiza comentarios, adjuntos, horas, cronograma y estado; cada cambio queda en Actividad con autor, fecha, valor anterior y nuevo, y avisa al Project Lead y colaboradores (nunca a quien hizo el cambio). No reasigna personas.
 
 ### 15.3 Reglas de Transición de Estados por Rol en la Tarea
 * **Gobernanza de Cierre:** Las vistas de lista (`Mi Día` y `Mis Tareas`) no deben exponer checkbox circular de completado rápido; el cierre y aprobación de tareas se ejecuta desde el detalle de la tarea.

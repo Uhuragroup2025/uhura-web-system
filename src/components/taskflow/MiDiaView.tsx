@@ -143,7 +143,9 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
   const identity = currentUser || effectiveUserList.find((u) => u.id === currentUserId);
   const matchesMe = useMemo(() => makePersonMatcher(identity, effectiveUserList), [identity, effectiveUserList]);
   const projectOfTask = useMemo(() => makeTaskProjectResolver(projects), [projects]);
-  const isGlobalViewer = accessLevel === 'executive' || accessLevel === 'system_admin';
+  // #147 (en producción, orbit-00092-jns): Mi Día es personal. Solo Dirección (executive) conserva
+  // la vista de excepciones de toda la organización; system_admin ve solo lo suyo.
+  const isGlobalViewer = accessLevel === 'executive';
   const myProjectIds = useMemo(
     () => new Set(projects.filter((p) => isProjectResponsible(p, identity, matchesMe)).map((p) => p.id)),
     [projects, identity, matchesMe]
@@ -199,6 +201,21 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
   const [showFollowed, setShowFollowed] = useState(false);
 
   // 3. MATRIZ DE PERSPECTIVA POR ROL — EVALUACIÓN DE ELEMENTOS DE ATENCIÓN
+  // #146 (en producción, orbit-00092-jns): tareas propias abiertas urgentes, que inician hoy o
+  // vencen hoy van de primeras en la atención, con su prioridad y fecha actualizadas.
+  const urgentTodayTasks = useMemo(() => {
+    return activeUserTasks
+      .filter((t) => {
+        if (t.completed || t.isArchived) return false;
+        if (getTaskRelation(t, identity, matchesMe) !== 'owner') return false;
+        const start = (t.scheduledDate || '').slice(0, 10);
+        const due = (t.dueDate || '').slice(0, 10);
+        return isUrgentTask(t) || start === todayIsoForTasks || due === todayIsoForTasks;
+      })
+      .sort(compareTasks);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeUserTasks, identity, matchesMe, todayIsoForTasks, compareTasks]);
+
   // Retrabajos / Ajustes: los propios; quien es responsable del proyecto ve los de sus proyectos
   const reworkTasks = useMemo(() => {
     if (!['collaborator', 'leader', 'client_relationship', 'executive', 'system_admin'].includes(accessLevel)) {
@@ -260,7 +277,17 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
         o.status === 'discovery' || o.status === 'quoting' || o.status === 'internal_review';
       if (!isActionableStatus) return false;
 
-      // Si es rol líder, filtrar dinámicamente según su leadUserId, leadUserIds o nombre de usuario
+      // Dirección ve todas; los demás solo las que lideran o les tocan (#147)
+      if (accessLevel === 'executive') return true;
+      if (accessLevel === 'commercial' || accessLevel === 'system_admin') {
+        const owner = (o.commercialOwner || '').toLowerCase();
+        return (
+          o.createdByUserId === currentUserId ||
+          o.leadUserId === currentUserId ||
+          (Array.isArray(o.leadUserIds) && o.leadUserIds.includes(currentUserId)) ||
+          Boolean(owner && currentUserName && owner.includes(currentUserName.toLowerCase()))
+        );
+      }
       if (accessLevel === 'leader') {
         const matchesId =
           o.leadUserId === currentUserId ||
@@ -276,7 +303,8 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
 
   // Formalizaciones administrativas pendientes (proyectos ganados sin NIT o datos de facturación)
   const fiscalPendingActions = useMemo(() => {
-    if (!['commercial', 'administrative', 'system_admin'].includes(accessLevel)) {
+    // Formalización fiscal: función directa de Administrativa (#147: los demás perfiles ven solo lo suyo)
+    if (accessLevel !== 'administrative') {
       return [];
     }
     return clients.filter((c) => !c.nit || c.nit.includes('Por definir'));
@@ -313,6 +341,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
 
   // Total de elementos accionables de atención
   const totalAttentionCount =
+    urgentTodayTasks.length +
     reworkTasks.length +
     reviewTasks.length +
     clientDependencies.length +
@@ -491,6 +520,34 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
 
               {/* Lista lineal de alertas de atención */}
               <div className="space-y-2">
+                {/* 0. Urgentes, que inician hoy o vencen hoy (#146): van de primeras */}
+                {urgentTodayTasks.map((t) => (
+                  <div
+                    key={`urgent-${t.id}`}
+                    onClick={() => onOpenTaskDetail(t.id)}
+                    className="p-3 rounded-xl bg-white border border-[#e2e8f0] hover:border-[#fca5a5] hover:bg-[#fef2f2]/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs cursor-pointer transition-all group shadow-2xs"
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <Flame className="w-4 h-4 text-[#dc2626] shrink-0 mt-0.5" />
+                      <div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-[#0f172a] group-hover:text-[#dc2626] transition-colors">{t.title}</span>
+                          {isUrgentTask(t) && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#fee2e2] text-[#991b1b]">Urgente</span>
+                          )}
+                        </div>
+                        <span className="text-[11px] text-[#64748b] block mt-0.5">
+                          {t.clientName || 'Cliente'} • {(t.dueDate || '').slice(0, 10) === todayIsoForTasks ? 'Entrega hoy' : (t.scheduledDate || '').slice(0, 10) === todayIsoForTasks ? 'Inicia hoy' : `Entrega ${formatDate(t.dueDate)}`}
+                        </span>
+                      </div>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-lg text-[#dc2626] group-hover:bg-[#fef2f2] font-semibold text-xs transition-colors self-start sm:self-auto shrink-0 inline-flex items-center gap-1">
+                      <span>Ver tarea</span>
+                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                    </span>
+                  </div>
+                ))}
+
                 {/* 1. Retrabajos / Ajustes urgentes */}
                 {reworkTasks.map((t) => (
                   <div

@@ -70,7 +70,7 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
   // Form fields
   const [email, setEmail] = useState<string>(user.email || '');
   const [officialRoleName, setOfficialRoleName] = useState<string>(
-    user.officialRole || user.jobTitle || 'Growth Manager'
+    user.officialRole || user.jobTitle || ''
   );
   // Roles profesionales (uno o varios; el primero es el principal). Solo catálogo oficial.
   const [professionalRoles, setProfessionalRoles] = useState<string[]>(() => {

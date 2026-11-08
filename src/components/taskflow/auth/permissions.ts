@@ -70,7 +70,9 @@ export const ROLE_PERMISSIONS_MATRIX: Record<
   commercial: {
     'mi-dia': { allowedActions: ['view', 'edit'], scope: 'own' },
     'proyectos': { allowedActions: ['view'], scope: 'all' },
-    'tareas': { allowedActions: ['view'], scope: 'assigned' },
+    // #145 (en producción, orbit-00092-jns): crea tareas en proyectos y las actualiza (comentarios,
+    // @menciones, adjuntos, horas, cronograma, estado). No reasigna personas.
+    'tareas': { allowedActions: ['view', 'create', 'edit'], scope: 'all' },
     'timesheets': { allowedActions: ['view', 'create', 'edit'], scope: 'own' },
     'capacidad': { allowedActions: ['view'], scope: 'all' },
     'clientes': { allowedActions: ['view', 'create', 'edit'], scope: 'all' },
