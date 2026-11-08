@@ -1,3 +1,4 @@
+import { streakLabel } from './time/dayStreak';
 import React, { useState, useMemo } from 'react';
 import { formatDate, formatDateRange } from '../../utils/formatters';
 import { PageHeader } from './PageHeader';
@@ -76,6 +77,11 @@ export interface MiDiaViewProps {
   projects?: any[];
   clients?: any[];
   onUpdateUser?: (updatedUser: UserItem) => void;
+  /** Racha de días cargados (dayStreak.ts) y cierre del día con ECO. */
+  streakDays?: number;
+  streakTodayCounts?: boolean;
+  isDayClosedToday?: boolean;
+  onOpenDayClose?: () => void;
 }
 
 export const MiDiaView: React.FC<MiDiaViewProps> = ({
@@ -97,6 +103,10 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
   configuredCapacityHours = 8.0,
   targetDayHours = 8.0,
   onNavigateToView,
+  streakDays = 0,
+  streakTodayCounts = false,
+  isDayClosedToday = false,
+  onOpenDayClose,
   opportunities = [],
   projects = [],
   clients = [],
@@ -970,7 +980,30 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Racha: premia la constancia (días cargados), nunca la cantidad de horas */}
+                  <span
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border ${
+                      streakDays > 0 ? 'bg-[#fff7ed] text-[#c2410c] border-[#fed7aa]' : 'bg-[#f8fafc] text-[#64748b] border-[#e2e8f0]'
+                    }`}
+                    title="Días hábiles seguidos con al menos el 70 % de tu jornada registrada. Fines de semana, festivos y ausencias no rompen la racha."
+                  >
+                    🔥 {streakLabel(streakDays)}
+                  </span>
+                  {onOpenDayClose && (
+                    <button
+                      type="button"
+                      onClick={onOpenDayClose}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                        isDayClosedToday
+                          ? 'bg-[#ecfdf5] border border-[#a7f3d0] text-[#047857]'
+                          : 'bg-[#501f92] hover:bg-[#381566] text-white shadow-2xs'
+                      }`}
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>{isDayClosedToday ? 'Día cerrado' : 'Cerrar mi día'}</span>
+                    </button>
+                  )}
                   <button
                     onClick={() => onOpenManualLog()}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-[#cbd5e1] hover:border-[#501f92] text-[#334155] hover:text-[#501f92] text-xs font-semibold shadow-2xs transition-all cursor-pointer"

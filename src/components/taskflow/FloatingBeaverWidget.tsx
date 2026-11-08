@@ -66,7 +66,11 @@ interface FloatingBeaverWidgetProps {
   targetDayHours?: number;
   onQuickLogHours?: (hours: number, label: string, category?: 'client' | 'internal', projectName?: string) => void;
   onNavigateToView: (view: OrbitView) => void;
+  /** @deprecated la racha real vive en dayStreak.ts y se muestra en Mi Día. */
   streakDays?: number;
+  /** Cierre del día con ECO */
+  isDayClosedToday?: boolean;
+  onOpenDayClose?: () => void;
   tasks?: TaskItem[];
   users?: UserItem[];
   absenceEvents?: TeamAbsenceEvent[];
@@ -353,7 +357,8 @@ const FloatingBeaverCore: React.FC<FloatingBeaverCoreProps> = ({
   targetDayHours = 8.0,
   onQuickLogHours,
   onNavigateToView,
-  streakDays = 6,
+  isDayClosedToday = false,
+  onOpenDayClose,
   tasks = [],
   users,
   absenceEvents,
@@ -904,6 +909,36 @@ const FloatingBeaverCore: React.FC<FloatingBeaverCoreProps> = ({
     if (ambientMood && (isOpen || isWarningActive || activeTimer || isBreakModalOpen || isDragging)) setAmbientMood(null);
   }, [ambientMood, isOpen, isWarningActive, activeTimer, isBreakModalOpen, isDragging]);
 
+  // «¿Cerramos el día?»: en día hábil, desde las 5:00 p. m., si la persona no ha cerrado su día.
+  // Una vez por día; solo cuando ECO está en reposo (no interrumpe avisos, ventanas ni cronómetro).
+  const [showDayCloseNudge, setShowDayCloseNudge] = useState(false);
+  useEffect(() => {
+    if (!onOpenDayClose || isDayClosedToday) {
+      setShowDayCloseNudge(false);
+      return;
+    }
+    const check = () => {
+      const now = new Date();
+      const iso = todayIsoMascot;
+      const key = `eco_dayclose_nudge_${currentUser?.id || 'anon'}_${iso}`;
+      let shown = false;
+      try {
+        shown = Boolean(localStorage.getItem(key));
+      } catch {}
+      if (shown || now.getHours() < 17 || !isBusinessDay(new Date(`${iso}T00:00:00Z`)) || myAbsentToday) return;
+      if (!ambientAllowedRef.current) return;
+      try {
+        localStorage.setItem(key, '1');
+      } catch {}
+      setShowDayCloseNudge(true);
+      if (soundEnabled) playChime('wave');
+    };
+    check();
+    const i = setInterval(check, 60_000);
+    return () => clearInterval(i);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDayClosedToday, onOpenDayClose, currentUser?.id, todayIsoMascot]);
+
   // Guided Active Break (Pausa Activa) countdown timer
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -1312,7 +1347,7 @@ const FloatingBeaverCore: React.FC<FloatingBeaverCoreProps> = ({
             </div>
           )}
 
-          {showSpeechBubble && (
+          {showSpeechBubble && !showDayCloseNudge && (
             <div className={`absolute ${bubblePositionClass} z-50 w-[240px] max-w-[260px] bg-[#140b24]/95 text-white p-3 rounded-2xl shadow-2xl border border-[#8a4dff]/50 text-xs animate-in zoom-in-95 duration-150 backdrop-blur-md`}>
               <div className="flex items-start justify-between gap-2">
                 <p className="text-[#f1f5f9] text-[11px] leading-relaxed">
@@ -1325,6 +1360,34 @@ const FloatingBeaverCore: React.FC<FloatingBeaverCoreProps> = ({
                   title="Cerrar"
                 >
                   <X className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {showDayCloseNudge && !isOpen && !showAlertBubble && (
+            <div className={`absolute ${bubblePositionClass} z-50 w-[250px] bg-[#140b24]/95 text-white p-3 rounded-2xl shadow-2xl border border-[#8a4dff]/50 text-xs animate-in zoom-in-95 duration-150 backdrop-blur-md`}>
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-[#f1f5f9] text-[11px] leading-relaxed">
+                  ¿Cerramos el día{firstNameSuffix}? 🌙 Te muestro lo que registraste y confirmas en un minuto.
+                </p>
+                <button type="button" onClick={() => setShowDayCloseNudge(false)} className="text-white/40 hover:text-white cursor-pointer p-0.5 shrink-0" aria-label="Más tarde">
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+              <div className="mt-2.5 pt-2 border-t border-white/10 flex items-center justify-between text-[10px]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDayCloseNudge(false);
+                    onOpenDayClose?.();
+                  }}
+                  className="text-[#d4ff4a] hover:underline font-bold cursor-pointer"
+                >
+                  Cerrar mi día →
+                </button>
+                <button type="button" onClick={() => setShowDayCloseNudge(false)} className="text-white/50 hover:text-white cursor-pointer">
+                  Más tarde
                 </button>
               </div>
             </div>

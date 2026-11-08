@@ -58,6 +58,9 @@ import { MiDiaView } from '../components/taskflow/MiDiaView';
 import { LaColoniaView } from '../components/taskflow/colonia/LaColoniaView';
 import { TeamHumanProfileModal } from '../components/taskflow/copilot/TeamHumanProfileModal';
 import { FloatingBeaverWidget } from '../components/taskflow/FloatingBeaverWidget';
+import { DayCloseModal } from '../components/taskflow/time/DayCloseModal';
+import { hoursByDay, computeStreak, isDayClosed, markDayClosed, isOwnLog, logIsoDate, toIsoLocal, DAY_CLOSED_EVENT, streakLabel } from '../components/taskflow/time/dayStreak';
+import { makePersonMatcher, isTaskOwner, isScheduledForDay } from '../components/taskflow/auth/taskVisibility';
 import { TimerSummaryModal, TimerSummaryData } from '../components/taskflow/TimerSummaryModal';
 import { StopTimerRegisterModal } from '../components/taskflow/time/StopTimerRegisterModal';
 import { AssistedTimerRecoveryModal } from '../components/taskflow/time/AssistedTimerRecoveryModal';
@@ -2895,6 +2898,61 @@ export const TaskFlowPrototype: React.FC = () => {
     todayTimeLogs.reduce((acc, log) => acc + (log.durationSeconds || 0) / 3600, 0).toFixed(1)
   );
 
+  // ── Racha de días cargados y «Cerrar mi día» (dayStreak.ts) ──
+  const targetDayHoursValue = Number(((currentUser?.capacityHours || 42) / 5).toFixed(1));
+  const todayIsoKey = toIsoLocal(new Date());
+  const [isDayCloseOpen, setIsDayCloseOpen] = useState(false);
+  const [dayClosedTick, setDayClosedTick] = useState(0);
+  useEffect(() => {
+    const h = () => setDayClosedTick((n) => n + 1);
+    window.addEventListener(DAY_CLOSED_EVENT, h);
+    return () => window.removeEventListener(DAY_CLOSED_EVENT, h);
+  }, []);
+  const myAbsentDays = React.useMemo(() => {
+    const set = new Set<string>();
+    for (const a of absenceEvents) {
+      if (a.userId !== currentUser?.id || a.status !== 'active') continue;
+      const d = new Date(`${a.startDate}T00:00:00`);
+      const end = new Date(`${a.endDate || a.startDate}T00:00:00`);
+      for (let i = 0; d <= end && i < 120; i++) {
+        set.add(toIsoLocal(d));
+        d.setDate(d.getDate() + 1);
+      }
+    }
+    return set;
+  }, [absenceEvents, currentUser?.id]);
+  const myStreak = React.useMemo(
+    () => computeStreak({ hours: hoursByDay(timeLogs, currentUser), targetDayHours: targetDayHoursValue, absentDays: myAbsentDays }),
+    [timeLogs, currentUser, targetDayHoursValue, myAbsentDays]
+  );
+  const dayClosedToday = React.useMemo(
+    () => isDayClosed(currentUser?.id, todayIsoKey),
+    [currentUser?.id, todayIsoKey, dayClosedTick]
+  );
+  const myTodayLogs = timeLogs.filter((l) => isOwnLog(l, currentUser) && logIsoDate(l) === todayIsoKey);
+  const dayCloseSuggestions = React.useMemo(() => {
+    if (!currentUser) return [];
+    const matches = makePersonMatcher(currentUser, users);
+    const loggedTaskIds = new Set(myTodayLogs.map((l) => l.taskId));
+    return tasks.filter((t) => !t.completed && isTaskOwner(t, currentUser, matches) && isScheduledForDay(t, todayIsoKey) && !loggedTaskIds.has(t.id));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasks, currentUser, users, timeLogs, todayIsoKey]);
+  const handleConfirmDayClose = () => {
+    markDayClosed(currentUser?.id, todayIsoKey);
+    setIsDayCloseOpen(false);
+    const streakNow = myStreak.current;
+    window.dispatchEvent(
+      new CustomEvent('orbit-mascot-reaction', {
+        detail: {
+          action: 'celebrate',
+          phrase: myStreak.todayCounts
+            ? `¡Día cerrado! 🔥 ${streakLabel(streakNow)} con tu día cargado. ¡A descansar!`
+            : '¡Día cerrado! Mañana vamos por la racha 🔥 ¡A descansar!'
+        }
+      })
+    );
+  };
+
   // Quick Log Hours for Beaver Feeding & Uhura Bags
   const handleQuickLogHours = (
     hours: number,
@@ -2910,12 +2968,12 @@ export const TaskFlowPrototype: React.FC = () => {
       clientName: 'UHURA GROUP',
       projectName: projectName,
       categoryType: category,
-      userId: 'u-pao',
+      userId: currentUser?.id,
       budgetedRoleId: 'Creative Designer',
       source: 'manual',
       createdAt: new Date().toISOString(),
-      userName: 'Paola Monsalve',
-      userInitials: 'PM',
+      userName: currentUser?.name,
+      userInitials: (currentUser?.name || '').split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase(),
       userAvatarBg: '#501f92',
       isLiveTimer: false,
       date: 'Hoy, ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' hs',
@@ -3157,6 +3215,10 @@ export const TaskFlowPrototype: React.FC = () => {
                     loggedHoursToday={loggedHoursToday}
                     targetDayHours={Number(((currentUser?.capacityHours || 42) / 5).toFixed(1))}
                     onNavigateToView={handleSelectView}
+                    streakDays={myStreak.current}
+                    streakTodayCounts={myStreak.todayCounts}
+                    isDayClosedToday={dayClosedToday}
+                    onOpenDayClose={() => setIsDayCloseOpen(true)}
                     opportunities={opportunities}
                     projects={projectsList}
                     clients={clients}
@@ -3698,6 +3760,26 @@ export const TaskFlowPrototype: React.FC = () => {
         }}
       />
 
+      {/* Cerrar mi día con ECO */}
+      <DayCloseModal
+        isOpen={isDayCloseOpen}
+        onClose={() => setIsDayCloseOpen(false)}
+        todayLabel={new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })}
+        todayLogs={myTodayLogs}
+        suggestedTasks={dayCloseSuggestions}
+        loggedHours={loggedHoursToday}
+        targetDayHours={targetDayHoursValue}
+        streak={myStreak.current}
+        todayCounts={myStreak.todayCounts}
+        todayIsWorkday={myStreak.todayIsWorkday}
+        alreadyClosed={dayClosedToday}
+        onAddTime={(taskId) => {
+          setIsDayCloseOpen(false);
+          handleOpenManualLogWithTask(taskId);
+        }}
+        onConfirm={handleConfirmDayClose}
+      />
+
       {/* Floating Beaver Mascot Companion (Codex-Style Interactive Character with Vida Propia) */}
       <FloatingBeaverWidget
         currentView={currentView}
@@ -3705,7 +3787,8 @@ export const TaskFlowPrototype: React.FC = () => {
         targetDayHours={Number(((currentUser?.capacityHours || 42) / 5).toFixed(1))}
         onQuickLogHours={handleQuickLogHours}
         onNavigateToView={handleSelectView}
-        streakDays={6}
+        isDayClosedToday={dayClosedToday}
+        onOpenDayClose={() => setIsDayCloseOpen(true)}
         tasks={tasks}
         users={users}
         absenceEvents={absenceEvents}

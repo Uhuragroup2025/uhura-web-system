@@ -758,3 +758,11 @@ Especificación funcional en `ORBIT_PRODUCT_STATUS.md` §9.5. **Fase 1 no requie
   * **Notificaciones push** (retos, horas por cargar, aprobaciones): llaves VAPID, endpoint para guardar la suscripción por usuario y dispositivo, y un servicio que envíe. En iPhone solo funcionan con la app instalada en la pantalla de inicio (iOS 16.4+).
   * **Registrar horas sin conexión** con sincronización posterior: necesita resolver conflictos en el backend. No se recomienda por ahora.
 
+---
+
+## 24. Racha de días cargados y cierre del día (07 Nov 2026)
+Especificación funcional en `ORBIT_PRODUCT_STATUS.md` §9.4.1. Lógica de referencia en `src/components/taskflow/time/dayStreak.ts`.
+* **Racha:** se calcula con `time_logs` existentes por usuario y día (`SUM(duration_seconds)` por `date`). Un día hábil cuenta si suma ≥ 70 % de la jornada diaria (capacidad semanal ÷ 5). Se saltan fines de semana, festivos de Colombia y días con ausencia activa (§20); no rompen la racha. Puede calcularse en el frontend con los registros de las últimas semanas o exponerse como `GET /api/me/streak` → `{ current, today_counts, today_is_workday }`. No hay ranking ni comparación entre personas.
+* **Día cerrado:** tabla `day_closures` (`user_id`, `date`, `closed_at`), única por usuario y fecha. `POST /api/me/day-closures` con la fecha de hoy; idempotente. Es solo un registro de confirmación: **no bloquea ni modifica** `time_logs` (las reglas de corrección y cierre semanal no cambian). En el prototipo vive en el navegador (`eco_day_closed_v1`).
+* **Aviso de las 5:00 p. m.:** es del frontend (mascota); se muestra una vez por día y no requiere backend. Si a futuro se quiere enviar también por Google Chat o push, se reutiliza el canal del recordatorio de horas de producción, sin duplicarlo.
+

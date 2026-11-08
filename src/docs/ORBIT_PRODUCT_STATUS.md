@@ -1299,6 +1299,19 @@ Para asegurar una frontera limpia de trabajo entre Producto (Uhura) y la Fábric
 - **Dominio final: `app.uhuragroup.com`.** Indunova entrega a Uhura los registros DNS necesarios (CNAME del subdominio y TXT de verificación, más los que requiera el certificado TLS); Uhura los configura en su DNS. ECO solo se publica en ese dominio con HTTPS.
 - **URL anterior de producción:** se retira cuando `app.uhuragroup.com` quede activo (se recomienda redirigirla al dominio nuevo durante la transición y luego darla de baja).
 
+### 9.4.1 Hábito de carga: racha y «Cerrar mi día» con ECO (07 Nov 2026)
+Objetivo: que cargar horas sea un hábito que guste. Se quita fricción y se premia la **constancia**, nunca la cantidad de horas (no hay ranking de horas).
+- **Racha de días cargados** (Mi Día → «¿Cómo voy?»): «🔥 5 días seguidos». Un día hábil cuenta cuando la persona registró **al menos el 70 % de su jornada** (misma meta mínima que el recordatorio de horas de producción). Fines de semana, festivos de Colombia y días con ausencia registrada **no cuentan ni rompen** la racha. Hoy suma apenas se alcanza la meta y, si aún no, no la rompe (el día no ha terminado). Sin racha: «Empieza tu racha hoy». Se calcula con los registros de tiempo reales.
+- **«Cerrar mi día»** (botón en Mi Día y aviso de ECO): ventana con la misma estructura que «Cargar horas». Muestra:
+  - ECO con una frase según el avance: día completo (celebra), vas bien, o a medio cargar (cuánto falta para que cuente).
+  - La barra del día y el estado de la racha.
+  - Lo registrado hoy, agrupado por tarea.
+  - «¿Trabajaste en alguna de estas?»: tareas propias programadas para hoy sin tiempo; «Cargar» abre el registro manual con esa tarea (**nunca se inventan horas**).
+  - «Agregar tiempo» y «Confirmar y cerrar el día». Al confirmar, ECO celebra («¡Día cerrado! 🔥 5 días seguidos…») y el botón queda «Día cerrado».
+  - En fin de semana, festivo o ausencia lo dice así: hoy no cuenta y no rompe la racha.
+- **Aviso de ECO a las 5:00 p. m.:** en día hábil, sin ausencia y si la persona no ha cerrado su día, ECO pregunta «¿Cerramos el día? 🌙» con «Cerrar mi día →» y «Más tarde». Una vez por día y solo con ECO en reposo (no interrumpe avisos, ventanas ni el cronómetro).
+- Cerrar el día es un ritual de confirmación: **no bloquea** ni cambia las horas; se pueden seguir corrigiendo según las reglas de la semana.
+
 ### 9.5 ECO como app instalable (PWA) (07 Nov 2026)
 - **Qué es:** ECO se puede instalar desde el navegador como una app: en el computador (Chrome o Edge: ícono «Instalar» en la barra de direcciones), en Android («Instalar app») y en iPhone (Safari → Compartir → «Agregar a pantalla de inicio»). Queda con el ícono de ECO y abre en su propia ventana, sin barra del navegador.
 - **Al abrirla instalada** va directo a ECO (Mi Día), a pantalla completa, sin el menú del design system ni la barra de navegador simulada del prototipo. En iPhone respeta la muesca y la barra de gestos. Para ver ese modo sin instalar: `?app=eco` al final de la dirección.
