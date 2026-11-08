@@ -274,7 +274,7 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
       {/* Right Controls: Daily Progress Capsule (Opción A), Active Timer Badge, Notifications, User */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         {/* Cápsula de Tiempos de Hoy */}
-        <div ref={dailyProgressRef} className="relative shrink-0">
+        <div ref={dailyProgressRef} className="sm:relative shrink-0">
           <button
             onClick={() => setDailyProgressOpen(!dailyProgressOpen)}
             className="flex items-center gap-2.5 px-3 py-1.5 rounded-2xl bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] hover:border-[#cbd5e1] shadow-2xs transition-all cursor-pointer shrink-0"
@@ -313,7 +313,7 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
             const todayEntries = Array.from(groupedToday.values());
 
             return (
-              <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-[#e2e8f0] z-50 p-4 animate-in fade-in zoom-in-95 space-y-3">
+              <div className="absolute left-3 right-3 top-full mt-2 sm:left-auto sm:right-0 sm:top-auto sm:w-80 bg-white rounded-2xl shadow-xl border border-[#e2e8f0] z-50 p-4 animate-in fade-in zoom-in-95 space-y-3">
                 <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-2.5">
                   <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4 text-[#501f92]" />
@@ -459,7 +459,7 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
         )}
 
         {/* Operational Alerts Bell Dropdown */}
-        <div ref={alertsContainerRef} className="relative">
+        <div ref={alertsContainerRef} className="sm:relative">
           <button
             onClick={() => {
               const nextOpen = !alertsOpen;
@@ -478,7 +478,7 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
           </button>
 
           {alertsOpen && (
-            <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-[#e5e7eb] z-50 overflow-hidden animate-in fade-in zoom-in-95">
+            <div className="absolute left-3 right-3 top-full mt-2 sm:left-auto sm:right-0 sm:top-auto sm:w-96 bg-white rounded-2xl shadow-xl border border-[#e5e7eb] z-50 overflow-hidden animate-in fade-in zoom-in-95">
               <div className="p-3.5 bg-[#f9fafb] border-b border-[#e5e7eb] flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <ShieldAlert className="w-4 h-4 text-[#501f92]" />
