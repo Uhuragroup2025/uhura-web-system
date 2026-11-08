@@ -1226,6 +1226,7 @@ Durante la auditoría end-to-end de UAT se detectaron y reconciliaron las siguie
 ---
 
 ### 8.1 Estándar visual de la interfaz (pulido 07 Nov 2026)
+- **Navegación en móvil y tablet (07 Nov 2026):** barra inferior (Mi Día, Tareas, Cargar, Horas, Más) y **sin menú hamburguesa** en el encabezado, para que la búsqueda tenga más espacio. «Más» es la puerta a los demás módulos: muestra solo el título y el ícono (sin subtítulos), agrupados en Operación, Comercial, Experiencia, Costos de operación y Sistema, y **respeta los mismos permisos del menú lateral** (cada persona ve solo lo que puede abrir). Incluye Licencias y Hardware, que antes solo estaban en el menú lateral.
 Reglas de presentación que el frontend de producción debe mantener (no cambian lógica):
 1. **Encabezado de pantalla único** (`PageHeader`): título igual al nombre del menú, una línea de contexto y acciones a la derecha. La barra superior muestra solo la ruta («Operación › Proyectos»).
 2. **Botones en mayúscula inicial** («Nuevo proyecto», «Nueva oportunidad», «Guardar insumo»). Los nombres propios conservan su forma (ECO, HubSpot).

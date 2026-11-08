@@ -769,7 +769,6 @@ export const TaskFlowPrototype: React.FC = () => {
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
   const [newProjectPreselectedClientId, setNewProjectPreselectedClientId] = useState<string | null>(null);
   const [selectedProjectIdForView, setSelectedProjectIdForView] = useState<string | null>(null);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeAlerts, setActiveAlerts] = useState(orbitOperationalAlerts);
 
@@ -3095,25 +3094,7 @@ export const TaskFlowPrototype: React.FC = () => {
               />
             </div>
 
-            {/* Mobile / Tablet Sidebar Overlay */}
-            {mobileMenuOpen && (
-              <div className="lg:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-xs flex">
-                <div className="w-64 bg-[#0d0718] h-full shadow-2xl relative z-50">
-                  <TaskflowSidebar
-                    currentView={currentView}
-                    onSelectView={(v) => {
-                      handleSelectView(v);
-                      setMobileMenuOpen(false);
-                    }}
-                    currentUser={currentUser}
-                  />
-                </div>
-                <div
-                  className="flex-1 h-full"
-                  onClick={() => setMobileMenuOpen(false)}
-                />
-              </div>
-            )}
+            {/* En móvil y tablet la navegación es la barra inferior + «Más» (sin menú hamburguesa). */}
 
             {/* Main Content Area */}
             <div className={`flex-1 flex flex-col ${currentView === 'la-colonia' ? 'bg-[#0a0418]' : 'bg-[#f8fafc]'} min-w-0 overflow-y-auto`}>
@@ -3121,7 +3102,6 @@ export const TaskFlowPrototype: React.FC = () => {
               <TaskflowHeader
                 currentViewTitle={getHeaderTitle()}
                 currentViewSection={getHeaderSection()}
-                onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)}
                 sidebarCollapsed={sidebarCollapsed}
                 onToggleSidebarCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
                 onSelectAlert={() => handleSelectView('dashboard')}
@@ -3564,6 +3544,7 @@ export const TaskFlowPrototype: React.FC = () => {
           }}
           onOpenNewTaskModal={() => setIsNewTaskModalOpen(true)}
           hasActiveTimer={Boolean(activeTimer)}
+          currentUser={currentUser}
         />
       </main>
 

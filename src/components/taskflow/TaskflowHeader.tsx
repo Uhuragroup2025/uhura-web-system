@@ -183,7 +183,7 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
       </div>
 
       {/* Center: Global Task Search Bar */}
-      <div ref={searchContainerRef} className="relative flex-1 min-w-[120px] max-w-xs md:max-w-sm lg:max-w-md mx-1">
+      <div ref={searchContainerRef} className="relative flex-1 min-w-[120px] max-w-none sm:max-w-xs md:max-w-sm lg:max-w-md mx-1">
         <div className="relative">
           <Search className={`w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none ${isDarkTheme ? 'text-white/40' : 'text-[#94a3b8]'}`} />
           <input

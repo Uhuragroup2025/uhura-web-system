@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { OrbitView } from './types';
+import { OrbitView, UserItem } from './types';
+import { canAccessModule } from './auth/permissions';
 import {
   CheckSquare,
   Briefcase,
@@ -14,7 +15,13 @@ import {
   ChevronRight,
   TrendingUp,
   Folder,
-  BookOpen
+  BookOpen,
+  Gamepad2,
+  Rocket,
+  KeyRound,
+  Monitor,
+  Globe,
+  type LucideIcon
 } from 'lucide-react';
 
 interface MobileBottomNavProps {
@@ -23,15 +30,69 @@ interface MobileBottomNavProps {
   onOpenManualLogModal: () => void;
   onOpenNewTaskModal?: () => void;
   hasActiveTimer?: boolean;
+  /** Para mostrar solo los módulos permitidos (misma regla que el menú lateral). */
+  currentUser?: UserItem;
 }
+
+type MoreItem = { view: OrbitView; label: string; icon: LucideIcon };
 
 export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   currentView,
   onSelectView,
   onOpenManualLogModal,
   onOpenNewTaskModal,
-  hasActiveTimer = false
+  hasActiveTimer = false,
+  currentUser
 }) => {
+  // En móvil «Más» es la única puerta a los módulos (no hay menú hamburguesa): debe tener todo
+  // lo del menú lateral y respetar los mismos permisos.
+  const can = (m: string) => canAccessModule(currentUser, m);
+  const moreGroups: { title: string; items: MoreItem[] }[] = [
+    {
+      title: 'Operación',
+      items: [
+        ...(can('proyectos') ? [{ view: 'proyectos' as OrbitView, label: 'Proyectos', icon: Folder }] : []),
+        ...(can('capacidad') ? [{ view: 'capacidad' as OrbitView, label: 'Capacidad', icon: TrendingUp }] : [])
+      ]
+    },
+    {
+      title: 'Comercial',
+      items: [
+        ...(can('clientes') ? [{ view: 'clientes' as OrbitView, label: 'Clientes', icon: Users2 }] : []),
+        ...(can('plantillas-producto') ? [{ view: 'plantillas-producto' as OrbitView, label: 'Servicios', icon: BookOpen }] : []),
+        ...(can('new-business') ? [{ view: 'new-business' as OrbitView, label: 'New Business', icon: Briefcase }] : []),
+        ...(can('finanzas') ? [{ view: 'finanzas' as OrbitView, label: 'Dirección y Finanzas', icon: DollarSign }] : [])
+      ]
+    },
+    {
+      title: 'Experiencia',
+      items: can('la-colonia')
+        ? [
+            { view: 'la-colonia' as OrbitView, label: 'La Colonia', icon: Gamepad2 },
+            { view: 'el-muro' as OrbitView, label: 'El Muro', icon: Rocket }
+          ]
+        : []
+    },
+    {
+      title: 'Costos de operación',
+      items: can('costos-operacion')
+        ? [
+            { view: 'licencias' as OrbitView, label: 'Licencias', icon: KeyRound },
+            { view: 'hardware' as OrbitView, label: 'Hardware', icon: Monitor }
+          ]
+        : []
+    },
+    {
+      title: 'Sistema',
+      items: can('administracion')
+        ? [
+            { view: 'usuarios' as OrbitView, label: 'Equipo & Accesos', icon: Users },
+            { view: 'portal-cliente' as OrbitView, label: 'Portal cliente', icon: Globe }
+          ]
+        : []
+    }
+  ].filter((g) => g.items.length > 0);
+
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
 
   const handleNavClick = (view: OrbitView) => {
@@ -69,7 +130,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       id: 'more' as const,
       label: 'Más',
       icon: LayoutDashboard,
-      isActive: ['proyectos', 'clientes', 'capacidad', 'plantillas-producto', 'new-business', 'finanzas', 'usuarios', 'el-muro', 'la-colonia'].includes(currentView)
+      isActive: ['proyectos', 'clientes', 'capacidad', 'plantillas-producto', 'new-business', 'finanzas', 'usuarios', 'el-muro', 'la-colonia', 'licencias', 'hardware', 'portal-cliente'].includes(currentView)
     }
   ];
 
@@ -91,201 +152,42 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             {/* Sheet Handle & Header */}
             <div className="w-12 h-1 bg-[#332258] rounded-full mx-auto mb-4" />
             <div className="flex items-center justify-between pb-3 border-b border-[#261845] mb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-[#d4ff4a]" />
-                <span className="font-extrabold text-sm text-white">Módulos ECO</span>
-              </div>
+              <span className="font-bold text-sm text-white">Más</span>
               <button
                 onClick={() => setIsMoreMenuOpen(false)}
-                className="p-1.5 rounded-xl bg-white/10 text-[#c9b7ff] hover:text-white"
+                className="p-1.5 rounded-xl bg-white/10 text-[#c9b7ff] hover:text-white cursor-pointer"
+                aria-label="Cerrar"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Modules Grid */}
+            {/* Módulos: solo título e ícono; mismos permisos que el menú lateral */}
             <div className="space-y-4">
-              {/* Operación */}
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#c9b7ff]/60 block mb-2">
-                  Operación
-                </span>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => handleNavClick('proyectos')}
-                    className={`p-3 rounded-2xl border text-left flex items-center gap-2.5 transition-all cursor-pointer ${
-                      currentView === 'proyectos'
-                        ? 'bg-[#241344] border-[#8a4dff] text-white'
-                        : 'bg-[#140b24] border-[#261845] text-[#c9b7ff]'
-                    }`}
-                  >
-                    <Folder className="w-4 h-4 text-[#8a4dff] shrink-0" />
-                    <div className="truncate">
-                      <span className="block text-xs font-bold truncate">Proyectos</span>
-                      <span className="text-[10px] text-[#c9b7ff]/60 block truncate">Portafolio</span>
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={() => handleNavClick('capacidad')}
-                    className={`p-3 rounded-2xl border text-left flex items-center gap-2.5 transition-all cursor-pointer ${
-                      currentView === 'capacidad'
-                        ? 'bg-[#241344] border-[#8a4dff] text-white'
-                        : 'bg-[#140b24] border-[#261845] text-[#c9b7ff]'
-                    }`}
-                  >
-                    <TrendingUp className="w-4 h-4 text-[#f59e0b] shrink-0" />
-                    <div className="truncate">
-                      <span className="block text-xs font-bold truncate">Capacidad</span>
-                      <span className="text-[10px] text-[#c9b7ff]/60 block truncate">Cargas del equipo</span>
-                    </div>
-                  </button>
+              {moreGroups.map((group) => (
+                <div key={group.title}>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#c9b7ff]/60 block mb-2">{group.title}</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    {group.items.map((item) => {
+                      const Icon = item.icon;
+                      const active = currentView === item.view;
+                      return (
+                        <button
+                          key={item.view}
+                          onClick={() => handleNavClick(item.view)}
+                          aria-current={active ? 'page' : undefined}
+                          className={`px-3 py-3 rounded-xl border text-left flex items-center gap-2.5 transition-colors cursor-pointer ${
+                            active ? 'bg-[#241344] border-[#8a4dff] text-white' : 'bg-[#140b24] border-[#261845] text-[#e9e2fb] hover:border-[#3a2766]'
+                          }`}
+                        >
+                          <Icon className="w-4 h-4 text-[#c9b7ff] shrink-0" aria-hidden="true" />
+                          <span className="text-xs font-semibold truncate">{item.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-
-              {/* Comercial */}
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#c9b7ff]/60 block mb-2">
-                  Comercial
-                </span>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => handleNavClick('clientes')}
-                    className={`p-3 rounded-2xl border text-left flex items-center gap-2.5 transition-all cursor-pointer ${
-                      currentView === 'clientes'
-                        ? 'bg-[#241344] border-[#8a4dff] text-white'
-                        : 'bg-[#140b24] border-[#261845] text-[#c9b7ff]'
-                    }`}
-                  >
-                    <Users2 className="w-4 h-4 text-[#38bdf8] shrink-0" />
-                    <div className="truncate">
-                      <span className="block text-xs font-bold truncate">Clientes</span>
-                      <span className="text-[10px] text-[#c9b7ff]/60 block truncate">Cuentas y marcas</span>
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={() => handleNavClick('plantillas-producto')}
-                    className={`p-3 rounded-2xl border text-left flex items-center gap-2.5 transition-all cursor-pointer ${
-                      currentView === 'plantillas-producto'
-                        ? 'bg-[#241344] border-[#8a4dff] text-white'
-                        : 'bg-[#140b24] border-[#261845] text-[#c9b7ff]'
-                    }`}
-                  >
-                    <BookOpen className="w-4 h-4 text-[#d4ff4a] shrink-0" />
-                    <div className="truncate">
-                      <span className="block text-xs font-bold truncate">Servicios</span>
-                      <span className="text-[10px] text-[#d4ff4a] block truncate">Catálogo de Plantillas</span>
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={() => handleNavClick('finanzas')}
-                    className={`p-3 rounded-2xl border text-left flex items-center gap-2.5 transition-all cursor-pointer ${
-                      currentView === 'finanzas'
-                        ? 'bg-[#241344] border-[#8a4dff] text-white'
-                        : 'bg-[#140b24] border-[#261845] text-[#c9b7ff]'
-                    }`}
-                  >
-                    <TrendingUp className="w-4 h-4 text-[#a855f7] shrink-0" />
-                    <div className="truncate">
-                      <span className="block text-xs font-bold truncate">Dirección & Finanzas</span>
-                      <span className="text-[10px] text-[#a855f7] block truncate">KPIs & Rentabilidad</span>
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={() => handleNavClick('new-business')}
-                    className={`p-3 rounded-2xl border text-left flex items-center gap-2.5 transition-all cursor-pointer ${
-                      currentView === 'new-business'
-                        ? 'bg-[#241344] border-[#8a4dff] text-white'
-                        : 'bg-[#140b24] border-[#261845] text-[#c9b7ff]'
-                    }`}
-                  >
-                    <Briefcase className="w-4 h-4 text-[#4be5ff] shrink-0" />
-                    <div className="truncate">
-                      <span className="block text-xs font-bold truncate">New Business</span>
-                      <span className="text-[10px] text-[#4be5ff] block truncate">Discovery & backlog</span>
-                    </div>
-                  </button>
-                </div>
-              </div>
-
-              {/* Experiencia & Cultura */}
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#c9b7ff]/60 block mb-2">
-                  Experiencia & Hábitat
-                </span>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => handleNavClick('la-colonia')}
-                    className={`p-3 rounded-2xl border text-left flex items-center gap-2.5 transition-all cursor-pointer ${
-                      currentView === 'la-colonia'
-                        ? 'bg-[#241344] border-[#8a4dff] text-white'
-                        : 'bg-[#140b24] border-[#261845] text-[#c9b7ff]'
-                    }`}
-                  >
-                    <span className="text-base shrink-0">🪵</span>
-                    <div className="truncate">
-                      <span className="block text-xs font-bold truncate">La Colonia</span>
-                      <span className="text-[10px] text-[#d4ff4a] block truncate">Jugar en la colonía</span>
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={() => handleNavClick('el-muro')}
-                    className={`p-3 rounded-2xl border text-left flex items-center gap-2.5 transition-all cursor-pointer ${
-                      currentView === 'el-muro'
-                        ? 'bg-[#241344] border-[#8a4dff] text-white'
-                        : 'bg-[#140b24] border-[#261845] text-[#c9b7ff]'
-                    }`}
-                  >
-                    <span className="text-base shrink-0">🚀</span>
-                    <div className="truncate">
-                      <span className="block text-xs font-bold truncate">El Muro</span>
-                      <span className="text-[10px] text-[#c9b7ff]/60 block truncate">Cultura & kudos</span>
-                    </div>
-                  </button>
-                </div>
-              </div>
-
-              {/* Sistema */}
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#c9b7ff]/60 block mb-2">
-                  Configuración
-                </span>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => handleNavClick('usuarios')}
-                    className={`p-3 rounded-2xl border text-left flex items-center gap-2.5 transition-all cursor-pointer ${
-                      currentView === 'usuarios'
-                        ? 'bg-[#241344] border-[#8a4dff] text-white'
-                        : 'bg-[#140b24] border-[#261845] text-[#c9b7ff]'
-                    }`}
-                  >
-                    <Users className="w-4 h-4 text-[#cbd5e1] shrink-0" />
-                    <div className="truncate">
-                      <span className="block text-xs font-bold truncate">Usuarios</span>
-                      <span className="text-[10px] text-[#c9b7ff]/60 block truncate">Roles y accesos</span>
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={() => handleNavClick('portal-cliente')}
-                    className={`p-3 rounded-2xl border text-left flex items-center gap-2.5 transition-all cursor-pointer ${
-                      currentView === 'portal-cliente'
-                        ? 'bg-[#241344] border-[#8a4dff] text-white'
-                        : 'bg-[#140b24] border-[#261845] text-[#c9b7ff]'
-                    }`}
-                  >
-                    <span className="text-base shrink-0">🌐</span>
-                    <div className="truncate">
-                      <span className="block text-xs font-bold truncate">Portal Cliente</span>
-                      <span className="text-[10px] text-[#4be5ff] block truncate">Preview externo</span>
-                    </div>
-                  </button>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         </div>
