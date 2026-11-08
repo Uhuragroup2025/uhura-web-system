@@ -12,9 +12,13 @@ import { PromptGuide } from './sections/PromptGuide';
 import { TaskFlowPrototype } from './sections/TaskFlowPrototype';
 import { Eye, Zap, Volume2, ShieldCheck, Check } from 'lucide-react';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
+import { isEcoAppMode } from './pwa/appMode';
+import { PwaUpdatePrompt } from './pwa/PwaUpdatePrompt';
 
 export function App() {
-  const [activeSection, setActiveSection] = useState<NavigationSection>('overview');
+  // Instalada como PWA (o con ?app=eco), ECO abre directo y sin el menú del design system.
+  const [appMode] = useState(isEcoAppMode);
+  const [activeSection, setActiveSection] = useState<NavigationSection>(appMode ? 'taskflow-prototype' : 'overview');
   const [reducedMotionSimulated, setReducedMotionSimulated] = useState(false);
 
   // Apply reduced motion class dynamically if toggled
@@ -68,10 +72,13 @@ export function App() {
         Saltar al contenido principal (Skip to Content)
       </a>
 
+      <PwaUpdatePrompt />
+
       {/* 2. Top Navigation */}
-      <Navbar activeSection={activeSection} onSelectSection={handleNavigate} />
+      {!appMode && <Navbar activeSection={activeSection} onSelectSection={handleNavigate} />}
 
       {/* 3. Accessibility Quick-Bar Banner */}
+      {!appMode && (
       <div className="bg-[#140b24] text-white py-2 px-4 border-b border-[#8a4dff]/20 text-xs">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-[#c9b7ff]">
@@ -104,6 +111,7 @@ export function App() {
           </div>
         </div>
       </div>
+      )}
 
       {/* 4. Main Content Area with Landmark & ID */}
       <main
@@ -112,7 +120,9 @@ export function App() {
         role="region"
         aria-label="Contenido de la sección seleccionada"
         className={`flex-1 w-full mx-auto focus:outline-none transition-all duration-300 flex flex-col ${
-          activeSection === 'taskflow-prototype'
+          appMode
+            ? 'max-w-none p-0'
+            : activeSection === 'taskflow-prototype'
             ? 'max-w-[1920px] px-2 sm:px-4 lg:px-6 pt-2 pb-10 flex-1'
             : 'max-w-7xl px-4 sm:px-6 lg:px-8 pt-8 pb-16'
         }`}
@@ -123,7 +133,7 @@ export function App() {
       </main>
 
       {/* 5. Branded Footer */}
-      <Footer />
+      {!appMode && <Footer />}
     </div>
   );
 }

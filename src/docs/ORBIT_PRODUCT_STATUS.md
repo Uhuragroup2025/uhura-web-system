@@ -4,7 +4,7 @@
 
 > **Documento:** Especificación Funcional Maestra para Portabilidad, Backend y Modelo de Datos
 > **Destinatario Técnico Principal:** Indunova (Backend Django REST Framework / PostgreSQL) y Equipo de Producto Uhura Group
-> **Fecha de Actualización:** 07 de noviembre de 2026 (cronograma al «Iniciar proyecto», rondas de ajuste editables, equipo derivado de tareas, hallazgos E2E §10.2.3, cierre de proyecto Módulo 11 §11.7, visibilidad de tareas Módulo 17 §17.5, arranque en producción §9.4, integraciones Google Chat §11.8 y Google Calendar §11.5.1, mascota ECO Módulo 18)
+> **Fecha de Actualización:** 07 de noviembre de 2026 (cronograma al «Iniciar proyecto», rondas de ajuste editables, equipo derivado de tareas, hallazgos E2E §10.2.3, cierre de proyecto Módulo 11 §11.7, visibilidad de tareas Módulo 17 §17.5, arranque en producción §9.4, ECO como PWA §9.5, integraciones Google Chat §11.8 y Google Calendar §11.5.1, mascota ECO Módulo 18)
 > **Versión:** 3.4.0 (Aprobación Canónica UAT 2: 1 Servicio = 1 Proyecto, Decimales, Líderes por Servicio y Modo Desacoplado)
 > **Estado:** Especificación Maestra Canónica Reconciliada — Fuente de Verdad Funcional de ECO
 >
@@ -1297,6 +1297,13 @@ Para asegurar una frontera limpia de trabajo entre Producto (Uhura) y la Fábric
 - COR queda como archivo de consulta. Lo que finanzas necesite conservar se exporta antes de apagarlo; no se importa a ECO.
 - **Dominio final: `app.uhuragroup.com`.** Indunova entrega a Uhura los registros DNS necesarios (CNAME del subdominio y TXT de verificación, más los que requiera el certificado TLS); Uhura los configura en su DNS. ECO solo se publica en ese dominio con HTTPS.
 - **URL anterior de producción:** se retira cuando `app.uhuragroup.com` quede activo (se recomienda redirigirla al dominio nuevo durante la transición y luego darla de baja).
+
+### 9.5 ECO como app instalable (PWA) (07 Nov 2026)
+- **Qué es:** ECO se puede instalar desde el navegador como una app: en el computador (Chrome o Edge: ícono «Instalar» en la barra de direcciones), en Android («Instalar app») y en iPhone (Safari → Compartir → «Agregar a pantalla de inicio»). Queda con el ícono de ECO y abre en su propia ventana, sin barra del navegador.
+- **Al abrirla instalada** va directo a ECO (Mi Día), a pantalla completa, sin el menú del design system ni la barra de navegador simulada del prototipo. En iPhone respeta la muesca y la barra de gestos. Para ver ese modo sin instalar: `?app=eco` al final de la dirección.
+- **Actualizaciones:** cuando hay versión nueva aparece «Hay una versión nueva de ECO · Actualizar»; nunca recarga sin preguntar.
+- **Fase 1 (lista):** instalable, abre rápido y se actualiza con aviso. **No incluye** notificaciones push ni registro de horas sin conexión: ambas necesitan backend y quedan como fase 2 (`BACKEND_REQUIREMENTS.md` §23).
+- Requisito de Indunova: HTTPS en `app.uhuragroup.com` y no dejar en caché `index.html` ni el service worker (detalle en §23).
 
 ## 10. Roles, Niveles de Acceso y Matriz de Permisos (RBAC)
 

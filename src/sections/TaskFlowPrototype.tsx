@@ -78,6 +78,7 @@ import { LicensesView } from '../components/taskflow/assets/LicensesView';
 import type { HardwareAsset, SoftwareLicense } from '../components/taskflow/types';
 import { AccessDeniedCard } from '../components/taskflow/auth/AccessDeniedCard';
 import { DevQaRoleSimulator } from '../components/taskflow/auth/DevQaRoleSimulator';
+import { isEcoAppMode } from '../pwa/appMode';
 import {
   Sparkles,
   Clock,
@@ -728,6 +729,7 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
 ];
 
 export const TaskFlowPrototype: React.FC = () => {
+  const [ecoAppMode] = useState(isEcoAppMode);
   const [currentView, setCurrentView] = useState<OrbitView>('mi-dia');
   const [saasFont, setSaasFont] = useState<'jakarta' | 'inter' | 'montserrat'>('jakarta');
   const [tasks, setTasks] = useState<TaskItem[]>(initialTasks);
@@ -2993,7 +2995,8 @@ export const TaskFlowPrototype: React.FC = () => {
           onSaveSOWData={(sowData) => setOpportunities((previous) => previous.map((item) =>
             item.id === sowOpportunity.id ? { ...item, sowData: { ...item.sowData, ...sowData }, updatedAt: new Date().toISOString() } : item))} />
       )}
-      {/* SaaS Live Demo Utility Bar (Compact single header) */}
+      {/* SaaS Live Demo Utility Bar (Compact single header) — oculta instalada como app */}
+      {!ecoAppMode && (
       <section className="bg-gradient-to-r from-[#1b0d33] to-[#0d0718] py-2.5 px-4 sm:px-6 lg:px-8 border-b border-[#261845]/60">
         <div className="max-w-[1880px] w-full mx-auto flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
@@ -3047,13 +3050,15 @@ export const TaskFlowPrototype: React.FC = () => {
           </div>
         </div>
       </section>
+      )}
 
-      {/* Main SaaS Canvas Box */}
-      <main className="max-w-[1880px] w-full mx-auto px-2 sm:px-4 lg:px-6 mt-3 pb-8 flex-1 flex flex-col min-h-0">
-        <div className={`bg-[#f9fafb] rounded-2xl border border-[#261845] shadow-2xl overflow-hidden flex flex-col flex-1 min-h-[calc(100vh-140px)] ${
+      {/* Main SaaS Canvas Box (instalada como app: a pantalla completa, sin marco de demo) */}
+      <main className={ecoAppMode ? 'w-full flex-1 flex flex-col min-h-0 pt-[env(safe-area-inset-top)]' : 'max-w-[1880px] w-full mx-auto px-2 sm:px-4 lg:px-6 mt-3 pb-8 flex-1 flex flex-col min-h-0'}>
+        <div className={`bg-[#f9fafb] overflow-hidden flex flex-col flex-1 ${ecoAppMode ? 'min-h-[100dvh]' : 'rounded-2xl border border-[#261845] shadow-2xl min-h-[calc(100vh-140px)]'} ${
           saasFont === 'jakarta' ? 'font-saas' : saasFont === 'inter' ? 'font-inter' : 'font-montserrat'
         }`}>
-          {/* Top Prototype Navigation Chrome */}
+          {/* Top Prototype Navigation Chrome (solo en la demo, no instalada como app) */}
+          {!ecoAppMode && (
           <div className="bg-[#140b24] px-5 py-2.5 border-b border-[#261845] flex items-center justify-between text-xs text-[#c9b7ff]/80">
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-[#ef4444] inline-block" />
@@ -3075,6 +3080,7 @@ export const TaskFlowPrototype: React.FC = () => {
               </span>
             </div>
           </div>
+          )}
 
           {/* Prototype App Body */}
           <div className="flex-1 flex overflow-hidden relative min-h-0">

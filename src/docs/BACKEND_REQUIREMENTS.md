@@ -742,3 +742,19 @@ Especificación funcional en `ORBIT_PRODUCT_STATUS.md` Módulo 18.
 * Notificaciones en la campana: «X te retó en {juego} con N pts» (al retado) y «{Resultado} contra X» (a ambos, al resolverse).
 * **Recordatorio de horas (ya existe en producción):** no se reimplementa ni se cambia. Lo que hace hoy la plataforma de Indunova (umbral del 70 %, hora, canales) es la referencia; el prototipo solo replica la reacción de la mascota. Cualquier diferencia se resuelve a favor de producción.
 
+---
+
+## 23. ECO como PWA instalable (07 Nov 2026)
+Especificación funcional en `ORBIT_PRODUCT_STATUS.md` §9.5. **Fase 1 no requiere cambios en el backend.**
+* **Qué incluye el frontend (ya listo en el prototipo):** `vite-plugin-pwa` en `vite.config.ts` genera `manifest.webmanifest` y el service worker `sw.js`. Nombre «ECO · Uhura Group», íconos en `public/pwa/` (192, 512, maskable 512 y `apple-touch-icon` 180), colores `#140b24` / `#0d0718` y `start_url` `/?app=eco`. Se precargan solo el código, los estilos, los íconos y las imágenes de ECO (~2,8 MB). Las capturas de referencia de `public/assets/aistudio` y los logos grandes de `public/brand` no se precargan.
+* **Requisitos de hosting (Indunova):**
+  * Servir solo por **HTTPS** en `app.uhuragroup.com` (§19.1.1). Sin HTTPS no se puede instalar.
+  * `sw.js`, `registerSW.js`, `index.html` y `manifest.webmanifest` con `Cache-Control: no-cache` (si quedan en caché del CDN, las actualizaciones no llegan). Los archivos con hash de `/assets/` pueden ir con caché larga (`immutable`).
+  * `manifest.webmanifest` con `Content-Type: application/manifest+json`.
+  * Si la SPA tiene rutas, todas responden con `index.html`; las llamadas a `/api/...` **nunca** pasan por el service worker (hoy no las intercepta: solo precarga archivos estáticos y fuentes).
+* **Actualizaciones:** al publicar una versión nueva, la app muestra «Hay una versión nueva de ECO · Actualizar». Nunca recarga sin preguntar, para no perder un cronómetro o un formulario a medias. Revisa si hay versión nueva cada hora.
+* **Al lanzar producción:** quitar del build el Simulador QA (ver nota al inicio de este documento) y el atajo `?ecoMoods=fast`; el modo app (`?app=eco` / instalada) se conserva.
+* **Fuera de la fase 1 (requieren backend, a decidir):**
+  * **Notificaciones push** (retos, horas por cargar, aprobaciones): llaves VAPID, endpoint para guardar la suscripción por usuario y dispositivo, y un servicio que envíe. En iPhone solo funcionan con la app instalada en la pantalla de inicio (iOS 16.4+).
+  * **Registrar horas sin conexión** con sincronización posterior: necesita resolver conflictos en el backend. No se recomienda por ahora.
+
