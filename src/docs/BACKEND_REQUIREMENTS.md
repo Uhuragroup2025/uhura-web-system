@@ -766,3 +766,16 @@ Especificación funcional en `ORBIT_PRODUCT_STATUS.md` §9.4.1. Lógica de refer
 * **Día cerrado:** tabla `day_closures` (`user_id`, `date`, `closed_at`), única por usuario y fecha. `POST /api/me/day-closures` con la fecha de hoy; idempotente. Es solo un registro de confirmación: **no bloquea ni modifica** `time_logs` (las reglas de corrección y cierre semanal no cambian). En el prototipo vive en el navegador (`eco_day_closed_v1`).
 * **Aviso de las 5:00 p. m.:** es del frontend (mascota); se muestra una vez por día y no requiere backend. Si a futuro se quiere enviar también por Google Chat o push, se reutiliza el canal del recordatorio de horas de producción, sin duplicarlo.
 
+---
+
+## 25. Racha de equipo y logros de racha (07 Nov 2026)
+Especificación funcional en `ORBIT_PRODUCT_STATUS.md` §9.4.1. Lógica de referencia en `src/components/taskflow/time/dayStreak.ts` (`computeTeamStreak`, `computeMilestones`).
+* **Requiere cálculo en servidor:** cada persona solo puede leer sus propios `time_logs` (§15.1), así que la racha de equipo y los logros se calculan en el backend y se exponen ya agregados, sin horas individuales:
+  * `GET /api/team/streak` → `{ current, today_loaded, today_expected, week_pct }`. Nunca devuelve quién faltó.
+  * `GET /api/team/streak-milestones` → `[{ user_id, user_name, milestone, achieved_on, claps_count, clapped_by_me }]`, solo de personas con `share_streak_milestones = true`.
+* **Equipo esperado por día:** usuarios activos con `capacity_hours > 0`, sin ausencia activa ese día (§20). Días hábiles de Colombia. Un día cuenta para la persona si suma ≥ 70 % de `capacity_hours / 5`.
+* **Hitos:** 5, 10, 20, 50 y 100 días seguidos. `achieved_on` = día en que la racha vigente alcanzó el hito. Si la racha se rompe, el hito deja de mostrarse (se celebran rachas vigentes).
+* **Preferencia:** `users.share_streak_milestones` (boolean, default `true`), editable por la propia persona. En el prototipo: `eco_streak_share_off_v1`.
+* **Aplausos:** `streak_milestone_claps` (`milestone_key`, `user_id`, `created_at`), único por persona y hito; no se puede aplaudir el propio. `POST`/`DELETE /api/team/streak-milestones/{key}/clap`. En el prototipo: `eco_streak_claps_v1`.
+* Opcional (fase 2): avisar en Google Chat del equipo cuando alguien llega a un hito, respetando `share_streak_milestones`.
+

@@ -17,7 +17,6 @@ import {
   Folder,
   BookOpen,
   Gamepad2,
-  Rocket,
   KeyRound,
   Monitor,
   Globe,
@@ -68,8 +67,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       title: 'Experiencia',
       items: can('la-colonia')
         ? [
-            { view: 'la-colonia' as OrbitView, label: 'La Colonia', icon: Gamepad2 },
-            { view: 'el-muro' as OrbitView, label: 'El Muro', icon: Rocket }
+            { view: 'la-colonia' as OrbitView, label: 'La Colonia', icon: Gamepad2 }
           ]
         : []
     },
@@ -130,7 +128,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       id: 'more' as const,
       label: 'Más',
       icon: LayoutDashboard,
-      isActive: ['proyectos', 'clientes', 'capacidad', 'plantillas-producto', 'new-business', 'finanzas', 'usuarios', 'el-muro', 'la-colonia', 'licencias', 'hardware', 'portal-cliente'].includes(currentView)
+      isActive: ['proyectos', 'clientes', 'capacidad', 'plantillas-producto', 'new-business', 'finanzas', 'usuarios', 'la-colonia', 'licencias', 'hardware', 'portal-cliente'].includes(currentView)
     }
   ];
 

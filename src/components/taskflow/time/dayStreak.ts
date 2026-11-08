@@ -66,6 +66,8 @@ export interface StreakResult {
   todayCounts: boolean;
   /** ¿Hoy es un día que cuenta (hábil y sin ausencia)? */
   todayIsWorkday: boolean;
+  /** Días que forman la racha, del más reciente al más antiguo (ISO). */
+  days: string[];
 }
 
 export function computeStreak(params: {
@@ -84,16 +86,16 @@ export function computeStreak(params: {
   const todayIsWorkday = isWorkday(todayIso);
   const todayCounts = todayIsWorkday && counts(todayIso);
 
-  let current = todayCounts ? 1 : 0;
+  const days: string[] = todayCounts ? [todayIso] : [];
   const cursor = new Date(today);
   for (let i = 0; i < maxLookbackDays; i++) {
     cursor.setDate(cursor.getDate() - 1);
     const iso = toIsoLocal(cursor);
     if (!isWorkday(iso)) continue;
     if (!counts(iso)) break;
-    current++;
+    days.push(iso);
   }
-  return { current, todayCounts, todayIsWorkday };
+  return { current: days.length, todayCounts, todayIsWorkday, days };
 }
 
 // ── Día cerrado (prototipo: navegador; producción: backend, ver BACKEND_REQUIREMENTS §24) ──
@@ -131,4 +133,158 @@ export function markDayClosed(userId: string | undefined, iso: string) {
 export function streakLabel(n: number): string {
   if (n <= 0) return 'Empieza tu racha hoy';
   return n === 1 ? '1 día seguido' : `${n} días seguidos`;
+}
+
+// ── Visible para todo el equipo: racha de equipo e hitos personales ──
+/**
+ * Pensado para motivar sin señalar: la racha de equipo nunca nombra a quien faltó (solo
+ * «faltan 2») y los hitos solo celebran a quien llegó. No hay ranking de horas.
+ */
+export const STREAK_MILESTONES = [5, 10, 20, 50, 100];
+
+export interface TeamMember {
+  user: UserItem;
+  targetDayHours: number;
+  absentDays: Set<string>;
+}
+
+/** Personas que cuentan para el equipo: activas y con capacidad (horas semanales) configurada. */
+export function teamMembersFrom(users: UserItem[], absencesByUser: Map<string, Set<string>>): TeamMember[] {
+  return users
+    .filter((u) => u.status !== 'Inactive' && (u.capacityHours || 0) > 0)
+    .map((u) => ({ user: u, targetDayHours: (u.capacityHours || 0) / 5, absentDays: absencesByUser.get(u.id) || new Set() }));
+}
+
+export interface TeamStreakResult {
+  /** Días hábiles seguidos en que todo el equipo esperado cargó su día. */
+  current: number;
+  /** Hoy: cuántos ya cargaron y cuántos se esperan (sin nombres). */
+  todayLoaded: number;
+  todayExpected: number;
+  /** Semana en curso (lunes a hoy): % de días-persona cargados. */
+  weekPct: number | null;
+}
+
+export function computeTeamStreak(members: TeamMember[], logs: TimeLog[], today: Date = new Date(), maxLookbackDays = 120): TeamStreakResult {
+  const hours = members.map((m) => ({ m, h: hoursByDay(logs, m.user, today) }));
+  const dayStats = (iso: string) => {
+    if (!isBusinessDay(new Date(`${iso}T00:00:00Z`))) return null;
+    let expected = 0;
+    let loaded = 0;
+    for (const { m, h } of hours) {
+      if (m.absentDays.has(iso)) continue;
+      expected++;
+      if ((h.get(iso) || 0) >= Math.max(0.1, m.targetDayHours * STREAK_MIN_RATIO)) loaded++;
+    }
+    return expected > 0 ? { expected, loaded } : null;
+  };
+
+  const todayIso = toIsoLocal(today);
+  const t = dayStats(todayIso);
+  let current = t && t.loaded === t.expected ? 1 : 0;
+  const cursor = new Date(today);
+  for (let i = 0; i < maxLookbackDays; i++) {
+    cursor.setDate(cursor.getDate() - 1);
+    const st = dayStats(toIsoLocal(cursor));
+    if (!st) continue;
+    if (st.loaded < st.expected) break;
+    current++;
+  }
+
+  // Semana en curso: lunes → hoy
+  const monday = new Date(today);
+  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+  let exp = 0;
+  let load = 0;
+  for (const d = new Date(monday); d <= today; d.setDate(d.getDate() + 1)) {
+    const st = dayStats(toIsoLocal(d));
+    if (!st) continue;
+    exp += st.expected;
+    load += st.loaded;
+  }
+  return {
+    current,
+    todayLoaded: t?.loaded || 0,
+    todayExpected: t?.expected || 0,
+    weekPct: exp > 0 ? Math.round((load / exp) * 100) : null
+  };
+}
+
+export interface StreakMilestone {
+  key: string;
+  user: UserItem;
+  milestone: number;
+  current: number;
+  achievedOn: string;
+}
+
+/** Hitos vigentes (5, 10, 20…) de cada persona que comparte sus hitos, del más reciente al más antiguo. */
+export function computeMilestones(members: TeamMember[], logs: TimeLog[], today: Date = new Date()): StreakMilestone[] {
+  const out: StreakMilestone[] = [];
+  for (const m of members) {
+    if (!isSharingMilestones(m.user.id)) continue;
+    const st = computeStreak({ hours: hoursByDay(logs, m.user, today), targetDayHours: m.targetDayHours, absentDays: m.absentDays, today });
+    const reached = STREAK_MILESTONES.filter((x) => x <= st.current).pop();
+    if (!reached) continue;
+    const achievedOn = st.days[st.current - reached];
+    out.push({ key: `${m.user.id}:${reached}:${st.days[st.current - 1]}`, user: m.user, milestone: reached, current: st.current, achievedOn });
+  }
+  return out.sort((a, b) => b.achievedOn.localeCompare(a.achievedOn));
+}
+
+// Preferencia personal «Compartir mis hitos» (prototipo: navegador; producción: perfil)
+const SHARE_OFF_KEY = 'eco_streak_share_off_v1';
+const CLAPS_KEY = 'eco_streak_claps_v1';
+export const STREAK_SOCIAL_EVENT = 'eco:streak-social';
+const readJson = <T,>(k: string, fallback: T): T => {
+  try {
+    return JSON.parse(localStorage.getItem(k) || '') ?? fallback;
+  } catch {
+    return fallback;
+  }
+};
+const writeJson = (k: string, v: unknown) => {
+  try {
+    localStorage.setItem(k, JSON.stringify(v));
+  } catch {
+    /* sin almacenamiento */
+  }
+  window.dispatchEvent(new CustomEvent(STREAK_SOCIAL_EVENT));
+};
+
+export function isSharingMilestones(userId: string): boolean {
+  return !readJson<string[]>(SHARE_OFF_KEY, []).includes(userId);
+}
+export function setSharingMilestones(userId: string, share: boolean) {
+  const set = new Set(readJson<string[]>(SHARE_OFF_KEY, []));
+  if (share) set.delete(userId);
+  else set.add(userId);
+  writeJson(SHARE_OFF_KEY, Array.from(set));
+}
+export function getClaps(key: string): string[] {
+  return readJson<Record<string, string[]>>(CLAPS_KEY, {})[key] || [];
+}
+export function toggleClap(key: string, userId: string) {
+  const all = readJson<Record<string, string[]>>(CLAPS_KEY, {});
+  const set = new Set(all[key] || []);
+  if (set.has(userId)) set.delete(userId);
+  else set.add(userId);
+  all[key] = Array.from(set);
+  writeJson(CLAPS_KEY, all);
+}
+
+export function absencesByUserFrom(events: { userId: string; status: string; startDate: string; endDate?: string }[]): Map<string, Set<string>> {
+  const map = new Map<string, Set<string>>();
+  for (const a of events) {
+    if (a.status !== 'active') continue;
+    const set = map.get(a.userId) || new Set<string>();
+    const d = new Date(`${a.startDate}T00:00:00`);
+    const end = new Date(`${a.endDate || a.startDate}T00:00:00`);
+    for (let i = 0; d <= end && i < 120; i++) {
+      set.add(toIsoLocal(d));
+      d.setDate(d.getDate() + 1);
+    }
+    map.set(a.userId, set);
+  }
+  return map;
 }

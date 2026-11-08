@@ -1311,6 +1311,11 @@ Objetivo: que cargar horas sea un hábito que guste. Se quita fricción y se pre
   - En fin de semana, festivo o ausencia lo dice así: hoy no cuenta y no rompe la racha.
 - **Aviso de ECO a las 5:00 p. m.:** en día hábil, sin ausencia y si la persona no ha cerrado su día, ECO pregunta «¿Cerramos el día? 🌙» con «Cerrar mi día →» y «Más tarde». Una vez por día y solo con ECO en reposo (no interrumpe avisos, ventanas ni el cronómetro).
 - Cerrar el día es un ritual de confirmación: **no bloquea** ni cambia las horas; se pueden seguir corrigiendo según las reglas de la semana.
+- **Lo que ve todo el equipo (La Colonia, arriba de las fichas):** sin ranking de horas ni comparación de posiciones.
+  - **Racha del equipo:** «🔥 7 días con todos los días cargados». Un día cuenta cuando **cada persona esperada** (activa, con capacidad configurada y sin ausencia ese día) registró al menos el 70 % de su jornada. Muestra «Hoy: faltan 2 personas» **sin nombres** y «Esta semana: 92 % de los días cargados». En Mi Día aparece un acceso corto: «👥 Equipo: 🔥 7 días» (lleva a La Colonia).
+  - **Logros de racha:** cuando alguien llega a **5, 10, 20, 50 o 100 días seguidos**, aparece «🔥 Laura llegó a 10 días seguidos con su día cargado» con la fecha. Solo celebra a quien llega; nunca muestra a quien no. Los compañeros pueden **aplaudir 👏** (uno por persona; quien recibe ve cuántos).
+  - **«Compartir mis logros»:** interruptor personal; si se apaga, los logros de esa persona no se publican. Su racha sigue contando para ella y para el equipo.
+- **El Muro** era una pantalla de relleno (ya retirada del menú lateral) y se quitó también de «Más» en móvil. Los logros de racha viven en La Colonia.
 
 ### 9.5 ECO como app instalable (PWA) (07 Nov 2026)
 - **Qué es:** ECO se puede instalar desde el navegador como una app: en el computador (Chrome o Edge: ícono «Instalar» en la barra de direcciones), en Android («Instalar app») y en iPhone (Safari → Compartir → «Agregar a pantalla de inicio»). Queda con el ícono de ECO y abre en su propia ventana, sin barra del navegador.

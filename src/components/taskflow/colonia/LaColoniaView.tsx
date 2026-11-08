@@ -1,3 +1,4 @@
+import { TeamStreakPanel } from './TeamStreakPanel';
 /**
  * ============================================================================
  * LA COLONIA & FICHAS HUMANAS (ECO CULTURA UHURA)
@@ -14,7 +15,7 @@
  */
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { OrbitView, TaskItem, UserItem } from '../types';
+import { OrbitView, TaskItem, UserItem, TimeLog, TeamAbsenceEvent } from '../types';
 import { ColonyGameId, ColonyChallenge, WeeklyLeaderboardEntry, TeammateOption } from './types';
 import {
   loadColonyChallenges,
@@ -69,6 +70,9 @@ interface LaColoniaViewProps {
   plannedHoursToday?: number;
   currentUser?: UserItem;
   teamUsers?: UserItem[];
+  /** Para la racha de equipo y los logros de racha (visibles para todos). */
+  timeLogs?: TimeLog[];
+  absenceEvents?: TeamAbsenceEvent[];
   onNavigateToView: (view: OrbitView) => void;
   onUpdateUser?: (updatedUser: UserItem) => void;
 }
@@ -80,6 +84,8 @@ type FilterCategory = 'todos' | 'cumples' | 'aniversarios';
 export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
   currentUser,
   teamUsers = [],
+  timeLogs = [],
+  absenceEvents = [],
   onNavigateToView,
   onUpdateUser
 }) => {
@@ -303,6 +309,9 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
               </button>
             </div>
           </div>
+
+          {/* Racha del equipo y logros de racha (los ve todo el equipo) */}
+          <TeamStreakPanel users={teamUsers} timeLogs={timeLogs} absenceEvents={absenceEvents} currentUser={currentUser} />
 
           {/* Cuadrícula de Tarjetas de Colaboradores (3 Columnas, Exacto a Staging) */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
