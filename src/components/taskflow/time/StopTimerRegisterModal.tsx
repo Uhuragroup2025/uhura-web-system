@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, AlertTriangle, RotateCcw } from 'lucide-react';
+import { Clock, X, AlertTriangle, RotateCcw } from 'lucide-react';
 import { ActiveTimerState, TaskItem } from '../types';
 
 interface StopTimerRegisterModalProps {
@@ -49,8 +49,7 @@ export const StopTimerRegisterModal: React.FC<StopTimerRegisterModalProps> = ({
       const h = Math.floor(totalMin / 60);
       const m = totalMin % 60;
       setHoursInput(String(h));
-      // If elapsed is less than 1 min, default to at least 1 min for adjusted editor
-      setMinutesInput(String(Math.max(1, m)));
+      setMinutesInput(String(m).padStart(2, '0'));
       setIsAdjusting(false);
       setShowDiscardConfirm(false);
       setIsSubmitting(false);
@@ -100,10 +99,12 @@ export const StopTimerRegisterModal: React.FC<StopTimerRegisterModalProps> = ({
     // Strip non-digit characters to strictly prevent decimals (no '.' or ',')
     const sanitized = e.target.value.replace(/[^0-9]/g, '');
     setHoursInput(sanitized);
+    setIsAdjusting(true);
   };
 
   const handleMinutesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const sanitized = e.target.value.replace(/[^0-9]/g, '');
+    setIsAdjusting(true);
     if (!sanitized) {
       setMinutesInput('');
       return;
@@ -130,41 +131,58 @@ export const StopTimerRegisterModal: React.FC<StopTimerRegisterModalProps> = ({
     const h = Math.floor(totalMin / 60);
     const m = totalMin % 60;
     setHoursInput(String(h));
-    setMinutesInput(String(Math.max(1, m)));
+    setMinutesInput(String(m).padStart(2, '0'));
+    setIsAdjusting(false);
   };
 
   const registerLabel = formatFriendlyDuration(currentSessionSeconds);
+  const measuredLabel = formatFriendlyDuration(activeTimer.elapsedSeconds);
 
+  // Misma estructura visual que «Cargar horas» (registro manual): encabezado oscuro, banda de
+  // tarea seleccionada, campos de horas y minutos con sufijo y pie con la acción principal.
   return (
     <div
       role="dialog"
       aria-modal="true"
       aria-labelledby="stop-timer-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#090513]/60 backdrop-blur-xs animate-in fade-in duration-200"
+      className="fixed inset-0 z-60 flex items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-200"
     >
-      <div className="bg-white rounded-2xl shadow-2xl border border-[#e2e8f0] w-full max-w-md overflow-hidden text-[#0f172a] animate-in zoom-in-95 duration-150">
-        {/* Encabezado: título + una sola línea de contexto. La X cierra y sigue midiendo (no descarta). */}
-        <div className="px-5 pt-5 pb-4 flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h3 id="stop-timer-modal-title" className="font-bold text-base text-[#0f172a]">
-              Registrar tiempo
-            </h3>
-            <p className="text-xs text-[#64748b] mt-0.5 truncate" title={`${taskTitle} · ${clientName} · ${projectName}`}>
-              <span className="font-semibold text-[#334155]">{taskTitle}</span> · {clientName}
-            </p>
+      <div className="bg-white sm:rounded-2xl shadow-2xl border-0 sm:border sm:border-[#e2e8f0] w-full max-w-lg h-full sm:h-auto overflow-hidden flex flex-col sm:max-h-[92vh] text-[#0f172a] animate-in zoom-in-95 duration-150">
+        {/* Encabezado (igual a Cargar horas). La X cierra y el cronómetro sigue. */}
+        <div className="px-5 sm:px-6 py-4 bg-[#0f172a] text-white flex items-center justify-between border-b border-[#334155] shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-white/10 text-white flex items-center justify-center shrink-0">
+              <Clock className="w-4 h-4 text-[#d4ff4a]" />
+            </div>
+            <div>
+              <h3 id="stop-timer-modal-title" className="font-bold text-sm text-white">Registrar tiempo</h3>
+              <p className="text-[11px] text-[#94a3b8]">Tiempo medido con el cronómetro</p>
+            </div>
           </div>
           <button
             type="button"
             onClick={onCloseAndResume}
             aria-label="Cerrar y seguir trabajando"
-            title="Cerrar y seguir trabajando"
-            className="w-8 h-8 shrink-0 rounded-lg hover:bg-[#f1f5f9] text-[#64748b] hover:text-[#0f172a] flex items-center justify-center transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#8a4dff]"
+            title="Cerrar y seguir trabajando (el cronómetro sigue)"
+            className="text-[#94a3b8] hover:text-white p-1.5 rounded-xl hover:bg-white/10 cursor-pointer transition-colors shrink-0 ml-2"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="px-5 pb-5 space-y-4">
+        {/* Tarea seleccionada (igual a Cargar horas) */}
+        <div className="px-5 sm:px-6 py-3.5 bg-[#f8fafc] border-b border-[#e2e8f0] shrink-0">
+          <span className="text-[10px] font-bold uppercase text-[#64748b] block mb-1">Tarea seleccionada</span>
+          <div className="flex flex-wrap items-center gap-1.5 text-xs text-[#64748b]">
+            <span className="font-bold text-[#501f92]">{clientName}</span>
+            <span className="text-[#94a3b8] font-bold">›</span>
+            <span className="font-semibold text-[#334155]">{projectName}</span>
+            <span className="text-[#94a3b8] font-bold">›</span>
+            <span className="font-bold text-[#0f172a]">{taskTitle}</span>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
           {showDiscardConfirm ? (
             <div className="p-4 rounded-2xl bg-[#fff1f2] border border-[#fecdd3] space-y-3 animate-in fade-in zoom-in-95 duration-150">
               <div className="flex items-start gap-3">
@@ -172,7 +190,7 @@ export const StopTimerRegisterModal: React.FC<StopTimerRegisterModalProps> = ({
                 <div className="space-y-1">
                   <h4 className="font-bold text-sm text-[#9f1239]">&iquest;Descartar este tiempo?</h4>
                   <p className="text-xs text-[#be123c] leading-relaxed">
-                    Los {formatFriendlyDuration(activeTimer.elapsedSeconds)} medidos en esta sesi&oacute;n no se registrar&aacute;n.
+                    Los {measuredLabel} medidos en esta sesi&oacute;n no se registrar&aacute;n.
                   </p>
                 </div>
               </div>
@@ -180,14 +198,14 @@ export const StopTimerRegisterModal: React.FC<StopTimerRegisterModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowDiscardConfirm(false)}
-                  className="py-2 px-3.5 rounded-xl border border-[#cbd5e1] bg-white hover:bg-[#f8fafc] text-xs font-semibold text-[#334155] transition-colors cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl text-xs font-semibold text-[#64748b] hover:bg-white cursor-pointer transition-colors"
                 >
                   Volver
                 </button>
                 <button
                   type="button"
                   onClick={onDiscardSession}
-                  className="py-2 px-3.5 rounded-xl bg-[#e11d48] hover:bg-[#be123c] text-white text-xs font-bold transition-colors cursor-pointer"
+                  className="px-5 py-2.5 rounded-xl bg-[#e11d48] hover:bg-[#be123c] text-white text-xs font-bold transition-colors cursor-pointer"
                 >
                   Descartar sesi&oacute;n
                 </button>
@@ -195,48 +213,16 @@ export const StopTimerRegisterModal: React.FC<StopTimerRegisterModalProps> = ({
             </div>
           ) : (
             <>
-              {/* Lo que se va a guardar, en grande */}
-              <div className="text-center py-2">
-                <span className="text-xs font-semibold text-[#64748b] block">Se registrar&aacute;n</span>
-                <div className="font-mono text-4xl font-black text-[#501f92] tracking-tight mt-1">{registerLabel}</div>
-                <div className="text-[11px] text-[#64748b] mt-1.5 flex items-center justify-center gap-1.5">
-                  {isAdjusting ? (
-                    <>
-                      <span>Medido {formatFriendlyDuration(activeTimer.elapsedSeconds)} &middot; ajustado a mano</span>
-                      <span aria-hidden="true">&middot;</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          handleResetToMeasured();
-                          setIsAdjusting(false);
-                        }}
-                        className="font-semibold text-[#501f92] hover:underline cursor-pointer inline-flex items-center gap-1"
-                      >
-                        <RotateCcw className="w-3 h-3" />
-                        Usar lo medido
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <span>Tiempo medido con el cron&oacute;metro</span>
-                      <span aria-hidden="true">&middot;</span>
-                      <button
-                        type="button"
-                        onClick={() => setIsAdjusting(true)}
-                        className="font-semibold text-[#501f92] hover:underline cursor-pointer"
-                      >
-                        Ajustar
-                      </button>
-                    </>
-                  )}
+              {/* Duración: siempre visible y editable directamente */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block font-bold text-xs text-[#0f172a]">Duraci&oacute;n del trabajo *</label>
+                  <span className="px-2 py-0.5 rounded-lg bg-[#f2ecfb] text-[10px] font-bold text-[#501f92]">
+                    Cron&oacute;metro: {measuredLabel}
+                  </span>
                 </div>
-              </div>
-
-              {/* Ajuste: una sola fila, sin cajas anidadas */}
-              {isAdjusting && (
-                <div className="flex items-end gap-3 animate-in fade-in duration-150">
-                  <label className="flex-1">
-                    <span className="text-[11px] font-semibold text-[#475569] block mb-1">Horas</span>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex items-center gap-2 bg-[#f8fafc] border border-[#e2e8f0] px-3.5 py-2 rounded-xl focus-within:border-[#501f92] focus-within:bg-white">
                     <input
                       type="text"
                       inputMode="numeric"
@@ -245,26 +231,44 @@ export const StopTimerRegisterModal: React.FC<StopTimerRegisterModalProps> = ({
                       onChange={handleHoursChange}
                       placeholder="0"
                       aria-label="Horas (sin decimales)"
-                      className="w-full px-3 py-2.5 text-sm font-mono font-bold rounded-xl border border-[#cbd5e1] bg-white focus:outline-none focus:ring-2 focus:ring-[#8a4dff] text-[#0f172a]"
+                      className="w-full text-sm font-mono font-bold text-[#0f172a] bg-transparent focus:outline-none"
                     />
-                  </label>
-                  <label className="flex-1">
-                    <span className="text-[11px] font-semibold text-[#475569] block mb-1">Minutos (0&ndash;59)</span>
+                    <span className="text-xs font-bold text-[#64748b] select-none">horas</span>
+                  </div>
+                  <div className="flex items-center gap-2 bg-[#f8fafc] border border-[#e2e8f0] px-3.5 py-2 rounded-xl focus-within:border-[#501f92] focus-within:bg-white">
                     <input
                       type="text"
                       inputMode="numeric"
                       pattern="[0-9]*"
                       value={minutesInput}
                       onChange={handleMinutesChange}
-                      placeholder="0"
+                      placeholder="00"
                       aria-label="Minutos (0 - 59)"
-                      className="w-full px-3 py-2.5 text-sm font-mono font-bold rounded-xl border border-[#cbd5e1] bg-white focus:outline-none focus:ring-2 focus:ring-[#8a4dff] text-[#0f172a]"
+                      className="w-full text-sm font-mono font-bold text-[#0f172a] bg-transparent focus:outline-none"
                     />
-                  </label>
+                    <span className="text-xs font-bold text-[#64748b] select-none">minutos</span>
+                  </div>
                 </div>
-              )}
+                <p className="text-[10px] text-[#64748b] mt-1.5">
+                  {isAdjusting ? (
+                    <>
+                      Ajustado a mano (m&iacute;nimo 1 min).{' '}
+                      <button
+                        type="button"
+                        onClick={handleResetToMeasured}
+                        className="font-bold text-[#501f92] hover:underline cursor-pointer inline-flex items-center gap-1"
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                        Usar lo medido ({measuredLabel})
+                      </button>
+                    </>
+                  ) : (
+                    <>Se registra lo medido. Si necesitas corregirlo, cambia las horas o los minutos.</>
+                  )}
+                </p>
+              </div>
 
-              {/* Uso de horas de la tarea: una sola barra (solo si tiene horas estimadas) */}
+              {/* Uso de horas de la tarea (solo si tiene horas estimadas reales) */}
               {hasBudget && (
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between gap-2 text-[11px]">
@@ -280,37 +284,39 @@ export const StopTimerRegisterModal: React.FC<StopTimerRegisterModalProps> = ({
                   </div>
                 </div>
               )}
-
-              {/* Acciones: destructiva aparte, a la izquierda */}
-              <div className="flex items-center justify-between gap-2 pt-3 border-t border-[#f1f5f9]">
-                <button
-                  type="button"
-                  onClick={() => setShowDiscardConfirm(true)}
-                  className="py-2 px-2 -ml-2 rounded-lg text-xs font-semibold text-[#dc2626] hover:bg-[#fef2f2] transition-colors cursor-pointer"
-                >
-                  Descartar
-                </button>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={onCloseAndResume}
-                    className="py-2 px-3.5 rounded-xl border border-[#cbd5e1] hover:bg-[#f8fafc] text-xs font-semibold text-[#334155] transition-colors cursor-pointer"
-                  >
-                    Seguir trabajando
-                  </button>
-                  <button
-                    type="button"
-                    disabled={isSubmitting}
-                    onClick={handleAccept}
-                    className="py-2 px-4 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Registrar {registerLabel}
-                  </button>
-                </div>
-              </div>
             </>
           )}
         </div>
+
+        {/* Pie (igual a Cargar horas, con Descartar aparte a la izquierda) */}
+        {!showDiscardConfirm && (
+          <div className="p-4 sm:p-5 bg-white border-t border-[#f1f5f9] flex items-center justify-between gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowDiscardConfirm(true)}
+              className="px-3 py-2.5 rounded-xl text-xs font-semibold text-[#dc2626] hover:bg-[#fef2f2] cursor-pointer transition-colors"
+            >
+              Descartar
+            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onCloseAndResume}
+                className="px-4 py-2.5 rounded-xl text-xs font-semibold text-[#64748b] hover:bg-[#f1f5f9] cursor-pointer transition-colors"
+              >
+                Seguir trabajando
+              </button>
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={handleAccept}
+                className="px-5 py-2.5 rounded-xl bg-[#501f92] hover:bg-[#381566] disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold shadow-xs cursor-pointer transition-colors"
+              >
+                Registrar {registerLabel}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

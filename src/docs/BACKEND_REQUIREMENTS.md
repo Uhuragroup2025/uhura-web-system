@@ -728,6 +728,7 @@ Especificación funcional en `ORBIT_PRODUCT_STATUS.md` (Módulo 18, reglas de la
 * Configuración de organización `mascot_skin` (`christmas` | `standard`), editable **solo por `system_admin`**; lectura para todos los usuarios autenticados. En el prototipo vive en el navegador (`eco_mascot_skin`); en producción debe persistirse en backend y quedar en bitácora (quién y cuándo la cambió).
 * Preferencias personales (no requieren backend o pueden ir en el perfil): mascota apagada, sonido y nieve.
 * Las emociones de la mascota se calculan en el frontend con las tareas propias del usuario (§15.1); no requieren endpoints nuevos.
+* **Moods de ambiente (cafecito, hola, crack, agua) y la duración de las emociones:** son solo frontend (imágenes y frases en `mascot/ecoMascot.ts`, rotación aleatoria por persona en el navegador). **No requieren backend ni endpoints.** Producción solo debe incluir las imágenes `eco-xmas-*.webp` en el build. Si a futuro Uhura quiere editar las frases sin desplegar, se haría como configuración de organización (igual que `mascot_skin`); hoy no es necesario.
 
 ---
 

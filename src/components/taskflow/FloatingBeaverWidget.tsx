@@ -43,7 +43,7 @@ import { TeamLifeEventsModal } from './copilot/TeamLifeEventsModal';
 import { ActiveBreakModal } from './copilot/ActiveBreakModal';
 import { initialUsers, initialAbsenceEvents } from './mockData';
 import { Snowfall } from './seasonal/christmasMode';
-import { useMascotSkin, setMascotSkin, setSnowEnabled, mascotImage, ECO_EMOTION_IMAGES, EcoEmotion, MascotSkin, MASCOT_SKIN_LABEL } from './mascot/ecoMascot';
+import { useMascotSkin, setMascotSkin, setSnowEnabled, mascotImage, ECO_EMOTION_IMAGES, EcoEmotion, MascotSkin, MASCOT_SKIN_LABEL, ambientMoodsFor, EcoAmbientMoodDef } from './mascot/ecoMascot';
 import { isScheduledForDay, makeTaskComparator, taskScheduleDate } from './auth/taskVisibility';
 import { getUserAccessLevel } from './auth/permissions';
 import { isBusinessDay } from './health/projectHealthEngine';
@@ -859,18 +859,50 @@ const FloatingBeaverCore: React.FC<FloatingBeaverCoreProps> = ({
     }
   }, []);
 
-  // Autonomous Living Cycle (Spaced out, no spammy actions, idle only)
+  // Moods de ambiente: cada persona los ve en momentos aleatorios distintos (no a todos a la vez).
+  // Primero entre 2 y 6 min tras entrar; luego cada 6 a 18 min. Solo si ECO está en reposo.
+  const [ambientMood, setAmbientMood] = useState<EcoAmbientMoodDef | null>(null);
+  const ambientAllowedRef = useRef(false);
+  ambientAllowedRef.current =
+    !isOpen && !isDragging && !isBreakModalOpen && !activeTimer && currentAction === 'idle' && !isWarningActive && !speechBubbleText;
+  const lastAmbientRef = useRef<string | null>(null);
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (!isOpen && !isMinimized && !isDragging && !activeBreakActive && currentAction === 'idle' && !isWarningActive) {
-        const livingBehaviors: BuckyAction[] = ['wave', 'yawn', 'stretch', 'exercise', 'hydrate'];
-        const randomAction = livingBehaviors[Math.floor(Math.random() * livingBehaviors.length)];
-        triggerLivingAction(randomAction);
+    let next: ReturnType<typeof setTimeout>;
+    let hide: ReturnType<typeof setTimeout>;
+    // Solo desarrollo: ?ecoMoods=fast acelera la rotación (segundos) para revisarla en el prototipo.
+    let fast = false;
+    try {
+      fast = new URLSearchParams(window.location.search).get('ecoMoods') === 'fast';
+    } catch {}
+    const minutes = (min: number, max: number) => (min + Math.random() * (max - min)) * (fast ? 2_000 : 60_000);
+    const schedule = (first: boolean) => {
+      next = setTimeout(fire, first ? minutes(2, 6) : minutes(6, 18));
+    };
+    const fire = () => {
+      const options = ambientMoodsFor(skin).filter((m) => m.id !== lastAmbientRef.current);
+      if (ambientAllowedRef.current && options.length > 0) {
+        const mood = options[Math.floor(Math.random() * options.length)];
+        lastAmbientRef.current = mood.id;
+        const line = mood.lines.length > 0 ? mood.lines[Math.floor(Math.random() * mood.lines.length)] : null;
+        setAmbientMood(mood);
+        if (line) setSpeechBubbleText(line);
+        hide = setTimeout(() => {
+          setAmbientMood(null);
+          if (line) setSpeechBubbleText((prev) => (prev === line ? null : prev));
+        }, line ? 12_000 : 8_000);
       }
-    }, 45000);
-
-    return () => clearInterval(interval);
-  }, [isOpen, isMinimized, isDragging, activeBreakActive, currentAction, isWarningActive]);
+      schedule(false);
+    };
+    schedule(true);
+    return () => {
+      clearTimeout(next);
+      clearTimeout(hide);
+    };
+  }, [skin]);
+  // Si algo más importante aparece (aviso, ventana, cronómetro), el mood se retira enseguida.
+  useEffect(() => {
+    if (ambientMood && (isOpen || isWarningActive || activeTimer || isBreakModalOpen || isDragging)) setAmbientMood(null);
+  }, [ambientMood, isOpen, isWarningActive, activeTimer, isBreakModalOpen, isDragging]);
 
   // Guided Active Break (Pausa Activa) countdown timer
   useEffect(() => {
@@ -1117,6 +1149,7 @@ const FloatingBeaverCore: React.FC<FloatingBeaverCoreProps> = ({
     if (isWalking) return mascotImage('ok', skin);
     const transient = currentAction !== 'idle' ? ACTION_EMOTION[currentAction] : undefined;
     if (transient) return mascotImage(transient, skin);
+    if (ambientMood?.image[skin]) return ambientMood.image[skin] as string;
     return mascotImage(restingEmotion, skin);
   };
 

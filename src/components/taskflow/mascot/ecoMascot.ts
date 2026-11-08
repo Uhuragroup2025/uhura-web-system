@@ -8,6 +8,10 @@ import ecoThinking from '../../../assets/images/eco/eco-thinking.webp';
 import ecoFocus from '../../../assets/images/eco/eco-focus.webp';
 import ecoCoffee from '../../../assets/images/eco/eco-coffee.webp';
 import ecoChristmas from '../../../assets/images/eco/eco-christmas.webp';
+import ecoXmasCoffee from '../../../assets/images/eco/eco-xmas-coffee.webp';
+import ecoXmasHello from '../../../assets/images/eco/eco-xmas-hello.webp';
+import ecoXmasCheer from '../../../assets/images/eco/eco-xmas-cheer.webp';
+import ecoXmasWater from '../../../assets/images/eco/eco-xmas-water.webp';
 
 /**
  * Personaje ECO: una imagen por emoción.
@@ -53,6 +57,63 @@ const SEASONAL_EMOTIONS: EcoEmotion[] = ['ok', 'thinking'];
 export function mascotImage(emotion: EcoEmotion, skin: MascotSkin): string {
   if (skin === 'christmas' && SEASONAL_EMOTIONS.includes(emotion)) return ECO_CHRISTMAS_IMAGE;
   return ECO_EMOTION_IMAGES[emotion];
+}
+
+// ── Moods de ambiente: rotan a lo largo del día cuando ECO está tranquilo ──
+/**
+ * Pequeñas sorpresas mientras la persona trabaja: ECO cambia de pose unos segundos y, a veces,
+ * dice algo cercano. Solo aparecen en reposo (sin avisos, sin cronómetro, sin ventanas abiertas),
+ * cada uno en un momento aleatorio distinto para cada persona, y luego vuelve a su pose normal.
+ * No necesitan backend: son imágenes y frases del frontend.
+ */
+export type EcoAmbientMood = 'coffee' | 'hello' | 'cheer' | 'water';
+
+export interface EcoAmbientMoodDef {
+  id: EcoAmbientMood;
+  /** Imagen por apariencia; si una apariencia no tiene imagen, ese mood no sale con ella. */
+  image: Partial<Record<MascotSkin, string>>;
+  /** Frases posibles; vacío = solo cambia de pose, sin decir nada. */
+  lines: string[];
+}
+
+export const ECO_AMBIENT_MOODS: EcoAmbientMoodDef[] = [
+  {
+    id: 'coffee',
+    image: { christmas: ecoXmasCoffee, standard: ecoCoffee },
+    lines: [
+      'Uff… un cafecito no caería nada mal ☕',
+      '¿Cafecito y seguimos? Este castor ya va por el segundo ☕',
+      'Modo cafecito activado. Tú también te mereces uno ☕'
+    ]
+  },
+  {
+    id: 'hello',
+    image: { christmas: ecoXmasHello },
+    lines: []
+  },
+  {
+    id: 'cheer',
+    image: { christmas: ecoXmasCheer, standard: ecoCelebrating },
+    lines: [
+      '¡Eres un crack! Lo que estás haciendo hoy suma 💪',
+      'Psst… vas muy bien. ¡Sigue así, crack! 🎁',
+      'Ese ritmo tuyo merece regalo 🎁 ¡Vamos con toda!',
+      'No te lo digo seguido, pero qué bien trabajas ✨'
+    ]
+  },
+  {
+    id: 'water',
+    image: { christmas: ecoXmasWater },
+    lines: [
+      'Recuerda tomar agua 💧 tu cabeza te lo agradece',
+      '¡Hidrátate! Un vaso de agua y seguimos 💧',
+      'Glu, glu… ¿y tú ya tomaste agua hoy? 💧'
+    ]
+  }
+];
+
+export function ambientMoodsFor(skin: MascotSkin): EcoAmbientMoodDef[] {
+  return ECO_AMBIENT_MOODS.filter((m) => Boolean(m.image[skin]));
 }
 
 // ── Configuración de la organización (prototipo: navegador; producción: backend) ──
