@@ -487,7 +487,7 @@ Documento formal que reúne el alcance técnico, las horas aprobadas y el result
 #### 6.1 Propósito
 Gobernanza y trazabilidad de los archivos asociados a la oportunidad y al proyecto, estructurados bajo el estándar de carpetas de Uhura Group.
 - **Referencias de Código:**
-  - **Pestaña Documental en New Business:** [`src/components/taskflow/newbusiness/DocumentsDriveTab.tsx`](../components/taskflow/newbusiness/DocumentsDriveTab.tsx)
+  - **Pestaña Documental en New Business:** dentro de [`NewBusinessView.tsx`](../components/taskflow/newbusiness/NewBusinessView.tsx) (enlaces de Drive en la oportunidad)
 
 #### 6.2 Estructura Estándar de Carpetas (Uhura Drive)
 Toda oportunidad y proyecto en ECO se organiza bajo la siguiente convención:
@@ -548,8 +548,8 @@ Asegurar una transición ordenada y atómica entre la oportunidad comercial apro
 - **Referencias de Código:**
   - **Modal Conversión a Proyecto:** [`src/components/taskflow/newbusiness/ConvertOpportunityModal.tsx`](../components/taskflow/newbusiness/ConvertOpportunityModal.tsx)
   - **Controlador de Conversión:** [`src/sections/TaskFlowPrototype.tsx`](../sections/TaskFlowPrototype.tsx) (`handleConvertOpportunityToProject`)
-  - **Modal Condiciones de Inicio:** [`src/components/taskflow/newbusiness/StartConditionsModal.tsx`](../components/taskflow/newbusiness/StartConditionsModal.tsx)
-  - **Modal Checklist Administrativo:** [`src/components/taskflow/newbusiness/AdministrativeChecklistModal.tsx`](../components/taskflow/newbusiness/AdministrativeChecklistModal.tsx)
+  - **Modal Condiciones de Inicio:** «Programar inicio de proyecto» en [`ProjectsView.tsx`](../components/taskflow/ProjectsView.tsx)
+  - **Checklist administrativo:** *(no existe como archivo propio en el prototipo; la regla es funcional)*
   - **Tipos de Dominio:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`StartConditionsConfig`, `AdministrativeChecklist`, `FormalizationStatus`)
 
 #### 8.2 Reglas Invariantes de la Conversión Operativa Vigente (🟢 Decisión funcional aprobada)
@@ -646,8 +646,8 @@ Los campos guardados `projectsCount`, `averageMarginPercent`, `billedCOP`, `rece
 #### 10.1 Propósito
 Gestión de datos de facturación electrónica y articulación con el sistema contable Alegra.
 - **Referencias de Código:**
-  - **Modal de Entidades Fiscales y Facturación:** [`src/components/taskflow/clients/ClientTaxEntitiesModal.tsx`](../components/taskflow/clients/ClientTaxEntitiesModal.tsx)
-  - **Checklist Administrativo:** [`src/components/taskflow/newbusiness/AdministrativeChecklistModal.tsx`](../components/taskflow/newbusiness/AdministrativeChecklistModal.tsx)
+  - **Modal de Entidades Fiscales y Facturación:** «Gestionar NITs» en [`ClientDetailView.tsx`](../components/taskflow/ClientDetailView.tsx)
+  - **Checklist administrativo:** *(no existe como archivo propio en el prototipo; la regla es funcional)*
   - **Tipos Fiscales:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`ClientTaxEntity`, `AdministrativeChecklist`)
 
 #### 10.2 Responsable y Flujo de Trabajo
@@ -785,7 +785,7 @@ Acción **⋮ → Cerrar proyecto**, disponible para perfiles con edición de pr
 #### 12.1 Propósito
 Componente o fase operativa que agrupa un conjunto de tareas y un presupuesto específico de horas por rol.
 - **Referencias de Código:**
-  - **Vista y Lista de Entregables:** [`src/components/taskflow/projects/DeliverablesListView.tsx`](../components/taskflow/projects/DeliverablesListView.tsx)
+  - **Vista y Lista de Entregables:** entregables dentro de [`ProjectsView.tsx`](../components/taskflow/ProjectsView.tsx) y [`ProjectTasksTab.tsx`](../components/taskflow/projects/ProjectTasksTab.tsx)
   - **Tipos de Dominio:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`ProjectDeliverable`, `DeliverableRoleBudget`)
 
 #### 12.2 Estructura y Rollup
@@ -809,7 +809,7 @@ Unidad atómica de trabajo ejecutable por el equipo con ciclo de vida completo d
 - **Referencias de Código:**
   - **Modal de Detalle de Tarea:** [`src/components/taskflow/TaskDetailModal.tsx`](../components/taskflow/TaskDetailModal.tsx)
   - **Pestaña Tareas de Proyecto:** [`src/components/taskflow/projects/ProjectTasksTab.tsx`](../components/taskflow/projects/ProjectTasksTab.tsx)
-  - **Tarjeta de Tarea en Kanban:** [`src/components/taskflow/tasks/TaskCard.tsx`](../components/taskflow/tasks/TaskCard.tsx)
+  - **Tarjeta de Tarea en Kanban:** [`BoardView.tsx`](../components/taskflow/BoardView.tsx) y [`MyTasksView.tsx`](../components/taskflow/MyTasksView.tsx)
   - **Tipos de Dominio:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`TaskItem`, `TaskStatus`, `TaskPriority`, `TaskRework`, `TaskDeliverable`)
 
 #### 13.2 Visualización en Pestaña Tareas: Entregables Plegados y Dependencias
@@ -868,7 +868,7 @@ El modal de detalle de tarea representa la experiencia integral de ejecución co
 #### 14.1 Propósito
 Asignación formal de personas del equipo a los proyectos, garantizando que el trabajo esté cubierto sin sobrecargar la capacidad.
 - **Referencias de Código:**
-  - **Matriz de Staffing:** [`src/components/taskflow/staffing/StaffingMatrixView.tsx`](../components/taskflow/staffing/StaffingMatrixView.tsx)
+  - **Matriz de Staffing:** equipo derivado de las tareas en [`ProjectTeamTab.tsx`](../components/taskflow/projects/ProjectTeamTab.tsx) y [`teamFromTasks.ts`](../components/taskflow/projects/teamFromTasks.ts) (no hay matriz de staffing separada)
   - **Tipos de Dominio:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`ProjectAssignment`, `AssignmentNature`)
 
 #### 14.2 Diferencia Crítica: Rol Cotizado vs. Persona Asignada
@@ -900,7 +900,7 @@ Se elimina la asignación manual de colaboradores al proyecto (modal «Asignar /
 #### 15.1 Propósito
 Visibilidad matemática de la disponibilidad real del equipo para asumir nuevos proyectos y evitar el burnout.
 - **Referencias de Código:**
-  - **Vista de Capacidad de Equipo:** [`src/components/taskflow/capacity/TeamCapacityView.tsx`](../components/taskflow/capacity/TeamCapacityView.tsx)
+  - **Vista de Capacidad de Equipo:** [`CapacityView.tsx`](../components/taskflow/CapacityView.tsx)
   - **Tipos de Capacidad:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`TeamMemberCapacity`)
 
 #### 15.2 Reglas Fundamentales de Capacidad (🟢 Decisión funcional aprobada)

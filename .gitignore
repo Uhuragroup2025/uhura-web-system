@@ -54,3 +54,5 @@ bun.lock
 node_modules/
 dist/
 .DS_Store
+# Archivos temporales de AI Studio
+.aistudio/

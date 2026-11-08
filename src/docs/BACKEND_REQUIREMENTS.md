@@ -753,7 +753,7 @@ Especificación funcional en `ORBIT_PRODUCT_STATUS.md` Módulo 18.
 
 ## 23. ECO como PWA instalable (07 Nov 2026)
 Especificación funcional en `ORBIT_PRODUCT_STATUS.md` §9.5. **Fase 1 no requiere cambios en el backend.**
-* **Qué incluye el frontend (ya listo en el prototipo):** `vite-plugin-pwa` en `vite.config.ts` genera `manifest.webmanifest` y el service worker `sw.js`. Nombre «ECO · Uhura Group», íconos en `public/pwa/` (192, 512, maskable 512 y `apple-touch-icon` 180), colores `#140b24` / `#0d0718` y `start_url` `/?app=eco`. Se precargan solo el código, los estilos, los íconos y las imágenes de ECO (~2,8 MB). Las capturas de referencia de `public/assets/aistudio` y los logos grandes de `public/brand` no se precargan.
+* **Qué incluye el frontend (ya listo en el prototipo):** `vite-plugin-pwa` en `vite.config.ts` genera `manifest.webmanifest` y el service worker `sw.js`. Nombre «ECO · Uhura Group», íconos en `public/pwa/` (192, 512, maskable 512 y `apple-touch-icon` 180), colores `#140b24` / `#0d0718` y `start_url` `/?app=eco`. Se precargan solo el código, los estilos, los íconos y las imágenes de ECO (~2,8 MB). Las fotos del equipo (`public/assets/team`) y los logos grandes de `public/brand` no se precargan.
 * **Requisitos de hosting (Indunova):**
   * Servir solo por **HTTPS** en `app.uhuragroup.com` (§19.1.1). Sin HTTPS no se puede instalar.
   * `sw.js`, `registerSW.js`, `index.html` y `manifest.webmanifest` con `Cache-Control: no-cache` (si quedan en caché del CDN, las actualizaciones no llegan). Los archivos con hash de `/assets/` pueden ir con caché larga (`immutable`).

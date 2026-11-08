@@ -39,10 +39,10 @@ export default defineConfig({
       workbox: {
         // El bundle del prototipo pesa más que el límite por defecto (2 MB).
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
-        // Solo la app: código, estilos, íconos y las imágenes de ECO. Las capturas de referencia
-        // (assets/aistudio) y los logos grandes de marca no se precargan.
+        // Solo la app: código, estilos, íconos y las imágenes de ECO. Las fotos del equipo y los
+        // logos grandes de marca no se precargan.
         globPatterns: ['**/*.{js,css,html}', 'favicon.svg', 'pwa/*.png', 'assets/*.{webp,png,svg}'],
-        globIgnores: ['assets/aistudio/**', 'brand/**'],
+        globIgnores: ['brand/**', 'assets/team/**'],
         navigateFallback: '/index.html',
         cleanupOutdatedCaches: true,
         runtimeCaching: [
