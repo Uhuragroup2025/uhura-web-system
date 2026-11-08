@@ -1311,10 +1311,12 @@ Objetivo: que cargar horas sea un hábito que guste. Se quita fricción y se pre
   - En fin de semana, festivo o ausencia lo dice así: hoy no cuenta y no rompe la racha.
 - **Aviso de ECO a las 5:00 p. m.:** en día hábil, sin ausencia y si la persona no ha cerrado su día, ECO pregunta «¿Cerramos el día? 🌙» con «Cerrar mi día →» y «Más tarde». Una vez por día y solo con ECO en reposo (no interrumpe avisos, ventanas ni el cronómetro).
 - Cerrar el día es un ritual de confirmación: **no bloquea** ni cambia las horas; se pueden seguir corrigiendo según las reglas de la semana.
-- **Lo que ve todo el equipo (La Colonia, arriba de las fichas):** sin ranking de horas ni comparación de posiciones.
-  - **Racha del equipo:** «🔥 7 días con todos los días cargados». Un día cuenta cuando **cada persona esperada** (activa, con capacidad configurada y sin ausencia ese día) registró al menos el 70 % de su jornada. Muestra «Hoy: faltan 2 personas» **sin nombres** y «Esta semana: 92 % de los días cargados». En Mi Día aparece un acceso corto: «👥 Equipo: 🔥 7 días» (lleva a La Colonia).
-  - **Logros de racha:** cuando alguien llega a **5, 10, 20, 50 o 100 días seguidos**, aparece «🔥 Laura llegó a 10 días seguidos con su día cargado» con la fecha. Solo celebra a quien llega; nunca muestra a quien no. Los compañeros pueden **aplaudir 👏** (uno por persona; quien recibe ve cuántos).
-  - **«Compartir mis logros»:** interruptor personal; si se apaga, los logros de esa persona no se publican. Su racha sigue contando para ella y para el equipo.
+- **Mi Día sin exceso de botones:** «¿Cómo voy?» solo tiene «Cerrar mi día» y «Cargar horas». La racha personal va como una línea dentro de la barra del día («🔥 Tu racha: 5 días seguidos» / «Empieza tu racha hoy…»).
+- **Lo que ve todo el equipo:** sin ranking de horas ni comparación de posiciones. **Se activa solo, por comportamiento** (no hay que encender nada).
+  - **Mi Día → tarjeta «En racha»** (columna derecha, debajo del Radar del equipo): **aparece sola** cuando alguien cumple la racha o el equipo tiene racha; si no, no se muestra. Lista a las personas en racha («Laura · 10 días seguidos 🔥») con **👏 aplaudir** (uno por persona; quien recibe ve cuántos) y, si aplica, «🔥 El equipo lleva 7 días con todos los días cargados».
+  - **La Colonia** (arriba de las fichas): vista completa, siempre visible: racha del equipo con «Hoy: faltan 2 personas» **sin nombres** y «Esta semana: 92 % de los días cargados», más la lista «En racha» con la fecha en que cada quien llegó a su hito.
+  - Una persona aparece «En racha» desde **5 días seguidos** (hitos 5, 10, 20, 50, 100). Solo se celebra a quien llega; nunca se muestra a quien no.
+  - Un día cuenta para el equipo cuando **cada persona esperada** (activa, con capacidad configurada y sin ausencia ese día) registró al menos el 70 % de su jornada.
 - **El Muro** era una pantalla de relleno (ya retirada del menú lateral) y se quitó también de «Más» en móvil. Los logros de racha viven en La Colonia.
 
 ### 9.5 ECO como app instalable (PWA) (07 Nov 2026)
@@ -1988,6 +1990,7 @@ Mi Día deja de ser un dashboard de métricas decorativas para convertirse en el
 ---
 
 ### 11.8. Integración con Google Chat por cliente y proyecto (🟣 Implementado en prototipo · ticket #149)
+> **Autogestión (07 Nov 2026):** el webhook de cada cliente lo registra `system_admin` (Uhura) **desde la plataforma** (Cliente → Integraciones → Google Chat), sin pedírselo a Indunova ni compartirlo por WhatsApp, ticket o correo. Indunova construye la pantalla y el envío; Uhura pega, prueba, activa, reemplaza o desactiva cada webhook cuando lo necesite. Para la prueba inicial con Neroli, Uhura lo registra en el ambiente de pruebas cuando la pantalla esté disponible allí.
 Objetivo: publicar en el espacio de Google Chat de cada cliente las novedades que requieren atención (asignación, solicitud de revisión, mención, devolución, aprobación, prioridad urgente), con mensajes breves y un enlace a la tarea. No se envían eventos de timer, cambios visuales ni actividad sin acción requerida. La notificación in-app sigue siendo la fuente principal.
 
 **Dónde se configura**

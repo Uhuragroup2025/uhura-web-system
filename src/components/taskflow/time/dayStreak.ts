@@ -218,11 +218,13 @@ export interface StreakMilestone {
   achievedOn: string;
 }
 
-/** Hitos vigentes (5, 10, 20…) de cada persona que comparte sus hitos, del más reciente al más antiguo. */
+/**
+ * Hitos vigentes (5, 10, 20…) de cada persona, del más reciente al más antiguo.
+ * Se publican solos, por comportamiento: no hay que activar nada.
+ */
 export function computeMilestones(members: TeamMember[], logs: TimeLog[], today: Date = new Date()): StreakMilestone[] {
   const out: StreakMilestone[] = [];
   for (const m of members) {
-    if (!isSharingMilestones(m.user.id)) continue;
     const st = computeStreak({ hours: hoursByDay(logs, m.user, today), targetDayHours: m.targetDayHours, absentDays: m.absentDays, today });
     const reached = STREAK_MILESTONES.filter((x) => x <= st.current).pop();
     if (!reached) continue;
@@ -232,8 +234,7 @@ export function computeMilestones(members: TeamMember[], logs: TimeLog[], today:
   return out.sort((a, b) => b.achievedOn.localeCompare(a.achievedOn));
 }
 
-// Preferencia personal «Compartir mis hitos» (prototipo: navegador; producción: perfil)
-const SHARE_OFF_KEY = 'eco_streak_share_off_v1';
+// Aplausos (prototipo: navegador; producción: backend, ver BACKEND_REQUIREMENTS §25)
 const CLAPS_KEY = 'eco_streak_claps_v1';
 export const STREAK_SOCIAL_EVENT = 'eco:streak-social';
 const readJson = <T,>(k: string, fallback: T): T => {
@@ -252,15 +253,6 @@ const writeJson = (k: string, v: unknown) => {
   window.dispatchEvent(new CustomEvent(STREAK_SOCIAL_EVENT));
 };
 
-export function isSharingMilestones(userId: string): boolean {
-  return !readJson<string[]>(SHARE_OFF_KEY, []).includes(userId);
-}
-export function setSharingMilestones(userId: string, share: boolean) {
-  const set = new Set(readJson<string[]>(SHARE_OFF_KEY, []));
-  if (share) set.delete(userId);
-  else set.add(userId);
-  writeJson(SHARE_OFF_KEY, Array.from(set));
-}
 export function getClaps(key: string): string[] {
   return readJson<Record<string, string[]>>(CLAPS_KEY, {})[key] || [];
 }

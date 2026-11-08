@@ -59,7 +59,7 @@ import { LaColoniaView } from '../components/taskflow/colonia/LaColoniaView';
 import { TeamHumanProfileModal } from '../components/taskflow/copilot/TeamHumanProfileModal';
 import { FloatingBeaverWidget } from '../components/taskflow/FloatingBeaverWidget';
 import { DayCloseModal } from '../components/taskflow/time/DayCloseModal';
-import { hoursByDay, computeStreak, isDayClosed, markDayClosed, isOwnLog, logIsoDate, toIsoLocal, DAY_CLOSED_EVENT, streakLabel, computeTeamStreak, teamMembersFrom, absencesByUserFrom } from '../components/taskflow/time/dayStreak';
+import { hoursByDay, computeStreak, isDayClosed, markDayClosed, isOwnLog, logIsoDate, toIsoLocal, DAY_CLOSED_EVENT, streakLabel } from '../components/taskflow/time/dayStreak';
 import { makePersonMatcher, isTaskOwner, isScheduledForDay } from '../components/taskflow/auth/taskVisibility';
 import { TimerSummaryModal, TimerSummaryData } from '../components/taskflow/TimerSummaryModal';
 import { StopTimerRegisterModal } from '../components/taskflow/time/StopTimerRegisterModal';
@@ -2925,10 +2925,6 @@ export const TaskFlowPrototype: React.FC = () => {
     () => computeStreak({ hours: hoursByDay(timeLogs, currentUser), targetDayHours: targetDayHoursValue, absentDays: myAbsentDays }),
     [timeLogs, currentUser, targetDayHoursValue, myAbsentDays]
   );
-  const teamStreak = React.useMemo(
-    () => computeTeamStreak(teamMembersFrom(users, absencesByUserFrom(absenceEvents)), timeLogs),
-    [users, absenceEvents, timeLogs]
-  );
   const dayClosedToday = React.useMemo(
     () => isDayClosed(currentUser?.id, todayIsoKey),
     [currentUser?.id, todayIsoKey, dayClosedTick]
@@ -3221,7 +3217,6 @@ export const TaskFlowPrototype: React.FC = () => {
                     onNavigateToView={handleSelectView}
                     streakDays={myStreak.current}
                     streakTodayCounts={myStreak.todayCounts}
-                    teamStreakDays={teamStreak.current}
                     isDayClosedToday={dayClosedToday}
                     onOpenDayClose={() => setIsDayCloseOpen(true)}
                     opportunities={opportunities}

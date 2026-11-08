@@ -119,7 +119,7 @@ export function simulateWebhookTest(params: {
 
 export function buildTestMessagePreview(spaceName: string, projectName?: string): string {
   return [
-    '👋 ¡Hola, equipo! Soy ECO 🐻.',
+    '👋 ¡Hola, equipo! Soy ECO 🦫.',
     '',
     projectName
       ? `Este espacio quedó conectado para las novedades de “${projectName}”.`

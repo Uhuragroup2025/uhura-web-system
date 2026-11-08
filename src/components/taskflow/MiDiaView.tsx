@@ -1,4 +1,5 @@
 import { streakLabel } from './time/dayStreak';
+import { TeamStreakPanel } from './colonia/TeamStreakPanel';
 import React, { useState, useMemo } from 'react';
 import { formatDate, formatDateRange } from '../../utils/formatters';
 import { PageHeader } from './PageHeader';
@@ -80,8 +81,6 @@ export interface MiDiaViewProps {
   /** Racha de días cargados (dayStreak.ts) y cierre del día con ECO. */
   streakDays?: number;
   streakTodayCounts?: boolean;
-  /** Racha del equipo (todos con su día cargado); el detalle vive en La Colonia. */
-  teamStreakDays?: number;
   isDayClosedToday?: boolean;
   onOpenDayClose?: () => void;
 }
@@ -107,7 +106,6 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
   onNavigateToView,
   streakDays = 0,
   streakTodayCounts = false,
-  teamStreakDays,
   isDayClosedToday = false,
   onOpenDayClose,
   opportunities = [],
@@ -984,25 +982,6 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                  {/* Racha: premia la constancia (días cargados), nunca la cantidad de horas */}
-                  <span
-                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border ${
-                      streakDays > 0 ? 'bg-[#fff7ed] text-[#c2410c] border-[#fed7aa]' : 'bg-[#f8fafc] text-[#64748b] border-[#e2e8f0]'
-                    }`}
-                    title="Días hábiles seguidos con al menos el 70 % de tu jornada registrada. Fines de semana, festivos y ausencias no rompen la racha."
-                  >
-                    🔥 {streakLabel(streakDays)}
-                  </span>
-                  {typeof teamStreakDays === 'number' && (
-                    <button
-                      type="button"
-                      onClick={() => onNavigateToView?.('la-colonia')}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border bg-white text-[#475569] border-[#e2e8f0] hover:border-[#c4b5fd] cursor-pointer"
-                      title="Días seguidos en que todo el equipo cargó su día. Ver logros en La Colonia."
-                    >
-                      👥 Equipo: {teamStreakDays > 0 ? `🔥 ${teamStreakDays} ${teamStreakDays === 1 ? 'día' : 'días'}` : 'empecemos la racha'}
-                    </button>
-                  )}
                   {onOpenDayClose && (
                     <button
                       type="button"
@@ -1048,6 +1027,12 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                     }`}
                   />
                 </div>
+                <p
+                  className={`text-[11px] font-semibold ${streakDays > 0 ? 'text-[#c2410c]' : 'text-[#64748b]'}`}
+                  title="Días hábiles seguidos con al menos el 70 % de tu jornada registrada. Fines de semana, festivos y ausencias no rompen la racha."
+                >
+                  🔥 {streakDays > 0 ? `Tu racha: ${streakLabel(streakDays)}` : 'Empieza tu racha hoy: carga al menos el 70 % de tu jornada'}
+                </p>
               </div>
 
               {/* Link directo a Capacidad para ver tiempos de hoy y de la semana */}
@@ -1215,6 +1200,9 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
               </div>
             )}
           </div>
+
+          {/* En racha: aparece sola cuando alguien cumple la racha (o el equipo la tiene) */}
+          <TeamStreakPanel variant="card" users={users || []} timeLogs={timeLogs} absenceEvents={absenceEvents || []} currentUser={currentUser} />
         </aside>
       </div>
 

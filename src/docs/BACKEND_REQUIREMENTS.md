@@ -657,6 +657,7 @@ Especificación funcional y permisos en `ORBIT_PRODUCT_STATUS.md` §11.8. Requis
 * Bitácora de cambios de integración (quién, cuándo, acción) sin almacenar la URL.
 
 ### 18.2 Seguridad
+* **Autogestión:** el webhook lo registra `system_admin` desde la ficha del cliente. Indunova **no** necesita recibir los webhooks de los clientes; solo construye la pantalla, el guardado cifrado y el envío. Para probar, usar un espacio de prueba propio.
 * La URL del webhook se guarda **cifrada** y **nunca** se devuelve por API; las respuestas solo incluyen `webhook_last4` / máscara.
 * Solo `system_admin` puede crear, probar, activar, desactivar, reemplazar o eliminar. `leader` solo puede cambiar `google_chat_mode` entre `inherit_client` y `disabled`.
 * Las URLs no se registran en logs, tickets ni documentación.
@@ -666,7 +667,7 @@ Especificación funcional y permisos en `ORBIT_PRODUCT_STATUS.md` §11.8. Requis
 * «Guardar y probar» envía un mensaje real de prueba; si falla, `status = error` con el detalle.
 * Eventos que se publican: nueva tarea/asignación relevante, solicitud de revisión, comentario con mención o solicitud de revisión, devolución, aprobación, cambio a prioridad urgente y recordatorio de pendientes sin repetición. **No** se publican eventos de timer ni cambios sin acción requerida.
 * Envío asíncrono con reintentos **idempotentes** (clave por evento y destino): un reintento no duplica mensajes. Una falla de Google Chat **no** impide guardar la acción en ECO.
-* Formato: mensaje corto y amigable con estructura reconocible y enlace directo a la tarea (ej.: «👋 ¡Hola, equipo! Soy ECO 🐻. … [Ver tarea en ECO]»).
+* Formato: mensaje corto y amigable con estructura reconocible y enlace directo a la tarea (ej.: «👋 ¡Hola, equipo! Soy ECO 🦫. … [Ver tarea en ECO]» (ECO es un castor: usar 🦫, no 🐻)).
 * Pruebas controladas (espacio de prueba) para no notificar al equipo por error.
 
 ---
@@ -772,10 +773,46 @@ Especificación funcional en `ORBIT_PRODUCT_STATUS.md` §9.4.1. Lógica de refer
 Especificación funcional en `ORBIT_PRODUCT_STATUS.md` §9.4.1. Lógica de referencia en `src/components/taskflow/time/dayStreak.ts` (`computeTeamStreak`, `computeMilestones`).
 * **Requiere cálculo en servidor:** cada persona solo puede leer sus propios `time_logs` (§15.1), así que la racha de equipo y los logros se calculan en el backend y se exponen ya agregados, sin horas individuales:
   * `GET /api/team/streak` → `{ current, today_loaded, today_expected, week_pct }`. Nunca devuelve quién faltó.
-  * `GET /api/team/streak-milestones` → `[{ user_id, user_name, milestone, achieved_on, claps_count, clapped_by_me }]`, solo de personas con `share_streak_milestones = true`.
+  * `GET /api/team/streak-milestones` → `[{ user_id, user_name, current, milestone, achieved_on, claps_count, clapped_by_me }]`. Se publica solo por comportamiento (sin preferencia de compartir).
 * **Equipo esperado por día:** usuarios activos con `capacity_hours > 0`, sin ausencia activa ese día (§20). Días hábiles de Colombia. Un día cuenta para la persona si suma ≥ 70 % de `capacity_hours / 5`.
 * **Hitos:** 5, 10, 20, 50 y 100 días seguidos. `achieved_on` = día en que la racha vigente alcanzó el hito. Si la racha se rompe, el hito deja de mostrarse (se celebran rachas vigentes).
-* **Preferencia:** `users.share_streak_milestones` (boolean, default `true`), editable por la propia persona. En el prototipo: `eco_streak_share_off_v1`.
 * **Aplausos:** `streak_milestone_claps` (`milestone_key`, `user_id`, `created_at`), único por persona y hito; no se puede aplaudir el propio. `POST`/`DELETE /api/team/streak-milestones/{key}/clap`. En el prototipo: `eco_streak_claps_v1`.
-* Opcional (fase 2): avisar en Google Chat del equipo cuando alguien llega a un hito, respetando `share_streak_milestones`.
+* Opcional (fase 2): avisar en un espacio interno de Google Chat cuando alguien llega a un hito.
+
+---
+
+## 26. Notificaciones por correo y recordatorio semanal de horas (Ticket de integraciones, 07 Nov 2026)
+Las notificaciones in-app siguen siendo la fuente principal; el correo y Google Chat (§18) son complementarios. Todas las URLs usan `app.uhuragroup.com` (§19.1.1).
+
+### 26.1 Eventos por correo (al correo corporativo del usuario, con enlace directo al elemento)
+| Evento | Destinatarios | Información mínima |
+|---|---|---|
+| Nueva asignación | Colaborador asignado | Tarea, cliente, proyecto, fecha de entrega, quién asignó |
+| Reasignación | Colaborador agregado y colaborador retirado | El cambio y enlace a la tarea |
+| Solicitud de revisión | Project Lead, revisor y seguidores habilitados | Tarea, quién solicita, enlace |
+| Tarea devuelta | Colaboradores responsables | Observación, quién devolvió, enlace |
+| Tarea aprobada y completada | Colaboradores responsables | Confirmación, quién aprobó, enlace |
+| Comentario o mención | Responsables y mencionados con @ **que tengan acceso a la tarea** (§15.1) | Autor, fragmento, enlace |
+| Cambio a prioridad urgente | Colaboradores responsables | Prioridad, fecha de entrega, quién cambió |
+| Cambio relevante de cronograma | Responsables, Project Lead y seguidores | Fecha anterior, fecha nueva, enlace |
+* Quien realiza la acción **no** recibe correo por su propia actividad. Si una persona cumple varios roles en el mismo evento, recibe **un solo** correo (deduplicar por `user_id` y `event_id`).
+* Envío asíncrono e idempotente: una falla del proveedor no impide guardar la acción en ECO y un reintento no duplica correos.
+
+### 26.2 Recordatorio semanal de horas (viernes, después de la jornada)
+* A cada persona con **menos del 80 % de su capacidad neta semanal** registrada. Capacidad neta = capacidad − festivos − vacaciones y permisos aprobados (§20). Horas vigentes según `work_date`; los registros anulados no cuentan. Si la capacidad neta es 0 o ya alcanzó el 80 %, no se envía.
+* Contenido: semana evaluada, horas registradas y capacidad neta, porcentaje, horas pendientes para el 80 %, resumen por tarea y proyecto, y botón **«Completar mis horas»** que abre esa semana en Mi Capacidad / Timesheets.
+* **Resumen semanal:** `leader` → solo las personas de su área o alcance; `executive` y `system_admin` → consolidado de toda la organización.
+* **Relación con la mascota y la racha:** son complementarios y no se reemplazan. La mascota recuerda el día (≥ 70 % de la jornada, ya existe en producción) y la racha usa ese mismo 70 % diario; el correo del viernes evalúa la semana con el 80 % de la capacidad neta.
+
+### 26.3 Proveedor de correo
+* Si se requiere un proveedor, Indunova lo escala a Ana con copia a Pao indicando: servicio propuesto, accesos requeridos, remitente, registros DNS (SPF, DKIM, DMARC) y costos o límites.
+
+### 26.4 Criterios de aceptación (del ticket)
+* Los correos llegan a los destinatarios indicados y abren el elemento correcto en ECO.
+* El recordatorio usa la capacidad neta y los registros vigentes de la semana evaluada.
+* Una novedad de prueba de Neroli se publica **una sola vez** en el espacio correcto de Google Chat; el webhook se registra, prueba, activa y desactiva desde la plataforma (§18).
+* Las vacaciones y permisos de Calendar se reflejan en el usuario y su capacidad; cambios y cancelaciones se actualizan sin duplicados (§20).
+* Una falla externa no impide guardar en ECO; los reintentos no duplican notificaciones ni registros.
+* Credenciales y webhooks protegidos: nunca en tickets ni documentación abierta. Pruebas controladas para no notificar al equipo por error.
+* HubSpot: pendiente de credenciales y autorizaciones de Ana (§12.4 cubre la operación manual mientras tanto).
 
