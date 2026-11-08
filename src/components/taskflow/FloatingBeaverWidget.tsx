@@ -41,7 +41,6 @@ import { UhuraLogo } from '../ui/UhuraLogo';
 import { processTeamLifeEvents, resolveBuckyTeamLifeSpeech } from './copilot/teamLifeEngine';
 import { TeamLifeEventsModal } from './copilot/TeamLifeEventsModal';
 import { ActiveBreakModal } from './copilot/ActiveBreakModal';
-import { TeamHumanProfileModal } from './copilot/TeamHumanProfileModal';
 import { initialUsers, initialAbsenceEvents } from './mockData';
 import { Snowfall } from './seasonal/christmasMode';
 import { useMascotSkin, setMascotSkin, setSnowEnabled, mascotImage, ECO_EMOTION_IMAGES, EcoEmotion, MascotSkin, MASCOT_SKIN_LABEL } from './mascot/ecoMascot';
@@ -49,6 +48,18 @@ import { isScheduledForDay, makeTaskComparator, taskScheduleDate } from './auth/
 import { getUserAccessLevel } from './auth/permissions';
 import { isBusinessDay } from './health/projectHealthEngine';
 import { makePersonMatcher, isTaskOwner } from './auth/taskVisibility';
+
+/** Cuánto dura cada emoción antes de volver a la cara normal (ms). Las que no están no expiran: 'ok' es el estado base y 'focus' dura lo que dure el cronómetro. */
+const EXPRESSION_MS: Partial<Record<EcoEmotion, number>> = {
+  celebrating: 12_000,
+  surprised: 45_000,
+  sad: 45_000,
+  worried: 30_000,
+  thinking: 15_000,
+  coffee: 20_000
+};
+/** Si el motivo de un aviso sigue vigente, ECO lo vuelve a recordar cada 30 minutos. */
+const ALERT_RENUDGE_MS = 30 * 60 * 1000;
 
 interface FloatingBeaverWidgetProps {
   loggedHoursToday: number;
@@ -376,7 +387,6 @@ const FloatingBeaverCore: React.FC<FloatingBeaverCoreProps> = ({
   const [isBuckyLabOpen, setIsBuckyLabOpen] = useState(false);
   const [isTeamLifeModalOpen, setIsTeamLifeModalOpen] = useState(false);
   const [isBreakModalOpen, setIsBreakModalOpen] = useState(false);
-  const [isHumanProfileModalOpen, setIsHumanProfileModalOpen] = useState(false);
 
   // Apagar la mascota: lo maneja el contenedor (FloatingBeaverWidget) para no romper el orden de hooks.
   const handleToggleBuckyPower = () => onPowerOff();
@@ -512,22 +522,42 @@ const FloatingBeaverCore: React.FC<FloatingBeaverCoreProps> = ({
     isBreakRecommended: activeBreakActive ? false : undefined
   });
 
+  const firstName = (currentUser?.name || '').trim().split(/\s+/)[0] || '';
+  const firstNameSuffix = firstName ? ` ${firstName}` : '';
+
   // Warning & contextual alert states
   const [isAlertDismissed, setIsAlertDismissed] = useState(false);
 
-  // Un aviso cerrado no tapa el siguiente: se reactiva cuando cambia el motivo del aviso
+  /**
+   * Las emociones son reacciones, no estados fijos: cuando cambia el motivo (horas por cargar,
+   * tarea pasada de horas, día completo…) ECO muestra la emoción un rato y vuelve a su cara
+   * normal. Si el motivo de un aviso sigue vigente, lo recuerda de nuevo cada 30 minutos.
+   */
+  const [isExpressing, setIsExpressing] = useState(true);
+  const [nudgeTick, setNudgeTick] = useState(0);
   useEffect(() => {
-    setIsAlertDismissed(false);
-  }, [coreRiskTask?.id, buckyState.internalKey]);
+    setIsExpressing(true);
+    setIsAlertDismissed(false); // un aviso cerrado no tapa el siguiente
+    const ms = EXPRESSION_MS[buckyState.emotion];
+    if (!ms) return;
+    const t = setTimeout(() => setIsExpressing(false), ms);
+    return () => clearTimeout(t);
+  }, [coreRiskTask?.id, buckyState.internalKey, nudgeTick]);
+  useEffect(() => {
+    if (!buckyState.isAlert) return;
+    const i = setInterval(() => setNudgeTick((n) => n + 1), ALERT_RENUDGE_MS);
+    return () => clearInterval(i);
+  }, [buckyState.internalKey, buckyState.isAlert]);
+  const restingEmotion: EcoEmotion = isExpressing ? buckyState.emotion : 'ok';
 
-  const isWarningActive = Boolean(buckyState.isAlert);
+  const isWarningActive = Boolean(buckyState.isAlert) && isExpressing;
 
   // Single contextual layer discipline:
   // When detailed HUD (isOpen) is visible, NO speech bubble or alert bubble is shown.
   // Otherwise, if warning is active and not dismissed, show single compact warning bubble.
   // Otherwise, show transient living speech bubble if present.
   const showAlertBubble = !isOpen && isWarningActive && !isAlertDismissed;
-  const showSpeechBubble = !isOpen && !showAlertBubble && Boolean(speechBubbleText);
+  const showSpeechBubble = !isOpen && !isBreakModalOpen && !showAlertBubble && Boolean(speechBubbleText);
 
   // ECO visible size scaling:
   // Normal state: ~115–130px visible height.
@@ -640,7 +670,7 @@ const FloatingBeaverCore: React.FC<FloatingBeaverCoreProps> = ({
 
     switch (action) {
       case 'wave':
-        phrase = phrase || '¡Hola Pao! 👋 ¡Qué gusto verte! ¿En qué construimos hoy?';
+        phrase = phrase || `¡Hola${firstNameSuffix}! 👋 ¡Qué gusto verte! ¿En qué construimos hoy?`;
         duration = 2600;
         break;
       case 'celebrate':
@@ -676,7 +706,7 @@ const FloatingBeaverCore: React.FC<FloatingBeaverCoreProps> = ({
         duration = 2600;
         break;
       case 'alert':
-        phrase = phrase || '¡Atención Pao! ⚠️ Revisemos que todas las horas queden bien registradas.';
+        phrase = phrase || `¡Atención${firstNameSuffix}! ⚠️ Revisemos que todas las horas queden bien registradas.`;
         duration = 3200;
         break;
       case 'point':
@@ -823,7 +853,7 @@ const FloatingBeaverCore: React.FC<FloatingBeaverCoreProps> = ({
     if (!hasGreeted) {
       sessionStorage.setItem('orbit_bucky_greeted', 'true');
       const timer = setTimeout(() => {
-        triggerLivingAction('wave', '¡Hola Pao! 👋 Todo tranquilo por aquí.');
+        triggerLivingAction('wave', `¡Hola${firstNameSuffix}! 👋 Todo tranquilo por aquí.`);
       }, 1200);
       return () => clearTimeout(timer);
     }
@@ -895,7 +925,7 @@ const FloatingBeaverCore: React.FC<FloatingBeaverCoreProps> = ({
       setHearts((prev) => prev.filter((h) => h.id !== newHeart.id));
     }, 1200);
     setTimeout(() => setIsWiggling(false), 600);
-    setSpeechBubbleText('¡Gracias Pao! Me da ánimo para seguir acompañándote en la colonia.');
+    setSpeechBubbleText(`¡Gracias${firstNameSuffix}! Me da ánimo para seguir acompañándote en la colonia.`);
   };
 
   const handleFeedHours = (hours: number, label: string) => {
@@ -1087,7 +1117,7 @@ const FloatingBeaverCore: React.FC<FloatingBeaverCoreProps> = ({
     if (isWalking) return mascotImage('ok', skin);
     const transient = currentAction !== 'idle' ? ACTION_EMOTION[currentAction] : undefined;
     if (transient) return mascotImage(transient, skin);
-    return mascotImage(buckyState.emotion, skin);
+    return mascotImage(restingEmotion, skin);
   };
 
   // Animation class based on current lifelike action
@@ -1382,19 +1412,6 @@ const FloatingBeaverCore: React.FC<FloatingBeaverCoreProps> = ({
             </div>
 
             <div className="flex items-center gap-1">
-              {/* Pausa Activa Quick Trigger */}
-              <button
-                type="button"
-                onClick={() => {
-                  setIsBreakModalOpen(true);
-                  setIsOpen(false);
-                }}
-                className="p-1.5 rounded-lg hover:bg-white/10 text-white/70 hover:text-[#d4ff4a] cursor-pointer transition-colors"
-                title="Iniciar Pausa Activa (3 min)"
-              >
-                <Coffee className="w-3.5 h-3.5" />
-              </button>
-
               {/* Sound Toggle */}
               <button
                 type="button"
@@ -1439,31 +1456,18 @@ const FloatingBeaverCore: React.FC<FloatingBeaverCoreProps> = ({
             </p>
           </div>
 
-          {/* Acciones de bienestar y equipo */}
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setIsBreakModalOpen(true);
-                setIsOpen(false);
-              }}
-              className="py-2 px-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] font-bold text-white flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-            >
-              <Coffee className="w-3.5 h-3.5 text-[#d4ff4a]" />
-              <span>Pausa Activa (3m)</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setIsHumanProfileModalOpen(true);
-                setIsOpen(false);
-              }}
-              className="py-2 px-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] font-bold text-[#c9b7ff] hover:text-white flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-            >
-              <span>💜 Ficha Humana</span>
-            </button>
-          </div>
+          {/* Bienestar: la pausa activa la guía ECO aquí mismo. «Mi espacio» vive en la foto de perfil. */}
+          <button
+            type="button"
+            onClick={() => {
+              setIsBreakModalOpen(true);
+              setIsOpen(false);
+            }}
+            className="w-full py-2 px-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] font-bold text-white flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+          >
+            <Coffee className="w-3.5 h-3.5 text-[#d4ff4a]" />
+            <span>Pausa activa · 3 min</span>
+          </button>
 
           {/* Apariencia (system_admin, para toda la organización) y nieve (preferencia personal) */}
           {(isSystemAdmin || christmas) && (
@@ -1559,25 +1563,14 @@ const FloatingBeaverCore: React.FC<FloatingBeaverCoreProps> = ({
         </div>
       )}
 
-      {/* MODAL DE PAUSA ACTIVA HUMANA */}
+      {/* PAUSA ACTIVA: tarjeta que sale de la mascota, en la misma posición del panel */}
       <ActiveBreakModal
         isOpen={isBreakModalOpen}
         onClose={() => setIsBreakModalOpen(false)}
+        style={getPopoverStyle()}
         onComplete={() => {
-          setCurrentAction('celebrate');
-          setSpeechBubbleText('¡Excelente pausa activa! 🧘 Mente despejada y ritmo renovado.');
-          if (soundEnabled) playChime('celebrate');
+          triggerLivingAction('celebrate', '¡Excelente pausa activa! 🧘 Mente despejada y ritmo renovado.');
         }}
-      />
-
-      {/* MODAL DE FICHA HUMANA & GUSTOS DEL EQUIPO UHURA */}
-      <TeamHumanProfileModal
-        isOpen={isHumanProfileModalOpen}
-        onClose={() => setIsHumanProfileModalOpen(false)}
-        users={effectiveUsers}
-        onUpdateUser={onUpdateUser}
-        currentUser={currentUser}
-        singleUserMode={true}
       />
 
       {/* MODAL DE EVENTOS & RECORDATORIOS DE EQUIPO (COPILOTO BUCKY) */}

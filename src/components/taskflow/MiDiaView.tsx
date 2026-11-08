@@ -457,7 +457,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
 
           {/* NIVEL 1: ¿QUÉ REQUIERE MI ATENCIÓN? (CONDICIONAL ESTRICTO: 0 SI NO HAY ACCIONES) */}
           {hasAttentionItems && (
-            <div className="bg-white rounded-2xl p-5 border border-[#e2e8f0] border-l-4 border-l-[#f59e0b] shadow-xs space-y-3.5">
+            <div className="bg-white rounded-2xl p-5 border border-[#e2e8f0] shadow-xs space-y-3.5">
               <div className="flex items-center justify-between pb-2 border-b border-[#f1f5f9]">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-xl bg-[#f59e0b]/20 text-[#b45309] flex items-center justify-center">
@@ -537,7 +537,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                     }}
                     className={`p-3 rounded-xl bg-white border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs cursor-pointer transition-all group shadow-2xs ${
                       dep.delayDays > 0
-                        ? 'border-[#e2e8f0] border-l-4 border-l-[#dc2626] hover:border-[#dc2626]'
+                        ? 'border-[#fecaca] hover:border-[#fca5a5]'
                         : 'border-[#e2e8f0] hover:border-[#64748b] hover:bg-[#f8fafc]'
                     }`}
                   >
@@ -582,7 +582,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                   <div
                     key={`blocked-${t.id}`}
                     onClick={() => onOpenTaskDetail(t.id)}
-                    className="p-3 rounded-xl bg-white border border-[#e2e8f0] border-l-4 border-l-[#dc2626] hover:border-[#dc2626] hover:bg-[#fef2f2]/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs cursor-pointer transition-all group shadow-2xs"
+                    className="p-3 rounded-xl bg-white border border-[#e2e8f0] hover:border-[#fca5a5] hover:bg-[#fef2f2]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs cursor-pointer transition-all group shadow-2xs"
                   >
                     <div className="flex items-start gap-2.5">
                       <AlertOctagon className="w-4 h-4 text-[#ef4444] shrink-0 mt-0.5" />
@@ -608,7 +608,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                     <div
                       key={`overtime-${t.id}`}
                       onClick={() => onOpenTaskDetail(t.id)}
-                      className="p-3 rounded-xl bg-white border border-[#e2e8f0] border-l-4 border-l-[#ea580c] hover:border-[#ea580c] hover:bg-[#fff7ed]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs cursor-pointer transition-all group shadow-2xs"
+                      className="p-3 rounded-xl bg-white border border-[#e2e8f0] hover:border-[#fdba74] hover:bg-[#fff7ed]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs cursor-pointer transition-all group shadow-2xs"
                     >
                       <div className="flex items-center gap-2 min-w-0 flex-wrap">
                         <Flame className="w-4 h-4 text-[#ea580c] shrink-0" />
@@ -1069,7 +1069,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                       key={vac.id}
                       className={`p-4 rounded-2xl border transition-all ${
                         isSoon
-                          ? 'bg-white border-[#fde68a] border-l-4 border-l-[#f59e0b]'
+                          ? 'bg-[#fffbeb] border-[#fde68a]'
                           : 'bg-[#f8fafc] border-[#e2e8f0]'
                       }`}
                     >
