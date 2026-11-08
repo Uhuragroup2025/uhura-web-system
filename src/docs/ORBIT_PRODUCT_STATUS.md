@@ -935,6 +935,7 @@ Captura fidedigna, sin fricción y auditable de las horas realmente invertidas p
      - Comentario / notas de la actividad realizada.
      - Estado del registro.
      - Acción para editar o anular.
+   - **Ventana «Registrar tiempo» al detener el cronómetro (UI, 07 Nov 2026):** muestra en grande lo que se va a guardar («Se registrarán 1 min»), con «Medido 3 s · ajustado a mano» si se ajustó. «Ajustar» abre horas y minutos en una sola fila; «Usar lo medido» vuelve al cronómetro. Una sola barra de uso de la tarea («Con este registro: X de Y h estimadas · Quedan Z»), visible solo si la tarea tiene horas estimadas. Botones: «Descartar» a la izquierda (pide confirmación), «Seguir trabajando» y «Registrar 1 min». **La X y Esc cierran y siguen midiendo; nunca descartan el tiempo.** La lógica de registro no cambia.
 3. **Ventana de Corrección y Cierre Semanal:**
    - **Durante la semana en curso:** Cada colaborador puede **corregir o anular libremente sus propios registros de tiempo**.
    - **Después del cierre semanal:** La ventana de autocorrección se bloquea. Únicamente pueden corregir o anular registros cerrados los usuarios con rol:
