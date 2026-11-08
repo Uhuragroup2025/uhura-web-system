@@ -138,14 +138,14 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
   //   revisar (revisor, o líder del proyecto si no hay revisor) y la del timer activo.
   // - Seguidores: van a «Siguiendo», sin urgencia ni conteo.
   // - Excepciones de equipo (bloqueos, desvíos, insumos): solo de proyectos de los que el
-  //   usuario es responsable (líder o responsable de cuenta). Dirección y admin ven todo.
+  //   usuario es responsable (líder o responsable de cuenta). Nadie ve las de toda la organización aquí.
   const effectiveUserList = users && users.length > 0 ? users : initialUsers;
   const identity = currentUser || effectiveUserList.find((u) => u.id === currentUserId);
   const matchesMe = useMemo(() => makePersonMatcher(identity, effectiveUserList), [identity, effectiveUserList]);
   const projectOfTask = useMemo(() => makeTaskProjectResolver(projects), [projects]);
-  // #147 (en producción, orbit-00092-jns): Mi Día es personal. Solo Dirección (executive) conserva
-  // la vista de excepciones de toda la organización; system_admin ve solo lo suyo.
-  const isGlobalViewer = accessLevel === 'executive';
+  // #147 + decisión de Uhura (07 Nov 2026): Mi Día es personal para TODOS, incluida Dirección.
+  // La vista de toda la organización vive en Tareas → Equipo y Capacidad → Organización.
+  const isGlobalViewer = false;
   const myProjectIds = useMemo(
     () => new Set(projects.filter((p) => isProjectResponsible(p, identity, matchesMe)).map((p) => p.id)),
     [projects, identity, matchesMe]
@@ -242,7 +242,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
     return activeUserTasks.filter((t) => !t.completed && Boolean(t.isBlocked || t.blockedReason));
   }, [accessLevel, activeUserTasks]);
 
-  // Bloqueos de equipo: de los proyectos que lidero (Dirección / admin: todos)
+  // Bloqueos de equipo: solo de los proyectos que lidero (#147: Mi Día personal para todos)
   const teamBlockedTasks = useMemo(() => {
     if (!['leader', 'executive', 'system_admin'].includes(accessLevel)) {
       return [];
@@ -252,7 +252,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
   }, [accessLevel, tasks, myProjectIds, activeUserTasks]);
 
   // Desvíos de presupuesto (horas ejecutadas > presupuestadas)
-  // Colaborador: en sus tareas. Comercial / líder: en los proyectos de los que es responsable. Dirección: todos.
+  // Colaborador: en sus tareas. Comercial / líder / Dirección: en los proyectos de los que es responsable.
   const overtimeRisks = useMemo(() => {
     if (!['collaborator', 'leader', 'commercial', 'client_relationship', 'executive', 'system_admin'].includes(accessLevel)) {
       return [];
@@ -277,9 +277,8 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
         o.status === 'discovery' || o.status === 'quoting' || o.status === 'internal_review';
       if (!isActionableStatus) return false;
 
-      // Dirección ve todas; los demás solo las que lideran o les tocan (#147)
-      if (accessLevel === 'executive') return true;
-      if (accessLevel === 'commercial' || accessLevel === 'system_admin') {
+      // Solo las que la persona lidera o le tocan (#147), también para Dirección
+      if (accessLevel === 'commercial' || accessLevel === 'system_admin' || accessLevel === 'executive') {
         const owner = (o.commercialOwner || '').toLowerCase();
         return (
           o.createdByUserId === currentUserId ||
@@ -319,7 +318,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
     const allDeps: Array<ProjectDependency & { projectName: string; clientName: string; delayDays: number }> = [];
 
     projects.forEach((proj: ProjectSummaryItem) => {
-      // Insumos del cliente: solo de proyectos de los que soy responsable (Dirección / admin: todos)
+      // Insumos del cliente: solo de proyectos de los que soy responsable (todos los perfiles)
       if (!isGlobalViewer && !myProjectIds.has(proj.id)) return;
       (proj.dependencies || []).forEach((dep) => {
         if (dep.ownerType === 'client' && dep.status === 'pending') {
@@ -841,11 +840,20 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                   <CheckCircle2 className="w-5 h-5" />
                 </div>
                 <h3 className="text-sm font-bold text-[#0f172a]">
-                  Operación sin excepciones directas
+                  No tienes tareas propias para hoy
                 </h3>
                 <p className="text-xs text-[#64748b] max-w-md mx-auto">
-                  Como perfil ejecutivo no tienes tareas operativas de producción asignadas para hoy. Tu foco está en las excepciones y decisiones arriba notificadas.
+                  Mi Día muestra solo lo tuyo. Para ver la operación de toda la organización, entra a Tareas → Equipo o a Capacidad → Organización.
                 </p>
+                {onNavigateToView && (
+                  <button
+                    type="button"
+                    onClick={() => onNavigateToView('tareas')}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-[#501f92] hover:bg-[#f5f3ff] cursor-pointer"
+                  >
+                    Ver tareas del equipo <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
             ) : activeUserTasks.length === 0 ? (
               <div className="space-y-3">
