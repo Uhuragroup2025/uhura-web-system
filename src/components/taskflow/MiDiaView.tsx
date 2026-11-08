@@ -1029,9 +1029,9 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                 </div>
                 <p
                   className={`text-[11px] font-semibold ${streakDays > 0 ? 'text-[#c2410c]' : 'text-[#64748b]'}`}
-                  title="Días hábiles seguidos con al menos el 70 % de tu jornada registrada. Fines de semana, festivos y ausencias no rompen la racha."
+                  title="Días hábiles seguidos con al menos el 80 % de tu jornada registrada. Fines de semana, festivos y ausencias no rompen la racha."
                 >
-                  🔥 {streakDays > 0 ? `Tu racha: ${streakLabel(streakDays)}` : 'Empieza tu racha hoy: carga al menos el 70 % de tu jornada'}
+                  🔥 {streakDays > 0 ? `Tu racha: ${streakLabel(streakDays)}` : 'Empieza tu racha hoy: carga al menos el 80 % de tu jornada'}
                 </p>
               </div>
 

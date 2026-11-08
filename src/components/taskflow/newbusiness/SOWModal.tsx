@@ -403,7 +403,7 @@ export const SOWModal: React.FC<SOWModalProps> = ({
               }`}
             >
               <Sliders className="w-3.5 h-3.5" />
-              <span>Personalizar Cláusulas</span>
+              <span>Completar y ajustar</span>
             </button>
           </div>
 
@@ -414,6 +414,13 @@ export const SOWModal: React.FC<SOWModalProps> = ({
               <span>
                 <strong>{pendingFields.length}</strong> datos por completar (resaltarán como <code className="bg-amber-200/80 px-1 py-0.5 rounded font-mono font-bold text-amber-900">[COMPLETAR]</code> al pegar en Docs)
               </span>
+              <button
+                type="button"
+                onClick={() => setActiveTab('clauses')}
+                className="ml-1 font-bold text-[#501f92] hover:underline cursor-pointer"
+              >
+                Completar ahora
+              </button>
             </div>
           ) : (
             <div className="flex items-center gap-1.5 text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg text-[11px] font-medium">
@@ -813,11 +820,91 @@ export const SOWModal: React.FC<SOWModalProps> = ({
               <div className="border-b border-[#e2e8f0] pb-3">
                 <h4 className="font-extrabold text-sm text-[#0f172a] flex items-center gap-2">
                   <Sliders className="w-4 h-4 text-[#501f92]" />
-                  <span>Ajustes Puntuales de Cláusulas</span>
+                  <span>Completar datos y ajustar cláusulas</span>
                 </h4>
                 <p className="text-xs text-[#64748b]">
                   Personaliza los textos específicos de este acuerdo antes de exportar o guardar.
                 </p>
+              </div>
+
+              {/* Datos del acuerdo: se pueden completar o corregir antes de copiar a Drive */}
+              <div className="space-y-3 pb-4 border-b border-[#e2e8f0]">
+                <p className="font-extrabold text-xs text-[#0f172a]">Datos del acuerdo</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <label className="space-y-1 block">
+                    <span className="font-bold text-[#475569] block text-[11px]">NIT del cliente</span>
+                    <input
+                      value={clientNit}
+                      onChange={(e) => setClientNit(e.target.value)}
+                      placeholder="900.123.456-7"
+                      className="w-full px-2.5 py-2 rounded-xl border border-[#cbd5e1] text-xs font-mono focus:ring-2 focus:ring-[#501f92] focus:outline-none"
+                    />
+                  </label>
+                  <label className="space-y-1 block">
+                    <span className="font-bold text-[#475569] block text-[11px]">Orden de compra (si aplica)</span>
+                    <input
+                      value={orderNumber}
+                      onChange={(e) => setOrderNumber(e.target.value)}
+                      placeholder="OC-0000"
+                      className="w-full px-2.5 py-2 rounded-xl border border-[#cbd5e1] text-xs font-mono focus:ring-2 focus:ring-[#501f92] focus:outline-none"
+                    />
+                  </label>
+                  <label className="space-y-1 block">
+                    <span className="font-bold text-[#475569] block text-[11px]">Supervisor del cliente</span>
+                    <input
+                      value={supervisorClient}
+                      onChange={(e) => setSupervisorClient(e.target.value)}
+                      placeholder="Nombre"
+                      className="w-full px-2.5 py-2 rounded-xl border border-[#cbd5e1] text-xs focus:ring-2 focus:ring-[#501f92] focus:outline-none"
+                    />
+                  </label>
+                  <label className="space-y-1 block">
+                    <span className="font-bold text-[#475569] block text-[11px]">Cargo del supervisor</span>
+                    <input
+                      value={supervisorClientRole}
+                      onChange={(e) => setSupervisorClientRole(e.target.value)}
+                      placeholder="Cargo"
+                      className="w-full px-2.5 py-2 rounded-xl border border-[#cbd5e1] text-xs focus:ring-2 focus:ring-[#501f92] focus:outline-none"
+                    />
+                  </label>
+                  <label className="space-y-1 block">
+                    <span className="font-bold text-[#475569] block text-[11px]">Representante legal del cliente</span>
+                    <input
+                      value={clientRepresentative}
+                      onChange={(e) => setClientRepresentative(e.target.value)}
+                      placeholder="Nombre completo"
+                      className="w-full px-2.5 py-2 rounded-xl border border-[#cbd5e1] text-xs focus:ring-2 focus:ring-[#501f92] focus:outline-none"
+                    />
+                  </label>
+                  <label className="space-y-1 block">
+                    <span className="font-bold text-[#475569] block text-[11px]">Cédula del representante</span>
+                    <input
+                      value={clientRepresentativeId}
+                      onChange={(e) => setClientRepresentativeId(e.target.value)}
+                      placeholder="C.C."
+                      className="w-full px-2.5 py-2 rounded-xl border border-[#cbd5e1] text-xs font-mono focus:ring-2 focus:ring-[#501f92] focus:outline-none"
+                    />
+                  </label>
+                  <label className="space-y-1 block">
+                    <span className="font-bold text-[#475569] block text-[11px]">Cargo del representante</span>
+                    <input
+                      value={clientRepresentativeRole}
+                      onChange={(e) => setClientRepresentativeRole(e.target.value)}
+                      placeholder="Representante Legal"
+                      className="w-full px-2.5 py-2 rounded-xl border border-[#cbd5e1] text-xs focus:ring-2 focus:ring-[#501f92] focus:outline-none"
+                    />
+                  </label>
+                  <label className="space-y-1 block">
+                    <span className="font-bold text-[#475569] block text-[11px]">Supervisor Uhura</span>
+                    <input
+                      value={supervisorProvider}
+                      onChange={(e) => setSupervisorProvider(e.target.value)}
+                      placeholder="Nombre"
+                      className="w-full px-2.5 py-2 rounded-xl border border-[#cbd5e1] text-xs focus:ring-2 focus:ring-[#501f92] focus:outline-none"
+                    />
+                  </label>
+                </div>
+                <p className="text-[10px] text-[#94a3b8]">El NIT se precarga con la razón social elegida en la oportunidad (o la principal del cliente). Si cambia, corrígelo aquí; para dejarlo fijo en el cliente, edítalo en Razones sociales.</p>
               </div>
 
               <div className="space-y-1">

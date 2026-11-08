@@ -741,7 +741,7 @@ Especificación funcional en `ORBIT_PRODUCT_STATUS.md` Módulo 18.
 * `colony_challenges` (`id`, `game_id`, `challenger_user_id`, `challenger_score`, `challenged_user_id`, `challenged_score` null hasta jugar, `status` = `pending` | `completed`, `created_at`, `completed_at`). Ganador derivado: mayor puntaje; igual = empate. Un reto se resuelve una sola vez.
 * Rivales: solo usuarios activos de Equipo & Accesos, nunca uno mismo.
 * Notificaciones en la campana: «X te retó en {juego} con N pts» (al retado) y «{Resultado} contra X» (a ambos, al resolverse).
-* **Recordatorio de horas (ya existe en producción):** no se reimplementa ni se cambia. Lo que hace hoy la plataforma de Indunova (umbral del 70 %, hora, canales) es la referencia; el prototipo solo replica la reacción de la mascota. Cualquier diferencia se resuelve a favor de producción.
+* **Recordatorio de horas (ya existe en producción):** no se reimplementa. Lo que hace hoy la plataforma de Indunova (hora, canales) es la referencia; el prototipo solo replica la reacción de la mascota. **Única excepción, decidida por Uhura (07 Nov 2026): el umbral se unifica en 80 %**; si producción usa otro porcentaje, se ajusta solo ese valor.
 
 ---
 
@@ -763,7 +763,7 @@ Especificación funcional en `ORBIT_PRODUCT_STATUS.md` §9.5. **Fase 1 no requie
 
 ## 24. Racha de días cargados y cierre del día (07 Nov 2026)
 Especificación funcional en `ORBIT_PRODUCT_STATUS.md` §9.4.1. Lógica de referencia en `src/components/taskflow/time/dayStreak.ts`.
-* **Racha:** se calcula con `time_logs` existentes por usuario y día (`SUM(duration_seconds)` por `date`). Un día hábil cuenta si suma ≥ 70 % de la jornada diaria (capacidad semanal ÷ 5). Se saltan fines de semana, festivos de Colombia y días con ausencia activa (§20); no rompen la racha. Puede calcularse en el frontend con los registros de las últimas semanas o exponerse como `GET /api/me/streak` → `{ current, today_counts, today_is_workday }`. No hay ranking ni comparación entre personas.
+* **Racha:** se calcula con `time_logs` existentes por usuario y día (`SUM(duration_seconds)` por `date`). Un día hábil cuenta si suma ≥ 80 % de la jornada diaria (capacidad semanal ÷ 5). Se saltan fines de semana, festivos de Colombia y días con ausencia activa (§20); no rompen la racha. Puede calcularse en el frontend con los registros de las últimas semanas o exponerse como `GET /api/me/streak` → `{ current, today_counts, today_is_workday }`. No hay ranking ni comparación entre personas.
 * **Día cerrado:** tabla `day_closures` (`user_id`, `date`, `closed_at`), única por usuario y fecha. `POST /api/me/day-closures` con la fecha de hoy; idempotente. Es solo un registro de confirmación: **no bloquea ni modifica** `time_logs` (las reglas de corrección y cierre semanal no cambian). En el prototipo vive en el navegador (`eco_day_closed_v1`).
 * **Aviso de las 5:00 p. m.:** es del frontend (mascota); se muestra una vez por día y no requiere backend. Si a futuro se quiere enviar también por Google Chat o push, se reutiliza el canal del recordatorio de horas de producción, sin duplicarlo.
 
@@ -774,7 +774,7 @@ Especificación funcional en `ORBIT_PRODUCT_STATUS.md` §9.4.1. Lógica de refer
 * **Requiere cálculo en servidor:** cada persona solo puede leer sus propios `time_logs` (§15.1), así que la racha de equipo y los logros se calculan en el backend y se exponen ya agregados, sin horas individuales:
   * `GET /api/team/streak` → `{ current, today_loaded, today_expected, week_pct }`. Nunca devuelve quién faltó.
   * `GET /api/team/streak-milestones` → `[{ user_id, user_name, current, milestone, achieved_on, claps_count, clapped_by_me }]`. Se publica solo por comportamiento (sin preferencia de compartir).
-* **Equipo esperado por día:** usuarios activos con `capacity_hours > 0`, sin ausencia activa ese día (§20). Días hábiles de Colombia. Un día cuenta para la persona si suma ≥ 70 % de `capacity_hours / 5`.
+* **Equipo esperado por día:** usuarios activos con `capacity_hours > 0`, sin ausencia activa ese día (§20). Días hábiles de Colombia. Un día cuenta para la persona si suma ≥ 80 % de `capacity_hours / 5`.
 * **Hitos:** 5, 10, 20, 50 y 100 días seguidos. `achieved_on` = día en que la racha vigente alcanzó el hito. Si la racha se rompe, el hito deja de mostrarse (se celebran rachas vigentes).
 * **Aplausos:** `streak_milestone_claps` (`milestone_key`, `user_id`, `created_at`), único por persona y hito; no se puede aplaudir el propio. `POST`/`DELETE /api/team/streak-milestones/{key}/clap`. En el prototipo: `eco_streak_claps_v1`.
 * Opcional (fase 2): avisar en un espacio interno de Google Chat cuando alguien llega a un hito.
@@ -802,7 +802,7 @@ Las notificaciones in-app siguen siendo la fuente principal; el correo y Google 
 * A cada persona con **menos del 80 % de su capacidad neta semanal** registrada. Capacidad neta = capacidad − festivos − vacaciones y permisos aprobados (§20). Horas vigentes según `work_date`; los registros anulados no cuentan. Si la capacidad neta es 0 o ya alcanzó el 80 %, no se envía.
 * Contenido: semana evaluada, horas registradas y capacidad neta, porcentaje, horas pendientes para el 80 %, resumen por tarea y proyecto, y botón **«Completar mis horas»** que abre esa semana en Mi Capacidad / Timesheets.
 * **Resumen semanal:** `leader` → solo las personas de su área o alcance; `executive` y `system_admin` → consolidado de toda la organización.
-* **Relación con la mascota y la racha:** son complementarios y no se reemplazan. La mascota recuerda el día (≥ 70 % de la jornada, ya existe en producción) y la racha usa ese mismo 70 % diario; el correo del viernes evalúa la semana con el 80 % de la capacidad neta.
+* **Meta única de 80 % (decisión de Uhura, 07 Nov 2026):** el correo del viernes (80 % de la capacidad neta semanal), el recordatorio diario de la mascota, la racha y «Cerrar mi día» (80 % de la jornada diaria) usan el mismo porcentaje. Definirlo como una sola configuración de organización (`hours_min_ratio = 0.8`) para no tener valores distintos.
 
 ### 26.3 Proveedor de correo
 * Si se requiere un proveedor, Indunova lo escala a Ana con copia a Pao indicando: servicio propuesto, accesos requeridos, remitente, registros DNS (SPF, DKIM, DMARC) y costos o límites.

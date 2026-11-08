@@ -511,7 +511,7 @@ PROSPECTOS / [Nombre Empresa] (en fase comercial)
 #### 7.1 Propósito
 Generador de la plantilla contractual técnica entre Uhura Group y el Cliente, extraída directamente del alcance aprobado en la cotización activa.
 - **Referencias de Código:**
-  - **Modal Generador de SOW:** [`src/components/taskflow/newbusiness/SowDocumentModal.tsx`](../components/taskflow/newbusiness/SowDocumentModal.tsx)
+  - **Modal Generador de SOW:** [`src/components/taskflow/newbusiness/SOWModal.tsx`](../components/taskflow/newbusiness/SOWModal.tsx) · plantillas por tipo de servicio en [`sowTemplates.ts`](../components/taskflow/newbusiness/sowTemplates.ts) (e-commerce Shopify, web WordPress, app a la medida)
   - **Tipos de Datos:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`SowDocumentData`)
 
 #### 7.2 Regla de Oro de Confidencialidad Operativa
@@ -528,6 +528,13 @@ Generador de la plantilla contractual técnica entre Uhura Group y el Cliente, e
 - `exclusions`: Text (Lo que no incluye el servicio).
 - `clientResponsibilities`: Text (Insumos, accesos y aprobaciones que debe dar el cliente).
 - `governanceNotes`: Text (Reglas sobre cambios de alcance o SLAs).
+
+#### 7.4 Flujo de uso del SOW (revisado 07 Nov 2026)
+- **Cuándo existe:** se genera de la cotización cuando la oportunidad se gana y se convierte en proyecto. Los proyectos creados a mano al arranque (Neroli, fee de Cristar; §9.4) no tienen SOW en ECO: su documento ya se firmó por fuera.
+- **Dónde se abre:** New Business → oportunidad → SOW, y **Cliente → Proyectos de la cuenta → «Ver SOW»** (columna SOW; «—» si el proyecto no viene de una oportunidad).
+- **Qué hace Comercial:** revisa la «Vista documento final», completa o corrige los datos en **«Completar y ajustar»** y pulsa **«Copiar para Docs»** para pegarlo en un documento de Google Drive, donde lo ajusta si quiere y lo envía a firma del cliente. «Guardar SOW» conserva lo completado en ECO.
+- **Datos del acuerdo editables (se habían quedado sin campo):** NIT del cliente (precargado con la razón social elegida o la principal), orden de compra, supervisor del cliente y su cargo, representante legal del cliente con cédula y cargo, y supervisor de Uhura. Lo que falte aparece como «[COMPLETAR: …]» con el acceso «Completar ahora».
+- **Secciones del documento:** 1. Antecedentes y objetivo · 2. Alcance y entregables · 3. Responsabilidades e insumos · 4. Pruebas (UAT) y silencio positivo · 5. Riesgos y mitigación · 6. Gates y control · 7. Uso de IA y datos · 8. Gestión de cambios · 9. Inversión y condiciones de pago · 10. Garantía técnica · Aceptación y firmas.
 
 ---
 
@@ -1046,7 +1053,7 @@ Mi Día puede mostrar de forma discreta y no invasiva:
 >   6. Más horas planeadas hoy que la jornada → **preocupado** («hoy viene pesado»).
 >   7. Primera visita del día o todo en orden → **pulgar arriba**.
 >   8. Nada agendado hoy → **pensativo**, sugiriendo la próxima tarea a adelantar.
->   - **Triste + recordatorio de horas (🟢 ya existe en producción · reconciliado 07 Nov 2026):** en día hábil, sin ausencia registrada y desde las 4:00 p. m., si la persona lleva **menos del 70 %** de su jornada diaria registrada (capacidad semanal ÷ 5), ECO se pone triste y muestra un recordatorio juguetón con «Cargar mis horas» y «Más tarde». No aparece si el cronómetro está corriendo. **Este comportamiento ya funciona en la plataforma de producción de Indunova: no se reimplementa ni se modifica con esta entrega.** El prototipo solo lo replica para que la mascota sea coherente. Si el umbral, la hora o los canales de producción difieren de lo descrito aquí, **prevalece producción** y se ajusta el prototipo.
+>   - **Triste + recordatorio de horas (🟢 ya existe en producción · reconciliado 07 Nov 2026):** en día hábil, sin ausencia registrada y desde las 4:00 p. m., si la persona lleva **menos del 80 %** de su jornada diaria registrada (capacidad semanal ÷ 5), ECO se pone triste y muestra un recordatorio juguetón con «Cargar mis horas» y «Más tarde». No aparece si el cronómetro está corriendo. **Este comportamiento ya funciona en la plataforma de producción de Indunova: no se reimplementa ni se modifica con esta entrega.** El prototipo solo lo replica para que la mascota sea coherente. Si la hora o los canales de producción difieren de lo descrito aquí, **prevalece producción** y se ajusta el prototipo. **Excepción decidida por Uhura (07 Nov 2026): el umbral se unifica en 80 %** en todo ECO (este recordatorio, la racha, «Cerrar mi día» y el correo semanal); si producción usa hoy otro porcentaje, se cambia solo ese valor a 80 %.
 >   - Fuera de ese caso, **triste** solo aparece como reacción breve.
 >   - **Las emociones son reacciones, no estados fijos (07 Nov 2026):** cuando cambia el motivo, ECO muestra la emoción un rato y vuelve a su cara normal (pulgar arriba): sorprendido y triste ~45 s, preocupado ~30 s, café ~20 s, pensativo ~15 s, celebrando ~12 s. El aviso del globo se recoge con la emoción. Si el motivo de un aviso sigue vigente (p. ej. una tarea propia pasada de horas o las horas sin cargar), ECO lo vuelve a recordar cada 30 minutos. Concentrado se mantiene mientras corra el cronómetro. El motivo sigue visible al abrir la ventana de la mascota.
 >   - **Moods de ambiente que rotan durante el día (07 Nov 2026):** cuando ECO está en reposo (sin avisos, sin cronómetro, sin ventanas abiertas), cambia de pose unos segundos y vuelve a la normal. Con la apariencia de Navidad: **cafecito** («Uff… un cafecito no caería nada mal ☕»), **hola** (solo cambia de pose, no dice nada), **crack** (mensaje de aliento: «¡Eres un crack! Lo que estás haciendo hoy suma 💪») y **agua** («Recuerda tomar agua 💧»). Cada mood tiene varias frases y se elige una al azar; nunca repite el mismo mood dos veces seguidas. Con la apariencia estándar salen solo los que tienen imagen (cafecito y crack). **No sale a todos al mismo tiempo:** cada persona tiene su propio momento aleatorio (el primero entre 2 y 6 min después de entrar y luego cada 6 a 18 min). Si aparece un aviso, una ventana o el cronómetro, el mood se retira enseguida. Reemplaza el ciclo anterior que hacía una acción aleatoria cada 45 s. Para revisarlo rápido en el prototipo: `?ecoMoods=fast` (solo desarrollo, igual que el laboratorio).
@@ -1301,7 +1308,7 @@ Para asegurar una frontera limpia de trabajo entre Producto (Uhura) y la Fábric
 
 ### 9.4.1 Hábito de carga: racha y «Cerrar mi día» con ECO (07 Nov 2026)
 Objetivo: que cargar horas sea un hábito que guste. Se quita fricción y se premia la **constancia**, nunca la cantidad de horas (no hay ranking de horas).
-- **Racha de días cargados** (Mi Día → «¿Cómo voy?»): «🔥 5 días seguidos». Un día hábil cuenta cuando la persona registró **al menos el 70 % de su jornada** (misma meta mínima que el recordatorio de horas de producción). Fines de semana, festivos de Colombia y días con ausencia registrada **no cuentan ni rompen** la racha. Hoy suma apenas se alcanza la meta y, si aún no, no la rompe (el día no ha terminado). Sin racha: «Empieza tu racha hoy». Se calcula con los registros de tiempo reales.
+- **Racha de días cargados** (Mi Día → «¿Cómo voy?»): «🔥 5 días seguidos». Un día hábil cuenta cuando la persona registró **al menos el 80 % de su jornada** (meta unificada de Uhura, igual que el recordatorio diario y el correo semanal). Fines de semana, festivos de Colombia y días con ausencia registrada **no cuentan ni rompen** la racha. Hoy suma apenas se alcanza la meta y, si aún no, no la rompe (el día no ha terminado). Sin racha: «Empieza tu racha hoy». Se calcula con los registros de tiempo reales.
 - **«Cerrar mi día»** (botón en Mi Día y aviso de ECO): ventana con la misma estructura que «Cargar horas». Muestra:
   - ECO con una frase según el avance: día completo (celebra), vas bien, o a medio cargar (cuánto falta para que cuente).
   - La barra del día y el estado de la racha.
@@ -1316,7 +1323,7 @@ Objetivo: que cargar horas sea un hábito que guste. Se quita fricción y se pre
   - **Mi Día → tarjeta «En racha»** (columna derecha, debajo del Radar del equipo): **aparece sola** cuando alguien cumple la racha o el equipo tiene racha; si no, no se muestra. Lista a las personas en racha («Laura · 10 días seguidos 🔥») con **👏 aplaudir** (uno por persona; quien recibe ve cuántos) y, si aplica, «🔥 El equipo lleva 7 días con todos los días cargados».
   - **La Colonia** (arriba de las fichas): vista completa, siempre visible: racha del equipo con «Hoy: faltan 2 personas» **sin nombres** y «Esta semana: 92 % de los días cargados», más la lista «En racha» con la fecha en que cada quien llegó a su hito.
   - Una persona aparece «En racha» desde **5 días seguidos** (hitos 5, 10, 20, 50, 100). Solo se celebra a quien llega; nunca se muestra a quien no.
-  - Un día cuenta para el equipo cuando **cada persona esperada** (activa, con capacidad configurada y sin ausencia ese día) registró al menos el 70 % de su jornada.
+  - Un día cuenta para el equipo cuando **cada persona esperada** (activa, con capacidad configurada y sin ausencia ese día) registró al menos el 80 % de su jornada.
 - **El Muro** era una pantalla de relleno (ya retirada del menú lateral) y se quitó también de «Más» en móvil. Los logros de racha viven en La Colonia.
 
 ### 9.5 ECO como app instalable (PWA) (07 Nov 2026)

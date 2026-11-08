@@ -133,7 +133,7 @@ export const TeamStreakPanel: React.FC<Props> = ({ users, timeLogs, absenceEvent
           )}
         </div>
         <p className="text-[10px] text-[#94a3b8]">
-          Cuenta un día cuando cada persona registra al menos el 70 % de su jornada. Ausencias, fines de semana y festivos no cuentan.
+          Cuenta un día cuando cada persona registra al menos el 80 % de su jornada. Ausencias, fines de semana y festivos no cuentan.
         </p>
       </div>
 

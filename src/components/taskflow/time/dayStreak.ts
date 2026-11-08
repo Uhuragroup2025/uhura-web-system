@@ -4,8 +4,8 @@ import { isBusinessDay } from '../health/projectHealthEngine';
 /**
  * Racha de días cargados y cierre del día (07 Nov 2026).
  *
- * - Un día hábil cuenta para la racha cuando la persona registró al menos el 70 % de su
- *   jornada (misma meta mínima que el recordatorio de horas de producción).
+ * - Un día hábil cuenta para la racha cuando la persona registró al menos el 80 % de su
+ *   jornada (meta unificada de Uhura: 80 %, igual que el recordatorio de horas).
  * - Fines de semana, festivos y días con ausencia registrada no cuentan ni rompen la racha.
  * - Hoy suma apenas se alcance la meta; si todavía no, no rompe la racha (el día no ha terminado).
  * - Se premia la constancia, nunca la cantidad de horas: no hay ranking de horas.
@@ -13,7 +13,7 @@ import { isBusinessDay } from '../health/projectHealthEngine';
  * Todo se calcula con los registros de tiempo que ya existen; no requiere backend nuevo.
  */
 
-export const STREAK_MIN_RATIO = 0.7;
+export const STREAK_MIN_RATIO = 0.8;
 
 const MONTHS_SHORT = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 

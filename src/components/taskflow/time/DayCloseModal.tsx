@@ -145,10 +145,10 @@ export const DayCloseModal: React.FC<Props> = ({
               <span>
                 {streak > 0 ? (
                   <>
-                    Llevas <strong>{streakLabel(streak)}</strong>. Al cargar el 70 % de hoy llegas a <strong>{nextStreak}</strong>.
+                    Llevas <strong>{streakLabel(streak)}</strong>. Al cargar el 80 % de hoy llegas a <strong>{nextStreak}</strong>.
                   </>
                 ) : (
-                  <>Carga el 70 % de tu jornada y empiezas tu racha 🔥</>
+                  <>Carga el 80 % de tu jornada y empiezas tu racha 🔥</>
                 )}
               </span>
             )}

@@ -25,7 +25,7 @@ export type BuckyInternalStateKey =
   | 'OVERDUE_OWN_TASKS'      // Tareas propias vencidas (preocupado, nunca castigo)
   | 'OVER_CAPACITY'          // Carga del día por encima de la capacidad
   | 'NOTHING_SCHEDULED'      // Sin tareas agendadas hoy (pensativo: ¿qué adelantamos?)
-  | 'LOW_TIME_LOGGED'        // Al final del día lleva menos del 70 % de su jornada registrada (triste, recordatorio)
+  | 'LOW_TIME_LOGGED'        // Al final del día lleva menos del 80 % de su jornada registrada (triste, recordatorio)
   | 'SAD';                   // Preservado para el laboratorio / casos excepcionales
 
 export type BuckyPose =
@@ -308,6 +308,9 @@ export const playBuckySound = (
 // 8. NORMAL_EQUILIBRIUM     -> idle / happy (buzo Uhura siempre por defecto)
 // *sad existe en el sistema pero NO como castigo por productividad o errores*
 
+/** Meta mínima de horas cargadas, unificada en 80 % (07 Nov 2026), igual que la racha y el correo semanal. */
+export const LOW_TIME_RATIO = 0.8;
+
 export function resolveBuckyState(ctx: BuckyContext): BuckyResolvedState {
   // 1. ACTIVE_TIMER (Foco profundo: cronómetro activo corriendo en una tarea)
   if (ctx.activeTimer && !ctx.activeTimer.isPaused) {
@@ -328,9 +331,9 @@ export function resolveBuckyState(ctx: BuckyContext): BuckyResolvedState {
     };
   }
 
-  // 1b. LOW_TIME_LOGGED: cerca del fin del día lleva < 70 % de la jornada registrada → triste + recordatorio
+  // 1b. LOW_TIME_LOGGED: cerca del fin del día lleva < 80 % de la jornada registrada → triste + recordatorio
   //     Tono juguetón, nunca de castigo: invita a cargar en un minuto.
-  if (ctx.timeLogReminderDue && (ctx.targetDayHours ?? 8) > 0 && ctx.loggedHoursToday < (ctx.targetDayHours ?? 8) * 0.7) {
+  if (ctx.timeLogReminderDue && (ctx.targetDayHours ?? 8) > 0 && ctx.loggedHoursToday < (ctx.targetDayHours ?? 8) * LOW_TIME_RATIO) {
     const target = ctx.targetDayHours ?? 8;
     const logged = ctx.loggedHoursToday;
     const pct = Math.round((logged / target) * 100);
@@ -349,7 +352,7 @@ export function resolveBuckyState(ctx: BuckyContext): BuckyResolvedState {
       badgeColor: 'bg-[#f5f3ff] text-[#501f92] border-[#ddd6fe]',
       headline: 'Tu día está a medio cargar 🥺',
       speech: lines[new Date().getDate() % lines.length],
-      description: `Registro de hoy: ${logged.toFixed(1)} h de ${target.toFixed(1)} h (meta mínima 70 %).`,
+      description: `Registro de hoy: ${logged.toFixed(1)} h de ${target.toFixed(1)} h (meta mínima 80 %).`,
       isAlert: true,
       cta: { label: 'Cargar mis horas', actionType: 'log_time' },
       soundType: 'alert'
