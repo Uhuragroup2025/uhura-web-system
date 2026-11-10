@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { OrbitView, UserItem } from './types';
 import { canAccessModule } from './auth/permissions';
+import { requestLogout } from './auth/SessionClosedOverlay';
+import { LogOut } from 'lucide-react';
 import {
   CheckSquare,
   Briefcase,
@@ -186,6 +188,17 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                   </div>
                 </div>
               ))}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMoreMenuOpen(false);
+                  requestLogout();
+                }}
+                className="w-full px-3 py-3 rounded-xl border border-[#3a1f2a] bg-[#140b24] text-left flex items-center gap-2.5 text-[#fca5a5] hover:border-[#7f1d1d] cursor-pointer"
+              >
+                <LogOut className="w-4 h-4 shrink-0" aria-hidden="true" />
+                <span className="text-xs font-semibold">Cerrar sesión</span>
+              </button>
             </div>
           </div>
         </div>

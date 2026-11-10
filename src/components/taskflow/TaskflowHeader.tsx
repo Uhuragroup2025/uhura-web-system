@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Bell, Menu, X, LogOut, ShieldAlert, Sparkles, Check, ChevronDown, ExternalLink, Clock, Play, Pause, Square, Building2, Search, ArrowRight, PanelLeftClose, PanelLeftOpen, User, Edit3, Plus } from 'lucide-react';
+import { SessionClosedOverlay, requestLogout } from './auth/SessionClosedOverlay';
 import { orbitOperationalAlerts } from './mockData';
 import { ActiveTimerState, TaskItem, TimeLog, UserItem } from './types';
 import { UserAvatar } from './UserAvatar';
@@ -431,17 +432,16 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
                       ? 'bg-[#10b981] hover:bg-[#059669] text-white'
                       : 'bg-[#f59e0b] hover:bg-[#d97706] text-white'
                   }`}
-                  title={activeTimer.isPaused ? 'Reanudar Timer' : 'Pausar Timer'}
+                  title={activeTimer.isPaused ? 'Reanudar timer' : 'Pausar timer'}
+                  aria-label={activeTimer.isPaused ? 'Reanudar timer' : 'Pausar timer'}
                 >
                   {activeTimer.isPaused ? (
                     <>
                       <Play className="w-3.5 h-3.5 fill-current" />
-                      <span className="hidden sm:inline text-[10px]">Reanudar</span>
                     </>
                   ) : (
                     <>
                       <Pause className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline text-[10px]">Pausar</span>
                     </>
                   )}
                 </button>
@@ -449,10 +449,10 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
               <button
                 onClick={onStopTimer}
                 className="p-1.5 rounded-lg bg-[#dc2626] hover:bg-[#b91c1c] text-white cursor-pointer shadow-xs transition-colors flex items-center gap-1 text-xs font-bold"
-                title="Detener Timer y Registrar"
+                title="Detener y registrar tiempo"
+                aria-label="Detener timer"
               >
                 <Square className="w-3.5 h-3.5 fill-current" />
-                <span className="hidden sm:inline text-[10px]">Detener</span>
               </button>
             </div>
           </div>
@@ -609,11 +609,23 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
                   </div>
                   <Edit3 className="w-3.5 h-3.5 text-[#94a3b8] group-hover:text-[#501f92]" />
                 </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProfileMenuOpen(false);
+                    requestLogout();
+                  }}
+                  className="w-full px-3 py-2.5 rounded-xl text-left text-xs font-bold text-[#dc2626] hover:bg-[#fef2f2] transition-colors flex items-center gap-2 cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Cerrar sesión</span>
+                </button>
               </div>
             </div>
           )}
         </div>
       </div>
+      <SessionClosedOverlay />
     </header>
   );
 };

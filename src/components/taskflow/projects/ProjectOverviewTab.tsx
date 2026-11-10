@@ -425,18 +425,18 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
       {(project.externalResources || []).length > 0 && currentUser?.accessLevel !== 'collaborator' && (
         <div className="bg-white rounded-2xl border border-[#e2e8f0] p-5 shadow-xs space-y-2">
           <div className="flex items-center justify-between gap-2">
-            <h3 className="font-extrabold text-sm text-[#0f172a]">Recursos externos</h3>
+            <h3 className="font-extrabold text-sm text-[#0f172a]">Costos externos y licencias</h3>
             <span className="text-xs font-bold text-[#0f172a]">
               Costo: $ {Math.round((project.externalResources || []).reduce((sum, r) => sum + (r.totalCost || 0), 0)).toLocaleString('es-CO')}
             </span>
           </div>
-          <p className="text-[11px] text-[#64748b]">Subcontratados para necesidades puntuales. No consumen capacidad del equipo ni horas de roles de Uhura.</p>
+          <p className="text-[11px] text-[#64748b]">Recursos externos y licencias imputados al proyecto. No consumen capacidad del equipo ni horas de roles de Uhura.</p>
           <ul className="divide-y divide-[#f1f5f9] text-xs">
             {(project.externalResources || []).map((r) => (
               <li key={r.id} className="flex items-center justify-between py-1.5 gap-2">
                 <span className="text-[#0f172a]">
                   <strong>{r.description}</strong>
-                  <span className="text-[#64748b]">{r.providerName ? ` · ${r.providerName}` : ''}{r.costModel === 'hourly' ? ` · ${r.hours}h` : ' · Valor fijo'}</span>
+                  <span className="text-[#64748b]">{r.kind === 'license' ? ' · Licencia' : ''}{r.providerName ? ` · ${r.providerName}` : ''}{r.recurrence === 'monthly' ? ` · mensual × ${r.months || 1}` : r.costModel === 'hourly' ? ` · ${r.hours}h` : ' · Pago único'}</span>
                 </span>
                 <span className="font-mono font-bold text-[#0f172a]">$ {Math.round(r.totalCost).toLocaleString('es-CO')}</span>
               </li>

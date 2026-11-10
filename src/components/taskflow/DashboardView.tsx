@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { TimerControls } from './time/TimerControls';
 import {
   orbitMonthlyBilling,
   orbitServicesProfitability,
@@ -313,44 +314,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
                     {/* Right: Timer & Manual Log Direct Actions */}
                     <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-                      {/* Live Timer Button */}
-                      {isRunning ? (
-                        <button
-                          onClick={onPauseResumeTimer}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#d4ff4a] text-[#140b24] text-xs font-bold shadow-xs cursor-pointer animate-pulse"
-                          title="Pausar temporizador"
-                        >
-                          <Pause className="w-3.5 h-3.5 fill-current" />
-                          <span>Timer Activo</span>
-                        </button>
-                      ) : isPaused ? (
-                        <button
-                          onClick={onPauseResumeTimer}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#f59e0b] text-white text-xs font-bold shadow-xs cursor-pointer"
-                          title="Reanudar temporizador"
-                        >
-                          <Play className="w-3.5 h-3.5 fill-current" />
-                          <span>Reanudar</span>
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => onStartTimer && onStartTimer(t)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-[#8a4dff] text-[#501f92] hover:text-white border border-[#e2e8f0] hover:border-[#8a4dff] text-xs font-bold transition-all shadow-2xs cursor-pointer"
-                          title="Iniciar temporizador en esta tarea"
-                        >
-                          <Play className="w-3.5 h-3.5 fill-current" />
-                          <span>Iniciar timer</span>
-                        </button>
-                      )}
-
-                      {/* Manual Log Button (+) */}
-                      <button
-                        onClick={() => onOpenManualLog && onOpenManualLog(t.id)}
-                        className="p-2 rounded-xl bg-white hover:bg-[#f1f5f9] text-[#64748b] hover:text-[#501f92] border border-[#e2e8f0] text-xs font-bold transition-colors cursor-pointer shadow-2xs"
-                        title="Cargar tiempo manual (+)"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                      </button>
+                      {/* Timer: solo íconos (▶ / ⏸ ⏹) + 🕒 carga manual (ronda 2) */}
+                      <TimerControls
+                        size="sm"
+                        isRunning={isRunning || isPaused}
+                        isPaused={isPaused}
+                        onStart={() => onStartTimer && onStartTimer(t)}
+                        onStop={onStopTimer}
+                        onPauseResume={onPauseResumeTimer}
+                        onManualLog={onOpenManualLog ? () => onOpenManualLog(t.id) : undefined}
+                      />
 
                       {/* Detail Button */}
                       <button

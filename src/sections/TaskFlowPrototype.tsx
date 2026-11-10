@@ -1136,6 +1136,26 @@ export const TaskFlowPrototype: React.FC = () => {
         return t;
       })
     );
+
+    // Ronda 2: aviso al líder y al revisor (producción: a líder, revisor y seguidores de la tarea).
+    const deliveredTask = tasks.find((t) => t.id === taskId);
+    if (deliveredTask) {
+      setActiveAlerts((prevAlerts) => [
+        {
+          id: `alt-rev-${Date.now()}`,
+          type: 'REVISIÓN',
+          title: deliveredTask.title,
+          client: deliveredTask.clientName || 'ECO',
+          description: `${del.submittedBy || 'Un colaborador'} envió un entregable a revisión${del.taggedReviewer ? ` · Revisa: ${del.taggedReviewer}` : ''}`,
+          impactLevel: 'medio',
+          severity: 'info',
+          read: false,
+          timeAgo: 'Ahora',
+          date: 'Hoy'
+        },
+        ...prevAlerts
+      ]);
+    }
   };
 
   // Save Manual Log Fallback
@@ -3475,6 +3495,8 @@ export const TaskFlowPrototype: React.FC = () => {
                     activeTimer={activeTimer}
                     onStartTimer={handleStartTimer}
                     onStopTimer={handleStopTimer}
+                    onPauseResumeTimer={handlePauseResumeTimer}
+                    onOpenManualLog={handleOpenManualLogWithTask}
                     onUpdateOpportunity={(updatedOpp) => {
                       setOpportunities((prev) =>
                         prev.map((o) => (o.id === updatedOpp.id ? updatedOpp : o))

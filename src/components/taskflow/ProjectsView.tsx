@@ -17,6 +17,7 @@ import { CloseProjectModal } from './projects/CloseProjectModal';
 import { canViewProjectNotifications } from './integrations/googleChat';
 import { calculateBusinessDays } from './health/projectHealthEngine';
 import { can } from './auth/permissions';
+import { suggestedClientInputs, kickoffWaitFromInputs, inputsToDependencies, type ClientInputTemplate } from './schedule/clientInputs';
 import { UserAvatar } from './UserAvatar';
 import {
   Button,
@@ -144,6 +145,11 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   const [scheduleContractMonths, setScheduleContractMonths] = useState<number>(6); // Fee: vigencia
   const [scheduleRollover, setScheduleRollover] = useState<'none' | 'carry_over' | 'contractual_cap'>('none'); // Fee: horas no usadas
   const [scheduleRecalculateTasks, setScheduleRecalculateTasks] = useState<boolean>(true);
+  // Ronda 2: insumos a solicitar al cliente (precargados por servicio; se crean como Dependencias)
+  const [scheduleInputs, setScheduleInputs] = useState<(ClientInputTemplate & { selected: boolean })[]>([]);
+  const [scheduleInputsLabel, setScheduleInputsLabel] = useState('');
+  const [newInputTitle, setNewInputTitle] = useState('');
+  const [showRoundsEditor, setShowRoundsEditor] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'fee_monthly' | 'fixed_project' | 'internal_non_billable' | 'risk'>('all');
   const [filterClient, setFilterClient] = useState<string>('all');
@@ -371,6 +377,11 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   const isFeeProject = normalizeProjectType(currentProject?.projectType) === 'fee_monthly';
   // Permisos de la vista de proyecto (sin usuario en sesión, el prototipo asume edición)
   const canEditProject = !currentUser || can(currentUser, 'edit', 'proyectos');
+  // Ronda 2: «Iniciar proyecto» lo hacen Comercial y Relación con clientes (saben cuándo se firma y
+  // agendan el kickoff), además de líderes, Dirección y administración.
+  const canStartProject =
+    canEditProject ||
+    ['commercial', 'client_relationship', 'executive', 'leader', 'system_admin'].includes(currentUser?.accessLevel || '');
   const isCollaboratorView = currentUser?.accessLevel === 'collaborator';
   useEffect(() => {
     if (isCollaboratorView && (activeTab === 'matrix' || activeTab === 'team')) setActiveTab('overview');
@@ -622,6 +633,13 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
       setScheduleKickoffWaitDays(currentProject.scheduleConfig?.clientKickoffWaitDays ?? 3);
       setScheduleContractMonths(currentProject.contractMonths ?? 6);
       setScheduleRollover((currentProject.rolloverPolicy as 'none' | 'carry_over' | 'contractual_cap') || 'none');
+      const sugg = suggestedClientInputs(
+        [currentProject.name, ...(currentProject.deliverables || []).map((d) => d.name)].join(' ')
+      );
+      setScheduleInputsLabel(sugg.label);
+      setScheduleInputs(sugg.inputs.map((i) => ({ ...i, selected: true })));
+      setNewInputTitle('');
+      setShowRoundsEditor(false);
       // Semanas de producción: fuente de verdad = Alcance (productionWeeks heredado de la conversión)
       const scopeWeeks = currentProject.scheduleConfig?.productionWeeks;
       if (scopeWeeks && scopeWeeks > 0) {
@@ -635,12 +653,18 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
   const isCurrentProjectFee = normalizeProjectType(currentProject?.projectType) === 'fee_monthly';
 
+  // Los insumos se piden solo en el primer arranque (si el proyecto aún no tiene dependencias).
+  const askClientInputs = Boolean(currentProject && !currentProject.isKickedOff && (currentProject.dependencies || []).length === 0);
+  const selectedScheduleInputs = scheduleInputs.filter((i) => i.selected);
+  // La espera tras el kickoff sale de los insumos bloqueantes (ya no es un campo aparte).
+  const effectiveKickoffWaitDays = askClientInputs ? kickoffWaitFromInputs(selectedScheduleInputs) : scheduleKickoffWaitDays;
+
   const scheduleConfigDraft = useMemo(() => ({
-    clientKickoffWaitDays: scheduleKickoffWaitDays,
+    clientKickoffWaitDays: effectiveKickoffWaitDays,
     includedReworkRounds: scheduleReworkRounds,
     reworkRoundDays: scheduleReworkRoundDays,
     productionWeeks: scheduleDurationWeeks
-  }), [scheduleKickoffWaitDays, scheduleReworkRounds, scheduleReworkRoundDays, scheduleDurationWeeks]);
+  }), [effectiveKickoffWaitDays, scheduleReworkRounds, scheduleReworkRoundDays, scheduleDurationWeeks]);
 
   const scheduleBreakdown = useMemo(() => {
     if (!scheduleKickoffDate) return null;
@@ -724,6 +748,20 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
           }
         : {}),
       deliverables: updatedDeliverables,
+      dependencies:
+        askClientInputs && selectedScheduleInputs.length > 0
+          ? [
+              ...(currentProject.dependencies || []),
+              ...inputsToDependencies({
+                projectId: currentProject.id,
+                kickoffDate: finalStartDate,
+                inputs: selectedScheduleInputs,
+                followUpOwnerUserId:
+                  users?.find((u) => u.name === currentProject.leadName)?.id || currentUser?.id || '',
+                followUpOwnerName: currentProject.leadName
+              })
+            ]
+          : currentProject.dependencies,
       isKickedOff: true,
       scheduleConfig: isCurrentProjectFee
         ? { ...scheduleConfigDraft, includedReworkRounds: 0 }
@@ -892,7 +930,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                 <span className="px-4 py-2 rounded-2xl bg-[#f1f5f9] border border-[#e2e8f0] text-[#334155] text-xs font-bold">
                   🏁 Cerrado · Fin real: {formatDate(currentProject.actualEndDate || currentProject.closure?.actualEndDate)}
                 </span>
-              ) : isProjectPendingToStart && !canEditProject ? (
+              ) : isProjectPendingToStart && !canStartProject ? (
                 <span className="px-4 py-2 rounded-2xl bg-[#faf5ff] border border-[#e9d5ff] text-[#501f92] text-xs font-bold">
                   Por iniciar
                 </span>
@@ -2000,15 +2038,15 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
           >
-            <div className="bg-white rounded-2xl max-w-lg w-full border border-[#e2e8f0] shadow-2xl p-6 sm:p-7 space-y-5 animate-in zoom-in-95">
+            <div className="bg-white rounded-2xl max-w-lg w-full border border-[#e2e8f0] shadow-2xl p-5 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto animate-in zoom-in-95">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-[#501f92]/10 text-[#501f92] flex items-center justify-center shrink-0">
-                    <Play className="w-6 h-6 fill-current" />
+                  <div className="w-10 h-10 rounded-xl bg-[#501f92]/10 text-[#501f92] flex items-center justify-center shrink-0">
+                    <Play className="w-5 h-5 fill-current" />
                   </div>
                   <div>
-                    <h3 className="font-extrabold text-base sm:text-lg text-[#0f172a]">
-                      Programar Inicio de Proyecto 🚀
+                    <h3 className="font-extrabold text-base text-[#0f172a]">
+                      Iniciar proyecto 🚀
                     </h3>
                     <p className="text-xs text-[#64748b]">
                       {currentProject.clientName} · <strong>{currentProject.name}</strong>
@@ -2025,116 +2063,179 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
               </div>
 
               <div className="space-y-4 text-xs">
-                {/* 1. Fecha de Inicio (Kick-off) */}
-                <div className="space-y-1.5">
-                  <label className="font-bold text-[#334155] flex items-center justify-between">
-                    <span>Fecha Oficial de Arranque / Kick-off:</span>
-                    <span className="text-[10px] text-[#64748b]">Alineación del equipo</span>
-                  </label>
-                  <div className="relative flex items-center">
+                {/* 1. Kickoff + semanas (o vigencia) en una sola fila */}
+                <div className="grid grid-cols-[1fr_auto] gap-3 items-end">
+                  <label className="space-y-1 block">
+                    <span className="font-bold text-[#334155] block">Fecha del kickoff</span>
                     <input
                       type="date"
                       value={scheduleKickoffDate}
                       onChange={(e) => setScheduleKickoffDate(e.target.value)}
-                      className="w-full p-2.5 rounded-xl border border-[#cbd5e1] font-semibold text-xs text-[#0f172a] focus:ring-2 focus:ring-[#501f92] bg-white"
+                      className="w-full p-2 rounded-xl border border-[#cbd5e1] font-semibold text-xs text-[#0f172a] focus:ring-2 focus:ring-[#501f92] bg-white"
                     />
-                  </div>
+                  </label>
+                  {isCurrentProjectFee ? (
+                    <label className="space-y-1 block">
+                      <span className="font-bold text-[#334155] block">Vigencia</span>
+                      <span className="flex items-center gap-1.5">
+                        <input
+                          type="number"
+                          min="1"
+                          max="36"
+                          value={scheduleContractMonths}
+                          onChange={(e) => setScheduleContractMonths(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                          className="w-16 p-2 rounded-xl border border-[#cbd5e1] font-bold text-xs text-[#0f172a] bg-white"
+                          aria-label="Vigencia del contrato en meses"
+                        />
+                        <span className="text-[#64748b]">meses</span>
+                      </span>
+                    </label>
+                  ) : (
+                    <label className="space-y-1 block">
+                      <span className="font-bold text-[#334155] block" title="Vienen del Alcance; cámbialas solo si hace falta">
+                        Semanas{currentProject.scheduleConfig?.productionWeeks ? ' (alcance)' : ''}
+                      </span>
+                      <input
+                        type="number"
+                        min="1"
+                        max="52"
+                        value={scheduleDurationWeeks}
+                        onChange={(e) => setScheduleDurationWeeks(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                        className="w-20 p-2 rounded-xl border border-[#cbd5e1] font-bold text-xs text-[#0f172a] bg-white"
+                        aria-label="Semanas de producción"
+                      />
+                    </label>
+                  )}
                 </div>
 
-                {/* 2a. Fee: vigencia del contrato */}
+                {/* Fee: horas no usadas del mes */}
                 {isCurrentProjectFee && (
-                  <label className="space-y-1.5 block">
-                    <span className="font-bold text-[#334155] block">Vigencia del contrato (meses)</span>
-                    <input
-                      type="number"
-                      min="1"
-                      max="36"
-                      value={scheduleContractMonths}
-                      onChange={(e) => setScheduleContractMonths(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                      className="w-full p-2.5 rounded-xl border border-[#cbd5e1] font-bold text-xs text-[#0f172a] focus:ring-2 focus:ring-[#501f92] bg-white"
-                    />
-                    <span className="font-bold text-[#334155] block pt-2">Horas no usadas del mes</span>
+                  <label className="flex items-center justify-between gap-3">
+                    <span className="font-bold text-[#334155]">Horas no usadas del mes</span>
                     <select
                       value={scheduleRollover}
                       onChange={(e) => setScheduleRollover(e.target.value as 'none' | 'carry_over' | 'contractual_cap')}
-                      className="w-full p-2.5 rounded-xl border border-[#cbd5e1] font-bold text-xs text-[#0f172a] focus:ring-2 focus:ring-[#501f92] bg-white"
+                      className="p-2 rounded-xl border border-[#cbd5e1] font-bold text-xs text-[#0f172a] bg-white"
                     >
-                      <option value="none">No se acumulan (regla general)</option>
-                      <option value="carry_over">Excepción: pasan al mes siguiente</option>
-                      <option value="contractual_cap">Excepción: pasan hasta un 25 %</option>
+                      <option value="none">No se acumulan</option>
+                      <option value="carry_over">Pasan al mes siguiente</option>
+                      <option value="contractual_cap">Pasan hasta un 25 %</option>
                     </select>
-                    {scheduleKickoffDate && (
-                      <span className="text-[11px] text-[#64748b] block">
-                        Contrato: {formatDateRange(scheduleBreakdown?.startDate || scheduleKickoffDate, computeContractEnd(scheduleBreakdown?.startDate || scheduleKickoffDate, scheduleContractMonths))} · {currentProject.budgetedHours}h por mes · las tareas del alcance son la plantilla del mes 1.
+                  </label>
+                )}
+
+                {/* Proyecto único: rondas de ajuste (vienen de la conversión), en una línea */}
+                {!isCurrentProjectFee && (
+                  <div className="flex items-center justify-between gap-2 flex-wrap text-[11px] text-[#475569]">
+                    {showRoundsEditor ? (
+                      <span className="flex items-center gap-1.5 flex-wrap">
+                        <input
+                          type="number"
+                          min="0"
+                          max="10"
+                          value={scheduleReworkRounds}
+                          onChange={(e) => setScheduleReworkRounds(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                          className="w-14 p-1.5 rounded-lg border border-[#cbd5e1] font-bold text-xs bg-white"
+                          aria-label="Rondas de ajuste incluidas"
+                        />
+                        rondas de ajuste ×
+                        <input
+                          type="number"
+                          min="0"
+                          max="15"
+                          value={scheduleReworkRoundDays}
+                          onChange={(e) => setScheduleReworkRoundDays(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                          className="w-14 p-1.5 rounded-lg border border-[#cbd5e1] font-bold text-xs bg-white"
+                          aria-label="Días hábiles por ronda"
+                        />
+                        días hábiles
+                      </span>
+                    ) : (
+                      <span>
+                        🔄 <strong>{scheduleReworkRounds}</strong> rondas de ajuste × <strong>{scheduleReworkRoundDays}</strong> días hábiles
                       </span>
                     )}
-                  </label>
-                )}
-
-                {/* 2. Semanas de producción (del Alcance) — solo proyecto único */}
-                {!isCurrentProjectFee && (
-                <label className="space-y-1.5 block">
-                  <span className="font-bold text-[#334155] block">
-                    Semanas de producción{currentProject.scheduleConfig?.productionWeeks ? ' (del alcance)' : ''}
-                  </span>
-                  <input
-                      type="number"
-                      min="1"
-                      max="52"
-                      value={scheduleDurationWeeks}
-                      onChange={(e) => setScheduleDurationWeeks(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                      className="w-full p-2.5 rounded-xl border border-[#cbd5e1] font-bold text-xs text-[#0f172a] focus:ring-2 focus:ring-[#501f92] bg-white"
-                    />
-                </label>
-                )}
-
-                {/* 3. Tiempos del cliente (editables, sin valores ocultos) */}
-                <div className="space-y-2">
-                  <span className="font-bold text-[#334155] block">Tiempos del cliente</span>
-                  <div className="grid grid-cols-2 gap-3">
-                  <label className="space-y-1 block col-span-2">
-                    <span className="text-[11px] font-semibold text-[#475569] block">Entrega de insumos del cliente (días)</span>
-                    <input
-                      type="number"
-                      min="0"
-                      max="30"
-                      value={scheduleKickoffWaitDays}
-                      onChange={(e) => setScheduleKickoffWaitDays(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                      className="w-full p-2 rounded-xl border border-[#cbd5e1] font-bold text-xs text-[#0f172a] focus:ring-2 focus:ring-[#501f92] bg-white"
-                    />
-                  </label>
-                    {!isCurrentProjectFee && (
-                      <>
-                  <label className="space-y-1 block">
-                    <span className="text-[11px] font-semibold text-[#475569] block">Rondas de ajuste incluidas</span>
-                    <input
-                      type="number"
-                      min="0"
-                      max="10"
-                      value={scheduleReworkRounds}
-                      onChange={(e) => setScheduleReworkRounds(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                      className="w-full p-2 rounded-xl border border-[#cbd5e1] font-bold text-xs text-[#0f172a] focus:ring-2 focus:ring-[#501f92] bg-white"
-                    />
-                  </label>
-                  <label className="space-y-1 block">
-                    <span className="text-[11px] font-semibold text-[#475569] block">Días hábiles por ronda</span>
-                    <input
-                      type="number"
-                      min="0"
-                      max="15"
-                      value={scheduleReworkRoundDays}
-                      onChange={(e) => setScheduleReworkRoundDays(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                      className="w-full p-2 rounded-xl border border-[#cbd5e1] font-bold text-xs text-[#0f172a] focus:ring-2 focus:ring-[#501f92] bg-white"
-                    />
-                  </label>
-                      </>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowRoundsEditor((v) => !v)}
+                      className="font-semibold text-[#501f92] hover:underline cursor-pointer"
+                    >
+                      {showRoundsEditor ? 'Listo' : 'Cambiar'}
+                    </button>
                   </div>
-                  <p className="text-[10.5px] text-[#64748b] leading-relaxed">
-                    <strong>Insumos:</strong> lo que el cliente entrega tras el kickoff (accesos, contenidos, logos); usa 0 si no aplica.
-                    {!isCurrentProjectFee && <> <strong>Ronda de ajuste:</strong> el cliente revisa una entrega, devuelve ajustes y aprueba. Las incluidas no son desvío; una adicional mueve la fecha.</>}
-                  </p>
-                </div>
+                )}
+
+                {/* 2. Insumos a solicitar al cliente (solo primer arranque): se crean como Dependencias */}
+                {askClientInputs && (
+                  <div className="space-y-2 pt-3 border-t border-[#f1f5f9]">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-bold text-[#334155]">Insumos a solicitar al cliente</span>
+                      <span className="text-[10px] text-[#64748b]">Sugeridos para {scheduleInputsLabel}</span>
+                    </div>
+                    <ul className="rounded-xl border border-[#e2e8f0] divide-y divide-[#f1f5f9] max-h-48 overflow-y-auto">
+                      {scheduleInputs.map((inp, idx) => (
+                        <li key={idx} className="flex items-center gap-2 px-2.5 py-1.5">
+                          <input
+                            type="checkbox"
+                            checked={inp.selected}
+                            onChange={(e) =>
+                              setScheduleInputs((prev) => prev.map((x, i) => (i === idx ? { ...x, selected: e.target.checked } : x)))
+                            }
+                            className="rounded text-[#501f92] cursor-pointer shrink-0"
+                            aria-label={`Solicitar ${inp.title}`}
+                          />
+                          <span className={`flex-1 min-w-0 truncate ${inp.selected ? 'text-[#0f172a]' : 'text-[#94a3b8] line-through'}`} title={inp.title}>
+                            {inp.title}
+                          </span>
+                          <button
+                            type="button"
+                            disabled={!inp.selected}
+                            onClick={() =>
+                              setScheduleInputs((prev) => prev.map((x, i) => (i === idx ? { ...x, blocking: !x.blocking } : x)))
+                            }
+                            className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded border cursor-pointer disabled:opacity-40 ${
+                              inp.blocking ? 'bg-[#fef2f2] text-[#b91c1c] border-[#fecaca]' : 'bg-white text-[#64748b] border-[#e2e8f0]'
+                            }`}
+                            title="Clic para cambiar si bloquea el arranque de producción"
+                          >
+                            {inp.blocking ? 'Bloquea' : 'No bloquea'}
+                          </button>
+                          <span className="shrink-0 text-[10px] text-[#64748b] w-12 text-right">{inp.dueDays} d háb.</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={newInputTitle}
+                        onChange={(e) => setNewInputTitle(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && newInputTitle.trim()) {
+                            setScheduleInputs((prev) => [...prev, { title: newInputTitle.trim(), type: 'client_input', blocking: false, dueDays: 3, selected: true }]);
+                            setNewInputTitle('');
+                          }
+                        }}
+                        placeholder="Otro insumo (ej. compra de hosting, script de GTM)…"
+                        className="flex-1 p-2 rounded-xl border border-[#cbd5e1] text-xs bg-white"
+                      />
+                      <button
+                        type="button"
+                        disabled={!newInputTitle.trim()}
+                        onClick={() => {
+                          setScheduleInputs((prev) => [...prev, { title: newInputTitle.trim(), type: 'client_input', blocking: false, dueDays: 3, selected: true }]);
+                          setNewInputTitle('');
+                        }}
+                        className="px-3 py-2 rounded-xl bg-[#f5f3ff] border border-[#ddd6fe] text-[#501f92] text-xs font-bold disabled:opacity-50 cursor-pointer"
+                      >
+                        Agregar
+                      </button>
+                    </div>
+                    <p className="text-[10.5px] text-[#64748b] leading-relaxed">
+                      Quedan en <strong>Dependencias</strong> con fecha esperada y seguimiento del líder. La producción arranca cuando vence el insumo que bloquea
+                      {effectiveKickoffWaitDays > 0 ? <> (<strong>{effectiveKickoffWaitDays} días hábiles</strong> tras el kickoff)</> : ' (ninguno bloquea: arranca de inmediato)'}; si llega tarde, el desvío es del cliente.
+                    </p>
+                  </div>
+                )}
 
                 {/* Resultado: entrega calculada (proyecto único; el fee muestra la línea de contrato) */}
                 {scheduleBreakdown && !isCurrentProjectFee && (
@@ -2160,48 +2261,21 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                   </div>
                 )}
 
-                {/* 4. Recálculo automático de Deadlines */}
-                <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] space-y-2">
-                  <label className="flex items-start gap-2.5 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={scheduleRecalculateTasks}
-                      onChange={(e) => setScheduleRecalculateTasks(e.target.checked)}
-                      className="mt-0.5 rounded text-[#501f92] focus:ring-[#501f92] cursor-pointer"
-                    />
-                    <div className="space-y-0.5">
-                      <span className="font-bold text-[#0f172a] block text-xs">
-                        Recalcular y sugerir deadlines de entrega automáticamente
-                      </span>
-                      <p className="text-[10.5px] text-[#64748b] leading-relaxed">
-                        Distribuye cronológicamente los {currentProject.deliverables?.length || 0} entregables y las actividades del backlog del alcance según la fecha de inicio seleccionada.
-                      </p>
-                    </div>
-                  </label>
-                </div>
-
-                {/* 4. Equipo a alinear */}
-                <div className="p-3 bg-[#f8fafc] rounded-xl border border-[#e2e8f0] space-y-1.5">
-                  <span className="text-[10.5px] uppercase font-bold text-[#64748b] block">
-                    Equipo Responsable Asignado:
-                  </span>
-                  <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                    {currentProject.coreTeam && currentProject.coreTeam.length > 0 ? (
-                      currentProject.coreTeam.map((m, idx) => (
-                        <span
-                          key={idx}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-white border border-[#cbd5e1] text-[11px] font-semibold text-[#0f172a]"
-                        >
-                          <span className={`w-2 h-2 rounded-full ${m.isLead ? 'bg-[#501f92]' : 'bg-[#10b981]'}`} />
-                          <span>{m.name}</span>
-                          <span className="text-[9.5px] text-[#64748b]">({m.isLead ? 'Líder' : m.role})</span>
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-[#0f172a] font-semibold">{currentProject.leadName || 'Líder de Proyecto'}</span>
-                    )}
-                  </div>
-                </div>
+                {/* Cronograma de tareas + equipo, en una línea cada uno */}
+                <label className="flex items-center gap-2 cursor-pointer text-[11px] text-[#334155]">
+                  <input
+                    type="checkbox"
+                    checked={scheduleRecalculateTasks}
+                    onChange={(e) => setScheduleRecalculateTasks(e.target.checked)}
+                    className="rounded text-[#501f92] focus:ring-[#501f92] cursor-pointer"
+                  />
+                  Programar las fechas de las {currentProject.deliverables?.length || 0} entregas y sus tareas desde el kickoff
+                </label>
+                <p className="text-[11px] text-[#64748b] truncate" title={(currentProject.coreTeam || []).map((m) => m.name).join(', ')}>
+                  Equipo: {currentProject.coreTeam && currentProject.coreTeam.length > 0
+                    ? currentProject.coreTeam.map((m) => (m.isLead ? `${m.name} (líder)` : m.name)).join(', ')
+                    : currentProject.leadName || 'Líder de proyecto'}
+                </p>
               </div>
 
               {/* Botones de acción */}
@@ -2220,7 +2294,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                   className="px-5 py-2.5 rounded-xl bg-[#501f92] hover:bg-[#3d1572] disabled:opacity-50 text-white text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-2 active:scale-95"
                 >
                   <Play className="w-3.5 h-3.5 fill-current" />
-                  <span>Confirmar Inicio & Sincronizar Cronograma 🚀</span>
+                  <span>Iniciar proyecto</span>
                 </button>
               </div>
             </div>

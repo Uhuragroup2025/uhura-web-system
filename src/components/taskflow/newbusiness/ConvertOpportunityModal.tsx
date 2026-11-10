@@ -591,9 +591,6 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
                     {/* Rondas de ajuste del cliente (solo proyectos únicos): definen el cronograma al iniciar */}
                     {service.modality === 'fixed_project' && (
                       <div className="space-y-2 pt-2 border-t border-[#f1f5f9]">
-                        <span className="font-bold text-[#475569] block text-[11px]">
-                          Rondas de ajuste del cliente
-                        </span>
                         <div className="grid grid-cols-2 gap-2">
                           <label className="space-y-1 block">
                             <span className="text-[10.5px] font-semibold text-[#475569] block">Rondas de ajuste incluidas</span>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { TimerControls } from './time/TimerControls';
 import {
   X,
   Play,
@@ -241,6 +242,26 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
   // Menu and Toast
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  // El menú ··· se cierra al hacer clic afuera o con Esc (ronda 2).
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!isMenuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setIsMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        setIsMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey, true);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey, true);
+    };
+  }, [isMenuOpen]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Title inline edit state
@@ -1145,43 +1166,47 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
       return;
     }
 
-    const nextStatus: TaskStatus = requiresValidation ? 'Review' : 'Done';
+    // Ronda 2: entregar NUNCA completa la tarea. Pasa a «En revisión», queda un mensaje de quien
+    // entregó con el enlace y se avisa al líder y al revisor; ellos aprueban o devuelven.
+    const nextStatus: TaskStatus = 'Review';
+    const submitterName = currentUser?.name || task.assignee?.name || assignee?.name || 'El responsable';
+    const link = deliverableUrl.trim();
+    const reviewerName = reviewer?.name || task.reviewer?.name || task.projectLead?.name;
 
     if (onAddDeliverable) {
       onAddDeliverable(task.id, {
-        url: deliverableUrl.trim() || uploadedFileName || 'Entrega de producción',
+        url: link || uploadedFileName || 'Entrega de producción',
         title: deliverableNotes.trim() || 'Entregable de producción',
-        submittedBy: task.assignee?.name || assignee?.name || 'Catalina Tejada',
+        submittedBy: submitterName,
         notes: deliverableNotes.trim(),
         status: 'submitted',
-        taggedReviewer: requiresValidation ? (reviewer?.name || task.reviewer?.name || 'Validador') : undefined
+        taggedReviewer: reviewerName || 'Líder del proyecto'
       });
     }
 
-    // Set task status based on requiresValidation rule
     if (onUpdateTaskStatus) {
       onUpdateTaskStatus(task.id, nextStatus);
     }
 
-    // Add a system update in chat
-    setChatMessages((prev) => [
-      ...prev,
-      {
-        id: `deliv-${Date.now()}`,
-        authorName: 'Sistema',
-        authorInitials: 'SYS',
-        timestamp: 'Ahora mismo',
-        content: requiresValidation
-          ? `${assignee?.name || 'El responsable'} envió el entregable a revisión para validación formal.`
-          : `${assignee?.name || 'El responsable'} completó la entrega y pasó la tarea directamente a Completada.`,
-        isSystem: true
-      }
-    ]);
+    // Mensaje en «Mensajes» firmado por quien entregó, con el enlace
+    const deliveryMessage: ChatMessage = {
+      id: `deliv-${Date.now()}`,
+      authorName: submitterName,
+      authorRoleLabel: 'Entregó',
+      authorInitials: submitterName.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase(),
+      authorAvatarBg: 'bg-[#501f92]',
+      timestamp: 'Ahora mismo',
+      content: `📦 Envió el entregable a revisión${reviewerName ? ` de @${reviewerName}` : ''}.${link ? `\n${link}` : uploadedFileName ? `\nArchivo: ${uploadedFileName}` : ''}${deliverableNotes.trim() ? `\n${deliverableNotes.trim()}` : ''}`,
+      reactions: []
+    };
+    const updatedMessages = [...chatMessages, deliveryMessage];
+    setChatMessages(updatedMessages);
+    if (onUpdateComments) onUpdateComments(task.id, updatedMessages);
 
     setDeliverableUrl('');
     setDeliverableNotes('');
     setUploadedFileName(null);
-    showToast(requiresValidation ? 'Entregable enviado a revisión' : 'Tarea marcada como Completada');
+    showToast(`Entregable enviado a revisión${reviewerName ? ` · se avisó a ${reviewerName}` : ''}`);
     setActiveTab('mensajes');
   };
 
@@ -1487,88 +1512,33 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
           {/* Right: Actions Toolbar */}
           <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
-            {/* Timer CTA: Defaults to Play. When running, shows Pause/Resume + Stop */}
-            {isRunning ? (
-              <div className="flex items-center gap-1.5">
-                {onPauseResumeTimer && (
-                  <button
-                    id="task-timer-pause-resume-btn"
-                    onClick={onPauseResumeTimer}
-                    className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-white text-xs font-bold shadow-xs cursor-pointer transition-all ${
-                      activeTimer?.isPaused
-                        ? 'bg-[#10b981] hover:bg-[#059669]'
-                        : 'bg-[#f59e0b] hover:bg-[#d97706]'
-                    }`}
-                    title={activeTimer?.isPaused ? 'Reanudar timer' : 'Pausar timer'}
-                  >
-                    {activeTimer?.isPaused ? (
-                      <>
-                        <Play className="w-3.5 h-3.5 fill-current" />
-                        <span>Reanudar</span>
-                      </>
-                    ) : (
-                      <>
-                        <Pause className="w-3.5 h-3.5" />
-                        <span>Pausar</span>
-                      </>
-                    )}
-                  </button>
-                )}
-                <button
-                  id="task-timer-stop-btn"
-                  onClick={onStopTimer}
-                  className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#dc2626] hover:bg-[#b91c1c] text-white text-xs font-bold shadow-xs cursor-pointer transition-all ${
-                    !activeTimer?.isPaused ? 'animate-pulse' : ''
-                  }`}
-                  title="Detener timer y registrar tiempo"
-                >
-                  <Square className="w-3.5 h-3.5 fill-current" />
-                  <span>Detener</span>
-                </button>
-              </div>
-            ) : (
-              <button
-                id="task-timer-start-btn"
-                onClick={() => {
-                  ensureInProgressOnCollaboratorAction();
-                  onStartTimer(task);
-                }}
-                className="px-3 py-2.5 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold shadow-xs cursor-pointer transition-all flex items-center justify-center gap-1.5"
-                title="Iniciar timer"
-                aria-label="Iniciar timer"
-              >
-                <Play className="w-4 h-4 fill-current" />
-                <span>Iniciar timer</span>
-              </button>
-            )}
-
-            {/* Manual Time Logging Icon Button with Tooltip */}
-            {onOpenManualLog && (
-              <div className="relative group">
-                <button
-                  id="task-manual-time-btn"
-                  onClick={() => {
-                    ensureInProgressOnCollaboratorAction();
-                    onOpenManualLog(task.id);
-                  }}
-                  aria-label="Registrar tiempo manualmente"
-                  className="p-2 rounded-xl bg-white hover:bg-[#f8fafc] text-[#501f92] border border-[#e2e8f0] shadow-2xs hover:border-[#8a4dff]/40 transition-all cursor-pointer flex items-center justify-center relative"
-                >
-                  <Clock className="w-4 h-4 text-[#501f92]" />
-                </button>
-
-                {/* Hover Tooltip */}
-                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 hidden group-hover:flex items-center px-2.5 py-1 rounded-lg bg-[#0f172a] text-white text-[10px] font-semibold whitespace-nowrap z-50 pointer-events-none shadow-lg">
-                  Registrar tiempo manualmente
-                </div>
-              </div>
-            )}
+            {/* Timer: solo íconos (▶ / ⏸ ⏹) + 🕒 carga manual, igual en toda ECO */}
+            <TimerControls
+              isRunning={isRunning}
+              isPaused={Boolean(activeTimer?.isPaused)}
+              onStart={() => {
+                ensureInProgressOnCollaboratorAction();
+                onStartTimer(task);
+              }}
+              onStop={onStopTimer}
+              onPauseResume={onPauseResumeTimer}
+              onManualLog={
+                onOpenManualLog
+                  ? () => {
+                      ensureInProgressOnCollaboratorAction();
+                      onOpenManualLog(task.id);
+                    }
+                  : undefined
+              }
+            />
 
             {/* ··· Menu dropdown */}
-            <div className="relative">
+            <div className="relative" ref={menuRef}>
               <button
                 id="task-options-menu-btn"
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
+                aria-label="Más opciones"
+                aria-expanded={isMenuOpen}
                 className="p-2 rounded-xl bg-white hover:bg-[#f8fafc] text-[#64748b] border border-[#e2e8f0] transition-colors cursor-pointer"
               >
                 <MoreHorizontal className="w-4 h-4" />
@@ -3017,7 +2987,6 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                       <option value="Review">🔍 En revisión</option>
                       <option value="Done">🟢 Completada</option>
                     </select>
-                    <span className="absolute right-2.5 top-3 pointer-events-none text-[#64748b] text-[10px]">▼</span>
                   </div>
                 </div>
 
@@ -3038,7 +3007,6 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                       <option value="Medium">🚩 Media</option>
                       <option value="High">🔴 Alta</option>
                     </select>
-                    <span className="absolute right-2.5 top-3 pointer-events-none text-[#64748b] text-[10px]">▼</span>
                   </div>
                 </div>
               </div>

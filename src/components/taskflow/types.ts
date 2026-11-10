@@ -1125,7 +1125,7 @@ export interface ServiceProfitability {
   color: string;
 }
 
-export type OperationalAlertType = 'RETRASO' | 'RENTABILIDAD' | 'CARTERA' | 'ASIGNACIÓN';
+export type OperationalAlertType = 'RETRASO' | 'RENTABILIDAD' | 'CARTERA' | 'ASIGNACIÓN' | 'REVISIÓN';
 
 export interface OperationalAlert {
   id: string;
@@ -1618,6 +1618,22 @@ export interface ExternalResourceItem {
   hourlyRate?: number;                 // Solo 'hourly'
   totalCost: number;                   // Costo total en la moneda de la cotización
   serviceId?: string | null;           // Servicio al que pertenece (conversión 1:1)
+  /** Ronda 2: recurso externo (proveedor/freelance) o licencia (ej. Claude, plugin, hosting). */
+  kind?: 'external' | 'license';
+  /** Pago único o mensual; si es mensual, totalCost = costo mensual × meses. */
+  recurrence?: 'one_time' | 'monthly';
+  monthlyCost?: number;
+  months?: number;
+}
+
+export interface QuoteCommercialVersion {
+  version: number;
+  savedAt: string;
+  savedBy?: string;
+  total: number;
+  currency: 'COP' | 'USD';
+  /** true si se enviaron los valores a los negocios de HubSpot ya creados. */
+  syncedToHubspot?: boolean;
 }
 
 export interface QuoteProposal {
@@ -1653,6 +1669,8 @@ export interface QuoteProposal {
   createdAt: string;
   updatedAt: string;
   externalResources?: ExternalResourceItem[];   // Costos subcontratados (fuera de capacidad y roles)
+  /** Versiones guardadas de la cotización comercial (ronda 2): v1 al guardar, v2… al guardar cambios tras el feedback del cliente. */
+  commercialVersions?: QuoteCommercialVersion[];
 }
 
 /**

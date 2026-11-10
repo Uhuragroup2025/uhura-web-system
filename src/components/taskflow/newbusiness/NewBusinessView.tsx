@@ -1,4 +1,5 @@
 import { useMascotImage } from '../mascot/ecoMascot';
+import { TimerControls } from '../time/TimerControls';
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   NewBusinessOpportunity,
@@ -138,7 +139,11 @@ interface NewBusinessViewProps {
   activeTimer?: ActiveTimerState | null;
   onStartTimer?: (task: TaskItem) => void;
   onStopTimer?: () => void;
+  onPauseResumeTimer?: () => void;
+  onOpenManualLog?: (taskId?: string) => void;
 }
+
+const EMPTY_SCOPE_STATE: { saved: boolean; services: ScopeServiceDraft[] } = { saved: false, services: [] };
 
 export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
   resetToOverviewSignal,
@@ -159,7 +164,9 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
   timeLogs = [],
   activeTimer = null,
   onStartTimer,
-  onStopTimer
+  onStopTimer,
+  onPauseResumeTimer,
+  onOpenManualLog
 }) => {
   const ecoCelebratingImg = useMascotImage('celebrating');
   const users = teamUsers.filter((user) => user.status === 'Active');
@@ -311,7 +318,9 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
   const activeOpp = opportunities.find((o) => o.id === selectedOppId);
 
   const activeQuote = getOperationalQuote(activeOpp);
-  const rawScopeState = activeQuote ? scopeUi[activeQuote.id] || { saved: false, services: [] } : { saved: false, services: [] };
+  // Referencia estable para «sin alcance»: un objeto nuevo en cada render disparaba la sincronización
+  // de borradores en bucle (y reiniciaba la edición de la cotización).
+  const rawScopeState = (activeQuote && scopeUi[activeQuote.id]) || EMPTY_SCOPE_STATE;
   const activeDeliverableIds = useMemo(() => new Set(activeQuote?.deliverables.map((d) => d.id) || []), [activeQuote?.deliverables]);
   const scopeState = useMemo(() => {
     if (!activeQuote) return rawScopeState;
@@ -503,6 +512,77 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
     return commercialStructureDraft.some((s) => Boolean(s.hubspotDealId));
   }, [commercialStructureDraft]);
 
+  // Guardar cotización (primera vez o cambios tras el feedback del cliente). Ronda 2: cada guardado
+  // crea una versión y, si ya hay negocios en HubSpot, se envían los valores nuevos (ECO → HubSpot).
+  const [quoteRevisionSig, setQuoteRevisionSig] = useState<string | null>(null);
+  const handleSaveQuote = () => {
+    if (!activeQuote) return;
+    setHasAttemptedSaveQuote(true);
+    const errors = validateCommercialStructure(
+      currentScopeServices,
+      commercialStructureDraft,
+      quoteSheetUrlDraft
+    );
+    if (errors.length > 0) {
+      setIsQuoteSavedFeedback(false);
+      setConversionSuccessMessage(errors.join(' '));
+      return;
+    }
+
+    const nextVersion = (activeQuote.commercialVersions?.length || 0) + 1;
+    const sig = commercialStructureSignature(commercialStructureDraft, quoteSheetUrlDraft);
+    const updatedQuote: QuoteProposal = {
+      ...activeQuote,
+      commercialStructure: commercialStructureDraft,
+      commercialProposalType: derivedProposalType,
+      commercialTotalOneOff: commercialTotals.totalOneOff,
+      commercialTotalMonthlyFee: commercialTotals.totalMonthlyFee,
+      commercialEstimatedContractValue: commercialTotals.estimatedContractValue,
+      totalQuotedValue: commercialTotals.estimatedContractValue,
+      totalQuotedValueCOP: quoteCurrencyDraft === 'USD' ? 0 : commercialTotals.estimatedContractValue,
+      currency: quoteCurrencyDraft,
+      externalFinanceSheetUrl: quoteSheetUrlDraft.trim(),
+      commercialNotes: quoteNotesDraft.trim(),
+      updatedAt: new Date().toISOString(),
+      commercialVersions: [
+        ...(activeQuote.commercialVersions || []),
+        {
+          version: nextVersion,
+          savedAt: new Date().toISOString(),
+          savedBy: currentUser?.name,
+          total: commercialTotals.estimatedContractValue,
+          currency: quoteCurrencyDraft,
+          syncedToHubspot: hasAnyHubSpotDeals
+        }
+      ]
+    };
+    handleUpdateQuote(updatedQuote);
+    onSetQuoteSaved(activeQuote.id, sig);
+    setIsQuoteSavedFeedback(true);
+    setIsEditingQuoteFields(false);
+    setQuoteRevisionSig(null);
+    setConversionSuccessMessage(
+      nextVersion > 1
+        ? `✅ Cambios guardados: cotización v${nextVersion}.${hasAnyHubSpotDeals ? ' Valores actualizados en los negocios de HubSpot.' : ''}`
+        : '✅ Cotización comercial guardada correctamente. Ahora puedes marcar como ganada arriba.'
+    );
+    setTimeout(() => {
+      setIsQuoteSavedFeedback(false);
+      setConversionSuccessMessage(null);
+    }, 4000);
+  };
+  const handleCancelQuoteEdit = () => {
+    if (!activeQuote || !quoteRevisionSig) return;
+    setCommercialStructureDraft(activeQuote.commercialStructure || []);
+    setQuoteCurrencyDraft(activeQuote.currency || 'COP');
+    setQuoteSheetUrlDraft(activeQuote.externalFinanceSheetUrl || '');
+    setQuoteNotesDraft(activeQuote.commercialNotes || '');
+    onSetQuoteSaved(activeQuote.id, quoteRevisionSig);
+    setQuoteRevisionSig(null);
+    setIsEditingQuoteFields(false);
+    setConversionSuccessMessage(null);
+  };
+
   const hasAnyWonServices = useMemo(() => {
     return commercialStructureDraft.some(
       (s) => s.hubspotDealStage === 'Cierre ganado' || s.hubspotDealStage === 'Enviado para facturar' || s.approved === true
@@ -546,6 +626,24 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
       .filter((l) => l.taskId === scopingTask.id)
       .reduce((sum, l) => sum + ((l.durationSeconds || 0) / 3600), 0);
   }, [scopingTask, timeLogs]);
+
+  // Esfuerzo de preventa por persona (ronda 2): cuánto le tomó al equipo esta propuesta.
+  const preventaByPerson = useMemo(() => {
+    if (!scopingTask || !timeLogs) return [] as { id: string; name: string; hours: number }[];
+    const map = new Map<string, { id: string; name: string; hours: number }>();
+    for (const l of timeLogs) {
+      if (l.taskId !== scopingTask.id) continue;
+      const key = l.userId || (l as { userName?: string }).userName || 'sin-persona';
+      const name = users.find((u) => u.id === l.userId)?.name || (l as { userName?: string }).userName || 'Sin persona';
+      const prev = map.get(key) || { id: key, name, hours: 0 };
+      prev.hours += (l.durationSeconds || 0) / 3600;
+      map.set(key, prev);
+    }
+    return Array.from(map.values()).sort((a, b) => b.hours - a.hours);
+  }, [scopingTask, timeLogs, users]);
+  const canSeePreventaCost = Boolean(
+    currentUser && ['system_admin', 'commercial', 'executive', 'administrative'].includes(currentUser.accessLevel || '')
+  );
 
   // Context counts for pipeline overview
   const porDimensionarCount = opportunities.filter((o) => o.status === 'discovery').length;
@@ -1710,43 +1808,17 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
 
         {/* Right side: Timer Preventa & Primary CTA (Conversion or HubSpot) */}
         <div className="flex items-center gap-2.5 flex-wrap shrink-0">
-          {/* Timer estandarizado como en Tareas y Proyectos (Iniciar / Detener) */}
+          {/* Timer: solo íconos, igual que en la tarea (ronda 2). Las horas por persona están en el Resumen. */}
           {scopingTask && onStartTimer && (
-            <button
-              type="button"
-              onClick={() => {
-                if (isScopingTimerRunning && onStopTimer) {
-                  onStopTimer();
-                } else {
-                  onStartTimer(scopingTask);
-                }
-              }}
-              className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs border ${
-                isScopingTimerRunning
-                  ? 'bg-[#ef4444] hover:bg-[#dc2626] text-white border-[#dc2626] animate-pulse'
-                  : 'bg-white hover:bg-[#f8fafc] text-[#0f172a] border-[#cbd5e1]'
-              }`}
-              title={isScopingTimerRunning ? 'Detener timer activo' : 'Iniciar timer para esta oportunidad'}
-            >
-              {isScopingTimerRunning ? (
-                <>
-                  <Square className="w-3.5 h-3.5 fill-current text-white" />
-                  <span>Detener</span>
-                </>
-              ) : (
-                <>
-                  <Play className="w-3.5 h-3.5 fill-current text-[#501f92]" />
-                  <span>Iniciar</span>
-                </>
-              )}
-              <span
-                className={`text-[10.5px] font-mono px-1.5 py-0.5 rounded font-bold ${
-                  isScopingTimerRunning ? 'bg-white/20 text-white' : 'bg-[#501f92]/10 text-[#501f92]'
-                }`}
-              >
-                {preventaHoursLogged > 0 ? `${preventaHoursLogged.toFixed(1)}h` : '0h'}
-              </span>
-            </button>
+            <TimerControls
+              size="sm"
+              isRunning={isScopingTimerRunning}
+              isPaused={Boolean(activeTimer?.isPaused)}
+              onStart={() => onStartTimer(scopingTask)}
+              onStop={onStopTimer}
+              onPauseResume={onPauseResumeTimer}
+              onManualLog={onOpenManualLog ? () => onOpenManualLog(scopingTask.id) : undefined}
+            />
           )}
 
           {activeOpp.convertedProjectId ? (
@@ -2143,12 +2215,35 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                     <span className="text-[#64748b]">Owner Comercial:</span>
                     <strong className="text-[#0f172a] font-bold">{getCommercialOwnerName(activeOpp, users)}</strong>
                   </div>
-                  <div className="flex items-center justify-between pt-1 border-t border-[#e2e8f0]">
-                    <span className="text-[#64748b]">Horas Preventa Invertidas:</span>
-                    <span className="font-mono font-bold text-[#501f92]">
-                      {preventaHoursLogged > 0 ? `${preventaHoursLogged.toFixed(1)}h` : '0h'}{' '}
-                      <span className="text-[10px] font-normal text-[#64748b]">(no cobrables)</span>
-                    </span>
+                  {/* Esfuerzo de preventa por persona (ronda 2) */}
+                  <div className="pt-1.5 border-t border-[#e2e8f0] space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[#64748b]">Esfuerzo de preventa <span className="text-[10px]">(no cobrable)</span>:</span>
+                      <span className="font-mono font-bold text-[#501f92]">{preventaHoursLogged.toFixed(1)} h</span>
+                    </div>
+                    {preventaByPerson.length === 0 ? (
+                      <p className="text-[10.5px] text-[#94a3b8]">Aún no hay tiempo registrado en esta propuesta.</p>
+                    ) : (
+                      <ul className="space-y-1">
+                        {preventaByPerson.map((p) => (
+                          <li key={p.id} className="flex items-center gap-2">
+                            <span className="w-24 truncate text-[#334155]" title={p.name}>{p.name}</span>
+                            <div className="flex-1 h-1.5 bg-[#e2e8f0] rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-[#8a4dff] rounded-full"
+                                style={{ width: `${preventaHoursLogged > 0 ? Math.max(4, (p.hours / preventaHoursLogged) * 100) : 0}%` }}
+                              />
+                            </div>
+                            <span className="font-mono font-semibold text-[#0f172a] w-10 text-right">{p.hours.toFixed(1)} h</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {canSeePreventaCost && preventaByPerson.length > 0 && (
+                      <p className="text-[10.5px] text-[#64748b] leading-snug">
+                        Costo de preventa: disponible cuando ECO tenga el costo hora de cada persona (Costos de operación).
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -2371,6 +2466,17 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
             opportunityStatus={activeOpp.status}
             commercialOwner={activeOpp.commercialOwner}
           />
+
+          {/* Costos externos y licencias (ronda 2): los agrega el líder en Alcance; Comercial los ve en Cotización. */}
+          <div className="bg-white rounded-2xl border border-[#e2e8f0] p-4 shadow-2xs">
+            <ExternalResourcesEditor
+              items={activeQuote.externalResources || []}
+              editable={activeOpp.status !== 'won' && !activeOpp.convertedProjectId}
+              currency={activeQuote.currency || 'COP'}
+              services={currentScopeServices.map((sv) => ({ id: sv.id, name: sv.name }))}
+              onChange={(items) => handleUpdateQuote({ ...activeQuote, externalResources: items })}
+            />
+          </div>
         </div>
       )}
 
@@ -2439,10 +2545,21 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                   </select>
                 </div>
 
+                {!isEditingQuoteFields && isQuoteDiligenciada && (activeQuote.commercialVersions?.length || 0) > 0 && (
+                  <span
+                    className="text-[10.5px] font-semibold px-2 py-0.5 rounded-lg bg-[#f5f3ff] text-[#501f92] border border-[#e9d5ff]"
+                    title={(activeQuote.commercialVersions || [])
+                      .map((v) => `v${v.version} · ${new Date(v.savedAt).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}${v.savedBy ? ` · ${v.savedBy}` : ''}${v.syncedToHubspot ? ' · HubSpot ✓' : ''}`)
+                      .join('\n')}
+                  >
+                    v{activeQuote.commercialVersions?.length}
+                  </span>
+                )}
                 {!isEditingQuoteFields && isQuoteDiligenciada && (
                   <button
                     type="button"
                     onClick={() => {
+                      setQuoteRevisionSig(savedQuotes[activeQuote.id] || null);
                       setIsEditingQuoteFields(true);
                       setIsQuoteSavedFeedback(false);
                       setConversionSuccessMessage(null);
@@ -2453,6 +2570,25 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                     <Pencil className="w-3.5 h-3.5" />
                     <span>Editar cotización</span>
                   </button>
+                )}
+                {isEditingQuoteFields && quoteRevisionSig && (
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={handleCancelQuoteEdit}
+                      className="px-3 py-1.5 rounded-lg border border-[#e2e8f0] bg-white text-xs font-semibold text-[#64748b] hover:text-[#0f172a] cursor-pointer"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveQuote}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#501f92] hover:bg-[#3d1572] text-white text-xs font-bold cursor-pointer"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Guardar cambios</span>
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
@@ -2955,7 +3091,8 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
               {/* Recursos externos / subcontratados (no son roles de Uhura ni consumen capacidad) */}
               <ExternalResourcesEditor
                 items={activeQuote.externalResources || []}
-                editable={activeOpp.status !== 'won'}
+                editable={false}
+                summaryForQuote
                 currency={activeQuote.currency || 'COP'}
                 services={currentScopeServices.map((sv) => ({ id: sv.id, name: sv.name }))}
                 onChange={(items) => handleUpdateQuote({ ...activeQuote, externalResources: items })}
@@ -2979,42 +3116,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                   <button
                     type="button"
                     onClick={() => {
-                      setHasAttemptedSaveQuote(true);
-                      const errors = validateCommercialStructure(
-                        currentScopeServices,
-                        commercialStructureDraft,
-                        quoteSheetUrlDraft
-                      );
-                      if (errors.length > 0) {
-                        setIsQuoteSavedFeedback(false);
-                        setConversionSuccessMessage(errors.join(' '));
-                        return;
-                      }
-
-                      const sig = commercialStructureSignature(commercialStructureDraft, quoteSheetUrlDraft);
-                      const updatedQuote: QuoteProposal = {
-                        ...activeQuote,
-                        commercialStructure: commercialStructureDraft,
-                        commercialProposalType: derivedProposalType,
-                        commercialTotalOneOff: commercialTotals.totalOneOff,
-                        commercialTotalMonthlyFee: commercialTotals.totalMonthlyFee,
-                        commercialEstimatedContractValue: commercialTotals.estimatedContractValue,
-                        totalQuotedValue: commercialTotals.estimatedContractValue,
-                        totalQuotedValueCOP: quoteCurrencyDraft === 'USD' ? 0 : commercialTotals.estimatedContractValue,
-                        currency: quoteCurrencyDraft,
-                        externalFinanceSheetUrl: quoteSheetUrlDraft.trim(),
-                        commercialNotes: quoteNotesDraft.trim(),
-                        updatedAt: new Date().toISOString()
-                      };
-                      handleUpdateQuote(updatedQuote);
-                      onSetQuoteSaved(activeQuote.id, sig);
-                      setIsQuoteSavedFeedback(true);
-                      setIsEditingQuoteFields(false);
-                      setConversionSuccessMessage('✅ Cotización comercial guardada correctamente. Ahora puedes marcar como ganada arriba.');
-                      setTimeout(() => {
-                        setIsQuoteSavedFeedback(false);
-                        setConversionSuccessMessage(null);
-                      }, 4000);
+                      handleSaveQuote();
                     }}
                     className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5 active:scale-95 ${
                       isQuoteSavedFeedback
@@ -3030,7 +3132,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                       </>
                     ) : (
                       <span className="inline-flex items-center gap-1">
-                        <span>Guardar cotización</span>
+                        <span>{quoteRevisionSig ? 'Guardar cambios' : 'Guardar cotización'}</span>
                         <span className="text-[#d4ff4a] font-black text-sm leading-none" title="Obligatorio">*</span>
                       </span>
                     )}
