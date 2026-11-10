@@ -3187,14 +3187,14 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                     <div>
                       <span className="text-[10px] text-[#64748b] block">Inicio</span>
                       <span className="text-xs font-bold text-[#0f172a] block mt-0.5">
-                        {task.startDate || '20 ago. 2026'}
+                        {task.startDate || task.scheduledDate || 'Sin programar'}
                       </span>
                     </div>
 
                     <div>
                       <span className="text-[10px] text-[#64748b] block">Entrega</span>
                       <span className="text-xs font-bold text-[#0f172a] block mt-0.5">
-                        {task.dueDate || '24 ago. 2026'}
+                        {task.dueDate || 'Sin programar'}
                       </span>
                     </div>
                   </div>

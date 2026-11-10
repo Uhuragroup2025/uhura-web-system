@@ -844,3 +844,4 @@ Especificación funcional en `ORBIT_PRODUCT_STATUS.md` §8.0 punto 3c.
 * **Montos:** aceptar decimales (2) en valores de cotización y costos externos; la UI muestra separador de miles con punto y decimales con coma.
 * **Registro de tiempo:** `description` es opcional en carga manual y al detener el timer.
 * **Menciones en la entrega:** el comentario de entrega admite @menciones; las personas mencionadas se suman a los destinatarios del aviso de revisión.
+* **Iniciar proyecto (primer arranque):** recalcula siempre `start_date`, `scheduled_date` y `due_date` de todas las tareas del proyecto según el plan por fase; no es opcional. Al reprogramar un proyecto ya iniciado, el recálculo de tareas es opcional.

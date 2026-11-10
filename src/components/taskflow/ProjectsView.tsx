@@ -42,6 +42,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   Play,
+  Info,
   Pause,
   Square,
   Layers,
@@ -797,7 +798,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
       onUpdateProject(updatedProject);
     }
 
-    if (scheduleRecalculateTasks && onUpdateAllTasks && projectTasks.length > 0) {
+    if ((isFirstKickoff || scheduleRecalculateTasks) && onUpdateAllTasks && projectTasks.length > 0) {
       const updatedAllTasks = tasks.map((t) => {
         const slot = projectTaskIds.has(t.id) ? plan.tasks[t.id] : undefined;
         if (!slot) return t;
@@ -805,6 +806,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
           ...t,
           ...(isCurrentProjectFee ? { cycleKey: t.cycleKey || feeStartKey } : {}),
           date: slot.scheduledDate,
+          startDate: slot.scheduledDate,
           scheduledDate: slot.scheduledDate,
           dueDate: slot.dueDate,
           dueText: `Deadline: ${slot.dueDate}`,
@@ -2117,7 +2119,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                   ) : (
                     <label className="space-y-1 block">
                       <span className="font-bold text-[#334155] block" title="Vienen del Alcance; cámbialas solo si hace falta">
-                        Semanas{currentProject.scheduleConfig?.productionWeeks ? ' (alcance)' : ''}
+                        Semanas
                       </span>
                       <input
                         type="number"
@@ -2184,7 +2186,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                       onClick={() => setShowRoundsEditor((v) => !v)}
                       className="font-semibold text-[#501f92] hover:underline cursor-pointer"
                     >
-                      {showRoundsEditor ? 'Listo' : 'Cambiar'}
+                      {showRoundsEditor ? 'Listo' : 'Ajustar'}
                     </button>
                   </div>
                 )}
@@ -2193,7 +2195,15 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                 {askClientInputs && (
                   <div className="space-y-2 pt-3 border-t border-[#f1f5f9]">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-bold text-[#334155]">Insumos a solicitar al cliente</span>
+                      <span className="font-bold text-[#334155] inline-flex items-center gap-1">
+                        Insumos a solicitar al cliente
+                        <span className="relative group inline-flex">
+                          <Info className="w-3.5 h-3.5 text-[#94a3b8] hover:text-[#501f92] cursor-help" aria-label="Cómo funcionan los insumos" />
+                          <span className="absolute left-0 bottom-full mb-1.5 hidden group-hover:block z-30 w-80 p-2.5 bg-[#0f172a] text-white text-[11px] font-normal rounded-xl shadow-xl leading-relaxed pointer-events-none">
+                            Cada insumo se pide en el kickoff y se necesita para una fase: debe estar antes de que esa fase empiece. No suma días al cronograma; mientras tanto se gestiona con anticipación. Quedan en Dependencias con esa fecha. Si la fase llega sin el insumo y «Bloquea», la fase se detiene y el desvío es del cliente.
+                          </span>
+                        </span>
+                      </span>
                       <span className="text-[10px] text-[#64748b]">Sugeridos para {scheduleInputsLabel}</span>
                     </div>
                     <ul className="rounded-xl border border-[#e2e8f0] divide-y divide-[#f1f5f9] max-h-48 overflow-y-auto">
@@ -2272,9 +2282,6 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                         Agregar
                       </button>
                     </div>
-                    <p className="text-[10.5px] text-[#64748b] leading-relaxed">
-                      Cada insumo se pide en el kickoff y se necesita para una fase: debe estar antes de que esa fase empiece. <strong>No suma días al cronograma</strong>; mientras tanto se gestiona con anticipación. Quedan en <strong>Dependencias</strong> con esa fecha. Si la fase llega sin el insumo y «Bloquea», la fase se detiene y el desvío es del cliente.
-                    </p>
                   </div>
                 )}
 
@@ -2303,20 +2310,19 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                 )}
 
                 {/* Cronograma de tareas + equipo, en una línea cada uno */}
-                <label className="flex items-center gap-2 cursor-pointer text-[11px] text-[#334155]">
-                  <input
-                    type="checkbox"
-                    checked={scheduleRecalculateTasks}
-                    onChange={(e) => setScheduleRecalculateTasks(e.target.checked)}
-                    className="rounded text-[#501f92] focus:ring-[#501f92] cursor-pointer"
-                  />
-                  Programar las fechas de las {currentProject.deliverables?.length || 0} entregas y sus tareas desde el kickoff
-                </label>
-                <p className="text-[11px] text-[#64748b] truncate" title={(currentProject.coreTeam || []).map((m) => m.name).join(', ')}>
-                  Equipo: {currentProject.coreTeam && currentProject.coreTeam.length > 0
-                    ? currentProject.coreTeam.map((m) => (m.isLead ? `${m.name} (líder)` : m.name)).join(', ')
-                    : currentProject.leadName || 'Líder de proyecto'}
-                </p>
+                {/* Primer arranque: las fechas de todas las tareas se programan siempre desde el kickoff.
+                    Al reprogramar un proyecto ya iniciado se puede elegir no tocar las tareas. */}
+                {currentProject.isKickedOff && (
+                  <label className="flex items-center gap-2 cursor-pointer text-[11px] text-[#334155]">
+                    <input
+                      type="checkbox"
+                      checked={scheduleRecalculateTasks}
+                      onChange={(e) => setScheduleRecalculateTasks(e.target.checked)}
+                      className="rounded text-[#501f92] focus:ring-[#501f92] cursor-pointer"
+                    />
+                    Programar las fechas de las {currentProject.deliverables?.length || 0} entregas y sus tareas desde el kickoff
+                  </label>
+                )}
               </div>
 
               {/* Botones de acción */}

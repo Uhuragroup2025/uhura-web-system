@@ -1289,6 +1289,8 @@ Reconciliado con los módulos que ya existen en producción. Acceso: **ver** `ex
 7. **Proyecto · Tareas:** se quitó «Expandir frentes».
 8. **Alcance en New Business:** «Guardar» queda junto al enlace de la presentación; se quitó la lista de requisitos (✓ / ○). Al intentar guardar o marcar listo, lo que falta se resalta en rojo (enlace, servicios sin semanas, servicios sin guardar) y el aviso sale en rojo. **«Marcar alcance listo»** pide confirmación («¿El alcance está completo?», con la lista de servicios, horas y semanas), porque varios líderes pueden aportar servicios a la misma oportunidad: cada uno guarda su servicio y quien termina confirma. Al confirmar, Comercial recibe el aviso para cotizar.
 9. **Cotización:** al intentar guardar, los valores y el enlace de la calculadora que faltan se resaltan en rojo, con el aviso en rojo.
+10. **Modal «Iniciar proyecto»:** «Semanas» (sin «(alcance)»), «Ajustar» para las rondas, la explicación de los insumos como tooltip (ícono ⓘ) y sin la lista del equipo.
+11. **Fechas de las tareas al iniciar:** en el primer arranque **todas** las tareas se programan siempre desde el kickoff, según la fase a la que pertenecen (inicio y entrega). Ya no hay casilla para omitirlo; solo al reprogramar un proyecto ya iniciado se puede elegir no tocar las tareas. Una tarea sin fecha muestra «Sin programar» (antes mostraba una fecha ficticia).
 
 **4. Lo que solo es del prototipo (no va a producción):** Simulador QA, laboratorio de la mascota (`?buckyLab=true`), `?ecoMoods=fast`, datos de demostración y la comparación de personas por nombre.
 
