@@ -77,6 +77,9 @@ export function isProjectResponsible(project: ProjectSummaryItem, user: Pick<Use
   if (project.accountManagerId && project.accountManagerId === user.id) return true;
   if (matches({ name: project.leadName })) return true;
   if (!project.accountManagerId && matches({ name: project.accountManagerName })) return true;
+  // Comercial responsable del proyecto (ronda 2)
+  if (project.commercialOwnerId && project.commercialOwnerId === user.id) return true;
+  if (!project.commercialOwnerId && matches({ name: project.commercialOwnerName })) return true;
   return false;
 }
 

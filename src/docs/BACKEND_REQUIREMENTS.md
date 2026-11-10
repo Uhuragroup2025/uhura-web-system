@@ -856,3 +856,4 @@ Especificación funcional en `ORBIT_PRODUCT_STATUS.md` §8.0 puntos 3b, 3c y 3d.
 * **Fechas:** la API entrega fechas en ISO (`YYYY-MM-DD` o ISO 8601 con hora); la UI las muestra como «2026-Nov-18». No guardar fechas ya formateadas como texto.
 * **Lista de proyectos por estado:** `GET /api/projects?status=active|closed|archived|all` (predeterminado `active`) y conteos por estado para el filtro.
 * **Eliminar tarea:** `DELETE /api/tasks/{id}` solo para `leader` (del proyecto) y `system_admin`; responde 409 si la tarea tiene registros de tiempo (se debe archivar).
+* **Responsables del proyecto:** guardar `commercial_owner_id` (owner de la oportunidad) al convertir y heredar `account_manager_id` (Relación con clientes) de la cuenta. Las alertas de tareas bloqueadas (`task_blocked`) van al líder, al Comercial responsable y a Relación con clientes del proyecto.

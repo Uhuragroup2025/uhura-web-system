@@ -242,9 +242,10 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
     return activeUserTasks.filter((t) => !t.completed && Boolean(t.isBlocked || t.blockedReason));
   }, [accessLevel, activeUserTasks]);
 
-  // Bloqueos de equipo: solo de los proyectos que lidero (#147: Mi Día personal para todos)
+  // Bloqueos de equipo: solo de los proyectos de los que soy responsable (#147: Mi Día personal).
+  // Ronda 2: también al Comercial responsable y a Relación con clientes de la cuenta, no solo al líder.
   const teamBlockedTasks = useMemo(() => {
-    if (!['leader', 'executive', 'system_admin'].includes(accessLevel)) {
+    if (!['leader', 'commercial', 'client_relationship', 'executive', 'system_admin'].includes(accessLevel)) {
       return [];
     }
     return tasks.filter((t) => !t.completed && Boolean(t.isBlocked || t.blockedReason) && inMyScope(t) && !activeUserTasks.includes(t));
@@ -661,6 +662,31 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                       </div>
                     </div>
 
+                    <span className="px-2.5 py-1 rounded-lg text-[#dc2626] group-hover:bg-[#fef2f2] font-semibold text-xs transition-colors self-start sm:self-auto shrink-0 inline-flex items-center gap-1">
+                      <span>Ver bloqueo</span>
+                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                    </span>
+                  </div>
+                ))}
+
+                {/* 3b. Bloqueos de tareas del equipo en mis proyectos (líder, Comercial y Relación con clientes) */}
+                {accessLevel !== 'collaborator' && teamBlockedTasks.map((t) => (
+                  <div
+                    key={`team-blocked-${t.id}`}
+                    onClick={() => onOpenTaskDetail(t.id)}
+                    className="p-3 rounded-xl bg-white border border-[#e2e8f0] hover:border-[#fca5a5] hover:bg-[#fef2f2]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs cursor-pointer transition-all group shadow-2xs"
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <AlertOctagon className="w-4 h-4 text-[#ef4444] shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-bold text-[#0f172a] group-hover:text-[#dc2626] transition-colors">{t.title}</span>
+                        <span className="text-[11px] text-[#991b1b] block mt-0.5">
+                          Bloqueada · {t.projectName || t.clientName || 'Proyecto'}
+                          {t.assignee?.name ? ` · ${t.assignee.name}` : ''}
+                          {t.blockedReason ? ` — ${t.blockedReason}` : ''}
+                        </span>
+                      </div>
+                    </div>
                     <span className="px-2.5 py-1 rounded-lg text-[#dc2626] group-hover:bg-[#fef2f2] font-semibold text-xs transition-colors self-start sm:self-auto shrink-0 inline-flex items-center gap-1">
                       <span>Ver bloqueo</span>
                       <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />

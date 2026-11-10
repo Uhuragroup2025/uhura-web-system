@@ -419,6 +419,9 @@ export interface ProjectSummaryItem {
   leadRole?: string;
   accountManagerId?: string;
   accountManagerName?: string;
+  /** Comercial responsable (owner de la oportunidad que originó el proyecto). */
+  commercialOwnerId?: string;
+  commercialOwnerName?: string;
   projectType: ProjectType;
   serviceBase: string;
   areas?: string[];

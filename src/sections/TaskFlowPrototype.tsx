@@ -2675,6 +2675,21 @@ export const TaskFlowPrototype: React.FC = () => {
       });
     }
 
+    // Ronda 2: el proyecto guarda quién es el Comercial responsable (owner de la oportunidad) y la
+    // Relación con clientes de la cuenta, para que les lleguen las alertas (p. ej. tareas bloqueadas).
+    {
+      const commercialUser = users.find((u) => u.id === opp.commercialOwner || u.name === opp.commercialOwner);
+      const accountClient = clients.find((c) => c.id === resolvedClientId);
+      projectsToCreate.forEach((p) => {
+        p.commercialOwnerId = commercialUser?.id || p.commercialOwnerId;
+        p.commercialOwnerName = commercialUser?.name || opp.commercialOwner || p.commercialOwnerName;
+        if (!p.accountManagerName && accountClient?.accountManagerName) {
+          p.accountManagerId = accountClient.accountManagerId;
+          p.accountManagerName = accountClient.accountManagerName;
+        }
+      });
+    }
+
     // Actualizar Cliente en ECO
     if (!resolvedClientId) {
       resolvedClientId = `cli-${Date.now()}`;
