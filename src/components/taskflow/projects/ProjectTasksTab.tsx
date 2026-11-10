@@ -120,6 +120,15 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
 
   // Modal rápido de bloqueo
   const [blockingTask, setBlockingTask] = useState<TaskItem | null>(null);
+  // Ronda 2: la fila de la tarea ya no tiene lápiz (se edita al abrirla); tiene eliminar con confirmación.
+  // Solo líderes y administración eliminan; una tarea con horas registradas no se elimina (se archiva).
+  const [taskPendingDelete, setTaskPendingDelete] = useState<TaskItem | null>(null);
+  const canDeleteTasks = !currentUser || ['leader', 'system_admin'].includes(currentUser.accessLevel || '');
+  const confirmDeleteTask = () => {
+    if (!taskPendingDelete) return;
+    onUpdateTasks?.(tasks.filter((t) => t.id !== taskPendingDelete.id));
+    setTaskPendingDelete(null);
+  };
   const [quickBlockReason, setQuickBlockReason] = useState('');
 
   // Entregables del proyecto
@@ -858,13 +867,16 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
                               <AlertTriangle className="w-3.5 h-3.5" />
                             </button>
 
-                            <button
-                              onClick={() => handleOpenEditModal(task)}
-                              className="p-1.5 text-[#94a3b8] hover:text-[#501f92] rounded-lg cursor-pointer"
-                              title="Editar tarea"
-                            >
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </button>
+                            {canDeleteTasks && (
+                              <button
+                                onClick={() => setTaskPendingDelete(task)}
+                                className="p-1.5 text-[#94a3b8] hover:text-[#dc2626] rounded-lg cursor-pointer"
+                                title="Eliminar tarea"
+                                aria-label={`Eliminar tarea ${task.title}`}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
                           </div>
                         </div>
                       );
@@ -1011,12 +1023,16 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
                         </span>
                       </td>
                       <td className="py-3.5 px-5 text-right pr-6" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          onClick={() => handleOpenEditModal(task)}
-                          className="p-1 hover:bg-[#f1f5f9] text-[#64748b] rounded cursor-pointer"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
+                        {canDeleteTasks && (
+                          <button
+                            onClick={() => setTaskPendingDelete(task)}
+                            className="p-1 hover:bg-[#fef2f2] text-[#94a3b8] hover:text-[#dc2626] rounded cursor-pointer"
+                            title="Eliminar tarea"
+                            aria-label={`Eliminar tarea ${task.title}`}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );
@@ -1438,6 +1454,38 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
                 {blockingTask.isBlocked ? 'Desbloquear tarea' : 'Confirmar bloqueo'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {taskPendingDelete && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+          onClick={(e) => e.target === e.currentTarget && setTaskPendingDelete(null)}
+        >
+          <div className="bg-white rounded-2xl max-w-sm w-full border border-[#e2e8f0] shadow-2xl p-5 space-y-3 text-xs">
+            <h3 className="font-extrabold text-base text-[#0f172a]">Eliminar tarea</h3>
+            {(taskPendingDelete.consumedSeconds || 0) > 0 ? (
+              <>
+                <p className="text-[#475569]">
+                  <strong>{taskPendingDelete.title}</strong> tiene horas registradas, así que no se puede eliminar: se perdería el registro de tiempo. Puedes archivarla desde el detalle de la tarea (menú ···).
+                </p>
+                <div className="flex justify-end">
+                  <button type="button" onClick={() => setTaskPendingDelete(null)} className="px-4 py-2 rounded-xl border border-[#e2e8f0] bg-white text-[#334155] font-semibold cursor-pointer">Entendido</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-[#475569]">
+                  ¿Eliminar <strong>{taskPendingDelete.title}</strong>? No se puede deshacer.
+                </p>
+                <div className="flex justify-end gap-2">
+                  <button type="button" onClick={() => setTaskPendingDelete(null)} className="px-4 py-2 rounded-xl border border-[#e2e8f0] bg-white text-[#64748b] font-semibold cursor-pointer">Cancelar</button>
+                  <button type="button" onClick={confirmDeleteTask} className="px-4 py-2 rounded-xl bg-[#dc2626] hover:bg-[#b91c1c] text-white font-bold cursor-pointer">Eliminar tarea</button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

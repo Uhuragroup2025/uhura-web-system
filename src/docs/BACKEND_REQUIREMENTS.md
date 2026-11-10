@@ -855,3 +855,4 @@ Especificación funcional en `ORBIT_PRODUCT_STATUS.md` §8.0 puntos 3b, 3c y 3d.
 * **Emojis más usados (opcional):** el prototipo los recuerda en el navegador; en producción pueden guardarse como preferencia del usuario (`user_preferences.frequent_emojis`). No es requisito.
 * **Fechas:** la API entrega fechas en ISO (`YYYY-MM-DD` o ISO 8601 con hora); la UI las muestra como «2026-Nov-18». No guardar fechas ya formateadas como texto.
 * **Lista de proyectos por estado:** `GET /api/projects?status=active|closed|archived|all` (predeterminado `active`) y conteos por estado para el filtro.
+* **Eliminar tarea:** `DELETE /api/tasks/{id}` solo para `leader` (del proyecto) y `system_admin`; responde 409 si la tarea tiene registros de tiempo (se debe archivar).
