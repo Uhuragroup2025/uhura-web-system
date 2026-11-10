@@ -185,7 +185,7 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h3 className="font-extrabold text-sm text-[#0f172a]">🏁 Proyecto cerrado</h3>
             <span className="text-[11px] text-[#64748b]">
-              {project.closure.closedByName} · {new Date(project.closure.closedAt).toLocaleDateString('es-CO')}
+              {project.closure.closedByName} · {formatDate(project.closure.closedAt)}
             </span>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">

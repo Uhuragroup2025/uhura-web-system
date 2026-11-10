@@ -853,4 +853,4 @@ Especificación funcional en `ORBIT_PRODUCT_STATUS.md` §8.0 puntos 3b, 3c y 3d.
 * **Esfuerzo de preventa:** endpoint `GET /api/opportunities/{id}/presales-effort` con horas registradas por persona en la tarea de preventa (no cobrables). El costo (horas × costo hora de `person_hourly_costs`, §12.10) solo para `system_admin`, `commercial`, `executive` y `administrative`.
 * **Aviso de revisión:** tipo de notificación `task_review_requested` (en el prototipo, alerta «REVISIÓN») con tarea, quien entregó, revisor y mencionados.
 * **Emojis más usados (opcional):** el prototipo los recuerda en el navegador; en producción pueden guardarse como preferencia del usuario (`user_preferences.frequent_emojis`). No es requisito.
-
+* **Fechas:** la API entrega fechas en ISO (`YYYY-MM-DD` o ISO 8601 con hora); la UI las muestra como «2026-Nov-18». No guardar fechas ya formateadas como texto.

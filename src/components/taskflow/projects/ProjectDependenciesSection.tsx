@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { formatDate } from '../../../utils/formatters';
 import {
   ProjectSummaryItem,
   ProjectDependency,
@@ -285,11 +286,11 @@ export const ProjectDependenciesSection: React.FC<ProjectDependenciesSectionProp
                       </div>
 
                       <div className="flex items-center gap-3 text-[11px] text-[#64748b] mt-0.5 flex-wrap">
-                        <span>Esperado: <strong className="text-[#334155]">{dep.expectedDate}</strong></span>
+                        <span>Esperado: <strong className="text-[#334155]">{formatDate(dep.expectedDate)}</strong></span>
                         <span>Seguimiento: <strong className="text-[#334155]">{dep.followUpOwnerName || 'Client Relationship'}</strong></span>
                         {dep.lastFollowUpAt && (
                           <span className="text-[#059669] font-medium">
-                            Última gestión: {new Date(dep.lastFollowUpAt).toLocaleDateString('es-CO')}
+                            Última gestión: {formatDate(dep.lastFollowUpAt)}
                           </span>
                         )}
                       </div>
@@ -513,7 +514,7 @@ export const ProjectDependenciesSection: React.FC<ProjectDependenciesSectionProp
               <div className="p-3 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0]">
                 <p className="font-extrabold text-[#0f172a]">{selectedDependencyForFollowUp.title}</p>
                 <div className="flex items-center gap-2 text-[11px] text-[#64748b] mt-1">
-                  <span>Fecha esperada: <strong>{selectedDependencyForFollowUp.expectedDate}</strong></span>
+                  <span>Fecha esperada: <strong>{formatDate(selectedDependencyForFollowUp.expectedDate)}</strong></span>
                   {selectedDependencyForFollowUp.blocking && (
                     <span className="text-[#dc2626] font-bold">· Bloqueante</span>
                   )}

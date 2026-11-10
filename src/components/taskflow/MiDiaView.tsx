@@ -627,7 +627,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                             </span>
                           ) : (
                             <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#ecfdf5] text-[#059669]">
-                              Esperado: {dep.expectedDate}
+                              Esperado: {formatDate(dep.expectedDate)}
                             </span>
                           )}
                         </div>

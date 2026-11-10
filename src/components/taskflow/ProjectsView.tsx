@@ -809,7 +809,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
           startDate: slot.scheduledDate,
           scheduledDate: slot.scheduledDate,
           dueDate: slot.dueDate,
-          dueText: `Deadline: ${slot.dueDate}`,
+          dueText: `Deadline: ${formatDate(slot.dueDate)}`,
           dueStatus: 'normal' as const
         };
       });
@@ -818,7 +818,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
     setIsScheduleModalOpen(false);
     setScheduleSuccessMessage(
-      `🚀 ¡Proyecto "${currentProject.name}" iniciado formalmente el ${finalStartDate}! Cronograma alineado y deadlines sincronizados.`
+      `🚀 ¡Proyecto "${currentProject.name}" iniciado formalmente el ${formatDate(finalStartDate)}! Cronograma alineado y deadlines sincronizados.`
     );
     setTimeout(() => setScheduleSuccessMessage(null), 6000);
   };
@@ -2251,7 +2251,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                             </select>
                           ) : null}
                           <span className="shrink-0 text-[10px] text-[#64748b] w-14 text-right" title="Fecha en que debe estar (inicio de la fase)">
-                            {formatDate(inputExpectedDate(inp.deliverableId)).replace(/ \d{4}$/, '')}
+                            {formatDate(inputExpectedDate(inp.deliverableId))}
                           </span>
                         </li>
                       ))}

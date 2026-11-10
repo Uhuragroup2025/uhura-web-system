@@ -1,4 +1,5 @@
 import { useMascotImage } from '../mascot/ecoMascot';
+import { formatDate } from '../../../utils/formatters';
 import { MoneyInput } from '../ui/MoneyInput';
 import { TimerControls } from '../time/TimerControls';
 import React, { useState, useRef, useEffect, useMemo } from 'react';
@@ -2637,7 +2638,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                   <span
                     className="text-[10.5px] font-semibold px-2 py-0.5 rounded-lg bg-[#f5f3ff] text-[#501f92] border border-[#e9d5ff]"
                     title={(activeQuote.commercialVersions || [])
-                      .map((v) => `v${v.version} · ${new Date(v.savedAt).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}${v.savedBy ? ` · ${v.savedBy}` : ''}${v.syncedToHubspot ? ' · HubSpot ✓' : ''}`)
+                      .map((v) => `v${v.version} · ${formatDate(v.savedAt)}${v.savedBy ? ` · ${v.savedBy}` : ''}${v.syncedToHubspot ? ' · HubSpot ✓' : ''}`)
                       .join('\n')}
                   >
                     v{activeQuote.commercialVersions?.length}

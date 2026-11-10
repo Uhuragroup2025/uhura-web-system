@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { formatDate } from '../../../utils/formatters';
 import {
   ProjectSummaryItem,
   TaskItem,
@@ -798,7 +799,7 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
                           <div className="text-xs text-[#64748b] min-w-[90px]">
                             {task.targetDate || task.dueDate ? (
                               <span className="text-[11px] font-medium text-[#334155]">
-                                {task.targetDate || task.dueDate}
+                                {formatDate(task.targetDate || task.dueDate)}
                               </span>
                             ) : (
                               <span className="text-[10px] text-[#94a3b8]">Ciclo</span>

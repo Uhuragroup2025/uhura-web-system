@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { formatDate } from '../../utils/formatters';
 import { TimerControls } from './time/TimerControls';
 import { EmojiPopover } from './ui/EmojiPopover';
 import {
@@ -3187,14 +3188,14 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                     <div>
                       <span className="text-[10px] text-[#64748b] block">Inicio</span>
                       <span className="text-xs font-bold text-[#0f172a] block mt-0.5">
-                        {task.startDate || task.scheduledDate || 'Sin programar'}
+                        {formatDate(task.startDate || task.scheduledDate, 'Sin programar')}
                       </span>
                     </div>
 
                     <div>
                       <span className="text-[10px] text-[#64748b] block">Entrega</span>
                       <span className="text-xs font-bold text-[#0f172a] block mt-0.5">
-                        {task.dueDate || 'Sin programar'}
+                        {formatDate(task.dueDate, 'Sin programar')}
                       </span>
                     </div>
                   </div>
@@ -3938,7 +3939,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
         >
           <span>
             ID: <strong className="font-mono text-[#0f172a]">{task.id.toUpperCase()}</strong> · Creada el{' '}
-            {task.date || '20 ago. 2026 a las 14:30'}
+            {formatDate(task.date, 'Sin fecha')}
           </span>
         </div>
       </div>

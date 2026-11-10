@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { formatDate } from '../../utils/formatters';
 import {
   X,
   Briefcase,
@@ -1435,7 +1436,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                   <div>
                     <span className="text-[#64748b] block text-[10px]">Cronograma</span>
                     <span className="font-semibold text-[#0f172a]">
-                      {startDate} {endDate ? `al ${endDate}` : '(Abierto)'}
+                      {formatDate(startDate)} {endDate ? `al ${formatDate(endDate)}` : '(Abierto)'}
                     </span>
                   </div>
                   <div>

@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { formatDate } from '../../../utils/formatters';
 import { CalendarDays, CheckCircle2, AlertTriangle, PauseCircle, Clock, RefreshCw, UserPlus, EyeOff } from 'lucide-react';
 import type { TeamAbsenceEvent, TeamAbsenceType, UserItem } from '../types';
 
@@ -52,7 +53,7 @@ const resolveType = (title: string) => {
   return rules.find((r) => t.includes(r.keyword.toLowerCase())) || { type: 'other' as TeamAbsenceType, label: 'Otra ausencia', hoursPerDay: 8, keyword: '' };
 };
 
-const fmtDate = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' });
+const fmtDate = (iso: string) => formatDate(iso);
 const fmtDateTime = (iso?: string | null) =>
   iso ? new Date(iso).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
 
