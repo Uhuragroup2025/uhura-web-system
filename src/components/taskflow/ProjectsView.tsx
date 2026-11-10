@@ -265,7 +265,9 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
         });
       }
       const activeCycleKey = cycles.find((c) => c.status === 'active')?.monthKey || prj.currentMonthCycle || cycles[cycles.length - 1]?.monthKey || null;
-      const viewCycleKey = isFeePrj && cycles.length > 0 && prj.id === selectedProjectId
+      // Antes de «Iniciar proyecto» las tareas convertidas aún no tienen mes: se muestran todas (#18).
+      const feeKickedOff = Boolean(prj.contractStartDate) && prj.isKickedOff !== false;
+      const viewCycleKey = isFeePrj && feeKickedOff && cycles.length > 0 && prj.id === selectedProjectId
         ? (selectedCycleKey === 'all' ? null : (selectedCycleKey || activeCycleKey))
         : null;
       const viewCycle = cycles.find((c) => c.monthKey === viewCycleKey) || null;

@@ -240,6 +240,8 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
   };
 
   const handleMarkOpportunityWon = (opp: NewBusinessOpportunity) => {
+    // Se recibe la oportunidad YA actualizada (con los servicios ganados/perdidos): usar `activeOpp`
+    // aquí sobrescribiría esa selección con una copia anterior.
     if (opp.id !== activeOpp?.id || !isQuoteDiligenciada) return;
     const updated: NewBusinessOpportunity = {
       ...opp,
@@ -3478,10 +3480,11 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                     ...activeQuote,
                     commercialStructure: updatedCommercial
                   };
-                  handleUpdateQuote(updatedQuote);
-
                   if (wonServices.length > 0) {
-                    handleMarkOpportunityWon(activeOpp);
+                    // Una sola actualización con la cotización nueva + estado ganada (#19).
+                    handleMarkOpportunityWon({ ...withOperationalQuote(activeOpp, updatedQuote) });
+                  } else {
+                    handleUpdateQuote(updatedQuote);
                   }
 
                   setIsMarkWonModalOpen(false);

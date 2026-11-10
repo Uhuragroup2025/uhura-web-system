@@ -628,11 +628,11 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
               Brief {mode === 'manual' ? '(opcional)' : 'adicional / notas'}:
             </label>
             <textarea
-              rows={3}
+              rows={6}
               placeholder="Contexto y requerimiento recibido del cliente"
               value={briefText}
               onChange={(e) => setBriefText(e.target.value)}
-              className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] bg-white focus:ring-2 focus:ring-[#501f92] text-xs"
+              className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] bg-white focus:ring-2 focus:ring-[#501f92] text-xs min-h-[120px] resize-y"
             />
           </div>
 

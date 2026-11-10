@@ -1533,11 +1533,12 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                   ensureInProgressOnCollaboratorAction();
                   onStartTimer(task);
                 }}
-                className="p-2.5 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white shadow-xs cursor-pointer transition-all flex items-center justify-center"
-                title="Iniciar Timer"
-                aria-label="Iniciar Timer"
+                className="px-3 py-2.5 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold shadow-xs cursor-pointer transition-all flex items-center justify-center gap-1.5"
+                title="Iniciar timer"
+                aria-label="Iniciar timer"
               >
                 <Play className="w-4 h-4 fill-current" />
+                <span>Iniciar timer</span>
               </button>
             )}
 

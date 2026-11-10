@@ -134,10 +134,10 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
       return s.approved === true;
     });
 
-    // Si ninguno está explícitamente ganado aún pero el usuario abrió el modal de conversión,
-    // mostrar todos los no perdidos
-    if (won.length === 0) {
-      return allServices.filter((s) => s.hubspotDealStage !== 'Cierre perdido');
+    // Un solo servicio se aprueba automáticamente al convertir (#132). Con varios, solo se
+    // convierten los que Comercial marcó como ganados: nunca «todos los no perdidos» (#19).
+    if (won.length === 0 && allServices.length === 1 && allServices[0].hubspotDealStage !== 'Cierre perdido') {
+      return allServices;
     }
     return won;
   }, [allServices]);
