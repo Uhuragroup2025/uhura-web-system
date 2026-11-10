@@ -831,3 +831,14 @@ Especificación en `ORBIT_PRODUCT_STATUS.md` §9.4; lógica de referencia en `sr
 * **Salud general:** requiere al menos 2 dimensiones con datos; si no, `null` («Sin datos suficientes»). Mismo cálculo para la ficha y la lista de clientes.
 * Endpoint sugerido: `GET /api/clients/{id}/metrics` y, para la lista, las mismas métricas resumidas en `GET /api/clients`.
 
+## 28. Ronda 2 de mejoras del prototipo (10 Nov 2026)
+Especificación funcional en `ORBIT_PRODUCT_STATUS.md` §8.0 punto 3c.
+* **Versiones de la cotización:** tabla `quote_commercial_versions` (`quote_id`, `version`, `saved_at`, `saved_by`, `total`, `currency`, `synced_to_hubspot`, snapshot de la estructura comercial). Cada «Guardar cotización» / «Guardar cambios» crea una versión; nunca se sobrescribe la anterior.
+* **Sincronización con HubSpot al editar:** si el servicio ya tiene `hubspot_deal_id`, al guardar se actualiza el monto (y la modalidad) del negocio en HubSpot. Dirección única por campo: ECO es dueño de valores y servicios; HubSpot es dueño de la etapa. Si falla, se aplica la cola de reintentos y el aviso de #133.
+* **Eliminar servicio del alcance:** borra el servicio, sus entregables y actividades de la cotización y su línea comercial; si la cotización estaba guardada, pasa a «desactualizada» (exige guardar de nuevo). Si el servicio tenía negocio en HubSpot, se marca «Cierre perdido» en HubSpot con motivo «Retirado del alcance» (no se borra el negocio).
+* **Costos externos y licencias:** ampliar `external_resources` con `kind` (`external` | `license`), `recurrence` (`one_time` | `monthly`), `monthly_cost` y `months`; `total_cost` = costo mensual × meses cuando es mensual. Los crea el líder en Alcance; Comercial los lee en Cotización. Se copian al proyecto al convertir y suman al costo real del P&G (§12.8).
+* **Iniciar proyecto:** permiso para `commercial`, `client_relationship`, `executive`, `leader` (del proyecto) y `system_admin`.
+* **Insumos del cliente:** el catálogo de servicios guarda una plantilla de insumos por servicio (`title`, `type` = `access` | `client_input`, `blocking`, `due_business_days`). Al iniciar el proyecto (primer arranque, sin dependencias previas) los confirmados se crean como `project_dependencies` (`owner_type = client`, `expected_date` = kickoff + días hábiles, seguimiento del líder). `client_kickoff_wait_days` = mayor `due_business_days` de los bloqueantes (0 si no hay).
+* **Entregables:** «Enviar a revisión» pone la tarea en `Review` (nunca `Done`), crea un comentario del autor con el enlace y notifica (campana y correo, §26) al líder del proyecto, al revisor y a los seguidores. Solo líder o revisor pasan a `Done` («Aprobar») o devuelven a `In Progress` («Devolver», cuenta como ajuste).
+* **Cerrar sesión:** disponible en todas las resoluciones; invalida la sesión de Google y vuelve al ingreso.
+

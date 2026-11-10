@@ -1261,8 +1261,23 @@ Reconciliado con los módulos que ya existen en producción. Acceso: **ver** `ex
 **3b. Correcciones del prototipo posteriores a la entrega (10 Nov 2026, tras la revisión de Uhura).**
 - **Conversión con varios servicios:** al marcar ganados 2 de 3 servicios, la conversión creaba proyectos para los 3. Causa: al confirmar los ganados se guardaba la selección y enseguida se sobrescribía con una copia anterior de la oportunidad; además, sin servicios ganados la conversión tomaba «todos los no perdidos». Ahora solo se convierten los servicios ganados (un solo servicio se aprueba automáticamente, #132).
 - **Fee mensual sin tareas visibles tras convertir:** las tareas existían, pero la pestaña filtraba por mes y aún no tenían mes asignado (se asigna al «Iniciar proyecto»). Antes de iniciar se muestran todas.
-- **Brief** de la nueva oportunidad más alto y ajustable; botón **«Iniciar timer»** con texto en el detalle de la tarea.
+- **Brief** de la nueva oportunidad más alto y ajustable. (El texto «Iniciar timer» que se agregó aquí se reemplazó en la ronda 2 por el timer solo con íconos, punto 3c.3.)
 - **SOW:** solo se abre después de ganar y convertir, desde la ficha del cliente (§7.4).
+
+**3c. Ronda 2: mejoras del prototipo tras la revisión con Indunova (10 Nov 2026).** Mismos commits en esta rama; la entrega inicial quedó marcada con la etiqueta `entrega-indunova-v1` (`4155a0a`). Reglas de backend en `BACKEND_REQUIREMENTS.md` §28.
+1. **Editar cotización:** al editar aparecen **«Cancelar»** y **«Guardar cambios»** junto al botón de edición (antes el único botón quedaba al final de la página y parecía que no se podía guardar). Cada guardado crea una **versión** (v1, v2…, con fecha, autor y total) y, si ya hay negocios en HubSpot, envía los valores nuevos (ECO → HubSpot). De HubSpot a ECO solo llega la etapa (ganado / perdido). También se corrigió un ciclo de renderizado que reiniciaba los borradores de la cotización en oportunidades sin alcance.
+2. **Eliminar un servicio en Alcance:** ícono de basura junto a «Guardar / Editar servicio», con confirmación. Quita el servicio y sus entregables; si la cotización ya estaba guardada, queda desactualizada hasta guardarla de nuevo.
+3. **Timer solo con íconos, en toda ECO** (tarea, New Business, Mi Día, encabezado y celular): detenido ▶ y 🕒 (carga manual); corriendo, punto rojo que parpadea + ⏸ y ⏹. Sin textos ni contadores en cero; el nombre de cada acción va en el tooltip y en `aria-label`. Al detener vuelve a ▶ y 🕒.
+4. **Esfuerzo de preventa en el Resumen:** horas registradas por persona en la propuesta (barra por persona, no cobrables). El costo de preventa se mostrará a administración, Comercial y Dirección cuando exista el costo hora por persona (BACKEND §12.10).
+5. **Costos externos y licencias:** se agregan en **Alcance** (los pide el líder): tipo (recurso externo o licencia) → proveedor (opcional) → descripción → costo → pago único o mensual × meses. En **Cotización** Comercial los ve en solo lectura con el total para sumarlos en la calculadora. Pasan al proyecto al convertir. No consumen capacidad.
+6. **Conversión:** se quitó el título repetido «Rondas de ajuste del cliente».
+7. **«Iniciar proyecto»** lo pueden hacer Comercial, Relación con clientes, Dirección, líderes y administración (Comercial y Relación con clientes saben cuándo se firma el contrato y agendan el kickoff).
+8. **Modal «Iniciar proyecto» corto:** fecha del kickoff y semanas (del Alcance, editables) en una fila; rondas de ajuste en una línea con «Cambiar»; se eliminó «Tiempos del cliente». En el primer arranque muestra **«Insumos a solicitar al cliente»** precargados según el servicio (web, tienda, pauta, marketplace, chatbot, redes): se marcan los que aplican, se cambia si bloquean y se agregan otros. Al confirmar se crean como **Dependencias** del proyecto (dueño: cliente, con fecha esperada y seguimiento del líder). La espera tras el kickoff es la del insumo bloqueante más largo; si llega tarde, el desvío es del cliente. Referencia: `schedule/clientInputs.ts`. En producción, la plantilla de insumos vive en el catálogo de servicios y la define cada área.
+9. **Cerrar sesión** en el menú de perfil (computador, tablet y celular) y en «Más» del menú inferior del celular.
+10. **Tarea · Estado y Prioridad:** una sola flecha en cada selector.
+11. **Entregar un entregable** («Enviar a revisión») ya no completa la tarea: pasa a **En revisión**, queda un mensaje en «Mensajes» de quien entregó con el enlace, y se avisa al líder y al revisor. El líder o revisor **aprueba** (Completada) o **devuelve** (En proceso).
+12. **Tarea · timer:** solo ícono ▶; corriendo, ⏸ y ⏹ (ver punto 3).
+13. **Menú ··· de la tarea** se cierra al hacer clic afuera o con Esc.
 
 **4. Lo que solo es del prototipo (no va a producción):** Simulador QA, laboratorio de la mascota (`?buckyLab=true`), `?ecoMoods=fast`, datos de demostración y la comparación de personas por nombre.
 
