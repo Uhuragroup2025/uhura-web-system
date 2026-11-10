@@ -67,7 +67,7 @@ export const MobileTimerMiniPlayer: React.FC<MobileTimerMiniPlayerProps> = ({
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] font-bold text-[#c9b7ff] truncate">
-                {activeTimer.clientName || 'Orbit'} · {activeTimer.projectName || 'Proyecto'}
+                {activeTimer.clientName || 'ECO'} · {activeTimer.projectName || 'Proyecto'}
               </span>
             </div>
             <h4 className="text-xs font-bold text-white truncate group-hover:text-[#d4ff4a] transition-colors">
@@ -89,12 +89,11 @@ export const MobileTimerMiniPlayer: React.FC<MobileTimerMiniPlayerProps> = ({
               e.stopPropagation();
               onStopTimer();
             }}
-            className="px-3 py-1.5 rounded-xl bg-[#dc2626] hover:bg-[#b91c1c] text-white flex items-center gap-1.5 transition-all cursor-pointer shadow-xs text-xs font-bold"
+            className="p-2 rounded-xl bg-[#dc2626] hover:bg-[#b91c1c] text-white flex items-center gap-1.5 transition-all cursor-pointer shadow-xs text-xs font-bold"
             title="Detener y guardar tiempo"
             aria-label="Detener timer"
           >
             <Square className="w-3.5 h-3.5 fill-current" />
-            <span>Detener</span>
           </button>
         </div>
       </div>

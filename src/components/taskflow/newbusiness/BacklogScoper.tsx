@@ -96,6 +96,20 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
 }) => {
   const users = teamUsers.filter((user) => user.status === 'Active');
   const [savedServiceFeedback, setSavedServiceFeedback] = useState<string | null>(null);
+  const [confirmRemoveServiceId, setConfirmRemoveServiceId] = useState<string | null>(null);
+  // Eliminar un servicio completo del alcance (ronda 2): quita el servicio y sus entregables.
+  // Si la cotización ya estaba guardada, queda desactualizada hasta volver a guardarla.
+  const handleRemoveService = (serviceId: string) => {
+    const service = services.find((item) => item.id === serviceId);
+    if (!service) return;
+    onChangeServices(services.filter((item) => item.id !== serviceId));
+    onUpdateQuote({
+      ...quote,
+      deliverables: quote.deliverables.filter((d) => !service.deliverableIds.includes(d.id)),
+      commercialStructure: (quote.commercialStructure || []).filter((c) => c.serviceId !== serviceId)
+    });
+    setConfirmRemoveServiceId(null);
+  };
   useEffect(() => { if (!savedServiceFeedback) return; const timer = setTimeout(() => setSavedServiceFeedback(null), 3000); return () => clearTimeout(timer); }, [savedServiceFeedback]);
   const dragged = React.useRef<{ deliverableId: string; activityId?: string } | null>(null);
   const [collapsedDeliverables, setCollapsedDeliverables] = useState<Record<string, boolean>>({});
@@ -407,8 +421,10 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
       ...newCollapsedState
     }));
 
+    // Semanas precargadas desde la plantilla (el líder puede ajustarlas)
     onChangeServices([...services, { id: importId, name: tpl.name,
-      deliverableIds: importedDeliverables.map((deliverable) => deliverable.id), weeks: '', saved: false }]);
+      deliverableIds: importedDeliverables.map((deliverable) => deliverable.id),
+      weeks: tpl.estimatedDurationWeeks ? String(tpl.estimatedDurationWeeks) : '', saved: false }]);
     const updated = recomputeQuoteRollups([...quote.deliverables, ...importedDeliverables]);
     onUpdateQuote(updated);
     setIsImportModalOpen(false);
@@ -452,7 +468,30 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
           }} className={`inline-flex items-center gap-1.5 rounded-lg border px-4 py-2 text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed ${locked ? 'bg-white border-[#cbd5e1] text-[#501f92]' : 'bg-[#501f92] border-[#501f92] text-white hover:bg-[#3d1572] shadow-sm'}`}>
           {locked ? <Pencil className="w-3 h-3" /> : <CheckCircle2 className="w-3 h-3" />}{locked ? 'Editar servicio' : 'Guardar servicio'}
         </button>
+        {!readOnly && (
+          <button
+            type="button"
+            onClick={() => setConfirmRemoveServiceId(service.id)}
+            aria-label={`Eliminar servicio ${service.name}`}
+            title="Eliminar este servicio del alcance"
+            className="p-2 rounded-lg border border-[#fecaca] bg-white text-[#dc2626] hover:bg-[#fef2f2] cursor-pointer"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
+      {confirmRemoveServiceId === service.id && (
+        <div role="alertdialog" className="flex items-center justify-between gap-3 flex-wrap rounded-lg border border-[#fecaca] bg-[#fef2f2] px-3 py-2 text-xs text-[#991b1b]">
+          <span>
+            ¿Eliminar <strong>{service.name}</strong> y sus entregables del alcance?
+            {(quote.commercialStructure || []).length > 0 && ' La cotización quedará desactualizada hasta guardarla de nuevo.'}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <button type="button" onClick={() => setConfirmRemoveServiceId(null)} className="px-2.5 py-1 rounded-lg bg-white border border-[#e2e8f0] text-[#334155] font-semibold cursor-pointer">Cancelar</button>
+            <button type="button" onClick={() => handleRemoveService(service.id)} className="px-2.5 py-1 rounded-lg bg-[#dc2626] hover:bg-[#b91c1c] text-white font-bold cursor-pointer">Eliminar servicio</button>
+          </span>
+        </div>
+      )}
       {savedServiceFeedback === service.id && <p role="status" className="text-xs font-semibold text-[#047857]">Servicio guardado. El alcance general continúa pendiente de revisión.</p>}
       {!locked && issues.map((issue) => <p key={issue} role="status" className="text-xs text-[#b45309]">{issue}</p>)}
       {!locked && <label className="flex items-center gap-3 text-xs font-semibold text-[#475569]">Duración del servicio en semanas
@@ -527,7 +566,7 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
         {/* Left Column: Entregables y Actividades (8 cols) */}
         <div className="lg:col-span-8 space-y-4">
           {quote.deliverables.length === 0 ? (
-            <div className="p-8 text-center bg-white rounded-3xl border-2 border-dashed border-[#cbd5e1] space-y-4">
+            <div className="p-8 text-center bg-white rounded-2xl border-2 border-dashed border-[#cbd5e1] space-y-4">
               <div className="w-14 h-14 rounded-2xl bg-[#501f92]/10 flex items-center justify-center mx-auto text-[#501f92]">
                 <Layers className="w-7 h-7" />
               </div>
@@ -718,7 +757,7 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
                                           e.target.value as StandardUhuraRole
                                         )
                                       }
-                                      className={`text-[11px] font-semibold px-2 py-0.5 rounded-md border border-transparent hover:border-[#cbd5e1] ${badgeStyle.bg} ${badgeStyle.text} focus:ring-1 focus:ring-[#501f92] cursor-pointer outline-hidden transition-colors`}
+                                      className={`text-[11px] font-semibold px-2 py-0.5 rounded-lg border border-transparent hover:border-[#cbd5e1] ${badgeStyle.bg} ${badgeStyle.text} focus:ring-1 focus:ring-[#501f92] cursor-pointer outline-hidden transition-colors`}
                                       title="Rol presupuestado"
                                     >
                                       {[...new Set([...STANDARD_UHURA_ROLES, act.roleName])].map((role) => (
@@ -736,7 +775,7 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
                                       onChange={(e) => {
                                         handleUpdateActivity(del.id, act.id, 'suggestedUserId', e.target.value || null);
                                       }}
-                                      className="text-[11px] font-medium px-2 py-0.5 rounded-md border border-[#e2e8f0] bg-white text-[#334155] hover:border-[#cbd5e1] focus:ring-1 focus:ring-[#501f92] cursor-pointer outline-hidden transition-colors max-w-[130px] truncate"
+                                      className="text-[11px] font-medium px-2 py-0.5 rounded-lg border border-[#e2e8f0] bg-white text-[#334155] hover:border-[#cbd5e1] focus:ring-1 focus:ring-[#501f92] cursor-pointer outline-hidden transition-colors max-w-[130px] truncate"
                                       title="Persona responsable de ejecutar la actividad"
                                     >
                                       <option value="">👤 (Sin responsable)</option>
@@ -750,7 +789,7 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
 
                                   {/* Right: Estimated Hours & Action Icons (revealed on hover) */}
                                   <div className="flex items-center gap-2 shrink-0">
-                                    <div className="flex items-center gap-1 bg-[#f8fafc] px-2 py-0.5 rounded-md border border-[#e2e8f0]">
+                                    <div className="flex items-center gap-1 bg-[#f8fafc] px-2 py-0.5 rounded-lg border border-[#e2e8f0]">
                                       <input
                                         type="number"
                                         min="0"

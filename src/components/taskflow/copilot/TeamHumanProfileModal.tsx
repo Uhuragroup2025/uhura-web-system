@@ -34,7 +34,7 @@ interface TeamHumanProfileModalProps {
 
 /**
  * Calcula la edad en años en runtime a partir de la fecha de nacimiento (ISO 'YYYY-MM-DD').
- * Regla de Gobernanza de Orbit: La edad NO se persiste como dato estático.
+ * Regla de Gobernanza de ECO: La edad NO se persiste como dato estático.
  */
 function calculateAgeFromBirthDate(birthDate?: string): number | null {
   if (!birthDate) return null;
@@ -89,7 +89,7 @@ function parseMonthAndDay(dateStr?: string): { month: number; day: number } | nu
  */
 function getAnnualEventInfo(
   dateStr?: string,
-  refDate: Date = new Date(2026, 8, 16) // Fecha base simulada canónica de Orbit (16 Sep 2026)
+  refDate: Date = new Date(2026, 8, 16) // Fecha base simulada canónica de ECO (16 Sep 2026)
 ): {
   days: number;
   isToday: boolean;
@@ -321,7 +321,7 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
       onClick={onClose}
     >
       <div
-        className={`bg-white w-full ${singleUserMode ? 'max-w-2xl' : 'max-w-4xl'} rounded-3xl shadow-2xl border border-[#e2e8f0] flex flex-col max-h-[92vh] overflow-hidden animate-in zoom-in-95 duration-200`}
+        className={`bg-white w-full ${singleUserMode ? 'max-w-2xl' : 'max-w-4xl'} rounded-2xl shadow-2xl border border-[#e2e8f0] flex flex-col max-h-[92vh] overflow-hidden animate-in zoom-in-95 duration-200`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* HEADER */}
@@ -491,7 +491,7 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setTimeScope('all')}
-                      className={`px-2 py-0.5 rounded-md font-semibold text-[10px] cursor-pointer transition-colors ${
+                      className={`px-2 py-0.5 rounded-lg font-semibold text-[10px] cursor-pointer transition-colors ${
                         timeScope === 'all'
                           ? 'bg-[#501f92] text-white shadow-2xs'
                           : 'bg-[#f8fafc] text-[#64748b] hover:bg-[#e2e8f0]'
@@ -502,7 +502,7 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setTimeScope('upcoming')}
-                      className={`px-2 py-0.5 rounded-md font-semibold text-[10px] cursor-pointer transition-colors ${
+                      className={`px-2 py-0.5 rounded-lg font-semibold text-[10px] cursor-pointer transition-colors ${
                         timeScope === 'upcoming'
                           ? 'bg-[#501f92] text-white shadow-2xs'
                           : 'bg-[#f8fafc] text-[#64748b] hover:bg-[#e2e8f0]'
@@ -560,7 +560,7 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
                   }
                 } else if (user.city) {
                   dynamicBadge = (
-                    <span className="text-[10px] font-medium text-[#64748b] bg-[#f8fafc] px-2 py-0.5 rounded-md shrink-0">
+                    <span className="text-[10px] font-medium text-[#64748b] bg-[#f8fafc] px-2 py-0.5 rounded-lg shrink-0">
                       {user.city}
                     </span>
                   );
@@ -587,7 +587,7 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
                             {user.name}
                           </p>
                           {currentUser?.id === user.id && (
-                            <span className="text-[9px] bg-[#d4ff4a] text-[#0f172a] px-1 rounded-sm font-black">
+                            <span className="text-[9px] bg-[#d4ff4a] text-[#0f172a] px-1 rounded font-black">
                               Tú
                             </span>
                           )}
@@ -625,7 +625,7 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
             {activeUser ? (
               <>
                 {/* Profile Card Header */}
-                <div className="bg-white p-5 rounded-3xl border border-[#e2e8f0] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="bg-white p-5 rounded-2xl border border-[#e2e8f0] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-4">
                     <UserAvatar user={activeUser} size="2xl" />
                     <div>
@@ -680,7 +680,7 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
                 {isEditing ? (
                   <form
                     onSubmit={handleSaveProfile}
-                    className="bg-white p-5 sm:p-6 rounded-3xl border border-[#cbd5e1] shadow-sm space-y-4 animate-in fade-in duration-150"
+                    className="bg-white p-5 sm:p-6 rounded-2xl border border-[#cbd5e1] shadow-sm space-y-4 animate-in fade-in duration-150"
                   >
                     <div className="flex items-center justify-between pb-3 border-b border-[#f1f5f9]">
                       <div className="flex items-center gap-2">
@@ -820,7 +820,7 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
                     </div>
 
                     {/* DETAILED CARDS */}
-                    <div className="bg-white p-5 rounded-3xl border border-[#e2e8f0] shadow-xs space-y-4">
+                    <div className="bg-white p-5 rounded-2xl border border-[#e2e8f0] shadow-xs space-y-4">
                       {/* 1. Pasatiempos y Hobbies (Reales declarados) */}
                       <div className="flex items-start gap-3.5">
                         <div className="w-9 h-9 rounded-xl bg-[#ecfdf5] text-[#059669] flex items-center justify-center shrink-0 mt-0.5">

@@ -54,7 +54,7 @@ export const BandejaDelDiaWidget: React.FC<BandejaDelDiaWidgetProps> = ({
     : '⏱️ Sesiones Registradas';
 
   return (
-    <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-[#e2e8f0] shadow-xs space-y-5 sm:space-y-6">
+    <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-2xl border border-[#e2e8f0] shadow-xs space-y-5 sm:space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
@@ -135,7 +135,7 @@ export const BandejaDelDiaWidget: React.FC<BandejaDelDiaWidgetProps> = ({
                 >
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${
                         isInternal ? 'bg-[#f2ecfb] text-[#501f92]' : 'bg-[#eff6ff] text-[#2563eb]'
                       }`}>
                         {isInternal ? '🏢 Uhura Interno' : log.clientName}

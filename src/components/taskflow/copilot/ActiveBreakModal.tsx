@@ -1,28 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  X,
-  Play,
-  Pause,
-  RotateCcw,
-  ChevronRight,
-  ChevronLeft,
-  CheckCircle2,
-  Heart,
-  Droplets,
-  Eye,
-  Activity,
-  Wind,
-  Smile,
-  Sparkles
-} from 'lucide-react';
-import buckyCelebratingImg from '../../../assets/images/bucky_celebrating_cutout.png';
-import buckyFocusImg from '../../../assets/images/bucky_focus_cutout.png';
-import buckyRestingImg from '../../../assets/images/bucky_resting_cutout.png';
+import { X, Play, Pause, ChevronRight, ChevronLeft, Droplets, Eye, Activity, Smile, Sparkles } from 'lucide-react';
+import { useMascotImage } from '../mascot/ecoMascot';
 
 interface ActiveBreakModalProps {
   isOpen: boolean;
   onClose: () => void;
   onComplete?: () => void;
+  /** Posición junto a la mascota (la misma del panel de ECO). Sin ella, se ancla abajo a la derecha. */
+  style?: React.CSSProperties;
 }
 
 interface BreakExercise {
@@ -38,10 +23,10 @@ interface BreakExercise {
 const EXERCISES_3MIN: BreakExercise[] = [
   {
     id: 1,
-    title: 'Alivio Cervical y Cuello',
-    category: 'Cervical & Trapecios',
+    title: 'Alivio de cuello',
+    category: 'Cuello y trapecios',
     durationSec: 40,
-    icon: <Smile className="w-5 h-5 text-[#8a4dff]" />,
+    icon: <Smile className="w-5 h-5 text-[#c9b7ff]" />,
     instructions: [
       'Siéntate con la espalda recta y los pies firmes en el suelo.',
       'Inclina la cabeza lentamente hacia el hombro derecho durante 15 segundos.',
@@ -52,10 +37,10 @@ const EXERCISES_3MIN: BreakExercise[] = [
   },
   {
     id: 2,
-    title: 'Descanso Visual (Regla 20-20-20)',
-    category: 'Salud Ocular',
+    title: 'Descanso visual 20-20-20',
+    category: 'Ojos',
     durationSec: 30,
-    icon: <Eye className="w-5 h-5 text-[#0284c7]" />,
+    icon: <Eye className="w-5 h-5 text-[#7dd3fc]" />,
     instructions: [
       'Aparta la mirada de la pantalla por completo.',
       'Enfoca un objeto, ventana o punto lejano a más de 6 metros.',
@@ -66,10 +51,10 @@ const EXERCISES_3MIN: BreakExercise[] = [
   },
   {
     id: 3,
-    title: 'Apertura de Pecho y Hombros',
-    category: 'Movilidad Escapular',
+    title: 'Abre pecho y hombros',
+    category: 'Espalda alta',
     durationSec: 40,
-    icon: <Activity className="w-5 h-5 text-[#ea580c]" />,
+    icon: <Activity className="w-5 h-5 text-[#fdba74]" />,
     instructions: [
       'Entrelaza las manos detrás de la espalda si te es cómodo.',
       'Gira los hombros hacia atrás y hacia abajo en círculos lentos 5 veces.',
@@ -80,10 +65,10 @@ const EXERCISES_3MIN: BreakExercise[] = [
   },
   {
     id: 4,
-    title: 'Extensión de Muñecas y Dedos',
-    category: 'Ergonomía de Teclado & Mouse',
+    title: 'Muñecas y dedos',
+    category: 'Teclado y mouse',
     durationSec: 40,
-    icon: <Sparkles className="w-5 h-5 text-[#10b981]" />,
+    icon: <Sparkles className="w-5 h-5 text-[#6ee7b7]" />,
     instructions: [
       'Extiende el brazo derecho al frente con la palma hacia afuera y dedos hacia arriba.',
       'Con la mano izquierda, presiona suavemente los dedos hacia atrás 15 segundos.',
@@ -94,10 +79,10 @@ const EXERCISES_3MIN: BreakExercise[] = [
   },
   {
     id: 5,
-    title: 'Hidratación y Respiración Profunda',
-    category: 'Energía & Oxigenación',
+    title: 'Agua y respiración',
+    category: 'Energía',
     durationSec: 30,
-    icon: <Droplets className="w-5 h-5 text-[#2563eb]" />,
+    icon: <Droplets className="w-5 h-5 text-[#93c5fd]" />,
     instructions: [
       'Toma un buen vaso o termo de agua fresca y bebe con calma.',
       'Inhala profundo en 4 tiempos inflando el abdomen.',
@@ -108,19 +93,21 @@ const EXERCISES_3MIN: BreakExercise[] = [
   }
 ];
 
-export const ActiveBreakModal: React.FC<ActiveBreakModalProps> = ({
-  isOpen,
-  onClose,
-  onComplete
-}) => {
+/**
+ * Pausa activa guiada por ECO: una tarjeta que sale de la mascota (no un modal que tapa la
+ * pantalla). No bloquea nada, se puede cerrar con Esc y muestra un ejercicio a la vez.
+ */
+export const ActiveBreakModal: React.FC<ActiveBreakModalProps> = ({ isOpen, onClose, onComplete, style }) => {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [isRunning, setIsRunning] = useState(true);
   const [timeLeft, setTimeLeft] = useState(EXERCISES_3MIN[0].durationSec);
   const [isCompleted, setIsCompleted] = useState(false);
+  const completedRef = useRef(false);
 
   const currentExercise = EXERCISES_3MIN[currentStepIndex];
+  const buckyCelebratingImg = useMascotImage('celebrating');
+  const buckyRestingImg = useMascotImage('coffee');
 
-  // Sound chime helper
   const playStepChime = () => {
     try {
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
@@ -141,43 +128,25 @@ export const ActiveBreakModal: React.FC<ActiveBreakModalProps> = ({
     } catch {}
   };
 
-  // Reset timer on step change
-  useEffect(() => {
-    if (!isOpen) return;
-    setTimeLeft(currentExercise.durationSec);
-  }, [currentStepIndex, isOpen]);
+  const finish = () => {
+    setIsCompleted(true);
+    setIsRunning(false);
+    if (!completedRef.current) {
+      completedRef.current = true;
+      playStepChime();
+      onComplete?.();
+    }
+  };
 
-  // Main countdown loop
-  useEffect(() => {
-    if (!isOpen || !isRunning || isCompleted) return;
+  const goTo = (index: number) => {
+    setCurrentStepIndex(index);
+    setTimeLeft(EXERCISES_3MIN[index].durationSec);
+  };
 
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          // Advance to next step
-          if (currentStepIndex < EXERCISES_3MIN.length - 1) {
-            setCurrentStepIndex((s) => s + 1);
-            playStepChime();
-            return EXERCISES_3MIN[currentStepIndex + 1].durationSec;
-          } else {
-            // All exercises finished!
-            setIsCompleted(true);
-            setIsRunning(false);
-            playStepChime();
-            onComplete?.();
-            return 0;
-          }
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [isOpen, isRunning, currentStepIndex, isCompleted]);
-
-  // Reset when opening
+  // Reinicia al abrir
   useEffect(() => {
     if (isOpen) {
+      completedRef.current = false;
       setCurrentStepIndex(0);
       setIsRunning(true);
       setIsCompleted(false);
@@ -185,193 +154,177 @@ export const ActiveBreakModal: React.FC<ActiveBreakModalProps> = ({
     }
   }, [isOpen]);
 
+  // Cuenta regresiva
+  useEffect(() => {
+    if (!isOpen || !isRunning || isCompleted) return;
+    const timer = setInterval(() => setTimeLeft((prev) => Math.max(0, prev - 1)), 1000);
+    return () => clearInterval(timer);
+  }, [isOpen, isRunning, isCompleted]);
+
+  // Al llegar a cero, siguiente ejercicio o fin
+  useEffect(() => {
+    if (!isOpen || isCompleted || timeLeft > 0) return;
+    if (currentStepIndex < EXERCISES_3MIN.length - 1) {
+      playStepChime();
+      goTo(currentStepIndex + 1);
+    } else {
+      finish();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeLeft]);
+
+  // Esc cierra
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
-  const totalDuration = EXERCISES_3MIN.reduce((acc, e) => acc + e.durationSec, 0);
-  const elapsedSeconds =
-    EXERCISES_3MIN.slice(0, currentStepIndex).reduce((acc, e) => acc + e.durationSec, 0) +
-    (currentExercise.durationSec - timeLeft);
-  const overallProgress = Math.min(100, Math.round((elapsedSeconds / totalDuration) * 100));
+  const formatSeconds = (sec: number) => `${Math.floor(sec / 60)}:${(sec % 60).toString().padStart(2, '0')}`;
+  const stepProgress = 1 - timeLeft / currentExercise.durationSec;
+  const R = 22;
+  const C = 2 * Math.PI * R;
 
-  const formatSeconds = (sec: number) => {
-    const m = Math.floor(sec / 60);
-    const s = sec % 60;
-    return `${m}:${s.toString().padStart(2, '0')}`;
-  };
+  const position: React.CSSProperties = style ?? { position: 'fixed', right: 24, bottom: 180, width: 340, zIndex: 55 };
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200 select-none font-sans"
-      onClick={onClose}
+      role="dialog"
+      aria-label="Pausa activa con ECO"
+      style={position}
+      className="bg-[#140b24]/95 text-white rounded-2xl p-4 border border-[#8a4dff]/50 shadow-2xl backdrop-blur-xl animate-in zoom-in-95 duration-150 font-sans select-none overflow-y-auto"
     >
-      <div
-        className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-[#e2e8f0] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* HEADER */}
-        <div className="p-4 sm:p-5 bg-gradient-to-r from-[#2e1859] via-[#501f92] to-[#7c3aed] text-white flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <span className="text-xl">☕</span>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider bg-[#d4ff4a] text-[#0f172a] px-2 py-0.5 rounded-full">
-                  Pausa Activa Humana
-                </span>
-                <span className="text-xs text-white/80">3 minutos guiados</span>
-              </div>
-              <h3 className="text-sm font-black text-white mt-0.5">
-                Bienestar & Ergonomía en Orbit
-              </h3>
-            </div>
-          </div>
+      {/* Encabezado: ECO acompaña */}
+      <div className="flex items-center gap-3">
+        <img
+          src={isCompleted ? buckyCelebratingImg : buckyRestingImg}
+          alt=""
+          className="w-12 h-12 object-contain drop-shadow-md shrink-0"
+        />
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-bold text-[#d4ff4a]">Pausa activa · 3 min</p>
+          <p className="text-xs text-white/80 leading-snug">
+            {isCompleted ? '¡Lo lograste! Volvemos con energía.' : 'Hazlo conmigo, yo llevo el tiempo.'}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="p-1.5 rounded-lg hover:bg-white/10 text-white/60 hover:text-white cursor-pointer self-start"
+          title="Cerrar (Esc)"
+          aria-label="Cerrar pausa activa"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
 
+      {/* Progreso por ejercicio */}
+      <div className="flex gap-1 mt-3" aria-hidden="true">
+        {EXERCISES_3MIN.map((ex, i) => (
+          <div key={ex.id} className="h-1 flex-1 rounded-full bg-white/15 overflow-hidden">
+            <div
+              className="h-full bg-[#d4ff4a] transition-all duration-1000 ease-linear"
+              style={{ width: `${isCompleted || i < currentStepIndex ? 100 : i === currentStepIndex ? stepProgress * 100 : 0}%` }}
+            />
+          </div>
+        ))}
+      </div>
+
+      {isCompleted ? (
+        <div className="pt-4 space-y-3 text-center">
+          <p className="text-sm font-bold">Cuello, ojos y muñecas te lo agradecen 💜</p>
           <button
+            type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-all cursor-pointer"
-            title="Cerrar"
+            className="w-full py-2.5 rounded-xl bg-[#d4ff4a] hover:bg-[#c5f03a] text-[#140b24] text-xs font-bold cursor-pointer"
           >
-            <X className="w-4 h-4" />
+            Volver a lo mío
           </button>
         </div>
-
-        {/* PROGRESS BAR */}
-        <div className="w-full bg-[#f1f5f9] h-1.5">
-          <div
-            className="h-full bg-gradient-to-r from-[#8a4dff] to-[#d4ff4a] transition-all duration-300"
-            style={{ width: `${overallProgress}%` }}
-          />
-        </div>
-
-        {isCompleted ? (
-          /* COMPLETION CELEBRATION VIEW */
-          <div className="p-6 sm:p-8 text-center space-y-4">
-            <img
-              src={buckyCelebratingImg}
-              alt="Bucky Celebrando"
-              className="w-24 h-24 mx-auto object-contain drop-shadow-md"
-            />
-            <div className="space-y-1">
-              <span className="text-xs font-bold text-[#10b981] bg-[#ecfdf5] border border-[#a7f3d0] px-3 py-1 rounded-full uppercase tracking-wider">
-                ✓ ¡Pausa Completada con Éxito!
-              </span>
-              <h3 className="text-lg font-black text-[#0f172a] mt-2">
-                Cuerpo relajado, mente oxigenada
-              </h3>
-              <p className="text-xs text-[#64748b] max-w-sm mx-auto leading-relaxed">
-                Tus ojos, cuello y muñecas te lo agradecen. ¡Regresas a Orbit con mejor ritmo y energía saludable!
+      ) : (
+        <div className="pt-3 space-y-3">
+          {/* Ejercicio actual + tiempo */}
+          <div className="flex items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-semibold text-white/60 flex items-center gap-1.5">
+                <span className="shrink-0">{currentExercise.icon}</span>
+                {currentStepIndex + 1} de {EXERCISES_3MIN.length} · {currentExercise.category}
               </p>
+              <h4 className="text-sm font-bold mt-0.5">{currentExercise.title}</h4>
             </div>
-
-            <div className="pt-2">
-              <button
-                onClick={onClose}
-                className="w-full py-3 rounded-2xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold shadow-md cursor-pointer transition-all"
-              >
-                Volver a mis actividades
-              </button>
-            </div>
-          </div>
-        ) : (
-          /* ACTIVE EXERCISE VIEW */
-          <div className="p-5 sm:p-6 space-y-5">
-            {/* Step header + category */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-[#f5f3ff] text-[#501f92] font-black text-xs flex items-center justify-center border border-[#ddd6fe]">
-                  {currentStepIndex + 1}
-                </span>
-                <span className="text-xs font-bold text-[#64748b]">
-                  de {EXERCISES_3MIN.length} · {currentExercise.category}
-                </span>
-              </div>
-
-              {/* Step Countdown */}
-              <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
-                <span className="w-2 h-2 rounded-full bg-[#10b981] animate-ping" />
-                <span className="text-xs font-mono font-black text-[#0f172a]">
-                  {formatSeconds(timeLeft)}
-                </span>
-              </div>
-            </div>
-
-            {/* Exercise Title Card */}
-            <div className="p-4 rounded-2xl bg-[#fbf9ff] border border-[#ddd6fe] flex items-start gap-3.5">
-              <div className="w-10 h-10 rounded-xl bg-white border border-[#e2e8f0] flex items-center justify-center shrink-0 shadow-xs">
-                {currentExercise.icon}
-              </div>
-              <div>
-                <h4 className="text-sm font-black text-[#0f172a]">
-                  {currentExercise.title}
-                </h4>
-                <p className="text-[11px] text-[#7c3aed] font-medium mt-0.5">
-                  Beneficio: {currentExercise.benefit}
-                </p>
-              </div>
-            </div>
-
-            {/* Step Instructions */}
-            <div className="space-y-2 bg-[#f8fafc] p-4 rounded-2xl border border-[#e2e8f0]">
-              <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">
-                Cómo realizar este ejercicio:
+            <div className="relative w-14 h-14 shrink-0" aria-label={`Quedan ${formatSeconds(timeLeft)}`}>
+              <svg viewBox="0 0 56 56" className="w-14 h-14 -rotate-90">
+                <circle cx="28" cy="28" r={R} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="4" />
+                <circle
+                  cx="28"
+                  cy="28"
+                  r={R}
+                  fill="none"
+                  stroke="#d4ff4a"
+                  strokeWidth="4"
+                  strokeLinecap="round"
+                  strokeDasharray={C}
+                  strokeDashoffset={C * (1 - stepProgress)}
+                  className="transition-[stroke-dashoffset] duration-1000 ease-linear"
+                />
+              </svg>
+              <span className="absolute inset-0 flex items-center justify-center text-[11px] font-mono font-bold">
+                {formatSeconds(timeLeft)}
               </span>
-              <ul className="space-y-1.5 text-xs text-[#334155] leading-relaxed">
-                {currentExercise.instructions.map((inst, i) => (
-                  <li key={i} className="flex items-start gap-2">
-                    <span className="text-[#8a4dff] font-bold">•</span>
-                    <span>{inst}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* CONTROLS BAR */}
-            <div className="flex items-center justify-between pt-2 border-t border-[#f1f5f9]">
-              <button
-                disabled={currentStepIndex === 0}
-                onClick={() => setCurrentStepIndex((s) => Math.max(0, s - 1))}
-                className="px-3 py-1.5 rounded-xl border border-[#cbd5e1] text-xs font-semibold text-[#64748b] hover:bg-[#f1f5f9] disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1"
-              >
-                <ChevronLeft className="w-3.5 h-3.5" />
-                <span>Anterior</span>
-              </button>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setIsRunning(!isRunning)}
-                  className="px-4 py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold shadow-xs cursor-pointer flex items-center gap-1.5 transition-all"
-                >
-                  {isRunning ? (
-                    <>
-                      <Pause className="w-3.5 h-3.5" />
-                      <span>Pausar</span>
-                    </>
-                  ) : (
-                    <>
-                      <Play className="w-3.5 h-3.5" />
-                      <span>Reanudar</span>
-                    </>
-                  )}
-                </button>
-              </div>
-
-              <button
-                onClick={() => {
-                  if (currentStepIndex < EXERCISES_3MIN.length - 1) {
-                    setCurrentStepIndex((s) => s + 1);
-                    playStepChime();
-                  } else {
-                    setIsCompleted(true);
-                  }
-                }}
-                className="px-3 py-1.5 rounded-xl bg-[#f5f3ff] hover:bg-[#ede9fe] text-[#501f92] text-xs font-bold border border-[#ddd6fe] cursor-pointer flex items-center gap-1"
-              >
-                <span>{currentStepIndex === EXERCISES_3MIN.length - 1 ? 'Finalizar' : 'Siguiente'}</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
             </div>
           </div>
-        )}
-      </div>
+
+          <ol className="space-y-1.5 text-xs text-white/85 leading-relaxed">
+            {currentExercise.instructions.map((inst, i) => (
+              <li key={i} className="flex gap-2">
+                <span className="w-4 h-4 mt-0.5 rounded-full bg-white/10 text-[10px] font-bold flex items-center justify-center shrink-0">{i + 1}</span>
+                <span>{inst}</span>
+              </li>
+            ))}
+          </ol>
+          <p className="text-[11px] text-[#c9b7ff]">{currentExercise.benefit}</p>
+
+          {/* Controles */}
+          <div className="flex items-center gap-2 pt-1">
+            <button
+              type="button"
+              disabled={currentStepIndex === 0}
+              onClick={() => goTo(Math.max(0, currentStepIndex - 1))}
+              className="p-2 rounded-xl border border-white/15 text-white/70 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+              title="Ejercicio anterior"
+              aria-label="Ejercicio anterior"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsRunning(!isRunning)}
+              className="flex-1 py-2 rounded-xl bg-[#d4ff4a] hover:bg-[#c5f03a] text-[#140b24] text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              {isRunning ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+              {isRunning ? 'Pausar' : 'Reanudar'}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (currentStepIndex < EXERCISES_3MIN.length - 1) {
+                  playStepChime();
+                  goTo(currentStepIndex + 1);
+                } else {
+                  finish();
+                }
+              }}
+              className="px-3 py-2 rounded-xl border border-white/15 text-white text-xs font-bold hover:bg-white/10 cursor-pointer flex items-center gap-1"
+            >
+              {currentStepIndex === EXERCISES_3MIN.length - 1 ? 'Terminar' : 'Siguiente'}
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

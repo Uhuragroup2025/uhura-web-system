@@ -12,6 +12,7 @@ import React from 'react';
 import { ColonyChallenge, TeammateOption } from './types';
 import { Swords, X, RotateCcw, Clock, Plus, Play, CheckCircle2 } from 'lucide-react';
 import { playTapSound } from './coloniaAudio';
+import { COLONY_GAME_NAMES, challengeOutcomeFor, relativeTimeEs } from './coloniaEngine';
 
 interface ColoniaSocialInboxProps {
   isOpen: boolean;
@@ -110,9 +111,10 @@ export const ColoniaSocialInbox: React.FC<ColoniaSocialInboxProps> = ({
                           {ch.challengerName}
                         </h4>
                         <div className="text-[11px] text-[#c9b7ff] flex items-center gap-1 font-medium">
-                          <span>{ch.gameId === 'torre' ? '🌿 Torre de Cedro' : '⚡ Reflejos'}</span>
+                          <span>{COLONY_GAME_NAMES[ch.gameId]}</span>
                           <span>·</span>
                           <strong className="text-[#d4ff4a] font-mono">{ch.challengerScore} pts</strong>
+                          <span className="text-white/40">· {relativeTimeEs(ch.createdAt)}</span>
                         </div>
                       </div>
                     </div>
@@ -158,7 +160,7 @@ export const ColoniaSocialInbox: React.FC<ColoniaSocialInboxProps> = ({
                       <div className="truncate">
                         <span className="font-bold text-white truncate block">{ch.challengedName}</span>
                         <span className="text-[10px] text-white/50">
-                          {ch.gameId === 'torre' ? 'Torre de Cedro' : 'Reflejos'} · {ch.challengerScore} pts
+                          {COLONY_GAME_NAMES[ch.gameId]} · tus {ch.challengerScore} pts · {relativeTimeEs(ch.createdAt)}
                         </span>
                       </div>
                     </div>
@@ -174,7 +176,7 @@ export const ColoniaSocialInbox: React.FC<ColoniaSocialInboxProps> = ({
           {/* SECCIÓN 3: HISTORIAL & REVANCHAS */}
           <div className="space-y-2.5">
             <div className="flex items-center justify-between text-xs font-bold text-white/80 uppercase tracking-wider">
-              <span>🏆 Retos recientes & Revanchas</span>
+              <span>🏆 Resultados</span>
               <span className="text-white/50 font-mono">{historyChallenges.length}</span>
             </div>
 
@@ -185,21 +187,32 @@ export const ColoniaSocialInbox: React.FC<ColoniaSocialInboxProps> = ({
             ) : (
               <div className="space-y-1.5">
                 {historyChallenges.slice(0, 5).map((ch) => {
-                  const isWinner = ch.winnerUserId === activeUserId;
-                  const diff = Math.abs(ch.challengerScore - (ch.challengedScore || 0));
+                  const outcome = challengeOutcomeFor(ch, activeUserId);
+                  const iAmChallenger = ch.challengerUserId === activeUserId;
+                  const myScore = iAmChallenger ? ch.challengerScore : ch.challengedScore ?? 0;
+                  const rivalScore = iAmChallenger ? ch.challengedScore ?? 0 : ch.challengerScore;
+                  const rivalName = (iAmChallenger ? ch.challengedName : ch.challengerName).split(' ')[0];
+                  const headline =
+                    outcome === 'won'
+                      ? `Ganaste ${myScore} a ${rivalScore} contra ${rivalName}`
+                      : outcome === 'lost'
+                      ? `${rivalName} te ganó ${rivalScore} a ${myScore}`
+                      : `Empate ${myScore} a ${rivalScore} con ${rivalName}`;
 
                   return (
                     <div
                       key={ch.id}
-                      className="p-3 rounded-xl bg-white/5 border border-white/5 flex items-center justify-between gap-3 text-xs"
+                      className={`p-3 rounded-xl border flex items-center justify-between gap-3 text-xs ${
+                        outcome === 'won' ? 'bg-[#d4ff4a]/10 border-[#d4ff4a]/40' : 'bg-white/5 border-white/5'
+                      }`}
                     >
                       <div>
                         <div className="font-bold text-white flex items-center gap-1.5">
-                          <span>{isWinner ? '🏆' : '⚔️'}</span>
-                          <span>{ch.challengerName.split(' ')[0]} vs {ch.challengedName.split(' ')[0]}</span>
+                          <span>{outcome === 'won' ? '🏆' : outcome === 'lost' ? '😅' : '🤝'}</span>
+                          <span>{headline}</span>
                         </div>
-                        <span className="text-[10px] text-white/50 font-mono">
-                          {ch.challengerName.split(' ')[0]}: {ch.challengerScore} pts · {ch.challengedName.split(' ')[0]}: {ch.challengedScore} pts
+                        <span className="text-[10px] text-white/50">
+                          {COLONY_GAME_NAMES[ch.gameId]} · {relativeTimeEs(ch.completedAt)}
                         </span>
                       </div>
 

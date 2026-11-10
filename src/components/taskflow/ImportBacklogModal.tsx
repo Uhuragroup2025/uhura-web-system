@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { formatDateRange } from '../../utils/formatters';
 import { TaskItem, ProjectPhaseItem } from './types';
 import {
   X,
@@ -68,11 +69,11 @@ export const ImportBacklogModal: React.FC<ImportBacklogModalProps> = ({
           const fase = cols[0]?.trim() || (phases[0]?.name || 'Discovery');
           const frente = cols[1]?.trim() || 'General';
           const title = cols[2]?.trim() || `Actividad ${idx + 1}`;
-          const role = cols[3]?.trim() || 'Front End';
+          const role = cols[3]?.trim() || 'Front-End Dev';
           const assigneeName = cols[4]?.trim() || 'Laura Gómez';
           const hours = parseFloat(cols[5]?.trim() || '4') || 4;
-          const startDate = cols[6]?.trim() || '2026-09-01';
-          const dueDate = cols[7]?.trim() || '2026-09-15';
+          const startDate = cols[6]?.trim() || ''; // sin fecha en el archivo → sin fecha
+          const dueDate = cols[7]?.trim() || '';
           const dependency = cols[8]?.trim() || '';
 
           rows.push({
@@ -149,7 +150,7 @@ export const ImportBacklogModal: React.FC<ImportBacklogModalProps> = ({
       }}
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
     >
-      <div className="bg-white rounded-3xl w-full max-w-4xl overflow-hidden shadow-2xl border border-[#e2e8f0] flex flex-col max-h-[92vh]">
+      <div className="bg-white rounded-2xl w-full max-w-4xl overflow-hidden shadow-2xl border border-[#e2e8f0] flex flex-col max-h-[92vh]">
         {/* Header */}
         <div className="p-5 sm:p-6 border-b border-[#e2e8f0] flex items-center justify-between bg-[#f8fafc]">
           <div className="flex items-center gap-3">
@@ -257,7 +258,7 @@ export const ImportBacklogModal: React.FC<ImportBacklogModalProps> = ({
                         {r.budgetedHours}h
                       </td>
                       <td className="py-2 px-3 text-[10px] text-[#64748b]">
-                        {r.startDate} → {r.dueDate}
+                        {formatDateRange(r.startDate, r.dueDate)}
                       </td>
                       <td className="py-2 px-3 text-[10px] text-[#64748b] truncate max-w-[120px]">
                         {r.dependencyTaskTitle || '—'}

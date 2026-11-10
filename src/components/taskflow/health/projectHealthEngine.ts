@@ -30,14 +30,27 @@ const COLOMBIAN_HOLIDAYS_2026: Set<string> = new Set([
   '2026-11-02', // Todos los Santos
   '2026-11-16', // Independencia de Cartagena
   '2026-12-08', // Inmaculada Concepción
-  '2026-12-25'  // Navidad
+  '2026-12-25', // Navidad
+  // 2027 (cronogramas que cruzan de año). En backend: tabla de festivos por país/año.
+  '2027-01-01', '2027-01-11', '2027-03-22', '2027-03-25', '2027-03-26',
+  '2027-05-01', '2027-05-10', '2027-05-31', '2027-06-07', '2027-07-05',
+  '2027-07-20', '2027-08-07', '2027-08-16', '2027-10-18', '2027-11-01',
+  '2027-11-15', '2027-12-08', '2027-12-25'
 ]);
+
+/** Próximo festivo (Colombia) desde una fecha ISO, o null si no hay en el calendario cargado. */
+export function nextColombianHoliday(fromIso: string): string | null {
+  const next = Array.from(COLOMBIAN_HOLIDAYS_2026).sort().find((d) => d >= fromIso);
+  return next || null;
+}
 
 /**
  * Determina si una fecha dada es un día hábil (lunes a viernes, no festivo).
  */
+// Las fechas ISO (YYYY-MM-DD) se parsean como medianoche UTC: toda la aritmética de días
+// se hace en UTC para no desplazar un día en zonas horarias negativas (Colombia UTC-5).
 export function isBusinessDay(date: Date): boolean {
-  const day = date.getDay();
+  const day = date.getUTCDay();
   if (day === 0 || day === 6) return false; // Fin de semana
   const isoStr = date.toISOString().slice(0, 10);
   if (COLOMBIAN_HOLIDAYS_2026.has(isoStr)) return false;
@@ -57,13 +70,13 @@ export function calculateBusinessDays(startDateStr: string, endDateStr: string):
 
   let count = 0;
   const current = new Date(start);
-  current.setDate(current.getDate() + 1);
+  current.setUTCDate(current.getUTCDate() + 1);
 
   while (current <= end) {
     if (isBusinessDay(current)) {
       count++;
     }
-    current.setDate(current.getDate() + 1);
+    current.setUTCDate(current.getUTCDate() + 1);
   }
 
   return count;
@@ -77,7 +90,7 @@ export function addBusinessDays(startDateStr: string, daysToAdd: number): string
   const current = new Date(startDateStr);
   let added = 0;
   while (added < daysToAdd) {
-    current.setDate(current.getDate() + 1);
+    current.setUTCDate(current.getUTCDate() + 1);
     if (isBusinessDay(current)) {
       added++;
     }

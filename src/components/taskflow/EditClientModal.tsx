@@ -191,7 +191,7 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
         contactRole: primaryContact?.roleTitle || client.commercialInfo?.contactRole || 'Contacto',
         contactEmail: primaryContact?.email || client.commercialInfo?.contactEmail || '',
         contactPhone: primaryContact?.phone || client.commercialInfo?.contactPhone || '',
-        clientSince: client.commercialInfo?.clientSince || 'Hoy',
+        clientSince: client.commercialInfo?.clientSince || '',
         brands: brands.length > 0 ? brands : (client.commercialInfo?.brands || [name.trim()]),
         tier: client.commercialInfo?.tier
       }
@@ -216,7 +216,7 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
               <Building2 className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="font-extrabold text-base text-[#0f172a]">Editar Cuenta de Cliente</h2>
+              <h2 className="font-extrabold text-base text-[#0f172a]">Editar cuenta del cliente</h2>
               <p className="text-xs text-[#64748b]">
                 {client.name} {client.isInternal && '• Cliente Interno Uhura Group'}
               </p>
@@ -240,7 +240,7 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
                 <span>1. Marca Sombrilla / Cuenta Operativa</span>
               </h3>
               {client.isInternal && (
-                <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-[#f2ecfb] text-[#501f92] border border-[#8a4dff]/20">
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg bg-[#f2ecfb] text-[#501f92] border border-[#8a4dff]/20">
                   Cuenta Interna Protegida
                 </span>
               )}
@@ -369,7 +369,7 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
                         <button
                           type="button"
                           onClick={() => handleTogglePrimaryTax(tax.id)}
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold cursor-pointer transition-colors ${
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-bold cursor-pointer transition-colors ${
                             tax.isPrimary
                               ? 'bg-[#501f92] text-white'
                               : 'bg-white text-[#64748b] border border-[#cbd5e1] hover:text-[#501f92]'
@@ -384,7 +384,7 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
                       <button
                         type="button"
                         onClick={() => handleRemoveTaxEntity(tax.id)}
-                        className="p-1 rounded-md text-[#94a3b8] hover:text-[#ef4444] hover:bg-[#fee2e2] transition-colors cursor-pointer"
+                        className="p-1 rounded-lg text-[#94a3b8] hover:text-[#ef4444] hover:bg-[#fee2e2] transition-colors cursor-pointer"
                         title="Eliminar razón social (no reasigna automáticamente)"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -497,7 +497,7 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
                       <button
                         type="button"
                         onClick={() => handleTogglePrimaryContact(contact.id)}
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold cursor-pointer transition-colors ${
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-bold cursor-pointer transition-colors ${
                           contact.isPrimary
                             ? 'bg-[#501f92] text-white'
                             : 'bg-white text-[#64748b] border border-[#cbd5e1] hover:text-[#501f92]'
@@ -512,7 +512,7 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
                     <button
                       type="button"
                       onClick={() => handleRemoveContact(contact.id)}
-                      className="p-1 rounded-md text-[#94a3b8] hover:text-[#ef4444] hover:bg-[#fee2e2] transition-colors cursor-pointer"
+                      className="p-1 rounded-lg text-[#94a3b8] hover:text-[#ef4444] hover:bg-[#fee2e2] transition-colors cursor-pointer"
                       title="Eliminar contacto"
                     >
                       <Trash2 className="w-3.5 h-3.5" />

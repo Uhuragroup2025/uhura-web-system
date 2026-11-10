@@ -1,14 +1,14 @@
-# Orbit · Guía de Arquitectura Evolutiva: People Master
+# ECO · Guía de Arquitectura Evolutiva: People Master
 
 > **ESTADO DE ESTE DOCUMENTO:** Documento de Arquitectura y Visión de Producto Futura.
 > **DESTINATARIO TÉCNICO:** Indunova (Backend Django REST Framework / PostgreSQL) y Equipo de Producto Uhura Group.
-> **ALCANCE Y BLOQUEO:** Este documento define el modelo conceptual hacia el cual evolucionará la gestión de personas en Orbit en fases posteriores. **NO hace parte del alcance actual y NO bloquea la integración frontend ↔ backend del core operativo en curso.**
+> **ALCANCE Y BLOQUEO:** Este documento define el modelo conceptual hacia el cual evolucionará la gestión de personas en ECO en fases posteriores. **NO hace parte del alcance actual y NO bloquea la integración frontend ↔ backend del core operativo en curso.**
 
 ---
 
 ## 1. Contexto y Decisión Arquitectónica
 
-Orbit se encuentra cerrando la integración técnica de su core operativo (Proyectos, Tareas, New Business, Capacidad, Staffing, Time Tracking y Mi Día). El perfil de colaborador actual (`UserProfile` en backend / `UserItem` en frontend) cubre con suficiencia la identidad operativa, la jerarquía, la matriz RBAC, las fechas clave y el avatar.
+ECO se encuentra cerrando la integración técnica de su core operativo (Proyectos, Tareas, New Business, Capacidad, Staffing, Time Tracking y Mi Día). El perfil de colaborador actual (`UserProfile` en backend / `UserItem` en frontend) cubre con suficiencia la identidad operativa, la jerarquía, la matriz RBAC, las fechas clave y el avatar.
 
 A partir del análisis de la base administrativa de gestión humana de Uhura Group, se identifica la oportunidad de evolucionar a futuro hacia un **People Master** integral. Sin embargo, para preservar la agilidad, la estabilidad de los contratos de API y la privacidad de datos sensibles, se adopta la siguiente directriz arquitectónica:
 
@@ -133,7 +133,7 @@ Los siguientes datos tienen carácter confidencial y restringido:
 5. **Protección en Reposo y Auditoría:**
    Los datos sensibles deberán contar con controles reforzados de acceso, auditoría y protección en reposo. La estrategia técnica definitiva de persistencia y cifrado se definirá de manera concertada con los equipos de backend e infraestructura antes de iniciar la implementación de People Master.
 6. **Criterio de Necesidad Funcional en SST:**
-   No se debe asumir que toda la información existente en las bases administrativas actuales deba migrarse a Orbit. La inclusión futura de datos de SST o registros ocupacionales dependerá de una justificación funcional clara, de la legislación aplicable y de las políticas de privacidad de Uhura Group.
+   No se debe asumir que toda la información existente en las bases administrativas actuales deba migrarse a ECO. La inclusión futura de datos de SST o registros ocupacionales dependerá de una justificación funcional clara, de la legislación aplicable y de las políticas de privacidad de Uhura Group.
 
 ---
 

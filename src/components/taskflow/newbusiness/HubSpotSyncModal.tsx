@@ -84,7 +84,7 @@ export const HubSpotSyncModal: React.FC<HubSpotSyncModalProps> = ({
       onClick={onClose}
     >
       <div
-        className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-[#e2e8f0] overflow-hidden flex flex-col max-h-[92vh]"
+        className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-[#e2e8f0] overflow-hidden flex flex-col max-h-[92vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -250,7 +250,7 @@ export const HubSpotSyncModal: React.FC<HubSpotSyncModalProps> = ({
             className="px-6 py-2.5 rounded-xl bg-[#ff5c35] hover:bg-[#ea580c] text-white text-xs font-bold shadow-md shadow-[#ff5c35]/20 transition-all cursor-pointer flex items-center gap-2 hover:scale-[1.01]"
           >
             <RefreshCw className={`w-4 h-4 text-white ${isSyncing ? 'animate-spin' : ''}`} />
-            <span>Sincronizar cambios a Orbit →</span>
+            <span>Sincronizar cambios a ECO →</span>
           </button>
         </div>
       </div>

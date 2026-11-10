@@ -62,20 +62,24 @@ export const ROLE_PERMISSIONS_MATRIX: Record<
     'clientes': { allowedActions: ['view', 'create', 'edit'], scope: 'accounts' },
     'new-business': { allowedActions: ['view', 'create', 'edit'], scope: 'accounts' },
     'plantillas-producto': { allowedActions: ['view', 'create', 'edit'], scope: 'all' },
-    'la-colonia': { allowedActions: ['view', 'edit'], scope: 'own' }
+    'la-colonia': { allowedActions: ['view', 'edit'], scope: 'own' },
+    'direccion-finanzas': { allowedActions: ['view'], scope: 'all' }
   },
 
   // D. DIRECTORA COMERCIAL
   commercial: {
     'mi-dia': { allowedActions: ['view', 'edit'], scope: 'own' },
     'proyectos': { allowedActions: ['view'], scope: 'all' },
-    'tareas': { allowedActions: ['view'], scope: 'assigned' },
+    // #145 (en producción, orbit-00092-jns): crea tareas en proyectos y las actualiza (comentarios,
+    // @menciones, adjuntos, horas, cronograma, estado). No reasigna personas.
+    'tareas': { allowedActions: ['view', 'create', 'edit'], scope: 'all' },
     'timesheets': { allowedActions: ['view', 'create', 'edit'], scope: 'own' },
     'capacidad': { allowedActions: ['view'], scope: 'all' },
     'clientes': { allowedActions: ['view', 'create', 'edit'], scope: 'all' },
     'new-business': { allowedActions: ['view', 'create', 'edit', 'approve'], scope: 'all' },
     'plantillas-producto': { allowedActions: ['view', 'create', 'edit'], scope: 'all' },
-    'la-colonia': { allowedActions: ['view', 'edit'], scope: 'own' }
+    'la-colonia': { allowedActions: ['view', 'edit'], scope: 'own' },
+    'direccion-finanzas': { allowedActions: ['view', 'edit'], scope: 'all' }
   },
 
   // E. ADMINISTRATIVA (Vivian / Fiscal / Facturación)
@@ -87,7 +91,8 @@ export const ROLE_PERMISSIONS_MATRIX: Record<
     'capacidad': { allowedActions: ['view'], scope: 'all' },
     'clientes': { allowedActions: ['view', 'edit'], scope: 'all' },
     'new-business': { allowedActions: ['view', 'edit'], scope: 'all' },
-    'la-colonia': { allowedActions: ['view', 'edit'], scope: 'own' }
+    'la-colonia': { allowedActions: ['view', 'edit'], scope: 'own' },
+    'costos-operacion': { allowedActions: ['view', 'create', 'edit'], scope: 'all' }
   },
 
   // F. CEO / DIRECCIÓN (Lectura transversal - No superusuario operativo)
@@ -101,7 +106,9 @@ export const ROLE_PERMISSIONS_MATRIX: Record<
     'new-business': { allowedActions: ['view', 'create', 'edit'], scope: 'all' },
     'plantillas-producto': { allowedActions: ['view', 'create', 'edit'], scope: 'all' },
     'la-colonia': { allowedActions: ['view', 'edit'], scope: 'own' },
-    'administracion': { allowedActions: ['view'], scope: 'all' }
+    'costos-operacion': { allowedActions: ['view'], scope: 'all' },
+    'administracion': { allowedActions: ['view'], scope: 'all' },
+    'direccion-finanzas': { allowedActions: ['view', 'edit'], scope: 'all' }
   },
 
   // G. ADMIN DE SISTEMA
@@ -115,7 +122,9 @@ export const ROLE_PERMISSIONS_MATRIX: Record<
     'new-business': { allowedActions: ['view', 'create', 'edit', 'administer'], scope: 'all' },
     'plantillas-producto': { allowedActions: ['view', 'create', 'edit', 'administer'], scope: 'all' },
     'la-colonia': { allowedActions: ['view', 'edit'], scope: 'own' },
-    'administracion': { allowedActions: ['view', 'create', 'edit', 'administer'], scope: 'all' }
+    'costos-operacion': { allowedActions: ['view', 'create', 'edit', 'administer'], scope: 'all' },
+    'administracion': { allowedActions: ['view', 'create', 'edit', 'administer'], scope: 'all' },
+    'direccion-finanzas': { allowedActions: ['view', 'edit', 'administer'], scope: 'all' }
   },
 
   // ESTADO TRANSITORIO: 'pending'
@@ -129,7 +138,7 @@ export const ROLE_PERMISSIONS_MATRIX: Record<
 };
 
 /**
- * Mapeo de vistas de la UI (OrbitView) a módulos canónicos de Orbit (OrbitModule).
+ * Mapeo de vistas de la UI (OrbitView) a módulos canónicos de ECO (OrbitModule).
  */
 export function viewToModule(view: OrbitView | string): OrbitModule {
   switch (view) {
@@ -147,11 +156,15 @@ export function viewToModule(view: OrbitView | string): OrbitModule {
     case 'clientes':
       return 'clientes';
     case 'finanzas':
+      return 'direccion-finanzas';
     case 'new-business':
     case 'cotizador':
       return 'new-business';
     case 'plantillas-producto':
       return 'plantillas-producto';
+    case 'hardware':
+    case 'licencias':
+      return 'costos-operacion';
     case 'la-colonia':
     case 'el-muro':
       return 'la-colonia';
@@ -176,7 +189,7 @@ export function getUserAccessLevel(user: UserItem | null | undefined): OrbitAcce
 }
 
 /**
- * Determina si un usuario tiene acceso de lectura (view) a un módulo de Orbit.
+ * Determina si un usuario tiene acceso de lectura (view) a un módulo de ECO.
  * Usado por el Sidebar para visibilidad y por los Guards de navegación.
  */
 export function canAccessModule(
@@ -205,6 +218,8 @@ function isOrbitModule(val: string): val is OrbitModule {
     'new-business',
     'plantillas-producto',
     'la-colonia',
+    'costos-operacion',
+    'direccion-finanzas',
     'administracion'
   ];
   return modules.includes(val as OrbitModule);

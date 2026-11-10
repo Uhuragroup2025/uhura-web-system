@@ -123,7 +123,7 @@ export const DireccionFinanzasView: React.FC<DireccionFinanzasViewProps> = ({
     return billedFromClients > 0 ? billedFromClients : 165000000; // $165M COP en fees base
   }, [clients]);
 
-  // TOTAL COMERCIAL CALCULADO POR ORBIT PARA EL MES SELECCIONADO
+  // TOTAL COMERCIAL CALCULADO POR ECO PARA EL MES SELECCIONADO
   const computedCommercialForSelectedMonthCOP = useMemo(() => {
     if (selectedMonth === '2026-01') return 365000000;
     if (selectedMonth === '2026-02') return 340000000;
@@ -369,7 +369,7 @@ export const DireccionFinanzasView: React.FC<DireccionFinanzasViewProps> = ({
       </div>
 
       {/* 2. BLOQUE 1: PANEL COMERCIAL (META ANUAL + TIRA DE MESES + CONTRASTE MES VS YTD) */}
-      <div className="bg-white rounded-3xl border border-[#e2e8f0] p-4 sm:p-6 shadow-xs space-y-5">
+      <div className="bg-white rounded-2xl border border-[#e2e8f0] p-4 sm:p-6 shadow-xs space-y-5">
         {/* Cabecera del Bloque: Título y Configuración de Meta Anual */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#f1f5f9]">
           <div className="flex items-center gap-2.5">
@@ -480,7 +480,7 @@ export const DireccionFinanzasView: React.FC<DireccionFinanzasViewProps> = ({
                     </span>
                   ) : (
                     <span
-                      className={`inline-block text-[9px] font-black px-1 rounded-sm mt-0.5 ${
+                      className={`inline-block text-[9px] font-black px-1 rounded mt-0.5 ${
                         isSuccess
                           ? 'bg-[#d1fae5] text-[#065f46]'
                           : isWarning
@@ -540,7 +540,7 @@ export const DireccionFinanzasView: React.FC<DireccionFinanzasViewProps> = ({
                         type="button"
                         onClick={handleResetMonthCommercial}
                         className="text-[9px] text-[#501f92] hover:underline flex items-center gap-0.5 cursor-pointer"
-                        title="Restaurar al cálculo automático de Orbit"
+                        title="Restaurar al cálculo automático de ECO"
                       >
                         <RotateCcw className="w-2.5 h-2.5" />
                         <span>Auto</span>
@@ -592,7 +592,7 @@ export const DireccionFinanzasView: React.FC<DireccionFinanzasViewProps> = ({
                   )}
 
                   <span className="text-[9px] text-[#8a4dff] block mt-0.5 truncate">
-                    {isManuallyAdjusted ? 'Ajustado por Dirección' : 'Cálculo automático Orbit'}
+                    {isManuallyAdjusted ? 'Ajustado por Dirección' : 'Cálculo automático ECO'}
                   </span>
                 </div>
 
@@ -727,7 +727,7 @@ export const DireccionFinanzasView: React.FC<DireccionFinanzasViewProps> = ({
       {/* 3. FILA DE 2 COLUMNAS: TOP CLIENTES (CLICKEABLE) Y PROYECTOS SEMÁFORO (CLICKEABLE) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6">
         {/* BLOQUE 2: TOP CLIENTES ACTIVOS (5 cols) - CLICKEABLE */}
-        <div className="lg:col-span-5 bg-white rounded-3xl border border-[#e2e8f0] p-4 sm:p-6 shadow-xs flex flex-col justify-between">
+        <div className="lg:col-span-5 bg-white rounded-2xl border border-[#e2e8f0] p-4 sm:p-6 shadow-xs flex flex-col justify-between">
           <div>
             <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-[#f1f5f9] mb-4">
               <div className="flex items-center gap-2">
@@ -809,7 +809,7 @@ export const DireccionFinanzasView: React.FC<DireccionFinanzasViewProps> = ({
         </div>
 
         {/* BLOQUE 3: PROYECTOS · SEMÁFORO DE CONSUMO (7 cols) - CLICKEABLE */}
-        <div className="lg:col-span-7 bg-white rounded-3xl border border-[#e2e8f0] p-4 sm:p-6 shadow-xs flex flex-col justify-between">
+        <div className="lg:col-span-7 bg-white rounded-2xl border border-[#e2e8f0] p-4 sm:p-6 shadow-xs flex flex-col justify-between">
           <div>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-[#f1f5f9] mb-4">
               <div className="flex items-center gap-2">

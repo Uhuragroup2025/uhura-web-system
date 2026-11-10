@@ -57,7 +57,7 @@ export const AssistedTimerRecoveryModal: React.FC<AssistedTimerRecoveryModalProp
     >
       <div
         id="assisted-timer-recovery-modal"
-        className="bg-white rounded-3xl shadow-2xl border border-[#e2e8f0] w-full max-w-lg overflow-hidden flex flex-col animate-in zoom-in-95 duration-150"
+        className="bg-white rounded-2xl shadow-2xl border border-[#e2e8f0] w-full max-w-lg overflow-hidden flex flex-col animate-in zoom-in-95 duration-150"
       >
         {/* Header con advertencia clara */}
         <div className="px-6 py-4 bg-[#0f172a] text-white flex items-center justify-between border-b border-[#334155]">
@@ -88,7 +88,7 @@ export const AssistedTimerRecoveryModal: React.FC<AssistedTimerRecoveryModalProp
                 Tu timer lleva {currentElapsedHours}h activo en &ldquo;{activeTimer.taskTitle}&rdquo;
               </p>
               <p className="leading-relaxed">
-                Parece que pudo quedar encendido por error tras concluir tu sesión de trabajo. En Orbit protegemos la exactitud de los costos reales sin imponer cortes automáticos arbitrarios.
+                Parece que pudo quedar encendido por error tras concluir tu sesión de trabajo. En ECO protegemos la exactitud de los costos reales sin imponer cortes automáticos arbitrarios.
               </p>
             </div>
           </div>
@@ -240,7 +240,7 @@ export const AssistedTimerRecoveryModal: React.FC<AssistedTimerRecoveryModalProp
             className="px-5 py-2.5 rounded-xl bg-[#501f92] hover:bg-[#43197a] text-white text-xs font-bold transition-all shadow-sm flex items-center gap-2 cursor-pointer"
           >
             <Check className="w-4 h-4 text-[#d4ff4a]" />
-            <span>Confirmar y Guardar</span>
+            <span>Confirmar y guardar</span>
           </button>
         </div>
       </div>

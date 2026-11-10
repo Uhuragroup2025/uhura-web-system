@@ -1,10 +1,10 @@
 /**
  * ============================================================================
- * LA COLONIA · TYPES & DATA STRUCTURES (ORBIT BY UHURA)
+ * LA COLONIA · TYPES & DATA STRUCTURES (ECO BY UHURA)
  * ============================================================================
  * 
  * Principio de Producto:
- * "Orbit no mide compromiso por cantidad de horas trabajadas. Mide claridad
+ * "ECO no mide compromiso por cantidad de horas trabajadas. Mide claridad
  *  operativa, cumplimiento de lo asignado y capacidad de anticipar riesgos."
  */
 
@@ -83,7 +83,7 @@ export type ColonyGameId = 'torre' | 'nenufar';
  *    NO se debe asumir que requiere una tabla física propia en base de datos.
  * 
  * 4. Notificaciones del Sistema:
- *    El sistema central de notificaciones de Orbit (in-app / campana) es el requisito
+ *    El sistema central de notificaciones de ECO (in-app / campana) es el requisito
  *    funcional para conectar los avisos de reto (recibido, superado o completado) una vez
  *    el backend esté disponible. Las notificaciones push quedan como capacidad evolutiva
  *    futura, no como dependencia actual.

@@ -1,11 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import beaverMascotImg from '../../assets/images/orbit_mascot_cutout.png';
-import buckyHoodieHappyImg from '../../assets/images/bucky_hip_uhura_v3.png';
-import buckyWavingImg from '../../assets/images/bucky_waving_cutout.png';
-import buckyCelebratingImg from '../../assets/images/bucky_celebrating_cutout.png';
-import buckyAlertImg from '../../assets/images/bucky_alert_cutout.png';
-import buckyRestingImg from '../../assets/images/bucky_resting_cutout.png';
-import buckyFocusImg from '../../assets/images/bucky_focus_cutout.png';
 import {
   Flame,
   Zap,
@@ -48,15 +41,36 @@ import { UhuraLogo } from '../ui/UhuraLogo';
 import { processTeamLifeEvents, resolveBuckyTeamLifeSpeech } from './copilot/teamLifeEngine';
 import { TeamLifeEventsModal } from './copilot/TeamLifeEventsModal';
 import { ActiveBreakModal } from './copilot/ActiveBreakModal';
-import { TeamHumanProfileModal } from './copilot/TeamHumanProfileModal';
 import { initialUsers, initialAbsenceEvents } from './mockData';
+import { Snowfall } from './seasonal/christmasMode';
+import { useMascotSkin, setMascotSkin, setSnowEnabled, mascotImage, EcoEmotion, MascotSkin, MASCOT_SKIN_LABEL, ambientMoodsFor, EcoAmbientMoodDef } from './mascot/ecoMascot';
+import { isScheduledForDay, makeTaskComparator, taskScheduleDate } from './auth/taskVisibility';
+import { getUserAccessLevel } from './auth/permissions';
+import { isBusinessDay } from './health/projectHealthEngine';
+import { makePersonMatcher, isTaskOwner } from './auth/taskVisibility';
+
+/** Cuánto dura cada emoción antes de volver a la cara normal (ms). Las que no están no expiran: 'ok' es el estado base y 'focus' dura lo que dure el cronómetro. */
+const EXPRESSION_MS: Partial<Record<EcoEmotion, number>> = {
+  celebrating: 12_000,
+  surprised: 45_000,
+  sad: 45_000,
+  worried: 30_000,
+  thinking: 15_000,
+  coffee: 20_000
+};
+/** Si el motivo de un aviso sigue vigente, ECO lo vuelve a recordar cada 30 minutos. */
+const ALERT_RENUDGE_MS = 30 * 60 * 1000;
 
 interface FloatingBeaverWidgetProps {
   loggedHoursToday: number;
   targetDayHours?: number;
   onQuickLogHours?: (hours: number, label: string, category?: 'client' | 'internal', projectName?: string) => void;
   onNavigateToView: (view: OrbitView) => void;
+  /** @deprecated la racha real vive en dayStreak.ts y se muestra en Mi Día. */
   streakDays?: number;
+  /** Cierre del día con ECO */
+  isDayClosedToday?: boolean;
+  onOpenDayClose?: () => void;
   tasks?: TaskItem[];
   users?: UserItem[];
   absenceEvents?: TeamAbsenceEvent[];
@@ -333,12 +347,18 @@ const playChime = (type: 'feed' | 'tickle' | 'pop' | 'celebrate' | 'wave' | 'yaw
   }
 };
 
-export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
+interface FloatingBeaverCoreProps extends FloatingBeaverWidgetProps {
+  onPowerOff: () => void;
+  greetOnMount?: boolean;
+}
+
+const FloatingBeaverCore: React.FC<FloatingBeaverCoreProps> = ({
   loggedHoursToday,
   targetDayHours = 8.0,
   onQuickLogHours,
   onNavigateToView,
-  streakDays = 6,
+  isDayClosedToday = false,
+  onOpenDayClose,
   tasks = [],
   users,
   absenceEvents,
@@ -347,13 +367,10 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
   onPauseResumeTimer,
   onStopTimer,
   onUpdateUser,
-  currentUser
+  currentUser,
+  onPowerOff,
+  greetOnMount = false
 }) => {
-  // Bucky se oculta dentro de La Colonia
-  if (currentView === 'la-colonia') {
-    return null;
-  }
-
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
@@ -375,55 +392,18 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
   const [isBuckyLabOpen, setIsBuckyLabOpen] = useState(false);
   const [isTeamLifeModalOpen, setIsTeamLifeModalOpen] = useState(false);
   const [isBreakModalOpen, setIsBreakModalOpen] = useState(false);
-  const [isHumanProfileModalOpen, setIsHumanProfileModalOpen] = useState(false);
 
-  // Switch de apagar / activar mascota Bucky
-  const [isBuckyDisabled, setIsBuckyDisabled] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem('orbit_bucky_disabled') === 'true';
-    } catch {
-      return false;
-    }
-  });
-
-  const handleToggleBuckyPower = () => {
-    const next = !isBuckyDisabled;
-    setIsBuckyDisabled(next);
-    try {
-      localStorage.setItem('orbit_bucky_disabled', String(next));
-    } catch {}
-    if (!next) {
-      // Al activarlo: salir con mood saludando, feliz y amigable
-      setIsOpen(false);
-      setCurrentAction('wave');
-      setSpeechBubbleText('¡Hola! 👋 ¡Qué gusto volver a verte! Todo tranquilo por aquí 🦫');
-      if (soundEnabled) playChime('wave');
-      setTimeout(() => {
-        setSpeechBubbleText(null);
-        setCurrentAction('idle');
-      }, 4000);
-    }
-  };
-
-  // Si Bucky está apagado por switch de usuario, renderizar únicamente la pildorita discreta para restaurarlo
-  if (isBuckyDisabled) {
-    return (
-      <button
-        type="button"
-        onClick={handleToggleBuckyPower}
-        className="fixed bottom-4 right-4 z-40 flex items-center gap-2 px-3 py-2 rounded-2xl bg-[#140b24]/90 hover:bg-[#261845] text-white border border-[#8a4dff]/40 shadow-xl backdrop-blur-md text-xs font-bold transition-all cursor-pointer hover:scale-105"
-        title="Haz clic para activar a Bucky"
-      >
-        <span className="text-base">🦫</span>
-        <span className="text-xs">Activar Bucky</span>
-      </button>
-    );
-  }
+  // Apagar la mascota: lo maneja el contenedor (FloatingBeaverWidget) para no romper el orden de hooks.
+  const handleToggleBuckyPower = () => onPowerOff();
+  // Apariencia de la mascota: la define system_admin para toda la organización (por defecto, Navidad).
+  const { skin, snow } = useMascotSkin();
+  const christmas = skin === 'christmas';
+  const isSystemAdmin = currentUser ? getUserAccessLevel(currentUser) === 'system_admin' : false;
 
   // Procesar eventos de equipo para el copiloto humano/operativo
   const effectiveUsers = users && users.length > 0 ? users : initialUsers;
   const effectiveAbsences = absenceEvents && absenceEvents.length > 0 ? absenceEvents : initialAbsenceEvents;
-  const teamLifeResult = processTeamLifeEvents(effectiveUsers, new Date(2026, 8, 16), effectiveAbsences);
+  const teamLifeResult = processTeamLifeEvents(effectiveUsers, new Date(), effectiveAbsences);
 
   // Live timer seconds tracking
   const [liveTimerSeconds, setLiveTimerSeconds] = useState(activeTimer?.elapsedSeconds || 0);
@@ -495,11 +475,40 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
   // Cooldown and sound deduplication
   const hasAlertedOvertimeRef = useRef(false);
 
-  // Resolved central Bucky state
+  // Resolved central ECO state
+  // Contexto emocional: siempre con las tareas propias (el contenedor ya las filtró).
+  const todayIsoMascot = new Date().toISOString().slice(0, 10);
   const criticalOvertimeTasks = tasks.filter(
-    (t) => (t.consumedSeconds || 0) > (t.budgetedHours || 0) * 3600
+    (t) => !t.completed && (t.budgetedHours || 0) > 0 && (t.consumedSeconds || 0) > (t.budgetedHours || 0) * 3600
   );
-  const allTasksDone = tasks.length > 0 && tasks.every((t) => t.status === 'Done' || t.completed);
+  const todayTasks = tasks.filter((t) => isScheduledForDay(t, todayIsoMascot));
+  const overdueTasks = tasks.filter((t) => {
+    const d = taskScheduleDate(t);
+    return !t.completed && Boolean(d && d < todayIsoMascot);
+  });
+  const allTasksDone = todayTasks.length > 0 && todayTasks.every((t) => t.status === 'Done' || t.completed);
+  const plannedTodayHours = todayTasks.filter((t) => !t.completed).reduce((sum, t) => sum + (t.budgetedHours || 0), 0);
+  const nextTask = todayTasks.length === 0
+    ? tasks.filter((t) => !t.completed).sort(makeTaskComparator(todayIsoMascot))[0]
+    : undefined;
+  // Recordatorio de horas: día hábil, sin ausencia hoy y desde las 4:00 p. m.
+  const myAbsentToday = (absenceEvents && absenceEvents.length > 0 ? absenceEvents : initialAbsenceEvents).some(
+    (a) => a.userId === currentUser?.id && a.status === 'active' && a.startDate <= todayIsoMascot && todayIsoMascot <= (a.endDate || a.startDate)
+  );
+  const nowLocal = new Date();
+  const timeLogReminderDue =
+    Boolean(currentUser) && isBusinessDay(new Date(`${todayIsoMascot}T00:00:00Z`)) && !myAbsentToday && nowLocal.getHours() >= 16;
+
+  const [isFirstVisitToday] = useState<boolean>(() => {
+    try {
+      const key = `eco_mascot_greeted_${todayIsoMascot}`;
+      if (sessionStorage.getItem(key)) return false;
+      sessionStorage.setItem(key, '1');
+      return true;
+    } catch {
+      return false;
+    }
+  });
 
   const buckyState = resolveBuckyState({
     loggedHoursToday,
@@ -507,31 +516,55 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
     criticalOvertimeTasks,
     activeTimer,
     allTasksCompleted: allTasksDone,
+    deadlineRiskTasks: overdueTasks,
+    isOverCapacity: plannedTodayHours > targetDayHours,
+    hasTasksToday: todayTasks.length > 0,
+    nextTaskTitle: nextTask?.title,
+    isFirstVisitToday,
+    timeLogReminderDue,
     hasTasks: tasks.length > 0,
     recentTaskCompleted: currentAction === 'clap',
     isBreakRecommended: activeBreakActive ? false : undefined
   });
 
+  const firstName = (currentUser?.name || '').trim().split(/\s+/)[0] || '';
+  const firstNameSuffix = firstName ? ` ${firstName}` : '';
+
   // Warning & contextual alert states
   const [isAlertDismissed, setIsAlertDismissed] = useState(false);
 
-  // Reset alert dismissed state if the risk task changes
+  /**
+   * Las emociones son reacciones, no estados fijos: cuando cambia el motivo (horas por cargar,
+   * tarea pasada de horas, día completo…) ECO muestra la emoción un rato y vuelve a su cara
+   * normal. Si el motivo de un aviso sigue vigente, lo recuerda de nuevo cada 30 minutos.
+   */
+  const [isExpressing, setIsExpressing] = useState(true);
+  const [nudgeTick, setNudgeTick] = useState(0);
   useEffect(() => {
-    if (coreRiskTask?.id) {
-      setIsAlertDismissed(false);
-    }
-  }, [coreRiskTask?.id]);
+    setIsExpressing(true);
+    setIsAlertDismissed(false); // un aviso cerrado no tapa el siguiente
+    const ms = EXPRESSION_MS[buckyState.emotion];
+    if (!ms) return;
+    const t = setTimeout(() => setIsExpressing(false), ms);
+    return () => clearTimeout(t);
+  }, [coreRiskTask?.id, buckyState.internalKey, nudgeTick]);
+  useEffect(() => {
+    if (!buckyState.isAlert) return;
+    const i = setInterval(() => setNudgeTick((n) => n + 1), ALERT_RENUDGE_MS);
+    return () => clearInterval(i);
+  }, [buckyState.internalKey, buckyState.isAlert]);
+  const restingEmotion: EcoEmotion = isExpressing ? buckyState.emotion : 'ok';
 
-  const isWarningActive = Boolean(buckyState.isAlert);
+  const isWarningActive = Boolean(buckyState.isAlert) && isExpressing;
 
   // Single contextual layer discipline:
   // When detailed HUD (isOpen) is visible, NO speech bubble or alert bubble is shown.
   // Otherwise, if warning is active and not dismissed, show single compact warning bubble.
   // Otherwise, show transient living speech bubble if present.
   const showAlertBubble = !isOpen && isWarningActive && !isAlertDismissed;
-  const showSpeechBubble = !isOpen && !showAlertBubble && Boolean(speechBubbleText);
+  const showSpeechBubble = !isOpen && !isBreakModalOpen && !showAlertBubble && Boolean(speechBubbleText);
 
-  // Bucky visible size scaling:
+  // ECO visible size scaling:
   // Normal state: ~115–130px visible height.
   // Expressive/warning/wave/celebrate states: ~125–140px visible height.
   const isExpandedPose =
@@ -576,7 +609,7 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
 
   const percent = Math.min(100, Math.round((loggedHoursToday / targetDayHours) * 100));
 
-  // Bounds and clamping helpers for Bucky
+  // Bounds and clamping helpers for ECO
   const BUCKY_W = 120;
   const BUCKY_H = 130;
   const clampX = (x: number) => {
@@ -642,7 +675,7 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
 
     switch (action) {
       case 'wave':
-        phrase = phrase || '¡Hola Pao! 👋 ¡Qué gusto verte! ¿En qué construimos hoy?';
+        phrase = phrase || `¡Hola${firstNameSuffix}! 👋 ¡Qué gusto verte! ¿En qué construimos hoy?`;
         duration = 2600;
         break;
       case 'celebrate':
@@ -674,11 +707,11 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
         duration = 3000;
         break;
       case 'walk':
-        phrase = phrase || '¡De paseo por el sistema Orbit! 🚶‍♂️ Caminando con energía.';
+        phrase = phrase || '¡De paseo por el sistema ECO! 🚶‍♂️ Caminando con energía.';
         duration = 2600;
         break;
       case 'alert':
-        phrase = phrase || '¡Atención Pao! ⚠️ Revisemos que todas las horas queden bien registradas.';
+        phrase = phrase || `¡Atención${firstNameSuffix}! ⚠️ Revisemos que todas las horas queden bien registradas.`;
         duration = 3200;
         break;
       case 'point':
@@ -686,7 +719,7 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
         duration = 2800;
         break;
       default:
-        phrase = phrase || '¡Todo listo en la nave Orbit!';
+        phrase = phrase || '¡Todo listo en la nave ECO!';
         duration = 2000;
     }
 
@@ -793,7 +826,7 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
       const randomY = Math.floor(Math.random() * (maxY - minY)) + minY;
 
       const roamPhrases = [
-        '¡Explorando la nave Orbit! 🚀',
+        '¡Explorando la nave ECO! 🚀',
         '¡Paseo libre para estirar las patitas! 🐾',
         '¡Supervisando el flujo de trabajo en Uhura! 🦫',
         '¡Qué buen ritmo llevamos hoy! 🌟',
@@ -807,7 +840,7 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
     return () => clearInterval(roamInterval);
   }, [isFreeRoamActive, isDragging, isWalking, isOpen, activeBreakActive, coords]);
 
-  // Event listener for global Orbit Habitat reactions
+  // Event listener for global ECO Habitat reactions
   useEffect(() => {
     const handleMascotReaction = (e: Event) => {
       const customEvent = e as CustomEvent<{ action: BuckyAction; phrase: string }>;
@@ -825,24 +858,86 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
     if (!hasGreeted) {
       sessionStorage.setItem('orbit_bucky_greeted', 'true');
       const timer = setTimeout(() => {
-        triggerLivingAction('wave', '¡Hola Pao! 👋 Todo tranquilo por aquí.');
+        triggerLivingAction('wave', `¡Hola${firstNameSuffix}! 👋 Todo tranquilo por aquí.`);
       }, 1200);
       return () => clearTimeout(timer);
     }
   }, []);
 
-  // Autonomous Living Cycle (Spaced out, no spammy actions, idle only)
+  // Moods de ambiente: cada persona los ve en momentos aleatorios distintos (no a todos a la vez).
+  // Primero entre 2 y 6 min tras entrar; luego cada 6 a 18 min. Solo si ECO está en reposo.
+  const [ambientMood, setAmbientMood] = useState<EcoAmbientMoodDef | null>(null);
+  const ambientAllowedRef = useRef(false);
+  ambientAllowedRef.current =
+    !isOpen && !isDragging && !isBreakModalOpen && !activeTimer && currentAction === 'idle' && !isWarningActive && !speechBubbleText;
+  const lastAmbientRef = useRef<string | null>(null);
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (!isOpen && !isMinimized && !isDragging && !activeBreakActive && currentAction === 'idle' && !isWarningActive) {
-        const livingBehaviors: BuckyAction[] = ['wave', 'yawn', 'stretch', 'exercise', 'hydrate'];
-        const randomAction = livingBehaviors[Math.floor(Math.random() * livingBehaviors.length)];
-        triggerLivingAction(randomAction);
+    let next: ReturnType<typeof setTimeout>;
+    let hide: ReturnType<typeof setTimeout>;
+    // Solo desarrollo: ?ecoMoods=fast acelera la rotación (segundos) para revisarla en el prototipo.
+    let fast = false;
+    try {
+      fast = new URLSearchParams(window.location.search).get('ecoMoods') === 'fast';
+    } catch {}
+    const minutes = (min: number, max: number) => (min + Math.random() * (max - min)) * (fast ? 2_000 : 60_000);
+    const schedule = (first: boolean) => {
+      next = setTimeout(fire, first ? minutes(2, 6) : minutes(6, 18));
+    };
+    const fire = () => {
+      const options = ambientMoodsFor(skin).filter((m) => m.id !== lastAmbientRef.current);
+      if (ambientAllowedRef.current && options.length > 0) {
+        const mood = options[Math.floor(Math.random() * options.length)];
+        lastAmbientRef.current = mood.id;
+        const line = mood.lines.length > 0 ? mood.lines[Math.floor(Math.random() * mood.lines.length)] : null;
+        setAmbientMood(mood);
+        if (line) setSpeechBubbleText(line);
+        hide = setTimeout(() => {
+          setAmbientMood(null);
+          if (line) setSpeechBubbleText((prev) => (prev === line ? null : prev));
+        }, line ? 12_000 : 8_000);
       }
-    }, 45000);
+      schedule(false);
+    };
+    schedule(true);
+    return () => {
+      clearTimeout(next);
+      clearTimeout(hide);
+    };
+  }, [skin]);
+  // Si algo más importante aparece (aviso, ventana, cronómetro), el mood se retira enseguida.
+  useEffect(() => {
+    if (ambientMood && (isOpen || isWarningActive || activeTimer || isBreakModalOpen || isDragging)) setAmbientMood(null);
+  }, [ambientMood, isOpen, isWarningActive, activeTimer, isBreakModalOpen, isDragging]);
 
-    return () => clearInterval(interval);
-  }, [isOpen, isMinimized, isDragging, activeBreakActive, currentAction, isWarningActive]);
+  // «¿Cerramos el día?»: en día hábil, desde las 5:00 p. m., si la persona no ha cerrado su día.
+  // Una vez por día; solo cuando ECO está en reposo (no interrumpe avisos, ventanas ni cronómetro).
+  const [showDayCloseNudge, setShowDayCloseNudge] = useState(false);
+  useEffect(() => {
+    if (!onOpenDayClose || isDayClosedToday) {
+      setShowDayCloseNudge(false);
+      return;
+    }
+    const check = () => {
+      const now = new Date();
+      const iso = todayIsoMascot;
+      const key = `eco_dayclose_nudge_${currentUser?.id || 'anon'}_${iso}`;
+      let shown = false;
+      try {
+        shown = Boolean(localStorage.getItem(key));
+      } catch {}
+      if (shown || now.getHours() < 17 || !isBusinessDay(new Date(`${iso}T00:00:00Z`)) || myAbsentToday) return;
+      if (!ambientAllowedRef.current) return;
+      try {
+        localStorage.setItem(key, '1');
+      } catch {}
+      setShowDayCloseNudge(true);
+      if (soundEnabled) playChime('wave');
+    };
+    check();
+    const i = setInterval(check, 60_000);
+    return () => clearInterval(i);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDayClosedToday, onOpenDayClose, currentUser?.id, todayIsoMascot]);
 
   // Guided Active Break (Pausa Activa) countdown timer
   useEffect(() => {
@@ -897,7 +992,7 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
       setHearts((prev) => prev.filter((h) => h.id !== newHeart.id));
     }, 1200);
     setTimeout(() => setIsWiggling(false), 600);
-    setSpeechBubbleText('¡Gracias Pao! Me da ánimo para seguir acompañándote en la colonia.');
+    setSpeechBubbleText(`¡Gracias${firstNameSuffix}! Me da ánimo para seguir acompañándote en la colonia.`);
   };
 
   const handleFeedHours = (hours: number, label: string) => {
@@ -908,7 +1003,7 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
     triggerLivingAction('stretch', `Acomodando pieza en el hábitat... +${hours}h de recurso registrado 🪵`);
   };
 
-  // Drag handlers (Pointer events) — strictly on Bucky character
+  // Drag handlers (Pointer events) — strictly on ECO character
   const handlePointerDown = (e: React.PointerEvent) => {
     // Only primary button
     if (e.button !== 0) return;
@@ -1012,11 +1107,11 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
   };
 
   // SMART NON-OVERLAPPING & VIEWPORT-CONSTRAINED PLACEMENT FOR THE POPOVER
-  // Automatically repositions based on Bucky's position:
-  // - If Bucky is near the right edge -> opens to the left
-  // - If Bucky is near the left edge -> opens to the right
-  // - If Bucky is near the bottom edge -> opens upwards (anchored with bottom)
-  // - If Bucky is near the top edge -> opens downwards (anchored with top)
+  // Automatically repositions based on ECO's position:
+  // - If ECO is near the right edge -> opens to the left
+  // - If ECO is near the left edge -> opens to the right
+  // - If ECO is near the bottom edge -> opens upwards (anchored with bottom)
+  // - If ECO is near the top edge -> opens downwards (anchored with top)
   // - Always guarantees 100% inside viewport with dynamic maxHeight & overflow-y-auto
   const getPopoverStyle = (): React.CSSProperties => {
     if (typeof window === 'undefined') return {};
@@ -1028,7 +1123,7 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
     const curX = coords ? coords.x : winW - 150;
     const curY = coords ? coords.y : winH - 170;
 
-    // 1. Horizontal: left or right of Bucky
+    // 1. Horizontal: left or right of ECO
     let left: number;
     const spaceOnRight = winW - (curX + BUCKY_W);
     const spaceOnLeft = curX;
@@ -1076,42 +1171,21 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
   };
 
   // Active cutout image based on state and poses
+  // Reacciones transitorias → emoción; en reposo, la emoción que resuelve el motor según el día.
+  const ACTION_EMOTION: Partial<Record<BuckyAction, EcoEmotion>> = {
+    stand: 'ok', happy: 'ok', wave: 'ok', walk: 'ok',
+    celebrate: 'celebrating', jump: 'celebrating', motivate: 'celebrating', clap: 'celebrating',
+    alert: 'surprised', sad: 'sad',
+    rest: 'coffee', sleep: 'coffee', tired: 'worried', yawn: 'coffee', stretch: 'coffee', hydrate: 'coffee', exercise: 'coffee',
+    point: 'focus', focus: 'focus'
+  };
   const getCurrentBeaverImage = () => {
-    if (isDragging) return buckyCelebratingImg;
-    if (isWalking || currentAction === 'walk') return buckyHoodieHappyImg;
-
-    // Transient lifelike reaction (active for the duration of the reaction)
-    if (currentAction !== 'idle') {
-      switch (currentAction) {
-        case 'stand':
-        case 'happy':
-          return buckyHoodieHappyImg;
-        case 'wave':
-          return buckyWavingImg;
-        case 'celebrate':
-        case 'jump':
-        case 'motivate':
-        case 'clap':
-          return buckyCelebratingImg;
-        case 'alert':
-        case 'sad':
-          return buckyAlertImg;
-        case 'rest':
-        case 'sleep':
-        case 'tired':
-          return buckyRestingImg;
-        case 'point':
-        case 'focus':
-          return buckyFocusImg;
-        default:
-          break;
-      }
-    }
-
-    // After transient reaction (clap, celebrate, etc.), return strictly to the
-    // contextual state resolved by resolveBuckyState(context)
-    if (isWarningActive) return buckyAlertImg;
-    return buckyState.image || buckyHoodieHappyImg;
+    if (isDragging) return mascotImage('celebrating', skin);
+    if (isWalking) return mascotImage('ok', skin);
+    const transient = currentAction !== 'idle' ? ACTION_EMOTION[currentAction] : undefined;
+    if (transient) return mascotImage(transient, skin);
+    if (ambientMood?.image[skin]) return ambientMood.image[skin] as string;
+    return mascotImage(restingEmotion, skin);
   };
 
   // Animation class based on current lifelike action
@@ -1190,8 +1264,36 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
     ? `top-[calc(100%+12px)] ${isNearRight ? 'right-0' : 'left-0'}`
     : `bottom-[calc(100%+12px)] ${isNearRight ? 'right-0' : 'left-0'}`;
 
+  // Al reactivar la mascota: sale saludando
+  useEffect(() => {
+    if (!greetOnMount) return;
+    setCurrentAction('wave');
+    setSpeechBubbleText('¡Hola! 👋 ¡Qué gusto volver a verte! Todo tranquilo por aquí');
+    if (soundEnabled) playChime('wave');
+    const t = setTimeout(() => {
+      setSpeechBubbleText(null);
+      setCurrentAction('idle');
+    }, 4000);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleChangeSkin = (next: MascotSkin) => {
+    if (!isSystemAdmin || next === skin) return;
+    setMascotSkin(next);
+    setIsOpen(false);
+    setCurrentAction(next === 'christmas' ? 'celebrate' : 'wave');
+    setSpeechBubbleText(next === 'christmas' ? '¡Jo, jo, jo! 🎄 ¡Felices fiestas, equipo!' : 'Guardamos las luces hasta el próximo diciembre ✨');
+    if (soundEnabled) playChime(next === 'christmas' ? 'celebrate' : 'wave');
+    setTimeout(() => {
+      setSpeechBubbleText(null);
+      setCurrentAction('idle');
+    }, 3500);
+  };
+
   return (
     <>
+      {christmas && snow && <Snowfall />}
       {/* 1. BUCKY CHARACTER & COMPACT BUBBLE (DRAGGABLE ONLY ON CHARACTER) */}
       <div
         className="fixed z-45 font-sans select-none pointer-events-auto"
@@ -1208,12 +1310,10 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
                 <div className="space-y-1">
                   <div className="flex items-center gap-1.5 text-[#f59e0b] font-bold text-[11px]">
                     <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                    <span>Ojo Pao 👀</span>
+                    <span>{buckyState.internalKey === 'LOW_TIME_LOGGED' ? 'Un favorcito 🥺' : `Ojo, ${(currentUser?.name || '').split(' ')[0] || 'equipo'} 👀`}</span>
                   </div>
                   <p className="text-[#f1f5f9] text-[11px] leading-relaxed">
-                    {coreRiskTask
-                      ? `Esta tarea "${coreRiskTask.title}" ya superó sus horas presupuestadas.`
-                      : (buckyState.speech || 'Se detectó un desvío de horas en la jornada.')}
+                    {buckyState.speech}
                   </p>
                 </div>
                 <button
@@ -1234,20 +1334,20 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
                   }}
                   className="text-[#d4ff4a] hover:underline font-bold cursor-pointer"
                 >
-                  Ver tareas afectadas →
+                  {buckyState.cta?.actionType === 'log_time' ? 'Cargar mis horas →' : 'Ver tareas afectadas →'}
                 </button>
                 <button
                   type="button"
                   onClick={() => setIsAlertDismissed(true)}
                   className="text-white/50 hover:text-white cursor-pointer"
                 >
-                  Entendido
+                  {buckyState.cta?.actionType === 'log_time' ? 'Más tarde' : 'Entendido'}
                 </button>
               </div>
             </div>
           )}
 
-          {showSpeechBubble && (
+          {showSpeechBubble && !showDayCloseNudge && (
             <div className={`absolute ${bubblePositionClass} z-50 w-[240px] max-w-[260px] bg-[#140b24]/95 text-white p-3 rounded-2xl shadow-2xl border border-[#8a4dff]/50 text-xs animate-in zoom-in-95 duration-150 backdrop-blur-md`}>
               <div className="flex items-start justify-between gap-2">
                 <p className="text-[#f1f5f9] text-[11px] leading-relaxed">
@@ -1260,6 +1360,34 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
                   title="Cerrar"
                 >
                   <X className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {showDayCloseNudge && !isOpen && !showAlertBubble && (
+            <div className={`absolute ${bubblePositionClass} z-50 w-[250px] bg-[#140b24]/95 text-white p-3 rounded-2xl shadow-2xl border border-[#8a4dff]/50 text-xs animate-in zoom-in-95 duration-150 backdrop-blur-md`}>
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-[#f1f5f9] text-[11px] leading-relaxed">
+                  ¿Cerramos el día{firstNameSuffix}? 🌙 Te muestro lo que registraste y confirmas en un minuto.
+                </p>
+                <button type="button" onClick={() => setShowDayCloseNudge(false)} className="text-white/40 hover:text-white cursor-pointer p-0.5 shrink-0" aria-label="Más tarde">
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+              <div className="mt-2.5 pt-2 border-t border-white/10 flex items-center justify-between text-[10px]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDayCloseNudge(false);
+                    onOpenDayClose?.();
+                  }}
+                  className="text-[#d4ff4a] hover:underline font-bold cursor-pointer"
+                >
+                  Cerrar mi día →
+                </button>
+                <button type="button" onClick={() => setShowDayCloseNudge(false)} className="text-white/50 hover:text-white cursor-pointer">
+                  Más tarde
                 </button>
               </div>
             </div>
@@ -1312,7 +1440,7 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
                 </div>
               </div>
 
-              {/* Bucky Himself: Loose Character in Focus Mode (Draggable) */}
+              {/* ECO Himself: Loose Character in Focus Mode (Draggable) */}
               <button
                 type="button"
                 onPointerDown={handlePointerDown}
@@ -1320,11 +1448,11 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
                 onPointerUp={handlePointerUp}
                 onPointerCancel={handlePointerCancel}
                 className="relative cursor-grab active:cursor-grabbing touch-none transition-transform duration-200 hover:scale-105 active:scale-95 focus:outline-none select-none"
-                title="Arrastra a Bucky para moverlo • Clic para opciones"
+                title="Arrastra a ECO para moverlo • Clic para opciones"
               >
                 <img
-                  src={buckyFocusImg}
-                  alt="Bucky En Foco"
+                  src={mascotImage('focus', skin)}
+                  alt="ECO en foco"
                   className={`w-auto ${getBeaverSizeClass()} object-contain drop-shadow-[0_12px_28px_rgba(0,0,0,0.55)] select-none pointer-events-none transition-all duration-300`}
                 />
                 <div className="absolute top-1 right-2 w-3.5 h-3.5 rounded-full bg-[#10b981] animate-ping" />
@@ -1340,11 +1468,11 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
                 onPointerUp={handlePointerUp}
                 onPointerCancel={handlePointerCancel}
                 className={`relative cursor-grab active:cursor-grabbing touch-none transition-transform duration-200 hover:scale-105 active:scale-95 focus:outline-none select-none ${getActionAnimationClass()}`}
-                title="Arrastra a Bucky para moverlo • Clic para interactuar"
+                title="Arrastra a ECO para moverlo • Clic para interactuar"
               >
                 <img
-                  src={isWarningActive ? buckyAlertImg : getCurrentBeaverImage()}
-                  alt="Bucky Orbit"
+                  src={getCurrentBeaverImage()}
+                  alt="ECO, la mascota"
                   className={`w-auto ${getBeaverSizeClass()} object-contain drop-shadow-[0_12px_28px_rgba(0,0,0,0.55)] select-none pointer-events-none transition-all duration-300`}
                 />
                 {isWarningActive && (
@@ -1365,7 +1493,7 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
       {isOpen && (
         <div
           style={getPopoverStyle()}
-          className="bg-[#140b24]/95 text-white rounded-3xl p-4 sm:p-5 border border-[#8a4dff]/50 shadow-2xl animate-in zoom-in-95 duration-150 backdrop-blur-xl space-y-3 overflow-y-auto"
+          className="bg-[#140b24]/95 text-white rounded-2xl p-4 sm:p-5 border border-[#8a4dff]/50 shadow-2xl animate-in zoom-in-95 duration-150 backdrop-blur-xl space-y-3 overflow-y-auto"
         >
           {/* Header controls */}
           <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
@@ -1373,26 +1501,13 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
               <span className="text-base">🦫</span>
               <div>
                 <h4 className="text-xs font-black text-white tracking-wide uppercase">
-                  Bucky
+                  ECO
                 </h4>
-                <p className="text-[10px] text-[#c9b7ff]">Orbit Companion</p>
+                <p className="text-[10px] text-[#c9b7ff]">Tu compañero en ECO</p>
               </div>
             </div>
 
             <div className="flex items-center gap-1">
-              {/* Pausa Activa Quick Trigger */}
-              <button
-                type="button"
-                onClick={() => {
-                  setIsBreakModalOpen(true);
-                  setIsOpen(false);
-                }}
-                className="p-1.5 rounded-lg hover:bg-white/10 text-white/70 hover:text-[#d4ff4a] cursor-pointer transition-colors"
-                title="Iniciar Pausa Activa (3 min)"
-              >
-                <Coffee className="w-3.5 h-3.5" />
-              </button>
-
               {/* Sound Toggle */}
               <button
                 type="button"
@@ -1413,7 +1528,7 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
                 type="button"
                 onClick={handleToggleBuckyPower}
                 className="p-1.5 rounded-lg hover:bg-white/10 text-white/50 hover:text-[#f87171] cursor-pointer transition-colors"
-                title="Apagar o dormir mascota Bucky"
+                title="Apagar o dormir a la mascota"
               >
                 <Power className="w-3.5 h-3.5" />
               </button>
@@ -1430,38 +1545,68 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
             </div>
           </div>
 
-          {/* Mensaje principal de Bucky */}
+          {/* Mensaje principal de ECO */}
           <div className="bg-white/5 p-3 rounded-2xl border border-white/10 text-xs text-white/90 leading-relaxed font-medium">
             <p className="font-semibold text-white">
               {buckyState.speech}
             </p>
           </div>
 
-          {/* Acciones de bienestar y equipo */}
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setIsBreakModalOpen(true);
-                setIsOpen(false);
-              }}
-              className="py-2 px-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] font-bold text-white flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-            >
-              <Coffee className="w-3.5 h-3.5 text-[#d4ff4a]" />
-              <span>Pausa Activa (3m)</span>
-            </button>
+          {/* Bienestar: la pausa activa la guía ECO aquí mismo. «Mi espacio» vive en la foto de perfil. */}
+          <button
+            type="button"
+            onClick={() => {
+              setIsBreakModalOpen(true);
+              setIsOpen(false);
+            }}
+            className="w-full py-2 px-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] font-bold text-white flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+          >
+            <Coffee className="w-3.5 h-3.5 text-[#d4ff4a]" />
+            <span>Pausa activa · 3 min</span>
+          </button>
 
-            <button
-              type="button"
-              onClick={() => {
-                setIsHumanProfileModalOpen(true);
-                setIsOpen(false);
-              }}
-              className="py-2 px-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] font-bold text-[#c9b7ff] hover:text-white flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-            >
-              <span>💜 Ficha Humana</span>
-            </button>
-          </div>
+          {/* Apariencia (system_admin, para toda la organización) y nieve (preferencia personal) */}
+          {(isSystemAdmin || christmas) && (
+            <div className="p-3 rounded-2xl bg-white/[0.07] border border-white/15 space-y-2.5">
+              {isSystemAdmin && (
+                <div className="space-y-1.5">
+                  <p className="text-[11px] font-bold text-white">Apariencia de ECO para todo el equipo</p>
+                  <div role="radiogroup" aria-label="Apariencia de la mascota" className="grid grid-cols-2 gap-1.5">
+                    {(['christmas', 'standard'] as MascotSkin[]).map((opt) => (
+                      <button
+                        key={opt}
+                        type="button"
+                        role="radio"
+                        aria-checked={skin === opt}
+                        onClick={() => handleChangeSkin(opt)}
+                        className={`py-1.5 px-2 rounded-lg text-[11px] font-bold border cursor-pointer transition-colors ${
+                          skin === opt ? 'bg-[#d4ff4a] text-[#140b24] border-[#d4ff4a]' : 'bg-transparent text-white border-white/30 hover:bg-white/10'
+                        }`}
+                      >
+                        {opt === 'christmas' ? '🎄 ' : '💜 '}
+                        {MASCOT_SKIN_LABEL[opt].replace(' (buzo morado)', '')}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-white/70">Solo administración del sistema puede cambiarla.</p>
+                </div>
+              )}
+              {christmas && (
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={snow}
+                  onClick={() => setSnowEnabled(!snow)}
+                  className="w-full flex items-center justify-between gap-2 text-[11px] font-bold text-white cursor-pointer"
+                >
+                  <span>❄️ Nieve en pantalla</span>
+                  <span className={`w-8 h-4 rounded-full relative transition-colors ${snow ? 'bg-[#22c55e]' : 'bg-white/30'}`}>
+                    <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${snow ? 'left-4' : 'left-0.5'}`} />
+                  </span>
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Si hay algo relevante: 1 cosa para revisar */}
           {criticalOvertimeTasks.length > 0 && (
@@ -1514,25 +1659,14 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
         </div>
       )}
 
-      {/* MODAL DE PAUSA ACTIVA HUMANA */}
+      {/* PAUSA ACTIVA: tarjeta que sale de la mascota, en la misma posición del panel */}
       <ActiveBreakModal
         isOpen={isBreakModalOpen}
         onClose={() => setIsBreakModalOpen(false)}
+        style={getPopoverStyle()}
         onComplete={() => {
-          setCurrentAction('celebrate');
-          setSpeechBubbleText('¡Excelente pausa activa! 🧘 Mente despejada y ritmo renovado.');
-          if (soundEnabled) playChime('celebrate');
+          triggerLivingAction('celebrate', '¡Excelente pausa activa! 🧘 Mente despejada y ritmo renovado.');
         }}
-      />
-
-      {/* MODAL DE FICHA HUMANA & GUSTOS DEL EQUIPO UHURA */}
-      <TeamHumanProfileModal
-        isOpen={isHumanProfileModalOpen}
-        onClose={() => setIsHumanProfileModalOpen(false)}
-        users={effectiveUsers}
-        onUpdateUser={onUpdateUser}
-        currentUser={currentUser}
-        singleUserMode={true}
       />
 
       {/* MODAL DE EVENTOS & RECORDATORIOS DE EQUIPO (COPILOTO BUCKY) */}
@@ -1551,4 +1685,53 @@ export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = ({
   );
 };
 
+/**
+ * Contenedor de la mascota: decide si se muestra (oculta en La Colonia o apagada por la persona)
+ * y le pasa solo las tareas de la persona (misma regla que Mi Día), para que sus alertas
+ * nunca hablen de tareas ajenas.
+ */
+export const FloatingBeaverWidget: React.FC<FloatingBeaverWidgetProps> = (props) => {
+  const [isDisabled, setIsDisabled] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('orbit_bucky_disabled') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [greet, setGreet] = useState(false);
+  const setPower = (off: boolean) => {
+    setIsDisabled(off);
+    setGreet(!off);
+    try {
+      localStorage.setItem('orbit_bucky_disabled', String(off));
+    } catch {
+      /* sin almacenamiento */
+    }
+  };
+
+  const { tasks = [], currentUser, users } = props;
+  const myTasks = React.useMemo(() => {
+    if (!currentUser) return tasks;
+    const matches = makePersonMatcher(currentUser, users && users.length > 0 ? users : initialUsers);
+    return tasks.filter((t) => isTaskOwner(t, currentUser, matches));
+  }, [tasks, currentUser, users]);
+
+  if (props.currentView === 'la-colonia') return null;
+
+  if (isDisabled) {
+    return (
+      <button
+        type="button"
+        onClick={() => setPower(false)}
+        className="fixed bottom-4 right-4 z-40 flex items-center gap-2 px-3 py-2 rounded-2xl bg-[#140b24]/90 hover:bg-[#261845] text-white border border-[#8a4dff]/40 shadow-xl backdrop-blur-md text-xs font-bold transition-all cursor-pointer hover:scale-105"
+        title="Haz clic para activar a ECO"
+      >
+        <span className="text-base">🦫</span>
+        <span className="text-xs">Activar a ECO</span>
+      </button>
+    );
+  }
+
+  return <FloatingBeaverCore {...props} tasks={myTasks} onPowerOff={() => setPower(true)} greetOnMount={greet} />;
+};
 

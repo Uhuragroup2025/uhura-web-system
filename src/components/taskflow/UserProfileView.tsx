@@ -1,3 +1,5 @@
+import { RoleMultiSelect } from '../ui/RoleMultiSelect';
+import { UserAccessCard } from './auth/UserAccessCard';
 import React, { useState } from 'react';
 import {
   UserItem,
@@ -57,17 +59,6 @@ function calculateSeniority(joinedDate?: string, anniversaryYears?: number): str
   return '2 años en Uhura';
 }
 
-/**
- * Generador de contraseñas temporales seguras para UAT / Onboarding
- */
-function generateSecurePassword(name: string): string {
-  const cleanName = name.split(' ')[0].replace(/[^a-zA-Z]/g, '');
-  const randomDigits = Math.floor(100 + Math.random() * 900);
-  const symbols = ['!', '#', '$', '%', '*'];
-  const symbol = symbols[Math.floor(Math.random() * symbols.length)];
-  return `Uhura2026!${cleanName}${symbol}${randomDigits}`;
-}
-
 export const UserProfileView: React.FC<UserProfileViewProps> = ({
   user,
   allUsers = [],
@@ -79,15 +70,23 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
   // Form fields
   const [email, setEmail] = useState<string>(user.email || '');
   const [officialRoleName, setOfficialRoleName] = useState<string>(
-    user.officialRole || user.jobTitle || 'Growth Manager'
+    user.officialRole || user.jobTitle || ''
   );
+  // Roles profesionales (uno o varios; el primero es el principal). Solo catálogo oficial.
+  const [professionalRoles, setProfessionalRoles] = useState<string[]>(() => {
+    const fromUser = (user.officialRoles && user.officialRoles.length > 0 ? user.officialRoles : [user.officialRole || user.professionalRole])
+      .filter((r): r is StandardUhuraRole => Boolean(r) && (STANDARD_UHURA_ROLES as readonly string[]).includes(r as string));
+    return fromUser.length > 0 ? fromUser : [];
+  });
   const [accessLevel, setAccessLevel] = useState<OrbitAccessLevel>(user.accessLevel || 'leader');
   const [leaderId, setLeaderId] = useState<string>(user.leaderId || '');
   const [department, setDepartment] = useState<string>(user.department || 'Operativo (Medios)');
+  const [workCalendar, setWorkCalendar] = useState<'CO' | 'MX'>(user.workCalendar || 'CO');
+  const [workCalendarSince, setWorkCalendarSince] = useState<string>(user.workCalendarSince || '');
   const [capacityHours, setCapacityHours] = useState<string>(
     user.capacityHours !== undefined ? Number(user.capacityHours).toFixed(2) : '42.00'
   );
-  const [joinedDate, setJoinedDate] = useState<string>(user.joinedDate || '01 / 07 / 2024');
+  const [joinedDate, setJoinedDate] = useState<string>(user.joinedDate || '');
   const [birthDate, setBirthDate] = useState<string>(
     user.birthDate || user.birthDateFormatted || '26 / 10 / 1993'
   );
@@ -104,17 +103,9 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   // Modales
-  const [showResetAccessModal, setShowResetAccessModal] = useState(false);
   const [showChangePhotoModal, setShowChangePhotoModal] = useState(false);
 
   // Estados del modal de Restablecer acceso
-  const [accessMethodTab, setAccessMethodTab] = useState<'email' | 'temp_password'>('temp_password');
-  const [emailSentStatus, setEmailSentStatus] = useState<boolean>(false);
-  const [tempPassword, setTempPassword] = useState<string>(() => generateSecurePassword(user.name));
-  const [showPasswordText, setShowPasswordText] = useState(false);
-  const [requirePasswordChange, setRequirePasswordChange] = useState(true);
-  const [tempPasswordAssigned, setTempPasswordAssigned] = useState(false);
-  const [copiedCredentials, setCopiedCredentials] = useState(false);
 
   // Estados del modal de Cambiar foto
   const [newPhotoUrl, setNewPhotoUrl] = useState<string>(user.avatarUrl || '');
@@ -152,9 +143,11 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
     const updated: UserItem = {
       ...user,
       email: email.trim(),
-      jobTitle: officialRoleName.trim(),
-      officialRole: officialRoleName as StandardUhuraRole,
-      professionalRole: officialRoleName as StandardUhuraRole,
+      jobTitle: professionalRoles[0] || officialRoleName.trim(),
+      officialRole: (professionalRoles[0] || officialRoleName) as StandardUhuraRole,
+      professionalRole: (professionalRoles[0] || officialRoleName) as StandardUhuraRole,
+      officialRoles: professionalRoles as StandardUhuraRole[],
+      professionalRoles: professionalRoles as StandardUhuraRole[],
       department: department.trim(),
       leaderId: leaderId || undefined,
       reportsTo: leaderId || undefined,
@@ -168,30 +161,38 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
       hobbies: hobbies.trim() || undefined,
       personalDream: personalDream.trim() || undefined,
       accessLevel,
-      avatarUrl
+      avatarUrl,
+      workCalendar,
+      workCalendarSince: workCalendarSince || null
     };
+
+    // Historial de cambios (previsualización; en producción lo genera el backend)
+    const nowIso = new Date().toISOString();
+    const tracked: Array<[string, string | null | undefined, string | null | undefined]> = [
+      ['Rol profesional', (user.officialRoles || [user.officialRole]).filter(Boolean).join(', '), professionalRoles.join(', ')],
+      ['Nivel de acceso', user.accessLevel, accessLevel],
+      ['Líder directo', user.leaderName, updatedLeaderName],
+      ['Área', user.department, department.trim()],
+      ['Capacidad semanal', String(user.capacityHours ?? ''), String(parseFloat(capacityHours) || 42)],
+      ['Calendario laboral', user.workCalendar || 'CO', workCalendar + (workCalendarSince ? ` desde ${workCalendarSince}` : '')]
+    ];
+    const newEntries = tracked
+      .filter(([, prev, next]) => (prev || '') !== (next || ''))
+      .map(([field, prev, next], i) => ({
+        id: `audit-${Date.now()}-${i}`,
+        userId: user.id,
+        field,
+        previousValue: prev || null,
+        newValue: next || null,
+        changedAt: nowIso,
+        changedByUserId: 'current-user',
+        changedByUserName: 'Tú'
+      }));
+    updated.profileHistory = [...newEntries, ...(user.profileHistory || [])];
 
     onUpdateUser(updated);
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 3000);
-  };
-
-  // Enviar enlace de restablecimiento por correo
-  const handleSendResetEmail = () => {
-    setEmailSentStatus(true);
-  };
-
-  // Asignar contraseña temporal
-  const handleAssignTempPassword = () => {
-    setTempPasswordAssigned(true);
-  };
-
-  // Copiar credenciales
-  const handleCopyCredentials = () => {
-    const text = `Acceso a Orbit Uhura Group:\nUsuario: ${email}\nContraseña temporal: ${tempPassword}\nEnlace: https://orbit-rvfp6uj2va-uc.a.run.app/app/`;
-    navigator.clipboard.writeText(text);
-    setCopiedCredentials(true);
-    setTimeout(() => setCopiedCredentials(false), 2500);
   };
 
   // Guardar foto
@@ -200,7 +201,7 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
     setShowChangePhotoModal(false);
   };
 
-  // Definición de tarjetas "Qué puede hacer en Orbit" según el rol
+  // Definición de tarjetas "Qué puede hacer en ECO" según el rol
   const getPermissionScopeDescription = (moduleKey: string): string => {
     if (accessLevel === 'system_admin' || accessLevel === 'executive') {
       return 'ver, crear, editar, administrar · toda la organización';
@@ -287,7 +288,7 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
       )}
 
       {/* 2. CARD PRINCIPAL: Identidad, Datos de Colaborador y Acceso */}
-      <div className="bg-white rounded-3xl border border-[#e2e8f0] p-6 sm:p-8 shadow-xs space-y-6">
+      <div className="bg-white rounded-2xl border border-[#e2e8f0] p-6 sm:p-8 shadow-xs space-y-6">
         {/* Cabecera del Perfil */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-2">
           <div className="flex items-center gap-4">
@@ -313,7 +314,7 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
                 {user.name}
               </h1>
               <p className="text-xs text-[#64748b] font-medium">
-                {officialRoleName} · {department}
+                {(professionalRoles.length > 0 ? professionalRoles.join(' · ') : officialRoleName)} · {department}
               </p>
               <div className="flex flex-wrap items-center gap-2.5 pt-1">
                 <span className="px-3 py-0.5 rounded-full text-xs font-semibold bg-[#f3e8ff] text-[#6b21a8] border border-[#e9d5ff]">
@@ -326,24 +327,8 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
             </div>
           </div>
 
-          {/* Botones de Cabecera: Restablecer acceso (NUEVO) y Cambiar foto */}
+          {/* Botón de cabecera: Cambiar foto (el acceso se gestiona en «Acceso a ECO») */}
           <div className="flex items-center gap-2.5 self-end sm:self-center">
-            {/* Botón NUEVO de Gestión / Restablecimiento de Contraseña */}
-            <button
-              type="button"
-              onClick={() => {
-                setShowResetAccessModal(true);
-                setEmailSentStatus(false);
-                setTempPasswordAssigned(false);
-                setTempPassword(generateSecurePassword(user.name));
-              }}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-[#cbd5e1] bg-white text-xs font-semibold text-[#334155] hover:bg-[#f8fafc] hover:border-[#8a4dff] hover:text-[#501f92] transition-all shadow-2xs cursor-pointer"
-              title="Restablecer o asignar contraseña de acceso"
-            >
-              <Key className="w-3.5 h-3.5 text-[#501f92]" />
-              <span>Restablecer acceso</span>
-            </button>
-
             {/* Botón Cambiar foto */}
             <button
               type="button"
@@ -377,12 +362,15 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
             <label className="block text-[11px] font-bold text-[#64748b] tracking-wider uppercase mb-1.5">
               ROL PROFESIONAL
             </label>
-            <input
-              type="text"
-              value={officialRoleName}
-              onChange={(e) => setOfficialRoleName(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-white border border-[#e2e8f0] rounded-xl text-xs text-[#0f172a] focus:outline-none focus:ring-2 focus:ring-[#8a4dff] transition-all"
+            <RoleMultiSelect
+              options={STANDARD_UHURA_ROLES}
+              selected={professionalRoles}
+              onChange={(roles) => {
+                setProfessionalRoles(roles);
+                if (roles[0]) setOfficialRoleName(roles[0]);
+              }}
             />
+            <span className="text-[10.5px] text-[#64748b] mt-1 block">Uno o varios. El primero es el principal. Distinto del nivel de acceso.</span>
           </div>
 
           {/* Row 2: NIVEL DE ACCESO | LÍDER DIRECTO */}
@@ -460,6 +448,34 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
               onChange={(e) => setCapacityHours(e.target.value)}
               className="w-full px-3.5 py-2.5 bg-white border border-[#e2e8f0] rounded-xl text-xs text-[#0f172a] focus:outline-none focus:ring-2 focus:ring-[#8a4dff] transition-all"
             />
+          </div>
+
+          {/* Calendario laboral (festivos que descuentan capacidad) */}
+          <div>
+            <label className="block text-[11px] font-bold text-[#64748b] tracking-wider uppercase mb-1.5">
+              CALENDARIO LABORAL
+            </label>
+            <select
+              value={workCalendar}
+              onChange={(e) => setWorkCalendar(e.target.value as 'CO' | 'MX')}
+              className="w-full px-3.5 py-2.5 bg-white border border-[#e2e8f0] rounded-xl text-xs text-[#0f172a] focus:outline-none focus:ring-2 focus:ring-[#8a4dff]"
+            >
+              <option value="CO">Colombia</option>
+              <option value="MX">México</option>
+            </select>
+            <span className="text-[10.5px] text-[#64748b] mt-1 block">Define qué festivos descuentan su capacidad.</span>
+          </div>
+          <div>
+            <label className="block text-[11px] font-bold text-[#64748b] tracking-wider uppercase mb-1.5">
+              CALENDARIO VIGENTE DESDE
+            </label>
+            <input
+              type="date"
+              value={workCalendarSince}
+              onChange={(e) => setWorkCalendarSince(e.target.value)}
+              className="w-full px-3.5 py-2.5 bg-white border border-[#e2e8f0] rounded-xl text-xs text-[#0f172a] focus:outline-none focus:ring-2 focus:ring-[#8a4dff]"
+            />
+            <span className="text-[10.5px] text-[#64748b] mt-1 block">Las semanas anteriores no se recalculan.</span>
           </div>
 
           {/* Row 4: FECHA DE INGRESO | CUMPLEAÑOS */}
@@ -562,10 +578,10 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
         </div>
       </div>
 
-      {/* 3. SECCIÓN INFERIOR: Qué puede hacer en Orbit */}
+      {/* 3. SECCIÓN INFERIOR: Qué puede hacer en ECO */}
       <div className="space-y-3 pt-2">
         <h2 className="text-base font-bold text-[#0f172a] tracking-tight">
-          Qué puede hacer en Orbit
+          Qué puede hacer en ECO
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
@@ -620,239 +636,39 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
       </div>
 
       {/* ========================================================================= */}
-      {/* 4. MODAL: RESTABLECER ACCESO / ASIGNAR CONTRASEÑA (AJUSTE SOLICITADO)      */}
-      {/* ========================================================================= */}
-      {showResetAccessModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl border border-[#e2e8f0] shadow-xl max-w-lg w-full overflow-hidden animate-in zoom-in-95 duration-150">
-            {/* Cabecera del modal */}
-            <div className="px-6 py-5 border-b border-[#f1f5f9] flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-[#f3e8ff] text-[#6b21a8] flex items-center justify-center shrink-0">
-                  <Key className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-[#0f172a]">Restablecer acceso</h3>
-                  <p className="text-xs text-[#64748b]">
-                    Gestiona las credenciales de <strong className="text-[#334155]">{user.name}</strong>
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowResetAccessModal(false)}
-                className="w-8 h-8 rounded-full hover:bg-[#f1f5f9] flex items-center justify-center text-[#64748b] transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Pestañas de método */}
-            <div className="flex border-b border-[#f1f5f9] px-6 bg-[#f8fafc]">
-              <button
-                type="button"
-                onClick={() => {
-                  setAccessMethodTab('temp_password');
-                  setTempPasswordAssigned(false);
-                }}
-                className={`py-3 px-4 text-xs font-semibold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
-                  accessMethodTab === 'temp_password'
-                    ? 'border-[#501f92] text-[#501f92]'
-                    : 'border-transparent text-[#64748b] hover:text-[#0f172a]'
-                }`}
-              >
-                <Lock className="w-3.5 h-3.5" />
-                <span>Asignar contraseña temporal (UAT / Rápido)</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setAccessMethodTab('email');
-                  setEmailSentStatus(false);
-                }}
-                className={`py-3 px-4 text-xs font-semibold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
-                  accessMethodTab === 'email'
-                    ? 'border-[#501f92] text-[#501f92]'
-                    : 'border-transparent text-[#64748b] hover:text-[#0f172a]'
-                }`}
-              >
-                <Mail className="w-3.5 h-3.5" />
-                <span>Enviar enlace por correo</span>
-              </button>
-            </div>
-
-            {/* Cuerpo del modal */}
-            <div className="p-6 space-y-4">
-              {/* OPCIÓN 1: Asignar Contraseña Temporal */}
-              {accessMethodTab === 'temp_password' && (
-                <div className="space-y-4">
-                  <div className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] text-xs text-[#475569] space-y-1">
-                    <p className="font-semibold text-[#0f172a]">
-                      Activación inmediata sin depender de servidores de correo
-                    </p>
-                    <p className="text-[11px] text-[#64748b] leading-relaxed">
-                      Define o genera una contraseña para que el colaborador pueda entrar a Orbit ahora mismo durante pruebas UAT o inducción.
-                    </p>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider">
-                        Contraseña Temporal
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setTempPassword(generateSecurePassword(user.name));
-                          setTempPasswordAssigned(false);
-                        }}
-                        className="text-[11px] font-semibold text-[#501f92] hover:text-[#3b1277] flex items-center gap-1 cursor-pointer"
-                      >
-                        <RefreshCw className="w-3 h-3" />
-                        <span>Generar otra</span>
-                      </button>
-                    </div>
-
-                    <div className="relative">
-                      <input
-                        type={showPasswordText ? 'text' : 'password'}
-                        value={tempPassword}
-                        onChange={(e) => {
-                          setTempPassword(e.target.value);
-                          setTempPasswordAssigned(false);
-                        }}
-                        className="w-full px-3.5 py-2.5 bg-white border border-[#cbd5e1] rounded-xl text-xs font-mono text-[#0f172a] focus:outline-none focus:ring-2 focus:ring-[#8a4dff] pr-20"
-                      />
-                      <div className="absolute right-2 top-2 flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => setShowPasswordText(!showPasswordText)}
-                          className="p-1 text-[#64748b] hover:text-[#0f172a] rounded cursor-pointer"
-                          title={showPasswordText ? 'Ocultar' : 'Mostrar'}
-                        >
-                          {showPasswordText ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            navigator.clipboard.writeText(tempPassword);
-                            setCopiedCredentials(true);
-                            setTimeout(() => setCopiedCredentials(false), 2000);
-                          }}
-                          className="p-1 text-[#64748b] hover:text-[#0f172a] rounded cursor-pointer"
-                          title="Copiar contraseña"
-                        >
-                          {copiedCredentials ? (
-                            <Check className="w-3.5 h-3.5 text-emerald-600" />
-                          ) : (
-                            <Copy className="w-3.5 h-3.5" />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Checkbox de seguridad */}
-                  <label className="flex items-center gap-2.5 text-xs text-[#334155] cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={requirePasswordChange}
-                      onChange={(e) => setRequirePasswordChange(e.target.checked)}
-                      className="w-4 h-4 rounded border-[#cbd5e1] text-[#501f92] focus:ring-[#8a4dff]"
-                    />
-                    <span>Requerir cambio de contraseña en el primer inicio de sesión</span>
-                  </label>
-
-                  {/* Estado de contraseña asignada */}
-                  {tempPasswordAssigned && (
-                    <div className="p-3.5 rounded-2xl bg-[#f0fdf4] border border-[#bbf7d0] text-xs text-[#166534] space-y-2 animate-in fade-in duration-150">
-                      <div className="flex items-center gap-2 font-semibold">
-                        <CheckCircle2 className="w-4 h-4 text-[#16a34a]" />
-                        <span>Contraseña temporal asignada y activa en el sistema</span>
-                      </div>
-                      <p className="text-[11px] text-[#15803d]">
-                        El usuario ya puede iniciar sesión con su correo <strong>{email}</strong> y la contraseña configurada.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={handleCopyCredentials}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-[#86efac] text-emerald-800 rounded-lg text-xs font-semibold hover:bg-[#f0fdf4] transition-colors cursor-pointer"
-                      >
-                        {copiedCredentials ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                        <span>{copiedCredentials ? '¡Copiado al portapapeles!' : 'Copiar credenciales completas'}</span>
-                      </button>
-                    </div>
-                  )}
-
-                  {!tempPasswordAssigned && (
-                    <button
-                      type="button"
-                      onClick={handleAssignTempPassword}
-                      className="w-full py-2.5 bg-[#4c1d95] hover:bg-[#3b1277] text-white rounded-xl text-xs font-semibold shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2"
-                    >
-                      <Key className="w-3.5 h-3.5" />
-                      <span>Guardar y activar contraseña</span>
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {/* OPCIÓN 2: Enviar enlace por correo */}
-              {accessMethodTab === 'email' && (
-                <div className="space-y-4">
-                  <div className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] text-xs text-[#475569] space-y-1">
-                    <p className="font-semibold text-[#0f172a]">
-                      Enlace de autoservicio para el usuario
-                    </p>
-                    <p className="text-[11px] text-[#64748b] leading-relaxed">
-                      Se enviará un correo a <strong className="text-[#334155]">{email}</strong> con un enlace seguro de restablecimiento de Django que expira en 24 horas.
-                    </p>
-                  </div>
-
-                  {emailSentStatus ? (
-                    <div className="p-3.5 rounded-2xl bg-[#f0fdf4] border border-[#bbf7d0] text-xs text-[#166534] space-y-1.5 animate-in fade-in duration-150">
-                      <div className="flex items-center gap-2 font-semibold">
-                        <CheckCircle2 className="w-4 h-4 text-[#16a34a]" />
-                        <span>Enlace de restablecimiento enviado exitosamente</span>
-                      </div>
-                      <p className="text-[11px] text-[#15803d]">
-                        El correo fue remitido a <strong>{email}</strong>. Indícale al colaborador que revise su bandeja de entrada o spam.
-                      </p>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={handleSendResetEmail}
-                      className="w-full py-2.5 bg-[#4c1d95] hover:bg-[#3b1277] text-white rounded-xl text-xs font-semibold shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2"
-                    >
-                      <Mail className="w-3.5 h-3.5" />
-                      <span>Enviar enlace a {email}</span>
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Footer del modal */}
-            <div className="px-6 py-4 bg-[#f8fafc] border-t border-[#f1f5f9] flex justify-end">
-              <button
-                type="button"
-                onClick={() => setShowResetAccessModal(false)}
-                className="px-4 py-2 bg-white border border-[#cbd5e1] hover:bg-[#f1f5f9] text-[#334155] rounded-xl text-xs font-semibold transition-colors cursor-pointer"
-              >
-                Cerrar
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Acceso a ECO: usuario de ingreso, contraseña temporal y desactivación (solo system_admin, igual a producción) */}
+      {onUpdateUser && currentUser?.accessLevel === 'system_admin' && (
+        <UserAccessCard user={user} allUsers={allUsers} adminName={currentUser.name} onUpdateUser={onUpdateUser} />
       )}
 
+      {/* Historial de cambios del perfil (previsualización) */}
+      <div className="bg-white rounded-2xl border border-[#e2e8f0] p-5 shadow-xs space-y-2">
+        <h2 className="text-base font-bold text-[#0f172a] tracking-tight">Historial de cambios del perfil</h2>
+        {(user.profileHistory || []).length === 0 ? (
+          <p className="text-xs text-[#94a3b8]">Sin cambios registrados.</p>
+        ) : (
+          <ul className="space-y-1.5">
+            {(user.profileHistory || []).slice(0, 12).map((h) => (
+              <li key={h.id || `${h.field}-${h.changedAt}`} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 rounded-xl border border-[#f1f5f9] text-xs">
+                <span>
+                  <strong className="text-[#0f172a]">{h.field}:</strong>{' '}
+                  <span className="text-[#94a3b8]">{h.previousValue || 'vacío'}</span> → <strong className="text-[#0f172a]">{h.newValue || 'vacío'}</strong>
+                </span>
+                <span className="text-[10.5px] text-[#94a3b8]">{h.changedByUserName || h.changedByUserId} · {new Date(h.changedAt).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* 4. MODAL: RESTABLECER ACCESO / ASIGNAR CONTRASEÑA (AJUSTE SOLICITADO)      */}
+      {/* ========================================================================= */}
       {/* ========================================================================= */}
       {/* 5. MODAL: CAMBIAR FOTO DE PERFIL                                          */}
       {/* ========================================================================= */}
       {showChangePhotoModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl border border-[#e2e8f0] shadow-xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-150 p-6 space-y-4">
+          <div className="bg-white rounded-2xl border border-[#e2e8f0] shadow-xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-150 p-6 space-y-4">
             <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-3">
               <div className="flex items-center gap-2.5">
                 <Camera className="w-4 h-4 text-[#501f92]" />

@@ -47,6 +47,8 @@ export type OrbitView =
   | 'el-muro'
   | 'reportes'
   | 'nova-ia'
+  | 'hardware'
+  | 'licencias'
   | 'config-roles'
   | 'config-permisos'
   | 'usuarios'
@@ -134,6 +136,8 @@ export interface ProjectMonthlyCycle {
   rolloverHoursIn?: number;  // Horas traspasadas del ciclo anterior si aplica
   executedHours: number;     // Horas ejecutadas reales en este ciclo (rollup)
   status: 'closed' | 'active' | 'upcoming';
+  periodNumber?: number;     // Periodo de contrato (1 = contrato inicial, 2 = primera renovación…)
+  tasksGenerated?: boolean;  // Las tareas recurrentes del mes ya se crearon
   notes?: string;
 }
 
@@ -317,10 +321,14 @@ export interface ProjectReworkRound {
 }
 
 export interface ProjectScheduleConfig {
-  clientKickoffWaitDays: number;  // Default: 3 días hábiles
-  gateApprovalWaitDays: number;   // Default: 5 días hábiles
-  gateCount: number;              // Default: 2 gates
-  includedReworkRounds: number;   // Default: 2 rondas
+  clientKickoffWaitDays: number;  // Entrega de insumos del cliente tras el kickoff (sugerido 3 días hábiles)
+  includedReworkRounds: number;   // Rondas de ajuste incluidas en contrato (sugerido 2). Ronda = el cliente revisa, devuelve ajustes y aprueba
+  reworkRoundDays?: number;       // Días hábiles por ronda (sugerido 5)
+  /** @deprecated Unificado en rondas de ajuste (includedReworkRounds). */
+  gateApprovalWaitDays?: number;
+  /** @deprecated Unificado en rondas de ajuste (includedReworkRounds). */
+  gateCount?: number;
+  productionWeeks?: number;       // Semanas de producción definidas en el Alcance (weeksRef del servicio)
 }
 
 export type ProjectHealthStatus = 'healthy' | 'attention' | 'risk';
@@ -341,6 +349,64 @@ export interface ProjectHealthResult {
   evaluatedAt: string;
 }
 
+/** Activo físico (hardware) — costo directo de operación vía depreciación. */
+export interface HardwareAsset {
+  id: string;
+  name: string;
+  type?: string;                    // Laptop, Cámara, Monitor… (texto libre con sugerencias)
+  brand?: string;
+  model?: string;
+  serialNumber?: string;            // Serial o placa de inventario
+  assignedUserId?: string | null;   // Colaborador asignado
+  location?: string;                // Ubicación física u oficina (opcional)
+  purchaseValue: number;            // Valor de compra (COP)
+  purchaseDate?: string | null;
+  usefulLifeMonths?: number | null; // Para depreciación
+  warrantyEndDate?: string | null;
+  isDirectCost: boolean;            // Su depreciación se imputa a servicios/proyectos
+  serviceTemplateIds: string[];     // Servicios (plantillas) que lo usan
+  projectIds: string[];             // Proyectos que lo usan
+  status: 'active' | 'repair' | 'retired';
+  notes?: string;
+}
+
+/** Licencia o suscripción de software — costo directo de operación. */
+export interface SoftwareLicense {
+  id: string;
+  application: string;
+  plan?: string;
+  quantity: number;
+  frequency: 'monthly' | 'quarterly' | 'annual';
+  currency: 'COP' | 'USD' | 'MXN' | 'EUR';
+  unitValue: number;
+  area: 'Operativos' | 'Comercial' | 'Admin' | 'Varios';
+  ownerUserId?: string | null;      // Responsable de la cuenta (pagos, accesos, renovación)
+  assignedUserIds: string[];        // Personas que usan los cupos (≤ cantidad)
+  nextRenewalDate?: string | null;  // Próximo cobro / renovación
+  projectIds: string[];             // Proyectos activos que la usan (reparto del costo)
+  pendingVerification: boolean;
+  verificationNote?: string;
+  status: 'active' | 'inactive';
+}
+
+export type ProjectClosureReason = 'delivered_approved' | 'closed_early' | 'cancelled_by_client';
+
+/** Cierre formal del proyecto: conserva histórico y deja trazabilidad inmutable. */
+export interface ProjectClosureRecord {
+  closedAt: string;                 // ISO timestamp del cierre
+  closedByName: string;
+  actualEndDate: string;            // Fecha real de entrega (YYYY-MM-DD)
+  reason: ProjectClosureReason;
+  note: string;                     // Aprendizajes / observaciones (obligatorio)
+  // Foto final para rentabilidad e historial de estimaciones
+  quotedHours: number;
+  executedHours: number;
+  includedReworkRounds?: number;
+  usedReworkRounds?: number;
+  baselineEndDate?: string | null;
+  deviationBusinessDays?: number | null;  // + atraso / − adelanto vs. línea base
+}
+
 export interface ProjectSummaryItem {
   id: string;
   code?: string;
@@ -353,6 +419,9 @@ export interface ProjectSummaryItem {
   leadRole?: string;
   accountManagerId?: string;
   accountManagerName?: string;
+  /** Comercial responsable (owner de la oportunidad que originó el proyecto). */
+  commercialOwnerId?: string;
+  commercialOwnerName?: string;
   projectType: ProjectType;
   serviceBase: string;
   areas?: string[];
@@ -370,6 +439,13 @@ export interface ProjectSummaryItem {
   baselineEndDate?: string;
   forecastEndDate?: string;
   actualEndDate?: string | null;
+  closure?: ProjectClosureRecord | null;
+  // Fee mensual: contrato por vigencia con ciclos mensuales
+  contractMonths?: number | null;            // Vigencia contratada (ej. 3, 6, 12 meses)
+  contractStartDate?: string | null;         // Inicio del contrato (fijado al «Iniciar proyecto»)
+  contractEndDate?: string | null;           // Fin del contrato (inicio + vigencia)
+  contractRenewals?: Array<{ renewedAt: string; renewedByName: string; addedMonths: number; monthlyHours: number; note?: string }>;
+  externalResources?: ExternalResourceItem[];     // Heredados de la cotización     // Registro de cierre (autor, fecha, motivo y foto final)
   isKickedOff?: boolean;
   scheduleConfig?: ProjectScheduleConfig;
 
@@ -378,6 +454,10 @@ export interface ProjectSummaryItem {
   scheduleHistory?: ProjectScheduleChange[];
   reworkRounds?: ProjectReworkRound[];
   projectHealth?: ProjectHealthResult;
+
+  // Notificaciones a Google Chat (precedencia en resolveGoogleChatTarget)
+  googleChatMode?: GoogleChatNotificationMode;   // Default: 'inherit_client'
+  googleChat?: GoogleChatIntegration | null;     // Solo si googleChatMode === 'custom'
   
   // Entregables y Equipo Formal
   deliverables?: ProjectDeliverable[];
@@ -657,7 +737,7 @@ export type AppAction = 'view' | 'create' | 'edit' | 'approve' | 'administer';
 export type AccessScope = 'own' | 'assigned' | 'team' | 'accounts' | 'all';
 
 /**
- * Niveles de acceso funcionales canónicos de Orbit (7 niveles).
+ * Niveles de acceso funcionales canónicos de ECO (7 niveles).
  */
 export type CanonicalOrbitAccessLevel =
   | 'collaborator'
@@ -669,7 +749,7 @@ export type CanonicalOrbitAccessLevel =
   | 'system_admin';
 
 /**
- * Niveles de acceso al sistema (Orbit Access Levels).
+ * Niveles de acceso al sistema (ECO Access Levels).
  * Incluye los 7 niveles canónicos más el estado transitorio 'pending'.
  * 'pending' NO es un nivel funcional: representa un usuario invitado/sin asignar
  * bajo política deny-by-default y con acceso mínimo seguro (Mi Día propio).
@@ -689,6 +769,8 @@ export type OrbitModule =
   | 'new-business'
   | 'plantillas-producto'
   | 'la-colonia'
+  | 'costos-operacion'   // Hardware y Licencias (costos directos de operación)
+  | 'direccion-finanzas' // Dirección y Finanzas (en producción: «Tablero» y «Finanzas»)
   | 'administracion';
 
 /**
@@ -797,6 +879,7 @@ export interface TaskItem {
   dueDate: string;
   targetDate?: string | null; // Fecha objetivo (opcional según contexto de proyecto)
   scheduledDate?: string | null; // Fecha planificada para ejecución (usada en Mi Día)
+  cycleKey?: string | null;      // Fee mensual: ciclo al que pertenece la tarea ('YYYY-MM')
   isDeadlineStrict?: boolean; // Flag de deadline estricto vs fecha orientativa
   dueStatus: 'normal' | 'soon' | 'overdue' | 'tomorrow' | 'urgent';
   dueText: string;
@@ -895,6 +978,13 @@ export interface UserItem {
   tasksCount: number;
   joinedDate: string;
   capacityHours?: number;
+  workCalendar?: 'CO' | 'MX';          // Calendario laboral (festivos que descuentan capacidad)
+  workCalendarSince?: string | null;   // Vigente desde (las semanas anteriores no se recalculan)
+  profileHistory?: UserProfileAuditEntry[]; // Previsualización; el historial autoritativo es del backend
+  loginUsername?: string;              // Usuario de ingreso (único, sin espacios)
+  lastLoginAt?: string | null;         // Último ingreso (ISO)
+  hasPassword?: boolean;               // Tiene contraseña asignada (el valor nunca viaja al frontend)
+  mustChangePassword?: boolean;        // Debe cambiar la contraseña temporal al entrar
   utilizedPercent?: number;
   jobTitle?: string;
   officialRole?: StandardUhuraRole; // Rol cotizable principal (compatibilidad)
@@ -977,12 +1067,12 @@ export type TeamAbsenceStatus = 'active' | 'cancelled';
 export type TeamAbsenceSource = 'google_calendar' | 'manual';
 
 /**
- * Entidad canónica de ausencia/bloqueo de disponibilidad del equipo en Orbit.
+ * Entidad canónica de ausencia/bloqueo de disponibilidad del equipo en ECO.
  * Google Calendar es la fuente externa para vacaciones y licencias.
- * Bucky y Capacidad consumen esta entidad internamente desde Orbit.
+ * ECO y Capacidad consumen esta entidad internamente desde ECO.
  */
 export interface TeamAbsenceEvent {
-  id: string;                          // UUID único de Orbit
+  id: string;                          // UUID único de ECO
   userId: string;                      // FK al colaborador (UserItem.id)
   userName?: string;                   // Nombre para display rápido
   type: TeamAbsenceType;
@@ -1001,7 +1091,7 @@ export interface TeamAbsenceEvent {
 }
 
 /**
- * Evento humano/operativo de equipo consumido por Bucky y los módulos de Orbit
+ * Evento humano/operativo de equipo consumido por ECO y los módulos de ECO
  */
 export interface TeamLifeEvent {
   id: string;
@@ -1038,7 +1128,7 @@ export interface ServiceProfitability {
   color: string;
 }
 
-export type OperationalAlertType = 'RETRASO' | 'RENTABILIDAD' | 'CARTERA' | 'ASIGNACIÓN';
+export type OperationalAlertType = 'RETRASO' | 'RENTABILIDAD' | 'CARTERA' | 'ASIGNACIÓN' | 'REVISIÓN';
 
 export interface OperationalAlert {
   id: string;
@@ -1175,6 +1265,29 @@ export interface ClientTaxEntity {
  */
 export type ClientStatus = 'active' | 'paused' | 'archived';
 
+/**
+ * Integración con Google Chat mediante webhook entrante.
+ * Seguridad: la URL del webhook NUNCA se persiste en frontend ni se expone por API;
+ * solo se conserva una referencia enmascarada (`webhookMask`). En backend la URL se
+ * guarda cifrada y únicamente `system_admin` puede registrarla o reemplazarla.
+ */
+export type GoogleChatIntegrationStatus = 'pending_test' | 'active' | 'inactive' | 'error';
+
+/** Modo de notificación de un proyecto/fee hacia Google Chat. */
+export type GoogleChatNotificationMode = 'inherit_client' | 'disabled' | 'custom';
+
+export interface GoogleChatIntegration {
+  spaceName: string;                    // Nombre del espacio de Google Chat
+  hasWebhook: boolean;
+  webhookMask?: string | null;          // Ej. '••••••••••••aB92' (nunca la URL)
+  status: GoogleChatIntegrationStatus;
+  lastTestAt?: string | null;           // ISO timestamp de la última prueba
+  lastTestResult?: 'success' | 'error' | null;
+  lastTestMessage?: string | null;
+  updatedAt?: string | null;
+  updatedByName?: string | null;        // Usuario que hizo la última modificación
+}
+
 export interface ClientProfile {
   id: string;
   name: string;                         // Nombre Comercial / Marca Sombrilla
@@ -1213,6 +1326,9 @@ export interface ClientProfile {
   commercialInfo?: ClientCommercialInfo;
   behavior?: ClientBehaviorScores;
   projectsHistory?: ClientProjectHistoryItem[];
+
+  // Integraciones (administradas solo por system_admin)
+  googleChat?: (GoogleChatIntegration & { isDefaultForProjects: boolean }) | null;
 }
 
 export interface ClientProjectNode {
@@ -1232,7 +1348,7 @@ export interface ClientProjectNode {
 }
 
 // ============================================================================
-// MODELO FUNCIONAL: NEW BUSINESS → COTIZACIÓN → PROYECTO EN ORBIT
+// MODELO FUNCIONAL: NEW BUSINESS → COTIZACIÓN → PROYECTO EN ECO
 // ============================================================================
 
 /**
@@ -1306,7 +1422,7 @@ export interface ProductBacklogTemplate {
 /**
  * Contrato de interoperabilidad con Google Sheets de Finanzas.
  * Finanzas / Sheets gobierna fórmulas salariales, overhead y márgenes;
- * Orbit consolida el rollup de horas por rol presupuestadas y registra el valor cotizado.
+ * ECO consolida el rollup de horas por rol presupuestadas y registra el valor cotizado.
  */
 export interface CommercialCalculatorContract {
   quoteId: string;
@@ -1430,13 +1546,13 @@ export type HubSpotDealStage =
   | 'Enviado para facturar';
 
 /**
- * Tipo general de la propuesta calculado automáticamente por Orbit
+ * Tipo general de la propuesta calculado automáticamente por ECO
  */
 export type ProposalCommercialType = 'fixed_project' | 'fee_monthly' | 'mixed';
 
 /**
  * Estructura comercial por servicio definida en Cotización
- * Relación 1:1: 1 servicio en Orbit = 1 negocio en HubSpot = 1 proyecto en Orbit si se gana
+ * Relación 1:1: 1 servicio en ECO = 1 negocio en HubSpot = 1 proyecto en ECO si se gana
  */
 export interface ServiceCommercialItem {
   serviceId: string;
@@ -1461,7 +1577,7 @@ export interface ServiceCommercialItem {
 }
 
 /**
- * Registro de trazabilidad y auditoría para sincronización bidireccional Orbit <-> HubSpot
+ * Registro de trazabilidad y auditoría para sincronización bidireccional ECO <-> HubSpot
  */
 export interface HubSpotSyncAuditEntry {
   id: string;
@@ -1473,7 +1589,7 @@ export interface HubSpotSyncAuditEntry {
   userId: string;
   userName: string;
   timestamp: string;
-  origin: 'Orbit' | 'HubSpot';
+  origin: 'ECO' | 'HubSpot';
   syncStatus: 'success' | 'pending' | 'error';
   errorMessage?: string;
   syncedFields: {
@@ -1491,6 +1607,38 @@ export interface HubSpotSyncAuditEntry {
  * Cotización (Quote Proposal)
  * Cada oportunidad puede tener 1..N cotizaciones simultáneas (Decisión 2)
  */
+/**
+ * Recurso externo / subcontratado (ej. backend, arquitectura de servidores).
+ * NO es un rol de Uhura: no entra al catálogo de roles, a la capacidad del equipo,
+ * a Mi Día ni a la matriz de horas por rol. Suma al costo del proyecto.
+ */
+export interface ExternalResourceItem {
+  id: string;
+  description: string;                 // Ej. 'Arquitectura de servidores'
+  providerName?: string;               // Proveedor o freelance
+  costModel: 'fixed' | 'hourly';       // Valor fijo u horas × tarifa del proveedor
+  hours?: number;                      // Solo 'hourly'
+  hourlyRate?: number;                 // Solo 'hourly'
+  totalCost: number;                   // Costo total en la moneda de la cotización
+  serviceId?: string | null;           // Servicio al que pertenece (conversión 1:1)
+  /** Ronda 2: recurso externo (proveedor/freelance) o licencia (ej. Claude, plugin, hosting). */
+  kind?: 'external' | 'license';
+  /** Pago único o mensual; si es mensual, totalCost = costo mensual × meses. */
+  recurrence?: 'one_time' | 'monthly';
+  monthlyCost?: number;
+  months?: number;
+}
+
+export interface QuoteCommercialVersion {
+  version: number;
+  savedAt: string;
+  savedBy?: string;
+  total: number;
+  currency: 'COP' | 'USD';
+  /** true si se enviaron los valores a los negocios de HubSpot ya creados. */
+  syncedToHubspot?: boolean;
+}
+
 export interface QuoteProposal {
   id: string;
   opportunityId: string;
@@ -1523,6 +1671,9 @@ export interface QuoteProposal {
   convertedToProjectId?: string | null; // Idempotencia: evita reconversiones duplicadas
   createdAt: string;
   updatedAt: string;
+  externalResources?: ExternalResourceItem[];   // Costos subcontratados (fuera de capacidad y roles)
+  /** Versiones guardadas de la cotización comercial (ronda 2): v1 al guardar, v2… al guardar cambios tras el feedback del cliente. */
+  commercialVersions?: QuoteCommercialVersion[];
 }
 
 /**

@@ -1,4 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { formatDate } from '../../utils/formatters';
+import { TimerControls } from './time/TimerControls';
+import { EmojiPopover } from './ui/EmojiPopover';
 import {
   X,
   Play,
@@ -241,6 +244,26 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
   // Menu and Toast
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  // El menú ··· se cierra al hacer clic afuera o con Esc (ronda 2).
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!isMenuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setIsMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        setIsMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey, true);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey, true);
+    };
+  }, [isMenuOpen]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Title inline edit state
@@ -259,10 +282,10 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
   // Local team & responsibility tracking
   const [projectLead, setProjectLead] = useState<TaskItem['projectLead']>(
-    task?.projectLead || { name: 'Paola (Lead PM)', initials: 'PL', avatarBg: 'bg-[#501f92]', role: 'Lead PM' }
+    task?.projectLead || { name: 'Paola (Lead PM)', initials: 'PL', avatarBg: 'bg-[#501f92]', role: 'Product Lead' }
   );
   const [assignee, setAssignee] = useState<TaskItem['assignee']>(
-    task?.assignee || { name: 'Catalina Tejada', initials: 'CT', avatarBg: 'bg-[#501f92]', role: 'Diseñador Gráfico' }
+    task?.assignee || { name: 'Catalina Tejada', initials: 'CT', avatarBg: 'bg-[#501f92]', role: 'Creative Designer' }
   );
   const [collaborators, setCollaborators] = useState<NonNullable<TaskItem['collaborators']>>(
     task?.collaborators || []
@@ -272,7 +295,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   );
   const [reviewer, setReviewer] = useState<TaskItem['reviewer']>(task?.reviewer);
   const [requestedBy, setRequestedBy] = useState<string>(task?.requestedBy || 'Paola Monsalve');
-  const [budgetedRole, setBudgetedRole] = useState<string>(task?.budgetedRole || 'Diseñador Gráfico');
+  const [budgetedRole, setBudgetedRole] = useState<string>(task?.budgetedRole || 'Creative Designer');
   const [requiresValidation, setRequiresValidation] = useState<boolean>(task?.requiresValidation ?? false);
   const [assigneeAllocations, setAssigneeAllocations] = useState<TaskAssigneeAllocation[]>(
     task?.assigneeAllocations || []
@@ -308,7 +331,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     });
   };
 
-  // Bucky Copiloto: Chequeo de colaboradores asignados en vacaciones
+  // ECO: Chequeo de colaboradores asignados en vacaciones
   const assignedVacationAlerts = useMemo(() => {
     const alerts: { name: string; message: string; returnDate?: string }[] = [];
     const assignedList = Array.from(new Set([assignee?.name, ...(collaborators || []).map((c) => c?.name)].filter(Boolean) as string[]));
@@ -381,16 +404,16 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   useEffect(() => {
     if (task) {
       setProjectLead(
-        task.projectLead || { name: 'Paola (Lead PM)', initials: 'PL', avatarBg: 'bg-[#501f92]', role: 'Lead PM' }
+        task.projectLead || { name: 'Paola (Lead PM)', initials: 'PL', avatarBg: 'bg-[#501f92]', role: 'Product Lead' }
       );
       setAssignee(
-        task.assignee || { name: 'Catalina Tejada', initials: 'CT', avatarBg: 'bg-[#501f92]', role: 'Diseñador Gráfico' }
+        task.assignee || { name: 'Catalina Tejada', initials: 'CT', avatarBg: 'bg-[#501f92]', role: 'Creative Designer' }
       );
       setCollaborators(task.collaborators || []);
       setFollowers(task.followers || []);
       setReviewer(task.reviewer);
       setRequestedBy(task.requestedBy || 'Paola Monsalve');
-      setBudgetedRole(task.budgetedRole || 'Diseñador Gráfico');
+      setBudgetedRole(task.budgetedRole || 'Creative Designer');
       setRequiresValidation(task.requiresValidation ?? false);
       setAssigneeAllocations(task.assigneeAllocations || []);
       setIsEditingHoursSplit(false);
@@ -404,8 +427,8 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
       setReworkReason('');
       setReworkRequestedBy(task.clientName || 'Cliente');
       setReworkHours('1.0');
-      setStartDateInput(task.startDate || '2026-08-20');
-      setDueDateInput(task.dueDate || '2026-08-24');
+      setStartDateInput(task.startDate || '');
+      setDueDateInput(task.dueDate || '');
 
       const initialCriteria =
         task.acceptanceCriteria && task.acceptanceCriteria.length > 0
@@ -493,7 +516,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
             actorName: tl.userName || task.assignee?.name || 'Colaborador',
             actorInitials: tl.userName ? tl.userName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase() : 'CO',
             actorAvatarBg: '#501f92',
-            timestamp: tl.date || '2026-08-22',
+            timestamp: tl.date || '',
             description: `Registró ${hours}h de ejecución${tl.note ? `: "${tl.note}"` : ''}`
           });
         }
@@ -511,7 +534,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
             actorName: rw.requestedBy || 'Cliente / Revisor',
             actorInitials: 'RW',
             actorAvatarBg: '#ea580c',
-            timestamp: rw.date || '2026-08-21',
+            timestamp: rw.date || '',
             description: `Retrabajo registrado (+${rw.hoursSpent || 0}h): ${rw.reason}`
           });
         }
@@ -529,7 +552,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
             actorName: del.submittedBy || task.assignee?.name || 'Colaborador',
             actorInitials: del.submittedBy ? del.submittedBy.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase() : 'DL',
             actorAvatarBg: '#10b981',
-            timestamp: del.submittedAt || '2026-08-21',
+            timestamp: del.submittedAt || '',
             description: `Entregable subido: "${del.title || 'Entregable'}"${del.status === 'approved' ? ' (Aprobado)' : ''}`
           });
         }
@@ -545,7 +568,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
         actorName: task.requestedBy || task.projectLead?.name || 'Project Lead',
         actorInitials: 'PL',
         actorAvatarBg: '#501f92',
-        timestamp: task.startDate || task.date || '2026-08-20',
+        timestamp: task.startDate || task.date || '',
         description: `Tarea creada y asignada inicialmente a ${task.assignee?.name || 'Colaborador'}`
       });
     }
@@ -646,6 +669,32 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     }
 
     setAutocompleteState(null);
+  };
+
+  // Menciones en «Comentario de entrega» (ronda 2): mismo listado de equipo que en Mensajes.
+  const [deliveryMention, setDeliveryMention] = useState<{ query: string; index: number } | null>(null);
+  const deliveryNotesRef = useRef<HTMLTextAreaElement | null>(null);
+  const handleDeliveryNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    setDeliverableNotes(val);
+    const before = val.substring(0, e.target.selectionStart);
+    const at = before.lastIndexOf('@');
+    if (at >= 0 && (at === 0 || /\s/.test(before[at - 1]))) {
+      const query = before.substring(at + 1);
+      if (!/[\s]/.test(query)) {
+        setDeliveryMention({ query, index: at });
+        return;
+      }
+    }
+    setDeliveryMention(null);
+  };
+  const insertDeliveryMention = (name: string) => {
+    if (!deliveryMention) return;
+    const before = deliverableNotes.substring(0, deliveryMention.index);
+    const after = deliverableNotes.substring(deliveryMention.index + deliveryMention.query.length + 1);
+    setDeliverableNotes(`${before}@${name} ${after}`);
+    setDeliveryMention(null);
+    setTimeout(() => deliveryNotesRef.current?.focus(), 10);
   };
 
   // Insert mention into textarea
@@ -1013,7 +1062,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               tokens.push(
                 <span
                   key={`mention-${match.index}`}
-                  className="inline-flex items-center gap-1 font-bold text-[#501f92] bg-[#f5f3ff] hover:bg-[#ede9fe] border border-[#ddd6fe] px-1.5 py-0.2 rounded-md text-[11px] transition-colors align-baseline"
+                  className="inline-flex items-center gap-1 font-bold text-[#501f92] bg-[#f5f3ff] hover:bg-[#ede9fe] border border-[#ddd6fe] px-1.5 py-0.2 rounded-lg text-[11px] transition-colors align-baseline"
                   title={`Miembro: ${memberProfile ? memberProfile.role : 'Equipo'}`}
                 >
                   <AtSign className="w-2.5 h-2.5 text-[#501f92]" />
@@ -1038,7 +1087,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                       showToast(`Navegando a ${matchedTask.title}`);
                     }
                   }}
-                  className={`inline-flex items-center gap-1 font-mono font-bold px-1.5 py-0.2 rounded-md text-[11px] border transition-all align-baseline ${
+                  className={`inline-flex items-center gap-1 font-mono font-bold px-1.5 py-0.2 rounded-lg text-[11px] border transition-all align-baseline ${
                     matchedTask
                       ? 'bg-[#f0f9ff] text-[#0284c7] border-[#bae6fd] hover:bg-[#e0f2fe] hover:border-[#0284c7] cursor-pointer shadow-2xs'
                       : 'bg-[#f8fafc] text-[#475569] border-[#e2e8f0]'
@@ -1145,43 +1194,47 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
       return;
     }
 
-    const nextStatus: TaskStatus = requiresValidation ? 'Review' : 'Done';
+    // Ronda 2: entregar NUNCA completa la tarea. Pasa a «En revisión», queda un mensaje de quien
+    // entregó con el enlace y se avisa al líder y al revisor; ellos aprueban o devuelven.
+    const nextStatus: TaskStatus = 'Review';
+    const submitterName = currentUser?.name || task.assignee?.name || assignee?.name || 'El responsable';
+    const link = deliverableUrl.trim();
+    const reviewerName = reviewer?.name || task.reviewer?.name || task.projectLead?.name;
 
     if (onAddDeliverable) {
       onAddDeliverable(task.id, {
-        url: deliverableUrl.trim() || uploadedFileName || 'Entrega de producción',
+        url: link || uploadedFileName || 'Entrega de producción',
         title: deliverableNotes.trim() || 'Entregable de producción',
-        submittedBy: task.assignee?.name || assignee?.name || 'Catalina Tejada',
+        submittedBy: submitterName,
         notes: deliverableNotes.trim(),
         status: 'submitted',
-        taggedReviewer: requiresValidation ? (reviewer?.name || task.reviewer?.name || 'Validador') : undefined
+        taggedReviewer: reviewerName || 'Líder del proyecto'
       });
     }
 
-    // Set task status based on requiresValidation rule
     if (onUpdateTaskStatus) {
       onUpdateTaskStatus(task.id, nextStatus);
     }
 
-    // Add a system update in chat
-    setChatMessages((prev) => [
-      ...prev,
-      {
-        id: `deliv-${Date.now()}`,
-        authorName: 'Sistema',
-        authorInitials: 'SYS',
-        timestamp: 'Ahora mismo',
-        content: requiresValidation
-          ? `${assignee?.name || 'El responsable'} envió el entregable a revisión para validación formal.`
-          : `${assignee?.name || 'El responsable'} completó la entrega y pasó la tarea directamente a Completada.`,
-        isSystem: true
-      }
-    ]);
+    // Mensaje en «Mensajes» firmado por quien entregó, con el enlace
+    const deliveryMessage: ChatMessage = {
+      id: `deliv-${Date.now()}`,
+      authorName: submitterName,
+      authorRoleLabel: 'Entregó',
+      authorInitials: submitterName.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase(),
+      authorAvatarBg: 'bg-[#501f92]',
+      timestamp: 'Ahora mismo',
+      content: `📦 Envió el entregable a revisión${reviewerName ? ` de @${reviewerName}` : ''}.${link ? `\n${link}` : uploadedFileName ? `\nArchivo: ${uploadedFileName}` : ''}${deliverableNotes.trim() ? `\n${deliverableNotes.trim()}` : ''}`,
+      reactions: []
+    };
+    const updatedMessages = [...chatMessages, deliveryMessage];
+    setChatMessages(updatedMessages);
+    if (onUpdateComments) onUpdateComments(task.id, updatedMessages);
 
     setDeliverableUrl('');
     setDeliverableNotes('');
     setUploadedFileName(null);
-    showToast(requiresValidation ? 'Entregable enviado a revisión' : 'Tarea marcada como Completada');
+    showToast(`Entregable enviado a revisión${reviewerName ? ` · se avisó a ${reviewerName}` : ''}`);
     setActiveTab('mensajes');
   };
 
@@ -1356,7 +1409,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
       <div
         id="task-detail-modal-container"
-        className="bg-white sm:rounded-3xl max-w-5xl w-full h-full sm:h-auto sm:max-h-[92vh] border-0 sm:border sm:border-[#e2e8f0] shadow-2xl overflow-hidden flex flex-col"
+        className="bg-white sm:rounded-2xl max-w-5xl w-full h-full sm:h-auto sm:max-h-[92vh] border-0 sm:border sm:border-[#e2e8f0] shadow-2xl overflow-hidden flex flex-col"
       >
         {/* ========================================================= */}
         {/* HEADER: Cliente > Proyecto > Frente | Title | Timer | + | 3-dots | X */}
@@ -1411,7 +1464,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                 <>
                   <span className="text-[#cbd5e1]">›</span>
                   <span
-                    className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#eff6ff] text-[#1d4ed8] border border-[#dbeafe]"
+                    className="inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-bold bg-[#eff6ff] text-[#1d4ed8] border border-[#dbeafe]"
                     title={`Fase del proyecto: ${task.phase || task.fase}`}
                   >
                     {task.phase || task.fase}
@@ -1487,87 +1540,33 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
           {/* Right: Actions Toolbar */}
           <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
-            {/* Timer CTA: Defaults to Play. When running, shows Pause/Resume + Stop */}
-            {isRunning ? (
-              <div className="flex items-center gap-1.5">
-                {onPauseResumeTimer && (
-                  <button
-                    id="task-timer-pause-resume-btn"
-                    onClick={onPauseResumeTimer}
-                    className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-white text-xs font-bold shadow-xs cursor-pointer transition-all ${
-                      activeTimer?.isPaused
-                        ? 'bg-[#10b981] hover:bg-[#059669]'
-                        : 'bg-[#f59e0b] hover:bg-[#d97706]'
-                    }`}
-                    title={activeTimer?.isPaused ? 'Reanudar timer' : 'Pausar timer'}
-                  >
-                    {activeTimer?.isPaused ? (
-                      <>
-                        <Play className="w-3.5 h-3.5 fill-current" />
-                        <span>Reanudar</span>
-                      </>
-                    ) : (
-                      <>
-                        <Pause className="w-3.5 h-3.5" />
-                        <span>Pausar</span>
-                      </>
-                    )}
-                  </button>
-                )}
-                <button
-                  id="task-timer-stop-btn"
-                  onClick={onStopTimer}
-                  className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#dc2626] hover:bg-[#b91c1c] text-white text-xs font-bold shadow-xs cursor-pointer transition-all ${
-                    !activeTimer?.isPaused ? 'animate-pulse' : ''
-                  }`}
-                  title="Detener timer y registrar tiempo"
-                >
-                  <Square className="w-3.5 h-3.5 fill-current" />
-                  <span>Detener</span>
-                </button>
-              </div>
-            ) : (
-              <button
-                id="task-timer-start-btn"
-                onClick={() => {
-                  ensureInProgressOnCollaboratorAction();
-                  onStartTimer(task);
-                }}
-                className="p-2.5 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white shadow-xs cursor-pointer transition-all flex items-center justify-center"
-                title="Iniciar Timer"
-                aria-label="Iniciar Timer"
-              >
-                <Play className="w-4 h-4 fill-current" />
-              </button>
-            )}
-
-            {/* Manual Time Logging Icon Button with Tooltip */}
-            {onOpenManualLog && (
-              <div className="relative group">
-                <button
-                  id="task-manual-time-btn"
-                  onClick={() => {
-                    ensureInProgressOnCollaboratorAction();
-                    onOpenManualLog(task.id);
-                  }}
-                  aria-label="Registrar tiempo manualmente"
-                  className="p-2 rounded-xl bg-white hover:bg-[#f8fafc] text-[#501f92] border border-[#e2e8f0] shadow-2xs hover:border-[#8a4dff]/40 transition-all cursor-pointer flex items-center justify-center relative"
-                >
-                  <Clock className="w-4 h-4 text-[#501f92]" />
-                </button>
-
-                {/* Hover Tooltip */}
-                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 hidden group-hover:flex items-center px-2.5 py-1 rounded-lg bg-[#0f172a] text-white text-[10px] font-semibold whitespace-nowrap z-50 pointer-events-none shadow-lg">
-                  Registrar tiempo manualmente
-                </div>
-              </div>
-            )}
+            {/* Timer: solo íconos (▶ / ⏸ ⏹) + 🕒 carga manual, igual en toda ECO */}
+            <TimerControls
+              isRunning={isRunning}
+              isPaused={Boolean(activeTimer?.isPaused)}
+              onStart={() => {
+                ensureInProgressOnCollaboratorAction();
+                onStartTimer(task);
+              }}
+              onStop={onStopTimer}
+              onPauseResume={onPauseResumeTimer}
+              onManualLog={
+                onOpenManualLog
+                  ? () => {
+                      ensureInProgressOnCollaboratorAction();
+                      onOpenManualLog(task.id);
+                    }
+                  : undefined
+              }
+            />
 
             {/* ··· Menu dropdown */}
-            <div className="relative">
+            <div className="relative" ref={menuRef}>
               <button
                 id="task-options-menu-btn"
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
+                aria-label="Más opciones"
+                aria-expanded={isMenuOpen}
                 className="p-2 rounded-xl bg-white hover:bg-[#f8fafc] text-[#64748b] border border-[#e2e8f0] transition-colors cursor-pointer"
               >
                 <MoreHorizontal className="w-4 h-4" />
@@ -1651,7 +1650,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
                 </span>
-                <span className="font-bold px-2 py-0.5 rounded-md bg-amber-100/90 text-amber-900 border border-amber-300 text-[11px] shrink-0">
+                <span className="font-bold px-2 py-0.5 rounded-lg bg-amber-100/90 text-amber-900 border border-amber-300 text-[11px] shrink-0">
                   🟡 EN PROCESO
                 </span>
                 <span className="text-[11px] text-amber-900/90 font-medium truncate sm:whitespace-normal">
@@ -1661,7 +1660,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
             )}
 
             {task.status === 'Review' && (
-              <span className="font-bold px-2 py-0.5 rounded-md bg-[#ede9fe] text-[#501f92] border border-[#c4b5fd] text-[11px] flex items-center gap-1 shrink-0">
+              <span className="font-bold px-2 py-0.5 rounded-lg bg-[#ede9fe] text-[#501f92] border border-[#c4b5fd] text-[11px] flex items-center gap-1 shrink-0">
                 <Eye className="w-3 h-3 text-[#501f92]" />
                 <span>🔍 EN REVISIÓN</span>
               </span>
@@ -1669,7 +1668,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
             {task.status === 'Done' && (
               <>
-                <span className="font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 border border-emerald-300 text-[11px] flex items-center gap-1 shrink-0">
+                <span className="font-bold px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-900 border border-emerald-300 text-[11px] flex items-center gap-1 shrink-0">
                   <CheckCircle2 className="w-3 h-3 text-emerald-700" />
                   <span>🟢 COMPLETADA</span>
                 </span>
@@ -1681,7 +1680,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
             {task.status === 'To Do' && (
               <>
-                <span className="font-bold px-2 py-0.5 rounded-md bg-slate-200 text-slate-800 border border-slate-300 text-[11px] shrink-0">
+                <span className="font-bold px-2 py-0.5 rounded-lg bg-slate-200 text-slate-800 border border-slate-300 text-[11px] shrink-0">
                   ⚪ POR HACER
                 </span>
                 <span className="text-[11px] text-slate-600 font-medium truncate sm:whitespace-normal">
@@ -1756,7 +1755,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                     className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
                   >
                     <CheckCircle2 className="w-3 h-3" />
-                    <span>Aprobar y Completar</span>
+                    <span>Aprobar y completar</span>
                   </button>
                 </div>
               ) : (
@@ -2213,36 +2212,13 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                                     );
                                   })}
 
-                                {/* Add reaction button (always visible or on hover) */}
-                                <div className="relative">
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setActiveReactionPickerMsgId(
-                                        activeReactionPickerMsgId === msg.id ? null : msg.id
-                                      )
-                                    }
-                                    className="p-1 rounded-full text-[#94a3b8] hover:text-[#501f92] hover:bg-white border border-transparent hover:border-[#e2e8f0] transition-colors cursor-pointer text-xs"
-                                    title="Añadir reacción"
-                                  >
-                                    <Smile className="w-3.5 h-3.5" />
-                                  </button>
-
-                                  {activeReactionPickerMsgId === msg.id && (
-                                    <div className="absolute left-0 bottom-full mb-1.5 flex items-center gap-1 bg-white p-1.5 rounded-full border border-[#e2e8f0] shadow-lg z-30 animate-in fade-in zoom-in-95 duration-100">
-                                      {QUICK_EMOJIS.map((emoji) => (
-                                        <button
-                                          key={emoji}
-                                          type="button"
-                                          onClick={() => handleToggleReaction(msg.id, emoji)}
-                                          className="p-1 hover:scale-125 transition-transform text-sm cursor-pointer rounded-full hover:bg-[#f1f5f9]"
-                                        >
-                                          {emoji}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
+                                {/* Reaccionar: más usados + ver todos; se cierra al hacer clic afuera (ronda 2) */}
+                                <EmojiPopover
+                                  trigger={<Smile className="w-3.5 h-3.5" />}
+                                  triggerTitle="Añadir reacción"
+                                  triggerClassName="p-1 rounded-full text-[#94a3b8] hover:text-[#501f92] hover:bg-white border border-transparent hover:border-[#e2e8f0] transition-colors cursor-pointer text-xs"
+                                  onPick={(emoji) => handleToggleReaction(msg.id, emoji)}
+                                />
                               </div>
                             </div>
 
@@ -2435,13 +2411,46 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                         <label className="block font-bold text-[#334155] mb-1">
                           Comentario de entrega (Opcional)
                         </label>
-                        <textarea
-                          rows={2}
-                          placeholder="Describe qué contiene la entrega o qué puntos clave deben revisarse..."
-                          value={deliverableNotes}
-                          onChange={(e) => setDeliverableNotes(e.target.value)}
-                          className="w-full p-2.5 rounded-xl border border-[#e2e8f0] bg-white text-xs text-[#0f172a] focus:outline-none focus:border-[#501f92] resize-none"
-                        />
+                        <div className="relative">
+                          <textarea
+                            ref={deliveryNotesRef}
+                            rows={2}
+                            placeholder="Describe qué contiene la entrega o qué revisar. Usa @ para mencionar a alguien…"
+                            value={deliverableNotes}
+                            onChange={handleDeliveryNotesChange}
+                            onKeyDown={(e) => e.key === 'Escape' && deliveryMention && (e.stopPropagation(), setDeliveryMention(null))}
+                            onBlur={() => setTimeout(() => setDeliveryMention(null), 150)}
+                            className="w-full p-2.5 rounded-xl border border-[#e2e8f0] bg-white text-xs text-[#0f172a] focus:outline-none focus:border-[#501f92] resize-none"
+                          />
+                          {deliveryMention && (() => {
+                            const q = deliveryMention.query.toLowerCase();
+                            const matches = TEAM_MEMBERS_POOL.filter((m) => m.name.toLowerCase().includes(q) || m.role.toLowerCase().includes(q)).slice(0, 8);
+                            return (
+                              <div className="absolute top-full left-0 mt-1 w-72 max-h-56 overflow-y-auto rounded-2xl bg-white border border-[#e2e8f0] shadow-xl py-1.5 z-40 text-xs">
+                                <div className="px-3 py-1 text-[10px] font-extrabold text-[#501f92] uppercase tracking-wider flex items-center gap-1.5 border-b border-[#f1f5f9] pb-1.5 mb-1">
+                                  <AtSign className="w-3 h-3" /> Mencionar miembro del equipo
+                                </div>
+                                {matches.length === 0 ? (
+                                  <div className="px-3 py-2 text-[#94a3b8] text-[11px]">No se encontraron miembros</div>
+                                ) : (
+                                  matches.map((m) => (
+                                    <button
+                                      key={m.name}
+                                      type="button"
+                                      onMouseDown={(e) => e.preventDefault()}
+                                      onClick={() => insertDeliveryMention(m.name)}
+                                      className="w-full px-3 py-1.5 text-left hover:bg-[#f8fafc] flex items-center justify-between gap-2 cursor-pointer"
+                                    >
+                                      <span className="font-bold text-[#0f172a] truncate">{m.name}</span>
+                                      <span className="text-[10px] text-[#64748b] shrink-0">{m.role}</span>
+                                    </button>
+                                  ))
+                                )}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                        <p className="text-[10px] text-[#64748b] mt-1">Las personas mencionadas reciben un aviso junto con el líder y el revisor.</p>
                       </div>
 
                       {/* CTA Enviar a revisión */}
@@ -2474,7 +2483,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                         Registro cronológico de cambios de estado, colaboradores, entregables y eventos clave.
                       </p>
                     </div>
-                    <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-[#f1f5f9] text-[#475569]">
+                    <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-lg bg-[#f1f5f9] text-[#475569]">
                       {allActivities.length} {allActivities.length === 1 ? 'evento' : 'eventos'}
                     </span>
                   </div>
@@ -2544,7 +2553,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                                     {act.actorInitials || act.actorName.slice(0, 2).toUpperCase()}
                                   </div>
                                   <span className="font-extrabold text-[#0f172a] truncate">{act.actorName}</span>
-                                  <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-md ${badgeBg}`}>
+                                  <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-lg ${badgeBg}`}>
                                     {badgeLabel}
                                   </span>
                                 </div>
@@ -2567,11 +2576,11 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
                               {act.previousValue && act.newValue && (
                                 <div className="flex items-center gap-2 text-[11px] pt-1">
-                                  <span className="px-2 py-0.5 rounded-md bg-[#f1f5f9] text-[#64748b] font-medium border border-[#e2e8f0]">
+                                  <span className="px-2 py-0.5 rounded-lg bg-[#f1f5f9] text-[#64748b] font-medium border border-[#e2e8f0]">
                                     {act.previousValue}
                                   </span>
                                   <span className="text-[#94a3b8] font-bold">➔</span>
-                                  <span className="px-2 py-0.5 rounded-md bg-[#f5f3ff] text-[#501f92] font-bold border border-[#ddd6fe]">
+                                  <span className="px-2 py-0.5 rounded-lg bg-[#f5f3ff] text-[#501f92] font-bold border border-[#ddd6fe]">
                                     {act.newValue}
                                   </span>
                                 </div>
@@ -2664,7 +2673,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                                     {t.title}
                                   </span>
                                 </div>
-                                <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-[#f1f5f9] text-[#64748b] shrink-0 font-semibold">
+                                <span className="text-[9px] px-1.5 py-0.5 rounded-lg bg-[#f1f5f9] text-[#64748b] shrink-0 font-semibold">
                                   {t.status}
                                 </span>
                               </button>
@@ -2709,7 +2718,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                           <button
                             type="button"
                             onClick={() => handleRemovePendingAttachment(att.id)}
-                            className="p-0.5 text-[#94a3b8] hover:text-[#ef4444] rounded-md transition-colors cursor-pointer"
+                            className="p-0.5 text-[#94a3b8] hover:text-[#ef4444] rounded-lg transition-colors cursor-pointer"
                           >
                             <X className="w-3 h-3" />
                           </button>
@@ -2910,36 +2919,16 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                         <Link2 className="w-3.5 h-3.5" />
                       </button>
 
-                      {/* 😀 Quick Emoji bar */}
-                      <div className="relative">
-                        <button
-                          type="button"
-                          onClick={() => setQuickEmojiMenuOpen(!quickEmojiMenuOpen)}
-                          className="p-1.5 rounded-lg hover:bg-white hover:text-[#0f172a] transition-colors cursor-pointer"
-                          title="Insertar emoji"
-                        >
-                          <Smile className="w-3.5 h-3.5" />
-                        </button>
-
-                        {quickEmojiMenuOpen && (
-                          <div className="absolute bottom-full left-0 mb-2 p-1.5 rounded-2xl bg-white border border-[#e2e8f0] shadow-xl flex items-center gap-1 z-50 animate-in fade-in duration-100">
-                            {['👍', '🙌', '🚀', '👀', '🎉', '🔥', '✅', '❤️'].map((em) => (
-                              <button
-                                key={em}
-                                type="button"
-                                onClick={() => {
-                                  setMessageInput((prev) => `${prev} ${em}`);
-                                  setQuickEmojiMenuOpen(false);
-                                  inputRef.current?.focus();
-                                }}
-                                className="p-1 hover:scale-125 transition-transform text-sm cursor-pointer"
-                              >
-                                {em}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                      {/* 😀 Emojis: más usados + ver todos (ronda 2) */}
+                      <EmojiPopover
+                        trigger={<Smile className="w-3.5 h-3.5" />}
+                        triggerTitle="Insertar emoji"
+                        triggerClassName="p-1.5 rounded-lg hover:bg-white hover:text-[#0f172a] transition-colors cursor-pointer"
+                        onPick={(em) => {
+                          setMessageInput((prev) => `${prev}${prev && !prev.endsWith(' ') ? ' ' : ''}${em}`);
+                          inputRef.current?.focus();
+                        }}
+                      />
                     </div>
 
                     {/* Right side: Send button */}
@@ -3016,7 +3005,6 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                       <option value="Review">🔍 En revisión</option>
                       <option value="Done">🟢 Completada</option>
                     </select>
-                    <span className="absolute right-2.5 top-3 pointer-events-none text-[#64748b] text-[10px]">▼</span>
                   </div>
                 </div>
 
@@ -3037,7 +3025,6 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                       <option value="Medium">🚩 Media</option>
                       <option value="High">🔴 Alta</option>
                     </select>
-                    <span className="absolute right-2.5 top-3 pointer-events-none text-[#64748b] text-[10px]">▼</span>
                   </div>
                 </div>
               </div>
@@ -3201,14 +3188,14 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                     <div>
                       <span className="text-[10px] text-[#64748b] block">Inicio</span>
                       <span className="text-xs font-bold text-[#0f172a] block mt-0.5">
-                        {task.startDate || '20 ago. 2026'}
+                        {formatDate(task.startDate || task.scheduledDate, 'Sin programar')}
                       </span>
                     </div>
 
                     <div>
                       <span className="text-[10px] text-[#64748b] block">Entrega</span>
                       <span className="text-xs font-bold text-[#0f172a] block mt-0.5">
-                        {task.dueDate || '24 ago. 2026'}
+                        {formatDate(task.dueDate, 'Sin programar')}
                       </span>
                     </div>
                   </div>
@@ -3363,7 +3350,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                         name: 'Catalina Tejada',
                         initials: 'CT',
                         avatarBg: 'bg-[#501f92]',
-                        role: 'Diseñador Gráfico'
+                        role: 'Creative Designer'
                       };
                       const rest = selectedMembers.slice(1).map((m) => ({
                         name: m.name,
@@ -3529,7 +3516,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                             <button
                               type="button"
                               onClick={() => setIsEditingHoursSplit(false)}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#501f92] hover:bg-[#3f1775] text-white text-[10px] font-semibold transition-colors cursor-pointer"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#501f92] hover:bg-[#3f1775] text-white text-[10px] font-semibold transition-colors cursor-pointer"
                             >
                               <Check className="w-3 h-3" />
                               <span>Listo</span>
@@ -3588,7 +3575,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                                           updated
                                         );
                                       }}
-                                      className="w-16 px-1.5 py-0.5 text-right text-xs font-mono font-semibold text-[#0f172a] bg-[#f8fafc] border border-[#cbd5e1] rounded-md focus:outline-none focus:border-[#501f92]"
+                                      className="w-16 px-1.5 py-0.5 text-right text-xs font-mono font-semibold text-[#0f172a] bg-[#f8fafc] border border-[#cbd5e1] rounded-lg focus:outline-none focus:border-[#501f92]"
                                     />
                                     <span className="text-[10px] text-[#64748b]">h</span>
                                   </div>
@@ -3622,13 +3609,12 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                     return null;
                   })()}
 
-                  {/* Bucky Copiloto: Aviso si hay colaboradores en vacaciones asignados */}
+                  {/* ECO: Aviso si hay colaboradores en vacaciones asignados */}
                   {assignedVacationAlerts.length > 0 && (
                     <div className="mt-2 p-2.5 rounded-xl bg-[#fffbeb] border border-[#fde68a] text-xs flex items-start gap-2">
-                      <span className="text-sm shrink-0">🦫</span>
                       <div className="space-y-0.5">
                         <div className="text-[10px] font-bold text-[#78350f] uppercase tracking-wider">
-                          Aviso Operativo de Bucky
+                          Aviso operativo
                         </div>
                         {assignedVacationAlerts.map((a) => (
                           <p key={a.name} className="text-[#92400e] text-[11px] leading-snug">
@@ -3725,7 +3711,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                       <Briefcase className="w-3.5 h-3.5 text-[#0284c7]" />
                       <span>Rol cotizado</span>
                     </span>
-                    <span className="text-[10px] text-[#0284c7] font-semibold bg-[#f0f9ff] px-2 py-0.5 rounded-md border border-[#bae6fd]">
+                    <span className="text-[10px] text-[#0284c7] font-semibold bg-[#f0f9ff] px-2 py-0.5 rounded-lg border border-[#bae6fd]">
                       Tarifario
                     </span>
                   </div>
@@ -3908,7 +3894,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                       >
                         <div className="flex items-center justify-between">
                           <span
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold ${
                               rwk.origin === 'client'
                                 ? 'bg-[#eff6ff] text-[#1d4ed8] border border-[#bfdbfe]'
                                 : 'bg-[#faf5ff] text-[#7e22ce] border border-[#e9d5ff]'
@@ -3953,7 +3939,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
         >
           <span>
             ID: <strong className="font-mono text-[#0f172a]">{task.id.toUpperCase()}</strong> · Creada el{' '}
-            {task.date || '20 ago. 2026 a las 14:30'}
+            {formatDate(task.date, 'Sin fecha')}
           </span>
         </div>
       </div>

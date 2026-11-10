@@ -19,16 +19,16 @@ const sizeConfig: Record<
   'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl',
   { container: string; text: string; radius: string }
 > = {
-  xs: { container: 'w-5 h-5', text: 'text-[9px]', radius: 'rounded-md' },
+  xs: { container: 'w-5 h-5', text: 'text-[9px]', radius: 'rounded-lg' },
   sm: { container: 'w-7 h-7', text: 'text-[10px]', radius: 'rounded-xl' },
   md: { container: 'w-8 h-8', text: 'text-xs', radius: 'rounded-xl' },
   lg: { container: 'w-10 h-10', text: 'text-sm', radius: 'rounded-2xl' },
   xl: { container: 'w-12 h-12', text: 'text-base', radius: 'rounded-2xl' },
-  '2xl': { container: 'w-16 h-16', text: 'text-xl', radius: 'rounded-3xl' }
+  '2xl': { container: 'w-16 h-16', text: 'text-xl', radius: 'rounded-2xl' }
 };
 
 /**
- * Componente unificado y transversal de Avatar para colaboradores de Uhura Group (Orbit).
+ * Componente unificado y transversal de Avatar para colaboradores de Uhura Group (ECO).
  * 
  * Reglas de resolución canónicas:
  * 1. Si `avatarUrl` (o `user.avatarUrl`) existe y carga sin errores → muestra la fotografía con object-cover.

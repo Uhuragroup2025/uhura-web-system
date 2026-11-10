@@ -31,15 +31,18 @@ export interface ConvertedProjectPlan {
   soldValue?: number;
   soldMonthlyValue?: number;
   monthsDuration?: number;
+  rolloverPolicy?: 'none' | 'carry_over' | 'contractual_cap';
   deliverableIds: string[];
   leadUserId?: string;
   leadUserName?: string;
   includedReworkRounds?: number;
   scheduleConfig?: {
     clientKickoffWaitDays?: number;
-    gateApprovalWaitDays?: number;
-    gateCount: number;
+    gateApprovalWaitDays?: number; // @deprecated
+    gateCount?: number;            // @deprecated
     includedReworkRounds: number;
+    reworkRoundDays?: number;
+    productionWeeks?: number;
   };
 }
 
@@ -49,15 +52,17 @@ export interface ConvertOpportunityPayload {
   leadUserIds?: string[];
   leadName: string;
   specialistUserIds?: string[];
-  startDate: string;
+  /** @deprecated Las fechas se definen al «Iniciar proyecto», nunca en la conversión. */
+  startDate?: string;
+  /** @deprecated Las fechas se definen al «Iniciar proyecto», nunca en la conversión. */
   endDate?: string;
   initialFormalizationStatus?: 'pendiente_formalizacion' | 'activo';
   startConditionsConfig?: any;
   includedReworkRounds?: number;
   scheduleConfig?: {
     clientKickoffWaitDays?: number;
-    gateApprovalWaitDays?: number;
-    gateCount: number;
+    gateApprovalWaitDays?: number; // @deprecated
+    gateCount?: number;            // @deprecated
     includedReworkRounds: number;
   };
 
@@ -129,10 +134,10 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
       return s.approved === true;
     });
 
-    // Si ninguno está explícitamente ganado aún pero el usuario abrió el modal de conversión,
-    // mostrar todos los no perdidos
-    if (won.length === 0) {
-      return allServices.filter((s) => s.hubspotDealStage !== 'Cierre perdido');
+    // Un solo servicio se aprueba automáticamente al convertir (#132). Con varios, solo se
+    // convierten los que Comercial marcó como ganados: nunca «todos los no perdidos» (#19).
+    if (won.length === 0 && allServices.length === 1 && allServices[0].hubspotDealStage !== 'Cierre perdido') {
+      return allServices;
     }
     return won;
   }, [allServices]);
@@ -161,14 +166,19 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
   const [serviceLeadUserIds, setServiceLeadUserIds] = useState<Record<string, string>>({});
   // Tandas de ajustes permitidas por servicio (default: 2)
   const [serviceReworkRounds, setServiceReworkRounds] = useState<Record<string, number>>({});
+  // Días hábiles que consume cada tanda de ajustes (feedback cliente + aplicación). Default: 3
+  const [serviceReworkRoundDays, setServiceReworkRoundDays] = useState<Record<string, number>>({});
+  // Fee mensual: vigencia del contrato (meses) y política de horas no usadas
+  const [serviceContractMonths, setServiceContractMonths] = useState<Record<string, number>>({});
+  const [serviceRollover, setServiceRollover] = useState<Record<string, 'none' | 'carry_over' | 'contractual_cap'>>({});
 
   useEffect(() => {
     setProjectNames((prev) => {
+      const missing = wonServices.filter((svc) => !prev[svc.serviceId]);
+      if (missing.length === 0) return prev; // sin cambios: evita re-render en bucle
       const next = { ...prev };
-      wonServices.forEach((svc) => {
-        if (!next[svc.serviceId]) {
-          next[svc.serviceId] = `${svc.serviceName} — ${clientName}`;
-        }
+      missing.forEach((svc) => {
+        next[svc.serviceId] = `${svc.serviceName} — ${clientName}`;
       });
       return next;
     });
@@ -202,12 +212,12 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
   // Inicializar líderes por servicio con el líder de scoping por defecto
   useEffect(() => {
     setServiceLeadUserIds((prev) => {
-      const next = { ...prev };
       const defaultId = initialLeadUser?.id || eligibleLeaders[0]?.id || '';
-      wonServices.forEach((svc) => {
-        if (!next[svc.serviceId] && defaultId) {
-          next[svc.serviceId] = defaultId;
-        }
+      const missing = defaultId ? wonServices.filter((svc) => !prev[svc.serviceId]) : [];
+      if (missing.length === 0) return prev; // sin cambios: evita re-render en bucle
+      const next = { ...prev };
+      missing.forEach((svc) => {
+        next[svc.serviceId] = defaultId;
       });
       return next;
     });
@@ -228,15 +238,6 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
     )
   );
 
-  const [startDate, setStartDate] = useState<string>(
-    new Date().toISOString().slice(0, 10)
-  );
-  const [endDate, setEndDate] = useState<string>(() => {
-    const d = new Date();
-    d.setMonth(d.getMonth() + 2);
-    return d.toISOString().slice(0, 10);
-  });
-  const [isEndDateCustomized, setIsEndDateCustomized] = useState<boolean>(false);
 
   if (!isOpen) return null;
 
@@ -249,7 +250,7 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
     if (opportunity.clientId && !matchedExistingClient) return;
 
     // Regla canónica 1:1:1:
-    // 1 servicio en Orbit = 1 negocio en HubSpot = 1 proyecto independiente en Orbit
+    // 1 servicio en ECO = 1 negocio en HubSpot = 1 proyecto independiente en ECO
     // Cada proyecto tiene su propio Líder Operativo asignado por Comercial
     const fallbackLeadId = selectedLeadUsers[0]?.id || initialLeadUser?.id || eligibleLeaders[0]?.id;
 
@@ -259,6 +260,8 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
       const svcLeadId = serviceLeadUserIds[svc.serviceId] || fallbackLeadId;
       const svcLeadUser = users.find((u) => u.id === svcLeadId);
       const reworkRounds = serviceReworkRounds[svc.serviceId] ?? 2;
+      const reworkRoundDays = serviceReworkRoundDays[svc.serviceId] ?? 5;
+      const isFixed = svc.modality === 'fixed_project';
 
       return {
         serviceId: svc.serviceId,
@@ -269,14 +272,16 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
         hubspotDealStage: svc.hubspotDealStage,
         soldValue: svc.modality === 'fixed_project' ? svc.totalValue : undefined,
         soldMonthlyValue: svc.modality === 'fee_monthly' ? svc.monthlyValue : undefined,
-        monthsDuration: svc.modality === 'fee_monthly' ? svc.monthsDuration : undefined,
+        monthsDuration: svc.modality === 'fee_monthly' ? (serviceContractMonths[svc.serviceId] ?? svc.monthsDuration ?? 6) : undefined,
+        rolloverPolicy: svc.modality === 'fee_monthly' ? (serviceRollover[svc.serviceId] ?? 'none') : undefined,
         deliverableIds: serviceDeliverables.map((d) => d.id),
         leadUserId: svcLeadId,
         leadUserName: svcLeadUser?.name || 'Líder de Proyecto',
         includedReworkRounds: reworkRounds,
         scheduleConfig: {
-          gateCount: 2,
-          includedReworkRounds: reworkRounds
+          includedReworkRounds: isFixed ? reworkRounds : 0,
+          reworkRoundDays,
+          productionWeeks: svc.weeksRef || undefined
         }
       };
     });
@@ -295,8 +300,6 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
       leadUserIds: allAssignedLeadIds.length > 0 ? allAssignedLeadIds : [primaryLeadId],
       leadName: primaryLeadUsers.map((u) => u.name).join(', ') || 'Líder de Proyecto',
       specialistUserIds: selectedSpecialistIds.filter((id) => users.some((user) => user.id === id)),
-      startDate,
-      endDate: endDate || undefined,
       initialFormalizationStatus: 'pendiente_formalizacion',
       startConditionsConfig: {
         contractSignedRequired: true,
@@ -309,9 +312,9 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
         onboardingCompleted: false
       },
       includedReworkRounds: convertedProjects[0]?.includedReworkRounds || 2,
-      scheduleConfig: {
-        gateCount: 2,
-        includedReworkRounds: convertedProjects[0]?.includedReworkRounds || 2
+      scheduleConfig: convertedProjects[0]?.scheduleConfig || {
+        includedReworkRounds: 2,
+        reworkRoundDays: 5
       },
       // Compatibilidad legacy
       projectName: convertedProjects[0]?.projectName || `${clientName} — Proyecto`,
@@ -448,7 +451,7 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
                           </span>
                         )}
                         <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${
                             service.hubspotDealStage === 'Enviado para facturar'
                               ? 'bg-[#3b82f6]/10 text-[#1d4ed8] border border-[#bfdbfe]'
                               : 'bg-[#059669]/10 text-[#047857] border border-[#a7f3d0]'
@@ -457,7 +460,7 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
                           {service.hubspotDealStage || 'Cierre ganado'}
                         </span>
                         <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${
                             isFixed
                               ? 'bg-[#501f92]/10 text-[#501f92]'
                               : 'bg-[#059669]/10 text-[#047857]'
@@ -547,36 +550,82 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
                       </div>
                     </div>
 
-                    {/* Tandas de ajuste permitidas */}
-                    <div className="space-y-1 pt-2 border-t border-[#f1f5f9]">
-                      <div className="flex items-center justify-between">
-                        <label className="font-bold text-[#475569] block text-[11px]">
-                          Tandas de ajuste permitidas por gate / entrega:
-                        </label>
-                        <span className="text-[10px] text-[#501f92] font-semibold">
-                          (Por defecto: 2 tandas)
-                        </span>
+                    {/* Fee mensual: vigencia del contrato y horas no usadas */}
+                    {service.modality === 'fee_monthly' && (
+                      <div className="space-y-2 pt-2 border-t border-[#f1f5f9]">
+                        <span className="font-bold text-[#475569] block text-[11px]">Contrato del fee</span>
+                        <div className="grid grid-cols-2 gap-2">
+                          <label className="space-y-1 block">
+                            <span className="text-[10.5px] font-semibold text-[#475569] block">Vigencia (meses)</span>
+                            <input
+                              type="number"
+                              min="1"
+                              max="36"
+                              value={serviceContractMonths[service.serviceId] ?? service.monthsDuration ?? 6}
+                              onChange={(e) => {
+                                const val = Math.max(1, parseInt(e.target.value, 10) || 1);
+                                setServiceContractMonths((prev) => ({ ...prev, [service.serviceId]: val }));
+                              }}
+                              className="w-full p-2 rounded-xl border border-[#cbd5e1] text-[#0f172a] text-xs font-bold focus:ring-2 focus:ring-[#501f92] bg-white shadow-2xs"
+                            />
+                          </label>
+                          <label className="space-y-1 block">
+                            <span className="text-[10.5px] font-semibold text-[#475569] block">Horas no usadas del mes</span>
+                            <select
+                              value={serviceRollover[service.serviceId] ?? 'none'}
+                              onChange={(e) => setServiceRollover((prev) => ({ ...prev, [service.serviceId]: e.target.value as 'none' | 'carry_over' | 'contractual_cap' }))}
+                              className="w-full p-2 rounded-xl border border-[#cbd5e1] text-[#0f172a] text-xs font-bold focus:ring-2 focus:ring-[#501f92] bg-white shadow-2xs"
+                            >
+                              <option value="none">No se acumulan (regla general)</option>
+                              <option value="carry_over">Excepción: pasan al mes siguiente</option>
+                              <option value="contractual_cap">Excepción: pasan hasta un 25 %</option>
+                            </select>
+                          </label>
+                        </div>
+                        <p className="text-[10.5px] text-[#64748b]">
+                          Cada mes de la vigencia es un ciclo con la bolsa mensual de horas y roles del alcance. La fecha de inicio se define al «Iniciar proyecto».
+                        </p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="number"
-                          min="1"
-                          max="10"
-                          value={serviceReworkRounds[service.serviceId] ?? 2}
-                          onChange={(e) => {
-                            const val = Math.max(1, parseInt(e.target.value, 10) || 1);
-                            setServiceReworkRounds((prev) => ({
-                              ...prev,
-                              [service.serviceId]: val
-                            }));
-                          }}
-                          className="w-20 p-2 rounded-xl border border-[#cbd5e1] text-[#0f172a] text-xs font-bold focus:ring-2 focus:ring-[#501f92] bg-white shadow-2xs"
-                        />
-                        <span className="text-[10.5px] text-[#64748b]">
-                          rondas de feedback incluidas contractualmente antes de cobrar sobrecostos.
-                        </span>
+                    )}
+
+                    {/* Rondas de ajuste del cliente (solo proyectos únicos): definen el cronograma al iniciar */}
+                    {service.modality === 'fixed_project' && (
+                      <div className="space-y-2 pt-2 border-t border-[#f1f5f9]">
+                        <div className="grid grid-cols-2 gap-2">
+                          <label className="space-y-1 block">
+                            <span className="text-[10.5px] font-semibold text-[#475569] block">Rondas de ajuste incluidas</span>
+                            <input
+                              type="number"
+                              min="0"
+                              max="10"
+                              value={serviceReworkRounds[service.serviceId] ?? 2}
+                              onChange={(e) => {
+                                const val = Math.max(0, parseInt(e.target.value, 10) || 0);
+                                setServiceReworkRounds((prev) => ({ ...prev, [service.serviceId]: val }));
+                              }}
+                              className="w-full p-2 rounded-xl border border-[#cbd5e1] text-[#0f172a] text-xs font-bold focus:ring-2 focus:ring-[#501f92] bg-white shadow-2xs"
+                            />
+                          </label>
+                          <label className="space-y-1 block">
+                            <span className="text-[10.5px] font-semibold text-[#475569] block">Días hábiles por ronda</span>
+                            <input
+                              type="number"
+                              min="0"
+                              max="15"
+                              value={serviceReworkRoundDays[service.serviceId] ?? 5}
+                              onChange={(e) => {
+                                const val = Math.max(0, parseInt(e.target.value, 10) || 0);
+                                setServiceReworkRoundDays((prev) => ({ ...prev, [service.serviceId]: val }));
+                              }}
+                              className="w-full p-2 rounded-xl border border-[#cbd5e1] text-[#0f172a] text-xs font-bold focus:ring-2 focus:ring-[#501f92] bg-white shadow-2xs"
+                            />
+                          </label>
+                        </div>
+                        <p className="text-[10.5px] text-[#64748b]">
+                          Cada ronda: el cliente revisa, devuelve ajustes y aprueba. Una ronda adicional se cobra y mueve la fecha de entrega.
+                        </p>
                       </div>
-                    </div>
+                    )}
                   </div>
                 );
               })}
@@ -609,45 +658,11 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-              <div className="space-y-1">
-                <label className="font-bold text-[#475569] block">
-                  Fecha Inicio estimada: <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="date"
-                  required
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] font-medium bg-white focus:ring-2 focus:ring-[#501f92] shadow-2xs"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <label className="font-bold text-[#475569] block">
-                    Fecha Entrega:
-                  </label>
-                  {!isEndDateCustomized && (
-                    <span className="text-[10px] font-semibold text-[#501f92] bg-[#f2ecfb] px-1.5 py-0.2 rounded">
-                      Sugerida
-                    </span>
-                  )}
-                </div>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => {
-                    setEndDate(e.target.value);
-                    setIsEndDateCustomized(true);
-                  }}
-                  className={`w-full p-2.5 rounded-xl border transition-colors focus:ring-2 focus:ring-[#501f92] shadow-2xs ${
-                    !isEndDateCustomized
-                      ? 'bg-[#faf5ff] border-[#d8b4fe] text-[#475569] font-medium'
-                      : 'bg-white border-[#cbd5e1] text-[#0f172a] font-medium'
-                  }`}
-                />
-              </div>
+            <div className="p-3 rounded-xl bg-[#faf5ff] border border-[#e9d5ff] text-[11px] text-[#501f92] flex items-start gap-2">
+              <Calendar className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>
+                Las fechas de inicio y entrega <strong>no se definen aquí</strong>. Cada proyecto nace <strong>Por iniciar</strong> y el líder fija el arranque con <strong>«Iniciar proyecto 🚀»</strong>, donde ECO calcula la entrega con las semanas del alcance, los gates y las tandas de ajuste.
+              </span>
             </div>
           </div>
 

@@ -26,6 +26,44 @@
 import { NewBusinessOpportunity, QuoteProposal } from '../types';
 import { formatCurrency } from '../../../utils/formatters';
 
+/**
+ * Cláusula de uso de IA (revisada 07 Nov 2026). Fuente única para la vista, la copia para Docs
+ * y el HTML del SOW. Protege a UHURA: declara el uso de IA como parte de la metodología, deja la
+ * supervisión humana, protege la confidencialidad, aclara los límites de propiedad intelectual de
+ * lo generado con IA y limita la responsabilidad. Texto de referencia: debe validarlo el asesor
+ * legal de UHURA antes de usarlo con clientes.
+ */
+export const SOW_AI_CLAUSES: Array<{ title: string; text: string }> = [
+  {
+    title: 'Uso de herramientas de IA',
+    text: 'El CLIENTE conoce y acepta que UHURA utiliza herramientas de inteligencia artificial (IA) generativa y asistida como apoyo en investigación, conceptualización, prototipado, diseño, redacción, desarrollo de software, pruebas y documentación, con el fin de acelerar tiempos y optimizar recursos. El uso de IA hace parte de la metodología de trabajo de UHURA y no modifica el alcance, el valor ni los entregables pactados en este documento.'
+  },
+  {
+    title: 'Supervisión humana',
+    text: 'Todo resultado obtenido con apoyo de IA es revisado, ajustado y aprobado por el equipo profesional de UHURA antes de su entrega. Las decisiones de diseño, técnicas y de calidad son tomadas por personas; la IA es una herramienta de apoyo.'
+  },
+  {
+    title: 'Confidencialidad y datos',
+    text: 'UHURA no ingresará información confidencial, secretos comerciales ni datos personales del CLIENTE en herramientas que utilicen dicha información para entrenar sus modelos. Para ello usará versiones empresariales o configuraciones que excluyan el entrenamiento, o anonimizará la información previamente, en cumplimiento de la Ley 1581 de 2012 y sus normas reglamentarias.'
+  },
+  {
+    title: 'Propiedad intelectual',
+    text: 'Una vez pagado el valor total, el CLIENTE recibe los derechos patrimoniales sobre los entregables finales en los términos de este documento. Las partes reconocen que: (i) los componentes generados con asistencia de IA pueden no ser susceptibles de protección por derecho de autor en todas las jurisdicciones; (ii) terceros que usen las mismas herramientas pueden obtener resultados similares, por lo que UHURA no garantiza exclusividad ni originalidad absoluta de dichos componentes; y (iii) UHURA conserva la titularidad de sus herramientas, metodologías, plantillas, librerías, instrucciones (prompts) y conocimientos preexistentes o de uso general, que podrá seguir utilizando.'
+  },
+  {
+    title: 'Diligencia y límites de responsabilidad',
+    text: 'UHURA actuará con diligencia profesional para evitar el uso de material que infrinja derechos de terceros, incluyendo la revisión de textos, imágenes y código y el uso de licencias comerciales cuando corresponda. UHURA no será responsable por: (a) reclamaciones derivadas de insumos, marcas, textos, imágenes o datos suministrados por el CLIENTE; (b) el uso que el CLIENTE haga de los entregables por fuera del alcance acordado; ni (c) cambios en los términos, la disponibilidad o el funcionamiento de herramientas de IA de terceros. En todo caso, la responsabilidad total de UHURA derivada de este documento se limita al valor efectivamente pagado por el CLIENTE.'
+  },
+  {
+    title: 'Validación del CLIENTE',
+    text: 'El CLIENTE revisará y aprobará los entregables, incluidos textos, afirmaciones de marca, datos y contenidos sujetos a regulación, antes de su publicación o uso. La aprobación del CLIENTE implica su conformidad con dicho contenido.'
+  },
+  {
+    title: 'Trabajo sin IA (opcional)',
+    text: 'Si el CLIENTE requiere que un entregable se realice sin herramientas de IA, deberá indicarlo por escrito antes del inicio del proyecto. Esta solicitud puede modificar el cronograma y el valor, y se gestionará mediante una Orden de Cambio.'
+  }
+];
+
 export type SowArchetype = 'ecommerce_shopify' | 'web_wordpress' | 'custom_app';
 
 export interface SowRiskRow {
@@ -342,9 +380,7 @@ ${gates.map((g) => `• ${g.name}
   ${g.positiveSilenceClause ? `\n  - ${g.positiveSilenceClause}` : ''}`).join('\n\n')}
 
 9. USO DE INTELIGENCIA ARTIFICIAL Y TECNOLOGÍAS AUTOMATIZADAS
-9.1. Optimización: El CLIENTE acepta que UHURA podrá utilizar herramientas de Inteligencia Artificial (IA) generativa y predictiva para la optimización de código, estructuración de contenido y análisis de datos durante la ejecución del proyecto.
-9.2. Confidencialidad en IA: UHURA garantiza que NO utilizará datos sensibles, secretos industriales ni información confidencial del CLIENTE para entrenar modelos públicos de IA. Toda interacción con estas herramientas se realiza bajo protocolos estrictos de anonimización.
-9.3. Responsabilidad de Resultados: Aunque la IA asiste en el proceso, UHURA mantiene la responsabilidad final sobre la calidad, funcionalidad y seguridad del código entregado, habiendo realizado la curaduría y revisión humana correspondiente.
+${SOW_AI_CLAUSES.map((c, i) => `9.${i + 1}. ${c.title}: ${c.text}`).join('\n')}
 
 10. RESPONSABILIDAD DEL CLIENTE Y TRATAMIENTO DE DATOS
 10.1. El CLIENTE declara ser el único "Responsable del Tratamiento" de los datos personales recolectados a través de la plataforma (Ley 1581 de 2012 de Colombia). UHURA actúa exclusivamente como "Encargado del Tratamiento" a nivel técnico durante la implementación.
@@ -625,9 +661,7 @@ ${gates
   .join('')}
 
 <h2>9. USO DE INTELIGENCIA ARTIFICIAL Y TECNOLOGÍAS AUTOMATIZADAS</h2>
-<p><strong>9.1. Optimización:</strong> El CLIENTE acepta que UHURA podrá utilizar herramientas de Inteligencia Artificial (IA) generativa y predictiva para la optimización de código, generación de estructuras de contenido y análisis de datos durante la ejecución del proyecto.</p>
-<p><strong>9.2. Confidencialidad en IA:</strong> UHURA garantiza que <strong>NO utilizará datos sensibles, secretos industriales ni información confidencial del CLIENTE para entrenar modelos públicos de IA</strong>. Toda interacción con estas herramientas se realizará bajo protocolos de anonimización.</p>
-<p><strong>9.3. Responsabilidad de Resultados:</strong> Aunque la IA asiste en el proceso, UHURA mantiene la responsabilidad final sobre la calidad, funcionalidad y seguridad del código entregado, habiendo realizado la curaduría y revisión humana correspondiente.</p>
+${SOW_AI_CLAUSES.map((c, i) => `<p><strong>9.${i + 1}. ${c.title}:</strong> ${c.text}</p>`).join('\n')}
 
 <h2>10. RESPONSABILIDAD DEL CLIENTE Y TRATAMIENTO DE DATOS</h2>
 <p><strong>10.1. Rol de las Partes:</strong> El CLIENTE declara ser el único "Responsable del Tratamiento" de los datos personales recolectados a través de la plataforma (Ley 1581 de 2012 de Colombia). UHURA actúa exclusivamente como "Encargado del Tratamiento" a nivel técnico durante la implementación.</p>

@@ -1,7 +1,7 @@
-# Guía de Carga Inicial y Seeding de Colaboradores (Uhura Group / Orbit)
+# Guía de Carga Inicial y Seeding de Colaboradores (Uhura Group / ECO)
 
 > **Documento Complementario a `ORBIT_PRODUCT_STATUS.md`**
-> Este documento define la estructura y el dataset base referencial para la inicialización (seeding, fixtures o scripts de migración) del equipo en la base de datos relacional de Orbit desarrollada por Indunova.
+> Este documento define la estructura y el dataset base referencial para la inicialización (seeding, fixtures o scripts de migración) del equipo en la base de datos relacional de ECO desarrollada por Indunova.
 > **Fecha de Actualización:** 26 de octubre de 2026 — Alineación con decisiones confirmadas de producto y política de privacidad de repositorios públicos.
 
 > **AVISO DE PRIVACIDAD Y GOBERNANZA:**
@@ -18,9 +18,9 @@
 3. **Contraste con la Matriz de Equipo Canónico Privado:**
    Todos los cargos, roles oficiales, niveles de acceso y dependencias de reporte están rigurosamente contrastados contra la matriz autoritativa privada (*Equipo Canónico Privado*).
 4. **Validación del Universo de Colaboradores (18 Activos):**
-   El universo canónico vigente de Orbit está formalmente cerrado y confirmado en **exactamente 18 colaboradores activos**. La referencia histórica preliminar a 19 colaboradores ha sido corregida y descartada en la matriz autoritativa.
+   El universo canónico vigente de ECO está formalmente cerrado y confirmado en **exactamente 18 colaboradores activos**. La referencia histórica preliminar a 19 colaboradores ha sido corregida y descartada en la matriz autoritativa.
 5. **Gobernanza del Perfil Ejecutivo (`executive`):**
-   El perfil `executive` adicional definido en Equipo Canónico Privado forma parte de los 18 colaboradores activos y debe contar con usuario Orbit. Su asociación con Backend User ID se resolverá durante el crosswalk con Indunova.
+   El perfil `executive` adicional definido en Equipo Canónico Privado forma parte de los 18 colaboradores activos y debe contar con usuario ECO. Su asociación con Backend User ID se resolverá durante el crosswalk con Indunova.
 6. **Gobernanza de Perfiles `system_admin`:**
    Existen dos usuarios iniciales con Access Level `system_admin` con idénticos permisos técnicos en plataforma. La diferenciación funcional y operativa (soporte técnico / producto digital vs. soporte administrativo y configuración de capacidades/calendarios) corresponde a su rol en la organización, según se define en Equipo Canónico Privado, sin exponer identidades nominales en la documentación pública.
 

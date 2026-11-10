@@ -1,4 +1,8 @@
+import { streakLabel } from './time/dayStreak';
+import { TeamStreakPanel } from './colonia/TeamStreakPanel';
 import React, { useState, useMemo } from 'react';
+import { formatDate, formatDateRange } from '../../utils/formatters';
+import { PageHeader } from './PageHeader';
 import {
   Clock,
   CheckCircle2,
@@ -44,6 +48,7 @@ import {
   TeamAbsenceEvent
 } from './types';
 import { getUserAccessLevel, can } from './auth/permissions';
+import { makePersonMatcher, getTaskRelation, isProjectResponsible, makeTaskProjectResolver, isScheduledForDay, makeTaskComparator, isUrgentTask, taskScheduleDate } from './auth/taskVisibility';
 import { initialUsers, initialAbsenceEvents } from './mockData';
 import { processTeamLifeEvents } from './copilot/teamLifeEngine';
 import { calculateBusinessDays } from './health/projectHealthEngine';
@@ -69,10 +74,17 @@ export interface MiDiaViewProps {
   configuredCapacityHours?: number;
   targetDayHours?: number;
   onNavigateToView?: (view: OrbitView) => void;
+  /** Abre un proyecto concreto (Insumos por gestionar). */
+  onOpenProject?: (projectId: string) => void;
   opportunities?: any[];
   projects?: any[];
   clients?: any[];
   onUpdateUser?: (updatedUser: UserItem) => void;
+  /** Racha de días cargados (dayStreak.ts) y cierre del día con ECO. */
+  streakDays?: number;
+  streakTodayCounts?: boolean;
+  isDayClosedToday?: boolean;
+  onOpenDayClose?: () => void;
 }
 
 export const MiDiaView: React.FC<MiDiaViewProps> = ({
@@ -94,6 +106,11 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
   configuredCapacityHours = 8.0,
   targetDayHours = 8.0,
   onNavigateToView,
+  onOpenProject,
+  streakDays = 0,
+  streakTodayCounts = false,
+  isDayClosedToday = false,
+  onOpenDayClose,
   opportunities = [],
   projects = [],
   clients = [],
@@ -118,70 +135,107 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
     }, 3500);
   };
 
-  // 2. Filtrado estricto de "Mi Día":
-  // - Tareas donde el usuario es Colaborador con entrega hoy (o vencida/en cronograma de hoy)
-  // - Tareas que requieren su revisión o aprobación (status Review / in_review)
-  // - Tarea con el timer activo en curso
+  // 2. Visibilidad (regla única, ver auth/taskVisibility.ts):
+  // - «Qué tengo que hacer hoy»: solo tareas donde el usuario es responsable de ejecución
+  //   (assignee / collaborators) con fecha hoy, ventana en curso o vencida; las que debe
+  //   revisar (revisor, o líder del proyecto si no hay revisor) y la del timer activo.
+  // - Seguidores: van a «Siguiendo», sin urgencia ni conteo.
+  // - Excepciones de equipo (bloqueos, desvíos, insumos): solo de proyectos de los que el
+  //   usuario es responsable (líder o responsable de cuenta). Nadie ve las de toda la organización aquí.
+  const effectiveUserList = users && users.length > 0 ? users : initialUsers;
+  const identity = currentUser || effectiveUserList.find((u) => u.id === currentUserId);
+  const matchesMe = useMemo(() => makePersonMatcher(identity, effectiveUserList), [identity, effectiveUserList]);
+  const projectOfTask = useMemo(() => makeTaskProjectResolver(projects), [projects]);
+  // #147 + decisión de Uhura (07 Nov 2026): Mi Día es personal para TODOS, incluida Dirección.
+  // La vista de toda la organización vive en Tareas → Equipo y Capacidad → Organización.
+  const isGlobalViewer = false;
+  const myProjectIds = useMemo(
+    () => new Set(projects.filter((p) => isProjectResponsible(p, identity, matchesMe)).map((p) => p.id)),
+    [projects, identity, matchesMe]
+  );
+  const inMyScope = (t: TaskItem) => {
+    if (isGlobalViewer) return true;
+    const p = projectOfTask(t);
+    return Boolean(p && myProjectIds.has(p.id));
+  };
+
+  const todayIsoForTasks = new Date().toISOString().split('T')[0];
+  // Mi Día = solo lo que el cronograma pone para hoy (incluye ventana en curso y vencidas).
+  // La prioridad «urgente» no mete una tarea al día: solo la ordena primero.
+  const isTodayOrDue = (t: TaskItem) => isScheduledForDay(t, todayIsoForTasks);
+  const compareTasks = useMemo(() => makeTaskComparator(todayIsoForTasks), [todayIsoForTasks]);
+
   const assignedTasks = useMemo(() => {
-    const cId = currentUserId.toLowerCase();
-    const cName = currentUserName.toLowerCase();
-    const cFirst = cName.split(' ')[0];
-    const todayIso = new Date().toISOString().split('T')[0];
-
-    const matchesUser = (person?: { id?: string; name?: string } | null) => {
-      if (!person) return false;
-      if (person.id && person.id.toLowerCase() === cId) return true;
-      const pName = (person.name || '').toLowerCase();
-      return Boolean(pName && (pName.includes(cFirst) || cName.includes(pName)));
-    };
-
-    const isTodayOrDue = (t: TaskItem) => {
-      if (t.scheduledDate === todayIso || t.dueDate === todayIso) return true;
-      const dueTxt = (t.dueText || '').toLowerCase();
-      if (dueTxt.includes('hoy') || dueTxt.includes('vencid') || dueTxt.includes('urgente')) return true;
-      if (t.dueStatus === 'overdue' || t.dueStatus === 'urgent') return true;
-      return false;
-    };
-
     return tasks
       .filter((t) => {
+        if (t.isArchived) return false;
         if (activeTimer?.taskId === t.id) return true;
-
-        const isCollab = matchesUser(t.assignee) || (t.collaborators || []).some((c) => matchesUser(c));
-        const isReviewForMe =
-          (t.status === 'Review' || t.status === 'in_review') &&
-          (matchesUser(t.reviewer) || matchesUser(t.projectLead) || accessLevel === 'leader' || accessLevel === 'system_admin');
-
-        if (isReviewForMe) return true;
-        if (isCollab && isTodayOrDue(t)) return true;
+        const relation = getTaskRelation(t, identity, matchesMe);
+        if (relation === 'reviewer') return true;
+        if (relation === 'owner' && isTodayOrDue(t)) return true;
         return false;
       })
-      .sort((a, b) => {
-        if (a.completed !== b.completed) return a.completed ? 1 : -1;
-        const prioWeight: Record<string, number> = { urgent: 4, High: 3, high: 3, Medium: 2, medium: 2, Low: 1, low: 1 };
-        return (prioWeight[b.priority] || 2) - (prioWeight[a.priority] || 2);
-      });
-  }, [tasks, currentUserId, currentUserName, activeTimer?.taskId, accessLevel]);
+      .sort(compareTasks);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasks, identity, matchesMe, activeTimer?.taskId, compareTasks]);
 
   const activeUserTasks = assignedTasks;
 
+  // Si la persona no tiene nada agendado hoy, se le sugieren sus siguientes tareas
+  // por cercanía de fecha y prioridad (no se «adelantan» al día: se muestran como próximas).
+  const upcomingTasks = useMemo(() => {
+    if (activeUserTasks.some((t) => !t.completed && getTaskRelation(t, identity, matchesMe) === 'owner')) return [];
+    return tasks
+      .filter((t) => !t.completed && !t.isArchived && getTaskRelation(t, identity, matchesMe) === 'owner' && !activeUserTasks.includes(t))
+      .sort(compareTasks)
+      .slice(0, 5);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasks, activeUserTasks, identity, matchesMe, compareTasks]);
+
+  // Tareas que sigo: informativas, sin urgencia (no suman a pendientes, atención ni capacidad)
+  const followedTasks = useMemo(
+    () =>
+      tasks.filter(
+        (t) => !t.completed && !t.isArchived && getTaskRelation(t, identity, matchesMe) === 'follower' && (isTodayOrDue(t) || t.status === 'Review')
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tasks, identity, matchesMe]
+  );
+  const [showFollowed, setShowFollowed] = useState(false);
+
   // 3. MATRIZ DE PERSPECTIVA POR ROL — EVALUACIÓN DE ELEMENTOS DE ATENCIÓN
-  // Retrabajos / Ajustes urgentes
+  // #146 (en producción, orbit-00092-jns): tareas propias abiertas urgentes, que inician hoy o
+  // vencen hoy van de primeras en la atención, con su prioridad y fecha actualizadas.
+  const urgentTodayTasks = useMemo(() => {
+    return activeUserTasks
+      .filter((t) => {
+        if (t.completed || t.isArchived) return false;
+        if (getTaskRelation(t, identity, matchesMe) !== 'owner') return false;
+        const start = (t.scheduledDate || '').slice(0, 10);
+        const due = (t.dueDate || '').slice(0, 10);
+        return isUrgentTask(t) || start === todayIsoForTasks || due === todayIsoForTasks;
+      })
+      .sort(compareTasks);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeUserTasks, identity, matchesMe, todayIsoForTasks, compareTasks]);
+
+  // Retrabajos / Ajustes: los propios; quien es responsable del proyecto ve los de sus proyectos
   const reworkTasks = useMemo(() => {
     if (!['collaborator', 'leader', 'client_relationship', 'executive', 'system_admin'].includes(accessLevel)) {
       return [];
     }
-    const pool = accessLevel === 'collaborator' ? activeUserTasks : tasks;
+    const pool = accessLevel === 'collaborator' ? activeUserTasks : tasks.filter((t) => inMyScope(t) || activeUserTasks.includes(t));
     return pool.filter((t) => !t.completed && (t.isRework || (t.reworkRound && t.reworkRound > 0)));
-  }, [accessLevel, activeUserTasks, tasks]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessLevel, activeUserTasks, tasks, myProjectIds]);
 
-  // Revisiones pendientes
+  // Revisiones pendientes: solo las que me corresponde revisar
   const reviewTasks = useMemo(() => {
     if (!['leader', 'client_relationship', 'system_admin'].includes(accessLevel)) {
       return [];
     }
-    return tasks.filter((t) => !t.completed && (t.status === 'Review' || t.status === 'in_review'));
-  }, [accessLevel, tasks]);
+    return tasks.filter((t) => !t.completed && getTaskRelation(t, identity, matchesMe) === 'reviewer');
+  }, [accessLevel, tasks, identity, matchesMe]);
 
   // Bloqueos propios
   const ownBlockedTasks = useMemo(() => {
@@ -191,39 +245,31 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
     return activeUserTasks.filter((t) => !t.completed && Boolean(t.isBlocked || t.blockedReason));
   }, [accessLevel, activeUserTasks]);
 
-  // Bloqueos de equipo (para líderes / executive)
+  // Bloqueos de equipo: solo de los proyectos de los que soy responsable (#147: Mi Día personal).
+  // Ronda 2: también al Comercial responsable y a Relación con clientes de la cuenta, no solo al líder.
   const teamBlockedTasks = useMemo(() => {
-    if (!['leader', 'executive', 'system_admin'].includes(accessLevel)) {
+    if (!['leader', 'commercial', 'client_relationship', 'executive', 'system_admin'].includes(accessLevel)) {
       return [];
     }
-    return tasks.filter((t) => !t.completed && Boolean(t.isBlocked || t.blockedReason));
-  }, [accessLevel, tasks]);
+    return tasks.filter((t) => !t.completed && Boolean(t.isBlocked || t.blockedReason) && inMyScope(t) && !activeUserTasks.includes(t));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessLevel, tasks, myProjectIds, activeUserTasks]);
 
-  // Desvíos de presupuesto / Entregables en riesgo (horas ejecutadas > presupuestadas)
-  // Visible para Comercial, Client Relationship, Líder del proyecto asignado, Dirección y Colaborador (en sus tareas)
+  // Desvíos de presupuesto (horas ejecutadas > presupuestadas)
+  // Colaborador: en sus tareas. Comercial / líder / Dirección: en los proyectos de los que es responsable.
   const overtimeRisks = useMemo(() => {
     if (!['collaborator', 'leader', 'commercial', 'client_relationship', 'executive', 'system_admin'].includes(accessLevel)) {
       return [];
     }
-    const cName = currentUserName.toLowerCase();
-    const cFirst = cName.split(' ')[0];
-    const pool =
-      accessLevel === 'collaborator'
-        ? activeUserTasks
-        : accessLevel === 'leader'
-        ? tasks.filter((t) => {
-            const leadName = (t.projectLead?.name || '').toLowerCase();
-            if (!leadName) return true;
-            return leadName.includes(cFirst) || cName.includes(leadName);
-          })
-        : tasks;
+    const pool = accessLevel === 'collaborator' ? activeUserTasks : tasks.filter((t) => inMyScope(t) || activeUserTasks.includes(t));
     return pool.filter((t) => {
       if (t.completed) return false;
       const consumedHrs = (t.consumedSeconds || 0) / 3600;
       const budgeted = t.budgetedHours || 0;
       return budgeted > 0 && consumedHrs > budgeted;
     });
-  }, [accessLevel, activeUserTasks, tasks, currentUserName]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessLevel, activeUserTasks, tasks, myProjectIds]);
 
   // New Business que requiere acción (cotizaciones pendientes de aprobación o briefs por dimensionar)
   const newBusinessActions = useMemo(() => {
@@ -235,7 +281,16 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
         o.status === 'discovery' || o.status === 'quoting' || o.status === 'internal_review';
       if (!isActionableStatus) return false;
 
-      // Si es rol líder, filtrar dinámicamente según su leadUserId, leadUserIds o nombre de usuario
+      // Solo las que la persona lidera o le tocan (#147), también para Dirección
+      if (accessLevel === 'commercial' || accessLevel === 'system_admin' || accessLevel === 'executive') {
+        const owner = (o.commercialOwner || '').toLowerCase();
+        return (
+          o.createdByUserId === currentUserId ||
+          o.leadUserId === currentUserId ||
+          (Array.isArray(o.leadUserIds) && o.leadUserIds.includes(currentUserId)) ||
+          Boolean(owner && currentUserName && owner.includes(currentUserName.toLowerCase()))
+        );
+      }
       if (accessLevel === 'leader') {
         const matchesId =
           o.leadUserId === currentUserId ||
@@ -251,41 +306,63 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
 
   // Formalizaciones administrativas pendientes (proyectos ganados sin NIT o datos de facturación)
   const fiscalPendingActions = useMemo(() => {
-    if (!['commercial', 'administrative', 'system_admin'].includes(accessLevel)) {
+    // Formalización fiscal: función directa de Administrativa (#147: los demás perfiles ven solo lo suyo)
+    if (accessLevel !== 'administrative') {
       return [];
     }
     return clients.filter((c) => !c.nit || c.nit.includes('Por definir'));
   }, [accessLevel, clients]);
 
   // Pendientes de Cliente (Insumos, Accesos, Aprobaciones de Gates)
-  const clientDependencies = useMemo(() => {
+  // Insumos por gestionar (ronda 2): solo los que importan hoy, no todas las dependencias.
+  // - Entran los vencidos y los que se necesitan en los próximos 5 días hábiles.
+  // - Orden: vencidos primero (más días de atraso arriba), luego bloqueantes, luego por la fecha en
+  //   que empieza la fase que los necesita.
+  // - Solo de los proyectos de los que soy responsable (líder, Comercial o Relación con clientes).
+  const DEP_WINDOW_DAYS = 5;
+  const { clientDependencies, laterDependenciesCount } = useMemo(() => {
     if (!['client_relationship', 'commercial', 'leader', 'executive', 'system_admin'].includes(accessLevel)) {
-      return [];
+      return { clientDependencies: [], laterDependenciesCount: 0 };
     }
     const todayStr = new Date().toISOString().slice(0, 10);
-    const allDeps: Array<ProjectDependency & { projectName: string; clientName: string; delayDays: number }> = [];
+    const allDeps: Array<ProjectDependency & { projectId: string; projectName: string; clientName: string; phaseName?: string; delayDays: number; daysLeft: number }> = [];
+    let later = 0;
 
     projects.forEach((proj: ProjectSummaryItem) => {
+      if (!isGlobalViewer && !myProjectIds.has(proj.id)) return;
       (proj.dependencies || []).forEach((dep) => {
-        if (dep.ownerType === 'client' && dep.status === 'pending') {
-          const delayDays = dep.expectedDate && todayStr > dep.expectedDate
-            ? calculateBusinessDays(dep.expectedDate, todayStr)
-            : 0;
-          allDeps.push({
-            ...dep,
-            projectName: proj.name,
-            clientName: proj.clientName,
-            delayDays
-          });
+        if (dep.ownerType !== 'client' || dep.status !== 'pending') return;
+        const expected = dep.expectedDate || todayStr;
+        const delayDays = todayStr > expected ? calculateBusinessDays(expected, todayStr) : 0;
+        const daysLeft = todayStr <= expected ? calculateBusinessDays(todayStr, expected) : 0;
+        if (delayDays === 0 && daysLeft > DEP_WINDOW_DAYS) {
+          later++;
+          return;
         }
+        allDeps.push({
+          ...dep,
+          projectId: proj.id,
+          projectName: proj.name,
+          clientName: proj.clientName,
+          phaseName: (proj.deliverables || []).find((d) => d.id === dep.deliverableId)?.name,
+          delayDays,
+          daysLeft
+        });
       });
     });
 
-    return allDeps.sort((a, b) => b.delayDays - a.delayDays);
-  }, [accessLevel, projects]);
+    allDeps.sort((a, b) => {
+      if ((a.delayDays > 0) !== (b.delayDays > 0)) return a.delayDays > 0 ? -1 : 1;
+      if (a.delayDays !== b.delayDays) return b.delayDays - a.delayDays;
+      if (a.blocking !== b.blocking) return a.blocking ? -1 : 1;
+      return (a.expectedDate || '').localeCompare(b.expectedDate || '');
+    });
+    return { clientDependencies: allDeps, laterDependenciesCount: later };
+  }, [accessLevel, projects, isGlobalViewer, myProjectIds]);
 
   // Total de elementos accionables de atención
   const totalAttentionCount =
+    urgentTodayTasks.length +
     reworkTasks.length +
     reviewTasks.length +
     clientDependencies.length +
@@ -330,8 +407,8 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
     return absenceEvents && absenceEvents.length > 0 ? absenceEvents : initialAbsenceEvents;
   }, [absenceEvents]);
 
-  // Fecha de referencia canónica de Orbit UAT actual: 19 de Octubre 2026
-  const referenceDateStr = '2026-10-19';
+  // Fecha de referencia canónica de ECO UAT actual: 19 de Octubre 2026
+  const referenceDateStr = new Date().toISOString().slice(0, 10); // fecha real de hoy
 
   // Radar de ausencias próximas (próximos 14 días o activas)
   const upcomingVacations = useMemo(() => {
@@ -417,6 +494,13 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
+      <PageHeader
+        title="Mi Día"
+        description={(() => {
+          const d = new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
+          return `${d.charAt(0).toUpperCase()}${d.slice(1)} · ${currentUserName.split(' ')[0]}, esto es lo tuyo para hoy`;
+        })()}
+      />
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-[#0f172a] text-white text-xs font-semibold shadow-xl border border-white/10 animate-in slide-in-from-bottom-2">
@@ -434,35 +518,63 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
 
           {/* NIVEL 1: ¿QUÉ REQUIERE MI ATENCIÓN? (CONDICIONAL ESTRICTO: 0 SI NO HAY ACCIONES) */}
           {hasAttentionItems && (
-            <div className="bg-[#fffbeb] rounded-3xl p-5 border border-[#fde68a] shadow-xs space-y-3.5">
-              <div className="flex items-center justify-between pb-2 border-b border-[#fef3c7]">
+            <div className="bg-white rounded-2xl p-5 border border-[#e2e8f0] shadow-xs space-y-3.5">
+              <div className="flex items-center justify-between pb-2 border-b border-[#f1f5f9]">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-xl bg-[#f59e0b]/20 text-[#b45309] flex items-center justify-center">
                     <AlertTriangle className="w-4 h-4" />
                   </div>
                   <div>
-                    <h2 className="text-sm font-bold text-[#92400e]">
+                    <h2 className="text-sm font-bold text-[#0f172a]">
                       ¿Qué requiere mi atención?
                     </h2>
-                    <p className="text-[11px] text-[#b45309]">
+                    <p className="text-[11px] text-[#64748b]">
                       {totalAttentionCount} asunto{totalAttentionCount > 1 ? 's' : ''} que demanda{totalAttentionCount > 1 ? 'n' : ''} acción o decisión hoy
                     </p>
                   </div>
                 </div>
 
-                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#fde68a] text-[#78350f]">
-                  Prioritario
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#fffbeb] text-[#b45309] border border-[#fde68a]">
+                  {totalAttentionCount}
                 </span>
               </div>
 
               {/* Lista lineal de alertas de atención */}
               <div className="space-y-2">
+                {/* 0. Urgentes, que inician hoy o vencen hoy (#146): van de primeras */}
+                {urgentTodayTasks.map((t) => (
+                  <div
+                    key={`urgent-${t.id}`}
+                    onClick={() => onOpenTaskDetail(t.id)}
+                    className="p-3 rounded-xl bg-white border border-[#e2e8f0] hover:border-[#fca5a5] hover:bg-[#fef2f2]/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs cursor-pointer transition-all group shadow-2xs"
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <Flame className="w-4 h-4 text-[#dc2626] shrink-0 mt-0.5" />
+                      <div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-[#0f172a] group-hover:text-[#dc2626] transition-colors">{t.title}</span>
+                          {isUrgentTask(t) && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#fee2e2] text-[#991b1b]">Urgente</span>
+                          )}
+                        </div>
+                        <span className="text-[11px] text-[#64748b] block mt-0.5">
+                          {t.clientName || 'Cliente'} • {(t.dueDate || '').slice(0, 10) === todayIsoForTasks ? 'Entrega hoy' : (t.scheduledDate || '').slice(0, 10) === todayIsoForTasks ? 'Inicia hoy' : `Entrega ${formatDate(t.dueDate)}`}
+                        </span>
+                      </div>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-lg text-[#dc2626] group-hover:bg-[#fef2f2] font-semibold text-xs transition-colors self-start sm:self-auto shrink-0 inline-flex items-center gap-1">
+                      <span>Ver tarea</span>
+                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                    </span>
+                  </div>
+                ))}
+
                 {/* 1. Retrabajos / Ajustes urgentes */}
                 {reworkTasks.map((t) => (
                   <div
                     key={`rework-${t.id}`}
                     onClick={() => onOpenTaskDetail(t.id)}
-                    className="p-3 rounded-2xl bg-white border border-[#fde68a] hover:border-[#dc2626] hover:bg-[#fef2f2]/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs cursor-pointer transition-all group shadow-2xs"
+                    className="p-3 rounded-xl bg-white border border-[#e2e8f0] hover:border-[#dc2626] hover:bg-[#fef2f2]/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs cursor-pointer transition-all group shadow-2xs"
                   >
                     <div className="flex items-start gap-2.5">
                       <Repeat className="w-4 h-4 text-[#dc2626] shrink-0 mt-0.5" />
@@ -491,7 +603,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                   <div
                     key={`review-${t.id}`}
                     onClick={() => onOpenTaskDetail(t.id)}
-                    className="p-3 rounded-2xl bg-white border border-[#fde68a] hover:border-[#8a4dff] hover:bg-[#faf5ff]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs cursor-pointer transition-all group shadow-2xs"
+                    className="p-3 rounded-xl bg-white border border-[#e2e8f0] hover:border-[#8a4dff] hover:bg-[#faf5ff]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs cursor-pointer transition-all group shadow-2xs"
                   >
                     <div className="flex items-center gap-2.5">
                       <ShieldCheck className="w-4 h-4 text-[#8a4dff] shrink-0" />
@@ -510,12 +622,13 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                   <div
                     key={`client-dep-${dep.id}`}
                     onClick={() => {
-                      if (onNavigateToView) onNavigateToView('proyectos');
+                      if (onOpenProject) onOpenProject(dep.projectId);
+                      else if (onNavigateToView) onNavigateToView('proyectos');
                     }}
-                    className={`p-3.5 rounded-2xl bg-white border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs cursor-pointer transition-all group shadow-2xs ${
+                    className={`p-3 rounded-xl bg-white border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs cursor-pointer transition-all group shadow-2xs ${
                       dep.delayDays > 0
-                        ? 'border-[#fca5a5] bg-[#fff5f5] hover:border-[#dc2626]'
-                        : 'border-[#fde68a] hover:border-[#64748b] hover:bg-[#f8fafc]'
+                        ? 'border-[#fecaca] hover:border-[#fca5a5]'
+                        : 'border-[#e2e8f0] hover:border-[#64748b] hover:bg-[#f8fafc]'
                     }`}
                   >
                     <div className="flex items-start gap-2.5">
@@ -537,29 +650,42 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                             </span>
                           ) : (
                             <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#ecfdf5] text-[#059669]">
-                              Esperado: {dep.expectedDate}
+                              Esperado: {formatDate(dep.expectedDate)}
                             </span>
                           )}
                         </div>
                         <p className="text-[11px] text-[#64748b] mt-0.5">
-                          Aprobación pendiente · Puede impactar fechas del cronograma
+                          {dep.projectName}
+                          {dep.phaseName ? ` · para ${dep.phaseName}` : ''}
+                          {dep.delayDays > 0
+                            ? dep.blocking
+                              ? ' · está frenando esa fase'
+                              : ' · vencido'
+                            : dep.daysLeft === 0
+                              ? ' · se necesita hoy'
+                              : ` · faltan ${dep.daysLeft} día${dep.daysLeft === 1 ? '' : 's'} hábil${dep.daysLeft === 1 ? '' : 'es'}${dep.blocking ? ' para que bloquee' : ''}`}
                         </p>
                       </div>
                     </div>
 
                     <span className="px-2.5 py-1 rounded-lg text-[#334155] group-hover:bg-[#f1f5f9] group-hover:text-[#0f172a] font-semibold text-xs transition-colors shrink-0 self-start sm:self-auto inline-flex items-center gap-1">
-                      <span>Gestionar aprobación</span>
+                      <span>Gestionar insumo</span>
                       <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                     </span>
                   </div>
                 ))}
+                {clientDependencies.length > 0 && laterDependenciesCount > 0 && (
+                  <p className="text-[11px] text-[#64748b] px-1">
+                    + {laterDependenciesCount} insumo{laterDependenciesCount === 1 ? '' : 's'} más adelante (se necesitan en más de {DEP_WINDOW_DAYS} días hábiles). Los ves en Dependencias de cada proyecto.
+                  </p>
+                )}
 
                 {/* 3. Bloqueos de tareas */}
                 {ownBlockedTasks.map((t) => (
                   <div
                     key={`blocked-${t.id}`}
                     onClick={() => onOpenTaskDetail(t.id)}
-                    className="p-3 rounded-2xl bg-white border border-[#fecaca] hover:border-[#dc2626] hover:bg-[#fef2f2]/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs cursor-pointer transition-all group shadow-2xs"
+                    className="p-3 rounded-xl bg-white border border-[#e2e8f0] hover:border-[#fca5a5] hover:bg-[#fef2f2]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs cursor-pointer transition-all group shadow-2xs"
                   >
                     <div className="flex items-start gap-2.5">
                       <AlertOctagon className="w-4 h-4 text-[#ef4444] shrink-0 mt-0.5" />
@@ -578,6 +704,31 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                   </div>
                 ))}
 
+                {/* 3b. Bloqueos de tareas del equipo en mis proyectos (líder, Comercial y Relación con clientes) */}
+                {accessLevel !== 'collaborator' && teamBlockedTasks.map((t) => (
+                  <div
+                    key={`team-blocked-${t.id}`}
+                    onClick={() => onOpenTaskDetail(t.id)}
+                    className="p-3 rounded-xl bg-white border border-[#e2e8f0] hover:border-[#fca5a5] hover:bg-[#fef2f2]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs cursor-pointer transition-all group shadow-2xs"
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <AlertOctagon className="w-4 h-4 text-[#ef4444] shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-bold text-[#0f172a] group-hover:text-[#dc2626] transition-colors">{t.title}</span>
+                        <span className="text-[11px] text-[#991b1b] block mt-0.5">
+                          Bloqueada · {t.projectName || t.clientName || 'Proyecto'}
+                          {t.assignee?.name ? ` · ${t.assignee.name}` : ''}
+                          {t.blockedReason ? ` — ${t.blockedReason}` : ''}
+                        </span>
+                      </div>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-lg text-[#dc2626] group-hover:bg-[#fef2f2] font-semibold text-xs transition-colors self-start sm:self-auto shrink-0 inline-flex items-center gap-1">
+                      <span>Ver bloqueo</span>
+                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                    </span>
+                  </div>
+                ))}
+
                 {/* 4. Desvíos presupuestales activos */}
                 {overtimeRisks.map((t) => {
                   const consumedHrs = ((t.consumedSeconds || 0) / 3600).toFixed(1);
@@ -585,14 +736,14 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                     <div
                       key={`overtime-${t.id}`}
                       onClick={() => onOpenTaskDetail(t.id)}
-                      className="p-3 rounded-2xl bg-white border border-[#fed7aa] hover:border-[#ea580c] hover:bg-[#fff7ed]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs cursor-pointer transition-all group shadow-2xs"
+                      className="p-3 rounded-xl bg-white border border-[#e2e8f0] hover:border-[#fdba74] hover:bg-[#fff7ed]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs cursor-pointer transition-all group shadow-2xs"
                     >
                       <div className="flex items-center gap-2 min-w-0 flex-wrap">
                         <Flame className="w-4 h-4 text-[#ea580c] shrink-0" />
                         <span className="font-bold text-[#0f172a] group-hover:text-[#ea580c] transition-colors truncate">
                           {t.title}
                         </span>
-                        <span className="px-2 py-0.5 rounded-md bg-[#fff7ed] text-[#c2410c] font-bold border border-[#fed7aa] text-[10px] inline-flex items-center gap-1 shrink-0">
+                        <span className="px-2 py-0.5 rounded-lg bg-[#fff7ed] text-[#c2410c] font-bold border border-[#fed7aa] text-[10px] inline-flex items-center gap-1 shrink-0">
                           <AlertTriangle className="w-3 h-3" />
                           <span>Desvío {consumedHrs}h / {t.budgetedHours}h cotizadas</span>
                         </span>
@@ -684,7 +835,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                 {fiscalPendingActions.slice(0, 2).map((c) => (
                   <div
                     key={`fiscal-${c.id}`}
-                    className="p-3 rounded-2xl bg-white border border-[#fde68a] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                    className="p-3 rounded-xl bg-white border border-[#e2e8f0] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
                   >
                     <div className="flex items-start gap-2.5">
                       <Building2 className="w-4 h-4 text-[#64748b] shrink-0 mt-0.5" />
@@ -711,7 +862,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
           )}
 
           {/* NIVEL 2: ¿QUÉ TENGO QUE HACER HOY? (PROTAGONISTA) */}
-          <div className="bg-white rounded-3xl p-5 sm:p-6 border border-[#e2e8f0] shadow-xs space-y-4">
+          <div className="bg-white rounded-2xl p-5 sm:p-6 border border-[#e2e8f0] shadow-xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#f1f5f9]">
               <div>
                 <div className="flex items-center gap-2">
@@ -750,20 +901,47 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                   <CheckCircle2 className="w-5 h-5" />
                 </div>
                 <h3 className="text-sm font-bold text-[#0f172a]">
-                  Operación sin excepciones directas
+                  No tienes tareas propias para hoy
                 </h3>
                 <p className="text-xs text-[#64748b] max-w-md mx-auto">
-                  Como perfil ejecutivo no tienes tareas operativas de producción asignadas para hoy. Tu foco está en las excepciones y decisiones arriba notificadas.
+                  Mi Día muestra solo lo tuyo. Para ver la operación de toda la organización, entra a Tareas → Equipo o a Capacidad → Organización.
                 </p>
+                {onNavigateToView && (
+                  <button
+                    type="button"
+                    onClick={() => onNavigateToView('tareas')}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-[#501f92] hover:bg-[#f5f3ff] cursor-pointer"
+                  >
+                    Ver tareas del equipo <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
             ) : activeUserTasks.length === 0 ? (
-              <div className="p-6 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] text-center space-y-2">
-                <p className="text-xs font-semibold text-[#64748b]">
-                  No tienes tareas programadas para hoy en tu tablero personal.
-                </p>
-                <p className="text-[11px] text-[#94a3b8]">
-                  Puedes registrar horas de soporte libre o revisar el backlog de Proyectos.
-                </p>
+              <div className="space-y-3">
+                <div className="p-4 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] text-center space-y-1">
+                  <p className="text-xs font-semibold text-[#64748b]">No tienes tareas agendadas para hoy.</p>
+                  <p className="text-[11px] text-[#94a3b8]">
+                    {upcomingTasks.length > 0 ? 'Puedes adelantar tus próximas tareas, ordenadas por fecha y prioridad.' : 'Puedes registrar horas de soporte libre o revisar el backlog de Proyectos.'}
+                  </p>
+                </div>
+                {upcomingTasks.length > 0 && (
+                  <ul className="space-y-1.5" aria-label="Próximas tareas">
+                    {upcomingTasks.map((t) => (
+                      <li key={t.id}>
+                        <button
+                          type="button"
+                          onClick={() => onOpenTaskDetail(t.id)}
+                          className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border border-[#e2e8f0] bg-white hover:border-[#cbd5e1] text-left text-xs cursor-pointer"
+                        >
+                          {isUrgentTask(t) && <span className="shrink-0 px-1.5 py-0.5 rounded-lg bg-[#fef2f2] text-[#dc2626] text-[10px] font-bold">Urgente</span>}
+                          <span className="flex-1 min-w-0 truncate font-semibold text-[#0f172a]">{t.title}</span>
+                          <span className="shrink-0 text-[#64748b]">{taskScheduleDate(t) || t.dueText || 'Sin fecha'}</span>
+                          <ChevronRight className="w-4 h-4 text-[#94a3b8] shrink-0" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             ) : (
               <div className="space-y-2.5">
@@ -880,11 +1058,45 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                 })}
               </div>
             )}
+
+            {/* Siguiendo: tareas donde soy seguidor. Informativas, sin urgencia ni conteo. */}
+            {followedTasks.length > 0 && (
+              <div className="pt-3 border-t border-[#f1f5f9]">
+                <button
+                  type="button"
+                  onClick={() => setShowFollowed(!showFollowed)}
+                  className="w-full flex items-center justify-between text-xs font-semibold text-[#64748b] hover:text-[#0f172a] cursor-pointer"
+                  aria-expanded={showFollowed}
+                >
+                  <span>Siguiendo · {followedTasks.length} tarea{followedTasks.length !== 1 ? 's' : ''} de otras personas para que estés al tanto</span>
+                  <ChevronRight className={`w-4 h-4 transition-transform ${showFollowed ? 'rotate-90' : ''}`} />
+                </button>
+                {showFollowed && (
+                  <ul className="mt-2 space-y-1.5">
+                    {followedTasks.map((t) => (
+                      <li key={t.id}>
+                        <button
+                          type="button"
+                          onClick={() => onOpenTaskDetail(t.id)}
+                          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl bg-[#f8fafc] hover:bg-[#f1f5f9] text-left text-xs cursor-pointer"
+                        >
+                          <span className="flex-1 min-w-0 truncate text-[#334155]">{t.title}</span>
+                          <span className="shrink-0 text-[#94a3b8] truncate max-w-[40%]">
+                            {t.assignee?.name} · {t.projectName || t.board}
+                          </span>
+                          {t.status === 'Review' && <span className="shrink-0 text-[10px] font-bold text-[#501f92]">En revisión</span>}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
           </div>
 
           {/* NIVEL 3: ¿CÓMO VOY? (BALANCE COMPACTO, TIMER, CARGA RÁPIDA Y LOGS DE HOY) */}
           {!isExecutive && (
-            <div className="bg-white rounded-3xl p-5 sm:p-6 border border-[#e2e8f0] shadow-xs space-y-4">
+            <div className="bg-white rounded-2xl p-5 sm:p-6 border border-[#e2e8f0] shadow-xs space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#f1f5f9]">
                 <div>
                   <h2 className="text-base sm:text-lg font-bold text-[#0f172a] tracking-tight">
@@ -895,7 +1107,21 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  {onOpenDayClose && (
+                    <button
+                      type="button"
+                      onClick={onOpenDayClose}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                        isDayClosedToday
+                          ? 'bg-[#ecfdf5] border border-[#a7f3d0] text-[#047857]'
+                          : 'bg-[#501f92] hover:bg-[#381566] text-white shadow-2xs'
+                      }`}
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>{isDayClosedToday ? 'Día cerrado' : 'Cerrar mi día'}</span>
+                    </button>
+                  )}
                   <button
                     onClick={() => onOpenManualLog()}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-[#cbd5e1] hover:border-[#501f92] text-[#334155] hover:text-[#501f92] text-xs font-semibold shadow-2xs transition-all cursor-pointer"
@@ -927,6 +1153,12 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                     }`}
                   />
                 </div>
+                <p
+                  className={`text-[11px] font-semibold ${streakDays > 0 ? 'text-[#c2410c]' : 'text-[#64748b]'}`}
+                  title="Días hábiles seguidos con al menos el 80 % de tu jornada registrada. Fines de semana, festivos y ausencias no rompen la racha."
+                >
+                  🔥 {streakDays > 0 ? `Tu racha: ${streakLabel(streakDays)}` : 'Empieza tu racha hoy: carga al menos el 80 % de tu jornada'}
+                </p>
               </div>
 
               {/* Link directo a Capacidad para ver tiempos de hoy y de la semana */}
@@ -952,12 +1184,12 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
         {/* ==================================================================== */}
         <aside className="w-full xl:w-84 shrink-0 space-y-4">
           {/* Tarjeta Principal del Radar de Ausencias */}
-          <div className="bg-white rounded-3xl p-5 border border-[#ede9fe] shadow-xs space-y-4 transition-all">
+          <div className="bg-white rounded-2xl p-5 border border-[#e2e8f0] shadow-xs space-y-4 transition-all">
             {/* Header del Sidebar */}
             <div className="flex items-center justify-between pb-3 border-b border-[#f1f5f9]">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-[#faf5ff] border border-[#ede9fe] flex items-center justify-center text-sm">
-                  🦫
+                <div className="w-8 h-8 rounded-xl bg-[#faf5ff] border border-[#ede9fe] flex items-center justify-center text-[#501f92]">
+                  <Users className="w-4 h-4" />
                 </div>
                 <div>
                   <h3 className="text-xs font-bold text-[#0f172a] uppercase tracking-wider">
@@ -970,8 +1202,8 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
               </div>
 
               {upcomingVacations.length > 0 && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#fef3c7] text-[#b45309] border border-[#fde68a] animate-pulse">
-                  {upcomingVacations.length} vacación próxima
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#fffbeb] text-[#b45309] border border-[#fde68a]">
+                  {upcomingVacations.length} {upcomingVacations.length === 1 ? 'ausencia próxima' : 'ausencias próximas'}
                 </span>
               )}
             </div>
@@ -980,31 +1212,31 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
             {upcomingVacations.length > 0 ? (
               <div className="space-y-3">
                 {upcomingVacations.map((vac) => {
-                  const isLuisa = vac.userId === 'u-3' || vac.userName.toLowerCase().includes('luisa');
+                  const isSoon = vac.daysRemaining <= 2; // resalta solo por cercanía, nunca por persona
                   const daysBadgeText = vac.daysRemaining === 0
                     ? 'Inicia hoy'
                     : vac.daysRemaining === 1
                     ? 'Mañana'
                     : vac.daysRemaining === 2
-                    ? 'Sale en 2 días · Pasado mañana'
+                    ? 'En 2 días'
                     : `En ${vac.daysRemaining} días`;
 
                   return (
                     <div
                       key={vac.id}
                       className={`p-4 rounded-2xl border transition-all ${
-                        isLuisa
-                          ? 'bg-gradient-to-br from-[#fffbeb] to-[#fef3c7] border-[#f59e0b] shadow-2xs'
+                        isSoon
+                          ? 'bg-[#fffbeb] border-[#fde68a]'
                           : 'bg-[#f8fafc] border-[#e2e8f0]'
                       }`}
                     >
                       <div className="flex items-center justify-between gap-2 mb-2">
                         <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
-                          isLuisa
-                            ? 'bg-[#b45309] text-white'
+                          isSoon
+                            ? 'bg-[#fffbeb] text-[#b45309] border border-[#fde68a]'
                             : 'bg-[#0284c7]/10 text-[#0284c7]'
                         }`}>
-                          🏖️ {daysBadgeText}
+                          {daysBadgeText}
                         </span>
                         <span className="text-[10px] font-mono text-[#64748b]">
                           {vac.daysDuration} días
@@ -1013,24 +1245,24 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
 
                       <div className="flex items-start gap-3">
                         <div className="w-10 h-10 rounded-xl bg-[#0284c7] text-white font-bold flex items-center justify-center shrink-0 shadow-2xs">
-                          {vac.user?.initials || 'LU'}
+                          {vac.user?.initials || vac.userName.split(' ').map((n) => n[0]).join('').slice(0, 2)}
                         </div>
                         <div className="min-w-0 flex-1">
                           <h4 className="text-xs font-bold text-[#0f172a] truncate">
                             {vac.userName}
                           </h4>
                           <p className="text-[11px] text-[#64748b] truncate mt-0.5">
-                            {vac.user?.jobTitle || 'Operaciones & Cuentas'}
+                            {vac.user?.jobTitle || ''}
                           </p>
-                          <p className="text-[10px] font-medium text-[#78350f] mt-1 bg-white/60 p-1.5 rounded-lg border border-[#fde68a]/60">
-                            📅 <strong>{vac.startDate} al {vac.endDate}</strong>
+                          <p className="text-[11px] font-medium text-[#334155] mt-1">
+                            <strong>{formatDate(vac.startDate)} al {formatDate(vac.endDate)}</strong>
                           </p>
                         </div>
                       </div>
 
                       {/* Prompt funcional y empático */}
-                      <div className="mt-3 text-[11px] text-[#78350f] leading-relaxed bg-white/70 p-2.5 rounded-xl border border-[#fde68a]">
-                        💡 <strong>Para tener en cuenta:</strong> {vac.userName.split(' ')[0]} saldrá a vacaciones pronto. Si tienes tareas, dudas o temas de clientes con ella, coordina entregas y handoffs antes de su salida.
+                      <div className="mt-3 text-[11px] text-[#475569] leading-relaxed">
+                        <strong className="text-[#0f172a]">Para tener en cuenta:</strong> {vac.userName.split(' ')[0]} estará ausente. Si compartes tareas o clientes, coordina entregas antes de esa fecha.
                       </div>
                     </div>
                   );
@@ -1087,21 +1319,23 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                   className="w-full p-2.5 rounded-2xl bg-[#faf5ff] hover:bg-[#ede9fe] border border-[#ddd6fe] text-[#501f92] text-xs font-bold transition-all flex items-center justify-between cursor-pointer group"
                 >
                   <div className="flex items-center gap-2">
-                    <span>🦫</span>
-                    <span>Cónoce la colonia Uhureña</span>
+                    <span>Conoce La Colonia</span>
                   </div>
                   <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                 </button>
               </div>
             )}
           </div>
+
+          {/* En racha: aparece sola cuando alguien cumple la racha (o el equipo la tiene) */}
+          <TeamStreakPanel variant="card" users={users || []} timeLogs={timeLogs} absenceEvents={absenceEvents || []} currentUser={currentUser} />
         </aside>
       </div>
 
       {/* MODAL DE COORDINACIÓN DE TRASPASO POR VACACIONES DE LUISA */}
       {isLuisaHandoffModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-5 border border-[#e2e8f0] shadow-2xl animate-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-5 border border-[#e2e8f0] shadow-2xl animate-in zoom-in-95 duration-150">
             <div className="flex items-start justify-between gap-3 pb-3 border-b border-[#f1f5f9]">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-[#fffbeb] border border-[#fde68a] flex items-center justify-center text-xl">
@@ -1127,7 +1361,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
 
             <div className="space-y-3 text-xs">
               <p className="text-[#334155] leading-relaxed">
-                Antes de salir el <strong>miércoles 21 de Octubre</strong>, estas son las cuentas activas asignadas a Luisa en Orbit:
+                Antes de salir el <strong>miércoles 21 de Octubre</strong>, estas son las cuentas activas asignadas a Luisa en ECO:
               </p>
 
               <div className="space-y-2">

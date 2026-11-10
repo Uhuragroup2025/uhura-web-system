@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { formatDate, formatDateRange } from '../../../utils/formatters';
 import {
   Clock,
   Calendar,
@@ -29,6 +30,8 @@ import {
 import { UserAvatar } from '../UserAvatar';
 import { evaluateProjectHealth, calculateBusinessDays, addBusinessDays } from '../health/projectHealthEngine';
 import { ProjectTeamTab } from './ProjectTeamTab';
+import { FeeContractSection } from './FeeContractSection';
+import { can } from '../auth/permissions';
 
 interface ProjectOverviewTabProps {
   project: ProjectSummaryItem & {
@@ -38,6 +41,8 @@ interface ProjectOverviewTabProps {
   deliverables: ProjectDeliverable[];
   coreTeam: ProjectTeamMember[];
   allProjects?: ProjectSummaryItem[];
+  allTasks?: TaskItem[]; // Todas las tareas (capacidad global del equipo)
+  onSelectCycle?: (cycleKey: string) => void; // Fee mensual: abrir un mes desde el historial
   currentUser?: UserItem;
   allUsers?: UserItem[];
   onNavigateToDeliverables: () => void;
@@ -52,6 +57,8 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
   deliverables,
   coreTeam,
   allProjects = [],
+  allTasks,
+  onSelectCycle,
   currentUser,
   allUsers = [],
   onNavigateToDeliverables,
@@ -161,9 +168,62 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* FEE MENSUAL: contrato, ciclos y renovación */}
+      {!isFixed && project.contractStartDate && (
+        <FeeContractSection
+          project={project}
+          currentUser={currentUser}
+          canEdit={!currentUser || can(currentUser, 'edit', 'proyectos')}
+          onUpdateProject={onUpdateProject}
+          onSelectCycle={onSelectCycle}
+        />
+      )}
+
+      {/* PROYECTO CERRADO: foto final del cierre */}
+      {project.closure && (
+        <div className="bg-white rounded-2xl border border-[#e2e8f0] p-5 shadow-xs space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="font-extrabold text-sm text-[#0f172a]">🏁 Proyecto cerrado</h3>
+            <span className="text-[11px] text-[#64748b]">
+              {project.closure.closedByName} · {formatDate(project.closure.closedAt)}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+            <div className="p-3 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
+              <span className="text-[10px] uppercase font-bold text-[#64748b] block">Motivo</span>
+              <span className="font-bold text-[#0f172a]">
+                {project.closure.reason === 'delivered_approved' ? 'Entregado y aprobado' : project.closure.reason === 'closed_early' ? 'Cierre anticipado' : 'Cancelado por el cliente'}
+              </span>
+            </div>
+            <div className="p-3 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
+              <span className="text-[10px] uppercase font-bold text-[#64748b] block">Horas</span>
+              <span className="font-bold font-mono text-[#0f172a]">{project.closure.executedHours}h / {project.closure.quotedHours}h</span>
+            </div>
+            <div className="p-3 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
+              <span className="text-[10px] uppercase font-bold text-[#64748b] block">Fecha real</span>
+              <span className="font-bold text-[#0f172a]">
+                {formatDate(project.closure.actualEndDate)}
+                {typeof project.closure.deviationBusinessDays === 'number' && project.closure.deviationBusinessDays !== 0 && (
+                  <span className={project.closure.deviationBusinessDays > 0 ? 'text-[#b91c1c]' : 'text-[#15803d]'}>
+                    {' '}({project.closure.deviationBusinessDays > 0 ? '+' : ''}{project.closure.deviationBusinessDays} d)
+                  </span>
+                )}
+              </span>
+            </div>
+            {typeof project.closure.usedReworkRounds === 'number' && (
+              <div className="p-3 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
+                <span className="text-[10px] uppercase font-bold text-[#64748b] block">Rondas de ajuste</span>
+                <span className="font-bold text-[#0f172a]">{project.closure.usedReworkRounds} de {project.closure.includedReworkRounds}</span>
+              </div>
+            )}
+          </div>
+          <p className="text-xs text-[#475569] whitespace-pre-line"><strong>Aprendizajes:</strong> {project.closure.note}</p>
+        </div>
+      )}
+
       {/* BANNER DE SUGERENCIA DE REFORECAST (SI HAY ATRASO CRÍTICO DE CLIENTE) */}
       {isFixed && pendingBlockingOverdueDeps.length > 0 && (
-        <div className="bg-[#fffbeb] border border-[#fde68a] rounded-3xl p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4 animate-in fade-in duration-200">
+        <div className="bg-[#fffbeb] border border-[#fde68a] rounded-2xl p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4 animate-in fade-in duration-200">
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 rounded-2xl bg-[#f59e0b]/20 text-[#b45309] flex items-center justify-center shrink-0 mt-0.5">
               <AlertTriangle className="w-5 h-5" />
@@ -181,11 +241,11 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
                 El insumo <strong className="text-[#92400e] font-bold">"{pendingBlockingOverdueDeps[0].title}"</strong> presenta{' '}
                 {suggestedShiftDays} días de demora. El cronograma original proyectaba entrega el{' '}
                 <strong className="underline decoration-[#d97706]">
-                  {project.baselineEndDate || project.endDate || 'fin de mes'}
+                  {formatDate(project.baselineEndDate || project.endDate)}
                 </strong>
                 . El forecast calculado sugiere actualizar al{' '}
                 <strong className="underline decoration-[#d97706]">
-                  {addBusinessDays(project.forecastEndDate || project.baselineEndDate || '2026-10-30', suggestedShiftDays)}
+                  {project.forecastEndDate || project.baselineEndDate ? formatDate(addBusinessDays((project.forecastEndDate || project.baselineEndDate)!, suggestedShiftDays)) : 'Sin fecha base'}
                 </strong>.
               </p>
             </div>
@@ -217,7 +277,7 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
       )}
 
       {/* 1. ESTRUCTURA OPERATIVA Y ENTREGABLES HEREDADOS (SOLUCIÓN DIRECTA A "NO VI TAREAS") */}
-      <div className="bg-white rounded-3xl border border-[#e2e8f0] p-6 shadow-xs space-y-5">
+      <div className="bg-white rounded-2xl border border-[#e2e8f0] p-6 shadow-xs space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#f1f5f9] pb-4">
           <div>
             <div className="flex items-center gap-2">
@@ -226,10 +286,10 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
               </span>
               <div>
                 <h2 className="text-base font-extrabold text-[#0f172a]">
-                  Estructura del Proyecto & Entregables Formalizados
+                  Entregables ({deliverables.length})
                 </h2>
                 <p className="text-xs text-[#64748b]">
-                  {deliverables.length} entregables formalizados · {totalTasks} tareas operativas listas para ejecución
+                  {totalTasks} tareas · clic en un entregable para ver sus tareas
                 </p>
               </div>
             </div>
@@ -240,7 +300,7 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
             onClick={() => onNavigateToTasks()}
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold transition-all cursor-pointer shadow-xs self-start sm:self-auto"
           >
-            <span>Ir a Tareas y Operación ({totalTasks})</span>
+            <span>Ver tareas</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>
@@ -262,7 +322,7 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
               >
                 <div>
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-[#ede9fe] text-[#501f92]">
+                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-lg bg-[#ede9fe] text-[#501f92]">
                       Entregable {del.order || idx + 1}
                     </span>
                     <span className="text-[11px] font-mono text-[#64748b]">
@@ -304,20 +364,17 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
 
       {/* 2. GOBERNANZA DE ALCANCE & APROBACIONES (PROYECTO ÚNICO) */}
       {isFixed && (
-        <div className="bg-white rounded-3xl border border-[#e2e8f0] p-6 shadow-xs space-y-4">
+        <div className="bg-white rounded-2xl border border-[#e2e8f0] p-6 shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#f1f5f9] pb-4">
             <div>
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-[#501f92]" />
                 <h3 className="font-extrabold text-sm text-[#0f172a]">
-                  Gobernanza de Alcance, Gates & Rondas de Ajuste
+                  Cronograma y rondas de ajuste
                 </h3>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#f3e8ff] text-[#501f92]">
-                  Cláusulas Operativas Uhura
-                </span>
               </div>
               <p className="text-xs text-[#64748b] mt-0.5">
-                Protección contra scope creep: ventanas de espera por cliente no consumen capacidad del equipo y excluyen festivos.
+                Tiempos del cliente incluidos en la línea base. No consumen capacidad del equipo.
               </p>
             </div>
 
@@ -333,39 +390,58 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-            {/* Gates */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {/* Rondas de ajuste (una ronda = el cliente revisa, devuelve ajustes y aprueba) */}
             <div className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0]">
-              <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Gates de Aprobación</span>
-              <p className="text-sm font-extrabold text-[#0f172a] mt-1">2 Gates incluidos</p>
-              <span className="text-[11px] text-[#64748b] mt-0.5 block">5 días hábiles de revisión por cliente</span>
+              <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Rondas de ajuste</span>
+              <p className="text-sm font-extrabold text-[#0f172a] mt-1">
+                {(project.reworkRounds || []).filter((r) => r.cause === 'client_adjustment').length} usadas de {project.scheduleConfig?.includedReworkRounds ?? 2}
+              </p>
+              <span className="text-[11px] text-[#64748b] mt-0.5 block">{project.scheduleConfig?.reworkRoundDays ?? 5} días hábiles por ronda · incluidas en el plan</span>
             </div>
 
-            {/* Rondas de ajuste */}
+            {/* Insumos del cliente tras el kickoff */}
             <div className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0]">
-              <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Tandas de Ajustes</span>
-              <p className="text-sm font-extrabold text-[#0f172a] mt-1">2 rondas por gate</p>
-              <span className="text-[11px] text-[#64748b] mt-0.5 block">1 tanda grande + 1 tanda menor</span>
+              <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Insumos del cliente</span>
+              <p className="text-sm font-extrabold text-[#0f172a] mt-1">{project.scheduleConfig?.clientKickoffWaitDays ?? 3} días hábiles</p>
+              <span className="text-[11px] text-[#64748b] mt-0.5 block">Tras el kickoff · no consume capacidad del equipo</span>
             </div>
 
-            {/* Devolución Kickoff */}
+            {/* Cambios de cronograma (la fecha vigente está en el KPI «Cronograma») */}
             <div className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0]">
-              <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Devolución de Kickoff</span>
-              <p className="text-sm font-extrabold text-[#0f172a] mt-1">3 días hábiles</p>
-              <span className="text-[11px] text-[#64748b] mt-0.5 block">0h capacidad consumida</span>
-            </div>
-
-            {/* Forecast */}
-            <div className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0]">
-              <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Forecast de Entrega</span>
-              <p className="text-sm font-extrabold text-[#501f92] mt-1">
-                {project.forecastEndDate || project.baselineEndDate || project.endDate || 'En fecha'}
+              <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Cambios de cronograma</span>
+              <p className="text-sm font-extrabold text-[#0f172a] mt-1">
+                {scheduleHistory.length} reforecast{scheduleHistory.length !== 1 ? 's' : ''}
               </p>
               <span className="text-[11px] text-[#64748b] mt-0.5 block">
-                {scheduleHistory.length} reforecast{scheduleHistory.length !== 1 ? 's' : ''} auditado{scheduleHistory.length !== 1 ? 's' : ''}
+                {project.baselineEndDate ? `Línea base: ${formatDate(project.baselineEndDate)}` : 'Línea base al iniciar el proyecto'}
               </span>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* RECURSOS EXTERNOS (subcontratados): costo del proyecto, fuera de capacidad y roles. No visible para colaboradores. */}
+      {(project.externalResources || []).length > 0 && currentUser?.accessLevel !== 'collaborator' && (
+        <div className="bg-white rounded-2xl border border-[#e2e8f0] p-5 shadow-xs space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="font-extrabold text-sm text-[#0f172a]">Costos externos y licencias</h3>
+            <span className="text-xs font-bold text-[#0f172a]">
+              Costo: $ {Math.round((project.externalResources || []).reduce((sum, r) => sum + (r.totalCost || 0), 0)).toLocaleString('es-CO')}
+            </span>
+          </div>
+          <p className="text-[11px] text-[#64748b]">Recursos externos y licencias imputados al proyecto. No consumen capacidad del equipo ni horas de roles de Uhura.</p>
+          <ul className="divide-y divide-[#f1f5f9] text-xs">
+            {(project.externalResources || []).map((r) => (
+              <li key={r.id} className="flex items-center justify-between py-1.5 gap-2">
+                <span className="text-[#0f172a]">
+                  <strong>{r.description}</strong>
+                  <span className="text-[#64748b]">{r.kind === 'license' ? ' · Licencia' : ''}{r.providerName ? ` · ${r.providerName}` : ''}{r.recurrence === 'monthly' ? ` · mensual × ${r.months || 1}` : r.costModel === 'hourly' ? ` · ${r.hours}h` : ' · Pago único'}</span>
+                </span>
+                <span className="font-mono font-bold text-[#0f172a]">$ {Math.round(r.totalCost).toLocaleString('es-CO')}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -377,6 +453,7 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
           allProjects={allProjects}
           users={allUsers}
           tasks={project.tasks}
+          allTasks={allTasks}
           onUpdateProject={(updated) => onUpdateProject?.(updated)}
         />
       </div>
@@ -384,7 +461,7 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
       {/* MODAL: RECALCULAR CRONOGRAMA (REFORECAST CONFIRMADO POR LÍDER) */}
       {isReforecastModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white text-[#0f172a] rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-[#e2e8f0] space-y-5 animate-in zoom-in-95 duration-150">
+          <div className="bg-white text-[#0f172a] rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-[#e2e8f0] space-y-5 animate-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-[#501f92]/10 text-[#501f92] flex items-center justify-center">
@@ -408,16 +485,16 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
               <div className="p-3 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] space-y-1">
                 <div className="flex justify-between">
                   <span className="text-[#64748b]">Baseline inmutable:</span>
-                  <span className="font-bold text-[#0f172a]">{project.baselineEndDate || project.endDate || 'No fijada'}</span>
+                  <span className="font-bold text-[#0f172a]">{formatDate(project.baselineEndDate || project.endDate, 'No fijada')}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-[#64748b]">Forecast vigente:</span>
-                  <span className="font-bold text-[#0f172a]">{project.forecastEndDate || project.baselineEndDate || 'No fijada'}</span>
+                  <span className="font-bold text-[#0f172a]">{formatDate(project.forecastEndDate || project.baselineEndDate, 'No fijada')}</span>
                 </div>
                 <div className="flex justify-between border-t border-[#e2e8f0] pt-1 mt-1 text-[#501f92]">
                   <span className="font-bold">Nuevo forecast proyectado:</span>
                   <span className="font-extrabold">
-                    {addBusinessDays(project.forecastEndDate || project.baselineEndDate || '2026-10-30', reforecastDeltaDays)}
+                    {project.forecastEndDate || project.baselineEndDate ? formatDate(addBusinessDays((project.forecastEndDate || project.baselineEndDate)!, reforecastDeltaDays)) : 'Sin fecha base'}
                   </span>
                 </div>
               </div>

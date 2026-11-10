@@ -18,29 +18,29 @@ import {
 // PLANTILLAS DE ACTIVIDADES RECURRENTES PARA PROYECTOS TIPO FEE
 export const FEE_ACTIVITY_TEMPLATES: Record<string, { name: string; defaultHours: number; role: string }[]> = {
   'Mantenimiento Web': [
-    { name: 'Actualización de Core, Plugins & Seguridad', defaultHours: 2.0, role: 'Tech Lead' },
-    { name: 'Carga & Reemplazo de Banners / Assets', defaultHours: 1.5, role: 'Designer / Dev' },
-    { name: 'Revisión de Data, Eventos & Analytics', defaultHours: 1.5, role: 'Growth / Tech' },
-    { name: 'Actualización de Precios, Catálogo & Stock', defaultHours: 2.0, role: 'Dev / Operations' },
-    { name: 'Soporte Preventivo & Healthcheck Mensual', defaultHours: 1.0, role: 'Tech Lead' }
+    { name: 'Actualización de Core, Plugins & Seguridad', defaultHours: 2.0, role: 'Product Lead' },
+    { name: 'Carga & Reemplazo de Banners / Assets', defaultHours: 1.5, role: 'Digital Designer' },
+    { name: 'Revisión de Data, Eventos & Analytics', defaultHours: 1.5, role: 'Growth Manager' },
+    { name: 'Actualización de Precios, Catálogo & Stock', defaultHours: 2.0, role: 'DigiOps Specialist' },
+    { name: 'Soporte Preventivo & Healthcheck Mensual', defaultHours: 1.0, role: 'Product Lead' }
   ],
   'Parrilla & Redes': [
-    { name: 'Conceptualización & Estrategia Mensual', defaultHours: 4.0, role: 'Lead PM / Strategist' },
-    { name: 'Redacción de Copys & Guiones', defaultHours: 3.5, role: 'Copywriter' },
-    { name: 'Diseño de Piezas Gráficas & Carruseles', defaultHours: 6.0, role: 'Lead Designer' },
-    { name: 'Edición de Videos / Reels & Motion', defaultHours: 5.0, role: 'Motion / Designer' },
+    { name: 'Conceptualización & Estrategia Mensual', defaultHours: 4.0, role: 'Product Lead' },
+    { name: 'Redacción de Copys & Guiones', defaultHours: 3.5, role: 'Content Creator' },
+    { name: 'Diseño de Piezas Gráficas & Carruseles', defaultHours: 6.0, role: 'Digital Designer' },
+    { name: 'Edición de Videos / Reels & Motion', defaultHours: 5.0, role: 'Creative Designer' },
     { name: 'Programación de Publicaciones & Community', defaultHours: 2.5, role: 'Community Manager' }
   ],
   'Growth & Pauta': [
-    { name: 'Configuración & Activación de Pauta (Trafficker)', defaultHours: 3.0, role: 'Growth Specialist' },
-    { name: 'Optimización de Presupuestos & CBO/ABO', defaultHours: 2.0, role: 'Growth Specialist' },
-    { name: 'Auditoría de Conversiones & Píxeles Meta/Google', defaultHours: 2.5, role: 'Growth & Tech' },
-    { name: 'Reporte Ejecutivo de Rendimiento / ROAS', defaultHours: 2.0, role: 'Growth Lead' }
+    { name: 'Configuración & Activación de Pauta (Trafficker)', defaultHours: 3.0, role: 'Growth Manager' },
+    { name: 'Optimización de Presupuestos & CBO/ABO', defaultHours: 2.0, role: 'Growth Manager' },
+    { name: 'Auditoría de Conversiones & Píxeles Meta/Google', defaultHours: 2.5, role: 'Growth Manager' },
+    { name: 'Reporte Ejecutivo de Rendimiento / ROAS', defaultHours: 2.0, role: 'Growth Manager' }
   ],
   'Soporte Continuo': [
-    { name: 'Atención a Tickets de Soporte & Ajustes Rápidos', defaultHours: 2.0, role: 'Colaborador UI' },
-    { name: 'Optimización de Velocidad / Core Web Vitals', defaultHours: 3.0, role: 'Frontend Dev' },
-    { name: 'QA & Pruebas Cruzadas de Compatibilidad', defaultHours: 2.0, role: 'QA Lead' }
+    { name: 'Atención a Tickets de Soporte & Ajustes Rápidos', defaultHours: 2.0, role: 'Digital Designer' },
+    { name: 'Optimización de Velocidad / Core Web Vitals', defaultHours: 3.0, role: 'Front-End Dev' },
+    { name: 'QA & Pruebas Cruzadas de Compatibilidad', defaultHours: 2.0, role: 'Product Lead' }
   ]
 };
 
@@ -200,7 +200,7 @@ export const clientProjectHierarchy: ClientProjectNode[] = [
     projects: [
       {
         id: 'prj-uhu-1',
-        name: 'Innovación & Orbit OS Labs',
+        name: 'Innovación & ECO OS Labs',
         budgetedHours: 25.0,
         projectType: 'fixed_project',
         startDate: '01 Jul 2026',
@@ -332,7 +332,7 @@ export const orbitTeamCapacity: TeamMemberCapacity[] = [
     initials: 'OC',
     avatarBg: 'bg-[#f59e0b]',
     avatarUrl: '/assets/team/oscar-cerpa.webp',
-    role: 'Desarrollador Web Front-End',
+    role: 'Front-End Dev',
     utilizationPercent: 68,
     hoursLogged: 27.2,
     hoursAvailable: 40.0
@@ -384,9 +384,9 @@ export const initialTimeLogs: TimeLog[] = [
   {
     id: 'log-2',
     taskId: 't-4',
-    taskTitle: 'Desarrollo de Módulo de Tiempos Orbit OS',
+    taskTitle: 'Desarrollo de Módulo de Tiempos ECO OS',
     clientName: '🏢 Uhura Interno / No Facturable',
-    projectName: 'Innovación & Orbit OS Labs',
+    projectName: 'Innovación & ECO OS Labs',
     userName: 'Oscar Cerpa',
     userInitials: 'OC',
     userAvatarBg: 'bg-[#f59e0b]',
@@ -414,22 +414,22 @@ export const initialTasks: TaskItem[] = [
     frente: 'Redes Sociales',
     phase: 'Discovery & Estrategia',
     fase: 'Discovery & Estrategia',
-    budgetedRole: 'Content Strategist',
-    executedRoleSnapshot: 'Content Strategist',
+    budgetedRole: 'Digital Content Specialist',
+    executedRoleSnapshot: 'Digital Content Specialist',
     projectType: 'fixed_project',
     categoryType: 'client',
     assignee: {
       name: 'Camilo Vélez',
       initials: 'CV',
       avatarBg: 'bg-[#10b981]',
-      role: 'Content Strategist'
+      role: 'Digital Content Specialist'
     },
     requestedBy: 'Paola (Lead PM)',
     reviewer: {
       name: 'Paola (Lead PM)',
       initials: 'PL',
       avatarBg: 'bg-[#501f92]',
-      role: 'Lead PM'
+      role: 'Product Lead'
     },
     date: '16 Ago 2026',
     startDate: '15 ago. 2026',
@@ -460,22 +460,22 @@ export const initialTasks: TaskItem[] = [
     frente: 'Redes Sociales',
     phase: 'UI/UX & Prototipado',
     fase: 'UI/UX & Prototipado',
-    budgetedRole: 'Diseñador Gráfico',
-    executedRoleSnapshot: 'Diseñador Gráfico',
+    budgetedRole: 'Creative Designer',
+    executedRoleSnapshot: 'Creative Designer',
     projectType: 'fixed_project',
     categoryType: 'client',
     assignee: {
       name: 'Diego Cadavid',
       initials: 'DC',
       avatarBg: 'bg-[#f59e0b]',
-      role: 'Diseñador Gráfico'
+      role: 'Creative Designer'
     },
     requestedBy: 'Paola (Lead PM)',
     reviewer: {
       name: 'Catalina Tejada',
       initials: 'CT',
       avatarBg: 'bg-[#7c3aed]',
-      role: 'Web Designer'
+      role: 'Digital Designer'
     },
     dependencyTaskId: 't-yam-rs-1',
     dependencyTaskTitle: 'Estrategia de contenido',
@@ -587,15 +587,15 @@ export const initialTasks: TaskItem[] = [
     frente: 'Landing Page',
     phase: 'Discovery & Estrategia',
     fase: 'Discovery & Estrategia',
-    budgetedRole: 'Copywriter',
-    executedRoleSnapshot: 'Copywriter',
+    budgetedRole: 'Content Creator',
+    executedRoleSnapshot: 'Content Creator',
     projectType: 'fixed_project',
     categoryType: 'client',
     assignee: {
       name: 'Mariana Toro',
       initials: 'MT',
       avatarBg: 'bg-[#ec4899]',
-      role: 'Copywriter'
+      role: 'Content Creator'
     },
     requestedBy: 'Paola Monsalve',
     dependencyTaskId: 't-yam-lp-1',
@@ -625,22 +625,22 @@ export const initialTasks: TaskItem[] = [
     frente: 'Landing Page',
     phase: 'UI/UX & Prototipado',
     fase: 'UI/UX & Prototipado',
-    budgetedRole: 'Web Designer',
-    executedRoleSnapshot: 'Web Designer',
+    budgetedRole: 'Digital Designer',
+    executedRoleSnapshot: 'Digital Designer',
     projectType: 'fixed_project',
     categoryType: 'client',
     assignee: {
       name: 'Catalina Tejada',
       initials: 'CT',
       avatarBg: 'bg-[#7c3aed]',
-      role: 'Web Designer'
+      role: 'Digital Designer'
     },
     requestedBy: 'Paola Monsalve',
     reviewer: {
       name: 'Paola (Lead PM)',
       initials: 'PL',
       avatarBg: 'bg-[#501f92]',
-      role: 'Lead PM'
+      role: 'Product Lead'
     },
     dependencyTaskId: 't-yam-lp-2',
     dependencyTaskTitle: 'Copy',
@@ -673,15 +673,15 @@ export const initialTasks: TaskItem[] = [
     frente: 'Landing Page',
     phase: 'Implementación Frontend & Backend',
     fase: 'Implementación Frontend & Backend',
-    budgetedRole: 'Front End',
-    executedRoleSnapshot: 'Front End',
+    budgetedRole: 'Front-End Dev',
+    executedRoleSnapshot: 'Front-End Dev',
     projectType: 'fixed_project',
     categoryType: 'client',
     assignee: {
       name: 'Laura Gómez',
       initials: 'LG',
       avatarBg: 'bg-[#0284c7]',
-      role: 'Front End'
+      role: 'Front-End Dev'
     },
     requestedBy: 'Paola (Lead PM)',
     reviewer: {
@@ -723,15 +723,15 @@ export const initialTasks: TaskItem[] = [
     frente: 'Pauta',
     phase: 'QA & Testing',
     fase: 'QA & Testing',
-    budgetedRole: 'Trafficker',
-    executedRoleSnapshot: 'Trafficker',
+    budgetedRole: 'Trafficker Media',
+    executedRoleSnapshot: 'Trafficker Media',
     projectType: 'fixed_project',
     categoryType: 'client',
     assignee: {
       name: 'Sebas (Trafficker)',
       initials: 'ST',
       avatarBg: 'bg-[#0284c7]',
-      role: 'Trafficker'
+      role: 'Trafficker Media'
     },
     requestedBy: 'Paola (Lead PM)',
     dependencyTaskId: 't-yam-rs-2',
@@ -748,7 +748,7 @@ export const initialTasks: TaskItem[] = [
     completed: false,
     budgetedHours: 3.0,
     consumedSeconds: 10800, // 3.0h
-    tags: ['Pauta', 'Meta Ads', 'Google Ads', 'Trafficker'],
+    tags: ['Pauta', 'Meta Ads', 'Google Ads', 'Trafficker Media'],
     acceptanceCriteria: [
       { id: 'crit-pt1-1', text: 'Verificación de UTMs y tracking de conversión', completed: true },
       { id: 'crit-pt1-2', text: 'Presupuesto diario y puja configurada correctamente', completed: true }
@@ -765,15 +765,15 @@ export const initialTasks: TaskItem[] = [
     frente: 'Pauta',
     phase: 'Despliegue & Cierre',
     fase: 'Despliegue & Cierre',
-    budgetedRole: 'Trafficker',
-    executedRoleSnapshot: 'Trafficker',
+    budgetedRole: 'Trafficker Media',
+    executedRoleSnapshot: 'Trafficker Media',
     projectType: 'fixed_project',
     categoryType: 'client',
     assignee: {
       name: 'Sebas (Trafficker)',
       initials: 'ST',
       avatarBg: 'bg-[#0284c7]',
-      role: 'Trafficker'
+      role: 'Trafficker Media'
     },
     requestedBy: 'Paola (Lead PM)',
     dependencyTaskId: 't-yam-pt-1',
@@ -851,15 +851,15 @@ export const initialTasks: TaskItem[] = [
     frente: 'Arquitectura',
     fase: 'Discovery',
     phase: 'Discovery',
-    budgetedRole: 'Tech Lead',
-    executedRoleSnapshot: 'Tech Lead',
+    budgetedRole: 'Product Lead',
+    executedRoleSnapshot: 'Product Lead',
     projectType: 'fixed_project',
     categoryType: 'client',
     assignee: {
       name: 'Paola (Lead PM)',
       initials: 'PL',
       avatarBg: 'bg-[#501f92]',
-      role: 'Lead PM'
+      role: 'Product Lead'
     },
     requestedBy: 'Paola Monsalve',
     dependencyTaskId: 't-bs-1',
@@ -891,15 +891,15 @@ export const initialTasks: TaskItem[] = [
     frente: 'Diseño UX/UI',
     fase: 'UX/UI',
     phase: 'UX/UI',
-    budgetedRole: 'UI/UX Designer',
-    executedRoleSnapshot: 'UI/UX Designer',
+    budgetedRole: 'Digital Designer',
+    executedRoleSnapshot: 'Digital Designer',
     projectType: 'fixed_project',
     categoryType: 'client',
     assignee: {
       name: 'Catalina Tejada',
       initials: 'CT',
       avatarBg: 'bg-[#7c3aed]',
-      role: 'Lead Designer'
+      role: 'Digital Designer'
     },
     requestedBy: 'Paola (Lead PM)',
     date: '26 Ago 2026',
@@ -927,15 +927,15 @@ export const initialTasks: TaskItem[] = [
     frente: 'Diseño UX/UI',
     fase: 'UX/UI',
     phase: 'UX/UI',
-    budgetedRole: 'UI/UX Designer',
-    executedRoleSnapshot: 'UI/UX Designer',
+    budgetedRole: 'Digital Designer',
+    executedRoleSnapshot: 'Digital Designer',
     projectType: 'fixed_project',
     categoryType: 'client',
     assignee: {
       name: 'Catalina Tejada',
       initials: 'CT',
       avatarBg: 'bg-[#7c3aed]',
-      role: 'Lead Designer'
+      role: 'Digital Designer'
     },
     requestedBy: 'Paola Monsalve',
     dependencyTaskId: 't-bs-3',
@@ -965,15 +965,15 @@ export const initialTasks: TaskItem[] = [
     frente: 'Diseño UX/UI',
     fase: 'UX/UI',
     phase: 'UX/UI',
-    budgetedRole: 'UI/UX Designer',
-    executedRoleSnapshot: 'UI/UX Designer',
+    budgetedRole: 'Digital Designer',
+    executedRoleSnapshot: 'Digital Designer',
     projectType: 'fixed_project',
     categoryType: 'client',
     assignee: {
       name: 'Catalina Tejada',
       initials: 'CT',
       avatarBg: 'bg-[#7c3aed]',
-      role: 'Lead Designer'
+      role: 'Digital Designer'
     },
     requestedBy: 'Paola (Lead PM)',
     dependencyTaskId: 't-bs-4',
@@ -1005,15 +1005,15 @@ export const initialTasks: TaskItem[] = [
     frente: 'Desarrollo Web',
     fase: 'Implementación',
     phase: 'Implementación',
-    budgetedRole: 'Front End',
-    executedRoleSnapshot: 'Front End',
+    budgetedRole: 'Front-End Dev',
+    executedRoleSnapshot: 'Front-End Dev',
     projectType: 'fixed_project',
     categoryType: 'client',
     assignee: {
       name: 'Laura Gómez',
       initials: 'LG',
       avatarBg: 'bg-[#0284c7]',
-      role: 'Front End'
+      role: 'Front-End Dev'
     },
     requestedBy: 'Paola Monsalve',
     dependencyTaskId: 't-bs-5',
@@ -1043,15 +1043,15 @@ export const initialTasks: TaskItem[] = [
     frente: 'Integraciones',
     fase: 'Implementación',
     phase: 'Implementación',
-    budgetedRole: 'Back End',
-    executedRoleSnapshot: 'Back End',
+    budgetedRole: 'Front-End Dev',
+    executedRoleSnapshot: 'Front-End Dev',
     projectType: 'fixed_project',
     categoryType: 'client',
     assignee: {
       name: 'Laura Gómez',
       initials: 'LG',
       avatarBg: 'bg-[#0284c7]',
-      role: 'Back End'
+      role: 'Front-End Dev'
     },
     requestedBy: 'Paola (Lead PM)',
     dependencyTaskId: 't-bs-6',
@@ -1081,15 +1081,15 @@ export const initialTasks: TaskItem[] = [
     frente: 'Operaciones Web',
     fase: 'Implementación',
     phase: 'Implementación',
-    budgetedRole: 'Front End',
-    executedRoleSnapshot: 'Front End',
+    budgetedRole: 'Front-End Dev',
+    executedRoleSnapshot: 'Front-End Dev',
     projectType: 'fixed_project',
     categoryType: 'client',
     assignee: {
       name: 'Mateo Ruiz',
       initials: 'MR',
       avatarBg: 'bg-[#8b5cf6]',
-      role: 'Community & Dev'
+      role: 'Community Manager'
     },
     requestedBy: 'Laura Gómez',
     date: '03 Oct 2026',
@@ -1110,22 +1110,22 @@ export const initialTasks: TaskItem[] = [
     id: 't-bs-9',
     title: 'Optimización SEO On-Page y Core Web Vitals',
     description: 'Estructura de metadatos, Schema.org para productos, optimización de imágenes WebP y score móvil.',
-    department: 'Growth & Tech',
+    department: 'Growth Manager',
     board: 'Tienda Online BattSaver',
     clientName: 'Rock and Ride S.A.S.',
     projectName: 'Tienda Online BattSaver',
-    frente: 'Growth & Tech',
+    frente: 'Growth Manager',
     fase: 'Implementación',
     phase: 'Implementación',
-    budgetedRole: 'Growth Specialist',
-    executedRoleSnapshot: 'Growth Specialist',
+    budgetedRole: 'Growth Manager',
+    executedRoleSnapshot: 'Growth Manager',
     projectType: 'fixed_project',
     categoryType: 'client',
     assignee: {
       name: 'Sebas (Trafficker)',
       initials: 'ST',
       avatarBg: 'bg-[#0284c7]',
-      role: 'Trafficker'
+      role: 'Trafficker Media'
     },
     requestedBy: 'Camilo Velez',
     date: '10 Oct 2026',
@@ -1155,15 +1155,15 @@ export const initialTasks: TaskItem[] = [
     frente: 'Calidad & QA',
     fase: 'QA',
     phase: 'QA',
-    budgetedRole: 'QA Tester',
-    executedRoleSnapshot: 'QA Tester',
+    budgetedRole: 'Product Lead',
+    executedRoleSnapshot: 'Product Lead',
     projectType: 'fixed_project',
     categoryType: 'client',
     assignee: {
       name: 'Paola (Lead PM)',
       initials: 'PL',
       avatarBg: 'bg-[#501f92]',
-      role: 'Lead PM'
+      role: 'Product Lead'
     },
     requestedBy: 'Paola Monsalve',
     dependencyTaskId: 't-bs-7',
@@ -1193,15 +1193,15 @@ export const initialTasks: TaskItem[] = [
     frente: 'Calidad & QA',
     fase: 'QA',
     phase: 'QA',
-    budgetedRole: 'QA Tester',
-    executedRoleSnapshot: 'QA Tester',
+    budgetedRole: 'Product Lead',
+    executedRoleSnapshot: 'Product Lead',
     projectType: 'fixed_project',
     categoryType: 'client',
     assignee: {
       name: 'Catalina Tejada',
       initials: 'CT',
       avatarBg: 'bg-[#7c3aed]',
-      role: 'Lead Designer'
+      role: 'Digital Designer'
     },
     requestedBy: 'Paola (Lead PM)',
     date: '22 Oct 2026',
@@ -1231,15 +1231,15 @@ export const initialTasks: TaskItem[] = [
     frente: 'Despliegue',
     fase: 'Cierre',
     phase: 'Cierre',
-    budgetedRole: 'Tech Lead',
-    executedRoleSnapshot: 'Tech Lead',
+    budgetedRole: 'Product Lead',
+    executedRoleSnapshot: 'Product Lead',
     projectType: 'fixed_project',
     categoryType: 'client',
     assignee: {
       name: 'Oscar Cerpa',
       initials: 'OC',
       avatarBg: 'bg-[#f59e0b]',
-      role: 'Desarrollador Web Front-End'
+      role: 'Front-End Dev'
     },
     requestedBy: 'Paola (Lead PM)',
     dependencyTaskId: 't-bs-10',
@@ -1277,7 +1277,7 @@ export const initialTasks: TaskItem[] = [
       name: 'Paola (Lead PM)',
       initials: 'PL',
       avatarBg: 'bg-[#501f92]',
-      role: 'Lead PM'
+      role: 'Product Lead'
     },
     requestedBy: 'Santiago Giraldo',
     date: '02 Nov 2026',
@@ -1309,14 +1309,14 @@ export const initialTasks: TaskItem[] = [
       name: 'Laura Gómez',
       initials: 'LG',
       avatarBg: 'bg-[#0284c7]',
-      role: 'Colaborador Frontend'
+      role: 'Front-End Dev'
     },
     collaborators: [
       {
         name: 'Catalina Tejada',
         initials: 'CT',
         avatarBg: 'bg-[#7c3aed]',
-        role: 'PM'
+        role: 'Product Lead'
       }
     ],
     followers: [
@@ -1324,7 +1324,7 @@ export const initialTasks: TaskItem[] = [
         name: 'Paola (Lead PM)',
         initials: 'PL',
         avatarBg: 'bg-[#501f92]',
-        role: 'Lead PM'
+        role: 'Product Lead'
       }
     ],
     date: '22 Ago 2026',
@@ -1380,14 +1380,14 @@ export const initialTasks: TaskItem[] = [
       name: 'Catalina Tejada',
       initials: 'CT',
       avatarBg: 'bg-[#7c3aed]',
-      role: 'Lead Designer'
+      role: 'Digital Designer'
     },
     collaborators: [
       {
         name: 'Paola (Lead PM)',
         initials: 'PL',
         avatarBg: 'bg-[#501f92]',
-        role: 'PM'
+        role: 'Product Lead'
       }
     ],
     followers: [
@@ -1454,14 +1454,14 @@ export const initialTasks: TaskItem[] = [
       name: 'Oscar Cerpa',
       initials: 'OC',
       avatarBg: 'bg-[#f59e0b]',
-      role: 'Desarrollador Web Front-End'
+      role: 'Front-End Dev'
     },
     collaborators: [
       {
         name: 'Paola (Lead PM)',
         initials: 'PL',
         avatarBg: 'bg-[#501f92]',
-        role: 'PM'
+        role: 'Product Lead'
       }
     ],
     date: '18 Ago 2026',
@@ -1503,7 +1503,7 @@ export const initialTasks: TaskItem[] = [
       name: 'Catalina Tejada',
       initials: 'CT',
       avatarBg: 'bg-[#7c3aed]',
-      role: 'Lead Designer'
+      role: 'Digital Designer'
     },
     date: '20 Ago 2026',
     startDate: '18 ago. 2026',
@@ -1536,14 +1536,14 @@ export const initialTasks: TaskItem[] = [
       name: 'Esteban Mora',
       initials: 'EM',
       avatarBg: 'bg-[#f59e0b]',
-      role: 'Backend Dev'
+      role: 'Front-End Dev'
     },
     collaborators: [
       {
         name: 'Oscar Cerpa',
         initials: 'OC',
         avatarBg: 'bg-[#f59e0b]',
-        role: 'Desarrollador Web Front-End'
+        role: 'Front-End Dev'
       }
     ],
     date: '22 Ago 2026',
@@ -1582,14 +1582,14 @@ export const initialTasks: TaskItem[] = [
       name: 'Catalina Tejada',
       initials: 'CT',
       avatarBg: 'bg-[#7c3aed]',
-      role: 'Lead Designer'
+      role: 'Digital Designer'
     },
     collaborators: [
       {
         name: 'Paola (Lead PM)',
         initials: 'PL',
         avatarBg: 'bg-[#501f92]',
-        role: 'PM'
+        role: 'Product Lead'
       }
     ],
     date: '22 Ago 2026',
@@ -1631,7 +1631,7 @@ export const initialTasks: TaskItem[] = [
       name: 'Sebas (Trafficker)',
       initials: 'ST',
       avatarBg: 'bg-[#0284c7]',
-      role: 'Trafficker Digital'
+      role: 'Trafficker Media'
     },
     date: '22 Ago 2026',
     startDate: '23 ago. 2026',
@@ -1671,7 +1671,7 @@ export const initialTasks: TaskItem[] = [
       name: 'Camilo Vélez',
       initials: 'CV',
       avatarBg: 'bg-[#10b981]',
-      role: 'Growth Specialist'
+      role: 'Growth Manager'
     },
     date: '21 Ago 2026',
     dueDate: '2026-08-23',
@@ -1687,11 +1687,11 @@ export const initialTasks: TaskItem[] = [
   },
   {
     id: 't-4',
-    title: 'Desarrollo de Módulo de Tiempos & Zero-Scroll Orbit OS',
+    title: 'Desarrollo de Módulo de Tiempos & Zero-Scroll ECO OS',
     department: 'Innovación & Labs',
     board: 'Labs',
     clientName: '🏢 Uhura Interno / No Facturable',
-    projectName: 'Innovación & Orbit OS Labs',
+    projectName: 'Innovación & ECO OS Labs',
     projectType: 'fixed_project',
     phase: 'Implementación / Dev',
     categoryType: 'internal',
@@ -1699,7 +1699,7 @@ export const initialTasks: TaskItem[] = [
       name: 'Oscar Cerpa',
       initials: 'OC',
       avatarBg: 'bg-[#f59e0b]',
-      role: 'Desarrollador Web Front-End'
+      role: 'Front-End Dev'
     },
     date: '22 Ago 2026',
     dueDate: '2026-08-25',
@@ -1765,6 +1765,9 @@ export const initialUsers: UserItem[] = [
   {
     id: 'u-1',
     name: 'Ana María Giraldo',
+    loginUsername: 'ana',
+    hasPassword: true,
+    lastLoginAt: '2026-11-05T11:07:00-05:00',
     email: 'ana@uhuragroup.com',
     initials: 'AG',
     avatarBg: 'bg-[#501f92]',
@@ -1791,6 +1794,9 @@ export const initialUsers: UserItem[] = [
   {
     id: 'u-2',
     name: 'Paola Monsalve',
+    loginUsername: 'paola',
+    hasPassword: true,
+    lastLoginAt: '2026-11-07T08:15:00-05:00',
     email: 'paola@uhuragroup.com',
     initials: 'PM',
     avatarBg: 'bg-[#501f92]',
@@ -1959,6 +1965,9 @@ export const initialUsers: UserItem[] = [
   {
     id: 'u-8',
     name: 'Catalina Tejada',
+    loginUsername: 'catalina',
+    hasPassword: true,
+    lastLoginAt: '2026-11-06T17:40:00-05:00',
     email: 'catalina@uhuragroup.com',
     initials: 'CT',
     avatarBg: 'bg-[#7c3aed]',
@@ -2298,9 +2307,9 @@ export const initialUsers: UserItem[] = [
 ];
 
 /**
- * Eventos iniciales de ausencia estructurada en Orbit.
+ * Eventos iniciales de ausencia estructurada en ECO.
  * Google Calendar es el Source of Truth externo para vacaciones y licencias.
- * Bucky y el motor de Capacidad de Orbit consumen estos datos sin acoplarse a Google Calendar API.
+ * ECO y el motor de Capacidad de ECO consumen estos datos sin acoplarse a Google Calendar API.
  */
 export const initialAbsenceEvents: TeamAbsenceEvent[] = [
   {
@@ -2436,7 +2445,7 @@ export const UHURA_INTERNAL_CLIENT: ClientProfile = {
     contactEmail: 'ana@uhuragroup.com',
     contactPhone: '+57 (310) 887-2341',
     clientSince: '1 de Enero de 2024',
-    brands: ['UHURA Group', 'Orbit', 'Uhura Labs']
+    brands: ['UHURA Group', 'ECO', 'Uhura Labs']
   },
   behavior: {
     rentabilidad: 100,
@@ -2458,9 +2467,9 @@ export const UHURA_INTERNAL_CLIENT: ClientProfile = {
     },
     {
       id: 'prj-uhu-2',
-      name: 'Innovación, Producto & Orbit Labs',
+      name: 'Innovación, Producto & ECO Labs',
       tag: 'DEV',
-      brand: 'Orbit',
+      brand: 'ECO',
       status: 'Activo',
       quotedValueCOP: '$0',
       realMarginPercent: null,
@@ -3041,5 +3050,47 @@ export const orbitClientsData: ClientProfile[] = [
         progressPercent: 35
       }
     ]
+  },
+  {
+    id: 'cli-neroli',
+    name: 'Neroli Fragancias',
+    isInternal: false,
+    status: 'active',
+    type: 'Fee mensual',
+    healthStatus: 'Saludable',
+    portalActive: false,
+    projectsCount: 1,
+    activeProjectsCount: 1,
+    closedProjectsCount: 0,
+    averageMarginPercent: null,
+    billedCOP: '$0',
+    billedInvoicesCount: 0,
+    receivableCOP: '$0',
+    receivableStatus: 'al día',
+    accountManagerName: 'Luisa Urazán',
+    taxEntities: [],
+    contacts: [],
+    commercialInfo: {
+      contactName: '',
+      contactRole: '',
+      contactEmail: '',
+      contactPhone: '',
+      clientSince: 'Noviembre de 2026',
+      brands: ['Neroli']
+    },
+    projectsHistory: [],
+    // Integración de ejemplo: sin URL real; solo referencia enmascarada
+    googleChat: {
+      spaceName: 'Neroli Fragancias',
+      hasWebhook: true,
+      webhookMask: '••••••••••••aB92',
+      status: 'active',
+      lastTestAt: '2026-11-06T18:30:00.000Z',
+      lastTestResult: 'success',
+      lastTestMessage: 'Mensaje de prueba entregado (simulado).',
+      updatedAt: '2026-11-06T18:30:00.000Z',
+      updatedByName: 'Administrador del Sistema',
+      isDefaultForProjects: true
+    }
   }
 ];

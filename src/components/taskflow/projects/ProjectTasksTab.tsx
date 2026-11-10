@@ -1,4 +1,6 @@
 import React, { useState, useMemo } from 'react';
+import { formatDate } from '../../../utils/formatters';
+import { planProjectSchedule } from '../schedule/scheduleEngine';
 import {
   ProjectSummaryItem,
   TaskItem,
@@ -7,7 +9,8 @@ import {
   TaskPriority,
   UserItem,
   TaskAssigneeAllocation,
-  ActiveTimerState
+  ActiveTimerState,
+  STANDARD_UHURA_ROLES,
 } from '../types';
 import {
   normalizeTaskStatus,
@@ -89,6 +92,10 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
 
   // Modal para Crear / Editar Tarea
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  // Nuevo entregable (frente de trabajo); las tareas se crean desde «+ Tarea» de cada entregable
+  const [isDeliverableModalOpen, setIsDeliverableModalOpen] = useState(false);
+  const [newDeliverableName, setNewDeliverableName] = useState('');
+  const [newDeliverableDescription, setNewDeliverableDescription] = useState('');
   const [editingTask, setEditingTask] = useState<TaskItem | null>(null);
 
   // Estado del Formulario
@@ -97,7 +104,10 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
   const [formDeliverableId, setFormDeliverableId] = useState('');
   const [formRoleId, setFormRoleId] = useState('');
   const [formPriority, setFormPriority] = useState<TaskPriority>('Medium');
-  const [formTargetDate, setFormTargetDate] = useState('');
+  const [formTargetDate, setFormTargetDate] = useState('');   // Fecha de entrega (obligatoria)
+  // Ronda 2: «Crear tarea» siempre se puede pulsar; si falta algo, se resalta en rojo y se dice qué falta.
+  const [taskFormAttempted, setTaskFormAttempted] = useState(false);
+  const [formStartDate, setFormStartDate] = useState('');     // Fecha de inicio (obligatoria)
   const [formIsDeadlineStrict, setFormIsDeadlineStrict] = useState(false);
   const [formRequiresReview, setFormRequiresReview] = useState(true);
   const [formIsBlocked, setFormIsBlocked] = useState(false);
@@ -113,6 +123,81 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
 
   // Modal rápido de bloqueo
   const [blockingTask, setBlockingTask] = useState<TaskItem | null>(null);
+  // Ronda 2: la fila de la tarea ya no tiene lápiz (se edita al abrirla); tiene eliminar con confirmación.
+  // Solo líderes y administración eliminan; una tarea con horas registradas no se elimina (se archiva).
+  const [taskPendingDelete, setTaskPendingDelete] = useState<TaskItem | null>(null);
+  const canDeleteTasks = !currentUser || ['leader', 'system_admin'].includes(currentUser.accessLevel || '');
+  const [deliverablePendingDelete, setDeliverablePendingDelete] = useState<ProjectDeliverable | null>(null);
+  const [replanNotice, setReplanNotice] = useState<string | null>(null);
+
+  /**
+   * Al eliminar una tarea o un entregable de un proyecto ya iniciado, el cronograma se vuelve a
+   * planear desde la fecha de inicio con lo que queda: los entregables restantes se reparten el
+   * tiempo de producción (el espacio liberado queda para avanzar con ellos). Las tareas completadas
+   * conservan sus fechas. Fee mensual: no aplica (sus tareas van por mes).
+   */
+  const replanAfterRemoval = (remainingDels: ProjectDeliverable[], remainingTasks: TaskItem[]) => {
+    const isFee = project.projectType === 'fee_monthly';
+    if (!project.isKickedOff || !project.startDate || isFee || remainingDels.length === 0) {
+      return { deliverables: remainingDels, tasks: remainingTasks, replanned: false };
+    }
+    const plan = planProjectSchedule({
+      startDate: project.startDate,
+      productionWeeks: project.scheduleConfig?.productionWeeks || Math.max(1, Math.round((project.budgetedHours || 20) / 20)),
+      config: project.scheduleConfig,
+      isFee: false,
+      deliverables: remainingDels.map((d) => ({ id: d.id, name: d.name, totalQuotedHours: d.totalQuotedHours })),
+      tasks: remainingTasks.map((t) => ({ id: t.id, deliverableId: t.deliverableId, budgetedHours: t.budgetedHours }))
+    });
+    const byDel = new Map(plan.deliverables.map((d) => [d.id, d]));
+    const deliverablesOut = remainingDels.map((d) => {
+      const pd = byDel.get(d.id);
+      return pd ? { ...d, startDate: pd.startDate, endDate: pd.endDate } : d;
+    });
+    const tasksOut = remainingTasks.map((t) => {
+      const done = t.completed || t.status === 'Done';
+      const slot = plan.tasks[t.id];
+      if (done || !slot) return t;
+      return {
+        ...t,
+        date: slot.scheduledDate,
+        startDate: slot.scheduledDate,
+        scheduledDate: slot.scheduledDate,
+        dueDate: slot.dueDate,
+        targetDate: slot.dueDate,
+        dueText: `Deadline: ${formatDate(slot.dueDate)}`
+      };
+    });
+    return { deliverables: deliverablesOut, tasks: tasksOut, replanned: true };
+  };
+
+  const confirmDeleteTask = () => {
+    if (!taskPendingDelete) return;
+    const remaining = tasks.filter((t) => t.id !== taskPendingDelete.id);
+    const res = replanAfterRemoval(deliverables, remaining);
+    if (res.replanned) onUpdateProject?.({ ...project, deliverables: res.deliverables });
+    onUpdateTasks?.(res.tasks);
+    setReplanNotice(res.replanned ? `Tarea eliminada. Las fechas de las demás tareas se recalcularon desde el inicio del proyecto (${formatDate(project.startDate)}).` : 'Tarea eliminada.');
+    setTimeout(() => setReplanNotice(null), 6000);
+    setTaskPendingDelete(null);
+  };
+
+  const confirmDeleteDeliverable = () => {
+    if (!deliverablePendingDelete) return;
+    const delId = deliverablePendingDelete.id;
+    const remainingDels = deliverables.filter((d) => d.id !== delId);
+    const remainingTasks = tasks.filter((t) => t.deliverableId !== delId);
+    const res = replanAfterRemoval(remainingDels, remainingTasks);
+    onUpdateProject?.({ ...project, deliverables: res.deliverables });
+    onUpdateTasks?.(res.tasks);
+    setReplanNotice(
+      res.replanned
+        ? `Entregable eliminado. El cronograma de los demás entregables y sus tareas se recalculó desde el inicio del proyecto (${formatDate(project.startDate)}).`
+        : 'Entregable eliminado.'
+    );
+    setTimeout(() => setReplanNotice(null), 6000);
+    setDeliverablePendingDelete(null);
+  };
   const [quickBlockReason, setQuickBlockReason] = useState('');
 
   // Entregables del proyecto
@@ -133,8 +218,8 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
         status: 'in_progress' as const,
         roleBudgets: [
           { id: 'rb-gen-1', roleId: 'Product Lead', roleName: 'Product Lead', quotedHours: 10 },
-          { id: 'rb-gen-2', roleId: 'Diseñador Gráfico', roleName: 'Diseñador Gráfico', quotedHours: 20 },
-          { id: 'rb-gen-3', roleId: 'Front End', roleName: 'Front End', quotedHours: 20 }
+          { id: 'rb-gen-2', roleId: 'Creative Designer', roleName: 'Creative Designer', quotedHours: 20 },
+          { id: 'rb-gen-3', roleId: 'Front-End Dev', roleName: 'Front-End Dev', quotedHours: 20 }
         ]
       }
     ];
@@ -145,21 +230,21 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
     return selectableDeliverables.find((d) => d.id === formDeliverableId) || selectableDeliverables[0];
   }, [selectableDeliverables, formDeliverableId]);
 
-  // Roles cotizados disponibles en el entregable seleccionado
+  // Roles cotizables: SOLO el catálogo oficial de Uhura (STANDARD_UHURA_ROLES).
+  // Se muestran primero los que tienen horas cotizadas en el entregable seleccionado.
   const availableRolesForDeliverable = useMemo(() => {
-    if (currentSelectedDeliverable && currentSelectedDeliverable.roleBudgets) {
-      return currentSelectedDeliverable.roleBudgets.map((rb) => ({
-        id: rb.roleId,
-        name: rb.roleName || rb.roleId,
-        quotedHours: rb.quotedHours
-      }));
+    const budgets = currentSelectedDeliverable?.roleBudgets || [];
+    const quotedFor = (role: string) =>
+      budgets
+        .filter((rb) => (rb.roleName || rb.roleId) === role || rb.roleId === role)
+        .reduce((sum, rb) => sum + (rb.quotedHours || 0), 0);
+    const list = STANDARD_UHURA_ROLES.map((role) => ({ id: role as string, name: role as string, quotedHours: quotedFor(role) }));
+    // Compatibilidad: si una tarea existente usa un rol fuera del catálogo, se conserva visible para no perderlo
+    if (formRoleId && !list.some((r) => r.id === formRoleId)) {
+      list.push({ id: formRoleId, name: `${formRoleId} (fuera del catálogo)`, quotedHours: quotedFor(formRoleId) });
     }
-    return [
-      { id: 'Product Lead', name: 'Product Lead', quotedHours: 10 },
-      { id: 'Diseñador Gráfico', name: 'Diseñador Gráfico', quotedHours: 20 },
-      { id: 'Front End', name: 'Front End', quotedHours: 20 }
-    ];
-  }, [currentSelectedDeliverable]);
+    return list.sort((x, y) => Number(y.quotedHours > 0) - Number(x.quotedHours > 0));
+  }, [currentSelectedDeliverable, formRoleId]);
 
   // Horas totales estimadas para el formulario actual
   const currentFormTotalHours = useMemo(() => {
@@ -230,8 +315,32 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
     });
   }, [tasks, searchTerm, filterRole, filterStatus, filterBlockedOnly]);
 
+  const handleCreateDeliverable = () => {
+    const name = newDeliverableName.trim();
+    if (!name || !onUpdateProject) return;
+    const current = project.deliverables || [];
+    const newDel: ProjectDeliverable = {
+      id: `del-${project.id}-${Date.now()}`,
+      projectId: project.id,
+      name,
+      description: newDeliverableDescription.trim() || undefined,
+      order: current.length + 1,
+      status: 'pending',
+      roleBudgets: [],
+      totalQuotedHours: 0,
+      totalExecutedHours: 0,
+      progressPercentage: 0
+    };
+    onUpdateProject({ ...project, deliverables: [...current, newDel] });
+    setExpandedDeliverables((prev) => ({ ...prev, [newDel.id]: true }));
+    setNewDeliverableName('');
+    setNewDeliverableDescription('');
+    setIsDeliverableModalOpen(false);
+  };
+
   // Abrir modal de creación
   const handleOpenCreateModal = (preselectedDelId?: string) => {
+    setTaskFormAttempted(false);
     setEditingTask(null);
     setFormTitle('');
     setFormDescription('');
@@ -239,11 +348,16 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
     setFormDeliverableId(defaultDelId);
 
     const del = selectableDeliverables.find((d) => d.id === defaultDelId);
-    const defaultRole = del?.roleBudgets?.[0]?.roleId || 'Diseñador Gráfico';
-    setFormRoleId(defaultRole);
+    const quotedOfficial = (del?.roleBudgets || [])
+      .map((rb) => rb.roleName || rb.roleId)
+      .find((r) => (STANDARD_UHURA_ROLES as readonly string[]).includes(r));
+    setFormRoleId(quotedOfficial || STANDARD_UHURA_ROLES[0]);
 
     setFormPriority('Medium');
-    setFormTargetDate(project.endDate || '');
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const defaultStart = project.startDate && project.startDate > todayIso ? project.startDate : todayIso;
+    setFormStartDate(defaultStart);
+    setFormTargetDate('');
     setFormIsDeadlineStrict(false);
     setFormRequiresReview(true);
     setFormIsBlocked(false);
@@ -272,7 +386,8 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
     setFormTitle(task.title);
     setFormDescription(task.description || '');
     setFormDeliverableId(task.deliverableId || selectableDeliverables[0]?.id || '');
-    setFormRoleId(task.budgetedRoleId || task.budgetedRole || 'Diseñador Gráfico');
+    setFormRoleId(task.budgetedRoleId || task.budgetedRole || STANDARD_UHURA_ROLES[0]);
+    setFormStartDate(task.scheduledDate || task.startDate || task.date || '');
     setFormPriority(task.priority || 'Medium');
     setFormTargetDate(task.targetDate || task.dueDate || '');
     setFormIsDeadlineStrict(!!task.isDeadlineStrict);
@@ -305,8 +420,19 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
   };
 
   // Guardar tarea (creación o edición)
+  const taskFormMissing = [
+    !formTitle.trim() ? 'el título' : '',
+    !formDeliverableId ? 'el entregable' : '',
+    !formRoleId ? 'el rol cotizado' : '',
+    !formStartDate ? 'la fecha de inicio' : '',
+    !formTargetDate ? 'la fecha de entrega' : '',
+    formStartDate && formTargetDate && formTargetDate < formStartDate ? 'una fecha de entrega posterior al inicio' : ''
+  ].filter(Boolean);
+  const missingField = (empty: boolean) => taskFormAttempted && empty;
+
   const handleSaveTask = () => {
-    if (!formTitle.trim() || !formDeliverableId || !formRoleId) return;
+    setTaskFormAttempted(true);
+    if (taskFormMissing.length > 0) return;
 
     // Resolver asignaciones y horas estimadas
     let resolvedAllocations: TaskAssigneeAllocation[] = [];
@@ -358,23 +484,26 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
       status: isEdit ? editingTask!.status : 'To Do',
       completed: isEdit ? editingTask!.completed : false,
       date: isEdit ? editingTask!.date : nowIso.split('T')[0],
-      dueDate: formTargetDate || project.endDate || nowIso.split('T')[0],
-      targetDate: formTargetDate || null,
+      scheduledDate: formStartDate,
+      startDate: formStartDate,
+      dueDate: formTargetDate,
+      targetDate: formTargetDate,
       isDeadlineStrict: formIsDeadlineStrict,
       dueStatus: 'normal',
-      dueText: formTargetDate ? `Para ${formTargetDate}` : 'Ciclo mensual',
+      dueText: `Deadline: ${formTargetDate}`,
       requiresReview: formRequiresReview,
-      isBlocked: formIsBlocked,
-      blockedReason: formIsBlocked ? formBlockedReason : null,
-      blockedAt: formIsBlocked ? (editingTask?.blockedAt || nowIso) : null,
-      isRework: formIsRework,
-      reworkReason: formIsRework ? formReworkReason : null,
+      isBlocked: isEdit ? formIsBlocked : false,
+      blockedReason: isEdit && formIsBlocked ? formBlockedReason : null,
+      blockedAt: isEdit && formIsBlocked ? (editingTask?.blockedAt || nowIso) : null,
+      isRework: isEdit ? formIsRework : false,
+      reworkReason: isEdit && formIsRework ? formReworkReason : null,
       budgetedHours: totalHours,
       estimatedHours: totalHours,
       consumedSeconds: isEdit ? editingTask!.consumedSeconds : 0,
       assigneeAllocations: resolvedAllocations,
       assigneeIds: resolvedAllocations.map((a) => a.userId),
       assignee: {
+        id: primaryAssigneeUser.id,
         name: primaryAssigneeUser.name,
         initials: primaryAssigneeUser.initials,
         avatarBg: primaryAssigneeUser.avatarBg,
@@ -402,7 +531,7 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
       onUpdateTasks(updatedTasksList);
     }
 
-    // Evento para Bucky
+    // Evento para ECO
     createTaskBuckyEvent(isEdit ? 'TASK_STATUS_CHANGED' : 'TASK_CREATED', savedTask);
 
     setIsTaskModalOpen(false);
@@ -492,7 +621,7 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
       />
 
       {/* 3. BARRA DE CONTROL, VISTAS Y BÚSQUEDA */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 bg-white p-4 rounded-3xl border border-[#e2e8f0] shadow-2xs">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-[#e2e8f0] shadow-2xs">
         <div className="flex items-center gap-2 w-full md:w-auto flex-1 max-w-md">
           <div className="relative flex-1">
             <Search className="w-4 h-4 text-[#94a3b8] absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -520,26 +649,6 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
 
         <div className="flex items-center gap-2 w-full md:w-auto justify-end flex-wrap">
           {/* Toggle Expandir/Colapsar todo en modo Frentes */}
-          {viewMode === 'deliverables' && (
-            <button
-              type="button"
-              onClick={() => {
-                const anyOpen = selectableDeliverables.some((d) => !!expandedDeliverables[d.id]);
-                if (anyOpen) {
-                  setExpandedDeliverables({});
-                } else {
-                  const allOpen: Record<string, boolean> = {};
-                  selectableDeliverables.forEach((d) => {
-                    allOpen[d.id] = true;
-                  });
-                  setExpandedDeliverables(allOpen);
-                }
-              }}
-              className="px-3 py-1.5 text-xs font-bold text-[#64748b] hover:text-[#501f92] bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] rounded-xl transition-all cursor-pointer"
-            >
-              {selectableDeliverables.some((d) => !!expandedDeliverables[d.id]) ? 'Colapsar frentes' : 'Expandir frentes'}
-            </button>
-          )}
 
           {/* Switch de Vistas */}
           <div className="bg-[#f1f5f9] p-1 rounded-xl flex items-center gap-1 text-xs">
@@ -570,16 +679,18 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
           </div>
 
           <button
-            onClick={() => handleOpenCreateModal()}
-            className="px-4 py-2 text-xs font-bold text-white bg-[#501f92] hover:bg-[#3f1675] rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
+            onClick={() => setIsDeliverableModalOpen(true)}
+            disabled={!onUpdateProject}
+            className="px-4 py-2 text-xs font-bold text-white bg-[#501f92] hover:bg-[#3f1675] disabled:opacity-50 rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
+            title="Agregar un entregable o frente de trabajo. Las tareas se crean desde «+ Tarea» en cada entregable."
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Nueva tarea</span>
+            <span>Nuevo entregable</span>
           </button>
         </div>
       </div>
 
-      {/* 4. VISTA 1: AGRUPADA POR ENTREGABLE (MODO RECOMENDADO ORBIT) */}
+      {/* 4. VISTA 1: AGRUPADA POR ENTREGABLE (MODO RECOMENDADO ECO) */}
       {viewMode === 'deliverables' && (
         <div className="space-y-4">
           {selectableDeliverables.map((del) => {
@@ -592,7 +703,7 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
             const isExpanded = !!expandedDeliverables[del.id];
 
             return (
-              <div key={del.id} className="bg-white rounded-3xl border border-[#e2e8f0] shadow-xs overflow-hidden">
+              <div key={del.id} className="bg-white rounded-2xl border border-[#e2e8f0] shadow-xs overflow-hidden">
                 {/* Cabecera del Entregable (Chip / Banner limpio) */}
                 <div
                   onClick={() =>
@@ -635,6 +746,19 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
                       <span className="text-[11px] font-bold text-[#15803d]">{progressPercent}%</span>
                     </div>
 
+                    {canDeleteTasks && onUpdateProject && deliverables.some((d) => d.id === del.id) && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeliverablePendingDelete(del);
+                        }}
+                        className="p-1.5 text-[#94a3b8] hover:text-[#dc2626] hover:bg-[#fef2f2] rounded-lg cursor-pointer"
+                        title="Eliminar entregable"
+                        aria-label={`Eliminar entregable ${del.name}`}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -706,13 +830,13 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
                                 </span>
 
                                 {/* Rol Cotizado de Imputación */}
-                                <span className="px-2 py-0.5 rounded-md bg-[#f1f5f9] text-[#475569] text-[10px] font-bold border border-[#e2e8f0]">
+                                <span className="px-2 py-0.5 rounded-lg bg-[#f1f5f9] text-[#475569] text-[10px] font-bold border border-[#e2e8f0]">
                                   {task.budgetedRoleId || task.budgetedRole || 'Rol'}
                                 </span>
 
                                 {/* Flag de Bloqueo */}
                                 {task.isBlocked && (
-                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#fef2f2] text-[#dc2626] text-[10px] font-bold border border-[#fecaca]">
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg bg-[#fef2f2] text-[#dc2626] text-[10px] font-bold border border-[#fecaca]">
                                     <AlertTriangle className="w-3 h-3" />
                                     <span>Bloqueada</span>
                                   </span>
@@ -720,7 +844,7 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
 
                                 {/* Flag de Retrabajo */}
                                 {task.isRework && (
-                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#fff7ed] text-[#c2410c] text-[10px] font-bold border border-[#ffedd5]">
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg bg-[#fff7ed] text-[#c2410c] text-[10px] font-bold border border-[#ffedd5]">
                                     <RotateCcw className="w-3 h-3" />
                                     <span>Ajuste Cliente</span>
                                   </span>
@@ -778,7 +902,7 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
                           <div className="text-xs text-[#64748b] min-w-[90px]">
                             {task.targetDate || task.dueDate ? (
                               <span className="text-[11px] font-medium text-[#334155]">
-                                {task.targetDate || task.dueDate}
+                                {formatDate(task.targetDate || task.dueDate)}
                               </span>
                             ) : (
                               <span className="text-[10px] text-[#94a3b8]">Ciclo</span>
@@ -837,13 +961,16 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
                               <AlertTriangle className="w-3.5 h-3.5" />
                             </button>
 
-                            <button
-                              onClick={() => handleOpenEditModal(task)}
-                              className="p-1.5 text-[#94a3b8] hover:text-[#501f92] rounded-lg cursor-pointer"
-                              title="Editar tarea"
-                            >
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </button>
+                            {canDeleteTasks && (
+                              <button
+                                onClick={() => setTaskPendingDelete(task)}
+                                className="p-1.5 text-[#94a3b8] hover:text-[#dc2626] rounded-lg cursor-pointer"
+                                title="Eliminar tarea"
+                                aria-label={`Eliminar tarea ${task.title}`}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
                           </div>
                         </div>
                       );
@@ -870,7 +997,7 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
             const colHours = colTasks.reduce((sum, t) => sum + calculateTaskEstimatedHours(t), 0);
 
             return (
-              <div key={columnKey} className="bg-[#f8fafc] rounded-3xl p-3.5 border border-[#e2e8f0] space-y-3">
+              <div key={columnKey} className="bg-[#f8fafc] rounded-2xl p-3.5 border border-[#e2e8f0] space-y-3">
                 <div className="flex items-center justify-between pb-2 border-b border-[#e2e8f0]">
                   <div className="flex items-center gap-1.5">
                     <span className="font-extrabold text-xs text-[#0f172a]">
@@ -936,7 +1063,7 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
 
       {/* 5. VISTA 3: LISTA TABULAR PLANA */}
       {viewMode === 'list' && (
-        <div className="bg-white rounded-3xl border border-[#e2e8f0] shadow-xs overflow-hidden">
+        <div className="bg-white rounded-2xl border border-[#e2e8f0] shadow-xs overflow-hidden">
           <div className="overflow-x-auto custom-scrollbar">
             <table className="w-full text-left text-xs min-w-[760px]">
               <thead>
@@ -990,12 +1117,16 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
                         </span>
                       </td>
                       <td className="py-3.5 px-5 text-right pr-6" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          onClick={() => handleOpenEditModal(task)}
-                          className="p-1 hover:bg-[#f1f5f9] text-[#64748b] rounded cursor-pointer"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
+                        {canDeleteTasks && (
+                          <button
+                            onClick={() => setTaskPendingDelete(task)}
+                            className="p-1 hover:bg-[#fef2f2] text-[#94a3b8] hover:text-[#dc2626] rounded cursor-pointer"
+                            title="Eliminar tarea"
+                            aria-label={`Eliminar tarea ${task.title}`}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );
@@ -1007,9 +1138,49 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
       )}
 
       {/* 6. MODAL: CREAR O EDITAR TAREA CON VALIDACIÓN DE ROL Y MÚLTIPLES COLABORADORES */}
+      {isDeliverableModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4" onClick={(e) => { if (e.target === e.currentTarget) setIsDeliverableModalOpen(false); }}>
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-[#e2e8f0] space-y-4">
+            <div>
+              <h3 className="font-extrabold text-base text-[#0f172a]">Nuevo entregable</h3>
+              <p className="text-xs text-[#64748b] mt-0.5">Frente de trabajo que agrupa tareas. Las horas se cotizan en el alcance; aquí nace sin horas.</p>
+            </div>
+            <label className="block space-y-1 text-xs">
+              <span className="font-bold text-[#334155]">Nombre <span className="text-[#ef4444]">*</span></span>
+              <input
+                autoFocus
+                value={newDeliverableName}
+                onChange={(e) => setNewDeliverableName(e.target.value)}
+                placeholder="Ej: Landing de temporada"
+                className="w-full px-3.5 py-2 rounded-xl bg-[#f8fafc] border border-[#cbd5e1] text-[#0f172a] focus:outline-none focus:border-[#501f92]"
+              />
+            </label>
+            <label className="block space-y-1 text-xs">
+              <span className="font-bold text-[#334155]">Descripción</span>
+              <textarea
+                rows={2}
+                value={newDeliverableDescription}
+                onChange={(e) => setNewDeliverableDescription(e.target.value)}
+                className="w-full px-3.5 py-2 rounded-xl bg-[#f8fafc] border border-[#cbd5e1] text-[#0f172a] focus:outline-none focus:border-[#501f92]"
+              />
+            </label>
+            <div className="flex justify-end gap-2 pt-2 border-t border-[#f1f5f9]">
+              <button onClick={() => setIsDeliverableModalOpen(false)} className="px-4 py-2 text-xs font-bold text-[#64748b] hover:bg-[#f1f5f9] rounded-xl cursor-pointer">Cancelar</button>
+              <button
+                onClick={handleCreateDeliverable}
+                disabled={!newDeliverableName.trim()}
+                className="px-4 py-2 text-xs font-bold text-white bg-[#501f92] hover:bg-[#3f1675] disabled:opacity-50 rounded-xl cursor-pointer"
+              >
+                Crear entregable
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isTaskModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-[#e2e8f0] space-y-4 animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-[#e2e8f0] space-y-4 animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-3">
               <div>
                 <h3 className="font-extrabold text-base text-[#0f172a]">
@@ -1038,7 +1209,7 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
                   value={formTitle}
                   onChange={(e) => setFormTitle(e.target.value)}
                   placeholder="Ej: Diseñar 6 carruseles de producto para campaña de Navidad"
-                  className="w-full px-3.5 py-2 rounded-xl bg-[#f8fafc] border border-[#cbd5e1] text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal font-medium focus:outline-none focus:border-[#501f92]"
+                  className={`w-full px-3.5 py-2 rounded-xl bg-[#f8fafc] border text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal font-medium focus:outline-none focus:border-[#501f92] ${missingField(!formTitle.trim()) ? 'border-[#ef4444] ring-1 ring-[#fecaca]' : 'border-[#cbd5e1]'}`}
                 />
               </div>
 
@@ -1072,7 +1243,7 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
                   >
                     {availableRolesForDeliverable.map((r) => (
                       <option key={r.id} value={r.id}>
-                        {r.name} ({r.quotedHours}h cotizadas)
+                        {r.name}{r.quotedHours > 0 ? ` · ${r.quotedHours}h cotizadas` : ' · sin horas en este entregable'}
                       </option>
                     ))}
                   </select>
@@ -1211,17 +1382,31 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
                 )}
               </div>
 
-              {/* Fecha objetivo (opcional) & Prioridad */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Cronograma de la tarea (obligatorio) & Prioridad */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block font-bold text-[#334155] mb-1">
-                    Fecha Objetivo (Opcional)
+                    Fecha de inicio <span className="text-[#ef4444]">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={formStartDate}
+                    onChange={(e) => setFormStartDate(e.target.value)}
+                    className={`w-full px-3 py-1.5 rounded-xl bg-[#f8fafc] border text-[#0f172a] ${missingField(!formStartDate) ? 'border-[#ef4444] ring-1 ring-[#fecaca]' : 'border-[#cbd5e1]'}`}
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-[#334155] mb-1">
+                    Fecha de entrega <span className="text-[#ef4444]">*</span>
                   </label>
                   <input
                     type="date"
                     value={formTargetDate}
+                    min={formStartDate || undefined}
                     onChange={(e) => setFormTargetDate(e.target.value)}
-                    className="w-full px-3 py-1.5 rounded-xl bg-[#f8fafc] border border-[#cbd5e1] text-[#0f172a]"
+                    className={`w-full px-3 py-1.5 rounded-xl bg-[#f8fafc] border text-[#0f172a] ${
+                      missingField(!formTargetDate) || (formTargetDate && formStartDate && formTargetDate < formStartDate) ? 'border-[#ef4444] ring-1 ring-[#fecaca]' : 'border-[#cbd5e1]'
+                    }`}
                   />
                 </div>
 
@@ -1256,7 +1441,8 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
                 </span>
               </div>
 
-              {/* Decisión 5: Flag de Bloqueo y Retrabajo */}
+              {/* Decisión 5: Flag de Bloqueo y Retrabajo (solo al editar; una tarea nueva no nace bloqueada ni como retrabajo) */}
+              {editingTask && (
               <div className="space-y-2 pt-1 border-t border-[#f1f5f9]">
                 <div className="flex items-center justify-between">
                   <label className="flex items-center gap-2 cursor-pointer font-bold text-[#334155]">
@@ -1290,8 +1476,14 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
                   />
                 )}
               </div>
+              )}
             </div>
 
+            {taskFormAttempted && taskFormMissing.length > 0 && (
+              <p role="alert" className="text-[11px] font-semibold text-[#dc2626] text-right">
+                Falta {taskFormMissing.length > 1 ? `${taskFormMissing.slice(0, -1).join(', ')} y ${taskFormMissing[taskFormMissing.length - 1]}` : taskFormMissing[0]}.
+              </p>
+            )}
             <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#f1f5f9]">
               <button
                 type="button"
@@ -1303,8 +1495,7 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
               <button
                 type="button"
                 onClick={handleSaveTask}
-                disabled={!formTitle.trim() || !formDeliverableId || !formRoleId}
-                className="px-4 py-2 text-xs font-bold text-white bg-[#501f92] hover:bg-[#3f1675] disabled:opacity-50 rounded-xl shadow-xs cursor-pointer"
+                className="px-4 py-2 text-xs font-bold text-white bg-[#501f92] hover:bg-[#3f1675] rounded-xl shadow-xs cursor-pointer"
               >
                 {editingTask ? 'Guardar cambios' : 'Crear tarea'}
               </button>
@@ -1316,7 +1507,7 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
       {/* 7. MODAL RÁPIDO PARA BLOQUEAR / DESBLOQUEAR TAREA */}
       {blockingTask && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-5 shadow-2xl border border-[#e2e8f0] space-y-4 animate-in fade-in zoom-in-95">
+          <div className="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl border border-[#e2e8f0] space-y-4 animate-in fade-in zoom-in-95">
             <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-2">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="w-5 h-5 text-[#dc2626]" />
@@ -1361,6 +1552,86 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
                 {blockingTask.isBlocked ? 'Desbloquear tarea' : 'Confirmar bloqueo'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {replanNotice && (
+        <div role="status" className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[1000] px-4 py-2.5 rounded-xl bg-[#0f172a] text-white text-xs font-semibold shadow-xl max-w-lg text-center">
+          {replanNotice}
+        </div>
+      )}
+      {deliverablePendingDelete && (() => {
+        const delTasks = tasks.filter((t) => t.deliverableId === deliverablePendingDelete.id);
+        const withHours = delTasks.filter((t) => (t.consumedSeconds || 0) > 0);
+        return (
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+            onClick={(e) => e.target === e.currentTarget && setDeliverablePendingDelete(null)}
+          >
+            <div className="bg-white rounded-2xl max-w-sm w-full border border-[#e2e8f0] shadow-2xl p-5 space-y-3 text-xs">
+              <h3 className="font-extrabold text-base text-[#0f172a]">Eliminar entregable</h3>
+              {withHours.length > 0 ? (
+                <>
+                  <p className="text-[#475569]">
+                    <strong>{deliverablePendingDelete.name}</strong> tiene {withHours.length} tarea{withHours.length === 1 ? '' : 's'} con horas registradas, así que no se puede eliminar: se perdería el registro de tiempo.
+                  </p>
+                  <div className="flex justify-end">
+                    <button type="button" onClick={() => setDeliverablePendingDelete(null)} className="px-4 py-2 rounded-xl border border-[#e2e8f0] bg-white text-[#334155] font-semibold cursor-pointer">Entendido</button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-[#475569]">
+                    ¿Eliminar <strong>{deliverablePendingDelete.name}</strong>
+                    {delTasks.length > 0 ? <> y sus <strong>{delTasks.length} tarea{delTasks.length === 1 ? '' : 's'}</strong></> : null}? No se puede deshacer.
+                  </p>
+                  {project.isKickedOff && project.startDate && project.projectType !== 'fee_monthly' && (
+                    <p className="text-[#64748b]">Las fechas de los demás entregables y sus tareas se recalcularán desde el inicio del proyecto.</p>
+                  )}
+                  <div className="flex justify-end gap-2">
+                    <button type="button" onClick={() => setDeliverablePendingDelete(null)} className="px-4 py-2 rounded-xl border border-[#e2e8f0] bg-white text-[#64748b] font-semibold cursor-pointer">Cancelar</button>
+                    <button type="button" onClick={confirmDeleteDeliverable} className="px-4 py-2 rounded-xl bg-[#dc2626] hover:bg-[#b91c1c] text-white font-bold cursor-pointer">Eliminar entregable</button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+      {taskPendingDelete && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+          onClick={(e) => e.target === e.currentTarget && setTaskPendingDelete(null)}
+        >
+          <div className="bg-white rounded-2xl max-w-sm w-full border border-[#e2e8f0] shadow-2xl p-5 space-y-3 text-xs">
+            <h3 className="font-extrabold text-base text-[#0f172a]">Eliminar tarea</h3>
+            {(taskPendingDelete.consumedSeconds || 0) > 0 ? (
+              <>
+                <p className="text-[#475569]">
+                  <strong>{taskPendingDelete.title}</strong> tiene horas registradas, así que no se puede eliminar: se perdería el registro de tiempo. Puedes archivarla desde el detalle de la tarea (menú ···).
+                </p>
+                <div className="flex justify-end">
+                  <button type="button" onClick={() => setTaskPendingDelete(null)} className="px-4 py-2 rounded-xl border border-[#e2e8f0] bg-white text-[#334155] font-semibold cursor-pointer">Entendido</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-[#475569]">
+                  ¿Eliminar <strong>{taskPendingDelete.title}</strong>? No se puede deshacer.
+                </p>
+                {project.isKickedOff && project.startDate && project.projectType !== 'fee_monthly' && (
+                  <p className="text-[#64748b]">Las fechas de las demás tareas se recalcularán desde el inicio del proyecto.</p>
+                )}
+                <div className="flex justify-end gap-2">
+                  <button type="button" onClick={() => setTaskPendingDelete(null)} className="px-4 py-2 rounded-xl border border-[#e2e8f0] bg-white text-[#64748b] font-semibold cursor-pointer">Cancelar</button>
+                  <button type="button" onClick={confirmDeleteTask} className="px-4 py-2 rounded-xl bg-[#dc2626] hover:bg-[#b91c1c] text-white font-bold cursor-pointer">Eliminar tarea</button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

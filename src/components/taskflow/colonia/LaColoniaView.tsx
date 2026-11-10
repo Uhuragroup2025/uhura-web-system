@@ -1,6 +1,7 @@
+import { TeamStreakPanel } from './TeamStreakPanel';
 /**
  * ============================================================================
- * LA COLONIA & FICHAS HUMANAS (ORBIT CULTURA UHURA)
+ * LA COLONIA & FICHAS HUMANAS (ECO CULTURA UHURA)
  * ============================================================================
  * 
  * Réplica fiel de la vista de Staging (Captura #1):
@@ -10,18 +11,22 @@
  * - Cuadrícula de 3 columnas de tarjetas humanas de colaboradores
  * - Integración con TeamHumanProfileModal para editar o ver detalles
  * - Acceso directo a "Mi Ficha"
- * - Toggle para disfrutar del Hábitat interactivo y minijuegos de Bucky
+ * - Toggle para disfrutar del Hábitat interactivo y minijuegos de ECO
  */
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { OrbitView, TaskItem, UserItem } from '../types';
+import { OrbitView, TaskItem, UserItem, TimeLog, TeamAbsenceEvent } from '../types';
 import { ColonyGameId, ColonyChallenge, WeeklyLeaderboardEntry, TeammateOption } from './types';
 import {
   loadColonyChallenges,
   saveColonyChallenges,
   loadWeeklyLeaderboards,
   resolveColonyChallenge,
-  createColonyChallenge
+  createColonyChallenge,
+  getUserChallenges,
+  challengeOutcomeFor,
+  relativeTimeEs,
+  COLONY_GAME_NAMES
 } from './coloniaEngine';
 import { ColoniaMinigames } from './ColoniaMinigames';
 import { ColoniaSocialInbox } from './ColoniaSocialInbox';
@@ -33,9 +38,7 @@ import {
   playTapSound
 } from './coloniaAudio';
 
-import buckyHoodieHappyImg from '../../../assets/images/bucky_hip_uhura_v3.png';
-import buckyFocusImg from '../../../assets/images/bucky_focus_cutout.png';
-import buckyCelebratingImg from '../../../assets/images/bucky_celebrating_cutout.png';
+import { mascotImage, useMascotSkin } from '../mascot/ecoMascot';
 
 import {
   Swords,
@@ -67,6 +70,9 @@ interface LaColoniaViewProps {
   plannedHoursToday?: number;
   currentUser?: UserItem;
   teamUsers?: UserItem[];
+  /** Para la racha de equipo y los logros de racha (visibles para todos). */
+  timeLogs?: TimeLog[];
+  absenceEvents?: TeamAbsenceEvent[];
   onNavigateToView: (view: OrbitView) => void;
   onUpdateUser?: (updatedUser: UserItem) => void;
 }
@@ -78,6 +84,8 @@ type FilterCategory = 'todos' | 'cumples' | 'aniversarios';
 export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
   currentUser,
   teamUsers = [],
+  timeLogs = [],
+  absenceEvents = [],
   onNavigateToView,
   onUpdateUser
 }) => {
@@ -88,7 +96,7 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
   const [selectedFilter, setSelectedFilter] = useState<FilterCategory>('todos');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Estados para el hábitat de Bucky y minijuegos
+  // Estados para el hábitat de ECO y minijuegos
   const [activeGame, setActiveGame] = useState<ColonyGameId | null>(null);
   const [activeChallengeToPlay, setActiveChallengeToPlay] = useState<ColonyChallenge | null>(null);
   const [challenges, setChallenges] = useState<ColonyChallenge[]>(loadColonyChallenges);
@@ -101,7 +109,7 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
   const [isNewChallengeModalOpen, setIsNewChallengeModalOpen] = useState(false);
   const [newChallengeGame, setNewChallengeGame] = useState<ColonyGameId>('torre');
 
-  // Estado del host Bucky
+  // Estado del host ECO
   const [lastGameResult, setLastGameResult] = useState<{ gameId: ColonyGameId; score: number } | null>(null);
   const [buckyMood, setBuckyMood] = useState<'happy' | 'focus' | 'celebrating'>('happy');
   const [buckyPhraseIndex, setBuckyPhraseIndex] = useState(0);
@@ -119,7 +127,26 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
     }
   });
 
-  const activeUserId = currentUser?.id || 'u-2';
+  const activeUserId = currentUser?.id || 'anon';
+  const { skin: mascotSkin } = useMascotSkin();
+  const [activeChallenge, setActiveChallenge] = useState<ColonyChallenge | null>(null);
+  // Compañeros para retar: Equipo & Accesos, activos, sin la persona que juega
+  const teammates: TeammateOption[] = useMemo(
+    () =>
+      teamUsers
+        .filter((u) => u.status !== 'Inactive' && u.id !== activeUserId)
+        .map((u) => ({
+          id: u.id,
+          name: u.name,
+          role: u.jobTitle || u.officialRole || u.role || '',
+          initials: u.initials || u.name.split(' ').map((n) => n[0]).join('').slice(0, 2),
+          avatarBg: u.avatarBg || 'bg-[#501f92]',
+          avatarUrl: u.avatarUrl
+        })),
+    [teamUsers, activeUserId]
+  );
+  const myChallenges = useMemo(() => getUserChallenges(challenges, activeUserId), [challenges, activeUserId]);
+  const latestResult = myChallenges.results[0];
 
   const refreshColonyData = () => {
     setChallenges(loadColonyChallenges());
@@ -159,13 +186,16 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
         if (!user.birthDate) return false;
         const parts = user.birthDate.split('-');
         const month = parseInt(parts[1], 10);
-        return month === 10; // Octubre
+        return month === new Date().getMonth() + 1; // mes en curso
       }
 
       if (selectedFilter === 'aniversarios') {
         if (!user.joinedDate && !user.anniversaryDate) return false;
         const joined = (user.joinedDate || user.anniversaryDate || '').toLowerCase();
-        return joined.includes('oct') || joined.includes('/ 10 /');
+        const mIdx = new Date().getMonth();
+        const short = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'][mIdx];
+        const mm = String(mIdx + 1).padStart(2, '0');
+        return joined.includes(short) || joined.includes(`/ ${mm} /`) || joined.includes(`-${mm}-`);
       }
 
       return true;
@@ -213,7 +243,7 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
       {/* ==================================================================== */}
       {activeTabMode === 'fichas' && (
         <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto w-full">
-          {/* Banner Superior "Cónoce la colonia Uhureña" */}
+          {/* Banner Superior "Conoce La Colonia" */}
           <div className="bg-white rounded-3xl p-5 border border-[#e2e8f0] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-3.5">
               <div className="w-12 h-12 rounded-2xl bg-[#faf5ff] border border-[#ede9fe] flex items-center justify-center text-2xl shadow-2xs shrink-0">
@@ -221,7 +251,7 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
               </div>
               <div>
                 <h2 className="text-base sm:text-lg font-extrabold text-[#0f172a] tracking-tight">
-                  Cónoce la colonia Uhureña
+                  Conoce La Colonia
                 </h2>
                 <p className="text-xs text-[#64748b] mt-0.5">
                   Cumpleaños, aniversarios, gustos y mascotas del equipo.
@@ -267,18 +297,21 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
                 </button>
               </div>
 
-              {/* Toggle a Jugar en la colonía */}
+              {/* Toggle a Jugar en La Colonia */}
               <button
                 type="button"
                 onClick={() => setActiveTabMode('habitat')}
                 className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#2e1859] hover:bg-[#1a0f30] text-white text-xs font-bold transition-all shadow-xs cursor-pointer shrink-0 ml-1"
-                title="Jugar en la colonía · Minijuegos de Bucky"
+                title="Jugar en La Colonia · Minijuegos de ECO"
               >
                 <Gamepad2 className="w-3.5 h-3.5 text-[#d4ff4a]" />
-                <span>Jugar en la colonía</span>
+                <span>Jugar en La Colonia</span>
               </button>
             </div>
           </div>
+
+          {/* Racha del equipo y logros de racha (los ve todo el equipo) */}
+          <TeamStreakPanel users={teamUsers} timeLogs={timeLogs} absenceEvents={absenceEvents} currentUser={currentUser} />
 
           {/* Cuadrícula de Tarjetas de Colaboradores (3 Columnas, Exacto a Staging) */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -409,11 +442,11 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
             </div>
           )}
 
-          {/* Sticker de Bucky flotante en la esquina inferior derecha (Fiel a Staging) */}
+          {/* Sticker de ECO flotante en la esquina inferior derecha (Fiel a Staging) */}
           <div className="fixed bottom-6 right-8 pointer-events-none z-30 hidden sm:block">
             <img
-              src={buckyHoodieHappyImg}
-              alt="Bucky Uhura"
+              src={mascotImage('ok', mascotSkin)}
+              alt="ECO Uhura"
               className="w-24 h-24 object-contain drop-shadow-xl"
             />
           </div>
@@ -423,161 +456,333 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
       {/* ==================================================================== */}
       {/* VISTA 2: EL HÁBITAT Y MINIJUEGOS DE BUCKY (EXPERIENCIAL / LÚDICO) */}
       {/* ==================================================================== */}
-      {activeTabMode === 'habitat' && (
-        <div className="p-6 lg:p-8 space-y-6 max-w-7xl mx-auto w-full">
-          {/* Top Bar Hábitat */}
-          <div className="flex items-center justify-between gap-4 pb-4 border-b border-white/10">
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setActiveTabMode('fichas')}
-                className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
-              >
-                <ArrowRight className="w-3.5 h-3.5 rotate-180" />
-                <span>Volver a Fichas Humanas</span>
-              </button>
-              <span className="text-xs text-white/60">•</span>
-              <h2 className="text-sm font-bold text-white flex items-center gap-1.5">
-                <span>🪵</span>
-                <span>Jugar en la colonía · Minijuegos</span>
-              </h2>
+      {activeTabMode === 'habitat' && (() => {
+        // ── Datos reales para el universo de juegos ──
+        const GAMES: { id: ColonyGameId; emoji: string; tagline: string; planet: string; ring: string; glow: string }[] = [
+          { id: 'torre', emoji: '🪵', tagline: 'Suelta cada tronco alineado y apila lo más alto posible.', planet: 'radial-gradient(circle at 30% 30%, #fde68a, #f59e0b 45%, #92400e 100%)', ring: 'border-[#fbbf24]/60', glow: 'shadow-[0_0_60px_rgba(245,158,11,0.45)]' },
+          { id: 'nenufar', emoji: '🪷', tagline: 'Toca el nenúfar donde aparezca ECO lo más rápido que puedas.', planet: 'radial-gradient(circle at 30% 30%, #a7f3d0, #10b981 45%, #065f46 100%)', ring: 'border-[#34d399]/60', glow: 'shadow-[0_0_60px_rgba(16,185,129,0.45)]' }
+        ];
+        const statsFor = (g: ColonyGameId) => {
+          const board = weeklyBoards[g] || [];
+          const idx = board.findIndex((e) => e.userId === activeUserId);
+          return { best: idx >= 0 ? board[idx].score : null, rank: idx >= 0 ? idx + 1 : null, leader: board[0] || null };
+        };
+        const nobodyPlayed = GAMES.every((g) => (weeklyBoards[g.id] || []).length === 0);
+        const pending = myChallenges.received[0];
+        const outcome = latestResult ? challengeOutcomeFor(latestResult, activeUserId) : null;
+        const rivalOf = (c: ColonyChallenge) => (c.challengerUserId === activeUserId ? c.challengedName : c.challengerName).split(' ')[0];
+        const hostLine = pending
+          ? `${pending.challengerName.split(' ')[0]} te retó en ${COLONY_GAME_NAMES[pending.gameId]} con ${pending.challengerScore} pts. ¿Lo superas?`
+          : latestResult && outcome === 'won'
+          ? `¡Le ganaste a ${rivalOf(latestResult)}! ¿Otra partida?`
+          : latestResult && outcome === 'lost'
+          ? `${rivalOf(latestResult)} te ganó esta vez. ¿Revancha?`
+          : nobodyPlayed
+          ? 'Nadie ha jugado esta semana. ¡Estrena el ranking!'
+          : '¿Jugamos una partida rápida? Son 15 segundos.';
+        const hostImg = mascotImage(pending ? 'surprised' : outcome === 'won' ? 'celebrating' : 'ok', mascotSkin);
+        const sky =
+          ambientTime === 'night'
+            ? 'linear-gradient(180deg, #05010f 0%, #140733 45%, #2a0f5c 100%)'
+            : ambientTime === 'sunset'
+            ? 'linear-gradient(180deg, #12052b 0%, #4a1460 45%, #b4532a 100%)'
+            : 'linear-gradient(180deg, #1e1b6b 0%, #4c3bb8 50%, #8b7cf6 100%)';
+        const board = weeklyBoards[rankingGame] || [];
+        const podium = [board[1], board[0], board[2]];
+
+        return (
+          <div className="relative overflow-hidden flex-1" style={{ background: sky }}>
+            {/* Estrellas */}
+            <div aria-hidden="true" className="absolute inset-0 pointer-events-none">
+              {Array.from({ length: 46 }, (_, i) => (
+                <span
+                  key={i}
+                  className="eco-star"
+                  style={{ left: `${(i * 53) % 100}%`, top: `${(i * 37) % 70}%`, width: `${1 + (i % 3)}px`, height: `${1 + (i % 3)}px`, animationDelay: `${(i % 7) * 0.4}s` }}
+                />
+              ))}
+              <div className="absolute -bottom-40 left-1/2 -translate-x-1/2 w-[140%] h-72 rounded-[50%] bg-[#0b0420]/70 blur-sm" />
             </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setSoundOn(!soundOn)}
-                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white cursor-pointer"
-                title={soundOn ? 'Silenciar sonidos' : 'Activar sonidos'}
-              >
-                {soundOn ? <Volume2 className="w-4 h-4 text-[#d4ff4a]" /> : <VolumeX className="w-4 h-4 text-white/60" />}
-              </button>
-              <button
-                onClick={handleToggleAmbient}
-                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white cursor-pointer"
-                title="Cambiar iluminación del hábitat"
-              >
-                {ambientTime === 'night' ? <Moon className="w-4 h-4 text-[#c9b7ff]" /> : ambientTime === 'sunset' ? <Sunset className="w-4 h-4 text-[#f59e0b]" /> : <Sun className="w-4 h-4 text-[#fbbf24]" />}
-              </button>
-            </div>
-          </div>
-
-          {/* Contenido de Minijuegos y Retos */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Columna Izquierda: Retador y Minijuegos Activos */}
-            <div className="lg:col-span-2 space-y-6">
-              <div className="p-6 rounded-3xl bg-gradient-to-br from-[#1e113a] to-[#2e1859] border border-white/10 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#d4ff4a] bg-white/10 px-2 py-0.5 rounded-full">
-                      Pausa Saludable · 15 Segundos
-                    </span>
-                    <h3 className="text-lg font-black text-white mt-1">
-                      Minijuegos Rápidos de la Colonia
-                    </h3>
-                  </div>
-                  <img
-                    src={buckyFocusImg}
-                    alt="Bucky"
-                    className="w-14 h-14 object-contain"
-                  />
-                </div>
-                <p className="text-xs text-white/80 leading-relaxed">
-                  Despeja la mente entre sprints. Cada juego toma menos de 20 segundos y fomenta la cercanía sin distraer de las metas del día.
-                </p>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+            <div className="relative p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto w-full">
+              {/* HUD */}
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
                   <button
-                    onClick={() => setActiveGame('torre')}
-                    className="p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-left transition-all cursor-pointer group"
+                    type="button"
+                    onClick={() => setActiveTabMode('fichas')}
+                    className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white cursor-pointer"
+                    aria-label="Volver a La Colonia"
+                    title="Volver a La Colonia"
                   >
-                    <div className="text-2xl mb-2">🪵</div>
-                    <h4 className="font-bold text-white text-sm group-hover:text-[#d4ff4a] transition-colors">
-                      Torre de Troncos
-                    </h4>
-                    <p className="text-[11px] text-white/60 mt-1">
-                      Equilibra la mayor cantidad de troncos antes de que caigan.
-                    </p>
+                    <ArrowRight className="w-4 h-4 rotate-180" />
                   </button>
-
+                  <h2 className="text-lg sm:text-xl font-black text-white tracking-tight">Universo de juegos</h2>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 p-1.5 rounded-2xl bg-black/30 border border-white/10 backdrop-blur-md">
                   <button
-                    onClick={() => setActiveGame('nenufar')}
-                    className="p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-left transition-all cursor-pointer group"
+                    type="button"
+                    onClick={() => setIsInboxOpen(true)}
+                    className="px-3 py-1.5 rounded-xl hover:bg-white/10 text-white text-xs font-bold cursor-pointer flex items-center gap-1.5"
                   >
-                    <div className="text-2xl mb-2">🌿</div>
-                    <h4 className="font-bold text-white text-sm group-hover:text-[#d4ff4a] transition-colors">
-                      Salto de Nenúfares
-                    </h4>
-                    <p className="text-[11px] text-white/60 mt-1">
-                      Salta con Bucky calculando el ritmo del río.
-                    </p>
+                    <Swords className="w-3.5 h-3.5 text-[#d4ff4a]" />
+                    <span>Retos</span>
+                    {myChallenges.received.length > 0 && (
+                      <span className="px-1.5 rounded-full bg-[#d4ff4a] text-[#120822] text-[10px] font-black">{myChallenges.received.length}</span>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsRankingOpen(true)}
+                    className="px-3 py-1.5 rounded-xl hover:bg-white/10 text-white text-xs font-bold cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Trophy className="w-3.5 h-3.5 text-[#fbbf24]" />
+                    <span>Ranking</span>
+                    {statsFor(rankingGame).rank && <span className="text-[#fbbf24]">· vas #{statsFor(rankingGame).rank}</span>}
+                  </button>
+                  <span className="w-px h-5 bg-white/15" />
+                  <button
+                    onClick={() => setSoundOn(!soundOn)}
+                    className="p-1.5 rounded-xl hover:bg-white/10 text-white cursor-pointer"
+                    title={soundOn ? 'Silenciar sonidos' : 'Activar sonidos'}
+                    aria-label={soundOn ? 'Silenciar sonidos' : 'Activar sonidos'}
+                  >
+                    {soundOn ? <Volume2 className="w-4 h-4 text-[#d4ff4a]" /> : <VolumeX className="w-4 h-4 text-white/60" />}
+                  </button>
+                  <button
+                    onClick={handleToggleAmbient}
+                    className="p-1.5 rounded-xl hover:bg-white/10 text-white cursor-pointer"
+                    title="Cambiar el cielo"
+                    aria-label="Cambiar el cielo"
+                  >
+                    {ambientTime === 'night' ? <Moon className="w-4 h-4 text-[#c9b7ff]" /> : ambientTime === 'sunset' ? <Sunset className="w-4 h-4 text-[#f59e0b]" /> : <Sun className="w-4 h-4 text-[#fde68a]" />}
                   </button>
                 </div>
               </div>
 
-              {/* Si hay un juego activo */}
-              {activeGame && (
-                <div className="p-6 rounded-3xl bg-[#140b27] border border-[#8a4dff]/40 shadow-xl space-y-4">
-                  <div className="flex items-center justify-between pb-3 border-b border-white/10">
-                    <h4 className="font-bold text-white text-sm flex items-center gap-2">
-                      <Gamepad2 className="w-4 h-4 text-[#d4ff4a]" />
-                      <span>Jugando: {activeGame === 'torre' ? 'Torre de Troncos' : 'Salto de Nenúfares'}</span>
-                    </h4>
-                    <button
-                      onClick={() => setActiveGame(null)}
-                      className="text-xs text-white/60 hover:text-white cursor-pointer"
-                    >
-                      Cerrar juego ×
-                    </button>
-                  </div>
-
-                  <ColoniaMinigames
-                    type={activeGame}
-                    onComplete={(gameId: ColonyGameId, score: number) => {
-                      setLastGameResult({ gameId, score });
-                      showToast(`¡Partida terminada! Puntuación: ${score} pts 🪵✨`);
-                      setActiveGame(null);
-                    }}
-                    onClose={() => setActiveGame(null)}
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Columna Derecha: Leaderboard Semanal */}
-            <div className="space-y-6">
-              <div className="p-5 rounded-3xl bg-[#180d32] border border-white/10 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Trophy className="w-4 h-4 text-[#fbbf24]" />
-                    <h4 className="text-xs font-bold text-white uppercase tracking-wider">
-                      Ranking Semanal
-                    </h4>
-                  </div>
-                  <span className="text-[10px] text-white/50">Esta semana</span>
-                </div>
-
-                <div className="space-y-2">
-                  {weeklyBoards.torre?.slice(0, 5).map((entry, idx) => (
-                    <div
-                      key={entry.userId}
-                      className="p-2.5 rounded-xl bg-white/5 border border-white/5 flex items-center justify-between text-xs"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-[#d4ff4a] w-4">
-                          #{idx + 1}
-                        </span>
-                        <span className="font-medium text-white">{entry.name}</span>
-                      </div>
-                      <span className="font-mono text-white/70">{entry.score} pts</span>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Escena: ECO anfitrión + planetas */}
+                <div className="lg:col-span-2 space-y-6">
+                  {/* ECO anfitrión */}
+                  <div className="flex items-end gap-3">
+                    <img src={hostImg} alt="ECO" className="w-20 sm:w-24 h-auto object-contain drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)] eco-float" />
+                    <div className="relative mb-6 px-4 py-3 rounded-2xl rounded-bl-sm bg-white text-[#120822] text-sm font-bold shadow-xl max-w-md">
+                      {hostLine}
+                      {pending && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveChallenge(pending);
+                            setActiveGame(pending.gameId);
+                          }}
+                          className="mt-2 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#501f92] text-white text-xs font-black cursor-pointer"
+                        >
+                          <Swords className="w-3.5 h-3.5" /> Aceptar reto
+                        </button>
+                      )}
+                      {!pending && latestResult && (
+                        <button
+                          type="button"
+                          onClick={() => setActiveGame(latestResult.gameId)}
+                          className="mt-2 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#501f92] text-white text-xs font-black cursor-pointer"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" /> {outcome === 'lost' ? 'Revancha' : 'Jugar otra'}
+                        </button>
+                      )}
                     </div>
-                  ))}
+                  </div>
+
+                  {/* Planetas: un juego por planeta */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 items-end">
+                    {GAMES.map((g, i) => {
+                      const st = statsFor(g.id);
+                      return (
+                        <button
+                          key={g.id}
+                          type="button"
+                          onClick={() => setActiveGame(g.id)}
+                          className="group text-center cursor-pointer focus:outline-none"
+                          aria-label={`Jugar ${COLONY_GAME_NAMES[g.id]}`}
+                        >
+                          <div className="relative mx-auto w-32 h-32 sm:w-36 sm:h-36 eco-float" style={{ animationDelay: `${i * 1.2}s` }}>
+                            <div className={`absolute -inset-3 rounded-full border-2 border-dashed ${g.ring} eco-orbit-ring`} />
+                            <div
+                              className={`absolute inset-0 rounded-full ${g.glow} transition-transform duration-300 group-hover:scale-110 group-focus-visible:scale-110 flex items-center justify-center`}
+                              style={{ background: g.planet }}
+                            >
+                              <span className="text-5xl drop-shadow">{g.emoji}</span>
+                            </div>
+                            <span className="absolute -top-1 -right-1 px-2 py-0.5 rounded-full bg-[#d4ff4a] text-[#120822] text-[10px] font-black">15 s</span>
+                          </div>
+                          <h3 className="mt-4 text-base font-black text-white group-hover:text-[#d4ff4a] transition-colors">{COLONY_GAME_NAMES[g.id]}</h3>
+                          <p className="text-[11px] text-white/70 mt-1 px-2">{g.tagline}</p>
+                          <p className="mt-2 text-[11px] text-white/80">
+                            {st.best !== null ? (
+                              <>Tu mejor: <strong className="text-[#d4ff4a]">{st.best}</strong> · #{st.rank}</>
+                            ) : (
+                              'Aún no juegas esta semana'
+                            )}
+                          </p>
+                          {st.leader && (
+                            <p className="text-[10px] text-white/50">Récord: {st.leader.score} · {st.leader.name.split(' ')[0]}</p>
+                          )}
+                          <span className="mt-3 inline-flex items-center gap-1.5 px-5 py-2 rounded-2xl bg-[#d4ff4a] text-[#120822] text-sm font-black shadow-lg group-hover:shadow-[0_0_24px_rgba(212,255,74,0.6)] transition-shadow">
+                            <Play className="w-4 h-4 fill-[#120822]" /> Jugar
+                          </span>
+                        </button>
+                      );
+                    })}
+                    {/* Próximamente */}
+                    <div className="text-center opacity-60" aria-label="Próximamente un juego nuevo">
+                      <div className="relative mx-auto w-24 h-24 sm:w-28 sm:h-28 eco-float" style={{ animationDelay: '2.4s' }}>
+                        <div
+                          className="absolute inset-0 rounded-full flex items-center justify-center"
+                          style={{ background: 'radial-gradient(circle at 30% 30%, #e2e8f0, #64748b 50%, #1e293b 100%)' }}
+                        >
+                          <span className="text-3xl">🔒</span>
+                        </div>
+                      </div>
+                      <h3 className="mt-4 text-sm font-black text-white">Próximamente</h3>
+                      <p className="text-[11px] text-white/60 mt-1">Un juego nuevo para retar al equipo.</p>
+                    </div>
+                  </div>
+
+                  {/* Retos recibidos (si hay más de uno) */}
+                  {myChallenges.received.length > 1 && (
+                    <div className="p-3 rounded-2xl bg-black/30 border border-white/10 backdrop-blur-md text-xs text-white flex items-center justify-between gap-3">
+                      <span>Tienes {myChallenges.received.length} retos por responder.</span>
+                      <button type="button" onClick={() => setIsInboxOpen(true)} className="text-[#d4ff4a] font-bold hover:underline cursor-pointer">
+                        Ver retos
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Ranking con podio */}
+                <div className="p-5 rounded-2xl bg-black/35 border border-white/10 backdrop-blur-md space-y-4 h-fit">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Trophy className="w-4 h-4 text-[#fbbf24]" />
+                      <h4 className="text-xs font-black text-white uppercase tracking-wider">Ranking semanal</h4>
+                    </div>
+                    <span className="text-[10px] text-white/50">Se reinicia el lunes</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-white/5 text-[11px] font-bold">
+                    {GAMES.map((g) => (
+                      <button
+                        key={g.id}
+                        type="button"
+                        onClick={() => setRankingGame(g.id)}
+                        className={`py-1.5 rounded-lg cursor-pointer ${rankingGame === g.id ? 'bg-[#d4ff4a] text-[#120822]' : 'text-white/70 hover:text-white'}`}
+                      >
+                        {COLONY_GAME_NAMES[g.id]}
+                      </button>
+                    ))}
+                  </div>
+                  {board.length === 0 ? (
+                    <p className="p-4 rounded-xl bg-white/5 text-xs text-white/70 text-center">Nadie ha jugado esta semana. ¡Marca el primer puntaje!</p>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-3 items-end gap-2 pt-2">
+                        {podium.map((e, i) => {
+                          const place = i === 1 ? 1 : i === 0 ? 2 : 3;
+                          const h = place === 1 ? 'h-20' : place === 2 ? 'h-14' : 'h-10';
+                          const medal = place === 1 ? 'from-[#fde68a] to-[#f59e0b]' : place === 2 ? 'from-[#e2e8f0] to-[#94a3b8]' : 'from-[#fdba74] to-[#c2410c]';
+                          return (
+                            <div key={place} className="flex flex-col items-center">
+                              {e ? (
+                                <>
+                                  <div className={`w-11 h-11 rounded-full bg-gradient-to-br ${medal} p-0.5 ${e.userId === activeUserId ? 'ring-2 ring-[#d4ff4a]' : ''}`}>
+                                    <div className={`w-full h-full rounded-full ${e.avatarBg} flex items-center justify-center text-[11px] font-black text-white`}>{e.initials}</div>
+                                  </div>
+                                  <span className="mt-1 text-[11px] font-bold text-white truncate max-w-full">{e.userId === activeUserId ? 'Tú' : e.name.split(' ')[0]}</span>
+                                  <span className="text-[10px] text-[#d4ff4a] font-black">{e.score} pts</span>
+                                </>
+                              ) : (
+                                <span className="text-[10px] text-white/30 mb-1">—</span>
+                              )}
+                              <div className={`mt-1 w-full ${h} rounded-t-xl bg-gradient-to-b ${medal} opacity-80 flex items-start justify-center pt-1 text-sm font-black text-[#120822]`}>{place}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className="space-y-1.5">
+                        {board.slice(3, 6).map((entry, idx) => (
+                          <div
+                            key={entry.userId}
+                            className={`p-2 rounded-xl border flex items-center justify-between text-xs ${entry.userId === activeUserId ? 'bg-[#501f92]/40 border-[#d4ff4a]/60' : 'bg-white/5 border-white/5'}`}
+                          >
+                            <span className="text-white"><span className="text-white/50 mr-2">#{idx + 4}</span>{entry.userId === activeUserId ? 'Tú' : entry.name}</span>
+                            <span className="text-[#d4ff4a] font-bold">{entry.score} pts</span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      )}
 
+            {activeGame && (
+              <ColoniaMinigames
+                type={activeGame}
+                activeChallenge={activeChallenge}
+                teammates={teammates}
+                currentUser={currentUser}
+                onChallengeCreated={(ch) => {
+                  refreshColonyData();
+                  showToast(`Reto enviado a ${ch.challengedName.split(' ')[0]} ⚔️`);
+                }}
+                onComplete={(gameId: ColonyGameId, score: number) => {
+                  setLastGameResult({ gameId, score });
+                  setActiveChallenge(null);
+                  refreshColonyData();
+                  setActiveGame(null);
+                }}
+                onClose={() => {
+                  setActiveChallenge(null);
+                  refreshColonyData();
+                  setActiveGame(null);
+                }}
+              />
+            )}
+          </div>
+        );
+      })()}
+
+      <ColoniaSocialInbox
+        isOpen={isInboxOpen}
+        onClose={() => setIsInboxOpen(false)}
+        receivedChallenges={myChallenges.received}
+        sentChallenges={myChallenges.sent}
+        historyChallenges={myChallenges.results}
+        activeUserId={activeUserId}
+        onPlayChallenge={(ch) => {
+          setIsInboxOpen(false);
+          setActiveChallenge(ch);
+          setActiveGame(ch.gameId);
+        }}
+        onRematch={(ch) => {
+          setIsInboxOpen(false);
+          setActiveChallenge(null);
+          setActiveGame(ch.gameId);
+        }}
+        onOpenNewChallenge={() => {
+          setIsInboxOpen(false);
+          showToast('Juega una partida y al final elige a quién retar ⚔️');
+        }}
+      />
+      <ColoniaRankingView
+        isOpen={isRankingOpen}
+        onClose={() => setIsRankingOpen(false)}
+        weeklyBoards={weeklyBoards}
+        initialGame={rankingGame}
+        activeUserId={activeUserId}
+        onPlayGame={(g) => {
+          setIsRankingOpen(false);
+          setActiveGame(g);
+        }}
+      />
     </div>
   );
 };

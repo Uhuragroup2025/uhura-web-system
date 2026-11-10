@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { TimerControls } from './time/TimerControls';
 import {
   orbitMonthlyBilling,
   orbitServicesProfitability,
@@ -129,7 +130,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }
   };
 
-  // Operational Tasks & Capacity Model (Orbit: Capacidad disponible = Disponibilidad configurada - Carga planificada)
+  // Operational Tasks & Capacity Model (ECO: Capacidad disponible = Disponibilidad configurada - Carga planificada)
   const todayTasks = tasks.length > 0 ? tasks.slice(0, 5) : [];
   const loggedHoursToday = 3.5;
   const assignedHoursToday = 4.5;
@@ -202,7 +203,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </button>
           )}
 
-          {/* Acceso Directo a La Colonia de Bucky desde el Dashboard */}
+          {/* Acceso Directo a La Colonia de ECO desde el Dashboard */}
           {onNavigateToColonia && (
             <button
               onClick={onNavigateToColonia}
@@ -239,7 +240,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {dashboardRole !== 'executive' && (
         <div className="space-y-6 animate-in fade-in duration-200">
           {/* Card 2: Acceso Rápido a Tareas de Hoy (Focus Desk) */}
-          <div className="bg-white p-6 rounded-3xl border border-[#e2e8f0] shadow-xs space-y-4">
+          <div className="bg-white p-6 rounded-2xl border border-[#e2e8f0] shadow-xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#f1f5f9]">
               <div>
                 <div className="flex items-center gap-2">
@@ -294,7 +295,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         {t.title}
                       </h4>
                       <div className="flex items-center gap-3 mt-1.5 text-xs text-[#64748b]">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${
                           t.status === 'In Progress'
                             ? 'bg-[#eff6ff] text-[#2563eb]'
                             : t.status === 'Review'
@@ -313,44 +314,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
                     {/* Right: Timer & Manual Log Direct Actions */}
                     <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-                      {/* Live Timer Button */}
-                      {isRunning ? (
-                        <button
-                          onClick={onPauseResumeTimer}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#d4ff4a] text-[#140b24] text-xs font-bold shadow-xs cursor-pointer animate-pulse"
-                          title="Pausar temporizador"
-                        >
-                          <Pause className="w-3.5 h-3.5 fill-current" />
-                          <span>Timer Activo</span>
-                        </button>
-                      ) : isPaused ? (
-                        <button
-                          onClick={onPauseResumeTimer}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#f59e0b] text-white text-xs font-bold shadow-xs cursor-pointer"
-                          title="Reanudar temporizador"
-                        >
-                          <Play className="w-3.5 h-3.5 fill-current" />
-                          <span>Reanudar</span>
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => onStartTimer && onStartTimer(t)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-[#8a4dff] text-[#501f92] hover:text-white border border-[#e2e8f0] hover:border-[#8a4dff] text-xs font-bold transition-all shadow-2xs cursor-pointer"
-                          title="Iniciar temporizador en esta tarea"
-                        >
-                          <Play className="w-3.5 h-3.5 fill-current" />
-                          <span>Iniciar Timer</span>
-                        </button>
-                      )}
-
-                      {/* Manual Log Button (+) */}
-                      <button
-                        onClick={() => onOpenManualLog && onOpenManualLog(t.id)}
-                        className="p-2 rounded-xl bg-white hover:bg-[#f1f5f9] text-[#64748b] hover:text-[#501f92] border border-[#e2e8f0] text-xs font-bold transition-colors cursor-pointer shadow-2xs"
-                        title="Cargar tiempo manual (+)"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                      </button>
+                      {/* Timer: solo íconos (▶ / ⏸ ⏹) + 🕒 carga manual (ronda 2) */}
+                      <TimerControls
+                        size="sm"
+                        isRunning={isRunning || isPaused}
+                        isPaused={isPaused}
+                        onStart={() => onStartTimer && onStartTimer(t)}
+                        onStop={onStopTimer}
+                        onPauseResume={onPauseResumeTimer}
+                        onManualLog={onOpenManualLog ? () => onOpenManualLog(t.id) : undefined}
+                      />
 
                       {/* Detail Button */}
                       <button
@@ -417,12 +390,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
 
               {monthlyTarget ? (
-                <span className="text-[10px] uppercase font-semibold tracking-wider px-2.5 py-0.5 rounded-md bg-[#ecfdf5] text-[#065f46] border border-[#a7f3d0] flex items-center gap-1.5">
+                <span className="text-[10px] uppercase font-semibold tracking-wider px-2.5 py-0.5 rounded-lg bg-[#ecfdf5] text-[#065f46] border border-[#a7f3d0] flex items-center gap-1.5">
                   <CheckCircle2 className="w-3 h-3 text-[#10b981]" />
                   META: ${monthlyTarget}M COP
                 </span>
               ) : (
-                <span className="text-[10px] uppercase font-semibold tracking-wider px-2 py-0.5 rounded-md bg-[#f8fafc] text-[#64748b] border border-[#e2e8f0]">
+                <span className="text-[10px] uppercase font-semibold tracking-wider px-2 py-0.5 rounded-lg bg-[#f8fafc] text-[#64748b] border border-[#e2e8f0]">
                   Sin meta definida
                 </span>
               )}
@@ -704,7 +677,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <h2 className="text-base font-bold text-[#0f172a] tracking-tight">
                     Alertas operativas
                   </h2>
-                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-[#f1f5f9] text-[#475569] border border-[#e2e8f0]">
+                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded-lg bg-[#f1f5f9] text-[#475569] border border-[#e2e8f0]">
                     47 activas
                   </span>
                 </div>
@@ -770,7 +743,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <span
-                          className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md ${
+                          className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-lg ${
                             alert.type === 'RETRASO'
                               ? 'bg-[#fee2e2] text-[#991b1b] border border-[#fecaca]'
                               : alert.type === 'RENTABILIDAD'
@@ -792,7 +765,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
                     <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
                       {alert.amount && (
-                        <span className="text-xs font-black text-[#be123c] bg-[#fff1f2] px-2 py-0.5 rounded-md border border-[#ffe4e6]">
+                        <span className="text-xs font-black text-[#be123c] bg-[#fff1f2] px-2 py-0.5 rounded-lg border border-[#ffe4e6]">
                           {alert.amount}
                         </span>
                       )}
@@ -832,7 +805,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   Por facturación total · COP
                 </p>
               </div>
-              <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-md bg-[#f1f5f9] text-[#64748b] border border-[#e2e8f0]">
+              <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-lg bg-[#f1f5f9] text-[#64748b] border border-[#e2e8f0]">
                 Ranking
               </span>
             </div>
@@ -910,7 +883,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   Doble riesgo: rentabilidad + retraso
                 </p>
               </div>
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-[#f1f5f9] text-[#475569] border border-[#e2e8f0]">
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-lg bg-[#f1f5f9] text-[#475569] border border-[#e2e8f0]">
                 26 en curso
               </span>
             </div>
@@ -1139,7 +1112,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           {/* Bottom Info Note */}
           <div className="pt-4 mt-4 border-t border-[#f3f4f6] text-[11px] text-[#64748b] flex items-center justify-between">
-            <span>Sincronizado con Google Calendar & Orbit</span>
+            <span>Sincronizado con Google Calendar & ECO</span>
             <span className="w-2 h-2 rounded-full bg-[#10b981]" />
           </div>
         </div>
@@ -1150,7 +1123,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* 6. MODAL: Definir Meta Financiera */}
       {isTargetModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl border border-[#e5e7eb] shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-2xl border border-[#e5e7eb] shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between pb-4 border-b border-[#f3f4f6]">
               <div className="flex items-center gap-2">
                 <Target className="w-5 h-5 text-[#501f92]" />
@@ -1221,11 +1194,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* 7. MODAL: Detalle de Alerta Operativa */}
       {selectedAlert && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl border border-[#e5e7eb] shadow-2xl max-w-lg w-full p-6 animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-2xl border border-[#e5e7eb] shadow-2xl max-w-lg w-full p-6 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between pb-4 border-b border-[#f3f4f6]">
               <div className="flex items-center gap-2">
                 <span
-                  className={`text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-md ${
+                  className={`text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-lg ${
                     selectedAlert.type === 'RETRASO'
                       ? 'bg-[#fee2e2] text-[#991b1b]'
                       : selectedAlert.type === 'RENTABILIDAD'
@@ -1271,7 +1244,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
 
               <div className="p-3 rounded-xl bg-[#ecfdf5] border border-[#a7f3d0] text-xs text-[#065f46]">
-                <p className="font-bold">Acción recomendada por Orbit:</p>
+                <p className="font-bold">Acción recomendada por ECO:</p>
                 <p className="text-[11px] mt-0.5">
                   Convocar reunión con el Account Lead para renegociar el alcance o autorizar adición de horas en cotizador.
                 </p>
@@ -1302,7 +1275,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* 8. MODAL: Detalle de Proyecto en Semáforo */}
       {selectedProject && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl border border-[#e5e7eb] shadow-2xl max-w-lg w-full p-6 animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-2xl border border-[#e5e7eb] shadow-2xl max-w-lg w-full p-6 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between pb-4 border-b border-[#f3f4f6]">
               <div className="flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full bg-[#ef4444]" />

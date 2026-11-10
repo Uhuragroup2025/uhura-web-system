@@ -295,7 +295,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
               {/* Column Header */}
               <div className="flex items-center justify-between px-1 pb-2 border-b border-[#e2e8f0]">
                 <div className="flex items-center gap-2">
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-md ${col.badgeBg}`}>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-lg ${col.badgeBg}`}>
                     {col.title}
                   </span>
                   <span className="text-xs font-semibold text-[#64748b] bg-white px-2 py-0.5 rounded-full border border-[#e2e8f0]">
@@ -367,7 +367,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
                           )}
 
                           {(task.phase || task.fase || task.frente) && (
-                            <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-[#f8fafc] text-[#475569] border border-[#e2e8f0]">
+                            <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-lg bg-[#f8fafc] text-[#475569] border border-[#e2e8f0]">
                               {(task.phase || task.fase) && <span>{task.phase || task.fase}</span>}
                               {(task.phase || task.fase) && task.frente && <span className="text-[#cbd5e1]">·</span>}
                               {task.frente && <span className="text-[#501f92]">{task.frente}</span>}
@@ -423,7 +423,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
                         {/* Deliverables link pill if attached */}
                         {task.deliverables && task.deliverables.length > 0 && (
                           <div className="flex items-center gap-1">
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#ecfdf5] text-[#166534] border border-[#a7f3d0]/60">
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-lg bg-[#ecfdf5] text-[#166534] border border-[#a7f3d0]/60">
                               <Link2 className="w-2.5 h-2.5" />
                               {task.deliverables.length} {task.deliverables.length === 1 ? 'entregable' : 'entregables'}
                             </span>

@@ -1,10 +1,14 @@
-# ORBIT — Especificación Funcional Maestra de Producto y Arquitectura de Dominio
+# ECO — Especificación Funcional Maestra de Producto y Arquitectura de Dominio
 
+> **Nombre del producto:** **ECO** — *Espacio de Creación y Operaciones* (antes «Orbit», renombrado en noviembre de 2026). Los identificadores técnicos (`OrbitAccessLevel`, `CanonicalOrbitAccessLevel`, nombres de archivo como `ORBIT_PRODUCT_STATUS.md`) se conservan para no romper contratos de código ni enlaces.
+
+> **Para Indunova — empezar por [§8.0 Reconciliación con producción y guía de entrega](#80-reconciliación-con-producción-y-guía-de-entrega-07-nov-2026--leer-primero):** qué ya está en producción (#132–#147) y no se rehace, y qué es nuevo en esta entrega.
+>
 > **Documento:** Especificación Funcional Maestra para Portabilidad, Backend y Modelo de Datos
 > **Destinatario Técnico Principal:** Indunova (Backend Django REST Framework / PostgreSQL) y Equipo de Producto Uhura Group
-> **Fecha de Actualización:** 04 de noviembre de 2026
+> **Fecha de Actualización:** 07 de noviembre de 2026 (cronograma al «Iniciar proyecto», rondas de ajuste editables, equipo derivado de tareas, hallazgos E2E §10.2.3, cierre de proyecto Módulo 11 §11.7, visibilidad de tareas Módulo 17 §17.5, arranque en producción §9.4, ECO como PWA §9.5, integraciones Google Chat §11.8 y Google Calendar §11.5.1, mascota ECO Módulo 18)
 > **Versión:** 3.4.0 (Aprobación Canónica UAT 2: 1 Servicio = 1 Proyecto, Decimales, Líderes por Servicio y Modo Desacoplado)
-> **Estado:** Especificación Maestra Canónica Reconciliada — Fuente de Verdad Funcional de Orbit
+> **Estado:** Especificación Maestra Canónica Reconciliada — Fuente de Verdad Funcional de ECO
 >
 > **Convención de Estados de Implementación:**
 > - 🟢 **Decisión funcional aprobada:** Definición canónica cerrada y acordada por Producto Uhura.
@@ -28,20 +32,21 @@
    - [Módulo 2: Catálogo de Servicios y Plantillas de Producto](#módulo-2-catálogo-de-servicios-y-plantillas-de-producto)
    - [Módulo 3: Alcance & Backlog (Scoping de Entregables y Actividades)](#módulo-3-alcance--backlog)
    - [Módulo 4: Alcance Técnico y Registro Comercial (Desacoplamiento Financiero)](#módulo-4-alcance-técnico-y-registro-comercial-desacoplamiento-financiero)
-   - [Módulo 5: Cotización / Propuesta Económica (Quotes)](#módulo-5-cotización--propuesta-económica)
+   - [Módulo 5: Cotización / Propuesta Económica (Quotes)](#módulo-5-cotización--propuesta-económica-quotes)
    - [Módulo 6: Documentos y Repositorio Google Drive](#módulo-6-documentos-y-repositorio-google-drive)
    - [Módulo 7: Statement of Work (SOW Contractual)](#módulo-7-statement-of-work-sow-contractual)
    - [Módulo 8: Formalización, Conversión a Proyecto y Gates](#módulo-8-formalización-conversión-a-proyecto-y-gates)
    - [Módulo 9: Clientes (Cuentas y Entidades Fiscales)](#módulo-9-clientes)
    - [Módulo 10: Administración Fiscal y Frontera con Alegra](#módulo-10-administración-fiscal-y-frontera-con-alegra)
-   - [Módulo 11: Proyectos (Estructura Operativa, Gobernanza y Vistas)](#módulo-11-proyectos)
+   - [Módulo 11: Proyectos (Estructura Operativa, Gobernanza y Vistas)](#módulo-11-proyectos-estructura-operativa-gobernanza-y-vistas)
    - [Módulo 12: Entregables (Componentes Operativos)](#módulo-12-entregables)
    - [Módulo 13: Tareas y Detalle Operativo (TaskDetailModal)](#módulo-13-tareas-y-detalle-operativo-taskdetailmodal)
    - [Módulo 14: Staffing y Asignaciones](#módulo-14-staffing-y-asignaciones)
    - [Módulo 15: Capacidad del Equipo](#módulo-15-capacidad-del-equipo)
-   - [Módulo 16: Time Tracking (Registro de Tiempo)](#módulo-16-time-tracking)
-   - [Módulo 17: Mi Día (Home Contextual y Bandeja de Acción)](#módulo-17-mi-día)
-   - [Módulo 18: Bucky y La Colonia (Copiloto y Gamificación)](#módulo-18-bucky-y-la-colonia)
+   - [Módulo 16: Time Tracking (Registro de Tiempo)](#módulo-16-time-tracking-registro-y-corrección-de-tiempo)
+   - [Módulo 17: Mi Día (Home Contextual y Bandeja de Acción)](#módulo-17-mi-día-home-contextual-y-bandeja-de-acción)
+   - [Módulo 18: Mascota ECO y La Colonia (Copiloto y Gamificación)](#módulo-18-mascota-eco-antes-bucky-y-la-colonia-espacio-social--lúdico)
+   - [Módulo 19: Costos de operación — Hardware y Licencias](#módulo-19-costos-de-operación--hardware-y-licencias--implementado-en-prototipo--07-nov-2026-existente-en-producción)
 6. [Integraciones Externas: Arquitectura y Comportamiento](#6-integraciones-externas-arquitectura-y-comportamiento)
 7. [Matriz Global de Portabilidad por Módulo](#7-matriz-global-de-portabilidad-por-módulo)
 8. [Auditoría de Inconsistencias entre Prototipo UI y Especificación](#8-auditoría-de-inconsistencias-entre-prototipo-ui-y-especificación)
@@ -53,12 +58,12 @@
 
 ## 1. Propósito del Documento y Concepto de Freeze Funcional
 
-Este documento constituye la **especificación funcional y de arquitectura de dominio maestra** de Orbit, reconciliada directamente con el prototipo de producto y la experiencia aprobada en pruebas UAT. Ha sido estructurado específicamente para que el equipo de backend e infraestructura (**Indunova**) disponga del diseño relacional, reglas invariantes, contratos de transferencia y fronteras de integración necesarios para construir la persistencia en PostgreSQL y los servicios REST en Django.
+Este documento constituye la **especificación funcional y de arquitectura de dominio maestra** de ECO, reconciliada directamente con el prototipo de producto y la experiencia aprobada en pruebas UAT. Ha sido estructurado específicamente para que el equipo de backend e infraestructura (**Indunova**) disponga del diseño relacional, reglas invariantes, contratos de transferencia y fronteras de integración necesarios para construir la persistencia en PostgreSQL y los servicios REST en Django.
 
 ### Definición de Freeze Funcional
 > **El "Freeze Funcional" NO significa que todas las pantallas estén visualmente terminadas o que no puedan pulirse detalles estéticos de UI.**
 > Significa que **la topología de entidades, las relaciones, las reglas de negocio, los estados de transición, la persistencia requerida y las fronteras con sistemas externos quedan congelados y formalizados**. Ningún cambio posterior alterará la lógica de datos aquí establecida sin un proceso formal de control de versiones.
-> **Regla de oro de UAT:** Un defecto puntual de implementación en staging no cambia la especificación funcional; documenta el comportamiento esperado aprobado de Orbit frente a las discrepancias.
+> **Regla de oro de UAT:** Un defecto puntual de implementación en staging no cambia la especificación funcional; documenta el comportamiento esperado aprobado de ECO frente a las discrepancias.
 
 ### Clasificación de Componentes para Portabilidad:
 1. **Core para Portabilidad (Crítico):** Bloquea la base de datos y los flujos indispensables de negocio. Debe implementarse con máxima prioridad (Clientes, Proyectos, Entregables, Tareas, New Business, Quotes, Time Tracking, Capacidad, Mi Día).
@@ -69,7 +74,7 @@ Este documento constituye la **especificación funcional y de arquitectura de do
 
 ## 2. Frontera de Sistemas y Cuadrilátero de Responsabilidades
 
-Orbit **no es un CRM generalista, ni una calculadora contable, ni un ERP tributario**. Su frontera funcional está delimitada por cuatro sistemas y un repositorio documental:
+ECO **no es un CRM generalista, ni una calculadora contable, ni un ERP tributario**. Su frontera funcional está delimitada por cuatro sistemas y un repositorio documental:
 
 ```text
            ┌─────────────────────────────────────────┐
@@ -82,7 +87,7 @@ Orbit **no es un CRM generalista, ni una calculadora contable, ni un ERP tributa
                                 │ (Handoff por Brief: Creación de Oportunidad)
                                 ▼
            ┌─────────────────────────────────────────┐
-           │       ORBIT (Operating System)          │
+           │       ECO (Operating System)          │
            │ • Dimensionamiento Técnico (Alcance)    │
            │ • Entregables, Actividades y Roles      │
            │ • Horas Técnicas Totales y por Rol      │
@@ -105,8 +110,8 @@ Orbit **no es un CRM generalista, ni una calculadora contable, ni un ERP tributa
                                 │
                                 ▼ (Cliente Aprueba Propuesta Económica)
            ┌─────────────────────────────────────────┐
-           │         CONVERSIÓN EN ORBIT             │
-           │ • Deal Ganado en HubSpot / Orbit        │
+           │         CONVERSIÓN EN ECO             │
+           │ • Deal Ganado en HubSpot / ECO        │
            │ • Oportunidad Ganada ➔ Proyecto Activo   │
            │ • Entregables y Tareas creados 1:1      │
            │ • Horas Cotizadas heredadas a control   │
@@ -125,8 +130,8 @@ Orbit **no es un CRM generalista, ni una calculadora contable, ni un ERP tributa
 ```
 
 * **HubSpot:** Dueño de la relación comercial y fuente de verdad del estado del deal (`won` / `lost`).
-* **Google Sheet Oficial / Calculadora Comercial:** Fuente de verdad del pricing y cálculo financiero (márgenes, costos internos, tarifas, IVA y TRM). **Orbit no calcula internamente tarifas ni márgenes**.
-* **Orbit:** Dueño del alcance, dimensionamiento técnico, horas técnicas, conversión a proyectos, entregables, tareas, ejecución operativa, Mi Día y capacidad.
+* **Google Sheet Oficial / Calculadora Comercial:** Fuente de verdad del pricing y cálculo financiero (márgenes, costos internos, tarifas, IVA y TRM). **ECO no calcula internamente tarifas ni márgenes**.
+* **ECO:** Dueño del alcance, dimensionamiento técnico, horas técnicas, conversión a proyectos, entregables, tareas, ejecución operativa, Mi Día y capacidad.
 * **Alegra:** Dueño de la facturación electrónica, los impuestos y el recaudo.
 * **Google Drive:** Repositorio pasivo de archivos, minutas, briefs, presentaciones y entregables.
 
@@ -166,19 +171,19 @@ SISTEMA / ADMINISTRACIÓN
 
 ## 4. Mapa Macro de Dependencias y Ciclo de Vida
 
-El flujo lineal de la información y los handoffs entre roles a través de Orbit se rige por la siguiente cadena de valor:
+El flujo lineal de la información y los handoffs entre roles a través de ECO se rige por la siguiente cadena de valor:
 
 ```text
 [1. HUBSPOT: Brief Recibido & Oportunidad Comercial]
          │
          ▼
-[2. COMERCIAL EN ORBIT (Commercial / Client Relationship)]
+[2. COMERCIAL EN ECO (Commercial / Client Relationship)]
          │ • Crea Oportunidad en New Business
          │ • Registra prospecto, brief y contacto
          │ • Asigna Líder de Alcance (ej. Product Lead / Creative Strategy Lead)
          │
          ▼ (Handoff 1: Notificación en campana y acción en Mi Día del Líder)
-[3. LÍDER DE ALCANCE EN ORBIT (Product Lead / Creative Lead)]
+[3. LÍDER DE ALCANCE EN ECO (Product Lead / Creative Lead)]
          │ • Recibe la oportunidad asignada en su bandeja de Mi Día
          │ • Ingresa a New Business ➔ "Alcance y propuesta"
          │ • Elige estructurar desde Catálogo de Servicios o desde cero
@@ -192,9 +197,9 @@ El flujo lineal de la información y los handoffs entre roles a través de Orbit
          ▼ (Handoff 2: Oportunidad pasa a status: 'internal_review')
 [4. COMERCIAL RECIBE HANDOFF (Mi Día & Notificaciones)]
          │ • Recibe alerta de alcance técnico finalizado
-         │ • Extrae horas técnicas y resumen de perfiles desde Orbit
+         │ • Extrae horas técnicas y resumen de perfiles desde ECO
          │ • Realiza el cálculo financiero en el Google Sheet Oficial / Calculadora
-         │ • Registra en Orbit el resultado comercial acordado:
+         │ • Registra en ECO el resultado comercial acordado:
          │     - Valor cotizado final y moneda (COP / USD)
          │     - Versión de propuesta (V1, V2...)
          │     - URL de la Calculadora de Finanzas / Google Sheet
@@ -206,7 +211,7 @@ El flujo lineal de la información y los handoffs entre roles a través de Orbit
 [5. APROBACIÓN POR CLIENTE Y HUBSPOT]
          │ • Cliente aprueba propuesta técnica y comercial
          │ • HubSpot refleja Deal Ganado ('won') ── Fuente de verdad comercial
-         │ • Comercial marca Oportunidad como Ganada en Orbit
+         │ • Comercial marca Oportunidad como Ganada en ECO
          │
          ▼
 [6. CONVERSIÓN A PROYECTO OPERATIVO (ConvertOpportunityModal)]
@@ -221,7 +226,7 @@ El flujo lineal de la información y los handoffs entre roles a través de Orbit
          │
          ▼
 [7. EJECUCIÓN OPERATIVA EN PROYECTO]
-         ├─ Encabezado: Reglas Contractuales (Gates: 2, Rondas de ajuste: max 2, Kickoff: 3d)
+         ├─ Encabezado: Reglas Contractuales (Rondas de ajuste: 2 × 5 días · Insumos del cliente: 3d)
          ├─ Pestaña Resumen: Scope, gobernanza y equipo asignado (sin KPIs redundantes)
          ├─ Pestaña Tareas:
          │    - Bloque de Dependencias, Insumos y Aprobaciones arriba de la lista
@@ -275,8 +280,8 @@ El journey punta a punta de New Business está estructurado en 10 pasos coordina
 5. **Líder marca "Alcance listo / Notificar a Comercial":** Al pulsar el botón `Marcar alcance listo (X h)`, el sistema valida que estén diligenciados: (a) Enlace a la propuesta técnica/PPT en Drive, (b) Semanas productivas de entrega (para proyectos únicos), y (c) Horas técnicas en el alcance. La oportunidad pasa automáticamente a estado `internal_review` (*"Alcance listo · En revisión de pricing y margen"*).
 6. **Comercial recibe el handoff:** Mi Día y la campana alertan a Comercial que la oportunidad está lista para cotización financiera.
 7. **Comercial realiza cálculo financiero externo:** Abre el **Google Sheet Oficial / Calculadora Comercial** de Uhura Group y calcula el pricing, salarios, overhead, margen comercial e impuestos.
-8. **Comercial registra el resultado comercial en Orbit:** Registra en la cotización el monto total cotizado final, la moneda (`COP` o `USD`), la versión, la URL del Google Sheet de Finanzas y la URL del PDF/PPT de la propuesta comercial.
-9. **Cliente aprueba la propuesta:** Tras presentar la propuesta formal, el cliente manifiesta su aprobación técnica y económica. HubSpot refleja el estado Cerrado Ganado (`won`). Comercial actualiza el estado a Ganada en Orbit.
+8. **Comercial registra el resultado comercial en ECO:** Registra en la cotización el monto total cotizado final, la moneda (`COP` o `USD`), la versión, la URL del Google Sheet de Finanzas y la URL del PDF/PPT de la propuesta comercial.
+9. **Cliente aprueba la propuesta:** Tras presentar la propuesta formal, el cliente manifiesta su aprobación técnica y económica. HubSpot refleja el estado Cerrado Ganado (`won`). Comercial actualiza el estado a Ganada en ECO.
 10. **Conversión a Proyecto Operativo:** Comercial o Líder ejecuta `Convertir a Proyecto Operativo`, transfiriendo el alcance y las horas aprobadas a la ejecución.
 
 #### 1.3 Estado Actual
@@ -288,7 +293,7 @@ La navegación por pestañas (`Resumen`, `Alcance y propuesta`, `Documentos`) es
   - `id`: UUID (ej. `opp-2026-001`).
   - `title`: String (Nombre del requerimiento/proyecto).
   - `prospectAccountName`: String (Nombre de la empresa prospecto).
-  - `clientId`: UUID (Opcional, si el cliente ya existe en Orbit).
+  - `clientId`: UUID (Opcional, si el cliente ya existe en ECO).
   - `leadUserId` / `leadUserName`: String (Líder asignado canónico: *Product Lead, Creative Strategy Lead, Growth Manager, CEO, Directora Comercial*).
   - `commercialOwner`: String (Usuario comercial o de relación con cliente asignado).
   - `leadUserIds`: Array de UUIDs (Opcional, preparación interna desacoplada para asignación múltiple concurrente 1..N).
@@ -420,25 +425,25 @@ Entregable (Servicio / Frente Operativo)
 ### Módulo 4: Alcance Técnico y Registro Comercial (Desacoplamiento Financiero)
 
 #### 4.1 Regla Arquitectónica Vigente: Desacoplamiento de Responsabilidades
-En Orbit rige la siguiente división estricta de dominios:
+En ECO rige la siguiente división estricta de dominios:
 
 > **Finanzas / Google Sheet Oficial = Fuente de verdad del cálculo financiero y pricing.**
-> Finanzas gobierna y evoluciona externamente la estructura salarial, costos de nómina, multiplicadores prestacionales, overhead operativo, bandas de margen comercial, tratamiento tributario (IVA) y TRM oficial. **Orbit no calcula tarifas, márgenes, IVA, bandas financieras ni fórmulas salariales internas.**
+> Finanzas gobierna y evoluciona externamente la estructura salarial, costos de nómina, multiplicadores prestacionales, overhead operativo, bandas de margen comercial, tratamiento tributario (IVA) y TRM oficial. **ECO no calcula tarifas, márgenes, IVA, bandas financieras ni fórmulas salariales internas.**
 
-> **Orbit = Alcance Técnico + Horas por Rol + Registro del Acuerdo Comercial Cotizado**
-> Orbit es la plataforma operativa y de gestión de entrega. Los líderes estructuran entregables, actividades y roles requeridos; el rollup consolidado de horas alimenta el análisis de Finanzas; y Comercial registra en Orbit el resultado comercial cotizado final acordado (monto cotizado, moneda, versión, enlaces al Google Sheet y PDF/PPT de propuesta, condiciones comerciales y trazabilidad hacia la creación del proyecto operativo).
+> **ECO = Alcance Técnico + Horas por Rol + Registro del Acuerdo Comercial Cotizado**
+> ECO es la plataforma operativa y de gestión de entrega. Los líderes estructuran entregables, actividades y roles requeridos; el rollup consolidado de horas alimenta el análisis de Finanzas; y Comercial registra en ECO el resultado comercial cotizado final acordado (monto cotizado, moneda, versión, enlaces al Google Sheet y PDF/PPT de propuesta, condiciones comerciales y trazabilidad hacia la creación del proyecto operativo).
 
-#### 4.2 Retiro del Motor Financiero Interno de Orbit
-Se retiraron formalmente de Orbit:
+#### 4.2 Retiro del Motor Financiero Interno de ECO
+Se retiraron formalmente de ECO:
 - El motor algorítmico interno (`financialEngine.ts`).
 - Las constantes salariales y tarifarios hardcodeados (`constants.ts`).
 - La vista de simulador comercial con sliders de margen (`FinancialCalculatorView.tsx`).
 - Cualquier cálculo de overhead, margen o IVA en tiempo real dentro del frontend.
 
-Orbit no es un cotizador contable ni una calculadora comercial; Orbit registra el resultado acordado externamente para gobernanza, emisión de SOW y conversión operativa.
+ECO no es un cotizador contable ni una calculadora comercial; ECO registra el resultado acordado externamente para gobernanza, emisión de SOW y conversión operativa.
 
 #### 4.3 Entidad y Campos de Propuesta (`QuoteProposal`)
-La entidad de cotización en Orbit conserva exclusivamente los campos de alcance técnico y trazabilidad comercial:
+La entidad de cotización en ECO conserva exclusivamente los campos de alcance técnico y trazabilidad comercial:
 - **`id`:** UUID inmutable.
 - **`opportunityId`:** UUID (FK a `NewBusinessOpportunity`).
 - **`versionLabel`:** String (ej. `V1 - Alcance Inicial`, `V2 - Alcance Ajustado`).
@@ -451,12 +456,12 @@ La entidad de cotización en Orbit conserva exclusivamente los campos de alcance
 - **`externalFinanceSheetUrl`:** Enlace directo al Google Sheet de Finanzas donde se calculó el pricing.
 - **`commercialProposalUrl`:** Enlace al documento/PDF formal o PPT de la propuesta presentada al cliente.
 - **`commercialNotes`:** Términos y condiciones comerciales acordadas (forma de pago, hitos, vigencia).
-- **`convertedToProjectId`:** Puntero idempotente al proyecto operativo en Orbit tras la conversión.
+- **`convertedToProjectId`:** Puntero idempotente al proyecto operativo en ECO tras la conversión.
 
 #### 4.4 Separación entre Propuesta Aprobada y Cierre Ganado (HubSpot)
 1. **Propuesta Aprobada (`status === 'approved'`):** Refleja la aceptación técnica y comercial por parte del cliente del alcance presentado.
 2. **Deal Cerrado Ganado en HubSpot (`status === 'won'`):** Es la fuente de verdad comercial formal de Uhura Group.
-3. **Regla de Conversión Canónica:** La conversión a proyecto operativo en Orbit **está habilitada cuando el Deal alcanza el estado 'Cerrado Ganado' en HubSpot o se marca como Ganada en Orbit**. Mientras la integración bidireccional automática con HubSpot esté en desarrollo, Comercial puede completar manualmente el flujo Ganada ➔ Convertir a proyecto en Orbit.
+3. **Regla de Conversión Canónica:** La conversión a proyecto operativo en ECO **está habilitada cuando el Deal alcanza el estado 'Cerrado Ganado' en HubSpot o se marca como Ganada en ECO**. Mientras la integración bidireccional automática con HubSpot esté en desarrollo, Comercial puede completar manualmente el flujo Ganada ➔ Convertir a proyecto en ECO.
 
 ---
 
@@ -482,10 +487,10 @@ Documento formal que reúne el alcance técnico, las horas aprobadas y el result
 #### 6.1 Propósito
 Gobernanza y trazabilidad de los archivos asociados a la oportunidad y al proyecto, estructurados bajo el estándar de carpetas de Uhura Group.
 - **Referencias de Código:**
-  - **Pestaña Documental en New Business:** [`src/components/taskflow/newbusiness/DocumentsDriveTab.tsx`](../components/taskflow/newbusiness/DocumentsDriveTab.tsx)
+  - **Pestaña Documental en New Business:** dentro de [`NewBusinessView.tsx`](../components/taskflow/newbusiness/NewBusinessView.tsx) (enlaces de Drive en la oportunidad)
 
 #### 6.2 Estructura Estándar de Carpetas (Uhura Drive)
-Toda oportunidad y proyecto en Orbit se organiza bajo la siguiente convención:
+Toda oportunidad y proyecto en ECO se organiza bajo la siguiente convención:
 ```text
 PROSPECTOS / [Nombre Empresa] (en fase comercial)
   └─ CLIENTES / [Nombre Empresa] / [Código Proyecto] (al ganar el negocio)
@@ -498,7 +503,7 @@ PROSPECTOS / [Nombre Empresa] (en fase comercial)
 #### 6.3 Comportamiento Actual vs. Integración Futura
 - **Hoy (Manual):** El usuario pega los links a la carpeta y al brief en campos de texto de la UI.
 - **Backend Futuro (Google Drive API):**
-  - Al crear el prospecto en Orbit, un worker de backend creará automáticamente la carpeta en Drive con la estructura `00..03` y guardará los `folderId` en Orbit.
+  - Al crear el prospecto en ECO, un worker de backend creará automáticamente la carpeta en Drive con la estructura `00..03` y guardará los `folderId` en ECO.
   - Al ganar el proyecto, el backend moverá la carpeta desde `PROSPECTOS` hacia `CLIENTES / [Nombre Empresa]`.
 
 ---
@@ -508,7 +513,7 @@ PROSPECTOS / [Nombre Empresa] (en fase comercial)
 #### 7.1 Propósito
 Generador de la plantilla contractual técnica entre Uhura Group y el Cliente, extraída directamente del alcance aprobado en la cotización activa.
 - **Referencias de Código:**
-  - **Modal Generador de SOW:** [`src/components/taskflow/newbusiness/SowDocumentModal.tsx`](../components/taskflow/newbusiness/SowDocumentModal.tsx)
+  - **Modal Generador de SOW:** [`src/components/taskflow/newbusiness/SOWModal.tsx`](../components/taskflow/newbusiness/SOWModal.tsx) · plantillas por tipo de servicio en [`sowTemplates.ts`](../components/taskflow/newbusiness/sowTemplates.ts) (e-commerce Shopify, web WordPress, app a la medida)
   - **Tipos de Datos:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`SowDocumentData`)
 
 #### 7.2 Regla de Oro de Confidencialidad Operativa
@@ -526,6 +531,14 @@ Generador de la plantilla contractual técnica entre Uhura Group y el Cliente, e
 - `clientResponsibilities`: Text (Insumos, accesos y aprobaciones que debe dar el cliente).
 - `governanceNotes`: Text (Reglas sobre cambios de alcance o SLAs).
 
+#### 7.4 Flujo de uso del SOW (revisado 07 Nov 2026)
+- **Cuándo existe:** se genera de la cotización cuando la oportunidad se gana y se convierte en proyecto. Los proyectos creados a mano al arranque (Neroli, fee de Cristar; §9.4) no tienen SOW en ECO: su documento ya se firmó por fuera.
+- **Dónde se abre (revisado 10 Nov 2026):** **solo después de ganar el negocio y convertirlo**, en **Cliente → Proyectos de la cuenta → «Ver SOW»** (columna SOW; «—» si el proyecto no viene de una oportunidad). **No se muestra en New Business** mientras la oportunidad está en alcance o cotización.
+- **Qué hace Comercial:** revisa la «Vista documento final», completa o corrige los datos en **«Completar y ajustar»** y pulsa **«Copiar para Docs»** para pegarlo en un documento de Google Drive, donde lo ajusta si quiere y lo envía a firma del cliente. «Guardar SOW» conserva lo completado en ECO.
+- **Datos del acuerdo editables (se habían quedado sin campo):** NIT del cliente (precargado con la razón social elegida o la principal), orden de compra, supervisor del cliente y su cargo, representante legal del cliente con cédula y cargo, y supervisor de Uhura. Lo que falte aparece como «[COMPLETAR: …]» con el acceso «Completar ahora».
+- **Cláusula de uso de IA (revisada 07 Nov 2026):** declara que Uhura usa IA como apoyo en investigación, prototipado, diseño, redacción, desarrollo, pruebas y documentación, como parte de su metodología. Cubre: supervisión humana de todo lo entregado; confidencialidad (no se usan datos del cliente para entrenar modelos; versiones empresariales o anonimización; Ley 1581); propiedad intelectual (el cliente recibe los derechos al pagar, pero lo generado con IA puede no ser protegible por derecho de autor ni exclusivo, y Uhura conserva sus herramientas, plantillas y prompts); diligencia y límites de responsabilidad (no responde por insumos del cliente, usos fuera del alcance ni cambios en herramientas de terceros; responsabilidad total limitada al valor pagado); validación del cliente antes de publicar; y la opción de pedir trabajo sin IA mediante Orden de Cambio. Fuente única: `SOW_AI_CLAUSES` en `sowTemplates.ts` (la vista, la copia para Docs y el HTML dicen lo mismo). **Debe validarla el asesor legal de Uhura antes de usarla con clientes.**
+- **Secciones del documento:** 1. Antecedentes y objetivo · 2. Alcance y entregables · 3. Responsabilidades e insumos · 4. Pruebas (UAT) y silencio positivo · 5. Riesgos y mitigación · 6. Gates y control · 7. Uso de IA y datos · 8. Gestión de cambios · 9. Inversión y condiciones de pago · 10. Garantía técnica · Aceptación y firmas.
+
 ---
 
 ### Módulo 8: Formalización, Conversión a Proyecto y Gates
@@ -535,8 +548,8 @@ Asegurar una transición ordenada y atómica entre la oportunidad comercial apro
 - **Referencias de Código:**
   - **Modal Conversión a Proyecto:** [`src/components/taskflow/newbusiness/ConvertOpportunityModal.tsx`](../components/taskflow/newbusiness/ConvertOpportunityModal.tsx)
   - **Controlador de Conversión:** [`src/sections/TaskFlowPrototype.tsx`](../sections/TaskFlowPrototype.tsx) (`handleConvertOpportunityToProject`)
-  - **Modal Condiciones de Inicio:** [`src/components/taskflow/newbusiness/StartConditionsModal.tsx`](../components/taskflow/newbusiness/StartConditionsModal.tsx)
-  - **Modal Checklist Administrativo:** [`src/components/taskflow/newbusiness/AdministrativeChecklistModal.tsx`](../components/taskflow/newbusiness/AdministrativeChecklistModal.tsx)
+  - **Modal Condiciones de Inicio:** «Programar inicio de proyecto» en [`ProjectsView.tsx`](../components/taskflow/ProjectsView.tsx)
+  - **Checklist administrativo:** *(no existe como archivo propio en el prototipo; la regla es funcional)*
   - **Tipos de Dominio:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`StartConditionsConfig`, `AdministrativeChecklist`, `FormalizationStatus`)
 
 #### 8.2 Reglas Invariantes de la Conversión Operativa Vigente (🟢 Decisión funcional aprobada)
@@ -553,13 +566,14 @@ Asegurar una transición ordenada y atómica entre la oportunidad comercial apro
 #### 8.3 Arquitectura de Conversión Aprobada: Regla 1:1:1 y Cronograma Paralelo (🟢 Decisión funcional aprobada - 04 Nov 2026)
 
 Conforme a las definiciones acordadas para la UAT 2 (Ticket #132 y rama `feat/hubspot-commercial-sync-flow`):
-1. **Regla Canónica 1:1:1:** Cada servicio ganado genera un proyecto independiente en la tabla `projects` de Orbit. Todos quedan asociados al mismo Cliente en el Directorio sin duplicarlo.
+1. **Regla Canónica 1:1:1:** Cada servicio ganado genera un proyecto independiente en la tabla `projects` de ECO. Todos quedan asociados al mismo Cliente en el Directorio sin duplicarlo.
 2. **Asignación Granular de Líder Operativo:** En el modal de conversión, cada tarjeta de servicio ganado cuenta con su propio selector de Líder Operativo (`leadUserId`), permitiendo asignar líderes distintos o el mismo líder según la especialidad de cada servicio.
 3. **Exclusión Estricta de Servicios Perdidos:** Cualquier servicio con etapa confirmada de `'Cierre perdido'` queda excluido de la conversión y NUNCA genera proyectos ni tareas.
 4. **Estados Operativos y Botón «Iniciar proyecto 🚀»:**
-   - Si la fecha de inicio es posterior a la fecha actual (`startDate > hoy`), el proyecto se crea en estado **`Por empezar`** y despliega el botón **`Iniciar proyecto 🚀`**.
-   - Al pulsar dicho botón, se alinean las fechas definitivas de arranque y se recalculan proporcionalmente las fechas de entrega de cada tarea en el backlog del proyecto.
-   - Si la fecha ya está en curso (`startDate <= hoy`), el proyecto se marca como **`En ejecución`**.
+   - *(Actualizado 07 Nov 2026)* La conversión **no define fechas de inicio ni de entrega**: cerrar el negocio no hace el proyecto ejecutable. Todo proyecto convertido nace **`Por iniciar`** con el botón **`Iniciar proyecto 🚀`**.
+   - En la conversión se definen, por servicio de **proyecto único**, las **rondas de ajuste incluidas** y los **días hábiles por ronda** (una ronda = el cliente revisa una entrega, devuelve ajustes y aprueba; reemplaza el modelo anterior de gates × tandas). Son campos visibles y editables; los valores sugeridos (2 rondas × 5 días) solo precargan. Fee mensual no tiene rondas. Las semanas de producción se heredan del Alcance.
+   - Al pulsar **`Iniciar proyecto 🚀`**, el líder fija la fecha de arranque y ECO calcula la línea base en días hábiles: entrega de insumos del cliente + producción + rondas de ajuste × días por ronda. Se congelan `baselineStartDate`/`baselineEndDate` y se programan inicio y vencimiento de cada tarea.
+   - Desde ese momento el proyecto queda **`En ejecución`**.
 5. **Modo Desacoplado / Manual:** La conversión opera 100% de manera autónoma cuando HubSpot no está disponible o el token está inactivo, registrando la trazabilidad en la auditoría de New Business para reconciliación posterior.
 
 ---
@@ -569,8 +583,9 @@ Conforme a las definiciones acordadas para la UAT 2 (Ticket #132 y rama `feat/hu
 #### 9.1 Propósito
 Entidad que representa la cuenta comercial, operativa y de marca sombrilla con la que trabaja Uhura Group.
 - **Referencias de Código:**
-  - **Vista Principal de Clientes:** [`src/components/taskflow/clients/ClientsView.tsx`](../components/taskflow/clients/ClientsView.tsx)
-  - **Modal Nuevo Cliente:** [`src/components/taskflow/clients/NewClientModal.tsx`](../components/taskflow/clients/NewClientModal.tsx)
+  - **Vista Principal de Clientes:** [`src/components/taskflow/ClientsView.tsx`](../components/taskflow/ClientsView.tsx) · **Ficha:** [`ClientDetailView.tsx`](../components/taskflow/ClientDetailView.tsx)
+  - **Modal Nuevo Cliente:** [`src/components/taskflow/CreateClientModal.tsx`](../components/taskflow/CreateClientModal.tsx)
+  - **Métricas de la cuenta:** [`src/components/taskflow/clientMetrics.ts`](../components/taskflow/clientMetrics.ts)
   - **Tipos de Dominio:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`ClientProfile`, `ClientContact`, `ClientTaxEntity`)
 
 #### 9.2 Entidades y Campos Principales
@@ -602,7 +617,27 @@ Entidad que representa la cuenta comercial, operativa y de marca sombrilla con l
 3. **Fuentes de Verdad e Integraciones Futuras:**
    - **HubSpot:** Fuente de verdad del estado comercial (empresas, contactos, pipeline y cierre de deals).
    - **Alegra:** Fuente de verdad fiscal y tributaria (terceros, NIT/RUT validado, facturas electrónicas e impuestos).
-   - **Orbit:** Centro de gravedad operativo que preserva la trazabilidad mediante identificadores externos (`hubspotDealId`, `alegraContactId`). Los cambios o bajas en los sistemas fuente se reflejarán bajo reglas de sincronización auditadas sin alterar el histórico de ejecución.
+   - **ECO:** Centro de gravedad operativo que preserva la trazabilidad mediante identificadores externos (`hubspotDealId`, `alegraContactId`). Los cambios o bajas en los sistemas fuente se reflejarán bajo reglas de sincronización auditadas sin alterar el histórico de ejecución.
+
+#### 9.4 Ficha del cliente: de dónde sale cada dato (revisado 07 Nov 2026)
+Regla: **nada se inventa**. Si no hay datos, la ficha dice «—» o «Sin datos» y explica por qué. La lista de Clientes usa el mismo cálculo, así que ficha y lista siempre coinciden.
+
+| Módulo | Fuente |
+|---|---|
+| Encabezado (estado, NIT, responsable) | Datos del cliente; se editan en «Editar cuenta». |
+| Proyectos (total · activos · cerrados) | Proyectos de ECO del cliente + historial guardado, sin duplicar. Cerrado = con registro de cierre (§11.7), cerrado, completado o archivado. |
+| Valor vendido | Suma del valor vendido en COP de sus proyectos de ECO. Proyectos en USD no se suman (no se convierte). |
+| Margen promedio | Promedio del margen real de los proyectos cerrados que lo tengan. Sin cierres con margen: «—». |
+| Facturación y cartera | «Pendiente de la integración con facturación (Alegra)». ECO no inventa facturado ni por cobrar. |
+| Razones sociales y Contactos | Captura manual («Gestionar NITs» / «Gestionar contactos»). |
+| Integraciones | Google Chat; solo `system_admin` (gestiona) y `executive` (consulta). Otros perfiles no ven esta sección. |
+| Salud de la cuenta (4 dimensiones) | **Rentabilidad:** margen promedio (≥ 35 % verde, ≥ 25 % amarillo, menor rojo). **Cartera:** sin datos hasta Alegra. **Cumplimiento:** % de proyectos cerrados entregados a tiempo (desvío ≤ 0 días hábiles); si aún no hay cierres, % de proyectos activos con salud «Saludable» (≥ 85 % verde, ≥ 70 % amarillo). **Recurrencia:** fee activo o 3+ proyectos = verde; 1–2 proyectos = amarillo. |
+| Salud general | Se califica solo con **al menos 2 dimensiones con datos**: cualquier rojo = «En riesgo», cualquier amarillo = «Atención», si no «Saludable». Con menos de 2: «Salud: sin datos suficientes». |
+| Radar | Aparece cuando las 4 dimensiones tienen datos; si no, dice cuáles faltan. |
+| Marcas y Notas | Captura manual en la edición del cliente. |
+| Tabla de proyectos | Estado real del proyecto; semáforo = salud calculada del proyecto (Saludable/Atención/Riesgo) o «—» si aún no tiene evaluación; margen real solo al cerrar; columna SOW para proyectos que vienen de una oportunidad (§7.4). |
+
+Los campos guardados `projectsCount`, `averageMarginPercent`, `billedCOP`, `receivableCOP`, `healthStatus` y `behavior` del cliente **ya no se muestran**: todo se calcula. En producción no deben persistirse como valores fijos.
 
 ---
 
@@ -611,8 +646,8 @@ Entidad que representa la cuenta comercial, operativa y de marca sombrilla con l
 #### 10.1 Propósito
 Gestión de datos de facturación electrónica y articulación con el sistema contable Alegra.
 - **Referencias de Código:**
-  - **Modal de Entidades Fiscales y Facturación:** [`src/components/taskflow/clients/ClientTaxEntitiesModal.tsx`](../components/taskflow/clients/ClientTaxEntitiesModal.tsx)
-  - **Checklist Administrativo:** [`src/components/taskflow/newbusiness/AdministrativeChecklistModal.tsx`](../components/taskflow/newbusiness/AdministrativeChecklistModal.tsx)
+  - **Modal de Entidades Fiscales y Facturación:** «Gestionar NITs» en [`ClientDetailView.tsx`](../components/taskflow/ClientDetailView.tsx)
+  - **Checklist administrativo:** *(no existe como archivo propio en el prototipo; la regla es funcional)*
   - **Tipos Fiscales:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`ClientTaxEntity`, `AdministrativeChecklist`)
 
 #### 10.2 Responsable y Flujo de Trabajo
@@ -625,8 +660,8 @@ Gestión de datos de facturación electrónica y articulación con el sistema co
   - `alegraContactId`: String (ID del tercero en la base de datos de Alegra).
 
 #### 10.3 Reglas de Integración con Alegra
-1. **Orbit NO es un sistema de contabilidad:** Orbit no calcula balances contables, cuentas contables PUC, ni retenciones en la fuente complejas.
-2. **Alegra es la Fuente de Verdad Fiscal:** Orbit solo necesita almacenar el `alegraContactId` del cliente y, a futuro, recibir el número de factura y estado de pago de los hitos cobrados.
+1. **ECO NO es un sistema de contabilidad:** ECO no calcula balances contables, cuentas contables PUC, ni retenciones en la fuente complejas.
+2. **Alegra es la Fuente de Verdad Fiscal:** ECO solo necesita almacenar el `alegraContactId` del cliente y, a futuro, recibir el número de factura y estado de pago de los hitos cobrados.
 
 ---
 
@@ -644,14 +679,17 @@ Contenedor principal de la ejecución operativa, control presupuestal de horas, 
 #### 11.2 Estructura Aprobada de Navegación Interna del Proyecto
 La ficha de proyecto se organiza en la siguiente estructura de pestañas oficial:
 ```text
-1. Resumen: Visión ejecutiva del proyecto, alcance técnico, gobernanza y equipo asignado.
+1. Resumen: Entregables, cronograma y rondas de ajuste, y Equipo Asignado (derivado de tareas, Módulo 14 §14.3).
 2. Tareas: Tablero operativo y lista de tareas con entregables colapsados por defecto y bloque de dependencias.
-3. Equipo: Matriz de staffing, colaboradores asignados, horas semanales y roles.
-4. Matriz Horas: Matriz de consumo presupuestal con vistas consolidadas de "Horas por Rol" y "Horas por Servicio/Entregable".
-5. Backlog (Opcional): Visible únicamente cuando el proyecto contiene fases estructuradas.
-6. Actividad: Auditoría cronológica de cambios y eventos del proyecto.
-7. Configuración: Parámetros del proyecto, fechas oficiales y estados de formalización.
+3. Matriz Horas por Rol: Horas cotizadas vs. ejecutadas por rol y por entregable. No visible para `collaborator`.
+4. Backlog (Opcional): Visible únicamente cuando el proyecto contiene fases estructuradas.
 ```
+*(Actualizado 07 Nov 2026)* Ya no existen pestañas «Equipo» (se integró en Resumen), «Actividad» ni «Configuración». Las acciones del proyecto viven en el menú ⋮: Editar, Notificaciones (Google Chat, §11.8), Archivar y Eliminar.
+
+**Vista por perfil:**
+- `collaborator`: Resumen y Tareas en solo lectura del proyecto (sin menú ⋮, sin «Iniciar proyecto» ni «Ajustar», sin Matriz Horas). Su trabajo diario está en Mi Día y Tareas.
+- Perfiles con edición de proyectos (`leader`, `client_relationship`, `system_admin`): todas las acciones.
+- `executive`: consulta; en el menú ⋮ solo Notificaciones (lectura).
 
 > **DECISIÓN DE DISEÑO Y REDUCCIÓN DE RUIDO VISUAL (PESTAÑA RESUMEN):**
 > Para evitar saturación y duplicidad cognitiva, la pestaña **Resumen** se optimizó radicalmente:
@@ -661,10 +699,9 @@ La ficha de proyecto se organiza en la siguiente estructura de pestañas oficial
 
 #### 11.3 Gobernanza Contractual en el Encabezado del Proyecto
 En el encabezado del proyecto, especialmente para proyectos de alcance único (`fixed_project`), se visibilizan las reglas contractuales fundamentales acordadas:
-- **Gates de Aprobación Incluidos:** Número de hitos formales de validación con el cliente (Default: 2 gates, ej. Gate 1: UX/Contenido, Gate 2: Implementación/QA).
-- **Rondas de Ajuste por Gate:** Límite contractual de iteraciones por cada gate (Default: máximo 2 tandas de ajustes: 1 tanda integral grande y 1 tanda de pulido menor).
-- **Devolución de Kickoff:** Ventana de revisión y respuesta inicial (3 días hábiles sin consumo de capacidad).
-- **Trinomio de Cronograma:** Baseline inicial (inmutable), Forecast proyectado (según dependencias confirmadas) y Fecha Real de cierre.
+- **Rondas de ajuste incluidas** (chip del encabezado): una ronda = el cliente revisa una entrega, devuelve ajustes y aprueba. Se define por proyecto (sugerido 2 × 5 días hábiles); reemplaza el modelo anterior de gates × tandas (§8.3).
+- **Entrega de insumos del cliente:** días hábiles tras el kickoff (sugerido 3; 0 si no aplica), sin consumo de capacidad.
+- **Trinomio de Cronograma:** Baseline inicial (inmutable), Forecast proyectado y Fecha Real de cierre. El KPI «Cronograma» muestra inicio → forecast y la diferencia en días hábiles frente a la línea base cuando existe.
 
 #### 11.4 Entidades y Campos Principales
 - **`ProjectProfile` (`ProjectSummaryItem`):**
@@ -681,9 +718,10 @@ En el encabezado del proyecto, especialmente para proyectos de alcance único (`
     - `actualEndDate`: Date | null (Fecha real de cierre al culminar la ejecución).
   - `scheduleConfig`:
     - `clientKickoffWaitDays`: Integer (Default: 3 días hábiles. No consume capacidad).
-    - `gateApprovalWaitDays`: Integer (Default: 5 días hábiles por gate. No consume capacidad).
-    - `gateCount`: Integer (Default: 2 gates).
-    - `includedReworkRounds`: Integer (Default: 2 rondas incluidas).
+    - `includedReworkRounds`: Integer (Default sugerido: 2 rondas de ajuste incluidas).
+    - `reworkRoundDays`: Integer (Default sugerido: 5 días hábiles por ronda. No consume capacidad).
+    - `productionWeeks`: Integer (Semanas de producción heredadas del Alcance).
+    - *Obsoletos:* `gateCount` y `gateApprovalWaitDays` (modelo anterior de gates × tandas); no se usan para calcular.
   - `leadUserId`: UUID (Líder del proyecto).
   - `soldHours`: Decimal (Total de horas vendidas según cotización aprobada — Fuente de verdad presupuestal canónica).
   - `soldValueCOP`: Decimal (Valor económico del contrato).
@@ -719,16 +757,26 @@ Entidad persistente para insumos, accesos o gates que condicionan la ruta críti
 - `note`: String (Justificación obligatoria).
 - `createdAt`: DateTime inmutable.
 
-#### 11.7 Propuesta de Protocolo de Cierre del Proyecto (⚠️ Propuesta funcional pendiente de aprobación e implementación)
+#### 11.6.1 Fee mensual: vigencia, ciclos y renovación (🟢 Decisión aprobada · 🟣 Implementado en prototipo · 07 Nov 2026)
+- **Un fee es un solo proyecto** con ciclos mensuales; no se crea un proyecto por mes.
+- **Conversión:** por servicio fee se confirma la **vigencia en meses** (precargada de la cotización, editable: 3, 6, 12…) y la política de **horas no usadas**: `No se acumulan` (`none`) · `Pasan al mes siguiente` (`carry_over`) · `Pasan hasta un 25 %` (`contractual_cap`).
+- **Regla general: las horas no usadas no se acumulan.** Trasladarlas es una excepción pactada con el cliente: se propone en la conversión y se **confirma o cambia en «Iniciar proyecto»** (y en «Ajustar»).
+- **Iniciar proyecto:** fija el inicio del contrato y calcula el fin (`inicio + vigencia − 1 día`). Las tareas del alcance son la **plantilla del mes 1** y se reparten en ese mes. No aplica cronograma de rondas.
+- **Ciclo mensual:** bolsa mensual de horas por rol (la del alcance) + horas trasladadas según la política. Cada tarea pertenece a un ciclo (`cycleKey = 'YYYY-MM'`; si falta, se deriva de su fecha).
+- **Tareas recurrentes:** en producción, ECO crea el día 1 de cada mes las tareas del ciclo a partir de la plantilla del mes 1 (sin tiempo, estado ni registros). En el prototipo se hace con «Generar tareas de <mes>».
+- **Consultar un mes (p. ej. enero):** selector **Ciclo** en el encabezado del proyecto; KPIs, Resumen, Tareas y Matriz se filtran a ese mes. Opción «Contrato completo» para ver todo.
+- **Histórico corto:** el selector y la tabla de Resumen muestran mes anterior, actual y siguiente; el resto queda agrupado por año bajo demanda («Ver los N meses del contrato»). Cada mes es una fila: bolsa (+ trasladadas), ejecutadas, desvío y estado.
+- **Renovación:** aviso 30 días antes del fin del contrato. «Renovar fee» agrega meses (nuevo periodo) con la bolsa mensual acordada y una nota; el histórico se conserva. Si no se renueva, se usa el cierre de proyecto (Módulo 11 §11.7).
+- Referencias: `src/components/taskflow/schedule/feeCycles.ts`, `projects/FeeContractSection.tsx`.
 
-> **NOTA DE ALCANCE:**
-> Las reglas detalladas de cierre vinculadas a la nueva propuesta de activación, estados de capacidad y líneas base corresponden a una **propuesta funcional en evaluación para una fase posterior**.
-> **NO hacen parte de las decisiones cerradas de esta actualización ni están implementadas en el core vigente**. Se trabajarán en un ticket y prototipo independientes.
-
-##### Aspectos Conceptuales en Evaluación:
-- **Preservación Inmutable del Histórico:** Las horas registradas históricamente (`TimeLog`) y las asignaciones pasadas se conservan para auditoría y rentabilidad.
-- **Resolución de Tareas:** Las tareas pendientes se resuelven o cancelan formalmente antes de consolidar el cierre.
-- **Trazabilidad:** Almacenar usuario autor, fecha/hora y motivo de cierre.
+#### 11.7 Cierre del Proyecto (🟢 Decisión aprobada · 🟣 Implementado en prototipo · 07 Nov 2026)
+Acción **⋮ → Cerrar proyecto**, disponible para perfiles con edición de proyectos cuando el proyecto ya inició y no está cerrado ni archivado.
+- **Tareas resueltas antes de cerrar:** si hay tareas sin completar, el cierre se bloquea y ofrece «Ir a Tareas».
+- **Foto final (solo lectura):** horas ejecutadas vs. cotizadas, rondas de ajuste usadas vs. incluidas (proyecto único) y desviación de la fecha real frente a la línea base en días hábiles.
+- **Datos obligatorios:** fecha real de entrega, motivo (`Entregado y aprobado por el cliente` · `Cerrado anticipadamente` · `Cancelado por el cliente`) y aprendizajes/observaciones.
+- **Resultado:** `status = Cerrado`, `actualEndDate` y registro `closure` (autor, fecha/hora, motivo, nota y la foto final). El histórico de horas (`TimeLog`) y de tareas se conserva intacto; Resumen muestra la tarjeta «Proyecto cerrado».
+- Archivar sigue siendo una acción distinta (ocultar del portafolio activo).
+- Referencia: `src/components/taskflow/projects/CloseProjectModal.tsx`.
 
 ---
 
@@ -737,7 +785,7 @@ Entidad persistente para insumos, accesos o gates que condicionan la ruta críti
 #### 12.1 Propósito
 Componente o fase operativa que agrupa un conjunto de tareas y un presupuesto específico de horas por rol.
 - **Referencias de Código:**
-  - **Vista y Lista de Entregables:** [`src/components/taskflow/projects/DeliverablesListView.tsx`](../components/taskflow/projects/DeliverablesListView.tsx)
+  - **Vista y Lista de Entregables:** entregables dentro de [`ProjectsView.tsx`](../components/taskflow/ProjectsView.tsx) y [`ProjectTasksTab.tsx`](../components/taskflow/projects/ProjectTasksTab.tsx)
   - **Tipos de Dominio:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`ProjectDeliverable`, `DeliverableRoleBudget`)
 
 #### 12.2 Estructura y Rollup
@@ -761,7 +809,7 @@ Unidad atómica de trabajo ejecutable por el equipo con ciclo de vida completo d
 - **Referencias de Código:**
   - **Modal de Detalle de Tarea:** [`src/components/taskflow/TaskDetailModal.tsx`](../components/taskflow/TaskDetailModal.tsx)
   - **Pestaña Tareas de Proyecto:** [`src/components/taskflow/projects/ProjectTasksTab.tsx`](../components/taskflow/projects/ProjectTasksTab.tsx)
-  - **Tarjeta de Tarea en Kanban:** [`src/components/taskflow/tasks/TaskCard.tsx`](../components/taskflow/tasks/TaskCard.tsx)
+  - **Tarjeta de Tarea en Kanban:** [`BoardView.tsx`](../components/taskflow/BoardView.tsx) y [`MyTasksView.tsx`](../components/taskflow/MyTasksView.tsx)
   - **Tipos de Dominio:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`TaskItem`, `TaskStatus`, `TaskPriority`, `TaskRework`, `TaskDeliverable`)
 
 #### 13.2 Visualización en Pestaña Tareas: Entregables Plegados y Dependencias
@@ -820,22 +868,30 @@ El modal de detalle de tarea representa la experiencia integral de ejecución co
 #### 14.1 Propósito
 Asignación formal de personas del equipo a los proyectos, garantizando que el trabajo esté cubierto sin sobrecargar la capacidad.
 - **Referencias de Código:**
-  - **Matriz de Staffing:** [`src/components/taskflow/staffing/StaffingMatrixView.tsx`](../components/taskflow/staffing/StaffingMatrixView.tsx)
+  - **Matriz de Staffing:** equipo derivado de las tareas en [`ProjectTeamTab.tsx`](../components/taskflow/projects/ProjectTeamTab.tsx) y [`teamFromTasks.ts`](../components/taskflow/projects/teamFromTasks.ts) (no hay matriz de staffing separada)
   - **Tipos de Dominio:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`ProjectAssignment`, `AssignmentNature`)
 
 #### 14.2 Diferencia Crítica: Rol Cotizado vs. Persona Asignada
 - **Rol Cotizado (`budgetedRoleId`):** Perfil conceptual presupuestado en New Business (ej. *Front-End Dev*, tarifa de costo nómina según tarifario).
 - **Persona Real (`assignedUserId`):** Colaborador específico de la empresa (ej. *Juan Pérez*, desarrollador real contratado).
-- Orbit permite comparar si la persona asignada coincide con el perfil cotizado o si hubo un cambio de seniorities que altere la rentabilidad real del proyecto.
+- ECO permite comparar si la persona asignada coincide con el perfil cotizado o si hubo un cambio de seniorities que altere la rentabilidad real del proyecto.
+- **Catálogo cerrado (07 Nov 2026):** solo los roles oficiales de `STANDARD_UHURA_ROLES` se cotizan, se sugieren y aparecen en selectores (alcance, tareas, plantillas). No se crean roles por funciones puntuales: QA, backend ligero o soporte son **actividades** cotizadas bajo un rol oficial; quién las ejecutó lo registra la tarea («cubre rol», §14.3). Roles heredados fuera del catálogo se muestran como «fuera del catálogo» para no perder datos, pero no se ofrecen para nuevas tareas.
+- **Recursos externos / subcontratados** (backend, arquitectura de servidores, etc.): no son roles de Uhura. Se registran en la cotización como costo (valor fijo u horas × tarifa del proveedor), viajan al proyecto en la conversión (por servicio; sin servicio → primer proyecto) y se ven en Resumen para perfiles no colaboradores. No consumen capacidad, no aparecen en Mi Día ni en la Matriz de horas por rol.
 
-#### 14.3 Entidad `ProjectAssignment`
-- `id`: UUID.
-- `projectId`: UUID.
-- `userId`: UUID.
-- `roleId`: String (Rol que asume en este proyecto).
-- `nature`: Enum (`governance` | `core_execution` | `temporary_support`).
-- `weeklyHours`: Decimal (Horas comprometidas por semana).
-- `startDate`, `endDate`: Date.
+#### 14.3 Equipo derivado de las tareas (🟢 Decisión aprobada - 07 Nov 2026)
+Se elimina la asignación manual de colaboradores al proyecto (modal «Asignar / Modificar asignación de rol»). En la práctica el equipo reasigna directamente en la tarea, y el modal quedaba desactualizado (p. ej. 8 h/sem fijas).
+- **Fuente única de verdad:** la tarea (`budgetedRole` + asignados + `scheduledDate`/`dueDate` + `timeLogs`).
+- **El rol lo define la actividad, no la persona:** las horas registradas en una tarea de *Front-End Dev* consumen la bolsa de Front-End aunque las ejecute un Product Lead. Las horas cotizadas de la actividad **nunca cambian** al reasignar.
+- **«Cubre rol»:** si el rol de la tarea no está entre los roles oficiales de la persona (`officialRole(s)` / `professionalRole(s)`), se marca para análisis de costo (líder ejecutando trabajo de un rol de menor tarifa).
+- **Equipo Asignado (Resumen del proyecto)** se calcula por persona:
+  - Roles desempeñados con horas cotizadas asignadas y ejecutadas por rol.
+  - Carga de esta semana = horas de tareas no completadas prorrateadas en días hábiles sobre su ventana `scheduledDate → dueDate`.
+  - Pendiente = horas de tareas no completadas; Ejecutado = `timeLogs` del usuario.
+  - Capacidad global = misma carga semanal sumando todos los proyectos vs. `capacityHours`.
+- **Gobernanza** (seguimiento, checkpoints, comités) se modela como tareas del líder dentro del alcance.
+- **Seguidores/Stakeholders** se mantienen (visibilidad sin horas ni rol).
+- La entidad `ProjectAssignment` queda **obsoleta para operación**; el backend puede exponer el equipo como vista/consulta agregada sobre `tasks` y `time_logs`.
+- Referencia de implementación: `src/components/taskflow/projects/teamFromTasks.ts`.
 
 ---
 
@@ -844,7 +900,7 @@ Asignación formal de personas del equipo a los proyectos, garantizando que el t
 #### 15.1 Propósito
 Visibilidad matemática de la disponibilidad real del equipo para asumir nuevos proyectos y evitar el burnout.
 - **Referencias de Código:**
-  - **Vista de Capacidad de Equipo:** [`src/components/taskflow/capacity/TeamCapacityView.tsx`](../components/taskflow/capacity/TeamCapacityView.tsx)
+  - **Vista de Capacidad de Equipo:** [`CapacityView.tsx`](../components/taskflow/CapacityView.tsx)
   - **Tipos de Capacidad:** [`src/components/taskflow/types.ts`](../components/taskflow/types.ts) (`TeamMemberCapacity`)
 
 #### 15.2 Reglas Fundamentales de Capacidad (🟢 Decisión funcional aprobada)
@@ -910,6 +966,7 @@ Captura fidedigna, sin fricción y auditable de las horas realmente invertidas p
      - Comentario / notas de la actividad realizada.
      - Estado del registro.
      - Acción para editar o anular.
+   - **Ventana «Registrar tiempo» al detener el cronómetro (UI, 07 Nov 2026):** misma estructura visual que «Cargar horas» (registro manual): encabezado oscuro con reloj, banda «Tarea seleccionada» (cliente › proyecto › tarea), «Duración del trabajo» con campos de horas y minutos siempre visibles y precargados con lo medido, y una etiqueta «Cronómetro: 10 min 36 s». Si no se tocan los campos se registra lo medido exacto; al cambiarlos queda «Ajustado a mano (mínimo 1 min) · Usar lo medido». Una sola barra de uso de la tarea, visible solo si tiene horas estimadas. Pie: «Descartar» a la izquierda (pide confirmación), «Seguir trabajando» y «Registrar 10 min 36 s». **La X y Esc cierran y siguen midiendo; nunca descartan el tiempo.** La lógica de registro no cambia.
 3. **Ventana de Corrección y Cierre Semanal:**
    - **Durante la semana en curso:** Cada colaborador puede **corregir o anular libremente sus propios registros de tiempo**.
    - **Después del cierre semanal:** La ventana de autocorrección se bloquea. Únicamente pueden corregir o anular registros cerrados los usuarios con rol:
@@ -942,7 +999,7 @@ Captura fidedigna, sin fricción y auditable de las horas realmente invertidas p
 ### Módulo 17: Mi Día (Home Contextual y Bandeja de Acción)
 
 #### 17.1 Propósito
-Pantalla principal de inicio para todo usuario de Orbit, diseñada como una bandeja de acción contextual viva que responde en tiempo real a la pregunta: *"¿Quién tiene la siguiente acción?"*. Elimina la dispersión entre dashboards analíticos y listas de tareas desconectadas, organizando el día en tres niveles esenciales:
+Pantalla principal de inicio para todo usuario de ECO, diseñada como una bandeja de acción contextual viva que responde en tiempo real a la pregunta: *"¿Quién tiene la siguiente acción?"*. Elimina la dispersión entre dashboards analíticos y listas de tareas desconectadas, organizando el día en tres niveles esenciales:
 1. **¿Qué requiere mi atención hoy?** (Bandeja dinámica de excepciones y handoffs por rol; si el contador es 0, la sección desaparece).
 2. **¿Qué tengo que hacer hoy?** (Lista priorizada de tareas asignadas para hoy con timer integrado y botón para solicitar revisión).
 3. **¿Cómo voy?** (Progreso de horas de la jornada, carga rápida y consulta de registros de tiempo).
@@ -957,7 +1014,7 @@ Mi Día adapta dinámicamente sus secciones de atención según el rol activo de
 
 - **1. Comercial (Access Level `commercial` / `client_relationship`):**
   - **Asignación de Líder:** Detecta oportunidades comerciales creadas que aún no tienen líder de alcance asignado.
-  - **Registro de Cotización Externa (Handoff de Alcance Listo):** Detecta oportunidades en estado `internal_review` donde el Líder ya marcó el alcance técnico como listo (`Marcar alcance listo`). Muestra la acción para realizar el cálculo financiero en el Google Sheet oficial y registrar el valor cotizado en Orbit.
+  - **Registro de Cotización Externa (Handoff de Alcance Listo):** Detecta oportunidades en estado `internal_review` donde el Líder ya marcó el alcance técnico como listo (`Marcar alcance listo`). Muestra la acción para realizar el cálculo financiero en el Google Sheet oficial y registrar el valor cotizado en ECO.
   - **Formalización Administrativa:** Detecta oportunidades ganadas que requieren checklist de facturación (RUT, correo de facturación) o conversión formal a proyecto operativo.
 
 - **2. Líder de Alcance (Product Lead / Creative Strategy Lead / Growth Manager):**
@@ -971,7 +1028,7 @@ Mi Día adapta dinámicamente sus secciones de atención según el rol activo de
   - **Dependencias e Insumos Críticos Vencidos:** Insumos o accesos de clientes (`ownerType: 'client'`) que han superado la fecha límite y amenazan la ruta crítica.
 
 - **4. Colaborador / Operativo (Front-End Dev, Diseñadores, Copywriters, etc.):**
-  - **Tareas Asignadas para Hoy:** Lista clara y priorizada de tareas asignadas activas en orden de urgencia.
+  - **Tareas Asignadas para Hoy:** Solo las tareas propias que el cronograma pone para hoy (y vencidas), ordenadas por fecha y prioridad; si no hay, «Próximas» (ver §17.5).
   - **Acción Operativa Directa:** Inicio directo de cronómetro (timer), registro de horas y botón `Solicitar revisión ->` al terminar los entregables para pasar la tarea al líder.
   - **Retrabajos Asignados:** Notificación destacada de tareas devueltas en revisión o con retrabajo registrado que requieren corrección prioritaria.
 
@@ -981,7 +1038,7 @@ Mi Día adapta dinámicamente sus secciones de atención según el rol activo de
   - Excepciones financieras y operativas de alto nivel sin ruido administrativo menor.
 
 #### 17.3 Articulación entre Mi Día y la Campana de Notificaciones
-Orbit utiliza un modelo complementario de comunicación:
+ECO utiliza un modelo complementario de comunicación:
 - **Mi Día:** Es la **bandeja de trabajo estructurada** donde el usuario encuentra sus tareas prioritarias, pendientes de revisión y handoffs accionables organizados por jerarquía.
 - **Campana de Notificaciones (In-App):** Es el **canal de eventos inmediatos** que notifica en tiempo real cuando ocurre un handoff (ej. *"Comercial te asignó la oportunidad X"*, *"Líder de alcance marcó el alcance listo para la oportunidad Y"*, *"Colaborador solicitó revisión en la tarea Z"*). Ambos sistemas consumen el mismo modelo de eventos sin duplicar lógica de negocio.
 
@@ -992,13 +1049,59 @@ Mi Día puede mostrar de forma discreta y no invasiva:
 - **Ausencias y vacaciones próximas relevantes:** Obtenidas del modelo canónico `TeamAbsenceEvent` (eventos aprobados y programados).
 - *Criterio UI:* Información visible de manera sobria y secundaria, sin competir con la lista de tareas operativas ni saturar el home con widgets pesados.
 
+#### 17.5 Regla de visibilidad de tareas (todos los perfiles)
+- **Mi Día = el cronograma de hoy.** Solo aparecen las tareas cuyo cronograma cae hoy (inicio o vencimiento hoy, o en curso) y las vencidas sin cerrar. La urgencia no la decide ECO: viene marcada en la tarea por quien la pide, y solo sirve para ordenar. Si la persona no tiene nada agendado hoy, Mi Día le muestra **«Próximas»**: sus siguientes tareas por cercanía de fecha y prioridad, para adelantar.
+- **Tareas = todo, ordenado por fecha.** Primero las vencidas, luego las urgentes con fecha hoy o mañana y después el resto por fecha más cercana.
+- **Mis prioridades = solo lo que me pertenece.** En «Qué tengo que hacer hoy» y en «Mis tareas» aparecen únicamente las tareas donde la persona es responsable de ejecución (asignada o colaboradora) y las que le toca revisar. Nunca tareas de otras personas, aunque compartan rol, área o primer nombre.
+- **Seguidores, sin la misma urgencia.** Quien está como seguidor para revisar o estar al tanto ve la tarea en **«Siguiendo»** (bloque plegado en Mi Día y pestaña en Tareas). No cuenta como pendiente, no suma a su carga ni a la bandeja de atención.
+- **Mi Día es personal para todos los perfiles (#147 + decisión de Uhura, 07 Nov 2026):** todos, incluida Dirección (`executive`), ven en la atención solo lo que ejecutan o lideran; `leader` además recibe las alertas de los proyectos que lidera. La vista de toda la organización está en Tareas → Equipo y Capacidad → Organización. Las tareas propias **urgentes, que inician hoy o vencen hoy** van de primeras en «¿Qué requiere mi atención?» (#146).
+- **Comercial y líder: lo de sus proyectos permea su día.** Insumos y dependencias del cliente, bloqueos, desvíos de horas y retrabajos llegan a la bandeja «¿Qué requiere mi atención?» (parte superior de Mi Día) solo de los proyectos de los que la persona es responsable (líder del proyecto o responsable de cuenta). Dirección y administración del sistema ven en esa misma bandeja las excepciones de todos los proyectos (además del semáforo de Proyectos y del Tablero de Dirección y Finanzas), pero no las tareas de otros en su lista personal.
+- **Tareas · «Equipo»:** el colaborador no lo ve. Líder y comercial ven las tareas de sus proyectos; Dirección y administración, todas.
+- Requisito técnico y criterios de aceptación: `BACKEND_REQUIREMENTS.md` §15.1. Implementación en el prototipo: `auth/taskVisibility.ts`, usada por `MiDiaView.tsx` y `MyTasksView.tsx`.
+
 ---
 
-### Módulo 18: Bucky y La Colonia (Espacio Social & Lúdico)
+### Módulo 18: Mascota ECO (antes «Bucky») y La Colonia (Espacio Social & Lúdico)
+
+> **Nombre (07 Nov 2026):** la mascota se llama **ECO**, igual que la plataforma (antes «Bucky»). Los textos visibles usan «ECO»; los nombres internos de código (`buckyEngine`, `BuckyLabModal`) se mantienen por compatibilidad.
+>
+> **Reglas de la mascota (revisadas 07 Nov 2026):**
+> - **Personaje:** 13 imágenes oficiales, ya incluidas en el repositorio en `src/assets/images/eco/` (no hay que adjuntarlas aparte):
+>   - **Estándar, buzo morado (8):** `eco-thumbs-up` (pulgar arriba), `eco-celebrating`, `eco-surprised`, `eco-worried`, `eco-sad`, `eco-thinking`, `eco-focus` (tablet), `eco-coffee`.
+>   - **Navidad (5):** `eco-christmas` (pose base), `eco-xmas-coffee` (cafecito), `eco-xmas-hello` (hola), `eco-xmas-cheer` (crack, con regalo) y `eco-xmas-water` (agua).
+> - **Emociones según el día de la persona** (`buckyEngine.ts`, siempre con sus propias tareas, regla §17.5), en este orden:
+>   1. Cronómetro corriendo → **en foco**.
+>   2. Una tarea propia superó sus horas cotizadas → **sorprendido** (aviso con opción de avisar al líder).
+>   3. Tareas propias vencidas → **preocupado**, con tono de ayuda («¿la cerramos o pedimos nueva fecha?»).
+>   4. Todas las tareas de hoy listas → **celebrando**; tarea recién terminada → celebrando breve.
+>   5. Pausa recomendada o inactividad → **café**.
+>   6. Más horas planeadas hoy que la jornada → **preocupado** («hoy viene pesado»).
+>   7. Primera visita del día o todo en orden → **pulgar arriba**.
+>   8. Nada agendado hoy → **pensativo**, sugiriendo la próxima tarea a adelantar.
+>   - **Triste + recordatorio de horas (🟢 ya existe en producción · reconciliado 07 Nov 2026):** en día hábil, sin ausencia registrada y desde las 4:00 p. m., si la persona lleva **menos del 80 %** de su jornada diaria registrada (capacidad semanal ÷ 5), ECO se pone triste y muestra un recordatorio juguetón con «Cargar mis horas» y «Más tarde». No aparece si el cronómetro está corriendo. **Este comportamiento ya funciona en la plataforma de producción de Indunova: no se reimplementa ni se modifica con esta entrega.** El prototipo solo lo replica para que la mascota sea coherente. Si la hora o los canales de producción difieren de lo descrito aquí, **prevalece producción** y se ajusta el prototipo. **Excepción decidida por Uhura (07 Nov 2026): el umbral se unifica en 80 %** en todo ECO (este recordatorio, la racha, «Cerrar mi día» y el correo semanal); si producción usa hoy otro porcentaje, se cambia solo ese valor a 80 %.
+>   - Fuera de ese caso, **triste** solo aparece como reacción breve.
+>   - **Las emociones son reacciones, no estados fijos (07 Nov 2026):** cuando cambia el motivo, ECO muestra la emoción un rato y vuelve a su cara normal (pulgar arriba): sorprendido y triste ~45 s, preocupado ~30 s, café ~20 s, pensativo ~15 s, celebrando ~12 s. El aviso del globo se recoge con la emoción. Si el motivo de un aviso sigue vigente (p. ej. una tarea propia pasada de horas o las horas sin cargar), ECO lo vuelve a recordar cada 30 minutos. Concentrado se mantiene mientras corra el cronómetro. El motivo sigue visible al abrir la ventana de la mascota.
+>   - **Moods de ambiente que rotan durante el día (07 Nov 2026):** cuando ECO está en reposo (sin avisos, sin cronómetro, sin ventanas abiertas), cambia de pose unos segundos y vuelve a la normal. Con la apariencia de Navidad: **cafecito** («Uff… un cafecito no caería nada mal ☕»), **hola** (solo cambia de pose, no dice nada), **crack** (mensaje de aliento: «¡Eres un crack! Lo que estás haciendo hoy suma 💪») y **agua** («Recuerda tomar agua 💧»). Cada mood tiene varias frases y se elige una al azar; nunca repite el mismo mood dos veces seguidas. Con la apariencia estándar salen solo los que tienen imagen (cafecito y crack). **No sale a todos al mismo tiempo:** cada persona tiene su propio momento aleatorio (el primero entre 2 y 6 min después de entrar y luego cada 6 a 18 min). Si aparece un aviso, una ventana o el cronómetro, el mood se retira enseguida. Reemplaza el ciclo anterior que hacía una acción aleatoria cada 45 s. Para revisarlo rápido en el prototipo: `?ecoMoods=fast` (solo desarrollo, igual que el laboratorio).
+> - **Apariencia de temporada (07 Nov 2026):** **noviembre y diciembre = Navidad** de forma automática; de enero a octubre, estándar (buzo morado). `system_admin` puede cambiarla para toda la organización desde la ventana de la mascota («Apariencia de ECO para todo el equipo»), pero el cambio solo vale para la temporada en curso: el 1 de noviembre y el 1 de enero vuelve el valor por defecto. **En Navidad, ECO usa solo imágenes navideñas y nunca se cruza con el buzo morado:** pulgar arriba y en foco → pose navideña base; pensativo → hola; celebrando → crack; café → cafecito. Las emociones que aún no tienen versión navideña (sorprendido, preocupado, triste) usan la pose navideña base y el globo explica el motivo. Aplica en todas partes: mascota flotante, pausa activa, La Colonia y la celebración de New Business. Navidad también activa la nieve y el 🎄 junto al logo; cada persona puede apagar la nieve para sí («Nieve en pantalla»).
+> - Sus alertas usan **solo las tareas de la persona**; nunca habla de tareas ajenas. Se oculta dentro de La Colonia y puede apagarse; al reactivarla sale saludando. Apagado y sonido son preferencias personales.
+> - Los cumpleaños y aniversarios se calculan con la fecha real del día.
+> - **Ventana de la mascota (UI):** fondo oscuro con texto e íconos claros. Se retiró el acceso «Ficha humana» de la mascota: ese espacio ya vive en la foto de perfil del menú superior (07 Nov 2026).
+> - **Pausa activa (07 Nov 2026):** ya no es un modal que oscurece la pantalla. Es una tarjeta que sale de la mascota, en la posición de su ventana: 5 ejercicios de ~3 min, uno a la vez, con anillo de tiempo, progreso por ejercicio, pausar / siguiente / anterior y Esc para cerrar. No bloquea el trabajo. Al terminar, ECO celebra brevemente y vuelve a su estado normal.
+> - **Modo del menú lateral:** sol (claro) o luna (oscuro, predeterminado), en el pie del menú. Solo cambia el menú; el área de trabajo sigue en blanco como en producción.
+> - El laboratorio de la mascota (`Shift+Alt+B` / `?buckyLab=true`) es solo de desarrollo y no va a producción.
+
+> **La Colonia en el prototipo (revisado 07 Nov 2026) — versión sencilla vigente:**
+> - **Dos juegos de 15 s:** «Torre de Troncos» (soltar cada tronco alineado y apilar) y «Salto de Nenúfares» (tocar el nenúfar donde aparece ECO). Mismos nombres en tarjetas, partida, retos y ranking.
+> - **Retar a alguien:** al terminar una partida se elige a un compañero activo de Equipo & Accesos. El reto queda «esperando» para quien retó y aparece como «te retó con N pts · Aceptar reto» para el retado. Al jugarlo se resuelve: gana el mayor puntaje; igual puntaje es empate.
+> - **Quién ganó, para los dos:** la pantalla de juegos muestra el último resultado («Ganaste 104 a 90 contra Paola» / «Oscar te ganó 104 a 90») con «Revancha», y el botón «Retos» abre la bandeja: por responder, esperando y resultados.
+> - **Ranking semanal sencillo:** una pestaña por juego con el mejor puntaje de cada persona en la semana; se reinicia el lunes; marca «Tú». Sin datos sembrados: si nadie ha jugado, lo dice.
+> - Fechas reales en los retos («hace 5 min», «ayer»). El mensaje para compartir es para Google Chat.
+> - **Pantalla de juegos «Universo de juegos» (07 Nov 2026):** hecha solo con CSS, sin ilustraciones: cielo con estrellas (noche, atardecer o día), un planeta por juego con su botón «Jugar», «Tu mejor · #puesto» y el récord de la semana, un planeta bloqueado «Próximamente», ECO como anfitrión con una frase según la situación (reto recibido → «Aceptar reto»; último resultado → «Revancha»; nadie ha jugado → «Estrena el ranking») y ranking con podio. Todos los datos son reales; la lógica de los juegos no cambia. Las animaciones se apagan si el sistema pide reducir movimiento.
+> - La vista tipo mapa ilustrado (Diorama) descrita abajo queda como referencia histórica; no es la vista vigente.
 
 #### 18.1 Propósito y Definición Funcional Cerrada
-- **Bucky:** Asistente contextual de Orbit que acompaña la jornada laboral, alerta sobre timers olvidados, tareas bloqueadas y deadlines. En la vista global de Orbit actúa como widget flotante; al ingresar a La Colonia, el widget flotante global desaparece para dar paso al Bucky protagonista dentro de su hábitat.
-- **La Colonia:** *"La Colonia es el espacio social y lúdico de Orbit para desconectarse unos minutos y compartir pequeños retos con el equipo."*
+- **Bucky:** Asistente contextual de ECO que acompaña la jornada laboral, alerta sobre timers olvidados, tareas bloqueadas y deadlines. En la vista global de ECO actúa como widget flotante; al ingresar a La Colonia, el widget flotante global desaparece para dar paso al Bucky protagonista dentro de su hábitat.
+- **La Colonia:** *"La Colonia es el espacio social y lúdico de ECO para desconectarse unos minutos y compartir pequeños retos con el equipo."*
 - **Alcance Funcional Simplificado & Presentación Inmersiva (Videojuego):**
   1. **Pantalla Principal Inmersiva (Hábitat Completo):** En lugar de un dashboard corporativo con tarjetas fragmentadas, el Diorama Ribereño es el escenario interactivo completo. Las estructuras funcionan como portales visuales de navegación directa:
      - 🏡 **Taller de Cedro (Izquierda):** Portal directo a La Torre de Cedro (15s).
@@ -1035,8 +1138,8 @@ Mi Día puede mostrar de forma discreta y no invasiva:
     `id` (UUID), `gameId` (`'torre'` | `'nenufar'`), `challengerUserId` (FK a User), `challengerScore` (Integer), `challengedUserId` (FK a User), `challengedScore` (Integer, opcional hasta resolución), `status` (`'pending'` | `'completed'`), `winnerUserId` (FK a User, opcional / derivado a partir de la comparación de puntuaciones; no debe introducir persistencia redundante obligatoria en base de datos), `createdAt` (Timestamp), `completedAt` (Timestamp, opcional).
   - **`WeeklyLeaderboardEntry` (Read Model Proyectado / No Requiere Tabla Propia):**
     Funciona como una estructura derivada / consulta agregada sobre `GameResult` filtrada por la semana civil en curso (`weekStartDate` a `weekEndDate`) calculando `MAX(score)` agrupado por `userId`. **Indunova no debe asumir que requiere una tabla física con persistencia propia en PostgreSQL.**
-- **5. Conexión con Sistema de Notificaciones de Orbit:**
-  Los avisos de reto ("Te han retado en La Torre de Cedro / Reflejos de Nenúfar", "Han superado tu marca", "Reto completado") deberán conectarse al **sistema central de notificaciones de Orbit** (in-app / campana) como requisito funcional una vez el backend esté disponible. Las notificaciones push quedan como capacidad evolutiva futura, no como dependencia actual.
+- **5. Conexión con Sistema de Notificaciones de ECO:**
+  Los avisos de reto ("Te han retado en La Torre de Cedro / Reflejos de Nenúfar", "Han superado tu marca", "Reto completado") deberán conectarse al **sistema central de notificaciones de ECO** (in-app / campana) como requisito funcional una vez el backend esté disponible. Las notificaciones push quedan como capacidad evolutiva futura, no como dependencia actual.
 - **No deben frenar la portabilidad ni la construcción del backend transaccional de Indunova.**
 - Bucky consume eventos emitidos por el core (ej. `EVENT_TIMER_EXCEEDED_4H`, `EVENT_PROJECT_OVER_BUDGET`), no debe inventar lógica de negocio aislada.
 - **Consumo Contextual de Datos de Equipo:**
@@ -1052,6 +1155,22 @@ Mi Día puede mostrar de forma discreta y no invasiva:
     - Aviso preventivo de ausencia próxima ("Recuerda coordinar entregables con [Nombre], estará en vacaciones a partir del jueves 🌴").
   - *Regla Estricta:* **No crear lógica avanzada de bienestar, workflows de aprobación de vacaciones ni automatizaciones complejas adicionales.**
 
+
+---
+
+### Módulo 19: Costos de operación — Hardware y Licencias (🟣 Implementado en prototipo · 07 Nov 2026; existente en producción)
+Reconciliado con los módulos que ya existen en producción. Acceso: **ver** `executive`, `administrative`, `system_admin`; **crear/editar** `administrative`, `system_admin`.
+
+**Hardware (activo físico):** nombre*, tipo (texto con sugerencias), marca, modelo, **serial / placa de inventario**, **estado** (en uso · en reparación · de baja), **colaborador asignado** (o «compartido»), ubicación, valor de compra (COP)*, fecha de compra, vida útil (meses), garantía hasta, «es costo directo», servicios y proyectos que lo usan, notas.
+- Depreciación mensual = valor ÷ vida útil; por hora = mensual ÷ 182 h (42 h × 52 ÷ 12). Si es costo directo, la depreciación por hora se reparte en partes iguales entre los servicios seleccionados. El formulario muestra el cálculo en vivo.
+- La tabla marca garantías vencidas.
+
+**Licencias (suscripción):** aplicación*, plan, área*, **responsable de la cuenta**, cantidad (cupos)*, frecuencia* (mensual · trimestral · anual), **próxima renovación**, moneda*, valor unitario*, **personas con cupo** (≤ cantidad), proyectos activos que la usan, pendiente de verificar + nota, estado activa/inactiva.
+- Total = cantidad × valor unitario; costo mensual = total ÷ meses de la frecuencia; reparto igual entre proyectos (vacío = costo general). Moneda extranjera → COP con la **TRM vigente de Finanzas**.
+- La tabla resalta renovaciones en los próximos 15 días.
+
+**UX:** las listas de servicios, proyectos y personas usan búsqueda con casillas y chips (sin Ctrl/Cmd+clic).
+- Referencias: `src/components/taskflow/assets/HardwareView.tsx`, `LicensesView.tsx`, `ChipMultiSelect.tsx`.
 ---
 
 ## 6. Integraciones Externas: Arquitectura y Comportamiento
@@ -1064,7 +1183,7 @@ Mi Día puede mostrar de forma discreta y no invasiva:
 ├─────────────┼───────────────────┼──────────────────────┼─────────────────┼─────────────┤
 │ HubSpot     │ Manual en UI      │ `hubspotDealId`      │ Webhook Deal    │ Duplicidad  │
 │ (CRM)       │ (pegar link / ID) │ `hubspotDealUrl`     │ "Won" en CRM    │ si se crea  │
-│             │                   │                      │ importa a Orbit │ manual      │
+│             │                   │                      │ importa a ECO │ manual      │
 ├─────────────┼───────────────────┼──────────────────────┼─────────────────┼─────────────┤
 │ Google      │ Manual en UI      │ `driveFolderUrl`     │ Creación de     │ Desorden de │
 │ Drive       │ (pegar link)      │ `briefUrl`           │ Prospecto crea  │ carpetas si │
@@ -1082,7 +1201,7 @@ Mi Día puede mostrar de forma discreta y no invasiva:
 
 > **Aclaración de Estado de Implementación:** Este repositorio frontend/contrato de TypeScript deja preparada la especificación canónica, tipos, vistas y validaciones de interfaz para que **Indunova implemente el backend real** (persistencia en PostgreSQL, endpoints en Django REST Framework, transacciones ACID y cálculo/persistencia definitiva del SLA e integraciones). **El backend Django/PostgreSQL no está implementado en este repositorio.**
 
-| Módulo Orbit | Estado Frontend / Contrato | UI | Lógica Dominio Frontend | Persistencia Requerida en Backend | Backend a implementar por Indunova | Dependencias Directas | Bloquea Portabilidad? |
+| Módulo ECO | Estado Frontend / Contrato | UI | Lógica Dominio Frontend | Persistencia Requerida en Backend | Backend a implementar por Indunova | Dependencias Directas | Bloquea Portabilidad? |
 |---|---|---|---|---|---|---|---|
 | **Clientes** | Preparado (Frontend) | Completa | Completa | PostgreSQL | Modelos `Client`, `TaxEntity` | Ninguna | **SÍ (Core)** |
 | **Catálogo / Plantillas** | Preparado (Frontend) | Completa | Completa | PostgreSQL | Modelos `ProductTemplate` | Roles | **SÍ (Core)** |
@@ -1107,6 +1226,84 @@ Mi Día puede mostrar de forma discreta y no invasiva:
 
 ## 8. Auditoría de Inconsistencias entre Prototipo UI y Especificación
 
+### 8.0 Reconciliación con producción y guía de entrega (07 Nov 2026) — LEER PRIMERO
+
+**Cómo tomar esta entrega.** La rama `entrega-final-indunova` contiene **todo `main`** (incluidos los commits de referencia `97bf2e30` de #132/#133 y `f77f43ac`/`7b18456c` de #143) **más 38 commits nuevos**. Se toma **completa** (no por partes): la regla funcional es este documento y `BACKEND_REQUIREMENTS.md`; el código del prototipo es la referencia visual y de cálculo. Lo que ya está en producción se conserva; solo se implementa lo marcado como «Nuevo en esta entrega».
+
+**1. Tickets que ya están en producción (orbit-00092-jns): el prototipo quedó alineado, no se rehacen.**
+
+| Ticket | Lo que ya hizo Indunova | Estado del prototipo y de la documentación |
+|---|---|---|
+| **#147** Mi Día personal | Mi Día es personal también para perfiles globales. «¿Qué requiere mi atención?» para `system_admin`, `administrative`, `commercial` y `client_relationship`: solo lo que ejecutan o lideran (sus bloqueos y ajustes, revisiones de tareas que lideran, pendientes de cliente de sus proyectos, oportunidades que lideran o les tocan). `leader` conserva las alertas de su equipo; `executive` la vista de excepciones de la organización; desvíos de horas a Comercial y Relación con clientes (§15.4). Consulta global en Tareas → Equipo. | ✅ Alineado, **con un cambio nuevo:** por decisión de Uhura (07 Nov 2026) **`executive` también queda personal** en Mi Día: ya no ve las excepciones de toda la organización en «¿Qué requiere mi atención?»; la vista global está en Tareas → Equipo y Capacidad → Organización. **Indunova debe ajustar esto en producción.** Además, el prototipo trataba a `system_admin` como vista global y mostraba a Comercial todas las oportunidades; se corrigió. Formalizaciones fiscales: solo `administrative`. |
+| **#146** Reasignación y urgentes | Aviso al nuevo colaborador («Luisa te asignó…»), abre la tarea; las tareas propias abiertas **urgentes, que inician hoy o vencen hoy van de primeras** en la atención; al retirar al responsable, pasa al siguiente colaborador; sin avisos repetidos al volver a guardar. «Mis tareas» mantiene las vencidas primero. | ✅ Alineado. Se agregó al prototipo el bloque de urgentes/inicio hoy/entrega hoy al inicio de la atención. Regla en `BACKEND_REQUIREMENTS.md` §15.1–§15.2. |
+| **#145** Comercial en tareas | Comercial crea tareas en proyectos, comenta con @menciones y adjuntos, ajusta horas, cronograma y estado, con historial; avisa al líder y colaboradores. **No reasigna personas.** | ✅ Alineado. La matriz RBAC del prototipo tenía a Comercial solo con lectura en Tareas; se corrigió (§10.5). |
+| **#144** Rol en el perfil | El encabezado y todas las vistas leen el rol profesional del perfil. | ✅ Ya coincidía. Se quitó un rol de respaldo inventado («Growth Manager»). |
+| **#143** Capacidad | Planificado desde el cronograma, Libre = neto − máx(planificado, registrado), estados 75/85/100 %, dos barras, KPIs y Organización por área. | ✅ Coincide (el prototipo fue la referencia). Ver nota sobre 80 % vs 85 % abajo. |
+| **#132** Cotización por servicio | Un proyecto por servicio aprobado, modalidad y valor por servicio, aprobación por servicio, nombre editable, mismo cliente. | ✅ Coincide (referencia `97bf2e30`). |
+| **#133** HubSpot | Conexión construida en pruebas: traer empresa/contacto/nota, crear un negocio por servicio sin duplicar, etapas sincronizadas, aprobación manual con trazabilidad si HubSpot falla, «Cierre perdido» nunca genera proyecto, reintentos y aviso a la hora. Espera token nuevo. | ✅ Coincide. Lo que solo existe en producción (reintentos, «Sin vincular a HubSpot», «Pendiente de enviar», aviso de una hora) **prevalece**; el prototipo no lo contradice. |
+
+**2. Nuevo en esta entrega (no existe en producción): implementar.**
+- **Proyectos y cronograma:** línea base desde el alcance, rondas de ajuste editables, equipo derivado de las tareas, cierre de proyecto, fee mensual con ciclos y renovación, política de horas no usadas al iniciar (Módulo 11).
+- **Mi Día:** personal también para `executive` (cambia lo que producción dejó en #147), regla del cronograma de hoy y «Próximas» (§17.5), racha de días cargados, «Cerrar mi día», tarjeta «En racha» (§9.4.1).
+- **Horas:** modal «Registrar tiempo» igual a «Cargar horas»; la X y Esc no descartan (§Módulo 16).
+- **Meta única de 80 %** para el recordatorio diario, la racha, «Cerrar mi día» y el correo semanal (`BACKEND_REQUIREMENTS.md` §26.2). Si el recordatorio de producción usa otro porcentaje, solo se cambia ese valor.
+- **Clientes:** ficha y lista calculadas con datos reales, sin valores fijos (§9.4); SOW con datos del acuerdo editables y cláusula de IA nueva (Módulo 7.4).
+- **Google Chat por proyecto:** dos opciones, «Activar» o «No enviar» (predeterminado); webhook único por cliente, registrable por `system_admin` también desde el proyecto (§11.8). Reemplaza el modelo de tres modos del commit `3278aca`.
+- **Notificaciones por correo y recordatorio semanal** (`BACKEND_REQUIREMENTS.md` §26).
+- **Mascota ECO y La Colonia:** emociones temporales, moods navideños, temporada automática noviembre–diciembre, retos y ranking (Módulo 18). Hardware y Licencias (Módulo 19). Acceso a ECO en el perfil (§10.8). Google Calendar admin (§11.5.1).
+- **Móvil y PWA:** «Más» con permisos, sin hamburguesa; ECO instalable (§9.5).
+
+**3. Puntos que podrían confundirse (no son contradicciones).**
+- **80 % vs 85 %:** el 85 % de #143 es la **meta productiva de carga** en Capacidad (cuánto planear). El 80 % es el **mínimo de horas registradas** para recordatorios y racha. Son métricas distintas y conviven.
+- **Mi Día por cronograma (§17.5):** es una decisión posterior a #147. «Qué tengo que hacer hoy» muestra solo lo programado para hoy y lo vencido; si no hay nada, «Próximas». No cambia la regla de #147 (solo lo propio) ni el orden de #146 (vencidas primero en «Mis tareas»).
+- **SOW con varios servicios:** hoy el SOW se arma con la oportunidad completa y cada proyecto que viene de ella abre ese mismo SOW. *Pendiente de decisión de Uhura:* un SOW por oportunidad (solo con los servicios aprobados) o uno por servicio.
+
+**3b. Correcciones del prototipo posteriores a la entrega (10 Nov 2026, tras la revisión de Uhura).**
+- **Conversión con varios servicios:** al marcar ganados 2 de 3 servicios, la conversión creaba proyectos para los 3. Causa: al confirmar los ganados se guardaba la selección y enseguida se sobrescribía con una copia anterior de la oportunidad; además, sin servicios ganados la conversión tomaba «todos los no perdidos». Ahora solo se convierten los servicios ganados (un solo servicio se aprueba automáticamente, #132).
+- **Fee mensual sin tareas visibles tras convertir:** las tareas existían, pero la pestaña filtraba por mes y aún no tenían mes asignado (se asigna al «Iniciar proyecto»). Antes de iniciar se muestran todas.
+- **Brief** de la nueva oportunidad más alto y ajustable. (El texto «Iniciar timer» que se agregó aquí se reemplazó en la ronda 2 por el timer solo con íconos, punto 3c.3.)
+- **SOW:** solo se abre después de ganar y convertir, desde la ficha del cliente (§7.4).
+
+**3c. Ronda 2: mejoras del prototipo tras la revisión con Indunova (10 Nov 2026).** Mismos commits en esta rama; la entrega inicial quedó marcada con la etiqueta `entrega-indunova-v1` (`4155a0a`). Reglas de backend en `BACKEND_REQUIREMENTS.md` §28.
+1. **Editar cotización:** al editar aparecen **«Cancelar»** y **«Guardar cambios»** junto al botón de edición (antes el único botón quedaba al final de la página y parecía que no se podía guardar). Cada guardado crea una **versión** (v1, v2…, con fecha, autor y total) y, si ya hay negocios en HubSpot, envía los valores nuevos (ECO → HubSpot). De HubSpot a ECO solo llega la etapa (ganado / perdido). También se corrigió un ciclo de renderizado que reiniciaba los borradores de la cotización en oportunidades sin alcance.
+2. **Eliminar un servicio en Alcance:** ícono de basura junto a «Guardar / Editar servicio», con confirmación. Quita el servicio y sus entregables; si la cotización ya estaba guardada, queda desactualizada hasta guardarla de nuevo.
+3. **Timer solo con íconos, en toda ECO** (tarea, New Business, Mi Día, encabezado y celular): detenido ▶ y 🕒 (carga manual); corriendo, punto rojo que parpadea + ⏸ y ⏹. Sin textos ni contadores en cero; el nombre de cada acción va en el tooltip y en `aria-label`. Al detener vuelve a ▶ y 🕒.
+4. **Esfuerzo de preventa en el Resumen:** horas registradas por persona en la propuesta (barra por persona, no cobrables). El costo de preventa se mostrará a administración, Comercial y Dirección cuando exista el costo hora por persona (BACKEND §12.10).
+5. **Costos externos y licencias:** se agregan en **Alcance** (los pide el líder): tipo (recurso externo o licencia) → proveedor (opcional) → descripción → costo → pago único o mensual × meses. En **Cotización** Comercial los ve en solo lectura con el total para sumarlos en la calculadora. Pasan al proyecto al convertir. No consumen capacidad.
+6. **Conversión:** se quitó el título repetido «Rondas de ajuste del cliente».
+7. **«Iniciar proyecto»** lo pueden hacer Comercial, Relación con clientes, Dirección, líderes y administración (Comercial y Relación con clientes saben cuándo se firma el contrato y agendan el kickoff).
+8. **Modal «Iniciar proyecto» corto:** fecha del kickoff y semanas (del Alcance, editables) en una fila; rondas de ajuste en una línea con «Cambiar»; se eliminó «Tiempos del cliente». En el primer arranque muestra **«Insumos a solicitar al cliente»** precargados según el servicio (web, tienda, pauta, marketplace, chatbot, redes): se marcan los que aplican, se cambia si bloquean y se agregan otros. Al confirmar se crean como **Dependencias** del proyecto (dueño: cliente, con fecha esperada y seguimiento del líder). La espera tras el kickoff es la del insumo bloqueante más largo; si llega tarde, el desvío es del cliente. Referencia: `schedule/clientInputs.ts`. En producción, la plantilla de insumos vive en el catálogo de servicios y la define cada área.
+9. **Cerrar sesión** en el menú de perfil (computador, tablet y celular) y en «Más» del menú inferior del celular.
+10. **Tarea · Estado y Prioridad:** una sola flecha en cada selector.
+11. **Entregar un entregable** («Enviar a revisión») ya no completa la tarea: pasa a **En revisión**, queda un mensaje en «Mensajes» de quien entregó con el enlace, y se avisa al líder y al revisor. El líder o revisor **aprueba** (Completada) o **devuelve** (En proceso).
+12. **Tarea · timer:** solo ícono ▶; corriendo, ⏸ y ⏹ (ver punto 3).
+13. **Menú ··· de la tarea** se cierra al hacer clic afuera o con Esc.
+
+**3d. Ajustes tras probar la ronda 2 (10 Nov 2026).**
+1. **Valores con puntos de miles mientras se escribe** (3.000.000; decimales con coma, máx. 2) en costos externos y licencias y en los valores de la cotización.
+2. **Cargar tiempo:** la descripción del trabajo es **opcional**.
+3. **HubSpot, un solo botón:** «Crear negocios en HubSpot» hasta crearlos; después solo «Sincronizar con HubSpot». Si se agrega un servicio sin negocio aparece «Crear negocio faltante» junto a sincronizar.
+4. **Insumos por fase, sin sumar días** (reemplaza la regla de 3c.8 de «espera = bloqueante más largo»): cada insumo se pide en el kickoff y se necesita para una **fase** (entregable), elegible en el modal; su fecha esperada es el **inicio de esa fase**. Mientras esa fase no empiece, se gestiona con anticipación y no afecta el proyecto. Si la fase llega sin el insumo y está marcado «Bloquea», la fase se detiene y el desvío se atribuye al cliente. La plantilla sugiere la fase según el nombre (UX / wireframe → brochure o web actual, textos; prototipo o diseño → manual de marca; implementación → hosting y accesos; analítica o lanzamiento → GA4 / GTM, dominio). «Onboarding & Insumos» es donde se piden, no donde se usan.
+5. **Menciones (@) en «Comentario de entrega»:** las personas mencionadas reciben aviso junto con el líder y el revisor.
+6. **Emojis:** el selector se cierra al hacer clic afuera, con Esc o al elegir; muestra primero los más usados por la persona y «+» abre todos por categoría. Igual en reacciones y en el comentario.
+7. **Proyecto · Tareas:** se quitó «Expandir frentes».
+8. **Alcance en New Business:** «Guardar» queda junto al enlace de la presentación; se quitó la lista de requisitos (✓ / ○). Al intentar guardar o marcar listo, lo que falta se resalta en rojo (enlace, servicios sin semanas, servicios sin guardar) y el aviso sale en rojo. **«Marcar alcance listo»** pide confirmación («¿El alcance está completo?», con la lista de servicios, horas y semanas), porque varios líderes pueden aportar servicios a la misma oportunidad: cada uno guarda su servicio y quien termina confirma. Al confirmar, Comercial recibe el aviso para cotizar.
+9. **Cotización:** al intentar guardar, los valores y el enlace de la calculadora que faltan se resaltan en rojo, con el aviso en rojo.
+10. **Modal «Iniciar proyecto»:** «Semanas» (sin «(alcance)»), «Ajustar» para las rondas, la explicación de los insumos como tooltip (ícono ⓘ) y sin la lista del equipo.
+11. **Fechas de las tareas al iniciar:** en el primer arranque **todas** las tareas se programan siempre desde el kickoff, según la fase a la que pertenecen (inicio y entrega). Ya no hay casilla para omitirlo; solo al reprogramar un proyecto ya iniciado se puede elegir no tocar las tareas. Una tarea sin fecha muestra «Sin programar» (antes mostraba una fecha ficticia).
+12. **Formato de fechas en toda ECO:** año-mes abreviado-día, p. ej. **2026-Nov-18** (Ene, Feb, Mar, Abr, May, Jun, Jul, Ago, Sep, Oct, Nov, Dic). Aplica al cronograma de la tarea, la fecha de creación, dependencias, proyecto, contrato, versiones de la cotización, Google Calendar y cierre. Los textos largos (encabezado de Mi Día, SOW) mantienen la fecha escrita completa. Referencia: `formatDate` en `src/utils/formatters.ts`.
+13. **Proyectos · filtro de estado:** «En curso» (predeterminado: activos, por iniciar, programados y en pausa), «Cerrados», «Archivados» y «Todos los estados», con el conteo de cada uno. Cerrar un proyecto no lo borra ni lo archiva: queda en «Cerrados» con todo su historial y en el historial de la ficha del cliente.
+14. **Menú ⋮ de la tarjeta = menú ⋮ dentro del proyecto:** Editar proyecto, Notificaciones, Cerrar proyecto (solo iniciado y no cerrado), Archivar / Desarchivar y Eliminar, con los mismos permisos. Desde la tarjeta, las opciones que abren un modal entran al proyecto y lo abren allí.
+15. **Fila de la tarea en Proyecto → Tareas:** ▶ timer, estado, ⚠ bloqueo y 🗑 eliminar. Se quitó el lápiz (se edita al abrir la tarea). Eliminar: solo `leader` y `system_admin`, con confirmación; si la tarea tiene horas registradas no se elimina (se archiva desde el detalle) para no perder el tiempo registrado. El ⚠ marca la tarea como bloqueada con motivo: alimenta el aviso «N tareas bloqueadas», el filtro «Bloqueadas», la salud del proyecto y la atención del líder en Mi Día.
+16. **Tareas bloqueadas en Mi Día:** además del líder, le llegan al **Comercial responsable** del proyecto (owner de la oportunidad, que ahora queda guardado en el proyecto al convertir) y a **Relación con clientes** de la cuenta, en «¿Qué requiere mi atención?», con proyecto, responsable y motivo. (Antes los bloqueos del equipo se contaban pero no se listaban.)
+17. **Nueva tarea:** «Crear tarea» siempre se puede pulsar; si falta algo (título, entregable, rol, fecha de inicio o de entrega, o entrega antes del inicio), se resalta en rojo y se dice qué falta.
+18. **Eliminar entregable:** ícono 🗑 en el encabezado de cada entregable (solo `leader` y `system_admin`), con confirmación que dice cuántas tareas se eliminan con él. No se elimina si alguna de sus tareas tiene horas registradas.
+19. **Recalcular fechas al eliminar:** en un proyecto único ya iniciado, al eliminar una tarea o un entregable el cronograma se vuelve a planear desde la fecha de inicio con lo que queda: los entregables restantes se reparten el tiempo de producción, así que avanzan antes y aprovechan el espacio liberado. Las tareas completadas conservan sus fechas; la línea base del contrato no cambia. Fee mensual: no aplica (sus tareas van por mes).
+20. **Insumos por gestionar en Mi Día:** para líder, Comercial y Relación con clientes, solo de sus proyectos. Ya no aparecen todas las dependencias del cliente: solo las vencidas y las que se necesitan en los próximos 5 días hábiles. Orden: vencidas primero (más atraso arriba), luego bloqueantes, luego por la fecha en que empieza la fase que las necesita. Cada una dice el proyecto, la fase y cuántos días hábiles faltan para que bloquee; al hacer clic abre ese proyecto. Debajo, «+ N insumos más adelante». La gestión del insumo (nota y seguimiento) sigue igual que hoy.
+
+**4. Lo que solo es del prototipo (no va a producción):** Simulador QA, laboratorio de la mascota (`?buckyLab=true`), `?ecoMoods=fast`, datos de demostración y la comparación de personas por nombre.
+
+
 Durante la auditoría end-to-end de UAT se detectaron y reconciliaron las siguientes inconsistencias funcionales:
 
 1. **`initialStatus` ignorado en conversión:**
@@ -1120,13 +1317,13 @@ Durante la auditoría end-to-end de UAT se detectaron y reconciliaron las siguie
 5. **Staffing Automático Vacío y Tareas no en Blanco:**
    Las tareas se crean correctamente a partir de las actividades cotizadas con su presupuesto de horas y su rol cotizado correspondiente (`budgetedRole`, `budgetedRoleId`). Nacen con `assigneeAllocations = []` (sin persona física asignada) pero listas para la ejecución operativa; el equipo no empieza desde cero.
 6. **Desacoplamiento de Cálculos Salariales:**
-   Los cálculos salariales, prestaciones y márgenes de pricing están desacoplados de Orbit y gobernados por Finanzas externamente; Orbit no mantiene tarifas hardcodeadas ni calcula márgenes.
+   Los cálculos salariales, prestaciones y márgenes de pricing están desacoplados de ECO y gobernados por Finanzas externamente; ECO no mantiene tarifas hardcodeadas ni calcula márgenes.
 7. **Regla de Cronómetro / Timer en Pausa:**
    El tiempo transcurrido con el cronómetro en estado `PAUSED` **bajo ninguna circunstancia cuenta como tiempo efectivo de trabajo**. Únicamente los lapsos en estado activo `RUNNING` suman a la duración total del `TimeLog` al momento de hacer `Stop`.
 8. **Disparador Canónico de New Business (Brief + Scoping):**
    New Business no se inicia cuando un deal se marca como "ganado" en el CRM ni sustituye la prospección comercial en frío. Se dispara exclusivamente cuando **se recibe un brief comercial calificado desde HubSpot que exige dimensionamiento técnico de entregables (scoping) y costeo operativo**.
 9. **Desacoplamiento Financiero y Fuente de Verdad Económica:**
-   La fuente de verdad financiera de Uhura Group es el **Google Sheet oficial de Finanzas**. Orbit desacopló y retiró su motor financiero interno (`financialEngine.ts`, constantes salariales y calculadora de márgenes). Orbit estructura el alcance técnico y las horas por rol, y registra con fidelidad el resultado comercial acordado externamente.
+   La fuente de verdad financiera de Uhura Group es el **Google Sheet oficial de Finanzas**. ECO desacopló y retiró su motor financiero interno (`financialEngine.ts`, constantes salariales y calculadora de márgenes). ECO estructura el alcance técnico y las horas por rol, y registra con fidelidad el resultado comercial acordado externamente.
 10. **Eliminación de Cotizaciones Huérfanas y Única Fuente de Verdad:**
     En el prototipo existía un contenedor huérfano (`createdQuotes`) y una vista independiente (`cotizador`) desconectada de las oportunidades. **Corrección de dominio:** Se eliminó la vista y el estado paralelo. Toda cotización (`QuoteProposal`) debe existir y persistirse exclusivamente dentro de una `NewBusinessOpportunity`. En el flujo "Usar en New Business" del catálogo de plantillas, la oportunidad debe existir previamente antes de fijar y persistir el snapshot de cotización.
 11. **Detalle de Tarea y Ciclo Operativo (`TaskDetailModal`):**
@@ -1137,6 +1334,21 @@ Durante la auditoría end-to-end de UAT se detectaron y reconciliaron las siguie
     Se consolidó la información presupuestal dentro de la pestaña `Matriz Horas`, ofreciendo visibilidad integrada tanto por Rol como por Servicio/Entregable, eliminando pestañas duplicadas en el proyecto.
 
 ---
+
+### 8.1 Estándar visual de la interfaz (pulido 07 Nov 2026)
+- **Navegación en móvil y tablet (07 Nov 2026):** barra inferior (Mi Día, Tareas, Cargar, Horas, Más) y **sin menú hamburguesa** en el encabezado, para que la búsqueda tenga más espacio. «Más» es la puerta a los demás módulos: muestra solo el título y el ícono (sin subtítulos), agrupados en Operación, Comercial, Experiencia, Costos de operación y Sistema, y **respeta los mismos permisos del menú lateral** (cada persona ve solo lo que puede abrir). Incluye Licencias y Hardware, que antes solo estaban en el menú lateral.
+Reglas de presentación que el frontend de producción debe mantener (no cambian lógica):
+1. **Encabezado de pantalla único** (`PageHeader`): título igual al nombre del menú, una línea de contexto y acciones a la derecha. La barra superior muestra solo la ruta («Operación › Proyectos»).
+2. **Botones en mayúscula inicial** («Nuevo proyecto», «Nueva oportunidad», «Guardar insumo»). Los nombres propios conservan su forma (ECO, HubSpot).
+3. **Estados del proyecto con un solo vocabulario:** Por iniciar · Programado · En ejecución · Cerrado · Archivado. No se repite el estado en dos chips.
+4. **Fechas:** formato «15 ago 2026» (día civil, sin corrimientos de zona horaria). **Nunca se inventan fechas:** si no existe, se muestra «Sin fecha» (o «Por definir» / «No fijada» según el contexto). Ninguna pantalla rellena con fechas de ejemplo ni con «Hoy».
+5. **Solo datos reales:** indicadores y gráficos se calculan desde tareas, registros y calendarios; si no hay datos, se muestra un estado vacío claro (p. ej. Capacidad: «Aún no tienes horas planificadas»). No hay series de ejemplo fijas. «Salud» solo se muestra cuando existe el cálculo.
+6. **Menú lateral:** íconos de línea (sin emojis) y sin etiquetas decorativas; un contador solo cuando hay algo pendiente.
+7. **Alertas:** tarjetas neutras con franja de color a la izquierda según severidad (rojo vencido/bloqueante, naranja desvío, ámbar atención), en lugar de fondos de color completos.
+8. **Cifras** con la tipografía de la interfaz y dígitos tabulares (alineados), no con fuente monoespaciada.
+9. **Esquinas:** `lg` etiquetas y controles pequeños · `xl` botones y campos · `2xl` tarjetas y paneles · `full` píldoras.
+10. **Estados vacíos con acción** («Quitar filtros», «Nueva tarea») y textos neutros en género.
+11. El marco del prototipo (barra del sistema de diseño, barra de navegador simulada y Simulador QA) **no** forma parte de ECO en producción.
 
 ## 9. Gaps de Portabilidad y Plan de Cierre
 
@@ -1151,7 +1363,7 @@ Durante la auditoría end-to-end de UAT se detectaron y reconciliaron las siguie
 2. **Creación automática de carpetas mediante Google Drive API.**
 3. **Generación binaria de PDFs en servidor (Puppeteer / ReportLab).**
 4. **Retos asíncronos y ranking semanal de La Colonia (modelos mínimos de backend `GameResult` y `ColonyChallenge`).**
-5. **Evolución a Progressive Web App (PWA):** Orbit deberá poder evolucionar a una Progressive Web App (PWA) instalable en dispositivos móviles, sin requerir inicialmente distribución vía App Store/Play Store. No hace parte del alcance actual ni bloquea el backend. La arquitectura de API y autenticación/sesiones no debería introducir dependencias que dificulten esta evolución posteriormente.
+5. **Evolución a Progressive Web App (PWA):** ECO deberá poder evolucionar a una Progressive Web App (PWA) instalable en dispositivos móviles, sin requerir inicialmente distribución vía App Store/Play Store. No hace parte del alcance actual ni bloquea el backend. La arquitectura de API y autenticación/sesiones no debería introducir dependencias que dificulten esta evolución posteriormente.
 
 ### 9.3 Delimitación de Responsabilidades: Comportamiento Funcional vs. Decisiones Técnicas de Indunova
 
@@ -1163,7 +1375,7 @@ Para asegurar una frontera limpia de trabajo entre Producto (Uhura) y la Fábric
 2. **Integridad de Fechas Calendario:**
    Fechas como `fecha_ingreso`, `birthDate` y los rangos de vacaciones (`startDate`, `endDate`) deben mantenerse íntegras en el día calendario civil correspondiente, sin desplazamientos o corrimientos de fecha provocados por conversiones de huso horario entre cliente y servidor.
 3. **Fidelidad del Registro Comercial y Horas Cotizadas:**
-   Orbit debe preservar íntegramente el rollup de horas técnicas por rol presupuestadas, el monto cotizado, la moneda (`COP` o `USD`) y los enlaces a los documentos oficiales de soporte (Google Sheet de Finanzas y propuesta formal presentada).
+   ECO debe preservar íntegramente el rollup de horas técnicas por rol presupuestadas, el monto cotizado, la moneda (`COP` o `USD`) y los enlaces a los documentos oficiales de soporte (Google Sheet de Finanzas y propuesta formal presentada).
 4. **Atomicidad en la Conversión de Oportunidades:**
    La creación de cliente, proyecto, entregables y tareas a partir de una oportunidad ganada debe ser atómica (todo o nada), garantizando que jamás existan estados a medias o proyectos sin entregables por fallos en la operación.
 5. **Exclusividad del Cronómetro:**
@@ -1181,22 +1393,59 @@ Para asegurar una frontera limpia de trabajo entre Producto (Uhura) y la Fábric
 
 #### C. Coordinación y Gestión de Dependencias entre Uhura e Indunova:
 1. **Desacoplamiento con Finanzas:**
-   El backend no implementa cálculos de salarios ni márgenes en la API. El backend de Orbit únicamente persiste y expone los campos comerciales de `QuoteProposal` (horas rollup, valor cotizado, moneda, estado y URLs de soporte).
+   El backend no implementa cálculos de salarios ni márgenes en la API. El backend de ECO únicamente persiste y expone los campos comerciales de `QuoteProposal` (horas rollup, valor cotizado, moneda, estado y URLs de soporte).
 2. **Acceso a Google Calendar:**
    Cuando Indunova defina el mecanismo técnico de integración, deberá indicar a Uhura qué calendario, permisos y credenciales necesita para staging/producción. Uhura facilitará el acceso correspondiente al calendario corporativo gestionado por Administrativa.
 
 ---
+
+### 9.4 Arranque en producción: qué se hereda y cómo se crean los proyectos vigentes
+- **Empezamos limpios.** Producción solo hereda **usuarios y clientes**. No se heredan proyectos ni tareas de COR (la herramienta actual, con proyectos y tareas viejas sin cerrar) ni de la plataforma que hoy opera Indunova, y nada anterior a noviembre de 2026. Así nadie arranca con pendientes viejos en Mi Día.
+- **Proyectos vigentes, a mano.** Se crean desde ECO con el flujo normal: proyecto nuevo (o conversión si la oportunidad existe) → «Iniciar proyecto» con la **fecha real de inicio**, aunque sea pasada.
+  - **Rediseño web Neroli:** primer proyecto en producción; se crea a mano porque su cierre comercial ya ocurrió.
+  - **Fee de Cristar** (inicia en noviembre y se crea en ECO en diciembre): se inicia con fecha 1 de noviembre; noviembre queda como «Mes 1 · fuera de ECO» sin tareas y se generan solo las tareas de diciembre (Mes 2). Si el contrato tuviera la excepción de acumular horas, el saldo se registra como ajuste manual con nota.
+- **Recomendación:** crear a mano los proyectos vigentes al iniciar cada mes mientras sean pocos (es la oportunidad de depurar alcance, líder y horas). Solo si al arranque hubiera más de los que se pueden crear en un día, usar la carga única por plantilla descrita en `BACKEND_REQUIREMENTS.md` §19.3: crea proyectos, nunca tareas ni horas, y pasa por una prueba antes de aplicarse.
+- COR queda como archivo de consulta. Lo que finanzas necesite conservar se exporta antes de apagarlo; no se importa a ECO.
+- **Dominio final: `app.uhuragroup.com`.** Indunova entrega a Uhura los registros DNS necesarios (CNAME del subdominio y TXT de verificación, más los que requiera el certificado TLS); Uhura los configura en su DNS. ECO solo se publica en ese dominio con HTTPS.
+- **URL anterior de producción:** se retira cuando `app.uhuragroup.com` quede activo (se recomienda redirigirla al dominio nuevo durante la transición y luego darla de baja).
+
+### 9.4.1 Hábito de carga: racha y «Cerrar mi día» con ECO (07 Nov 2026)
+Objetivo: que cargar horas sea un hábito que guste. Se quita fricción y se premia la **constancia**, nunca la cantidad de horas (no hay ranking de horas).
+- **Racha de días cargados** (Mi Día → «¿Cómo voy?»): «🔥 5 días seguidos». Un día hábil cuenta cuando la persona registró **al menos el 80 % de su jornada** (meta unificada de Uhura, igual que el recordatorio diario y el correo semanal). Fines de semana, festivos de Colombia y días con ausencia registrada **no cuentan ni rompen** la racha. Hoy suma apenas se alcanza la meta y, si aún no, no la rompe (el día no ha terminado). Sin racha: «Empieza tu racha hoy». Se calcula con los registros de tiempo reales.
+- **«Cerrar mi día»** (botón en Mi Día y aviso de ECO): ventana con la misma estructura que «Cargar horas». Muestra:
+  - ECO con una frase según el avance: día completo (celebra), vas bien, o a medio cargar (cuánto falta para que cuente).
+  - La barra del día y el estado de la racha.
+  - Lo registrado hoy, agrupado por tarea.
+  - «¿Trabajaste en alguna de estas?»: tareas propias programadas para hoy sin tiempo; «Cargar» abre el registro manual con esa tarea (**nunca se inventan horas**).
+  - «Agregar tiempo» y «Confirmar y cerrar el día». Al confirmar, ECO celebra («¡Día cerrado! 🔥 5 días seguidos…») y el botón queda «Día cerrado».
+  - En fin de semana, festivo o ausencia lo dice así: hoy no cuenta y no rompe la racha.
+- **Aviso de ECO a las 5:00 p. m.:** en día hábil, sin ausencia y si la persona no ha cerrado su día, ECO pregunta «¿Cerramos el día? 🌙» con «Cerrar mi día →» y «Más tarde». Una vez por día y solo con ECO en reposo (no interrumpe avisos, ventanas ni el cronómetro).
+- Cerrar el día es un ritual de confirmación: **no bloquea** ni cambia las horas; se pueden seguir corrigiendo según las reglas de la semana.
+- **Mi Día sin exceso de botones:** «¿Cómo voy?» solo tiene «Cerrar mi día» y «Cargar horas». La racha personal va como una línea dentro de la barra del día («🔥 Tu racha: 5 días seguidos» / «Empieza tu racha hoy…»).
+- **Lo que ve todo el equipo:** sin ranking de horas ni comparación de posiciones. **Se activa solo, por comportamiento** (no hay que encender nada).
+  - **Mi Día → tarjeta «En racha»** (columna derecha, debajo del Radar del equipo): **aparece sola** cuando alguien cumple la racha o el equipo tiene racha; si no, no se muestra. Lista a las personas en racha («Laura · 10 días seguidos 🔥») con **👏 aplaudir** (uno por persona; quien recibe ve cuántos) y, si aplica, «🔥 El equipo lleva 7 días con todos los días cargados».
+  - **La Colonia** (arriba de las fichas): vista completa, siempre visible: racha del equipo con «Hoy: faltan 2 personas» **sin nombres** y «Esta semana: 92 % de los días cargados», más la lista «En racha» con la fecha en que cada quien llegó a su hito.
+  - Una persona aparece «En racha» desde **5 días seguidos** (hitos 5, 10, 20, 50, 100). Solo se celebra a quien llega; nunca se muestra a quien no.
+  - Un día cuenta para el equipo cuando **cada persona esperada** (activa, con capacidad configurada y sin ausencia ese día) registró al menos el 80 % de su jornada.
+- **El Muro** era una pantalla de relleno (ya retirada del menú lateral) y se quitó también de «Más» en móvil. Los logros de racha viven en La Colonia.
+
+### 9.5 ECO como app instalable (PWA) (07 Nov 2026)
+- **Qué es:** ECO se puede instalar desde el navegador como una app: en el computador (Chrome o Edge: ícono «Instalar» en la barra de direcciones), en Android («Instalar app») y en iPhone (Safari → Compartir → «Agregar a pantalla de inicio»). Queda con el ícono de ECO y abre en su propia ventana, sin barra del navegador.
+- **Al abrirla instalada** va directo a ECO (Mi Día), a pantalla completa, sin el menú del design system ni la barra de navegador simulada del prototipo. En iPhone respeta la muesca y la barra de gestos. Para ver ese modo sin instalar: `?app=eco` al final de la dirección.
+- **Actualizaciones:** cuando hay versión nueva aparece «Hay una versión nueva de ECO · Actualizar»; nunca recarga sin preguntar.
+- **Fase 1 (lista):** instalable, abre rápido y se actualiza con aviso. **No incluye** notificaciones push ni registro de horas sin conexión: ambas necesitan backend y quedan como fase 2 (`BACKEND_REQUIREMENTS.md` §23).
+- Requisito de Indunova: HTTPS en `app.uhuragroup.com` y no dejar en caché `index.html` ni el service worker (detalle en §23).
 
 ## 10. Roles, Niveles de Acceso y Matriz de Permisos (RBAC)
 
 ### 10.1. Principio Arquitectónico Fundamental de Seguridad
 > **"Ocultar botones en React NO constituye seguridad."**
 > Toda regla de visibilidad, creación, edición, aprobación o administración aquí definida es de cumplimiento obligatorio y vinculante para el backend de Indunova (Django REST Framework / PostgreSQL).
-> La interfaz web de Orbit adapta dinámicamente sus menús, controles y vistas según el usuario activo, pero **cada endpoint de la API REST (`/api/...`) debe validar de manera estricta la identidad del usuario (`request.user`), su rol profesional, su nivel de acceso (`OrbitAccessLevel`) y el alcance territorial/operativo autorizado (`AccessScope`)** mediante `PermissionClasses` o decoradores a nivel de vista y filtrado estricto de QuerySets en el ORM.
+> La interfaz web de ECO adapta dinámicamente sus menús, controles y vistas según el usuario activo, pero **cada endpoint de la API REST (`/api/...`) debe validar de manera estricta la identidad del usuario (`request.user`), su rol profesional, su nivel de acceso (`OrbitAccessLevel`) y el alcance territorial/operativo autorizado (`AccessScope`)** mediante `PermissionClasses` o decoradores a nivel de vista y filtrado estricto de QuerySets en el ORM.
 
 ### 10.2. Taxonomía de Identidad: Roles Canónicos vs. Perfiles de Sistema
 
-Orbit separa tajantemente entre **rol profesional/cotizable** (el oficio operativo de la persona que factura o ejecuta horas en proyectos de clientes) y **perfil interno de sistema** (funciones de dirección o soporte que no se cotizan en proyectos de clientes).
+ECO separa tajantemente entre **rol profesional/cotizable** (el oficio operativo de la persona que factura o ejecuta horas en proyectos de clientes) y **perfil interno de sistema** (funciones de dirección o soporte que no se cotizan en proyectos de clientes).
 
 #### 1. Roles Profesionales Canónicos (`StandardUhuraRole`):
 Existen exactamente 13 roles oficiales en el catálogo de servicios de Uhura:
@@ -1222,13 +1471,13 @@ Roles operativos no cotizables para tareas operativas estándar:
 2. `Administrativa` (Datos fiscales, RUT, facturación en Alegra y cartera)
 3. `Admin de Sistema` (TI y gobernanza de plataforma)
 
-### 10.3. Responsabilidades Operativas Clave por Rol en los Journeys Aprobados
+### 10.2.1. Responsabilidades Operativas Clave por Rol en los Journeys Aprobados
 - **Comercial (Access Level `commercial` / `client_relationship`):**
   - Creación de oportunidades en New Business a partir de briefs.
   - Asignación formal del Líder de Alcance.
   - Recepción del handoff de alcance listo (`internal_review`) en Mi Día.
   - Realización del cálculo financiero externo en el Google Sheet oficial.
-  - Registro del resultado comercial en Orbit (monto cotizado, moneda, versión y URLs).
+  - Registro del resultado comercial en ECO (monto cotizado, moneda, versión y URLs).
   - Marcación de oportunidad como Ganada (`won`) tras aprobación del cliente.
   - Ejecución de la conversión a proyecto operativo.
 - **Líder de Alcance / Project Lead (Product Lead / Creative Strategy Lead / Líderes de Área):**
@@ -1247,11 +1496,25 @@ Roles operativos no cotizables para tareas operativas estándar:
   - Monitoreo de capacidad global del equipo semana a semana.
   - Aprobación de excepciones de cronograma (reforecasts oficiales) y condiciones especiales.
 
-### 10.4. Pendientes de Decisión de Producto
+### 10.2.2. Pendientes de Decisión de Producto
 1. **[Pendiente de decisión de Producto] Tipologías de Tarea Exentas de Revisión:**
    Se requiere formalizar si ciertas tipologías de tareas operativas menores o no cotizables (ej. rituales internos de equipo, standups de 15 minutos, soporte ad-hoc) pueden auto-completarse directamente por el colaborador sin transicionar obligatoriamente por el estado `Review` del Líder.
 2. **[Pendiente de decisión de Producto] Parametrización Multi-NIT por Proyecto:**
    Definir con la Dirección General y Administración si la facturación de un proyecto distribuido entre más de una entidad fiscal (`ClientTaxEntity`) se parametriza una sola vez a nivel global del proyecto o si puede variar por hito/factura emitida, y si se calcula mediante porcentajes, montos fijos o ambas modalidades.
+
+---
+
+### 10.2.3. Hallazgos del recorrido E2E (07 Nov 2026)
+Recorrido Comercial → PM → Colaborador sobre el prototipo.
+
+**Resueltos en el prototipo:** cronograma al «Iniciar proyecto» (Módulo 8 §8.3), rondas de ajuste (Módulo 11 §11.3), equipo derivado de tareas (Módulo 14 §14.3), cierre de proyecto (Módulo 11 §11.7), «Fecha límite del alcance» en Nueva Oportunidad (antes «Fecha máx. de entrega»), checklist visible de requisitos para «Marcar como listo», semanas del servicio precargadas desde `estimatedDurationWeeks` de la plantilla, etapa de HubSpot visible solo con negocio vinculado (si no: «Ganada manualmente · conciliar con HubSpot»), estados «Por iniciar» coherentes en la Matriz y eliminación de componentes sin uso (`ProjectSettingsTab`, `ScheduleProjectModal`, `ProjectDeliverablesTab`, `assignmentAdapter`).
+
+**Pendiente:**
+1. **Datos mock:** proyectos de ejemplo con roles fuera de `STANDARD_UHURA_ROLES` («Tech Lead», «QA Tester», «Front End») y ausencias con fechas vencidas en el radar de Mi Día. Solo afecta al prototipo.
+
+
+### 10.2.4. Acceso a Dirección y Finanzas (07 Nov 2026)
+El módulo **Dirección y Finanzas** del prototipo (en producción: **Tablero** y **Finanzas**) es visible solo para `commercial`, `client_relationship`, `executive` y `system_admin` (módulo RBAC `direccion-finanzas`). Antes heredaba el permiso de New Business y los líderes lo veían.
 
 ---
 
@@ -1339,14 +1602,18 @@ Solo existen 5 alcances autorizados:
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Mi Día (`mi-dia`)** | own (view/edit) | own + team (view/edit) | own (view/edit) | own (view/edit) | own (view/edit) | own + all (view/edit) | own (view/edit) |
 | **Proyectos (`proyectos`)** | assigned (view) | team (view/create/edit) | accounts (view/edit) | all (view) | all (view) | all (view/approve) | all (administer) |
-| **Tareas (`tareas`)** | assigned (view/edit/create) | team (view/create/edit/approve) | accounts (view/create) | all (view) | all (view) | all (view) | all (administer) |
+| **Tareas (`tareas`)** | assigned (view/edit/create) | team (view/create/edit/approve) | accounts (view/create) | all (view/create/edit; **no reasigna personas** · #145) | all (view) | all (view) | all (administer) |
 | **Timesheets (`timesheets`)** | own (view/create) | team (view/edit) | accounts (view) | all (view) | all (view) | all (view) | all (administer) |
 | **Clientes (`clientes`)** | Denegado | team (view) | accounts (view/edit) | all (view/create/edit) | all (view/edit) | all (view) | all (administer) |
 | **Catálogo (`plantillas-producto`)** | **Denegado** | all (view) | all (view) | all (view) | Denegado | all (view) | all (view/administer) |
 | **New Business (`new-business`)** | Denegado | team scoping (view/edit) | accounts (view) | all (view/create/edit/approve) | all (view/edit formalization) | all (view/approve) | all (administer) |
-| **Finanzas (`finanzas`)** | Denegado | Denegado | Denegado | own/quotes (view) | all (view/edit fiscal) | all (view/approve) | all (administer) |
-| **Usuarios & Roles (`usuarios`)** | Denegado | team (view) | Denegado | Denegado | all (view) | all (view) | all (administer) |
+| **Dirección y Finanzas (`direccion-finanzas`)** *(act. 07 Nov 2026, §10.2.4)* | Denegado | Denegado | all (view) | all (view/edit) | Denegado | all (view/edit) | all (administer) |
+| **Costos de operación (`costos-operacion`: Licencias y Hardware)** *(07 Nov 2026)* | Denegado | Denegado | Denegado | Denegado | all (view/create/edit) | all (view) | all (administer) |
+| **Equipo & Accesos (`usuarios` / módulo `administracion`)** *(act. 07 Nov 2026)* | Denegado | Denegado | Denegado | Denegado | Denegado | all (view) | all (administer) |
+| **Capacidad (`capacidad`)** *(07 Nov 2026)* | own: «Mi Capacidad» | own + «Organización» (all) | own + «Organización» (all) | own + «Organización» (all) | own + «Organización» (all) | own + «Organización» (all) | own + «Organización» (administer) |
 | **La Colonia (`la-colonia`)** | all (view/edit) | all (view/edit) | all (view/edit) | all (view/edit) | all (view/edit) | all (view/edit) | all (administer) |
+
+> **Configuraciones exclusivas de `system_admin` (07 Nov 2026):** webhooks de Google Chat (§11.8), conexión de Google Calendar y eventos por asociar en *Equipo & Accesos → Integraciones* (§11.5.1; `executive` solo consulta), «Acceso a ECO» en el perfil (usuario de ingreso, contraseña temporal, desactivar; §10.8) y apariencia de la mascota (Módulo 18).
 
 ### 10.6. Reglas de Negocio de Autorización Específica
 
@@ -1407,6 +1674,10 @@ Solo existen 5 alcances autorizados:
 
 ### 10.8. Definición Funcional y Gobernanza: Perfil del Colaborador (Equipo & Accesos)
 
+> **Reconciliación con producción (07 Nov 2026):** el perfil del prototipo se alinea con el de producción: **rol profesional** como desplegable de selección múltiple (solo catálogo oficial; el primero es el principal), **calendario laboral** (Colombia/México) con **vigente desde** (las semanas anteriores no se recalculan), **desactivar usuario** (conserva su historia de horas y proyectos) e **historial de cambios del perfil** (rol, nivel de acceso, líder, área, capacidad, calendario). El historial autoritativo lo genera el backend (`UserProfileAuditEntry`).
+>
+> **Acceso a ECO (igual a producción, solo `system_admin`):** tarjeta en el perfil con estado (`Con contraseña` · `Sin acceso asignado` · `Desactivado`), usuario de ingreso y último ingreso. Permite **asignar o cambiar el usuario de ingreso** (único, sin espacios; la contraseña no cambia), **asignar o restablecer el acceso** con una contraseña temporal que escribe el admin dos veces (mínimo 8 caracteres; se entrega por canal privado y se obliga a cambiarla al entrar) y **desactivar o reactivar** a la persona. El historial registra cada cambio, nunca la contraseña. Reemplaza el modal anterior del prototipo que generaba y copiaba la contraseña en texto plano.
+
 > **CIERRE DE DEFINICIÓN FUNCIONAL (EQUIPO & ACCESOS → PERFIL DEL COLABORADOR):**
 > Se formaliza la separación estricta entre **identidad profesional**, **nivel RBAC funcional** y **compatibilidad técnica secundaria**, garantizando que la matriz RBAC permanezca cerrada y con una única fuente de verdad.
 
@@ -1442,7 +1713,7 @@ El backend debe persistir en base de datos como mínimo los siguientes campos de
 #### 4. Gestión Canónica de Fotografía de Perfil (`avatar_url`) y Fallback Visual:
 - **Soporte Canónico:** La entidad `UserProfile` en backend y `UserItem` en frontend soportan el campo `avatar_url` / `avatarUrl` (URL nullable).
 - **Desacople de Almacenamiento Físico:** El backend de Indunova define la infraestructura y proveedor de almacenamiento de medios físicos (e.g. Google Cloud Storage, Amazon S3, MinIO o CDN dedicada) y expone en la API únicamente la URL resultante (`avatar_url`). El frontend nunca asume dependencias locales de almacenamiento.
-- **Consumo Unificado en Frontend:** Toda la interfaz de Orbit consume las imágenes de perfil a través del componente centralizado `UserAvatar`.
+- **Consumo Unificado en Frontend:** Toda la interfaz de ECO consume las imágenes de perfil a través del componente centralizado `UserAvatar`.
 - **Tratamiento Visual Estricto:** Relación de aspecto 1:1, centrado, `object-cover`, sin deformación ni alteración de la composición de tarjetas, headers o tablas.
 - **Fallback Automático Resiliente:** Si el campo es `null`, vacío o si la imagen falla al cargar (`onError`), el componente automáticamente muestra las iniciales del colaborador sobre el color temático asignado (`avatarBg`).
 
@@ -1472,7 +1743,7 @@ Campos sujetos a auditoría obligatoria en backend:
 #### 6. Frontera Arquitectónica con el Futuro People Master:
 Para la separación estricta entre la identidad operativa actual de `UserProfile` y la futura evolución administrativa de personas (contratos, salarios, dotación, SST), consultar la subsección [11.4.1. Frontera Arquitectónica: Perfil Operativo (UserProfile) vs. Evolución People Master](#1141-frontera-arquitectónica-perfil-operativo-userprofile-vs-evolución-people-master) y la guía técnica de referencia [`src/docs/PEOPLE_MASTER_EVOLUTION.md`](./PEOPLE_MASTER_EVOLUTION.md).
 
-*El frontend de Orbit ya se encuentra totalmente preparado para emitir y previsualizar esta estructura bajo el contrato acordado sin asumir persistencia autoritativa local.*
+*El frontend de ECO ya se encuentra totalmente preparado para emitir y previsualizar esta estructura bajo el contrato acordado sin asumir persistencia autoritativa local.*
 
 ---
 
@@ -1481,16 +1752,18 @@ Para la separación estricta entre la identidad operativa actual de `UserProfile
 ### 11.1. Principio Rector: Integraciones Silenciosas e Invisibles
 > **PRINCIPIO ARQUITECTÓNICO DE UHURA:**
 > **"Las integraciones deben sentirse casi invisibles."**
-> En Orbit no existen botones de "Sincronizar ahora", pantallas de configuración de tokens para usuarios finales, ni paneles que emulen dashboards de APIs externas. Orbit es un sistema de gestión operativa enfocado en la claridad del trabajo. La interoperabilidad ocurre a nivel de modelo de dominio y claves foráneas canónicas, permitiendo que la capa de backend (Indunova) orqueste workers y webhooks sin obligar al frontend a rediseñar sus pantallas ni sus entidades principales.
+> En ECO no existen botones de "Sincronizar ahora", pantallas de configuración de tokens para usuarios finales, ni paneles que emulen dashboards de APIs externas. ECO es un sistema de gestión operativa enfocado en la claridad del trabajo. La interoperabilidad ocurre a nivel de modelo de dominio y claves foráneas canónicas, permitiendo que la capa de backend (Indunova) orqueste workers y webhooks sin obligar al frontend a rediseñar sus pantallas ni sus entidades principales.
 
 ---
 
+> **Excepciones aprobadas (07 Nov 2026 · ticket #149):** solo dos pantallas de integración son visibles, ambas sin credenciales ni URLs: (1) **Google Chat** por cliente y proyecto, gestionada por `system_admin` (§11.8); (2) **Google Calendar · Ausencias del equipo** en *Equipo & Accesos → Integraciones*, gestionada por `system_admin` y de consulta para `executive` (§11.5.1). El resto de usuarios no ve estas pantallas.
+
 ### 11.2. Frontera Canónica de Sistemas (Sources of Truth)
 
-| Sistema Externo | Rol en el Ecosistema | Source of Truth Canónico | Entidades Vinculadas en Orbit | Claves Foráneas & Hooks en Orbit |
+| Sistema Externo | Rol en el Ecosistema | Source of Truth Canónico | Entidades Vinculadas en ECO | Claves Foráneas & Hooks en ECO |
 | :--- | :--- | :--- | :--- | :--- |
 | **HubSpot** | Comercial & CRM | Prospectos, empresas, contactos, deals, pipeline y actividad comercial | `NewBusinessOpportunity`, `ProjectSummaryItem` | `hubspotDealId`, `hubspotDealUrl`, `hubspotCompanyId`, `hubspotContactId` |
-| **Orbit** | Operativo & Capacidad | Alcance técnico, dimensionamiento, cotizaciones, proyectos, entregables, tareas, staffing, capacidad y horas | Todo el Core de Orbit | Entidades maestras de Orbit (`ProjectSummaryItem`, `TaskItem`, `UserItem`, etc.) |
+| **ECO** | Operativo & Capacidad | Alcance técnico, dimensionamiento, cotizaciones, proyectos, entregables, tareas, staffing, capacidad y horas | Todo el Core de ECO | Entidades maestras de ECO (`ProjectSummaryItem`, `TaskItem`, `UserItem`, etc.) |
 | **Alegra** | Fiscal & Contable | Terceros fiscales (Razón Social / NIT), facturación electrónica, impuestos, cartera y recaudo | `ClientTaxEntity`, `ClientProfile`, `ProjectSummaryItem` | `taxEntityId` (selección fiscal operativa inicial hacia `ClientTaxEntity`), `alegraContactId` |
 | **Google Drive** | Repositorio Documental | Almacenamiento seguro de archivos, briefs, contratos firmados, entregables y propuestas | `NewBusinessOpportunity`, `ProjectSummaryItem` | `driveFolderId`, `driveFolderUrl`, `briefUrl`, `briefFileId` |
 | **Google Calendar** | Calendario de Disponibilidad | Vacaciones y licencias/permisos laborales aprobados del equipo | `TeamAbsenceEvent`, `CapacityView`, `BuckyEngine` | `TeamAbsenceEvent` (`externalCalendarEventId`, `externalCalendarId`, `source: 'google_calendar'`) |
@@ -1500,11 +1773,11 @@ Para la separación estricta entre la identidad operativa actual de `UserProfile
 ### 11.3. Regla Canónica de Disparo: Cuándo se Activa New Business
 > **CORRECCIÓN CRÍTICA DE GOBERNANZA:**
 > **New Business NO se activa con "Deal Won" en HubSpot.**
-> - **El Disparador Real:** New Business se activa en Orbit tan pronto como existe un **Brief Comercial Calificado** que requiere **Dimensionamiento Técnico Operativo (Scoping)**.
-> - **Razón:** Para poder cotizar y ganar el Deal en HubSpot, la Directora Comercial necesita que el Product Lead / Líder de Área desglose el alcance en entregables, actividades y horas por rol en Orbit.
+> - **El Disparador Real:** New Business se activa en ECO tan pronto como existe un **Brief Comercial Calificado** que requiere **Dimensionamiento Técnico Operativo (Scoping)**.
+> - **Razón:** Para poder cotizar y ganar el Deal en HubSpot, la Directora Comercial necesita que el Product Lead / Líder de Área desglose el alcance en entregables, actividades y horas por rol en ECO.
 > - **Ciclo de Vida:**
 >   1. Oportunidad creada en HubSpot (`hubspotDealId`).
->   2. Se activa en Orbit para scoping técnico y generación de propuestas (`QuoteProposal`).
+>   2. Se activa en ECO para scoping técnico y generación de propuestas (`QuoteProposal`).
 >   3. Una vez el cliente aprueba la propuesta económica y se formaliza el acuerdo, la oportunidad se convierte en Proyecto Activo (`handleConvertOpportunityToProject`), propagando las referencias comerciales y de repositorio (`hubspotDealId`, `driveFolderUrl`) y la entidad fiscal inicial seleccionada (`taxEntityId`) como punto de partida administrativo (sin restringir que el proyecto definitivo pueda facturarse a múltiples NITs).
 
 ---
@@ -1528,12 +1801,12 @@ Para la separación estricta entre la identidad operativa actual de `UserProfile
 >    - **Aniversarios próximos:** Se calculan evaluando la proximidad de la fecha anual derivada de `fecha_ingreso`.
 >    - Mi Día y Bucky consumen directamente estos campos estructurados del perfil para visibilidad de equipo y avisos contextuales, sin requerir llamadas externas a servicios terceros.
 > 5. **Hobbies y Mascotas (`hobbies?: string`, `petNames?: string`):**
->    - Campos opcionales del perfil en Orbit para enriquecimiento de experiencia y contexto de Bucky. **No forman parte del contrato obligatorio de interoperabilidad técnica**.
+>    - Campos opcionales del perfil en ECO para enriquecimiento de experiencia y contexto de Bucky. **No forman parte del contrato obligatorio de interoperabilidad técnica**.
 > 6. **Google Calendar NO es la Fuente de Cumpleaños ni Aniversarios:**
->    - La privacidad de fechas de nacimiento y datos contractuales reside exclusivamente en la base de datos interna de Orbit (`UserItem`). Google Calendar se reserva de forma estricta para la programación operacional de ausencias y licencias.
+>    - La privacidad de fechas de nacimiento y datos contractuales reside exclusivamente en la base de datos interna de ECO (`UserItem`). Google Calendar se reserva de forma estricta para la programación operacional de ausencias y licencias.
 
 #### Estructura y Reglas Canónicas del Perfil del Colaborador
-El perfil del colaborador en Orbit define la identidad funcional, contractual y de seguridad del usuario en el sistema. Los campos se estructuran bajo las siguientes reglas:
+El perfil del colaborador en ECO define la identidad funcional, contractual y de seguridad del usuario en el sistema. Los campos se estructuran bajo las siguientes reglas:
 
 1. **Campos Canónicos Persistidos (Almacenados en Base de Datos):**
    - **`name` / `fullName`:** Nombre completo del colaborador (string, obligatorio).
@@ -1570,7 +1843,7 @@ El perfil del colaborador en Orbit define la identidad funcional, contractual y 
    - **Universo Canónico Vigente:**
      La matriz **Equipo Canónico Privado** continúa siendo la fuente autoritativa para colaboradores activos, `accessLevel`, roles y relación con el backend. El universo canónico vigente queda formalmente cerrado y confirmado en **exactamente 18 colaboradores activos**. La referencia anterior a 19 colaboradores ha sido corregida y descartada en la fuente autoritativa.
    - **Gobernanza del Perfil Ejecutivo (`executive`):**
-     El perfil `executive` adicional definido en Equipo Canónico Privado forma parte de los 18 colaboradores activos y debe contar con usuario Orbit. Su asociación con Backend User ID se resolverá durante el crosswalk con Indunova.
+     El perfil `executive` adicional definido en Equipo Canónico Privado forma parte de los 18 colaboradores activos y debe contar con usuario ECO. Su asociación con Backend User ID se resolverá durante el crosswalk con Indunova.
    - **Gobernanza de `system_admin`:**
      Existen dos usuarios iniciales con Access Level `system_admin` con idénticos permisos técnicos en plataforma. La diferenciación funcional y operativa (soporte técnico / producto digital vs. soporte administrativo y configuración de capacidades/calendarios) corresponde a su rol en la organización, según se define en Equipo Canónico Privado.
    - **Cuentas Duplicadas e Históricas identificadas para conciliación por Indunova:**
@@ -1592,7 +1865,7 @@ El perfil del colaborador en Orbit define la identidad funcional, contractual y 
 > **Esta definición NO amplía el alcance actual ni bloquea la integración frontend ↔ backend con Indunova.**
 
 #### 1. Alcance Actual: `UserProfile` como Identidad Operativa y de Acceso
-El modelo actual de colaborador en Orbit (`UserProfile` en backend Django / `UserItem` en frontend React) representa de manera suficiente y exhaustiva la **identidad operativa, jerárquica y de autorización** requerida para el flujo de trabajo core de la agencia:
+El modelo actual de colaborador en ECO (`UserProfile` en backend Django / `UserItem` en frontend React) representa de manera suficiente y exhaustiva la **identidad operativa, jerárquica y de autorización** requerida para el flujo de trabajo core de la agencia:
 - **Campos Core Actuales Persistidos:**
   - `id` (Identificador único UUID)
   - `name` / `fullName` (Nombre completo)
@@ -1646,14 +1919,14 @@ A futuro, el módulo de **Equipo & Accesos** podrá evolucionar para permitir la
 - **Reglas de Seguridad Indiscutibles:**
   1. **Nunca versionarse:** Prohibido commitear datos personales o de nómina reales en repositorios Git ni dejarlos en mocks de frontend.
   2. **No visibilidad por defecto:** Estos datos no son visibles para el equipo general ni para perfiles de liderazgo operativo.
-  3. **No crear `hr_admin` como nivel RBAC:** Se mantienen estrictamente intactos los 7 niveles canónicos de Orbit (`collaborator`, `leader`, `client_relationship`, `commercial`, `administrative`, `executive`, `system_admin`). La visibilidad futura de datos sensibles de RRHH se gobernará mediante permisos/capacidades específicas independientes del `accessLevel` (ej. `people.hr.read`, `people.compensation.read`, `people.sst.read`, referenciales).
+  3. **No crear `hr_admin` como nivel RBAC:** Se mantienen estrictamente intactos los 7 niveles canónicos de ECO (`collaborator`, `leader`, `client_relationship`, `commercial`, `administrative`, `executive`, `system_admin`). La visibilidad futura de datos sensibles de RRHH se gobernará mediante permisos/capacidades específicas independientes del `accessLevel` (ej. `people.hr.read`, `people.compensation.read`, `people.sst.read`, referenciales).
   4. **Aislamiento de permisos técnicos:** `system_admin` **NO** obtiene por defecto acceso a información salarial, contractual, médica o sensible por el mero hecho de tener permisos técnicos de administración sobre la plataforma.
   5. **Controles de protección y auditoría:** Los datos sensibles deberán contar con controles reforzados de acceso, auditoría y protección en reposo. La estrategia técnica definitiva de persistencia y cifrado se definirá con backend e infraestructura antes de implementar People Master.
-  6. **Criterio de necesidad para datos SST/médicos:** No debe asumirse que todo dato administrativo existente en las bases actuales deba migrarse a Orbit; su incorporación futura dependerá de necesidad funcional real, privacidad y gobernanza.
+  6. **Criterio de necesidad para datos SST/médicos:** No debe asumirse que todo dato administrativo existente en las bases actuales deba migrarse a ECO; su incorporación futura dependerá de necesidad funcional real, privacidad y gobernanza.
 
 #### 6. Matriz de Alcance: Core Actual vs. People Master Evolutivo
 
-| Dimensión | Ahora (Core Personas en Orbit) | Evolutivo (Futuro People Master) |
+| Dimensión | Ahora (Core Personas en ECO) | Evolutivo (Futuro People Master) |
 | :--- | :--- | :--- |
 | **Identidad** | Nombre, email, avatar, ciudad | Documento legal, tipo de identificación, nacionalidad, dirección |
 | **Puesto & Rol** | `jobTitle`, `officialRoles` (Catálogo), `department`, `leaderId` | Centro de costos, banda salarial, organigrama formal corporativo |
@@ -1672,20 +1945,20 @@ A futuro, el módulo de **Equipo & Accesos** podrá evolucionar para permitir la
 ### 11.5. Ausencias / Vacaciones y Google Calendar: Proceso Operacional y Modelo `TeamAbsenceEvent`
 
 #### Proceso Funcional Actual de Aprobación de Ausencias en Uhura:
-El flujo corporativo vigente para la solicitud y programación de vacaciones o ausencias opera por fuera de la capa transaccional de Orbit a través de los siguientes 5 pasos estrictos:
+El flujo corporativo vigente para la solicitud y programación de vacaciones o ausencias opera por fuera de la capa transaccional de ECO a través de los siguientes 5 pasos estrictos:
 1. **Solicitud Inicial:** El colaborador solicita formalmente la ausencia o periodo de vacaciones a su líder directo de área.
 2. **Aprobación del Líder:** El líder de área evalúa la disponibilidad del equipo y aprueba la solicitud.
 3. **Escalamiento por Rol:** Si quien solicita la ausencia es un **líder de área**, la aprobación corresponde de manera exclusiva a la **Dirección General (Access Level `executive`)**.
 4. **Formalización Administrativa:** Una vez obtenida la aprobación del líder (o de la Dirección General), la novedad se formaliza mediante correo electrónico remitido al **Área Administrativa (Administrativa & RRHH)**, con copia obligatoria al líder de área correspondiente.
 5. **Programación en Calendario Corporativo:** El Área Administrativa registra y programa formalmente la ausencia en el Google Calendar corporativo oficial de Uhura Group (ej. `ausencias@uhuragroup.com`).
 
-#### Decisiones de Producto y Arquitectura Orbit:
-- **Orbit NO Requiere Crear un Workflow Interno de Aprobación:**
-  En esta fase, Orbit no implementa un motor transaccional de solicitudes ni bandejas de aprobación burocrática de vacaciones. El proceso operativo existente por canales corporativos (Líder / Dirección General ➔ Correo Área Administrativa ➔ Google Calendar) funciona eficientemente.
+#### Decisiones de Producto y Arquitectura ECO:
+- **ECO NO Requiere Crear un Workflow Interno de Aprobación:**
+  En esta fase, ECO no implementa un motor transaccional de solicitudes ni bandejas de aprobación burocrática de vacaciones. El proceso operativo existente por canales corporativos (Líder / Dirección General ➔ Correo Área Administrativa ➔ Google Calendar) funciona eficientemente.
 - **Google Calendar como Fuente Operacional Externa:**
   El Google Calendar corporativo administrado por el Área Administrativa actúa como la **fuente de verdad operacional de las ausencias ya aprobadas y programadas**.
 - **Consumo Unificado vía `TeamAbsenceEvent`:**
-  Orbit sincroniza y consume estas ausencias a través de la entidad canónica `TeamAbsenceEvent`. Se prohíbe taxativamente crear modelos paralelos de ausencias en el backend de Indunova.
+  ECO sincroniza y consume estas ausencias a través de la entidad canónica `TeamAbsenceEvent`. Se prohíbe taxativamente crear modelos paralelos de ausencias en el backend de Indunova.
 - **Afectación Estricta a Capacidad:**
   **Únicamente las ausencias aprobadas y programadas en `TeamAbsenceEvent` descuentan capacidad/disponibilidad operativa.** Ausencias en borrador, tentativas no formalizadas o eventos de otra índole jamás descuentan horas.
 - **Frontera de Google Calendar:**
@@ -1712,7 +1985,7 @@ export type TeamAbsenceSource =
   | 'manual';
 
 export interface TeamAbsenceEvent {
-  id: string;                          // UUID único de Orbit
+  id: string;                          // UUID único de ECO
   userId: string;                      // FK al colaborador (UserItem.id)
   userName?: string;                   // Nombre para display rápido
   type: TeamAbsenceType;
@@ -1731,7 +2004,7 @@ export interface TeamAbsenceEvent {
 }
 ```
 
-#### Regla Matemática de Deducción de Capacidad en Orbit:
+#### Regla Matemática de Deducción de Capacidad en ECO:
 1. **Deducción de Días Hábiles:** Por cada día hábil (lunes a viernes) comprendido entre `startDate` y `endDate`, se descuentan `impactHoursPerDay` (o la cuota diaria `capacityHours / 5`) de la disponibilidad del colaborador:
    $$\text{Capacidad Neta} = \max(0, (\text{Capacidad Semanal Configurada} - \text{Festivos}) - \sum \text{Deducción Ausencias Aprobadas})$$
 2. **Exclusión de Fines de Semana y Festivos:** Si una ausencia coincide con un fin de semana o un día festivo oficial (calendario colombiano), ese día NO resta horas adicionales, porque los festivos ya descuentan su cuota diaria (`capacityHours / 5`) de la semana laboral y los fines de semana tienen disponibilidad proyectada 0h.
@@ -1742,6 +2015,15 @@ export interface TeamAbsenceEvent {
    - El motor de vida de equipo (`teamLifeEngine.ts`) evalúa `checkAssigneeAvailability`: si se intenta asignar o consultar a un colaborador con ausencia activa hoy, Bucky emite advertencia de bloqueo; si tiene una ausencia en los próximos 14 días, emite aviso preventivo para planificar entregables antes de su salida.
 5. **Deuda Técnica Identificada (Prototipo Capacidad):**
    - La semana de cálculo simulada en `CapacityView` (del 15 al 19 de septiembre de 2026) se mantiene deliberadamente como deuda de prototipo visual. Será refactorizada para navegación de semanas dinámica y persistencia real en iteraciones posteriores (Navegación / Mi Día / Capacidad dinámica). No pertenece a este fix documental ni altera el contrato de interoperabilidad.
+
+
+#### 11.5.1 Vista de administración: Equipo & Accesos → Integraciones (🟣 Implementado en prototipo · 07 Nov 2026)
+- **Quién la ve:** `system_admin` gestiona; `executive` consulta; el resto de perfiles no ve la pestaña.
+- **Qué muestra:** estado de la conexión (`Conectado` · `Pendiente de acceso` · `Pausado` · `Error`), nombre del calendario, última sincronización, ausencias importadas y eventos por asociar.
+- **Acciones (`system_admin`):** probar conexión, pausar o reanudar, y resolver **eventos sin persona asociada**: ECO asocia cada evento por el correo del invitado; si no encuentra a nadie del equipo, el evento queda en esta lista para elegir a quién corresponde (la ausencia baja a Capacidad y Mi Día) o ignorarlo.
+- **Cómo se lee el evento:** por el título. «Vacaciones», «Incapacidad», «Permiso» → 8 h/día; «Medio día» → 4 h/día; otro título → «Otra ausencia», 8 h/día. Un evento cancelado anula la ausencia.
+- **Sin credenciales en pantalla:** la conexión la hace Indunova con una cuenta de servicio de Google Workspace de solo lectura; no se pegan tokens ni URLs. ECO nunca escribe en el calendario.
+- En el prototipo la conexión y los eventos son simulados. Requisitos técnicos: `BACKEND_REQUIREMENTS.md` §20.
 
 ---
 
@@ -1778,7 +2060,7 @@ Se eliminaron cards decorativas y accesos secundarios redundantes de la barra de
    - Mi Día (Home contextual del usuario).
    - Proyectos (Portafolio y entregables).
    - Tareas (Tableros operativos Kanban y Lista).
-   - Capacidad (Disponibilidad, asignación y carga; se respeta el scope RBAC: `own` para colaboradores, `team` para líderes/CRS y `all` para administración/ejecutivo).
+   - Capacidad (Disponibilidad, asignación y carga). Todo el mundo ve su capacidad individual («Mi Capacidad»); `leader`, `client_relationship`, `commercial`, `administrative`, `executive` y `system_admin` ven además «Organización». `collaborator` solo ve la suya.
    - *Nota:* Se retiró `Horas` de la navegación primaria; Mi Día absorbió el timer, la carga manual y rápida, el progreso de jornada y los registros de hoy. El acceso a la auditoría histórica de timesheets se mantiene de forma contextual secundaria.
 2. **Comercial:**
    - **Dirección y Finanzas:** Métricas de valor vendido vs meta, base de fees recurrentes, top clientes y semáforo de proyectos (exclusivo para perfiles de Liderazgo y Dirección).
@@ -1817,11 +2099,45 @@ Mi Día deja de ser un dashboard de métricas decorativas para convertirse en el
 
 ---
 
-### 11.7. Módulo de Dirección y Finanzas: Lógica Comercial, Metas y Gancho con Alegra
+### 11.8. Integración con Google Chat por cliente y proyecto (🟣 Implementado en prototipo · ticket #149)
+> **Autogestión (07 Nov 2026):** el webhook de cada cliente lo registra `system_admin` (Uhura) **desde la plataforma** (Cliente → Integraciones → Google Chat), sin pedírselo a Indunova ni compartirlo por WhatsApp, ticket o correo. Indunova construye la pantalla y el envío; Uhura pega, prueba, activa, reemplaza o desactiva cada webhook cuando lo necesite. Para la prueba inicial con Neroli, Uhura lo registra en el ambiente de pruebas cuando la pantalla esté disponible allí.
+Objetivo: publicar en el espacio de Google Chat de cada cliente las novedades que requieren atención (asignación, solicitud de revisión, mención, devolución, aprobación, prioridad urgente), con mensajes breves y un enlace a la tarea. No se envían eventos de timer, cambios visuales ni actividad sin acción requerida. La notificación in-app sigue siendo la fuente principal.
+
+**Dónde se configura**
+- **Cliente → Integraciones → Google Chat:** el **único espacio** de Google Chat del cliente (un webhook por cliente). Muestra estado (`Pendiente de prueba` · `Conectado` · `Inactivo` · `Error`), espacio, cuántos proyectos lo tienen activado, última prueba y su resultado, y quién hizo la última modificación.
+- **Proyecto → ⋮ → Notificaciones (simplificado 07 Nov 2026):** solo dos opciones: **`Activar notificaciones`** (las novedades llegan al espacio del cliente) y **`No enviar notificaciones a Google Chat`** (**predeterminado**: los proyectos nuevos no envían hasta que alguien lo active). Si se activa y el cliente aún no tiene espacio, `system_admin` lo registra ahí mismo (queda guardado en el cliente y sirve para todos sus proyectos); los demás perfiles ven que falta y a quién pedírselo. Ya no existe un espacio propio por proyecto. Muestra siempre el destino efectivo.
+
+**Permisos**
+| Perfil | Cliente | Proyecto |
+|---|---|---|
+| `system_admin` | Registra, guarda y prueba, desactiva, reactiva, reemplaza y elimina. Ve la referencia enmascarada. | Activa o desactiva; si el cliente no tiene espacio, lo registra desde el proyecto. |
+| `executive` | Consulta estado, espacio, última prueba y última modificación. No ve URL ni máscara. | Consulta. |
+| `leader` | Sin acceso a la sección del cliente. | Consulta estado y espacio; puede **activar** o **no enviar** (no registra URLs). |
+| Demás perfiles | Sin acceso. | Sin acceso. |
+
+**Acciones**
+- *Desactivar:* conserva la configuración y detiene los envíos.
+- *Reactivar:* ejecuta una prueba y vuelve a `Conectado` si es satisfactoria.
+- *Reemplazar:* pide una URL nueva, la prueba y sustituye la anterior.
+- *Eliminar:* borra la vinculación (requiere confirmación explícita); para volver a usar Google Chat se registra un webhook nuevo. Desactivar y eliminar son botones distintos.
+
+**Regla de resolución (precedencia)**
+1. Proyecto con Google Chat sin activar (predeterminado) → no se envía.
+2. Proyecto activado → se usa el webhook **activo** del cliente.
+3. Activado pero el cliente no tiene espacio, o está inactivo o con error → solo notificación in-app.
+Desactivar la integración del cliente detiene los envíos de todos sus proyectos activados.
+
+**Seguridad**
+- Tras guardar, la URL no se vuelve a mostrar: solo una referencia enmascarada (`••••••••••••aB92`).
+- El prototipo **simula** la prueba (valida el formato `https://chat.googleapis.com/v1/spaces/…`) y nunca hace solicitudes reales ni guarda URLs. Ninguna URL real debe existir en el repositorio, tickets ni documentación abierta.
+- Caso de adopción: cliente **Neroli Fragancias** con integración activa (mock sin URL) y su proyecto «Fee mensual — Neroli Fragancias» heredándola.
+- Referencias de código: `src/components/taskflow/integrations/googleChat.ts` (reglas), `GoogleChatIntegrationCard.tsx`, `ProjectNotificationsModal.tsx`.
+
+### 11.9. Módulo de Dirección y Finanzas: Lógica Comercial, Metas y Gancho con Alegra
 
 #### 1. Ubicación y Control de Acceso (RBAC)
 - **Ubicación Canónica:** Pestaña primaria dentro del grupo **COMERCIAL** en la barra lateral, situada jerárquicamente **inmediatamente encima de New Business**.
-- **Público Objetivo:** Exclusivo para perfiles de Liderazgo y Dirección (`executive`, `system_admin`, `commercial`, `leader`, `client_relationship`).
+- **Público Objetivo:** `executive`, `system_admin`, `commercial` y `client_relationship` (módulo RBAC `direccion-finanzas`). *(Actualizado 07 Nov 2026: `leader` ya no tiene acceso, alineado con producción; ver §10.2.4.)*
 - **Restricción Estricta:** Acceso denegado a colaboradores operativos (`collaborator`), evitando filtración de metas de facturación o cifras comerciales consolidadas.
 
 #### 2. Definición de los 3 Bloques No Redundantes
@@ -1844,7 +2160,18 @@ Para evitar duplicidades con tableros existentes, la vista se compone estrictame
      - 🔴 **Excedido / Sobrecosto:** Consumo superior al 100% de las horas presupuestadas.
    - Integra la visualización de entregables vencidos por proyecto (`dueDate < hoy` y `status !== 'Done'`), consolidando las alertas operativas en un solo punto sin tarjetas redundantes.
 
+#### 3. Reconciliación con producción: «Tablero» y «Finanzas» (07 Nov 2026)
+En producción, Indunova separó este módulo en **Tablero** (salud comercial y operativa) y **Finanzas** (cartera, P&G, proyecciones, facturas, metas). Cubren la misma necesidad que Dirección y Finanzas del prototipo, por lo que **no se requieren pantallas nuevas**. Las mejoras pendientes son de **lógica y fuentes de datos**:
+
+1. **Costos reales en el P&G.** Hoy el margen aparece en 100 % porque los costos están en $0. El costo de un proyecto = horas registradas × costo hora de la persona + depreciación de hardware + licencias imputadas + recursos externos (BACKEND §12.8, §12.10). Si falta alguna fuente, mostrar «margen no disponible» en lugar de 100 %.
+2. **Facturas ligadas a proyecto o servicio.** «Rentabilidad por servicio» muestra un bloque «(Sin proyecto)» con la mayoría de la facturación. Cada factura debe asociarse a proyecto (o cliente + servicio) al causarse; las no asociadas se muestran como **«Por conciliar»**, no como un servicio.
+3. **Costo hora fuera de «Metas financieras».** El costo hora es un parámetro de costo por persona o rol con vigencia (tabla de costos), no una meta del periodo.
+4. **Meta del mes desde la meta anual.** La meta anual se reparte por mes (como en el prototipo) y cada mes puede ajustarse manualmente con trazabilidad. Así «Meta del mes» y «Cumplimiento presupuestal» nunca quedan vacíos si hay meta anual.
+5. **Proyección basada en contratos, no solo lineal.** Proyección = fees vigentes (valor mensual × meses restantes del contrato, Módulo 11 §11.6.1) + facturación pendiente de proyectos únicos por hitos + pipeline de New Business ponderado por probabilidad. La regresión lineal puede quedar como referencia secundaria.
+6. **Una sola tabla de TRM.** Licencias muestra «TRM sin configurar». Finanzas administra una tabla única (fecha, moneda, valor) que usan licencias, cotizaciones en USD, recursos externos y P&G.
+7. **Alertas sin duplicar el semáforo.** «Alertas operativas» y «Proyectos · semáforo» repiten la misma lista. El semáforo muestra conteos y la lista completa; las alertas solo los proyectos en **riesgo** con la acción recomendada (ej. reforecast, ronda adicional, sobrecosto).
+
 ---
 
-*Fin del Documento Maestro — Uhura Orbit 2026*
+*Fin del Documento Maestro — Uhura ECO 2026*
 

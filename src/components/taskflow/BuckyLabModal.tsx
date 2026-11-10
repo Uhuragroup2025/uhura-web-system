@@ -24,16 +24,16 @@
 
 import React, { useState } from 'react';
 import { X, Copy, Download, Volume2, Sparkles, AlertTriangle, ShieldCheck, Terminal } from 'lucide-react';
-import buckyHoodieHappyImg from '../../assets/images/bucky_hip_uhura_v3.png';
-import buckyCelebratingImg from '../../assets/images/bucky_celebrating_cutout.png';
-import buckyAlertImg from '../../assets/images/bucky_alert_cutout.png';
-import buckyFocusImg from '../../assets/images/bucky_focus_cutout.png';
-import buckyRestingImg from '../../assets/images/bucky_resting_cutout.png';
-import buckyWavingImg from '../../assets/images/bucky_waving_cutout.png';
-import buckyCelebrateRenderImg from '../../assets/images/bucky_celebrate_render_1788557761452.jpg';
-import buckyWarningRenderImg from '../../assets/images/bucky_warning_render_1788557774378.jpg';
-import buckySadRenderImg from '../../assets/images/bucky_sad_render_1788557787368.jpg';
-import orbitMascotCutoutImg from '../../assets/images/orbit_mascot_cutout.png';
+import buckyHoodieHappyImg from '../../assets/images/eco/eco-thumbs-up.webp';
+import buckyCelebratingImg from '../../assets/images/eco/eco-celebrating.webp';
+import buckyAlertImg from '../../assets/images/eco/eco-surprised.webp';
+import buckyFocusImg from '../../assets/images/eco/eco-focus.webp';
+import buckyRestingImg from '../../assets/images/eco/eco-coffee.webp';
+import buckyWavingImg from '../../assets/images/eco/eco-thumbs-up.webp';
+import buckyCelebrateRenderImg from '../../assets/images/eco/eco-celebrating.webp';
+import buckyWarningRenderImg from '../../assets/images/eco/eco-worried.webp';
+import buckySadRenderImg from '../../assets/images/eco/eco-sad.webp';
+import orbitMascotCutoutImg from '../../assets/images/eco/eco-thumbs-up.webp';
 import { playBuckySound, BuckyPose } from './buckyEngine';
 
 interface BuckyLabModalProps {
@@ -141,7 +141,7 @@ export const BuckyLabModal: React.FC<BuckyLabModalProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold text-white">Bucky Lab</h2>
+                <h2 className="text-base font-bold text-white">ECO Lab</h2>
                 <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-[#ec4899]/20 text-[#f472b6] border border-[#ec4899]/30">
                   Dev / Admin Only
                 </span>
@@ -186,7 +186,7 @@ export const BuckyLabModal: React.FC<BuckyLabModalProps> = ({
 
               <img
                 src={getImagePath(selectedPose)}
-                alt="Bucky Test Pose"
+                alt="ECO Test Pose"
                 className="w-48 h-56 object-contain select-none transition-transform hover:scale-105"
               />
 

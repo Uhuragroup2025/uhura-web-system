@@ -133,7 +133,7 @@ export const HubSpotCreateDealsModal: React.FC<HubSpotCreateDealsModalProps> = (
       onClick={onClose}
     >
       <div
-        className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-[#e2e8f0] overflow-hidden flex flex-col max-h-[92vh]"
+        className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-[#e2e8f0] overflow-hidden flex flex-col max-h-[92vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header con branding HubSpot */}
@@ -150,7 +150,7 @@ export const HubSpotCreateDealsModal: React.FC<HubSpotCreateDealsModalProps> = (
                 </span>
               </div>
               <p className="text-xs text-white/75">
-                1 servicio en Orbit = 1 negocio en HubSpot. Se sincronizarán {commercialServices.length} negocio(s) independiente(s).
+                1 servicio en ECO = 1 negocio en HubSpot. Se sincronizarán {commercialServices.length} negocio(s) independiente(s).
               </p>
             </div>
           </div>
@@ -203,7 +203,7 @@ export const HubSpotCreateDealsModal: React.FC<HubSpotCreateDealsModalProps> = (
           <div className="p-3 rounded-xl bg-[#fff7ed] border border-[#ffedd5] text-[#9a3412] text-[11px] flex items-start gap-2">
             <Info className="w-4 h-4 text-[#ea580c] shrink-0 mt-0.5" />
             <div className="leading-relaxed">
-              <strong>Privacidad y separación de datos:</strong> El enlace único de la calculadora de Orbit, las semanas de alcance, la vigencia del fee y las notas comerciales pertenecen exclusivamente a Orbit y <u>no</u> se envían a HubSpot. En HubSpot únicamente se registra el nombre del negocio, empresa, contacto, valor, moneda, pipeline y etapa.
+              <strong>Privacidad y separación de datos:</strong> El enlace único de la calculadora de ECO, las semanas de alcance, la vigencia del fee y las notas comerciales pertenecen exclusivamente a ECO y <u>no</u> se envían a HubSpot. En HubSpot únicamente se registra el nombre del negocio, empresa, contacto, valor, moneda, pipeline y etapa.
             </div>
           </div>
 
@@ -267,7 +267,7 @@ export const HubSpotCreateDealsModal: React.FC<HubSpotCreateDealsModalProps> = (
                             {item.dealName}
                           </strong>
                           <span className="text-[10.5px] text-[#64748b]">
-                            Servicio base en Orbit: {item.service.serviceName}
+                            Servicio base en ECO: {item.service.serviceName}
                           </span>
                         </div>
                       </div>
@@ -285,13 +285,13 @@ export const HubSpotCreateDealsModal: React.FC<HubSpotCreateDealsModalProps> = (
                     <div className="flex items-center justify-between pt-2 border-t border-[#f1f5f9] text-[10.5px] text-[#64748b]">
                       <div className="flex items-center gap-2">
                         <span
-                          className={`px-2 py-0.5 rounded-md font-semibold ${
+                          className={`px-2 py-0.5 rounded-lg font-semibold ${
                             isFixed
                               ? 'bg-[#501f92]/10 text-[#501f92]'
                               : 'bg-[#059669]/10 text-[#047857]'
                           }`}
                         >
-                          Contexto Orbit: {isFixed ? 'Proyecto único' : 'Fee mensual'}
+                          Contexto ECO: {isFixed ? 'Proyecto único' : 'Fee mensual'}
                         </span>
                         <span className="italic text-[#94a3b8]">
                           (Modalidad interna no enviada a HubSpot)

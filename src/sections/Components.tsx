@@ -153,7 +153,7 @@ export const Components: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#e0e0e0]">
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-xl font-extrabold text-[#17131f]">Matriz Canónica de Arquetipos UI (Orbit Rules)</h2>
+              <h2 className="text-xl font-extrabold text-[#17131f]">Matriz Canónica de Arquetipos UI (ECO Rules)</h2>
               <Badge variant="brand" size="xs">Guía de Uso Estricto</Badge>
             </div>
             <p className="text-xs text-[#616161]">

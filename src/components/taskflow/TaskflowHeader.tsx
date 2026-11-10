@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Bell, Menu, X, LogOut, ShieldAlert, Sparkles, Check, ChevronDown, ExternalLink, Clock, Play, Pause, Square, Building2, Search, ArrowRight, PanelLeftClose, PanelLeftOpen, User, Edit3, Plus } from 'lucide-react';
+import { SessionClosedOverlay, requestLogout } from './auth/SessionClosedOverlay';
 import { orbitOperationalAlerts } from './mockData';
 import { ActiveTimerState, TaskItem, TimeLog, UserItem } from './types';
 import { UserAvatar } from './UserAvatar';
@@ -12,6 +13,7 @@ export function formatHeaderTime(totalSeconds: number): string {
 
 interface TaskflowHeaderProps {
   currentViewTitle?: string;
+  currentViewSection?: string;           // Grupo del menú (Operación, Comercial…) para la ruta
   onToggleMobileMenu?: () => void;
   onSelectAlert?: (alertId: string) => void;
   activeTimer?: ActiveTimerState | null;
@@ -37,6 +39,7 @@ interface TaskflowHeaderProps {
 
 export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
   currentViewTitle = 'Dashboard ejecutivo',
+  currentViewSection,
   onToggleMobileMenu,
   onSelectAlert,
   activeTimer,
@@ -168,14 +171,20 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
           </button>
         )}
 
-        {/* View Title: Displayed on XL screens to prevent visual redundancy with page headers on tablet */}
-        <h1 className={`hidden xl:block text-base font-bold tracking-tight whitespace-nowrap ${isDarkTheme ? 'text-white' : 'text-[#0f172a]'}`}>
-          {currentViewTitle}
-        </h1>
+        {/* Ruta (grupo › vista). El título grande vive en el encabezado de cada pantalla. */}
+        <nav aria-label="Ruta" className={`hidden xl:flex items-center gap-1.5 text-sm whitespace-nowrap ${isDarkTheme ? 'text-white/70' : 'text-[#64748b]'}`}>
+          {currentViewSection && (
+            <>
+              <span>{currentViewSection}</span>
+              <span aria-hidden="true" className={isDarkTheme ? 'text-white/40' : 'text-[#cbd5e1]'}>›</span>
+            </>
+          )}
+          <span aria-current="page" className={`font-semibold ${isDarkTheme ? 'text-white' : 'text-[#0f172a]'}`}>{currentViewTitle}</span>
+        </nav>
       </div>
 
       {/* Center: Global Task Search Bar */}
-      <div ref={searchContainerRef} className="relative flex-1 min-w-[120px] max-w-xs md:max-w-sm lg:max-w-md mx-1">
+      <div ref={searchContainerRef} className="relative flex-1 min-w-[120px] max-w-none sm:max-w-xs md:max-w-sm lg:max-w-md mx-1">
         <div className="relative">
           <Search className={`w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none ${isDarkTheme ? 'text-white/40' : 'text-[#94a3b8]'}`} />
           <input
@@ -266,7 +275,7 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
       {/* Right Controls: Daily Progress Capsule (Opción A), Active Timer Badge, Notifications, User */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         {/* Cápsula de Tiempos de Hoy */}
-        <div ref={dailyProgressRef} className="relative shrink-0">
+        <div ref={dailyProgressRef} className="sm:relative shrink-0">
           <button
             onClick={() => setDailyProgressOpen(!dailyProgressOpen)}
             className="flex items-center gap-2.5 px-3 py-1.5 rounded-2xl bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] hover:border-[#cbd5e1] shadow-2xs transition-all cursor-pointer shrink-0"
@@ -305,7 +314,7 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
             const todayEntries = Array.from(groupedToday.values());
 
             return (
-              <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-[#e2e8f0] z-50 p-4 animate-in fade-in zoom-in-95 space-y-3">
+              <div className="absolute left-3 right-3 top-full mt-2 sm:left-auto sm:right-0 sm:top-auto sm:w-80 bg-white rounded-2xl shadow-xl border border-[#e2e8f0] z-50 p-4 animate-in fade-in zoom-in-95 space-y-3">
                 <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-2.5">
                   <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4 text-[#501f92]" />
@@ -337,7 +346,7 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
                         <span className="text-xs font-semibold text-[#0f172a] group-hover:text-[#501f92] truncate">
                           {entry.title}
                         </span>
-                        <span className="font-mono text-[11px] font-bold text-[#501f92] bg-white px-2 py-0.5 rounded-md border border-[#e2e8f0] shrink-0">
+                        <span className="font-mono text-[11px] font-bold text-[#501f92] bg-white px-2 py-0.5 rounded-lg border border-[#e2e8f0] shrink-0">
                           {entry.hours.toFixed(1)}h
                         </span>
                       </button>
@@ -423,17 +432,16 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
                       ? 'bg-[#10b981] hover:bg-[#059669] text-white'
                       : 'bg-[#f59e0b] hover:bg-[#d97706] text-white'
                   }`}
-                  title={activeTimer.isPaused ? 'Reanudar Timer' : 'Pausar Timer'}
+                  title={activeTimer.isPaused ? 'Reanudar timer' : 'Pausar timer'}
+                  aria-label={activeTimer.isPaused ? 'Reanudar timer' : 'Pausar timer'}
                 >
                   {activeTimer.isPaused ? (
                     <>
                       <Play className="w-3.5 h-3.5 fill-current" />
-                      <span className="hidden sm:inline text-[10px]">Reanudar</span>
                     </>
                   ) : (
                     <>
                       <Pause className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline text-[10px]">Pausar</span>
                     </>
                   )}
                 </button>
@@ -441,17 +449,17 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
               <button
                 onClick={onStopTimer}
                 className="p-1.5 rounded-lg bg-[#dc2626] hover:bg-[#b91c1c] text-white cursor-pointer shadow-xs transition-colors flex items-center gap-1 text-xs font-bold"
-                title="Detener Timer y Registrar"
+                title="Detener y registrar tiempo"
+                aria-label="Detener timer"
               >
                 <Square className="w-3.5 h-3.5 fill-current" />
-                <span className="hidden sm:inline text-[10px]">Detener</span>
               </button>
             </div>
           </div>
         )}
 
         {/* Operational Alerts Bell Dropdown */}
-        <div ref={alertsContainerRef} className="relative">
+        <div ref={alertsContainerRef} className="sm:relative">
           <button
             onClick={() => {
               const nextOpen = !alertsOpen;
@@ -470,7 +478,7 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
           </button>
 
           {alertsOpen && (
-            <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-[#e5e7eb] z-50 overflow-hidden animate-in fade-in zoom-in-95">
+            <div className="absolute left-3 right-3 top-full mt-2 sm:left-auto sm:right-0 sm:top-auto sm:w-96 bg-white rounded-2xl shadow-xl border border-[#e5e7eb] z-50 overflow-hidden animate-in fade-in zoom-in-95">
               <div className="p-3.5 bg-[#f9fafb] border-b border-[#e5e7eb] flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <ShieldAlert className="w-4 h-4 text-[#501f92]" />
@@ -601,11 +609,23 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
                   </div>
                   <Edit3 className="w-3.5 h-3.5 text-[#94a3b8] group-hover:text-[#501f92]" />
                 </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProfileMenuOpen(false);
+                    requestLogout();
+                  }}
+                  className="w-full px-3 py-2.5 rounded-xl text-left text-xs font-bold text-[#dc2626] hover:bg-[#fef2f2] transition-colors flex items-center gap-2 cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Cerrar sesión</span>
+                </button>
               </div>
             </div>
           )}
         </div>
       </div>
+      <SessionClosedOverlay />
     </header>
   );
 };

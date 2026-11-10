@@ -41,7 +41,7 @@ export const TeamLifeEventsModal: React.FC<TeamLifeEventsModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
       <div
-        className="bg-white w-full max-w-3xl rounded-3xl shadow-2xl border border-[#e2e8f0] flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200"
+        className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl border border-[#e2e8f0] flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* HEADER */}
@@ -56,7 +56,7 @@ export const TeamLifeEventsModal: React.FC<TeamLifeEventsModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-bold tracking-wider uppercase bg-[#d4ff4a] text-[#0f172a] px-2 py-0.5 rounded-full">
-                  Bucky Copiloto
+                  ECO
                 </span>
                 <span className="text-xs text-white/80 font-medium">Cultura & Operación</span>
               </div>
@@ -261,7 +261,7 @@ export const TeamLifeEventsModal: React.FC<TeamLifeEventsModalProps> = ({
               <div className="p-3.5 rounded-2xl bg-[#f0fdf4] border border-[#bbf7d0] flex items-start gap-3">
                 <Palmtree className="w-5 h-5 text-[#16a34a] shrink-0 mt-0.5" />
                 <div className="text-xs text-[#166534]">
-                  <span className="font-bold">Protección Operativa de Bucky:</span> Si intentas asignar una tarea a un colaborador durante sus vacaciones aprobadas, Bucky te mostrará un recordatorio para evitar sobrecarga y asegurar el descanso.
+                  <span className="font-bold">Protección Operativa de ECO:</span> Si intentas asignar una tarea a un colaborador durante sus vacaciones aprobadas, ECO te mostrará un recordatorio para evitar sobrecarga y asegurar el descanso.
                 </div>
               </div>
 
@@ -315,7 +315,7 @@ export const TeamLifeEventsModal: React.FC<TeamLifeEventsModalProps> = ({
         <div className="p-4 bg-[#f8fafc] border-t border-[#e2e8f0] flex items-center justify-between shrink-0">
           <div className="text-[11px] text-[#64748b] flex items-center gap-1.5">
             <span>🦫</span>
-            <span>Bucky cuida a las personas de Uhura Group y vela por una operación saludable.</span>
+            <span>ECO cuida a las personas de Uhura Group y vela por una operación saludable.</span>
           </div>
           <button
             onClick={onClose}

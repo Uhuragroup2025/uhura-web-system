@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { UserItem, UserRole, UserStatus, OrbitAccessLevel } from './types';
+import { UserItem, UserRole, UserStatus, OrbitAccessLevel, TeamAbsenceEvent } from './types';
+import { GoogleCalendarIntegrationCard, CalendarSyncState, UnmatchedCalendarEvent } from './integrations/GoogleCalendarIntegrationCard';
 import { UserProfileView } from './UserProfileView';
 import { UserAvatar } from './UserAvatar';
 import {
@@ -19,9 +20,10 @@ import {
   Users as UsersIcon,
   CheckCircle2,
   XCircle,
-  Lock
+  Lock,
+  Plug
 } from 'lucide-react';
-import { ROLE_PERMISSIONS_MATRIX } from './auth/permissions';
+import { ROLE_PERMISSIONS_MATRIX, getUserAccessLevel } from './auth/permissions';
 
 interface UsersViewProps {
   users: UserItem[];
@@ -31,7 +33,22 @@ interface UsersViewProps {
   onUpdateUser?: (updatedUser: UserItem) => void;
   selectedUserId?: string | null;
   onSelectUser?: (userId: string | null) => void;
+  absenceEvents?: TeamAbsenceEvent[];
+  onAddAbsenceEvent?: (event: TeamAbsenceEvent) => void;
 }
+
+// Datos simulados del prototipo (sin credenciales ni URLs reales)
+const INITIAL_CALENDAR_STATE: CalendarSyncState = {
+  calendarLabel: 'Ausencias Uhura (corporativo)',
+  status: 'active',
+  lastSyncAt: '2026-11-07T07:00:00-05:00',
+  lastSyncResult: 'ok',
+  importedCount: 14
+};
+const INITIAL_UNMATCHED: UnmatchedCalendarEvent[] = [
+  { id: 'gcal-unm-1', title: 'Vacaciones Juli', startDate: '2026-12-22', endDate: '2027-01-02', allDay: true, reason: 'Sin invitado del equipo' },
+  { id: 'gcal-unm-2', title: 'Permiso medio día — cita médica', startDate: '2026-11-13', endDate: '2026-11-13', allDay: false, reason: 'Invitado externo a Uhura' }
+];
 
 export const UsersView: React.FC<UsersViewProps> = ({
   users,
@@ -40,10 +57,25 @@ export const UsersView: React.FC<UsersViewProps> = ({
   onDeleteUser,
   onUpdateUser,
   selectedUserId: initialSelectedUserId = null,
-  onSelectUser
+  onSelectUser,
+  absenceEvents = [],
+  onAddAbsenceEvent
 }) => {
+  // Integraciones: system_admin gestiona; executive consulta; el resto no ve la pestaña.
+  const viewerLevel = currentUser ? getUserAccessLevel(currentUser) : 'collaborator';
+  const canSeeIntegrations = viewerLevel === 'system_admin' || viewerLevel === 'executive';
+  const canManageIntegrations = viewerLevel === 'system_admin';
+  const [calendarState, setCalendarState] = useState<CalendarSyncState>(INITIAL_CALENDAR_STATE);
+  const [unmatchedEvents, setUnmatchedEvents] = useState<UnmatchedCalendarEvent[]>(INITIAL_UNMATCHED);
+  const handleResolveUnmatched = (eventId: string, absence: TeamAbsenceEvent | null) => {
+    setUnmatchedEvents((prev) => prev.filter((e) => e.id !== eventId));
+    if (absence) {
+      onAddAbsenceEvent?.(absence);
+      setCalendarState((prev) => ({ ...prev, importedCount: prev.importedCount + 1 }));
+    }
+  };
   const [selectedUserId, setSelectedUserId] = useState<string | null>(initialSelectedUserId);
-  const [activeTab, setActiveTab] = useState<'directory' | 'roles'>('directory');
+  const [activeTab, setActiveTab] = useState<'directory' | 'roles' | 'integrations'>('directory');
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -180,6 +212,20 @@ export const UsersView: React.FC<UsersViewProps> = ({
               <Key className="w-3.5 h-3.5" />
               <span>Matriz RBAC</span>
             </button>
+            {canSeeIntegrations && (
+              <button
+                onClick={() => setActiveTab('integrations')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                  activeTab === 'integrations' ? 'bg-white text-[#0f172a] shadow-xs' : 'text-[#64748b] hover:text-[#0f172a]'
+                }`}
+              >
+                <Plug className="w-3.5 h-3.5" />
+                <span>Integraciones</span>
+                {unmatchedEvents.length > 0 && (
+                  <span className="ml-0.5 px-1.5 rounded-full bg-[#fde68a] text-[#92400e] text-[10px]">{unmatchedEvents.length}</span>
+                )}
+              </button>
+            )}
           </div>
 
           {activeTab === 'directory' && (
@@ -188,13 +234,23 @@ export const UsersView: React.FC<UsersViewProps> = ({
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#501f92] text-white text-xs font-bold hover:bg-[#381566] shadow-2xs transition-all cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>Invitar Colaborador</span>
+              <span>Invitar colaborador</span>
             </button>
           )}
         </div>
       </div>
 
-      {activeTab === 'directory' ? (
+      {activeTab === 'integrations' && canSeeIntegrations ? (
+        <GoogleCalendarIntegrationCard
+          state={calendarState}
+          unmatched={unmatchedEvents}
+          absenceEvents={absenceEvents}
+          users={users}
+          canManage={canManageIntegrations}
+          onChangeState={setCalendarState}
+          onResolveUnmatched={handleResolveUnmatched}
+        />
+      ) : activeTab === 'directory' ? (
         <>
           {/* Filter Row */}
           <div className="bg-white p-4 rounded-2xl border border-[#e5e7eb] shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -364,7 +420,7 @@ export const UsersView: React.FC<UsersViewProps> = ({
                               className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-[#501f92] hover:bg-[#f3e8ff] transition-colors cursor-pointer"
                               title="Ver perfil completo del colaborador"
                             >
-                              <span>Ver Perfil</span>
+                              <span>Ver perfil</span>
                               <ChevronRight className="w-3.5 h-3.5" />
                             </button>
                             {onDeleteUser && (
@@ -394,7 +450,7 @@ export const UsersView: React.FC<UsersViewProps> = ({
         <div className="space-y-4">
           <div className="p-4 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0]">
             <p className="text-xs text-[#475569] leading-relaxed">
-              La seguridad y navegación de Orbit se rigen por la <strong>Matriz Central RBAC</strong>. Cada nivel de acceso delimita estrictamente la visibilidad en el menú lateral y las acciones autorizadas (crear, editar, aprobar o auditar).
+              La seguridad y navegación de ECO se rigen por la <strong>Matriz Central RBAC</strong>. Cada nivel de acceso delimita estrictamente la visibilidad en el menú lateral y las acciones autorizadas (crear, editar, aprobar o auditar).
             </p>
           </div>
 

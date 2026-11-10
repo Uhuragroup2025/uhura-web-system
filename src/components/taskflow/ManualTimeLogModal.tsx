@@ -99,10 +99,6 @@ export const ManualTimeLogModal: React.FC<ManualTimeLogModalProps> = ({
     const totalSeconds = (parseInt(hours || '0', 10) * 3600) + (parseInt(minutes || '0', 10) * 60);
     if (totalSeconds <= 0) return;
 
-    if (!note.trim()) {
-      return;
-    }
-
     // Format date string for human display (e.g. "29 Ago 2026")
     let formattedDate = 'Hoy';
     if (logDate) {
@@ -124,13 +120,13 @@ export const ManualTimeLogModal: React.FC<ManualTimeLogModalProps> = ({
       projectName: selectedTask.projectName || selectedTask.board,
       categoryType: selectedTask.categoryType,
       userId: selectedTask.assignee?.id || 'u-pao',
-      budgetedRoleId: selectedTask.budgetedRoleId || selectedTask.budgetedRole || 'Diseñador Gráfico',
+      budgetedRoleId: selectedTask.budgetedRoleId || selectedTask.budgetedRole || 'Creative Designer',
       userName: selectedTask.assignee?.name || 'Usuario',
       userInitials: selectedTask.assignee?.initials || 'US',
       userAvatarBg: selectedTask.assignee?.avatarBg || 'bg-[#501f92]',
       durationSeconds: totalSeconds,
       source: 'manual',
-      description: note.trim(),
+      description: note.trim() || undefined,
       note: note.trim(),
       startTime: '',
       endTime: '',
@@ -153,7 +149,7 @@ export const ManualTimeLogModal: React.FC<ManualTimeLogModalProps> = ({
     >
       <div
         id="manual-time-log-container"
-        className="bg-white sm:rounded-3xl shadow-2xl border-0 sm:border sm:border-[#e2e8f0] w-full max-w-lg h-full sm:h-auto overflow-hidden flex flex-col sm:max-h-[92vh] animate-in zoom-in-95 duration-150"
+        className="bg-white sm:rounded-2xl shadow-2xl border-0 sm:border sm:border-[#e2e8f0] w-full max-w-lg h-full sm:h-auto overflow-hidden flex flex-col sm:max-h-[92vh] animate-in zoom-in-95 duration-150"
       >
         {/* Header */}
         <div className="px-5 sm:px-6 py-4 bg-[#0f172a] text-white flex items-center justify-between border-b border-[#334155] shrink-0">
@@ -368,28 +364,28 @@ export const ManualTimeLogModal: React.FC<ManualTimeLogModalProps> = ({
                   <button
                     type="button"
                     onClick={() => { setHours('1'); setMinutes('0'); }}
-                    className="px-2 py-0.5 rounded-md bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[10px] font-bold text-[#475569] cursor-pointer"
+                    className="px-2 py-0.5 rounded-lg bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[10px] font-bold text-[#475569] cursor-pointer"
                   >
                     1h
                   </button>
                   <button
                     type="button"
                     onClick={() => { setHours('2'); setMinutes('0'); }}
-                    className="px-2 py-0.5 rounded-md bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[10px] font-bold text-[#475569] cursor-pointer"
+                    className="px-2 py-0.5 rounded-lg bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[10px] font-bold text-[#475569] cursor-pointer"
                   >
                     2h
                   </button>
                   <button
                     type="button"
                     onClick={() => { setHours('4'); setMinutes('0'); }}
-                    className="px-2 py-0.5 rounded-md bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[10px] font-bold text-[#475569] cursor-pointer"
+                    className="px-2 py-0.5 rounded-lg bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[10px] font-bold text-[#475569] cursor-pointer"
                   >
                     4h
                   </button>
                   <button
                     type="button"
                     onClick={() => { setHours('8'); setMinutes('0'); }}
-                    className="px-2 py-0.5 rounded-md bg-[#f2ecfb] hover:bg-[#e9d5ff] text-[10px] font-bold text-[#501f92] cursor-pointer"
+                    className="px-2 py-0.5 rounded-lg bg-[#f2ecfb] hover:bg-[#e9d5ff] text-[10px] font-bold text-[#501f92] cursor-pointer"
                     title="Jornada completa"
                   >
                     8h
@@ -457,15 +453,14 @@ export const ManualTimeLogModal: React.FC<ManualTimeLogModalProps> = ({
               )}
             </div>
 
-            {/* Descripción (Obligatoria para carga manual) */}
+            {/* Descripción opcional (ronda 2: ya no es obligatoria) */}
             <div>
               <label className="block font-bold text-xs text-[#0f172a] mb-1.5 flex items-center justify-between">
-                <span>Descripción del trabajo realizado *</span>
-                <span className="text-[10px] font-normal text-[#64748b]">Obligatorio para trazabilidad</span>
+                <span>Descripción del trabajo realizado</span>
+                <span className="text-[10px] font-normal text-[#64748b]">Opcional</span>
               </label>
               <textarea
                 rows={3}
-                required
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="Detalla qué hiciste en esta sesión (e.g. maquetación de hero, diseño de copies)..."

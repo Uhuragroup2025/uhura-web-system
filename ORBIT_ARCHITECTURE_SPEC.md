@@ -1,6 +1,6 @@
-# Orbit (Uhura Web System) — Especificación Canónica de Arquitectura & Operación
+# ECO (Uhura Web System) — Especificación Canónica de Arquitectura & Operación
 
-Este documento compila las definiciones oficiales de arquitectura y reglas de negocio del sistema Orbit (Uhura Web System), acordadas entre el equipo de Producto/Operaciones de Uhura Group (Paola Monsalve, Catalina Tejada) y el equipo de desarrollo de Indunnova.
+Este documento compila las definiciones oficiales de arquitectura y reglas de negocio del sistema ECO (Uhura Web System), acordadas entre el equipo de Producto/Operaciones de Uhura Group (Paola Monsalve, Catalina Tejada) y el equipo de desarrollo de Indunnova.
 
 ---
 
@@ -8,7 +8,7 @@ Este documento compila las definiciones oficiales de arquitectura y reglas de ne
 
 ```
                      ┌──────────────────────────────┐
-                     │ Oportunidad Comercial (Orbit)│
+                     │ Oportunidad Comercial (ECO)│
                      └──────────────┬───────────────┘
                                     │
            ┌────────────────────────┼────────────────────────┐
@@ -80,8 +80,8 @@ La operación de New Business y Comercial en Uhura **nunca se bloquea por falta 
 ## 6. Estados Operativos Dinámicos y Botón de Inicio («Iniciar proyecto 🚀»)
 
 Para evitar confusiones en los proyectos activos en `/proyectos`:
-- **Badge de Estado unificado:** Ubicado inmediatamente debajo del nombre del proyecto como primer chip antes de los Gates contractuales:
-  `Estado: Pendiente de iniciar` (badge azul) o `Estado: En ejecución` (badge verde) seguido de `🛡️ Gates incluidos: 2` y `🔄 Tandas de ajuste: 2 por gate`.
+- **Badge de Estado unificado:** Ubicado inmediatamente debajo del nombre del proyecto como primer chip:
+  `Estado: Por iniciar` (aún no se pulsa «Iniciar proyecto»), `Programado · inicia [fecha]` (iniciado con fecha futura), `En ejecución`, `Cerrado` o `Archivado`, seguido del chip de rondas de ajuste incluidas (p. ej. `🔄 Rondas de ajuste: 2 × 5 días`, solo proyectos únicos). *(Actualizado 07 Nov 2026: el modelo de gates × tandas se reemplazó por rondas de ajuste.)*
 - **Botón diferenciador antes de iniciar:** Si el proyecto no ha sido formalmente iniciado o su fecha de arranque es futura, se muestra el botón prioritario **`Iniciar proyecto 🚀`** (en verde lima `#d4ff4a`, alto contraste).
 - **Botón de seguimiento una vez iniciado:** Al iniciar el proyecto formalmente, el botón cambia a **`Iniciado | 📅 Inicio: [fecha] · Fin: [fecha] (Ajustar)`**, informando que está en curso y permitiendo ajustar las fechas en caso de replanificación.
 
@@ -97,7 +97,7 @@ En la vista de detalle de cada Cliente (`/clientes` -> Proyectos de la Cuenta):
 
 ## 8. Módulo de Capacidad: Jornada de 42h, Barras Duales y Vista Unificada por Área
 
-- **Jornada Base Estándar:** `42 horas semanales` (`8.4h/día` para deducción de festivos y ausencias aprobadas en Google Calendar / Orbit).
+- **Jornada Base Estándar:** `42 horas semanales` (`8.4h/día` para deducción de festivos y ausencias aprobadas en Google Calendar / ECO).
 - **Dos Barras Independientes por Colaborador:**
   1. **Barra 1 — `Planificado`:** Suma las horas presupuestadas/asignadas (`budgetedHours`) de las tareas asignadas al colaborador en el periodo frente a su capacidad neta semanal.
   2. **Barra 2 — `Ejecutado` (en amarillo `#f59e0b`):** Suma las horas reales registradas (`TimeLog`) por el colaborador en el periodo frente a su capacidad neta semanal.

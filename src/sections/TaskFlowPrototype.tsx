@@ -58,6 +58,9 @@ import { MiDiaView } from '../components/taskflow/MiDiaView';
 import { LaColoniaView } from '../components/taskflow/colonia/LaColoniaView';
 import { TeamHumanProfileModal } from '../components/taskflow/copilot/TeamHumanProfileModal';
 import { FloatingBeaverWidget } from '../components/taskflow/FloatingBeaverWidget';
+import { DayCloseModal } from '../components/taskflow/time/DayCloseModal';
+import { hoursByDay, computeStreak, isDayClosed, markDayClosed, isOwnLog, logIsoDate, toIsoLocal, DAY_CLOSED_EVENT, streakLabel } from '../components/taskflow/time/dayStreak';
+import { makePersonMatcher, isTaskOwner, isScheduledForDay } from '../components/taskflow/auth/taskVisibility';
 import { TimerSummaryModal, TimerSummaryData } from '../components/taskflow/TimerSummaryModal';
 import { StopTimerRegisterModal } from '../components/taskflow/time/StopTimerRegisterModal';
 import { AssistedTimerRecoveryModal } from '../components/taskflow/time/AssistedTimerRecoveryModal';
@@ -72,9 +75,13 @@ import { MobileTimerMiniPlayer } from '../components/taskflow/MobileTimerMiniPla
 import { NewBusinessView } from '../components/taskflow/newbusiness/NewBusinessView';
 import { DireccionFinanzasView } from '../components/taskflow/DireccionFinanzasView';
 import { INITIAL_NEW_BUSINESS_OPPORTUNITIES } from '../components/taskflow/newbusiness/mockOpportunities';
-import { canAccessModule, viewToModule } from '../components/taskflow/auth/permissions';
+import { canAccessModule, viewToModule, can } from '../components/taskflow/auth/permissions';
+import { HardwareView } from '../components/taskflow/assets/HardwareView';
+import { LicensesView } from '../components/taskflow/assets/LicensesView';
+import type { HardwareAsset, SoftwareLicense } from '../components/taskflow/types';
 import { AccessDeniedCard } from '../components/taskflow/auth/AccessDeniedCard';
 import { DevQaRoleSimulator } from '../components/taskflow/auth/DevQaRoleSimulator';
+import { isEcoAppMode } from '../pwa/appMode';
 import {
   Sparkles,
   Clock,
@@ -112,8 +119,13 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
     status: 'Activo',
     healthStatus: 'verde',
     healthNote: 'Consumo dentro de lo proyectado para el ciclo actual',
-    rolloverPolicy: 'none',
+    rolloverPolicy: 'carry_over',
     currentMonthCycle: '2026-09',
+    // Contrato de ejemplo: fee de 6 meses (ciclos ago-2026 → ene-2027)
+    isKickedOff: true,
+    contractMonths: 6,
+    contractStartDate: '2026-08-01',
+    contractEndDate: '2027-01-31',
     monthlyCycles: [
       {
         monthKey: '2026-08',
@@ -148,9 +160,9 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
         order: 1,
         status: 'in_progress',
         roleBudgets: [
-          { id: 'rb-1', roleId: 'Diseñador Gráfico', roleName: 'Diseñador Gráfico', quotedHours: 24 },
+          { id: 'rb-1', roleId: 'Creative Designer', roleName: 'Creative Designer', quotedHours: 24 },
           { id: 'rb-2', roleId: 'Community Manager', roleName: 'Community Manager', quotedHours: 4 },
-          { id: 'rb-3', roleId: 'Content Strategist', roleName: 'Content Strategist', quotedHours: 4 }
+          { id: 'rb-3', roleId: 'Digital Content Specialist', roleName: 'Digital Content Specialist', quotedHours: 4 }
         ],
         totalQuotedHours: 32,
         totalExecutedHours: 14.5,
@@ -165,9 +177,9 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
         status: 'in_progress',
         roleBudgets: [
           { id: 'rb-4', roleId: 'Product Lead', roleName: 'Product Lead', quotedHours: 2 },
-          { id: 'rb-5', roleId: 'Copywriter', roleName: 'Copywriter', quotedHours: 3 },
-          { id: 'rb-6', roleId: 'Web Designer', roleName: 'Web Designer', quotedHours: 6 },
-          { id: 'rb-7', roleId: 'Front End', roleName: 'Front End', quotedHours: 8 }
+          { id: 'rb-5', roleId: 'Content Creator', roleName: 'Content Creator', quotedHours: 3 },
+          { id: 'rb-6', roleId: 'Digital Designer', roleName: 'Digital Designer', quotedHours: 6 },
+          { id: 'rb-7', roleId: 'Front-End Dev', roleName: 'Front-End Dev', quotedHours: 8 }
         ],
         totalQuotedHours: 19,
         totalExecutedHours: 8.5,
@@ -181,7 +193,7 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
         order: 3,
         status: 'in_progress',
         roleBudgets: [
-          { id: 'rb-8', roleId: 'Trafficker', roleName: 'Trafficker', quotedHours: 8 }
+          { id: 'rb-8', roleId: 'Trafficker Media', roleName: 'Trafficker Media', quotedHours: 8 }
         ],
         totalQuotedHours: 8,
         totalExecutedHours: 4.0,
@@ -189,10 +201,10 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
       }
     ],
     coreTeam: [
-      { id: 'u-2', name: 'Paola Monsalve', role: 'Lead PM', avatarBg: 'bg-[#501f92]', initials: 'PM', isLead: true, weeklyAllocatedHours: 4 },
-      { id: 'u-7', name: 'Diego Cadavid', role: 'Diseñador Gráfico', avatarBg: 'bg-[#dc2626]', initials: 'DC', weeklyAllocatedHours: 12 },
+      { id: 'u-2', name: 'Paola Monsalve', role: 'Product Lead', avatarBg: 'bg-[#501f92]', initials: 'PM', isLead: true, weeklyAllocatedHours: 4 },
+      { id: 'u-7', name: 'Diego Cadavid', role: 'Creative Designer', avatarBg: 'bg-[#dc2626]', initials: 'DC', weeklyAllocatedHours: 12 },
       { id: 'u-8', name: 'Sara Rivera', role: 'Community Manager', avatarBg: 'bg-[#ec4899]', initials: 'SR', weeklyAllocatedHours: 4 },
-      { id: 'u-16', name: 'Sebastián Caicedo', role: 'Trafficker', avatarBg: 'bg-[#10b981]', initials: 'SC', weeklyAllocatedHours: 4 }
+      { id: 'u-16', name: 'Sebastián Caicedo', role: 'Trafficker Media', avatarBg: 'bg-[#10b981]', initials: 'SC', weeklyAllocatedHours: 4 }
     ],
     // Asignaciones nativas con soporte multirol (Paola en Gobernanza + Ejecución Digital Designer)
     assignments: [
@@ -200,7 +212,7 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
         id: 'asg-yam-1',
         projectId: 'prj-yam-navidad',
         userId: 'u-2', // Paola Monsalve
-        roleId: 'Lead Project Manager',
+        roleId: 'Product Lead',
         nature: 'governance',
         deliverableId: null,
         allocations: [
@@ -238,7 +250,7 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
         id: 'asg-yam-3',
         projectId: 'prj-yam-navidad',
         userId: 'u-7', // Diego Cadavid
-        roleId: 'Diseñador Gráfico',
+        roleId: 'Creative Designer',
         nature: 'core_execution',
         deliverableId: 'del-yam-rs',
         allocations: [
@@ -274,7 +286,7 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
         id: 'asg-yam-5',
         projectId: 'prj-yam-navidad',
         userId: 'u-16', // Sebastián Caicedo
-        roleId: 'Trafficker',
+        roleId: 'Trafficker Media',
         nature: 'core_execution',
         deliverableId: 'del-yam-pd',
         allocations: [
@@ -292,7 +304,7 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
         id: 'asg-yam-6',
         projectId: 'prj-yam-navidad',
         userId: 'u-3', // Laura Gómez
-        roleId: 'Front End',
+        roleId: 'Front-End Dev',
         nature: 'temporary_support',
         deliverableId: 'del-yam-lp',
         allocations: [
@@ -332,7 +344,7 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
         projectId: 'prj-yam-navidad',
         assignmentId: 'asg-yam-6',
         userId: 'u-3',
-        roleId: 'Front End',
+        roleId: 'Front-End Dev',
         action: 'created',
         previousWeeklyHours: null,
         newWeeklyHours: 4,
@@ -348,7 +360,7 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
         projectId: 'prj-yam-navidad',
         assignmentId: 'asg-yam-1',
         userId: 'u-2',
-        roleId: 'Lead Project Manager',
+        roleId: 'Product Lead',
         action: 'created',
         previousWeeklyHours: null,
         newWeeklyHours: 3,
@@ -383,8 +395,6 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
     forecastEndDate: '2026-11-20',
     scheduleConfig: {
       clientKickoffWaitDays: 3,
-      gateApprovalWaitDays: 5,
-      gateCount: 2,
       includedReworkRounds: 2
     },
     dependencies: [
@@ -406,7 +416,7 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
       {
         id: 'dep-batt-2',
         projectId: 'prj-battsaver-1',
-        title: 'Aprobación Gate 1 (UI Figma Prototipo)',
+        title: 'Aprobación ronda 1 (UI Figma Prototipo)',
         type: 'approval',
         ownerType: 'client',
         followUpOwnerUserId: 'u-3',
@@ -458,7 +468,7 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
         dependencyId: 'dep-batt-2',
         confirmedByUserId: 'u-2',
         confirmedByName: 'Paola Monsalve',
-        note: 'Espera de validación directiva en Gate 1',
+        note: 'Espera de validación directiva en la ronda 1',
         createdAt: '2026-09-26T16:00:00Z'
       }
     ],
@@ -485,7 +495,7 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
         description: 'Diseño en Figma de vistas desktop y mobile',
         order: 2,
         status: 'in_progress',
-        roleBudgets: [{ id: 'rb-b2', roleId: 'Web Designer', roleName: 'Web Designer', quotedHours: 36 }],
+        roleBudgets: [{ id: 'rb-b2', roleId: 'Digital Designer', roleName: 'Digital Designer', quotedHours: 36 }],
         totalQuotedHours: 36,
         totalExecutedHours: 22,
         progressPercentage: 60
@@ -497,7 +507,7 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
         description: 'Configuración de Liquid, checkout y pasarelas',
         order: 3,
         status: 'pending',
-        roleBudgets: [{ id: 'rb-b3', roleId: 'Front End', roleName: 'Front End', quotedHours: 48 }],
+        roleBudgets: [{ id: 'rb-b3', roleId: 'Front-End Dev', roleName: 'Front-End Dev', quotedHours: 48 }],
         totalQuotedHours: 48,
         totalExecutedHours: 0,
         progressPercentage: 0
@@ -509,7 +519,7 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
         description: 'Pruebas de pago, inventario y capacitación',
         order: 4,
         status: 'pending',
-        roleBudgets: [{ id: 'rb-b4', roleId: 'Lead PM', roleName: 'Lead PM', quotedHours: 12 }],
+        roleBudgets: [{ id: 'rb-b4', roleId: 'Product Lead', roleName: 'Product Lead', quotedHours: 12 }],
         totalQuotedHours: 12,
         totalExecutedHours: 0,
         progressPercentage: 0
@@ -517,7 +527,7 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
     ],
     coreTeam: [
       { id: 'u-paola', name: 'Paola Monsalve', role: 'Product Lead', avatarBg: 'bg-[#501f92]', initials: 'PM', isLead: true, weeklyAllocatedHours: 4 },
-      { id: 'u-oscar', name: 'Oscar Cerpa', role: 'Desarrollador Web Front-End', avatarBg: 'bg-[#f59e0b]', initials: 'OC', weeklyAllocatedHours: 8 },
+      { id: 'u-oscar', name: 'Oscar Cerpa', role: 'Front-End Dev', avatarBg: 'bg-[#f59e0b]', initials: 'OC', weeklyAllocatedHours: 8 },
       { id: 'u-catalina', name: 'Catalina Tejada', role: 'Directora Comercial', avatarBg: 'bg-[#7c3aed]', initials: 'CT', weeklyAllocatedHours: 15 },
       { id: 'u-laura', name: 'Laura Isabel Gómez', role: 'Digital Designer', avatarBg: 'bg-[#0284c7]', initials: 'LG', weeklyAllocatedHours: 18 }
     ]
@@ -525,7 +535,7 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
   {
     id: 'prj-uhura-orbit',
     code: 'UHU-ORB-03',
-    name: 'Orbit 3.0 · Sistema Operativo Uhura',
+    name: 'ECO 3.0 · Sistema Operativo Uhura',
     clientId: 'cli-uhura-internal',
     clientName: 'UHURA Group Internal',
     taxEntityId: null,
@@ -550,7 +560,7 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
         description: 'Modelado de Cliente, Proyecto, Tareas y Capacidad',
         order: 1,
         status: 'in_progress',
-        roleBudgets: [{ id: 'rb-oc1', roleId: 'Tech Lead', roleName: 'Tech Lead', quotedHours: 0 }],
+        roleBudgets: [{ id: 'rb-oc1', roleId: 'Product Lead', roleName: 'Product Lead', quotedHours: 0 }],
         totalQuotedHours: 0,
         totalExecutedHours: 42,
         progressPercentage: 65
@@ -559,7 +569,7 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
         id: 'del-orb-ux',
         projectId: 'prj-uhura-orbit',
         name: 'Diseño de Interfaz & Componentes UI',
-        description: 'Design System de Orbit y ergonomía operativa',
+        description: 'Design System de ECO y ergonomía operativa',
         order: 2,
         status: 'in_progress',
         roleBudgets: [{ id: 'rb-oc2', roleId: 'Product Lead', roleName: 'Product Lead', quotedHours: 0 }],
@@ -570,7 +580,7 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
     ],
     coreTeam: [
       { id: 'u-paola', name: 'Paola Monsalve', role: 'Product Lead', avatarBg: 'bg-[#501f92]', initials: 'PM', isLead: true, weeklyAllocatedHours: 5 },
-      { id: 'u-oscar', name: 'Oscar Cerpa', role: 'Desarrollador Web Front-End', avatarBg: 'bg-[#f59e0b]', initials: 'OC', weeklyAllocatedHours: 10 }
+      { id: 'u-oscar', name: 'Oscar Cerpa', role: 'Front-End Dev', avatarBg: 'bg-[#f59e0b]', initials: 'OC', weeklyAllocatedHours: 10 }
     ]
   },
   {
@@ -597,7 +607,7 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
         name: 'Soporte Web & Ajustes',
         order: 1,
         status: 'in_progress',
-        roleBudgets: [{ id: 'rb-t1', roleId: 'Front End', roleName: 'Front End', quotedHours: 45 }]
+        roleBudgets: [{ id: 'rb-t1', roleId: 'Front-End Dev', roleName: 'Front-End Dev', quotedHours: 45 }]
       }
     ]
   },
@@ -625,7 +635,7 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
         name: 'Gestión de Pauta & Ads',
         order: 1,
         status: 'in_progress',
-        roleBudgets: [{ id: 'rb-fl1', roleId: 'Trafficker', roleName: 'Trafficker', quotedHours: 60 }]
+        roleBudgets: [{ id: 'rb-fl1', roleId: 'Trafficker Media', roleName: 'Trafficker Media', quotedHours: 60 }]
       }
     ]
   },
@@ -696,10 +706,33 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
     status: 'Activo',
     healthStatus: 'rojo',
     healthNote: 'Desvío en horas y mora en pago'
+  },
+  {
+    id: 'prj-neroli-fee',
+    code: 'NER-FEE-01',
+    name: 'Fee mensual — Neroli Fragancias',
+    clientId: 'cli-neroli',
+    clientName: 'Neroli Fragancias',
+    taxEntityId: null,
+    brand: 'Neroli',
+    leadName: 'Paola (Lead PM)',
+    leadAvatarBg: 'bg-[#501f92]',
+    leadRole: 'Lead Project Manager',
+    projectType: 'fee_monthly',
+    serviceBase: 'Fee Mensual · Contenido & Social',
+    budgetedHours: 40,
+    soldHours: 40,
+    status: 'Activo',
+    healthStatus: 'verde',
+    healthNote: 'Primer proyecto de adopción de Google Chat (hereda la integración del cliente)',
+    rolloverPolicy: 'none',
+    deliverables: [],
+    googleChatMode: 'inherit_client'
   }
 ];
 
 export const TaskFlowPrototype: React.FC = () => {
+  const [ecoAppMode] = useState(isEcoAppMode);
   const [currentView, setCurrentView] = useState<OrbitView>('mi-dia');
   const [saasFont, setSaasFont] = useState<'jakarta' | 'inter' | 'montserrat'>('jakarta');
   const [tasks, setTasks] = useState<TaskItem[]>(initialTasks);
@@ -713,6 +746,18 @@ export const TaskFlowPrototype: React.FC = () => {
   const [activities, setActivities] = useState(initialActivities);
   const [timeLogs, setTimeLogs] = useState<TimeLog[]>(initialTimeLogs);
   const [productTemplates, setProductTemplates] = useState<ProductBacklogTemplate[]>(INITIAL_PRODUCT_BACKLOG_TEMPLATES);
+  // Costos de operación (datos de ejemplo; en producción vienen del backend)
+  const [hardwareAssets, setHardwareAssets] = useState<HardwareAsset[]>([
+    { id: 'hw-1', name: 'MacBook Pro diseño 01', type: 'Laptop', brand: 'Apple', model: 'MacBook Pro 14" M3', serialNumber: 'C02-UH-001', assignedUserId: 'u-7', location: 'Oficina Medellín', purchaseValue: 9800000, purchaseDate: '2025-02-10', usefulLifeMonths: 36, warrantyEndDate: '2026-02-10', isDirectCost: true, serviceTemplateIds: [], projectIds: [], status: 'active' },
+    { id: 'hw-2', name: 'Cámara de producción', type: 'Cámara', brand: 'Sony', model: 'A7 IV', assignedUserId: null, location: 'Estudio', purchaseValue: 11500000, purchaseDate: '2025-06-01', usefulLifeMonths: 48, warrantyEndDate: '2027-06-01', isDirectCost: true, serviceTemplateIds: [], projectIds: [], status: 'active' }
+  ]);
+  const [softwareLicenses, setSoftwareLicenses] = useState<SoftwareLicense[]>([
+    { id: 'lic-1', application: 'ADOBE', plan: 'Creative Cloud All Apps', quantity: 5, frequency: 'monthly', currency: 'COP', unitValue: 359000, area: 'Operativos', assignedUserIds: [], nextRenewalDate: '2026-11-15', projectIds: [], pendingVerification: false, status: 'active' },
+    { id: 'lic-2', application: 'FIGMA', plan: 'Premium', quantity: 1, frequency: 'monthly', currency: 'USD', unitValue: 20, area: 'Operativos', assignedUserIds: [], projectIds: [], pendingVerification: false, status: 'active' },
+    { id: 'lic-3', application: 'GOOGLE', plan: 'Workspace Business Standard', quantity: 23, frequency: 'monthly', currency: 'USD', unitValue: 16.8, area: 'Varios', assignedUserIds: [], projectIds: [], pendingVerification: false, status: 'active' },
+    { id: 'lic-4', application: 'HUBSPOT', quantity: 5, frequency: 'quarterly', currency: 'USD', unitValue: 0.01, area: 'Comercial', assignedUserIds: [], projectIds: [], pendingVerification: true, verificationNote: 'Confirmar valor y plan vigente', status: 'active' },
+    { id: 'lic-5', application: 'FREEPIK', plan: 'Freepik Premium Yearly', quantity: 1, frequency: 'annual', currency: 'COP', unitValue: 460000, area: 'Operativos', assignedUserIds: [], projectIds: [], pendingVerification: false, status: 'active' }
+  ]);
   const [opportunities, setOpportunities] = useState<NewBusinessOpportunity[]>(INITIAL_NEW_BUSINESS_OPPORTUNITIES);
   // Estado de demostración del frontend; no agrega campos al contrato de datos.
   const [scopeUi, setScopeUi] = useState<Record<string, { saved: boolean; services: ScopeServiceDraft[] }>>({});
@@ -727,7 +772,6 @@ export const TaskFlowPrototype: React.FC = () => {
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
   const [newProjectPreselectedClientId, setNewProjectPreselectedClientId] = useState<string | null>(null);
   const [selectedProjectIdForView, setSelectedProjectIdForView] = useState<string | null>(null);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeAlerts, setActiveAlerts] = useState(orbitOperationalAlerts);
 
@@ -852,7 +896,7 @@ export const TaskFlowPrototype: React.FC = () => {
       elapsedSeconds: 0,
       isPaused: false,
       deliverableId: task.deliverableId,
-      budgetedRoleId: task.budgetedRoleId || task.budgetedRole || 'Diseñador Gráfico',
+      budgetedRoleId: task.budgetedRoleId || task.budgetedRole || 'Creative Designer',
       isOutsideRegularSchedule: isWeekend
     });
   };
@@ -956,7 +1000,7 @@ export const TaskFlowPrototype: React.FC = () => {
       id: `log-${Date.now()}`,
       taskId: activeTimer.taskId,
       userId: currentUser?.id || targetTask.assignee?.id || 'u-pao',
-      budgetedRoleId: activeTimer.budgetedRoleId || targetTask.budgetedRoleId || targetTask.budgetedRole || 'Diseñador Gráfico',
+      budgetedRoleId: activeTimer.budgetedRoleId || targetTask.budgetedRoleId || targetTask.budgetedRole || 'Creative Designer',
       durationSeconds: sessionSeconds,
       date: todayFormatted,
       source: 'timer',
@@ -1092,6 +1136,31 @@ export const TaskFlowPrototype: React.FC = () => {
         return t;
       })
     );
+
+    // Ronda 2: aviso al líder y al revisor (producción: a líder, revisor y seguidores de la tarea).
+    const deliveredTask = tasks.find((t) => t.id === taskId);
+    const mentioned = users
+      .filter((u) => u.name && (del.notes || '').includes(`@${u.name}`))
+      .map((u) => u.name);
+    if (deliveredTask) {
+      setActiveAlerts((prevAlerts) => [
+        {
+          id: `alt-rev-${Date.now()}`,
+          type: 'REVISIÓN',
+          title: deliveredTask.title,
+          client: deliveredTask.clientName || 'ECO',
+          description: `${del.submittedBy || 'Un colaborador'} envió un entregable a revisión${del.taggedReviewer ? ` · Revisa: ${del.taggedReviewer}` : ''}${
+            mentioned.length ? ` · Menciona a ${mentioned.join(', ')}` : ''
+          }`,
+          impactLevel: 'medio',
+          severity: 'info',
+          read: false,
+          timeAgo: 'Ahora',
+          date: 'Hoy'
+        },
+        ...prevAlerts
+      ]);
+    }
   };
 
   // Save Manual Log Fallback
@@ -1348,7 +1417,7 @@ export const TaskFlowPrototype: React.FC = () => {
             id: `alt-${Date.now()}`,
             type: 'ASIGNACIÓN',
             title: existingTask.title,
-            client: existingTask.clientName || 'Orbit',
+            client: existingTask.clientName || 'ECO',
             description: `Asignado a ${addedNames.join(', ')} · Prioridad ${prioLabel}`,
             impactLevel: prioLabel === 'Alta' ? 'alto' : 'medio',
             severity: prioLabel === 'Alta' ? 'high' : 'info',
@@ -1920,8 +1989,8 @@ export const TaskFlowPrototype: React.FC = () => {
     leadUserIds?: string[];
     specialistUserIds?: string[];
     leadName: string;
-    startDate: string;
-    endDate?: string;
+    startDate?: string; // Obsoleto: las fechas se fijan al «Iniciar proyecto»
+    endDate?: string;   // Obsoleto: las fechas se fijan al «Iniciar proyecto»
     initialFormalizationStatus?: 'pendiente_formalizacion' | 'activo';
     startConditionsConfig?: any;
     approvedServiceIds?: string[];
@@ -2032,7 +2101,7 @@ export const TaskFlowPrototype: React.FC = () => {
     const newTasksToCreate: TaskItem[] = [];
 
     if (payload.projects && payload.projects.length > 0) {
-      // Regla 1:1:1: 1 servicio en Orbit = 1 negocio en HubSpot = 1 proyecto en Orbit si se gana.
+      // Regla 1:1:1: 1 servicio en ECO = 1 negocio en HubSpot = 1 proyecto en ECO si se gana.
       payload.projects.forEach((projItem, pIdx) => {
         const prjId = `prj-${Date.now()}-${pIdx + 1}`;
         const serviceDeliverables = quote.deliverables.filter((qd) =>
@@ -2122,8 +2191,8 @@ export const TaskFlowPrototype: React.FC = () => {
           soldValue: soldValue > 0 ? soldValue : undefined,
           soldValueCOP,
           soldCurrency: quoteCurrency,
-          startDate: payload.startDate,
-          endDate: payload.endDate,
+          startDate: undefined, // Se define al «Iniciar proyecto»
+          endDate: undefined,
           brief: opp.briefSummary || opp.discoveryNotes,
           briefUrl: opp.briefUrl || null,
           deliverables: newProjectDeliverables,
@@ -2139,11 +2208,18 @@ export const TaskFlowPrototype: React.FC = () => {
           healthStatus: 'verde',
           scheduleConfig: {
             clientKickoffWaitDays: (projItem as any).scheduleConfig?.clientKickoffWaitDays ?? 3,
-            gateApprovalWaitDays: (projItem as any).scheduleConfig?.gateApprovalWaitDays ?? 5,
-            gateCount: (projItem as any).scheduleConfig?.gateCount ?? 2,
-            includedReworkRounds: (projItem as any).scheduleConfig?.includedReworkRounds ?? (projItem as any).includedReworkRounds ?? 2
+            includedReworkRounds: (projItem as any).scheduleConfig?.includedReworkRounds ?? (projItem as any).includedReworkRounds ?? 2,
+            reworkRoundDays: (projItem as any).scheduleConfig?.reworkRoundDays ?? 5,
+            productionWeeks: (projItem as any).scheduleConfig?.productionWeeks
           },
-          healthNote: `Proyecto independiente creado a partir del servicio ganado "${projItem.serviceName}"`
+          healthNote: `Proyecto independiente creado a partir del servicio ganado "${projItem.serviceName}"`,
+          // Fee mensual: vigencia y política de horas no usadas (los ciclos se crean al iniciar)
+          contractMonths: projItem.projectType === 'fee_monthly' ? ((projItem as any).monthsDuration ?? 6) : null,
+          rolloverPolicy: projItem.projectType === 'fee_monthly' ? ((projItem as any).rolloverPolicy ?? 'none') : undefined,
+          // Recursos externos del servicio; los que no tienen servicio van al primer proyecto
+          externalResources: (quote.externalResources || []).filter((r) =>
+            r.serviceId ? r.serviceId === projItem.serviceId : pIdx === 0
+          )
         };
 
         projectsToCreate.push(newPrj);
@@ -2179,9 +2255,9 @@ export const TaskFlowPrototype: React.FC = () => {
               board: projItem.projectName,
               department: 'Operaciones',
               date: new Date().toISOString().slice(0, 10),
-              dueDate: payload.endDate || new Date().toISOString().slice(0, 10),
+              dueDate: '', // Se programa al «Iniciar proyecto»
               dueStatus: 'normal',
-              dueText: 'Planificado en Scoping',
+              dueText: 'Se programa al iniciar el proyecto',
               budgetedHours: bItem.estimatedHours || 0,
               consumedSeconds: 0,
               completed: false,
@@ -2272,8 +2348,8 @@ export const TaskFlowPrototype: React.FC = () => {
         soldValue: fixedSoldValue > 0 ? fixedSoldValue : undefined,
         soldValueCOP: quoteCurrency === 'COP' && fixedSoldValue > 0 ? fixedSoldValue : undefined,
         soldCurrency: quoteCurrency,
-        startDate: payload.startDate,
-        endDate: payload.endDate,
+        startDate: undefined, // Se define al «Iniciar proyecto»
+        endDate: undefined,
         brief: opp.briefSummary || opp.discoveryNotes,
         briefUrl: opp.briefUrl || null,
         deliverables: newProjectDeliverablesFixed,
@@ -2289,9 +2365,9 @@ export const TaskFlowPrototype: React.FC = () => {
         healthStatus: 'verde',
         scheduleConfig: {
           clientKickoffWaitDays: (payload as any).scheduleConfig?.clientKickoffWaitDays ?? 3,
-          gateApprovalWaitDays: (payload as any).scheduleConfig?.gateApprovalWaitDays ?? 5,
-          gateCount: (payload as any).scheduleConfig?.gateCount ?? 2,
-          includedReworkRounds: (payload as any).scheduleConfig?.includedReworkRounds ?? (payload as any).includedReworkRounds ?? 2
+          includedReworkRounds: (payload as any).scheduleConfig?.includedReworkRounds ?? (payload as any).includedReworkRounds ?? 2,
+          reworkRoundDays: (payload as any).scheduleConfig?.reworkRoundDays ?? 5,
+          productionWeeks: (payload as any).scheduleConfig?.productionWeeks
         },
         healthNote: 'Proyecto puntual de propuesta mixta ganado en New Business'
       };
@@ -2333,8 +2409,8 @@ export const TaskFlowPrototype: React.FC = () => {
         soldValue: feeSoldTotal > 0 ? feeSoldTotal : undefined,
         soldValueCOP: quoteCurrency === 'COP' && feeSoldTotal > 0 ? feeSoldTotal : undefined,
         soldCurrency: quoteCurrency,
-        startDate: payload.startDate,
-        endDate: payload.endDate,
+        startDate: undefined, // Se define al «Iniciar proyecto»
+        endDate: undefined,
         brief: opp.briefSummary || opp.discoveryNotes,
         briefUrl: opp.briefUrl || null,
         deliverables: newProjectDeliverablesFee,
@@ -2350,9 +2426,9 @@ export const TaskFlowPrototype: React.FC = () => {
         healthStatus: 'verde',
         scheduleConfig: {
           clientKickoffWaitDays: (payload as any).scheduleConfig?.clientKickoffWaitDays ?? 3,
-          gateApprovalWaitDays: (payload as any).scheduleConfig?.gateApprovalWaitDays ?? 5,
-          gateCount: (payload as any).scheduleConfig?.gateCount ?? 2,
-          includedReworkRounds: (payload as any).scheduleConfig?.includedReworkRounds ?? (payload as any).includedReworkRounds ?? 2
+          includedReworkRounds: (payload as any).scheduleConfig?.includedReworkRounds ?? (payload as any).includedReworkRounds ?? 2,
+          reworkRoundDays: (payload as any).scheduleConfig?.reworkRoundDays ?? 5,
+          productionWeeks: (payload as any).scheduleConfig?.productionWeeks
         },
         healthNote: 'Proyecto fee mensual de propuesta mixta ganado en New Business'
       };
@@ -2399,9 +2475,9 @@ export const TaskFlowPrototype: React.FC = () => {
             board: fixedName,
             department: 'Operaciones',
             date: new Date().toISOString().slice(0, 10),
-            dueDate: payload.endDate || new Date().toISOString().slice(0, 10),
+            dueDate: '', // Se programa al «Iniciar proyecto»
             dueStatus: 'normal',
-            dueText: 'Planificado en Scoping',
+            dueText: 'Se programa al iniciar el proyecto',
             budgetedHours: bItem.estimatedHours || 0,
             consumedSeconds: 0,
             completed: false,
@@ -2442,9 +2518,9 @@ export const TaskFlowPrototype: React.FC = () => {
             board: feeName,
             department: 'Operaciones',
             date: new Date().toISOString().slice(0, 10),
-            dueDate: payload.endDate || new Date().toISOString().slice(0, 10),
+            dueDate: '', // Se programa al «Iniciar proyecto»
             dueStatus: 'normal',
-            dueText: 'Planificado en Scoping',
+            dueText: 'Se programa al iniciar el proyecto',
             budgetedHours: bItem.estimatedHours || 0,
             consumedSeconds: 0,
             completed: false,
@@ -2517,8 +2593,8 @@ export const TaskFlowPrototype: React.FC = () => {
         soldValue,
         soldValueCOP,
         soldCurrency: quoteCurrency,
-        startDate: payload.startDate,
-        endDate: payload.endDate,
+        startDate: undefined, // Se define al «Iniciar proyecto»
+        endDate: undefined,
         brief: opp.briefSummary || opp.discoveryNotes,
         briefUrl: opp.briefUrl || null,
         deliverables: newProjectDeliverables,
@@ -2534,9 +2610,9 @@ export const TaskFlowPrototype: React.FC = () => {
         healthStatus: 'verde',
         scheduleConfig: {
           clientKickoffWaitDays: (payload as any).scheduleConfig?.clientKickoffWaitDays ?? 3,
-          gateApprovalWaitDays: (payload as any).scheduleConfig?.gateApprovalWaitDays ?? 5,
-          gateCount: (payload as any).scheduleConfig?.gateCount ?? 2,
-          includedReworkRounds: (payload as any).scheduleConfig?.includedReworkRounds ?? (payload as any).includedReworkRounds ?? 2
+          includedReworkRounds: (payload as any).scheduleConfig?.includedReworkRounds ?? (payload as any).includedReworkRounds ?? 2,
+          reworkRoundDays: (payload as any).scheduleConfig?.reworkRoundDays ?? 5,
+          productionWeeks: (payload as any).scheduleConfig?.productionWeeks
         },
         healthNote: 'Proyecto recién ganado y aprobado en New Business'
       };
@@ -2572,9 +2648,9 @@ export const TaskFlowPrototype: React.FC = () => {
             board: payload.projectName,
             department: 'Operaciones',
             date: new Date().toISOString().slice(0, 10),
-            dueDate: payload.endDate || new Date().toISOString().slice(0, 10),
+            dueDate: '', // Se programa al «Iniciar proyecto»
             dueStatus: 'normal',
-            dueText: 'Planificado en Scoping',
+            dueText: 'Se programa al iniciar el proyecto',
             budgetedHours: bItem.estimatedHours || 0,
             consumedSeconds: 0,
             completed: false,
@@ -2599,7 +2675,22 @@ export const TaskFlowPrototype: React.FC = () => {
       });
     }
 
-    // Actualizar Cliente en Orbit
+    // Ronda 2: el proyecto guarda quién es el Comercial responsable (owner de la oportunidad) y la
+    // Relación con clientes de la cuenta, para que les lleguen las alertas (p. ej. tareas bloqueadas).
+    {
+      const commercialUser = users.find((u) => u.id === opp.commercialOwner || u.name === opp.commercialOwner);
+      const accountClient = clients.find((c) => c.id === resolvedClientId);
+      projectsToCreate.forEach((p) => {
+        p.commercialOwnerId = commercialUser?.id || p.commercialOwnerId;
+        p.commercialOwnerName = commercialUser?.name || opp.commercialOwner || p.commercialOwnerName;
+        if (!p.accountManagerName && accountClient?.accountManagerName) {
+          p.accountManagerId = accountClient.accountManagerId;
+          p.accountManagerName = accountClient.accountManagerName;
+        }
+      });
+    }
+
+    // Actualizar Cliente en ECO
     if (!resolvedClientId) {
       resolvedClientId = `cli-${Date.now()}`;
       projectsToCreate.forEach((p) => { p.clientId = resolvedClientId!; });
@@ -2723,8 +2814,11 @@ export const TaskFlowPrototype: React.FC = () => {
   const handleSaveQuoteToOpportunity = (opportunityId: string, quote: QuoteProposal) => {
     const current = getOperationalQuote(opportunities.find((item) => item.id === opportunityId));
     const targetQuoteId = current?.id || quote.id;
-    const service = { id: quote.id, name: productTemplates.find((item) => item.id === quote.templateId)?.name || 'Servicio importado',
-      deliverableIds: quote.deliverables.map((_, index) => `qdel-import-${quote.id}-${index}`), weeks: '', saved: false };
+    const importedTemplate = productTemplates.find((item) => item.id === quote.templateId);
+    // Semanas precargadas desde la plantilla (editables por el líder)
+    const service = { id: quote.id, name: importedTemplate?.name || 'Servicio importado',
+      deliverableIds: quote.deliverables.map((_, index) => `qdel-import-${quote.id}-${index}`),
+      weeks: importedTemplate?.estimatedDurationWeeks ? String(importedTemplate.estimatedDurationWeeks) : '', saved: false };
     setScopeUi((previous) => ({ ...previous, [targetQuoteId]: { saved: false,
       services: [...(previous[targetQuoteId]?.services || []).filter((item) => item.id !== service.id), service] } }));
     setOpportunities((prev) =>
@@ -2776,9 +2870,11 @@ export const TaskFlowPrototype: React.FC = () => {
     };
 
     if (quote.templateId) {
+      const importedTemplate = productTemplates.find((item) => item.id === quote.templateId);
       setScopeUi((previous) => ({ ...previous, [finalizedQuote.id]: { saved: false, services: [{
-        id: quote.id, name: productTemplates.find((item) => item.id === quote.templateId)?.name || 'Servicio importado',
-        deliverableIds: quote.deliverables.map((item) => item.id), weeks: '', saved: false
+        id: quote.id, name: importedTemplate?.name || 'Servicio importado',
+        deliverableIds: quote.deliverables.map((item) => item.id),
+        weeks: importedTemplate?.estimatedDurationWeeks ? String(importedTemplate.estimatedDurationWeeks) : '', saved: false
       }] } }));
     }
     const newOpp: NewBusinessOpportunity = {
@@ -2842,6 +2938,61 @@ export const TaskFlowPrototype: React.FC = () => {
     todayTimeLogs.reduce((acc, log) => acc + (log.durationSeconds || 0) / 3600, 0).toFixed(1)
   );
 
+  // ── Racha de días cargados y «Cerrar mi día» (dayStreak.ts) ──
+  const targetDayHoursValue = Number(((currentUser?.capacityHours || 42) / 5).toFixed(1));
+  const todayIsoKey = toIsoLocal(new Date());
+  const [isDayCloseOpen, setIsDayCloseOpen] = useState(false);
+  const [dayClosedTick, setDayClosedTick] = useState(0);
+  useEffect(() => {
+    const h = () => setDayClosedTick((n) => n + 1);
+    window.addEventListener(DAY_CLOSED_EVENT, h);
+    return () => window.removeEventListener(DAY_CLOSED_EVENT, h);
+  }, []);
+  const myAbsentDays = React.useMemo(() => {
+    const set = new Set<string>();
+    for (const a of absenceEvents) {
+      if (a.userId !== currentUser?.id || a.status !== 'active') continue;
+      const d = new Date(`${a.startDate}T00:00:00`);
+      const end = new Date(`${a.endDate || a.startDate}T00:00:00`);
+      for (let i = 0; d <= end && i < 120; i++) {
+        set.add(toIsoLocal(d));
+        d.setDate(d.getDate() + 1);
+      }
+    }
+    return set;
+  }, [absenceEvents, currentUser?.id]);
+  const myStreak = React.useMemo(
+    () => computeStreak({ hours: hoursByDay(timeLogs, currentUser), targetDayHours: targetDayHoursValue, absentDays: myAbsentDays }),
+    [timeLogs, currentUser, targetDayHoursValue, myAbsentDays]
+  );
+  const dayClosedToday = React.useMemo(
+    () => isDayClosed(currentUser?.id, todayIsoKey),
+    [currentUser?.id, todayIsoKey, dayClosedTick]
+  );
+  const myTodayLogs = timeLogs.filter((l) => isOwnLog(l, currentUser) && logIsoDate(l) === todayIsoKey);
+  const dayCloseSuggestions = React.useMemo(() => {
+    if (!currentUser) return [];
+    const matches = makePersonMatcher(currentUser, users);
+    const loggedTaskIds = new Set(myTodayLogs.map((l) => l.taskId));
+    return tasks.filter((t) => !t.completed && isTaskOwner(t, currentUser, matches) && isScheduledForDay(t, todayIsoKey) && !loggedTaskIds.has(t.id));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasks, currentUser, users, timeLogs, todayIsoKey]);
+  const handleConfirmDayClose = () => {
+    markDayClosed(currentUser?.id, todayIsoKey);
+    setIsDayCloseOpen(false);
+    const streakNow = myStreak.current;
+    window.dispatchEvent(
+      new CustomEvent('orbit-mascot-reaction', {
+        detail: {
+          action: 'celebrate',
+          phrase: myStreak.todayCounts
+            ? `¡Día cerrado! 🔥 ${streakLabel(streakNow)} con tu día cargado. ¡A descansar!`
+            : '¡Día cerrado! Mañana vamos por la racha 🔥 ¡A descansar!'
+        }
+      })
+    );
+  };
+
   // Quick Log Hours for Beaver Feeding & Uhura Bags
   const handleQuickLogHours = (
     hours: number,
@@ -2857,12 +3008,12 @@ export const TaskFlowPrototype: React.FC = () => {
       clientName: 'UHURA GROUP',
       projectName: projectName,
       categoryType: category,
-      userId: 'u-pao',
-      budgetedRoleId: 'Diseñador Gráfico',
+      userId: currentUser?.id,
+      budgetedRoleId: 'Creative Designer',
       source: 'manual',
       createdAt: new Date().toISOString(),
-      userName: 'Paola Monsalve',
-      userInitials: 'PM',
+      userName: currentUser?.name,
+      userInitials: (currentUser?.name || '').split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase(),
       userAvatarBg: '#501f92',
       isLiveTimer: false,
       date: 'Hoy, ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' hs',
@@ -2871,30 +3022,43 @@ export const TaskFlowPrototype: React.FC = () => {
     setTimeLogs((prev) => [newLog, ...prev]);
   };
 
+  const getHeaderSection = (): string | undefined => {
+    if (['mi-dia', 'dashboard', 'proyectos', 'tareas', 'capacidad', 'timesheets'].includes(currentView)) return 'Operación';
+    if (['finanzas', 'new-business', 'clientes', 'plantillas-producto'].includes(currentView)) return 'Comercial';
+    if (currentView === 'la-colonia') return 'Experiencia';
+    if (['licencias', 'hardware'].includes(currentView)) return 'Costos de operación';
+    if (['usuarios', 'config-roles', 'config-permisos'].includes(currentView)) return 'Sistema';
+    return undefined;
+  };
+
   const getHeaderTitle = () => {
     switch (currentView) {
       case 'mi-dia':
-        return 'Mi Día · Bucky el Castor de Orbit 🦫';
+        return 'Mi Día';
       case 'la-colonia':
-        return 'La Colonia Uhureña 🦫';
+        return 'La Colonia';
       case 'dashboard':
         return 'Dashboard';
       case 'proyectos':
         return 'Proyectos';
       case 'tareas':
-        return 'Mis Tareas';
+        return 'Tareas';
       case 'timesheets':
         return 'Registro de Tiempos';
       case 'capacidad':
-        return 'Capacidad del Equipo';
+        return 'Capacidad';
       case 'clientes':
         return 'Clientes';
       case 'plantillas-producto':
-        return 'Biblioteca de Plantillas Maestras · Producto';
+        return 'Servicios';
       case 'new-business':
-        return 'New Business · Scoping & Oportunidades';
+        return 'New Business';
       case 'finanzas':
-        return 'Finanzas';
+        return 'Dirección y Finanzas';
+      case 'hardware':
+        return 'Hardware';
+      case 'licencias':
+        return 'Licencias';
       case 'el-muro':
         return 'El Muro';
       case 'reportes':
@@ -2902,7 +3066,7 @@ export const TaskFlowPrototype: React.FC = () => {
       case 'nova-ia':
         return 'Nova IA';
       case 'usuarios':
-        return 'Usuarios';
+        return 'Equipo & Accesos';
       case 'config-roles':
         return 'Roles';
       case 'config-permisos':
@@ -2928,13 +3092,14 @@ export const TaskFlowPrototype: React.FC = () => {
           onSaveSOWData={(sowData) => setOpportunities((previous) => previous.map((item) =>
             item.id === sowOpportunity.id ? { ...item, sowData: { ...item.sowData, ...sowData }, updatedAt: new Date().toISOString() } : item))} />
       )}
-      {/* SaaS Live Demo Utility Bar (Compact single header) */}
+      {/* SaaS Live Demo Utility Bar (Compact single header) — oculta instalada como app */}
+      {!ecoAppMode && (
       <section className="bg-gradient-to-r from-[#1b0d33] to-[#0d0718] py-2.5 px-4 sm:px-6 lg:px-8 border-b border-[#261845]/60">
         <div className="max-w-[1880px] w-full mx-auto flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#f2ecfb] text-[#501f92] text-[11px] font-bold">
               <Sparkles className="w-3 h-3 text-[#501f92]" />
-              <span>ORBIT</span>
+              <span>ECO</span>
             </span>
             <span className="text-xs text-[#c9b7ff] font-medium hidden sm:inline">
               Sistema Operativo Uhura Group
@@ -2982,20 +3147,22 @@ export const TaskFlowPrototype: React.FC = () => {
           </div>
         </div>
       </section>
+      )}
 
-      {/* Main SaaS Canvas Box */}
-      <main className="max-w-[1880px] w-full mx-auto px-2 sm:px-4 lg:px-6 mt-3 pb-8 flex-1 flex flex-col min-h-0">
-        <div className={`bg-[#f9fafb] rounded-3xl border border-[#261845] shadow-2xl overflow-hidden flex flex-col flex-1 min-h-[calc(100vh-140px)] ${
+      {/* Main SaaS Canvas Box (instalada como app: a pantalla completa, sin marco de demo) */}
+      <main className={ecoAppMode ? 'w-full flex-1 flex flex-col min-h-0 pt-[env(safe-area-inset-top)]' : 'max-w-[1880px] w-full mx-auto px-2 sm:px-4 lg:px-6 mt-3 pb-8 flex-1 flex flex-col min-h-0'}>
+        <div className={`bg-[#f9fafb] overflow-hidden flex flex-col flex-1 ${ecoAppMode ? 'min-h-[100dvh]' : 'rounded-2xl border border-[#261845] shadow-2xl min-h-[calc(100vh-140px)]'} ${
           saasFont === 'jakarta' ? 'font-saas' : saasFont === 'inter' ? 'font-inter' : 'font-montserrat'
         }`}>
-          {/* Top Prototype Navigation Chrome */}
+          {/* Top Prototype Navigation Chrome (solo en la demo, no instalada como app) */}
+          {!ecoAppMode && (
           <div className="bg-[#140b24] px-5 py-2.5 border-b border-[#261845] flex items-center justify-between text-xs text-[#c9b7ff]/80">
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-[#ef4444] inline-block" />
               <span className="w-2.5 h-2.5 rounded-full bg-[#f59e0b] inline-block" />
               <span className="w-2.5 h-2.5 rounded-full bg-[#10b981] inline-block" />
               <span className="ml-3 font-mono font-bold text-white text-[11px]">
-                orbit.uhuragroup.com / {currentView}
+                app.uhuragroup.com / {currentView}
               </span>
             </div>
             <div className="hidden sm:flex items-center gap-4 text-[11px]">
@@ -3010,6 +3177,7 @@ export const TaskFlowPrototype: React.FC = () => {
               </span>
             </div>
           </div>
+          )}
 
           {/* Prototype App Body */}
           <div className="flex-1 flex overflow-hidden relative min-h-0">
@@ -3024,32 +3192,14 @@ export const TaskFlowPrototype: React.FC = () => {
               />
             </div>
 
-            {/* Mobile / Tablet Sidebar Overlay */}
-            {mobileMenuOpen && (
-              <div className="lg:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-xs flex">
-                <div className="w-64 bg-[#0d0718] h-full shadow-2xl relative z-50">
-                  <TaskflowSidebar
-                    currentView={currentView}
-                    onSelectView={(v) => {
-                      handleSelectView(v);
-                      setMobileMenuOpen(false);
-                    }}
-                    currentUser={currentUser}
-                  />
-                </div>
-                <div
-                  className="flex-1 h-full"
-                  onClick={() => setMobileMenuOpen(false)}
-                />
-              </div>
-            )}
+            {/* En móvil y tablet la navegación es la barra inferior + «Más» (sin menú hamburguesa). */}
 
             {/* Main Content Area */}
             <div className={`flex-1 flex flex-col ${currentView === 'la-colonia' ? 'bg-[#0a0418]' : 'bg-[#f8fafc]'} min-w-0 overflow-y-auto`}>
               {/* Header with live timer capsule & global task search */}
               <TaskflowHeader
                 currentViewTitle={getHeaderTitle()}
-                onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)}
+                currentViewSection={getHeaderSection()}
                 sidebarCollapsed={sidebarCollapsed}
                 onToggleSidebarCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
                 onSelectAlert={() => handleSelectView('dashboard')}
@@ -3063,7 +3213,7 @@ export const TaskFlowPrototype: React.FC = () => {
                 todayTimeLogs={todayTimeLogs}
                 onOpenManualLog={() => handleOpenManualLogWithTask()}
                 onNavigateToCapacity={() => handleSelectView('capacidad')}
-                targetDayHours={8.0}
+                targetDayHours={Number(((currentUser?.capacityHours || 42) / 5).toFixed(1))}
                 currentUser={currentUser}
                 isDarkTheme={false}
                 alerts={activeAlerts}
@@ -3103,8 +3253,16 @@ export const TaskFlowPrototype: React.FC = () => {
                     onToggleTask={handleToggleTask}
                     onQuickLogHours={handleQuickLogHours}
                     loggedHoursToday={loggedHoursToday}
-                    targetDayHours={8.0}
+                    targetDayHours={Number(((currentUser?.capacityHours || 42) / 5).toFixed(1))}
                     onNavigateToView={handleSelectView}
+                    onOpenProject={(projectId) => {
+                      setSelectedProjectIdForView(projectId);
+                      setCurrentView('proyectos');
+                    }}
+                    streakDays={myStreak.current}
+                    streakTodayCounts={myStreak.todayCounts}
+                    isDayClosedToday={dayClosedToday}
+                    onOpenDayClose={() => setIsDayCloseOpen(true)}
                     opportunities={opportunities}
                     projects={projectsList}
                     clients={clients}
@@ -3117,12 +3275,35 @@ export const TaskFlowPrototype: React.FC = () => {
                   <LaColoniaView
                     tasks={tasks}
                     loggedHoursToday={loggedHoursToday}
-                    targetDayHours={8.0}
+                    targetDayHours={Number(((currentUser?.capacityHours || 42) / 5).toFixed(1))}
                     plannedHoursToday={4.0}
                     currentUser={currentUser}
                     teamUsers={users}
+                    timeLogs={timeLogs}
+                    absenceEvents={absenceEvents}
                     onNavigateToView={handleSelectView}
                     onUpdateUser={handleUpdateUser}
+                  />
+                )}
+
+                {/* COSTOS DE OPERACIÓN */}
+                {currentView === 'hardware' && (
+                  <HardwareView
+                    assets={hardwareAssets}
+                    users={users}
+                    projects={projectsList}
+                    services={productTemplates.map((t) => ({ id: t.id, name: t.name, code: (t as any).code }))}
+                    canEdit={can(currentUser, 'edit', 'costos-operacion')}
+                    onChange={setHardwareAssets}
+                  />
+                )}
+                {currentView === 'licencias' && (
+                  <LicensesView
+                    licenses={softwareLicenses}
+                    users={users}
+                    projects={projectsList}
+                    canEdit={can(currentUser, 'edit', 'costos-operacion')}
+                    onChange={setSoftwareLicenses}
                   />
                 )}
 
@@ -3160,7 +3341,9 @@ export const TaskFlowPrototype: React.FC = () => {
                 {currentView === 'proyectos' && (
                   <ProjectsView
                     tasks={tasks}
+                    onUpdateAllTasks={setTasks}
                     clients={clients}
+                    onUpdateClient={handleUpdateClient}
                     projectsList={projectsList}
                     currentUser={currentUser}
                     users={users}
@@ -3201,6 +3384,9 @@ export const TaskFlowPrototype: React.FC = () => {
                 {currentView === 'tareas' && (
                   <MyTasksView
                     tasks={tasks}
+                    currentUser={currentUser}
+                    users={users}
+                    projects={projectsList}
                     onToggleTask={handleToggleTask}
                     onOpenNewTaskModal={() => setIsNewTaskModalOpen(true)}
                     activeTimer={activeTimer}
@@ -3333,6 +3519,8 @@ export const TaskFlowPrototype: React.FC = () => {
                     activeTimer={activeTimer}
                     onStartTimer={handleStartTimer}
                     onStopTimer={handleStopTimer}
+                    onPauseResumeTimer={handlePauseResumeTimer}
+                    onOpenManualLog={handleOpenManualLogWithTask}
                     onUpdateOpportunity={(updatedOpp) => {
                       setOpportunities((prev) =>
                         prev.map((o) => (o.id === updatedOpp.id ? updatedOpp : o))
@@ -3425,6 +3613,8 @@ export const TaskFlowPrototype: React.FC = () => {
                     onInviteUser={() => setIsInviteModalOpen(true)}
                     onDeleteUser={handleDeleteUser}
                     onUpdateUser={handleUpdateUser}
+                    absenceEvents={absenceEvents}
+                    onAddAbsenceEvent={(ev) => setAbsenceEvents((prev) => [...prev, ev])}
                   />
                 )}
 
@@ -3436,7 +3626,7 @@ export const TaskFlowPrototype: React.FC = () => {
                       <span className="text-sm font-bold text-[#0f172a]">{getHeaderTitle()}</span>
                     </div>
                     <p className="text-xs text-[#64748b] leading-relaxed">
-                      Módulo integrado en Orbit para análisis predictivo de desvíos en entregas y rentabilidad.
+                      Módulo integrado en ECO para análisis predictivo de desvíos en entregas y rentabilidad.
                     </p>
                   </div>
                 )}
@@ -3465,6 +3655,7 @@ export const TaskFlowPrototype: React.FC = () => {
           }}
           onOpenNewTaskModal={() => setIsNewTaskModalOpen(true)}
           hasActiveTimer={Boolean(activeTimer)}
+          currentUser={currentUser}
         />
       </main>
 
@@ -3618,13 +3809,35 @@ export const TaskFlowPrototype: React.FC = () => {
         }}
       />
 
+      {/* Cerrar mi día con ECO */}
+      <DayCloseModal
+        isOpen={isDayCloseOpen}
+        onClose={() => setIsDayCloseOpen(false)}
+        todayLabel={new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })}
+        todayLogs={myTodayLogs}
+        suggestedTasks={dayCloseSuggestions}
+        loggedHours={loggedHoursToday}
+        targetDayHours={targetDayHoursValue}
+        streak={myStreak.current}
+        todayCounts={myStreak.todayCounts}
+        todayIsWorkday={myStreak.todayIsWorkday}
+        alreadyClosed={dayClosedToday}
+        onAddTime={(taskId) => {
+          setIsDayCloseOpen(false);
+          handleOpenManualLogWithTask(taskId);
+        }}
+        onConfirm={handleConfirmDayClose}
+      />
+
       {/* Floating Beaver Mascot Companion (Codex-Style Interactive Character with Vida Propia) */}
       <FloatingBeaverWidget
+        currentView={currentView}
         loggedHoursToday={loggedHoursToday}
-        targetDayHours={8.0}
+        targetDayHours={Number(((currentUser?.capacityHours || 42) / 5).toFixed(1))}
         onQuickLogHours={handleQuickLogHours}
         onNavigateToView={handleSelectView}
-        streakDays={6}
+        isDayClosedToday={dayClosedToday}
+        onOpenDayClose={() => setIsDayCloseOpen(true)}
         tasks={tasks}
         users={users}
         absenceEvents={absenceEvents}

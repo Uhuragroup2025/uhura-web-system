@@ -1,17 +1,25 @@
-# Requerimientos de Backend y Modelo de Datos (Orbit)
+# Requerimientos de Backend y Modelo de Datos (ECO)
+
+> **Nombre del producto:** **ECO** — *Espacio de Creación y Operaciones* (antes «Orbit», renombrado en noviembre de 2026). Los identificadores técnicos (`OrbitAccessLevel`, `CanonicalOrbitAccessLevel`, nombres de archivo como `ORBIT_PRODUCT_STATUS.md`) se conservan para no romper contratos de código ni enlaces.
 
 > **Documento de Especificación Técnica para Implementación Backend (Indunova)**
-> **Fecha de Actualización:** 04 de noviembre de 2026 (Alineación con decisiones confirmadas de producto, arquitectura 1:1:1 por servicio, ticket #132 y modo desacoplado manual)
+> **Fecha de Actualización:** 07 de noviembre de 2026 (Cronograma calculado al «Iniciar proyecto», rondas de ajuste editables, equipo derivado de tareas, visibilidad de tareas §15.1, arranque en producción §19, Google Chat §18, Google Calendar §20, mascota §21, acceso desde el perfil §16.1.1). Anterior: 04 de noviembre de 2026 (arquitectura 1:1:1 por servicio, ticket #132 y modo desacoplado manual)
 > Este documento consolida las deudas técnicas, relaciones inmutables y reglas de producto identificadas en el QA de **Proyectos, Tareas, New Business, Cotización y Conversión a Proyectos**.
 
 > **AVISO DE PRIVACIDAD Y GOBERNANZA:**
 > La documentación pública define reglas, estructuras y comportamientos. La identidad nominal de colaboradores, correos, relaciones de reporte, calendarios individuales y crosswalk con backend se administra exclusivamente mediante **Equipo Canónico Privado**.
 
+> **COMPONENTES EXCLUSIVOS DEL PROTOTIPO (NO VAN A PRODUCCIÓN):**
+> **Principio de reconciliación con producción:** lo que ya funciona en la plataforma de producción de Indunova se conserva tal cual. Esta documentación solo pide cambios donde lo dice de forma explícita («mejora», «nuevo», «reemplaza»). Si un comportamiento descrito aquí ya existe en producción con otra regla, prevalece producción y se avisa a Uhura para decidir.
+> **Antes de implementar, leer `ORBIT_PRODUCT_STATUS.md` §8.0:** lista ticket por ticket (#132–#147) qué ya está en producción y no se rehace, y qué es nuevo en esta entrega.
+>
+> El **«Simulador QA»** (selector flotante para cambiar de usuario y probar visibilidad por `accessLevel`) es una herramienta de desarrollo del prototipo. **No debe implementarse en producción**: allí la identidad y el `accessLevel` se obtienen únicamente de la sesión autenticada del usuario.
+
 ---
 
 ## 1. Modelo de Jerarquía y Taxonomía Limpia
 
-Orbit adopta una jerarquía conceptual directa y sin sobrecarga taxonómica:
+ECO adopta una jerarquía conceptual directa y sin sobrecarga taxonómica:
 
 $$\text{Cliente} \longrightarrow \text{Proyecto} \longrightarrow \text{Frente / Fase (Opcionales)} \longrightarrow \text{Tarea} \longrightarrow \text{TimeLog (Horas inmutables)}$$
 
@@ -72,7 +80,7 @@ interface TimeLogBackendRecord {
 
 ---
 
-## 5. Nomenclatura Estándar de Estados de Tarea en Orbit
+## 5. Nomenclatura Estándar de Estados de Tarea en ECO
 
 Para mantener consistencia en todo el ecosistema (API, UI, Notificaciones, Webhooks):
 
@@ -118,7 +126,7 @@ Los endpoints de consulta (`GET /api/users/`, `GET /api/users/<id>/`, `GET /api/
 ```
 
 ### 6.3 Definición de Almacenamiento Físico
-* **Desacople Arquitectónico:** El frontend de Orbit consume exclusivamente la URL suministrada por el backend y **no depende ni asume** un directorio local estático como `public/assets/team/`.
+* **Desacople Arquitectónico:** El frontend de ECO consume exclusivamente la URL suministrada por el backend y **no depende ni asume** un directorio local estático como `public/assets/team/`.
 * **Proveedor de Almacenamiento:** Indunova define la infraestructura física de almacenamiento persistente (ej. Google Cloud Storage, AWS S3, MinIO o CDN dedicada).
 * **Manejo de Fallbacks:**
   * Si `avatar_url` es `null`, cadena vacía o si el archivo no puede cargarse (error 404 / 500 / red), el frontend ejecuta automáticamente el fallback canónico: iniciales en texto con el fondo de color institucional (`avatarBg`).
@@ -128,7 +136,7 @@ Los endpoints de consulta (`GET /api/users/`, `GET /api/users/<id>/`, `GET /api/
 ```markdown
 ### [Issue #6] Soporte de Carga y Exposición de Fotografía de Perfil (avatar_url)
 
-**Objetivo:** Permitir que los colaboradores cuenten con su fotografía de perfil persistida en backend y servida vía CDN/Storage hacia el frontend de Orbit.
+**Objetivo:** Permitir que los colaboradores cuenten con su fotografía de perfil persistida en backend y servida vía CDN/Storage hacia el frontend de ECO.
 
 **Alcance Técnico para Indunova:**
 1. Agregar campo `avatar_url = models.URLField(null=True, blank=True, max_length=500)` al modelo `UserProfile`.
@@ -174,7 +182,7 @@ Los endpoints de consulta (`GET /api/users/`, `GET /api/users/<id>/`, `GET /api/
   }
   ```
 
-**2. Proyectos Operativos (Orbit Projects):**
+**2. Proyectos Operativos (ECO Projects):**
 * Permitir 1..N líderes del proyecto en `Project`:
   * Relación Many-to-Many `project_leads` o array `project_lead_ids`.
   * Mantener `lead_user_id` / `lead_name` como compatibilidad con el líder principal.
@@ -209,8 +217,8 @@ Cuando backend exponga el soporte multi-lead:
 
 ### 8.1 Responsable Comercial (`commercialOwner` en New Business)
 * **Contrato actual:** `commercialOwner?: string` en la entidad `Opportunity`.
-* **Derivación de UI:** El selector de la interfaz se alimenta del catálogo de usuarios de Orbit con nivel/capacidad `commercial` (`OrbitAccessLevel: 'commercial'` o funciones comerciales equivalentes). Al seleccionar un usuario de la lista, el valor guardado en `commercialOwner` es el nombre canónico del usuario (`user.name`), preservando compatibilidad exacta con el contrato de persistencia actual de Indunova sin crear campos no soportados (como `commercialOwnerId`).
-* **Sincronización HubSpot:** Si el Deal importado trae un owner comercial (`deal.commercialOwner`), la UI busca coincidencia con los usuarios de Orbit. Si no existe mapeo unívoco, se deja en blanco para selección explícita del usuario sin suposiciones ni hardcoding.
+* **Derivación de UI:** El selector de la interfaz se alimenta del catálogo de usuarios de ECO con nivel/capacidad `commercial` (`OrbitAccessLevel: 'commercial'` o funciones comerciales equivalentes). Al seleccionar un usuario de la lista, el valor guardado en `commercialOwner` es el nombre canónico del usuario (`user.name`), preservando compatibilidad exacta con el contrato de persistencia actual de Indunova sin crear campos no soportados (como `commercialOwnerId`).
+* **Sincronización HubSpot:** Si el Deal importado trae un owner comercial (`deal.commercialOwner`), la UI busca coincidencia con los usuarios de ECO. Si no existe mapeo unívoco, se deja en blanco para selección explícita del usuario sin suposiciones ni hardcoding.
 
 ### 8.2 Responsable de Cliente (`accountManagerId` / `accountManagerName` en Proyecto)
 * **Contrato en ClientProfile:** La entidad canónica de cliente almacena `accountManagerId?: string` y `accountManagerName?: string`.
@@ -328,7 +336,7 @@ Indunova deberá implementar en sus scripts de migración y conciliación de bas
    - Preservar íntegramente su historial en proyectos pasados cerrados.
 3. **Universo Canónico de Colaboradores Activos (18 Colaboradores):**
    - El universo activo queda cerrado y formalizado en **exactamente 18 colaboradores activos** según se define en *Equipo Canónico Privado*.
-   - **Gobernanza del Perfil Ejecutivo (`executive`):** El perfil `executive` adicional definido en Equipo Canónico Privado forma parte de los 18 colaboradores activos y debe contar con usuario Orbit. Su asociación con Backend User ID se resolverá durante el crosswalk con Indunova.
+   - **Gobernanza del Perfil Ejecutivo (`executive`):** El perfil `executive` adicional definido en Equipo Canónico Privado forma parte de los 18 colaboradores activos y debe contar con usuario ECO. Su asociación con Backend User ID se resolverá durante el crosswalk con Indunova.
    - **Gobernanza de `system_admin`:** Existen dos usuarios iniciales con Access Level `system_admin` con idénticos permisos técnicos en plataforma. La diferenciación funcional y operativa (soporte técnico / producto digital vs. soporte administrativo y configuración de capacidades/calendarios) corresponde a su rol en la organización, según se define en Equipo Canónico Privado.
    - No afirmar que la conciliación ya fue ejecutada en base de datos: corresponde a las especificaciones y reglas para la ejecución de scripts por parte de Indunova.
 
@@ -339,7 +347,7 @@ Indunova deberá implementar en sus scripts de migración y conciliación de bas
 
 ### 12.1 Arquitectura Relacional 1:1:1
 En la versión oficial (HEAD de la rama `feat/hubspot-commercial-sync-flow`), la propuesta comercial se descompone a nivel atómico:
-* **1 Servicio en Alcance = 1 Bloque Comercial en Cotización = 1 Deal en HubSpot (si aplica) = 1 Proyecto Independiente en Orbit**.
+* **1 Servicio en Alcance = 1 Bloque Comercial en Cotización = 1 Deal en HubSpot (si aplica) = 1 Proyecto Independiente en ECO**.
 * La relación entre una Cotización (`QuoteProposal`) y sus servicios comerciales es de **1 a N** (`QuoteProposal` $\longrightarrow$ `ServiceCommercialItem[]`).
 * Cada servicio define de manera independiente:
   * `modality`: `'fixed_project'` o `'fee_monthly'`
@@ -394,16 +402,72 @@ Para no bloquear New Business cuando la app privada de HubSpot esté caída o si
 2. En la Cotización, Comercial puede aprobar manualmente los servicios ganados pulsando **«Marcar como ganada 🏆»**, lo que dispara el flujo de conversión sin consultar la API de HubSpot.
 3. Se registra una entrada de auditoría en la tabla de trazabilidad (`status: 'success'`, `source: 'orbit'`) indicando que la aprobación fue manual y que la reconciliación con el CRM queda pendiente.
 
-### 12.5 Estados Operativos de Proyecto («Por empezar» vs «En ejecución»)
-* Si `startDate > hoy` (fecha futura programada por Operaciones/Cata), el proyecto se presenta como **«Por empezar»** y cuenta con la acción **«Iniciar proyecto 🚀»**.
-* Si `startDate <= hoy`, el proyecto se presenta como **«En ejecución»**.
+### 12.5 Estados Operativos de Proyecto («Por iniciar» vs «En ejecución»)
+* **La conversión NO define fechas.** Cerrar un negocio y convertirlo en Cliente + Proyecto no lo hace ejecutable: el proyecto nace con `start_date = NULL`, `end_date = NULL`, `is_kicked_off = false` y se presenta como **«Por iniciar»** con la acción **«Iniciar proyecto 🚀»**.
+* La conversión solo persiste la configuración contractual del cronograma en `schedule_config` por proyecto:
+  `included_rework_rounds` (rondas de ajuste incluidas, sugerido 2), `rework_round_days` (días hábiles por ronda, sugerido 5), `production_weeks` (= `weeksRef` del servicio en el Alcance) y `client_kickoff_wait_days` (entrega de insumos del cliente tras el kickoff, sugerido 3; 0 si no aplica).
+  - **Ronda de ajuste** = el cliente revisa una entrega, devuelve ajustes y aprueba. Es un único concepto: reemplaza el modelo anterior de «gates × tandas por gate» (`gate_count` y `gate_approval_wait_days` quedan obsoletos).
+  - Todos los campos son **visibles y editables** por servicio en la conversión y se confirman en «Iniciar proyecto»; los valores sugeridos solo precargan.
+  - **Solo proyectos únicos** tienen rondas. Fee mensual: `included_rework_rounds = 0`.
+* Las tareas creadas en la conversión nacen sin fechas (`scheduled_date` y `due_date` vacíos).
+* **«Iniciar proyecto 🚀»** (líder del proyecto) fija la fecha de arranque y calcula la línea base en **días hábiles** (excluye fines de semana y festivos de Colombia):
+  ```
+  total = client_kickoff_wait_days
+        + production_weeks × 5
+        + included_rework_rounds × rework_round_days
+  ```
+  - `baseline_start_date` / `baseline_end_date` se congelan en el primer arranque. Ajustes posteriores solo actualizan `forecast_end_date`.
+  - Entregables: producción repartida según horas cotizadas; la entrega de insumos va tras el primer entregable; las rondas se ubican después de los entregables que revisa el cliente (los marcados «Gate» en la plantilla; si no hay, al final del último).
+  - Tareas: reciben `scheduled_date` (inicio) y `due_date` (vencimiento) proporcionales a sus horas dentro del entregable. Mi Día muestra las tareas cuya ventana incluye hoy.
+  - Las rondas incluidas **no son desvío**; solo una ronda adicional (`round_number > included_rework_rounds`) mueve el forecast y puede generar sobrecosto.
+  - Proyectos Fee mensual: sin rondas.
+* Referencia de implementación: `src/components/taskflow/schedule/scheduleEngine.ts`.
+
+---
+
+### 12.6 Equipo del proyecto derivado de tareas
+* No existe endpoint de asignación manual de colaboradores a proyecto. El equipo es una **consulta agregada** sobre `tasks` (asignados, `budgeted_role`, `scheduled_date`, `due_date`, `budgeted_hours`) y `time_logs` (`user_id`, `budgeted_role_id`).
+* Por persona y proyecto: roles desempeñados (horas cotizadas asignadas y ejecutadas por rol), carga de la semana (prorrateo en días hábiles sobre la ventana de cada tarea no completada), horas pendientes y ejecutadas.
+* `covers_role = true` cuando `task.budgeted_role` no pertenece a los roles oficiales del usuario (insumo para costo real vs. cotizado).
+* Reasignar una tarea **no** modifica sus horas cotizadas.
+
+---
+
+### 12.7 Cierre de proyecto
+* Endpoint de cierre que **rechaza** la operación si existen tareas no completadas del proyecto.
+* Persiste `status = 'closed'`, `actual_end_date` y un registro inmutable `project_closures`: `closed_by_user_id`, `closed_at`, `reason` (`delivered_approved` | `closed_early` | `cancelled_by_client`), `note` (obligatoria) y la foto final (`quoted_hours`, `executed_hours`, `included_rework_rounds`, `used_rework_rounds`, `baseline_end_date`, `deviation_business_days`).
+* No modifica ni elimina `time_logs`, tareas ni asignaciones históricas. Detalle funcional: `ORBIT_PRODUCT_STATUS.md` Módulo 11 §11.7.
+
+---
+
+### 12.8 Catálogo de roles y recursos externos
+* `budgeted_role` de tareas, presupuestos por entregable y plantillas solo acepta roles del catálogo oficial (`STANDARD_UHURA_ROLES`). Los datos heredados fuera del catálogo se migran a un rol oficial.
+* Nueva entidad `external_resources` (por cotización y heredada al proyecto): `description`, `provider_name`, `cost_model` (`fixed` | `hourly`), `hours`, `hourly_rate`, `total_cost`, `currency`, `service_id`. Suma al costo real del proyecto (rentabilidad); **no** participa en capacidad, `planned_hours`, Mi Día ni la matriz de horas por rol.
+* Creación de tareas: `scheduled_date` y `due_date` son **obligatorias** (`due_date >= scheduled_date`); una tarea nueva no nace bloqueada ni marcada como retrabajo (esos estados se aplican después en el detalle de la tarea).
+
+---
+
+### 12.9 Fee mensual: contrato y ciclos
+* En `projects` (fee): `contract_months`, `contract_start_date`, `contract_end_date`, `rollover_policy` (`none` | `carry_over` | `contractual_cap` = 25 % de la bolsa mensual).
+* `project_cycles` (un registro por mes de vigencia): `cycle_key` (`YYYY-MM`), `period_number`, `quoted_hours`, `rollover_hours_in`, `executed_hours` (rollup de `time_logs` de tareas del ciclo), `status` (`closed` | `active` | `upcoming`), `tasks_generated`.
+* `project_contract_renewals`: `renewed_at`, `renewed_by_user_id`, `added_months`, `monthly_hours`, `note`. Una renovación agrega ciclos sin modificar los cerrados.
+* `tasks.cycle_key` para fees. Job programado el día 1 de cada mes: abre el ciclo y clona las tareas plantilla del mes 1 (sin tiempo ni estado); idempotente por `(project_id, cycle_key)`.
+* Endpoints con filtro `?cycle=YYYY-MM` para KPIs, tareas y matriz de horas; por defecto el ciclo activo.
+* Notificación de renovación 30 días antes de `contract_end_date` al líder y a comercial.
+
+---
+
+### 12.10 Costos de operación: hardware, licencias y recursos externos en el P&G
+* `hardware_assets`: agregar `serial_number`, `status` (`active` | `repair` | `retired`) y `assigned_user_id` (FK opcional a usuarios) a lo existente. Depreciación mensual = `purchase_value / useful_life_months`; por hora = mensual / 182.
+* `software_licenses`: agregar `owner_user_id`, `next_renewal_date` y `license_seats` (relación licencia ↔ usuario, máximo `quantity`). Conversión a COP con la tabla única de TRM de Finanzas (fecha, moneda, valor).
+* **Costo real del proyecto (P&G)** = horas registradas × costo hora de la persona + depreciación de hardware imputada + licencias imputadas + recursos externos (§12.8). Mientras alguna fuente de costo no esté disponible, el P&G debe mostrar «margen no disponible» en lugar de 100 %.
 
 ---
 
 ## 13. Módulo Capacidad: Jornada de 42h, Cálculo de Planificado vs. Ejecutado y Filtro por Área
 
 ### 13.1 Jornada Base y Deducción de Festivos/Ausencias
-* La capacidad semanal predeterminada de todo colaborador activo en Orbit es de **`42.0 horas semanales`** (`8.4h/día` hábil de lunes a viernes).
+* La capacidad semanal predeterminada de todo colaborador activo en ECO es de **`42.0 horas semanales`** (`8.4h/día` hábil de lunes a viernes).
 * Al descontar 1 día festivo oficial (ej. lunes festivo en Colombia), la capacidad neta de esa semana es `42.0 - 8.4 = 33.6h`.
 
 ### 13.2 Corrección de Cálculo de `Planificado` vs. `Ejecutado` (Hallazgo UAT #2)
@@ -420,6 +484,7 @@ Para no bloquear New Business cuando la app privada de HubSpot esté caída o si
 
 ### 13.3 Vista Unificada `Organización` y Permisos RBAC
 * Se unifica la visibilidad de equipo y compañía en una sola vista **`Organización`** (eliminando la pestaña redundante *Mi Equipo*), habilitada para `leader`, `commercial`, `administrative`, `executive`, `client_relationship` y `system_admin`.
+* **Todos** los perfiles ven **`Mi Capacidad`** (su capacidad individual), incluido `executive` (que abre por defecto en `Organización`).
 * El perfil `collaborator` mantiene acceso exclusivo a **`Mi Capacidad`**.
 * El endpoint debe devolver el campo `department` normalizado (`Área Creatividad`, `Área Growth`, `Área Producto`, `Área Administrativa`, `Área Comercial`, `C-Level`) para soportar el filtrado por área en el frontend.
 
@@ -466,12 +531,28 @@ Para no bloquear New Business cuando la app privada de HubSpot esté caída o si
 
 ## 15. Reglas de «Mi Día», Sincronización de Colaboradores y Notificaciones
 
-### 15.1 Criterio de Filtrado de «Mi Día»
-* El endpoint/vista de **`Mi Día`** debe devolver estrictamente:
-  1. Tareas donde el usuario es **Colaborador** (`assignee` o `collaborators`) con `due_date == hoy` (o `scheduled_date == hoy`, o vencidas sin completar).
-  2. Tareas en estado **`Review`** que requieran su **revisión o aprobación** (`reviewer_id == user.id` o `project_lead_id == user.id`).
-  3. La tarea con el **timer activo** del usuario.
-* Ordenamiento por defecto: pendientes primero, ordenadas por **prioridad** (`urgent` > `high` > `medium` > `low`), dejando las completadas de hoy tachadas al final.
+### 15.1 Regla de visibilidad de tareas (Mi Día, Tareas y bandeja de atención) — obligatoria para todos los perfiles
+**Principio:** nadie ve en sus prioridades tareas que no le pertenecen. Ni por compartir rol, ni por ser líder de otra área, ni por tener el mismo primer nombre que otra persona. La relación de una persona con una tarea se calcula **siempre por `user_id`**, nunca por nombre.
+
+| Relación con la tarea | Cómo se determina | Dónde aparece | Urgencia |
+|---|---|---|---|
+| **Responsable de ejecución** | `assignee_id`, `collaborators` o `assignee_allocations` | «Qué tengo que hacer hoy» (Mi Día) y «Mis tareas» | Normal: cuenta en pendientes, prioridad y capacidad |
+| **Revisor** | Tarea en `Review` y `reviewer_id == user.id` (si no hay revisor, `project.lead_user_id == user.id`) | Mi Día y «Mis tareas» | Normal |
+| **Seguidor** | `followers` | «Siguiendo» (Mi Día plegado y pestaña en Tareas) | **Sin urgencia**: no suma a pendientes, contadores de atención, capacidad ni alertas |
+| Ninguna | — | No aparece | — |
+
+* **Mi Día · «Qué tengo que hacer hoy»** devuelve solo lo que **el cronograma pone para hoy**: tareas donde el usuario es responsable de ejecución con `scheduled_date == hoy` o `due_date == hoy`, **ventana en curso** (`scheduled_date <= hoy <= due_date`, no completada) o vencidas sin completar; las que le toca revisar; y la tarea con su timer activo. **Ningún nivel de acceso** (tampoco `leader` ni `system_admin`) recibe aquí revisiones de proyectos ajenos.
+* **La prioridad no mete tareas al día.** ECO no clasifica urgencias: la urgencia viene marcada en la tarea (`priority = 'urgent'`, puesta por quien la pide). Una urgente con fecha de mañana no entra a Mi Día de hoy; se ordena primero en Tareas.
+* **Sin tareas agendadas hoy:** Mi Día muestra «Próximas» (máx. 5) con las siguientes tareas propias, ordenadas por cercanía de fecha y prioridad, para que la persona pueda adelantar trabajo. No cambian su fecha ni cuentan como pendientes de hoy.
+* **Orden (Mi Día y Tareas):** 1) vencidas; 2) urgentes con fecha hoy o mañana; 3) el resto por fecha más cercana (vencimiento; si no, inicio programado); a igual fecha, la de mayor prioridad. Completadas al final.
+* **Excepciones de proyecto** en la bandeja «Qué requiere mi atención» (parte superior de Mi Día) (insumos y dependencias del cliente, bloqueos del equipo, desvíos de horas, retrabajos): solo de los proyectos de los que el usuario es **responsable** (`project.lead_user_id`, `account_manager_id` o líder comercial asignado). Así, al comercial o al líder les llegan los insumos y dependencias de **sus** proyectos aunque no ejecuten tareas. `executive` y `system_admin` ven todos los proyectos en la bandeja, pero **no** las tareas de otros en su lista personal.
+* **Tareas · «Equipo»:** no existe para `collaborator`. Para `leader`, `commercial`, `client_relationship` y `administrative` muestra solo las tareas de los proyectos de los que es responsable. Para `executive` y `system_admin`, todas.
+* **Seguidores:** se usan para que alguien revise o esté al tanto. Ver la tarea no la convierte en suya: no puede pedir revisión, no recibe recordatorios de vencimiento y no se cuenta en su carga.
+* **Aceptación (QA):** con dos usuarios que comparten primer nombre (p. ej. dos «Diego» o dos «Laura»), cada uno ve únicamente sus tareas. Un colaborador no ve el selector «Equipo». Un seguidor ve la tarea en «Siguiendo» y no en «Qué tengo que hacer hoy». Una tarea urgente con fecha de mañana aparece primera en Tareas y no aparece en Mi Día de hoy.
+* Implementación de referencia en el prototipo: `src/components/taskflow/auth/taskVisibility.ts` (la comparación por nombre del prototipo existe solo porque los datos de demostración no traen ID; en producción no se usa).
+
+* **Mi Día personal (#147, en producción orbit-00092-jns):** la bandeja «Qué requiere mi atención» de `system_admin`, `administrative`, `commercial` y `client_relationship` incluye solo lo que la persona ejecuta o lidera directamente (sus bloqueos y ajustes, revisiones de las tareas que lidera, pendientes de cliente de sus proyectos, oportunidades que lidera o le tocan; formalizaciones fiscales solo para `administrative`). `leader` conserva las de los proyectos que lidera. **Cambio nuevo (decisión de Uhura, 07 Nov 2026): `executive` también queda personal**; ya no recibe las excepciones de toda la organización en Mi Día (antes se le dejaron en producción). La vista global de Dirección está en Tareas → Equipo y Capacidad → Organización. Desvíos de horas a Comercial y Relación con clientes según §15.4.
+* **Urgentes de hoy primero (#146, en producción):** las tareas propias abiertas con prioridad `urgent`, `scheduled_date == hoy` o `due_date == hoy` van de primeras en la bandeja de atención, con su prioridad y fecha actuales.
 
 ### 15.2 Sincronización en Tiempo Real al Modificar Colaboradores y Notificaciones
 * **Retiro / Reemplazo de Colaborador:** Al quitar a un usuario de `collaborators` / `assignee`, el backend debe excluir esa tarea de su carga **Planificada** en Capacidad, de **Mi Día** y de **Mis Tareas** de forma inmediata.
@@ -479,6 +560,8 @@ Para no bloquear New Business cuando la app privada de HubSpot esté caída o si
   1. La tarea debe aparecer inmediatamente en **Mis Tareas** (y en **Mi Día** si vence hoy o requiere su revisión) respetando su **prioridad**.
   2. Se debe disparar una **notificación** (`Notification` / alerta en campanita) al usuario asignado con: `task_id`, `task_title`, `client_name`, `priority` y `type = 'TASK_ASSIGNED'` (o `'REVIEW_REQUESTED'`).
   3. Al abrir el panel de notificaciones, el cliente marca las alertas como `read = true` automáticamente.
+* **Como quedó en producción (#146):** el aviso dice «{Quién} te asignó "{Tarea}" ({Cliente} · {Proyecto}). Prioridad {P}, entrega {fecha}.» y abre el detalle de la tarea. Si se retira a quien era responsable, la responsabilidad pasa al siguiente colaborador. Volver a guardar la tarea o cambiar horas a la misma persona **no** repite el aviso.
+* **Comercial (#145, en producción):** crea tareas en proyectos y actualiza comentarios, adjuntos, horas, cronograma y estado; cada cambio queda en Actividad con autor, fecha, valor anterior y nuevo, y avisa al Project Lead y colaboradores (nunca a quien hizo el cambio). No reasigna personas.
 
 ### 15.3 Reglas de Transición de Estados por Rol en la Tarea
 * **Gobernanza de Cierre:** Las vistas de lista (`Mi Día` y `Mis Tareas`) no deben exponer checkbox circular de completado rápido; el cierre y aprobación de tareas se ejecuta desde el detalle de la tarea.
@@ -488,7 +571,7 @@ Para no bloquear New Business cuando la app privada de HubSpot esté caída o si
   * **Project Lead / Seguidor / Revisor:** **no** debe ver `Solicitar revisión`; tiene habilitado `Completar y aprobar` (y al marcar manualmente la tarea como completada, se asume aprobada en `Done`). Cuando la tarea entra en `Review`, se le habilitan **`Devolver`** (`Review → In Progress`) y **`Aprobar y Completar`** (`Review → Done`).
 
 ### 15.4 Visibilidad de Desvíos Presupuestales
-* Cuando una tarea supera sus horas cotizadas (`logged_hours > budgeted_hours`), el endpoint de alertas/atención debe exponer el desvío (`Desvío X.Xh / Yh cotizadas`) **a Comercial (`commercial` / `client_relationship`) y al Líder del proyecto asignado (`project_lead_id` / `leader` de ese proyecto)**.
+* Cuando una tarea supera sus horas cotizadas (`logged_hours > budgeted_hours`), el endpoint de alertas/atención debe exponer el desvío (`Desvío X.Xh / Yh cotizadas`) **a Comercial (`commercial` / `client_relationship`) y al Líder del proyecto asignado (`project_lead_id` / `leader` de ese proyecto)**, siempre limitado a los proyectos de los que cada uno es responsable (§15.1); `executive` y `system_admin` ven todos.
 
 ---
 
@@ -497,6 +580,13 @@ Para no bloquear New Business cuando la app privada de HubSpot esté caída o si
 ### 16.1 Imputación de `TimeLog` por Fecha de Trabajo Ejecutado (`work_date`)
 * Cada `TimeLog` debe persistir `user_id` (usuario autenticado que ejecuta el registro) y `work_date` (**Fecha del trabajo ejecutado**, por defecto la fecha actual, o la fecha seleccionada en el registro manual).
 * El endpoint de **Mi Capacidad** debe agrupar y sumar `logged_hours` por `work_date` dentro de la semana laboral vigente (`Lunes` a `Viernes`) para alimentar tanto las tarjetas diarias como el desglose **`Timesheets · [Día]`**.
+
+### 16.1.1 Acceso a ECO desde el perfil (solo `system_admin`)
+* Campos en `users`: `login_username` (único, minúsculas, `[a-z0-9._-]{3,32}`), `last_login_at`, `password_hash`, `must_change_password`. La API expone `has_password` (booleano), nunca el hash.
+* `POST /users/{id}/username` → valida unicidad; no toca la contraseña.
+* `POST /users/{id}/temporary-password` → recibe la contraseña temporal por HTTPS, la guarda con hash, marca `must_change_password = true` e invalida las sesiones activas. Mínimo 8 caracteres.
+* `POST /users/{id}/deactivate` / `reactivate` → sin borrado físico; desactivado no inicia sesión ni aparece para asignar trabajo.
+* Cada acción queda en `UserProfileAuditEntry` (quién y cuándo), **sin** el valor de la contraseña. Nada de esto se registra en logs.
 
 ### 16.2 Gobernanza de Perfil Personal (`Mi Perfil`) y Vacaciones
 * **Autoservicio limitado:** Cualquier usuario autenticado puede consultar y editar **únicamente su propio perfil** (`user_id == request.user.id`), restringido a los campos `hobbies` (pasatiempos e intereses) y `personal_dream` (sueño o meta personal).
@@ -529,7 +619,7 @@ class MonthlyCommercialOverride(models.Model):
         unique_together = ('year', 'month')
 ```
 * **Recálculo Automático:** Al actualizar `annual_target_cop`, el backend recalcula automáticamente `monthly_target_cop = annual_target_cop / 12`.
-* **Prioridad de Cifra Efectiva Mensual:** Si existe un registro en `MonthlyCommercialOverride` para un mes específico, ese valor sustituye al cálculo automático de Orbit (salvando delays con contabilidad mientras no haya integración). Si no existe, se calcula como: `Vendido New Business ganado en el mes + Base mensual de fees activos`.
+* **Prioridad de Cifra Efectiva Mensual:** Si existe un registro en `MonthlyCommercialOverride` para un mes específico, ese valor sustituye al cálculo automático de ECO (salvando delays con contabilidad mientras no haya integración). Si no existe, se calcula como: `Vendido New Business ganado en el mes + Base mensual de fees activos`.
 
 ### 17.2 Stub / Hook Desacoplado de Alegra (Cero Datos Simulados)
 * **Regla estricta:** Indunova **NO debe crear modelos de cartera ficticia, saldos en mora ni facturas simuladas**.
@@ -550,3 +640,223 @@ class MonthlyCommercialOverride(models.Model):
 * No asumir jornadas de 40h ni 48h en ningún cálculo.
 * La deducción de capacidad descuenta horas según la **`work_date`** (fecha real del trabajo ejecutado) y no según la fecha en que se envió la solicitud.
 
+---
+
+### 17.4 Mejoras de lógica en «Tablero» y «Finanzas» (07 Nov 2026)
+Detalle funcional en `ORBIT_PRODUCT_STATUS.md` §11.9 (punto 3). Requisitos de backend:
+* **P&G con costos reales:** `project_cost = Σ(time_logs.hours × person_hourly_cost vigente a la work_date) + depreciación de hardware imputada + licencias imputadas + external_resources`. Si alguna fuente no tiene datos para el periodo, la respuesta incluye `margin_available = false` y la UI no muestra 100 %.
+* **Tabla de costos por persona/rol:** `person_hourly_costs` (`user_id` o `role`, `hourly_cost_cop`, `effective_from`). Retirar el costo hora de `financial_goals`.
+* **Facturas:** `invoices.project_id` (o `client_id` + `service_id`) obligatorio al causar; las facturas importadas de Alegra sin vínculo quedan en estado `unreconciled` y se listan como «Por conciliar».
+* **Metas:** `financial_goals` anual con distribución mensual automática (`monthly_goals`), sobrescribible por mes con auditoría (`changed_by`, `changed_at`, `reason`).
+* **Proyección:** `forecast(month) = Σ fees activos (contract monthly value, mientras month ≤ contract_end_date) + hitos de facturación pendientes de proyectos únicos + Σ(oportunidades abiertas × probabilidad)`. Mantener la proyección lineal como referencia opcional.
+* **TRM:** tabla única `exchange_rates` (`date`, `currency`, `rate_to_cop`), usada por licencias, cotizaciones, recursos externos y P&G; consulta por la fecha del hecho económico.
+* **Alertas:** endpoint de alertas que devuelve solo proyectos en riesgo con `recommended_action`; el semáforo usa conteos agregados.
+
+---
+
+## 18. Integración con Google Chat (Ticket #149)
+Especificación funcional y permisos en `ORBIT_PRODUCT_STATUS.md` §11.8. Requisitos de backend:
+
+### 18.1 Modelo
+* `client_google_chat_integrations` (1:1 con `clients`): `space_name`, `webhook_url_encrypted`, `webhook_last4`, `status` (`pending_test` | `active` | `inactive` | `error`), `is_default_for_projects` (default `true`), `last_test_at`, `last_test_result`, `last_test_error`, `updated_by_user_id`, `updated_at`.
+* En `projects`: `google_chat_enabled` (boolean, **default `false`**). Activado = usa el webhook del cliente. No hay webhook propio por proyecto ni `is_default_for_projects` (simplificado 07 Nov 2026). En el prototipo: `googleChatMode` `inherit_client` (activado) / `disabled`.
+* Bitácora de cambios de integración (quién, cuándo, acción) sin almacenar la URL.
+
+### 18.2 Seguridad
+* **Autogestión:** el webhook lo registra `system_admin` desde la ficha del cliente. Indunova **no** necesita recibir los webhooks de los clientes; solo construye la pantalla, el guardado cifrado y el envío. Para probar, usar un espacio de prueba propio.
+* La URL del webhook se guarda **cifrada** y **nunca** se devuelve por API; las respuestas solo incluyen `webhook_last4` / máscara.
+* Solo `system_admin` puede crear, probar, activar, desactivar, reemplazar o eliminar el webhook (también desde el proyecto, si el cliente no tiene uno: se guarda en el cliente). `leader` solo puede activar o desactivar `google_chat_enabled` en sus proyectos.
+* Las URLs no se registran en logs, tickets ni documentación.
+
+### 18.3 Envío
+* Resolución del destino según §11.8: proyecto sin activar → no se envía; activado → webhook activo del cliente; si el cliente no tiene uno activo → solo in-app.
+* «Guardar y probar» envía un mensaje real de prueba; si falla, `status = error` con el detalle.
+* Eventos que se publican: nueva tarea/asignación relevante, solicitud de revisión, comentario con mención o solicitud de revisión, devolución, aprobación, cambio a prioridad urgente y recordatorio de pendientes sin repetición. **No** se publican eventos de timer ni cambios sin acción requerida.
+* Envío asíncrono con reintentos **idempotentes** (clave por evento y destino): un reintento no duplica mensajes. Una falla de Google Chat **no** impide guardar la acción en ECO.
+* Formato: mensaje corto y amigable con estructura reconocible y enlace directo a la tarea (ej.: «👋 ¡Hola, equipo! Soy ECO 🦫. … [Ver tarea en ECO]» (ECO es un castor: usar 🦫, no 🐻)).
+* Pruebas controladas (espacio de prueba) para no notificar al equipo por error.
+
+---
+
+## 19. Arranque en producción y migración desde COR (07 Nov 2026)
+Especificación funcional en `ORBIT_PRODUCT_STATUS.md` §9.4.
+
+### 19.1 Qué se migra y qué no
+* **Sí se migra:** usuarios (perfiles, roles, calendario laboral) y **clientes** (datos fiscales, contactos, integraciones). Nada más.
+* **No se migra:** proyectos, entregables, tareas, comentarios, timers ni registros de horas de COR ni de la plataforma que hoy opera Indunova. Ningún script de seed o migración puede crear proyectos o tareas con fecha anterior al arranque (**corte: 1 de noviembre de 2026**).
+* Los datos de demostración del prototipo (proyectos, tareas, oportunidades, mocks) **no** se cargan en producción, igual que el Simulador QA.
+* COR queda como archivo histórico de solo lectura. Antes de apagarlo, Uhura exporta (CSV/PDF) las horas y proyectos que finanzas necesite conservar; esos archivos no se importan a ECO.
+
+### 19.1.1 Dominio y URL anterior
+* Dominio final de producción: **`app.uhuragroup.com`**. Indunova debe enviar a Uhura los registros DNS requeridos (CNAME del subdominio, TXT de verificación de dominio y los que pida el certificado TLS). Uhura los configura; Indunova confirma la emisión del certificado y el despliegue.
+* Solo HTTPS. Las URLs de la app (enlaces de Google Chat, correos, notificaciones) se generan con este dominio.
+* La URL anterior de producción se retira cuando `app.uhuragroup.com` esté activo; durante la transición puede redirigir (301) al dominio nuevo.
+* El acceso a **Equipo & Accesos** (módulo `administracion`) queda solo para `executive` (consulta) y `system_admin` (administración).
+
+### 19.2 Proyectos vigentes al arranque
+* Se crean **a mano desde la interfaz** por el líder o comercial responsable, con el flujo normal: proyecto nuevo (o conversión desde New Business si existe la oportunidad) → «Iniciar proyecto».
+* «Iniciar proyecto» debe aceptar una **fecha de inicio pasada**: es la fecha real del contrato. El cronograma y los ciclos se calculan desde ahí.
+* **Fee mensual iniciado antes del arranque** (caso Cristar: inicia el 1 de noviembre y se crea en ECO en diciembre): `contract_start_date` real; los meses anteriores existen como ciclos **sin tareas** («Mes 1 · fuera de ECO»); las tareas se generan solo desde el ciclo actual. Si el contrato tiene la excepción de acumular horas, el saldo inicial se registra como un ajuste manual con nota y usuario, no como horas importadas.
+* Cada proyecto guarda su origen: `origin = 'new_business' | 'manual_go_live'`, y los creados con `manual_go_live` registran quién los creó y cuándo.
+* Primer proyecto en producción: **Rediseño web Neroli**, creado manualmente (su cierre comercial ocurrió fuera de ECO).
+
+### 19.3 Si hubiera muchos proyectos vigentes
+Si al momento del arranque hay más proyectos vigentes de los que se pueden crear a mano en un día, se habilita una **carga única por plantilla** (CSV) con: cliente, nombre, tipo (único / fee), fecha de inicio, vigencia en meses, horas contratadas por rol, líder y responsable de cuenta. La carga:
+* Solo crea el proyecto y su configuración; **nunca** tareas, horas ni comentarios.
+* Corre primero en modo de prueba (`dry_run`) y devuelve un informe para que Uhura lo apruebe.
+* Rechaza filas con fecha de fin anterior al corte o cliente inexistente.
+* Marca los proyectos con `origin = 'import'` y deja al líder la tarea de revisar e «Iniciar proyecto».
+
+---
+
+## 20. Sincronización con Google Calendar · Ausencias del equipo (Ticket #149)
+Especificación funcional en `ORBIT_PRODUCT_STATUS.md` §11.5 y §11.5.1.
+
+### 20.1 Conexión
+* Cuenta de servicio de Google Workspace con **solo lectura** sobre el calendario corporativo de ausencias. Uhura comparte el calendario con la cuenta que indique Indunova. Las credenciales viven en el gestor de secretos del backend; nunca en el repositorio, tickets, logs ni respuestas de API.
+* `calendar_integrations`: `calendar_label`, `status` (`active` | `pending_access` | `paused` | `error`), `last_sync_at`, `last_sync_result`, `last_sync_error`, `imported_count`, `updated_by_user_id`, `updated_at`. El ID del calendario no se expone al frontend.
+
+### 20.2 Sincronización
+* Mecanismo a criterio de Indunova (notificaciones push o tarea periódica). Idempotente por `external_calendar_event_id`: re-sincronizar no duplica ausencias.
+* **Asociación a la persona:** por el correo del invitado (`attendee.email` = `users.email`). Si no hay coincidencia única, el evento se guarda en `calendar_unmatched_events` (`external_event_id`, `title`, `start_date`, `end_date`, `all_day`, `reason`, `status` = `pending` | `resolved` | `ignored`) y **no** descuenta capacidad hasta que `system_admin` lo asocie.
+* **Tipo e impacto por título:** «Vacaciones» → `vacation`, «Incapacidad» → `sick_leave`, «Permiso» → `personal_leave` (8 h/día); «Medio día» → `personal_leave` 4 h/día; otro → `other` 8 h/día. Reglas configurables en backend.
+* Evento cancelado o eliminado en el calendario → `TeamAbsenceEvent.status = 'cancelled'` (sin borrado físico).
+* Fechas en día civil (sin corrimientos por zona horaria).
+
+### 20.3 API y permisos
+* `GET /integrations/google-calendar` (`system_admin`, `executive`): estado y contadores.
+* `POST …/test`, `POST …/pause`, `POST …/resume` (`system_admin`).
+* `GET …/unmatched` y `POST …/unmatched/{id}/resolve` con `user_id` o `ignore = true` (`system_admin`). Resolver crea el `TeamAbsenceEvent` con `source = 'google_calendar'` y queda en bitácora (quién, cuándo).
+
+---
+
+## 21. Mascota ECO: apariencia de temporada (07 Nov 2026)
+Especificación funcional en `ORBIT_PRODUCT_STATUS.md` (Módulo 18, reglas de la mascota).
+* **Valor por defecto según la fecha:** noviembre y diciembre = `christmas`; enero a octubre = `standard`. No hace falta que nadie lo active.
+* Configuración de organización `mascot_skin` (`christmas` | `standard`) como **cambio manual para la temporada en curso**, editable **solo por `system_admin`**; lectura para todos los usuarios autenticados. Se guarda junto con la temporada (`navidad-2026` / `regular-2027`) y deja de aplicar al empezar la siguiente (1 de noviembre o 1 de enero). En el prototipo vive en el navegador (`eco_mascot_skin`); en producción debe persistirse en backend y quedar en bitácora (quién y cuándo la cambió).
+* Imágenes: las 13 de `src/assets/images/eco/` (8 estándar + 5 navideñas `eco-christmas` y `eco-xmas-*`) van en el build; no se cargan desde backend.
+* Preferencias personales (no requieren backend o pueden ir en el perfil): mascota apagada, sonido y nieve.
+* Las emociones de la mascota se calculan en el frontend con las tareas propias del usuario (§15.1); no requieren endpoints nuevos.
+* **Moods de ambiente (cafecito, hola, crack, agua) y la duración de las emociones:** son solo frontend (imágenes y frases en `mascot/ecoMascot.ts`, rotación aleatoria por persona en el navegador). **No requieren backend ni endpoints.** Producción solo debe incluir las imágenes `eco-xmas-*.webp` en el build. Si a futuro Uhura quiere editar las frases sin desplegar, se haría como configuración de organización (igual que `mascot_skin`); hoy no es necesario.
+
+---
+
+## 22. La Colonia: retos y ranking (07 Nov 2026)
+Especificación funcional en `ORBIT_PRODUCT_STATUS.md` Módulo 18.
+* `game_results` (`id`, `user_id`, `game_id` = `torre` | `nenufar`, `score`, `created_at`). Ranking semanal = `MAX(score)` por `user_id` y `game_id` desde el lunes 00:00 (hora Colombia) de la semana en curso; desempate por quien lo logró primero. Sin tabla propia de ranking.
+* `colony_challenges` (`id`, `game_id`, `challenger_user_id`, `challenger_score`, `challenged_user_id`, `challenged_score` null hasta jugar, `status` = `pending` | `completed`, `created_at`, `completed_at`). Ganador derivado: mayor puntaje; igual = empate. Un reto se resuelve una sola vez.
+* Rivales: solo usuarios activos de Equipo & Accesos, nunca uno mismo.
+* Notificaciones en la campana: «X te retó en {juego} con N pts» (al retado) y «{Resultado} contra X» (a ambos, al resolverse).
+* **Recordatorio de horas (ya existe en producción):** no se reimplementa. Lo que hace hoy la plataforma de Indunova (hora, canales) es la referencia; el prototipo solo replica la reacción de la mascota. **Única excepción, decidida por Uhura (07 Nov 2026): el umbral se unifica en 80 %**; si producción usa otro porcentaje, se ajusta solo ese valor.
+
+---
+
+## 23. ECO como PWA instalable (07 Nov 2026)
+Especificación funcional en `ORBIT_PRODUCT_STATUS.md` §9.5. **Fase 1 no requiere cambios en el backend.**
+* **Qué incluye el frontend (ya listo en el prototipo):** `vite-plugin-pwa` en `vite.config.ts` genera `manifest.webmanifest` y el service worker `sw.js`. Nombre «ECO · Uhura Group», íconos en `public/pwa/` (192, 512, maskable 512 y `apple-touch-icon` 180), colores `#140b24` / `#0d0718` y `start_url` `/?app=eco`. Se precargan solo el código, los estilos, los íconos y las imágenes de ECO (~2,8 MB). Las fotos del equipo (`public/assets/team`) y los logos grandes de `public/brand` no se precargan.
+* **Requisitos de hosting (Indunova):**
+  * Servir solo por **HTTPS** en `app.uhuragroup.com` (§19.1.1). Sin HTTPS no se puede instalar.
+  * `sw.js`, `registerSW.js`, `index.html` y `manifest.webmanifest` con `Cache-Control: no-cache` (si quedan en caché del CDN, las actualizaciones no llegan). Los archivos con hash de `/assets/` pueden ir con caché larga (`immutable`).
+  * `manifest.webmanifest` con `Content-Type: application/manifest+json`.
+  * Si la SPA tiene rutas, todas responden con `index.html`; las llamadas a `/api/...` **nunca** pasan por el service worker (hoy no las intercepta: solo precarga archivos estáticos y fuentes).
+* **Actualizaciones:** al publicar una versión nueva, la app muestra «Hay una versión nueva de ECO · Actualizar». Nunca recarga sin preguntar, para no perder un cronómetro o un formulario a medias. Revisa si hay versión nueva cada hora.
+* **Al lanzar producción:** quitar del build el Simulador QA (ver nota al inicio de este documento) y el atajo `?ecoMoods=fast`; el modo app (`?app=eco` / instalada) se conserva.
+* **Fuera de la fase 1 (requieren backend, a decidir):**
+  * **Notificaciones push** (retos, horas por cargar, aprobaciones): llaves VAPID, endpoint para guardar la suscripción por usuario y dispositivo, y un servicio que envíe. En iPhone solo funcionan con la app instalada en la pantalla de inicio (iOS 16.4+).
+  * **Registrar horas sin conexión** con sincronización posterior: necesita resolver conflictos en el backend. No se recomienda por ahora.
+
+---
+
+## 24. Racha de días cargados y cierre del día (07 Nov 2026)
+Especificación funcional en `ORBIT_PRODUCT_STATUS.md` §9.4.1. Lógica de referencia en `src/components/taskflow/time/dayStreak.ts`.
+* **Racha:** se calcula con `time_logs` existentes por usuario y día (`SUM(duration_seconds)` por `date`). Un día hábil cuenta si suma ≥ 80 % de la jornada diaria (capacidad semanal ÷ 5). Se saltan fines de semana, festivos de Colombia y días con ausencia activa (§20); no rompen la racha. Puede calcularse en el frontend con los registros de las últimas semanas o exponerse como `GET /api/me/streak` → `{ current, today_counts, today_is_workday }`. No hay ranking ni comparación entre personas.
+* **Día cerrado:** tabla `day_closures` (`user_id`, `date`, `closed_at`), única por usuario y fecha. `POST /api/me/day-closures` con la fecha de hoy; idempotente. Es solo un registro de confirmación: **no bloquea ni modifica** `time_logs` (las reglas de corrección y cierre semanal no cambian). En el prototipo vive en el navegador (`eco_day_closed_v1`).
+* **Aviso de las 5:00 p. m.:** es del frontend (mascota); se muestra una vez por día y no requiere backend. Si a futuro se quiere enviar también por Google Chat o push, se reutiliza el canal del recordatorio de horas de producción, sin duplicarlo.
+
+---
+
+## 25. Racha de equipo y logros de racha (07 Nov 2026)
+Especificación funcional en `ORBIT_PRODUCT_STATUS.md` §9.4.1. Lógica de referencia en `src/components/taskflow/time/dayStreak.ts` (`computeTeamStreak`, `computeMilestones`).
+* **Requiere cálculo en servidor:** cada persona solo puede leer sus propios `time_logs` (§15.1), así que la racha de equipo y los logros se calculan en el backend y se exponen ya agregados, sin horas individuales:
+  * `GET /api/team/streak` → `{ current, today_loaded, today_expected, week_pct }`. Nunca devuelve quién faltó.
+  * `GET /api/team/streak-milestones` → `[{ user_id, user_name, current, milestone, achieved_on, claps_count, clapped_by_me }]`. Se publica solo por comportamiento (sin preferencia de compartir).
+* **Equipo esperado por día:** usuarios activos con `capacity_hours > 0`, sin ausencia activa ese día (§20). Días hábiles de Colombia. Un día cuenta para la persona si suma ≥ 80 % de `capacity_hours / 5`.
+* **Hitos:** 5, 10, 20, 50 y 100 días seguidos. `achieved_on` = día en que la racha vigente alcanzó el hito. Si la racha se rompe, el hito deja de mostrarse (se celebran rachas vigentes).
+* **Aplausos:** `streak_milestone_claps` (`milestone_key`, `user_id`, `created_at`), único por persona y hito; no se puede aplaudir el propio. `POST`/`DELETE /api/team/streak-milestones/{key}/clap`. En el prototipo: `eco_streak_claps_v1`.
+* Opcional (fase 2): avisar en un espacio interno de Google Chat cuando alguien llega a un hito.
+
+---
+
+## 26. Notificaciones por correo y recordatorio semanal de horas (Ticket de integraciones, 07 Nov 2026)
+Las notificaciones in-app siguen siendo la fuente principal; el correo y Google Chat (§18) son complementarios. Todas las URLs usan `app.uhuragroup.com` (§19.1.1).
+
+### 26.1 Eventos por correo (al correo corporativo del usuario, con enlace directo al elemento)
+| Evento | Destinatarios | Información mínima |
+|---|---|---|
+| Nueva asignación | Colaborador asignado | Tarea, cliente, proyecto, fecha de entrega, quién asignó |
+| Reasignación | Colaborador agregado y colaborador retirado | El cambio y enlace a la tarea |
+| Solicitud de revisión | Project Lead, revisor y seguidores habilitados | Tarea, quién solicita, enlace |
+| Tarea devuelta | Colaboradores responsables | Observación, quién devolvió, enlace |
+| Tarea aprobada y completada | Colaboradores responsables | Confirmación, quién aprobó, enlace |
+| Comentario o mención | Responsables y mencionados con @ **que tengan acceso a la tarea** (§15.1) | Autor, fragmento, enlace |
+| Cambio a prioridad urgente | Colaboradores responsables | Prioridad, fecha de entrega, quién cambió |
+| Cambio relevante de cronograma | Responsables, Project Lead y seguidores | Fecha anterior, fecha nueva, enlace |
+* Quien realiza la acción **no** recibe correo por su propia actividad. Si una persona cumple varios roles en el mismo evento, recibe **un solo** correo (deduplicar por `user_id` y `event_id`).
+* Envío asíncrono e idempotente: una falla del proveedor no impide guardar la acción en ECO y un reintento no duplica correos.
+
+### 26.2 Recordatorio semanal de horas (viernes, después de la jornada)
+* A cada persona con **menos del 80 % de su capacidad neta semanal** registrada. Capacidad neta = capacidad − festivos − vacaciones y permisos aprobados (§20). Horas vigentes según `work_date`; los registros anulados no cuentan. Si la capacidad neta es 0 o ya alcanzó el 80 %, no se envía.
+* Contenido: semana evaluada, horas registradas y capacidad neta, porcentaje, horas pendientes para el 80 %, resumen por tarea y proyecto, y botón **«Completar mis horas»** que abre esa semana en Mi Capacidad / Timesheets.
+* **Resumen semanal:** `leader` → solo las personas de su área o alcance; `executive` y `system_admin` → consolidado de toda la organización.
+* **Meta única de 80 % (decisión de Uhura, 07 Nov 2026):** el correo del viernes (80 % de la capacidad neta semanal), el recordatorio diario de la mascota, la racha y «Cerrar mi día» (80 % de la jornada diaria) usan el mismo porcentaje. Definirlo como una sola configuración de organización (`hours_min_ratio = 0.8`) para no tener valores distintos.
+
+### 26.3 Proveedor de correo
+* Si se requiere un proveedor, Indunova lo escala a Ana con copia a Pao indicando: servicio propuesto, accesos requeridos, remitente, registros DNS (SPF, DKIM, DMARC) y costos o límites.
+
+### 26.4 Criterios de aceptación (del ticket)
+* Los correos llegan a los destinatarios indicados y abren el elemento correcto en ECO.
+* El recordatorio usa la capacidad neta y los registros vigentes de la semana evaluada.
+* Una novedad de prueba de Neroli se publica **una sola vez** en el espacio correcto de Google Chat; el webhook se registra, prueba, activa y desactiva desde la plataforma (§18).
+* Las vacaciones y permisos de Calendar se reflejan en el usuario y su capacidad; cambios y cancelaciones se actualizan sin duplicados (§20).
+* Una falla externa no impide guardar en ECO; los reintentos no duplican notificaciones ni registros.
+* Credenciales y webhooks protegidos: nunca en tickets ni documentación abierta. Pruebas controladas para no notificar al equipo por error.
+* HubSpot: pendiente de credenciales y autorizaciones de Ana (§12.4 cubre la operación manual mientras tanto).
+
+---
+
+## 27. Métricas de la ficha del cliente (07 Nov 2026)
+Especificación en `ORBIT_PRODUCT_STATUS.md` §9.4; lógica de referencia en `src/components/taskflow/clientMetrics.ts`.
+* **Todo calculado, nada fijo:** proyectos (total, activos, cerrados), valor vendido (suma de `sold_value_cop`), margen promedio (proyectos cerrados con margen real), salud por dimensión y salud general. No persistir `projects_count`, `average_margin_percent`, `billed_cop`, `receivable_cop`, `health_status` ni `behavior` como valores editables; si se guardan, que sea como caché recalculada.
+* **Facturado y por cobrar:** solo cuando exista la integración con Alegra (§ Módulo 10). Mientras tanto la API devuelve `null` y la UI muestra «Pendiente de la integración con facturación».
+* **Salud general:** requiere al menos 2 dimensiones con datos; si no, `null` («Sin datos suficientes»). Mismo cálculo para la ficha y la lista de clientes.
+* Endpoint sugerido: `GET /api/clients/{id}/metrics` y, para la lista, las mismas métricas resumidas en `GET /api/clients`.
+
+## 28. Ronda 2 de mejoras del prototipo (10 Nov 2026)
+Especificación funcional en `ORBIT_PRODUCT_STATUS.md` §8.0 puntos 3b, 3c y 3d. Esta sección reúne **todo lo que impacta backend** de esa ronda; lo puramente visual (íconos, textos, tamaños) no se repite aquí.
+* **Versiones de la cotización:** tabla `quote_commercial_versions` (`quote_id`, `version`, `saved_at`, `saved_by`, `total`, `currency`, `synced_to_hubspot`, snapshot de la estructura comercial). Cada «Guardar cotización» / «Guardar cambios» crea una versión; nunca se sobrescribe la anterior.
+* **Sincronización con HubSpot al editar:** si el servicio ya tiene `hubspot_deal_id`, al guardar se actualiza el monto (y la modalidad) del negocio en HubSpot. Dirección única por campo: ECO es dueño de valores y servicios; HubSpot es dueño de la etapa. Si falla, se aplica la cola de reintentos y el aviso de #133.
+* **Eliminar servicio del alcance:** borra el servicio, sus entregables y actividades de la cotización y su línea comercial; si la cotización estaba guardada, pasa a «desactualizada» (exige guardar de nuevo). Si el servicio tenía negocio en HubSpot, se marca «Cierre perdido» en HubSpot con motivo «Retirado del alcance» (no se borra el negocio).
+* **Costos externos y licencias:** ampliar `external_resources` con `kind` (`external` | `license`), `recurrence` (`one_time` | `monthly`), `monthly_cost` y `months`; `total_cost` = costo mensual × meses cuando es mensual. Los crea el líder en Alcance; Comercial los lee en Cotización. Se copian al proyecto al convertir y suman al costo real del P&G (§12.8).
+* **Iniciar proyecto:** permiso para `commercial`, `client_relationship`, `executive`, `leader` (del proyecto) y `system_admin`.
+* **Insumos del cliente (por fase, sin sumar días):** el catálogo de servicios guarda una plantilla de insumos por servicio (`title`, `type` = `access` | `client_input`, `blocking`, `phase_hint`: nombre o tipo de fase). Al iniciar el proyecto (primer arranque, sin dependencias previas) los confirmados se crean como `project_dependencies` con `deliverable_id` = fase para la que se necesitan y `expected_date` = inicio planeado de esa fase (`owner_type = client`, `requested_at` = kickoff, seguimiento del líder). **No** modifican `client_kickoff_wait_days` (queda en 0 para proyectos nuevos): un insumo solo genera desvío si su fase empieza sin él. Si la fase se reprograma, se recalcula `expected_date`.
+* **Entregables:** «Enviar a revisión» pone la tarea en `Review` (nunca `Done`), crea un comentario del autor con el enlace y notifica (campana y correo, §26) al líder del proyecto, al revisor y a los seguidores. Solo líder o revisor pasan a `Done` («Aprobar») o devuelven a `In Progress` («Devolver», cuenta como ajuste).
+* **Cerrar sesión:** disponible en todas las resoluciones; invalida la sesión de Google y vuelve al ingreso.
+* **Montos:** aceptar decimales (2) en valores de cotización y costos externos; la UI muestra separador de miles con punto y decimales con coma.
+* **Registro de tiempo:** `description` es opcional en carga manual y al detener el timer.
+* **Menciones en la entrega:** el comentario de entrega admite @menciones; las personas mencionadas se suman a los destinatarios del aviso de revisión.
+* **Iniciar proyecto (primer arranque):** recalcula siempre `start_date`, `scheduled_date` y `due_date` de todas las tareas del proyecto según el plan por fase; no es opcional. Al reprogramar un proyecto ya iniciado, el recálculo de tareas es opcional.
+* **Conversión con varios servicios (3b):** solo se crean proyectos para los servicios con estado ganado; nunca «todos los no perdidos». Con un solo servicio, se aprueba automáticamente al convertir (#132). La selección de ganados / perdidos se guarda en la misma operación que el estado «ganada» (evitar dos escrituras donde la segunda pise la primera).
+* **Fee mensual antes de iniciar (3b):** las tareas convertidas nacen sin `cycle_key`; se les asigna el mes de inicio al «Iniciar proyecto». Antes de eso, la API debe devolver todas las tareas del proyecto (no filtrar por mes).
+* **Alcance con varios líderes:** cada líder guarda su servicio (`scope_services.saved_by`, `saved_at`). «Marcar alcance listo» lo puede hacer cualquier líder del alcance y exige confirmación en la UI; el backend valida antes de cambiar la oportunidad a `internal_review`: enlace de la presentación, al menos un servicio con actividades y horas, semanas ≥ 1 en cada servicio y todos los servicios guardados. Si falla, responde 422 con la lista de campos faltantes (la UI los resalta). Al pasar a `internal_review` notifica a Comercial (owner comercial) para cotizar.
+* **Validación de la cotización en el servidor:** las mismas reglas de la UI (enlace válido de la calculadora; proyecto único: valor > 0; fee: valor mensual > 0 y meses ≥ 1); 422 con los campos faltantes. Estado `outdated` cuando cambia el alcance (servicio eliminado o agregado) después de guardada.
+* **HubSpot, crear negocios idempotente:** «Crear negocios» solo crea los de servicios sin `hubspot_deal_id` y no perdidos (permite «Crear negocio faltante» si se agrega un servicio después); nunca duplica.
+* **Esfuerzo de preventa:** endpoint `GET /api/opportunities/{id}/presales-effort` con horas registradas por persona en la tarea de preventa (no cobrables). El costo (horas × costo hora de `person_hourly_costs`, §12.10) solo para `system_admin`, `commercial`, `executive` y `administrative`.
+* **Aviso de revisión:** tipo de notificación `task_review_requested` (en el prototipo, alerta «REVISIÓN») con tarea, quien entregó, revisor y mencionados.
+* **Emojis más usados (opcional):** el prototipo los recuerda en el navegador; en producción pueden guardarse como preferencia del usuario (`user_preferences.frequent_emojis`). No es requisito.
+* **Fechas:** la API entrega fechas en ISO (`YYYY-MM-DD` o ISO 8601 con hora); la UI las muestra como «2026-Nov-18». No guardar fechas ya formateadas como texto.
+* **Lista de proyectos por estado:** `GET /api/projects?status=active|closed|archived|all` (predeterminado `active`) y conteos por estado para el filtro.
+* **Eliminar tarea:** `DELETE /api/tasks/{id}` solo para `leader` (del proyecto) y `system_admin`; responde 409 si la tarea tiene registros de tiempo (se debe archivar).
+* **Responsables del proyecto:** guardar `commercial_owner_id` (owner de la oportunidad) al convertir y heredar `account_manager_id` (Relación con clientes) de la cuenta. Las alertas de tareas bloqueadas (`task_blocked`) van al líder, al Comercial responsable y a Relación con clientes del proyecto.
+* **Eliminar entregable:** `DELETE /api/projects/{id}/deliverables/{deliverableId}` (leader y system_admin) elimina también sus tareas; 409 si alguna tiene registros de tiempo. Tras eliminar una tarea o un entregable en un proyecto único iniciado, el servidor replanifica entregables y tareas no completadas desde `start_date` con el mismo motor del «Iniciar proyecto» (sin tocar la línea base).
+* **Crear tarea:** el servidor valida título, entregable, rol, fecha de inicio y de entrega (entrega ≥ inicio) y responde 422 con los campos faltantes.
+* **Insumos por gestionar (Mi Día):** endpoint con las dependencias `owner_type = client` y `status = pending` de los proyectos de los que la persona es responsable (líder, Comercial o Relación con clientes), filtradas a vencidas o con `expected_date` dentro de 5 días hábiles, ordenadas por atraso, bloqueante y `expected_date`, con el nombre de la fase (`deliverable_id`) y el conteo de las que quedan más adelante.

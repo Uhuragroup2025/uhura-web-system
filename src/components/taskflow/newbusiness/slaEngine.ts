@@ -1,5 +1,5 @@
 /**
- * SLA & Gobernanza Contractual Engine para New Business en Orbit
+ * SLA & Gobernanza Contractual Engine para New Business en ECO
  * 
  * Reglas de Dominio:
  * 1. SLA de propuesta: 36 horas hábiles desde la activación de la oportunidad para scoping/propuesta,
@@ -11,7 +11,7 @@
  *    Las horas reales de preventa se registran únicamente mediante Timer o carga manual sobre la tarea interna.
  * 5. SOW / Contrato: El firmante contractual de UHURA proviene de la configuración corporativa
  *    vigente (por defecto Representante Legal de la compañía) y se guarda como snapshot histórico en el SOW.
- *    Orbit no simula ni ejecuta firmas legales en el frontend; prepara el SOW y registra el estado/referencia
+ *    ECO no simula ni ejecuta firmas legales en el frontend; prepara el SOW y registra el estado/referencia
  *    del trámite legal en Adobe Acrobat Sign (proveedor externo).
  * 6. Resolución dinámica del proyecto interno de preventa: se resuelve en caliente (UHURA Group -> Comercial & Prospección New Business)
  *    sin hardcodear IDs estáticos.

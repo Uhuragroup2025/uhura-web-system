@@ -329,7 +329,7 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
       onClick={onClose}
     >
       <div
-        className="bg-white w-full max-w-xl rounded-3xl shadow-2xl border border-[#e2e8f0] overflow-hidden flex flex-col max-h-[92vh]"
+        className="bg-white w-full max-w-xl rounded-2xl shadow-2xl border border-[#e2e8f0] overflow-hidden flex flex-col max-h-[92vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header con icono, badge y Segmented Control (Traer desde HubSpot / Crear manualmente) */}
@@ -341,13 +341,13 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
               </span>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-base font-extrabold tracking-tight">Nueva Oportunidad</h3>
+                  <h3 className="text-base font-extrabold tracking-tight">Nueva oportunidad</h3>
                   <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-[#d4ff4a]/20 text-[#d4ff4a] border border-[#d4ff4a]/30">
                     Handoff Comercial
                   </span>
                 </div>
                 <p className="text-[11px] text-white/75 mt-0.5">
-                  Cuando una oportunidad calificada requiere scoping de un líder, Orbit activa el SLA e inicia su tarea de preventa
+                  Cuando una oportunidad calificada requiere scoping de un líder, ECO activa el SLA e inicia su tarea de preventa
                 </p>
               </div>
             </div>
@@ -628,11 +628,11 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
               Brief {mode === 'manual' ? '(opcional)' : 'adicional / notas'}:
             </label>
             <textarea
-              rows={3}
+              rows={6}
               placeholder="Contexto y requerimiento recibido del cliente"
               value={briefText}
               onChange={(e) => setBriefText(e.target.value)}
-              className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] bg-white focus:ring-2 focus:ring-[#501f92] text-xs"
+              className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] bg-white focus:ring-2 focus:ring-[#501f92] text-xs min-h-[120px] resize-y"
             />
           </div>
 
@@ -836,14 +836,14 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
             </div>
           </div>
 
-          {/* Fecha max. de entrega (sin hora) */}
+          {/* Fecha límite del dimensionamiento técnico (no es la entrega del proyecto) */}
           <div className="space-y-1">
             <div className="flex items-center justify-between">
               <label className="font-bold text-[#475569] block">
-                Fecha max. de entrega: <span className="text-red-500">*</span>
+                Fecha límite del alcance: <span className="text-red-500">*</span>
               </label>
               <span className="text-[10px] font-semibold text-[#501f92] bg-[#f5f3ff] px-2 py-0.5 rounded">
-                Fecha de entrega
+                Para el líder técnico
               </span>
             </div>
             <input

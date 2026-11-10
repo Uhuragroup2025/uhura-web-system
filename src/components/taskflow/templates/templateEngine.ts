@@ -11,7 +11,7 @@ import {
 } from '../types';
 
 /**
- * MOTOR DE CÁLCULO DE TRES NIVELES DE HORAS (Orbit Template Engine)
+ * MOTOR DE CÁLCULO DE TRES NIVELES DE HORAS (ECO Template Engine)
  *
  * Nivel 1 — Horas de Actividad:
  *   Suma de estimaciones técnicas de cada tarea del backlog.
@@ -255,7 +255,7 @@ export function createBlankCustomQuote(options?: {
 
 /**
  * CONTRATO DE INTEGRACIÓN CON GOOGLE SHEETS DE FINANZAS
- * Consolida la bolsa de horas por rol técnico presupuestada en Orbit.
+ * Consolida la bolsa de horas por rol técnico presupuestada en ECO.
  * No inventa tarifas, salarios, markup ni márgenes.
  */
 export function prepareCommercialCalculatorContract(

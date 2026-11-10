@@ -30,7 +30,7 @@
   --color-neutral-900: var(--uhura-ink);
   --color-neutral-950: var(--uhura-dark);
 
-  /* CANONICAL ORBIT FORM TOKENS */
+  /* CANONICAL ECO FORM TOKENS */
   --orbit-text-primary: #0f172a;
   --orbit-text-secondary: #64748b;
   --orbit-text-placeholder: #7C8AA0;
@@ -103,7 +103,7 @@ body {
   color: var(--uhura-ink);
 }
 
-/* Orbit SaaS Specific Typography */
+/* ECO SaaS Specific Typography */
 .font-saas {
   font-family: var(--font-family-saas);
   letter-spacing: -0.012em;
@@ -297,7 +297,7 @@ select option:disabled {
   font-weight: 400;
 }
 
-/* Orbit Semantic Form Control Classes */
+/* ECO Semantic Form Control Classes */
 .orbit-input {
   color: var(--orbit-text-primary);
   background-color: var(--orbit-bg-input);
@@ -500,10 +500,84 @@ select option {
   -webkit-text-fill-color: #0f172a !important;
 }
 
-/* Modals and light panels default text safeguard */
+/* Modals and light panels default text safeguard.
+   Excluye fondos translúcidos de baja opacidad (bg-white/5…/20, también en hover) que se usan sobre paneles oscuros:
+   allí el texto debe seguir siendo claro (p. ej. ventana de la mascota). */
 .bg-white,
-[class*="bg-white"] {
+[class*="bg-white"]:not([class~="bg-white/5"]):not([class~="bg-white/10"]):not([class~="bg-white/15"]):not([class~="bg-white/20"]):not([class~="bg-white/[0.07]"]):not([class~="hover:bg-white/5"]):not([class~="hover:bg-white/10"]):not([class~="hover:bg-white/15"]):not([class~="hover:bg-white/20"]):not([class~="hover:bg-white/[0.07]"]) {
   color: #0f172a;
 }
 
 
+
+/* ── ECO · Modo navideño (nieve) ─────────────────────────────────────────── */
+.eco-snowflake {
+  position: absolute;
+  top: -24px;
+  color: #ffffff;
+  text-shadow: 0 0 2px rgba(80, 31, 146, 0.35);
+  animation-name: eco-snow-fall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+@keyframes eco-snow-fall {
+  0% { transform: translate3d(0, -24px, 0); }
+  50% { transform: translate3d(12px, 50vh, 0); }
+  100% { transform: translate3d(-8px, 105vh, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .eco-snow { display: none; }
+}
+
+/* ── ECO · Sidebar en modo claro (sol) ───────────────────────────────────── */
+/* El sidebar se diseñó oscuro; en claro se remapea su paleta sin duplicar el componente. */
+[data-sidebar-theme='light'] { background-color: #ffffff !important; border-color: #e2e8f0 !important; color: #0f172a !important; }
+[data-sidebar-theme='light'] .text-white { color: #0f172a !important; }
+[data-sidebar-theme='light'] .text-\[\#c9b7ff\],
+[data-sidebar-theme='light'] .text-\[\#c9b7ff\]\/80 { color: #475569 !important; }
+[data-sidebar-theme='light'] .text-\[\#c9b7ff\]\/70,
+[data-sidebar-theme='light'] .text-\[\#c9b7ff\]\/60 { color: #64748b !important; }
+[data-sidebar-theme='light'] .hover\:text-white:hover { color: #501f92 !important; }
+[data-sidebar-theme='light'] .hover\:bg-\[\#1a0f30\]:hover,
+[data-sidebar-theme='light'] .hover\:bg-\[\#160c2b\]:hover,
+[data-sidebar-theme='light'] .hover\:bg-\[\#241344\]:hover,
+[data-sidebar-theme='light'] .hover\:bg-\[\#2e1859\]:hover { background-color: #f5f3ff !important; }
+[data-sidebar-theme='light'] .bg-\[\#1e113a\] { background-color: #f3eefe !important; color: #501f92 !important; }
+[data-sidebar-theme='light'] .bg-\[\#1e113a\] span { color: #501f92 !important; }
+[data-sidebar-theme='light'] .bg-gradient-to-r.from-\[\#2e1859\] { background-image: none !important; background-color: #f3eefe !important; }
+[data-sidebar-theme='light'] .bg-gradient-to-r.from-\[\#2e1859\],
+[data-sidebar-theme='light'] .bg-gradient-to-r.from-\[\#2e1859\] span { color: #501f92 !important; }
+[data-sidebar-theme='light'] .border-\[\#d4ff4a\] { border-color: #8a4dff !important; }
+[data-sidebar-theme='light'] .bg-\[\#261845\] { background-color: #e2e8f0 !important; }
+[data-sidebar-theme='light'] .border-\[\#261845\],
+[data-sidebar-theme='light'] .border-\[\#261845\]\/70 { border-color: #e2e8f0 !important; }
+[data-sidebar-theme='light'] .text-\[\#d4ff4a\] { color: #501f92 !important; }
+[data-sidebar-theme='light'] .bg-\[\#d4ff4a\]\/20 { background-color: #f3eefe !important; }
+[data-sidebar-theme='light'] .border-\[\#d4ff4a\]\/30 { border-color: #ddd6fe !important; }
+[data-sidebar-theme='light'] .text-\[\#4be5ff\] { color: #0e7490 !important; }
+[data-sidebar-theme='light'] .bg-\[\#4be5ff\]\/15 { background-color: #ecfeff !important; }
+[data-sidebar-theme='light'] .bg-\[\#8a4dff\]\/30,
+[data-sidebar-theme='light'] .bg-\[\#8a4dff\]\/25,
+[data-sidebar-theme='light'] .bg-\[\#a855f7\]\/15 { background-color: #f3eefe !important; }
+[data-sidebar-theme='light'] .bg-\[\#501f92\] { color: #ffffff !important; }
+[data-sidebar-theme='light'] .bg-\[\#501f92\].text-\[\#d4ff4a\] { color: #ffffff !important; }
+
+/* ── ECO · Cifras: tipografía de la interfaz con dígitos tabulares ─────────── */
+/* Dentro de ECO, los números (horas, montos, fechas) usan la misma fuente que el resto,
+   con cifras de ancho fijo para que se alineen en tablas y tarjetas. */
+.orbit-saas-root .font-mono {
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+/* ── ECO · La Colonia: mini universo (solo CSS) ──────────────────────────── */
+@keyframes eco-twinkle { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+@keyframes eco-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@keyframes eco-spin { to { transform: rotate(360deg); } }
+.eco-star { position: absolute; border-radius: 9999px; background: #fff; animation: eco-twinkle 3s ease-in-out infinite; }
+.eco-float { animation: eco-float 5s ease-in-out infinite; }
+.eco-orbit-ring { animation: eco-spin 18s linear infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .eco-star, .eco-float, .eco-orbit-ring { animation: none; }
+}
