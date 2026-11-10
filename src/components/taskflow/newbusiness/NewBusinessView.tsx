@@ -67,6 +67,7 @@ import {
   Folder,
   ShieldCheck,
   CheckSquare,
+  AlertTriangle,
   FileCheck,
   DollarSign,
   AlertCircle,
@@ -264,6 +265,10 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
       timeoutMs: 9000
     });
   };
+
+  // Los avisos de validación (falta algo) se muestran en rojo; las confirmaciones en verde.
+  const isErrorBanner = (message: string) =>
+    /^(Falta|Agrega|Guarda |Haz clic|No hay|El servicio|El enlace|Define)|: (Define|Falta)/.test(message.trim());
 
   // Helper de notificación unificado con auto-dismiss
   const setConversionSuccessMessage = (
@@ -565,6 +570,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
     setIsQuoteSavedFeedback(true);
     setIsEditingQuoteFields(false);
     setQuoteRevisionSig(null);
+    setHasAttemptedSaveQuote(false);
     setConversionSuccessMessage(
       nextVersion > 1
         ? `✅ Cambios guardados: cotización v${nextVersion}.${hasAnyHubSpotDeals ? ' Valores actualizados en los negocios de HubSpot.' : ''}`
@@ -575,6 +581,73 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
       setConversionSuccessMessage(null);
     }, 4000);
   };
+  // ── Alcance (ronda 2): Guardar junto al enlace, sin lista de requisitos; los campos que faltan se
+  // resaltan al intentar guardar o marcar listo. «Marcar alcance listo» pide confirmación porque
+  // varios líderes pueden aportar servicios a la misma oportunidad.
+  const [scopeAttempted, setScopeAttempted] = useState(false);
+  const [isConfirmScopeReadyOpen, setIsConfirmScopeReadyOpen] = useState(false);
+  useEffect(() => {
+    setScopeAttempted(false);
+    setIsConfirmScopeReadyOpen(false);
+  }, [activeOpp?.id]);
+  const scopeHasLink = Boolean(activeQuote?.commercialProposalUrl?.trim() && activeQuote.commercialProposalUrl.trim().length > 5);
+  const scopeMissingLink = scopeAttempted && !scopeHasLink;
+  const isScopeMarkedReady = Boolean(activeOpp && ['internal_review', 'proposal_sent', 'negotiation', 'won'].includes(activeOpp.status));
+
+  const handleSaveScope = () => {
+    if (!activeQuote) return;
+    setScopeAttempted(true);
+    const invalidServices = scopeState.services.filter((service) => serviceValidationMessages(service).length > 0);
+    if (!scopeHasLink || scopeState.services.length === 0 || invalidServices.length) {
+      setConversionSuccessMessage(
+        [
+          !scopeHasLink ? 'Falta el enlace de la presentación.' : '',
+          scopeState.services.length === 0 ? 'Agrega al menos un servicio.' : '',
+          ...invalidServices.map((service) => `${service.name}: ${serviceValidationMessages(service).join(' ')}`)
+        ].filter(Boolean).join(' ')
+      );
+      return;
+    }
+    handleUpdateQuote({ ...activeQuote, estimatedWeeks: getScopeWeeks(activeQuote, scopeState.services) });
+    onChangeScopeUi(activeQuote.id, {
+      ...scopeState,
+      saved: true,
+      services: scopeState.services.map((sv) => ({ ...sv, saved: true }))
+    });
+    setScopeAttempted(false);
+    setConversionSuccessMessage('Alcance técnico guardado.');
+    setTimeout(() => setConversionSuccessMessage(null), 3000);
+  };
+
+  const handleRequestMarkScopeReady = () => {
+    if (!activeQuote || isScopeMarkedReady) return;
+    setScopeAttempted(true);
+    const hasHours = activeQuote.deliverables.some((d) => d.backlogItems.some((a) => a.estimatedHours > 0));
+    const unsaved = scopeState.services.filter((sv) => !sv.saved);
+    const invalid = scopeState.services.filter((sv) => serviceValidationMessages(sv).length > 0);
+    const problems = [
+      !scopeHasLink ? 'Falta el enlace de la presentación.' : '',
+      scopeState.services.length === 0 || !hasHours ? 'Agrega al menos un servicio con actividades y horas.' : '',
+      ...invalid.map((sv) => `${sv.name}: ${serviceValidationMessages(sv).join(' ')}`),
+      unsaved.length ? `Guarda ${unsaved.length === 1 ? 'el servicio' : 'los servicios'}: ${unsaved.map((sv) => sv.name).join(', ')}.` : '',
+      !scopeState.saved && !unsaved.length ? 'Haz clic en «Guardar» junto al enlace.' : ''
+    ].filter(Boolean);
+    if (problems.length) {
+      setConversionSuccessMessage(problems.join(' '));
+      return;
+    }
+    setIsConfirmScopeReadyOpen(true);
+  };
+
+  const handleConfirmMarkScopeReady = () => {
+    if (!activeOpp || !activeQuote) return;
+    onUpdateOpportunity({ ...activeOpp, status: 'internal_review', updatedAt: new Date().toISOString() });
+    setIsConfirmScopeReadyOpen(false);
+    setScopeAttempted(false);
+    setConversionSuccessMessage(`✓ Alcance técnico listo (${activeQuote.totalHoursRollup}h). Comercial recibe el aviso para cotizar.`);
+    setTimeout(() => setConversionSuccessMessage(null), 6000);
+  };
+
   const handleCancelQuoteEdit = () => {
     if (!activeQuote || !quoteRevisionSig) return;
     setCommercialStructureDraft(activeQuote.commercialStructure || []);
@@ -1063,9 +1136,18 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
       <div className="space-y-6 animate-in fade-in duration-200">
         {/* Banner de Notificación Contextual */}
         {bannerNotification && (
-          <div className="p-4 rounded-2xl bg-[#ecfdf5] border border-[#a7f3d0] text-[#065f46] flex items-center justify-between gap-3 shadow-xs animate-in slide-in-from-top-2">
+          <div
+            role={isErrorBanner(bannerNotification.message) ? 'alert' : 'status'}
+            className={`p-4 rounded-2xl border flex items-center justify-between gap-3 shadow-xs animate-in slide-in-from-top-2 ${
+              isErrorBanner(bannerNotification.message) ? 'bg-[#fef2f2] border-[#fecaca] text-[#991b1b]' : 'bg-[#ecfdf5] border-[#a7f3d0] text-[#065f46]'
+            }`}
+          >
             <div className="flex items-center gap-2.5 min-w-0">
-              <CheckCircle2 className="w-5 h-5 text-[#10b981] shrink-0" />
+              {isErrorBanner(bannerNotification.message) ? (
+                <AlertTriangle className="w-5 h-5 text-[#dc2626] shrink-0" />
+              ) : (
+                <CheckCircle2 className="w-5 h-5 text-[#10b981] shrink-0" />
+              )}
               <span className="text-xs font-bold leading-relaxed">{bannerNotification.message}</span>
             </div>
             <div className="flex items-center gap-2 shrink-0">
@@ -1623,9 +1705,18 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Banner de Notificación Contextual */}
       {bannerNotification && (
-        <div className="p-4 rounded-2xl bg-[#ecfdf5] border border-[#a7f3d0] text-[#065f46] flex items-center justify-between gap-3 shadow-xs animate-in slide-in-from-top-2">
+        <div
+          role={isErrorBanner(bannerNotification.message) ? 'alert' : 'status'}
+          className={`p-4 rounded-2xl border flex items-center justify-between gap-3 shadow-xs animate-in slide-in-from-top-2 ${
+            isErrorBanner(bannerNotification.message) ? 'bg-[#fef2f2] border-[#fecaca] text-[#991b1b]' : 'bg-[#ecfdf5] border-[#a7f3d0] text-[#065f46]'
+          }`}
+        >
           <div className="flex items-center gap-2.5 min-w-0">
-            <CheckCircle2 className="w-5 h-5 text-[#10b981] shrink-0" />
+            {isErrorBanner(bannerNotification.message) ? (
+              <AlertTriangle className="w-5 h-5 text-[#dc2626] shrink-0" />
+            ) : (
+              <CheckCircle2 className="w-5 h-5 text-[#10b981] shrink-0" />
+            )}
             <span className="text-xs font-bold leading-relaxed">{bannerNotification.message}</span>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -2261,6 +2352,60 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
       {/* ========================================================================= */}
       {activeTab === 'scoping' && activeQuote && (
         <div className="space-y-6 animate-in fade-in duration-150">
+          {isConfirmScopeReadyOpen && (
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="confirm-scope-ready-title"
+              className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+              onClick={(e) => e.target === e.currentTarget && setIsConfirmScopeReadyOpen(false)}
+            >
+              <div className="bg-white rounded-2xl max-w-md w-full border border-[#e2e8f0] shadow-2xl p-5 space-y-4 text-xs">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#501f92]/10 text-[#501f92] flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 id="confirm-scope-ready-title" className="font-extrabold text-base text-[#0f172a]">¿El alcance está completo?</h3>
+                    <p className="text-[#64748b] mt-0.5">
+                      Revisa que estén todos los servicios. Si otro líder todavía debe agregar el suyo, cancela y espera a que lo guarde.
+                    </p>
+                  </div>
+                </div>
+                <ul className="rounded-xl border border-[#e2e8f0] divide-y divide-[#f1f5f9]">
+                  {scopeState.services.map((sv) => {
+                    const hours = activeQuote.deliverables
+                      .filter((d) => sv.deliverableIds.includes(d.id))
+                      .flatMap((d) => d.backlogItems)
+                      .reduce((sum, it) => sum + (it.estimatedHours || 0), 0);
+                    return (
+                      <li key={sv.id} className="flex items-center justify-between gap-2 px-3 py-2">
+                        <span className="font-semibold text-[#0f172a] truncate">{sv.name}</span>
+                        <span className="text-[#64748b] shrink-0">{hours} h · {sv.weeks} sem.</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <p className="text-[#475569]">Al confirmar, Comercial recibe el aviso para cotizar y el alcance queda listo.</p>
+                <div className="flex items-center justify-end gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setIsConfirmScopeReadyOpen(false)}
+                    className="px-4 py-2 rounded-xl border border-[#e2e8f0] bg-white text-[#64748b] font-semibold cursor-pointer"
+                  >
+                    Falta algo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmMarkScopeReady}
+                    className="px-4 py-2 rounded-xl bg-[#501f92] hover:bg-[#3d1572] text-white font-bold cursor-pointer"
+                  >
+                    Sí, el alcance está completo
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           {/* Panel Superior del Líder Asignado: Limpio, minimalista y sin ruido visual */}
           <div className="bg-white rounded-2xl border border-[#e2e8f0] p-4 shadow-2xs space-y-3">
             <div className="flex items-center justify-between gap-3 flex-wrap border-b border-[#e2e8f0] pb-3">
@@ -2276,109 +2421,35 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                 <span className="rounded-full bg-[#f5f3ff] px-2 py-1 text-[11px] font-semibold text-[#501f92]">{scopeState.saved && isScopeReadyForReview(activeQuote, scopeState.services) && ['internal_review', 'proposal_sent', 'negotiation', 'won'].includes(activeOpp.status) ? 'Listo para cotizar' : 'En elaboración'}</span>
               </div>
               <div className="flex items-center gap-2">
+                {isScopeReadOnly && !isScopeMarkedReady && (
+                  <button
+                    type="button"
+                    onClick={() => onChangeScopeUi(activeQuote.id, { ...scopeState, saved: false })}
+                    className="px-3.5 py-1.5 rounded-lg border border-[#cbd5e1] bg-white hover:bg-[#f8fafc] text-xs font-semibold text-[#475569] transition-colors cursor-pointer inline-flex items-center gap-1"
+                  >
+                    <Pencil className="w-3 h-3" />Editar alcance
+                  </button>
+                )}
                 <button
                   type="button"
-                  onClick={() => {
-                    if (isScopeReadOnly) {
-                      onChangeScopeUi(activeQuote.id, { ...scopeState, saved: false });
-                      return;
-                    }
-                    const invalidServices = scopeState.services.filter((service) => serviceValidationMessages(service).length > 0);
-                    if (invalidServices.length) {
-                      setConversionSuccessMessage(invalidServices.map((service) => `${service.name}: ${serviceValidationMessages(service).join(' ')}`).join(' '));
-                      return;
-                    }
-                    handleUpdateQuote({ ...activeQuote, estimatedWeeks: getScopeWeeks(activeQuote, scopeState.services) });
-                    onChangeScopeUi(activeQuote.id, {
-                      ...scopeState,
-                      saved: true,
-                      services: scopeState.services.map((s) => ({ ...s, saved: true }))
-                    });
-                    setConversionSuccessMessage('Alcance técnico guardado.');
-                    setTimeout(() => setConversionSuccessMessage(null), 3000);
-                  }}
-                  className="px-3.5 py-1.5 rounded-lg border border-[#cbd5e1] bg-white hover:bg-[#f8fafc] text-xs font-semibold text-[#475569] transition-colors cursor-pointer"
+                  onClick={handleRequestMarkScopeReady}
+                  disabled={isScopeMarkedReady}
+                  className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs ${
+                    isScopeMarkedReady
+                      ? 'bg-[#059669] text-white ring-2 ring-[#a7f3d0] cursor-default'
+                      : 'bg-[#501f92] hover:bg-[#3d1572] text-white cursor-pointer active:scale-95'
+                  }`}
+                  title={
+                    isScopeMarkedReady
+                      ? 'El alcance ya fue marcado como listo para Comercial'
+                      : 'Confirmar que todos los servicios están y avisar a Comercial para cotizar'
+                  }
                 >
-                  {isScopeReadOnly ? <span className="inline-flex items-center gap-1"><Pencil className="w-3 h-3" />Editar alcance</span> : 'Guardar'}
+                  <CheckCircle2 className={`w-3.5 h-3.5 ${isScopeMarkedReady ? 'text-[#d4ff4a]' : 'text-white'}`} />
+                  <span>{isScopeMarkedReady ? 'Listo para cotizar' : 'Marcar alcance listo'}</span>
                 </button>
-
-                {(() => {
-                  const hasPresentation = Boolean(activeQuote.commercialProposalUrl?.trim() && activeQuote.commercialProposalUrl.trim().length > 5);
-                  const hasDeliverablesAndActivities = activeQuote.deliverables.length > 0 && activeQuote.deliverables.some((d) => d.backlogItems.length > 0 && d.backlogItems.some((a) => a.estimatedHours > 0));
-                  const hasValidServices = scopeState.services.length > 0 && scopeState.services.every((s) => Number(s.weeks) >= 1 && serviceValidationMessages(s).length === 0);
-                  const isReadyToMark = Boolean(scopeState.saved && hasPresentation && hasDeliverablesAndActivities && hasValidServices);
-                  const isAlreadyMarked = activeOpp.status === 'internal_review' || activeOpp.status === 'proposal_sent' || activeOpp.status === 'negotiation' || activeOpp.status === 'won';
-
-                  return (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!isReadyToMark) return;
-                        const updatedOpp: NewBusinessOpportunity = {
-                          ...activeOpp,
-                          status: 'internal_review',
-                          updatedAt: new Date().toISOString()
-                        };
-                        onUpdateOpportunity(updatedOpp);
-                        setConversionSuccessMessage(
-                          `✓ Alcance técnico listo (${activeQuote.totalHoursRollup}h). Notificación enviada a Comercial para cotizar.`
-                        );
-                        setTimeout(() => setConversionSuccessMessage(null), 6000);
-                      }}
-                      disabled={!isReadyToMark && !isAlreadyMarked}
-                      className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs ${
-                        isAlreadyMarked
-                          ? 'bg-[#059669] text-white ring-2 ring-[#a7f3d0] cursor-pointer'
-                          : isReadyToMark
-                            ? 'bg-[#501f92] hover:bg-[#3d1572] active:bg-[#2e0e57] text-white cursor-pointer active:scale-95'
-                            : 'bg-[#f1f5f9] text-[#94a3b8] border border-[#e2e8f0] cursor-not-allowed'
-                      }`}
-                      title={
-                        isAlreadyMarked
-                          ? 'El alcance técnico ya fue marcado como listo para Comercial'
-                          : isReadyToMark
-                            ? 'Marcar que el dimensionamiento técnico está listo para Comercial'
-                            : !hasPresentation
-                              ? 'Falta ingresar el enlace de la presentación en Drive'
-                              : !hasDeliverablesAndActivities
-                                ? 'Falta importar o agregar al menos un servicio con actividades'
-                                : !scopeState.saved
-                                  ? 'Haz clic en Guardar antes de marcar como listo'
-                                  : 'Servicios pendientes de completar semanas'
-                      }
-                    >
-                      <CheckCircle2 className={`w-3.5 h-3.5 ${isAlreadyMarked ? 'text-[#d4ff4a]' : 'text-white'}`} />
-                      <span>
-                        {isAlreadyMarked
-                          ? 'Listo para cotizar'
-                          : 'Marcar como listo'}
-                      </span>
-                    </button>
-                  );
-                })()}
               </div>
             </div>
-            {/* Requisitos visibles para «Marcar como listo» */}
-            {(() => {
-              const isAlreadyMarked = activeOpp.status === 'internal_review' || activeOpp.status === 'proposal_sent' || activeOpp.status === 'negotiation' || activeOpp.status === 'won';
-              if (isAlreadyMarked) return null;
-              const checks = [
-                { ok: scopeState.services.length > 0 && activeQuote.deliverables.some((d) => d.backlogItems.some((a) => a.estimatedHours > 0)), label: 'Al menos un servicio con actividades y horas' },
-                { ok: scopeState.services.length > 0 && scopeState.services.every((sv) => Number(sv.weeks) >= 1 && serviceValidationMessages(sv).length === 0), label: 'Semanas definidas en cada servicio' },
-                { ok: Boolean(activeQuote.commercialProposalUrl?.trim() && activeQuote.commercialProposalUrl.trim().length > 5), label: 'Enlace de la presentación en Drive' },
-                { ok: Boolean(scopeState.saved), label: 'Alcance guardado' }
-              ];
-              return (
-                <ul className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] mt-2" aria-label="Requisitos para marcar el alcance como listo">
-                  {checks.map((c) => (
-                    <li key={c.label} className={`flex items-center gap-1 ${c.ok ? 'text-[#15803d]' : 'text-[#64748b]'}`}>
-                      <span aria-hidden>{c.ok ? '✓' : '○'}</span>
-                      {c.label}
-                    </li>
-                  ))}
-                </ul>
-              );
-            })()}
             {isScopeReadOnly ? (
               <div className="space-y-2 text-xs text-[#334155]" aria-label="Datos generales del alcance guardado">
                 <p>Presentación / propuesta técnica general: {activeQuote.commercialProposalUrl ? <a className="underline text-[#501f92]" href={activeQuote.commercialProposalUrl} target="_blank" rel="noreferrer">Abrir presentación</a> : 'Pendiente'}</p>
@@ -2393,31 +2464,44 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                 <label className="font-semibold text-[#475569] flex items-center justify-between">
                   <span>Presentación / Propuesta (Drive)</span>
                 </label>
-                <div className="relative flex items-center">
-                  <input
-                    type="url"
-                    value={activeQuote.commercialProposalUrl || ''}
-                    onChange={(e) => {
-                      handleUpdateQuote({
-                        ...activeQuote,
-                        commercialProposalUrl: e.target.value
-                      });
-                    }}
-                    placeholder="https://docs.google.com/presentation/d/... o enlace a Drive"
-                    className="w-full pl-3 pr-10 py-2 rounded-xl border border-[#cbd5e1] text-xs font-mono text-[#0f172a] placeholder:text-[#94a3b8] placeholder:font-sans focus:ring-1 focus:ring-[#501f92] focus:border-[#501f92] transition-colors"
-                  />
-                  {activeQuote.commercialProposalUrl && (
-                    <a
-                      href={activeQuote.commercialProposalUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="absolute right-2 p-1.5 text-[#501f92] hover:bg-[#501f92]/10 rounded-lg transition-colors cursor-pointer"
-                      title="Abrir presentación en Google Drive"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
-                  )}
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1 flex items-center">
+                    <input
+                      type="url"
+                      value={activeQuote.commercialProposalUrl || ''}
+                      onChange={(e) => {
+                        handleUpdateQuote({
+                          ...activeQuote,
+                          commercialProposalUrl: e.target.value
+                        });
+                      }}
+                      placeholder="https://docs.google.com/presentation/d/... o enlace a Drive"
+                      className={`w-full pl-3 pr-10 py-2 rounded-xl border text-xs ${scopeMissingLink ? 'border-[#dc2626] ring-1 ring-[#fecaca]' : 'border-[#cbd5e1]'} font-mono text-[#0f172a] placeholder:text-[#94a3b8] placeholder:font-sans focus:ring-1 focus:ring-[#501f92] focus:border-[#501f92] transition-colors`}
+                      aria-invalid={scopeMissingLink}
+                    />
+                    {activeQuote.commercialProposalUrl && (
+                      <a
+                        href={activeQuote.commercialProposalUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="absolute right-2 p-1.5 text-[#501f92] hover:bg-[#501f92]/10 rounded-lg transition-colors cursor-pointer"
+                        title="Abrir presentación en Google Drive"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleSaveScope}
+                    className="shrink-0 px-4 py-2 rounded-xl bg-[#501f92] hover:bg-[#3d1572] text-white text-xs font-bold cursor-pointer"
+                    title="Guarda el enlace y los servicios del alcance"
+                  >
+                    Guardar
+                  </button>
                 </div>
+                {scopeMissingLink && <p role="alert" className="text-[11px] font-semibold text-[#dc2626]">Falta el enlace de la presentación o propuesta en Drive.</p>}
+                {scopeAttempted && scopeState.services.length === 0 && <p role="alert" className="text-[11px] font-semibold text-[#dc2626]">Agrega al menos un servicio con actividades y horas.</p>}
               </div>
 
             </div>
@@ -2906,7 +2990,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                                   prev.map((s) => (s.serviceId === item.serviceId ? { ...s, totalValue: val } : s))
                                 )
                               }
-                              className="w-full max-w-sm p-2.5 rounded-xl border border-[#cbd5e1] font-bold text-sm text-[#0f172a] focus:ring-2 focus:ring-[#501f92] focus:border-[#501f92] bg-white transition-all"
+                              className={`w-full max-w-sm p-2.5 rounded-xl border font-bold text-sm text-[#0f172a] focus:ring-2 focus:ring-[#501f92] focus:border-[#501f92] bg-white transition-all ${hasAttemptedSaveQuote && !(item.totalValue && item.totalValue > 0) ? 'border-[#dc2626] ring-1 ring-[#fecaca]' : 'border-[#cbd5e1]'}`}
                             />
                           </div>
                         ) : (
@@ -2923,7 +3007,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                                     prev.map((s) => (s.serviceId === item.serviceId ? { ...s, monthlyValue: val } : s))
                                   )
                                 }
-                                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] font-bold text-sm text-[#059669] focus:ring-2 focus:ring-[#059669] focus:border-[#059669] bg-white transition-all"
+                                className={`w-full p-2.5 rounded-xl border font-bold text-sm text-[#059669] focus:ring-2 focus:ring-[#059669] focus:border-[#059669] bg-white transition-all ${hasAttemptedSaveQuote && !(item.monthlyValue && item.monthlyValue > 0) ? 'border-[#dc2626] ring-1 ring-[#fecaca]' : 'border-[#cbd5e1]'}`}
                               />
                             </div>
 
@@ -2943,7 +3027,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                                     prev.map((s) => (s.serviceId === item.serviceId ? { ...s, monthsDuration: val } : s))
                                   );
                                 }}
-                                className="w-full p-2.5 rounded-xl border border-[#cbd5e1] font-bold text-sm text-[#0f172a] focus:ring-2 focus:ring-[#501f92] focus:border-[#501f92] bg-white transition-all"
+                                className={`w-full p-2.5 rounded-xl border font-bold text-sm text-[#0f172a] focus:ring-2 focus:ring-[#501f92] focus:border-[#501f92] bg-white transition-all ${hasAttemptedSaveQuote && !(item.monthsDuration && item.monthsDuration > 0) ? 'border-[#dc2626] ring-1 ring-[#fecaca]' : 'border-[#cbd5e1]'}`}
                               />
                             </div>
                           </div>

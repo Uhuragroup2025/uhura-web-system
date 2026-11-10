@@ -558,26 +558,6 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
 
         <div className="flex items-center gap-2 w-full md:w-auto justify-end flex-wrap">
           {/* Toggle Expandir/Colapsar todo en modo Frentes */}
-          {viewMode === 'deliverables' && (
-            <button
-              type="button"
-              onClick={() => {
-                const anyOpen = selectableDeliverables.some((d) => !!expandedDeliverables[d.id]);
-                if (anyOpen) {
-                  setExpandedDeliverables({});
-                } else {
-                  const allOpen: Record<string, boolean> = {};
-                  selectableDeliverables.forEach((d) => {
-                    allOpen[d.id] = true;
-                  });
-                  setExpandedDeliverables(allOpen);
-                }
-              }}
-              className="px-3 py-1.5 text-xs font-bold text-[#64748b] hover:text-[#501f92] bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] rounded-xl transition-all cursor-pointer"
-            >
-              {selectableDeliverables.some((d) => !!expandedDeliverables[d.id]) ? 'Colapsar frentes' : 'Expandir frentes'}
-            </button>
-          )}
 
           {/* Switch de Vistas */}
           <div className="bg-[#f1f5f9] p-1 rounded-xl flex items-center gap-1 text-xs">
