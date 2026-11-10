@@ -106,6 +106,13 @@ interface ProjectsViewProps {
 type ProjectDetailTab = 'overview' | 'deliverables' | 'tasks' | 'team' | 'matrix' | 'backlog';
 type TasksGroupBy = 'frente' | 'fase' | 'kanban' | 'lista';
 
+/** En curso (activo, por iniciar, programado, en pausa), cerrado o archivado. */
+const projectStatusBucket = (status?: string): 'active' | 'closed' | 'archived' => {
+  if (status === 'Archivado') return 'archived';
+  if (status === 'Cerrado' || status === 'completed' || status === 'Completado') return 'closed';
+  return 'active';
+};
+
 export const ProjectsView: React.FC<ProjectsViewProps> = ({
   tasks,
   clients,
@@ -154,6 +161,8 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'fee_monthly' | 'fixed_project' | 'internal_non_billable' | 'risk'>('all');
   const [filterClient, setFilterClient] = useState<string>('all');
+  // Estado del proyecto en la lista: por defecto solo los que están en curso (ronda 2).
+  const [filterStatus, setFilterStatus] = useState<'active' | 'closed' | 'archived' | 'all'>('active');
   const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
   
   // Sync selected project ID if prop changes from outside (e.g. breadcrumb navigation)
@@ -363,9 +372,17 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
       else if (filterType === 'internal_non_billable') matchType = normalizedProjectType === 'internal_non_billable';
       else if (filterType === 'risk') matchType = p.healthStatus === 'rojo' || p.healthStatus === 'amarillo' || p.consumedHours > p.budgetedHours;
 
-      return matchSearch && matchClient && matchType;
+      const bucket = projectStatusBucket(p.status as string);
+      const matchStatus = filterStatus === 'all' || bucket === filterStatus;
+
+      return matchSearch && matchClient && matchType && matchStatus;
     });
-  }, [enrichedProjects, searchQuery, filterClient, filterType]);
+  }, [enrichedProjects, searchQuery, filterClient, filterType, filterStatus]);
+  const statusCounts = useMemo(() => {
+    const c = { active: 0, closed: 0, archived: 0 };
+    enrichedProjects.forEach((p) => c[projectStatusBucket(p.status as string)]++);
+    return c;
+  }, [enrichedProjects]);
 
   // Overall Portfolio Statistics
   const totalBudgetedHours = enrichedProjects.reduce((acc, p) => acc + p.budgetedHours, 0);
@@ -2505,6 +2522,18 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
         {/* Filters dropdown & Reubicado Nuevo Proyecto */}
         <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto shrink-0">
           <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value as 'active' | 'closed' | 'archived' | 'all')}
+            aria-label="Estado de los proyectos"
+            className="w-full sm:w-auto bg-[#f8fafc] border border-[#e2e8f0] text-xs font-semibold px-2.5 py-1.5 rounded-xl text-[#0f172a] cursor-pointer truncate"
+          >
+            <option value="active">En curso ({statusCounts.active})</option>
+            <option value="closed">Cerrados ({statusCounts.closed})</option>
+            <option value="archived">Archivados ({statusCounts.archived})</option>
+            <option value="all">Todos los estados</option>
+          </select>
+
+          <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value as any)}
             className="w-full sm:w-auto bg-[#f8fafc] border border-[#e2e8f0] text-xs font-semibold px-2.5 py-1.5 rounded-xl text-[#0f172a] cursor-pointer truncate"
@@ -2538,6 +2567,16 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
           </button>
         </div>
       </div>
+
+      {filteredProjects.length === 0 && (
+        <div className="p-8 rounded-2xl border border-dashed border-[#cbd5e1] bg-white text-center text-xs text-[#64748b]">
+          {filterStatus === 'closed'
+            ? 'No hay proyectos cerrados con estos filtros.'
+            : filterStatus === 'archived'
+              ? 'No hay proyectos archivados con estos filtros.'
+              : 'No hay proyectos con estos filtros.'}
+        </div>
+      )}
 
       {/* Projects Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">

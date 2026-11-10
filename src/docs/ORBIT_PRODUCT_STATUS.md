@@ -1292,6 +1292,7 @@ Reconciliado con los módulos que ya existen en producción. Acceso: **ver** `ex
 10. **Modal «Iniciar proyecto»:** «Semanas» (sin «(alcance)»), «Ajustar» para las rondas, la explicación de los insumos como tooltip (ícono ⓘ) y sin la lista del equipo.
 11. **Fechas de las tareas al iniciar:** en el primer arranque **todas** las tareas se programan siempre desde el kickoff, según la fase a la que pertenecen (inicio y entrega). Ya no hay casilla para omitirlo; solo al reprogramar un proyecto ya iniciado se puede elegir no tocar las tareas. Una tarea sin fecha muestra «Sin programar» (antes mostraba una fecha ficticia).
 12. **Formato de fechas en toda ECO:** año-mes abreviado-día, p. ej. **2026-Nov-18** (Ene, Feb, Mar, Abr, May, Jun, Jul, Ago, Sep, Oct, Nov, Dic). Aplica al cronograma de la tarea, la fecha de creación, dependencias, proyecto, contrato, versiones de la cotización, Google Calendar y cierre. Los textos largos (encabezado de Mi Día, SOW) mantienen la fecha escrita completa. Referencia: `formatDate` en `src/utils/formatters.ts`.
+13. **Proyectos · filtro de estado:** «En curso» (predeterminado: activos, por iniciar, programados y en pausa), «Cerrados», «Archivados» y «Todos los estados», con el conteo de cada uno. Cerrar un proyecto no lo borra ni lo archiva: queda en «Cerrados» con todo su historial y en el historial de la ficha del cliente.
 
 **4. Lo que solo es del prototipo (no va a producción):** Simulador QA, laboratorio de la mascota (`?buckyLab=true`), `?ecoMoods=fast`, datos de demostración y la comparación de personas por nombre.
 
