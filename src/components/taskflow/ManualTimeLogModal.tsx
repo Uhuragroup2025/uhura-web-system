@@ -99,10 +99,6 @@ export const ManualTimeLogModal: React.FC<ManualTimeLogModalProps> = ({
     const totalSeconds = (parseInt(hours || '0', 10) * 3600) + (parseInt(minutes || '0', 10) * 60);
     if (totalSeconds <= 0) return;
 
-    if (!note.trim()) {
-      return;
-    }
-
     // Format date string for human display (e.g. "29 Ago 2026")
     let formattedDate = 'Hoy';
     if (logDate) {
@@ -130,7 +126,7 @@ export const ManualTimeLogModal: React.FC<ManualTimeLogModalProps> = ({
       userAvatarBg: selectedTask.assignee?.avatarBg || 'bg-[#501f92]',
       durationSeconds: totalSeconds,
       source: 'manual',
-      description: note.trim(),
+      description: note.trim() || undefined,
       note: note.trim(),
       startTime: '',
       endTime: '',
@@ -457,15 +453,14 @@ export const ManualTimeLogModal: React.FC<ManualTimeLogModalProps> = ({
               )}
             </div>
 
-            {/* Descripción (Obligatoria para carga manual) */}
+            {/* Descripción opcional (ronda 2: ya no es obligatoria) */}
             <div>
               <label className="block font-bold text-xs text-[#0f172a] mb-1.5 flex items-center justify-between">
-                <span>Descripción del trabajo realizado *</span>
-                <span className="text-[10px] font-normal text-[#64748b]">Obligatorio para trazabilidad</span>
+                <span>Descripción del trabajo realizado</span>
+                <span className="text-[10px] font-normal text-[#64748b]">Opcional</span>
               </label>
               <textarea
                 rows={3}
-                required
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="Detalla qué hiciste en esta sesión (e.g. maquetación de hero, diseño de copies)..."

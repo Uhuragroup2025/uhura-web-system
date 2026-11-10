@@ -1139,6 +1139,9 @@ export const TaskFlowPrototype: React.FC = () => {
 
     // Ronda 2: aviso al líder y al revisor (producción: a líder, revisor y seguidores de la tarea).
     const deliveredTask = tasks.find((t) => t.id === taskId);
+    const mentioned = users
+      .filter((u) => u.name && (del.notes || '').includes(`@${u.name}`))
+      .map((u) => u.name);
     if (deliveredTask) {
       setActiveAlerts((prevAlerts) => [
         {
@@ -1146,7 +1149,9 @@ export const TaskFlowPrototype: React.FC = () => {
           type: 'REVISIÓN',
           title: deliveredTask.title,
           client: deliveredTask.clientName || 'ECO',
-          description: `${del.submittedBy || 'Un colaborador'} envió un entregable a revisión${del.taggedReviewer ? ` · Revisa: ${del.taggedReviewer}` : ''}`,
+          description: `${del.submittedBy || 'Un colaborador'} envió un entregable a revisión${del.taggedReviewer ? ` · Revisa: ${del.taggedReviewer}` : ''}${
+            mentioned.length ? ` · Menciona a ${mentioned.join(', ')}` : ''
+          }`,
           impactLevel: 'medio',
           severity: 'info',
           read: false,

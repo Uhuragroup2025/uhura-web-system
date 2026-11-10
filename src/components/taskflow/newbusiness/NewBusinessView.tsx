@@ -1,4 +1,5 @@
 import { useMascotImage } from '../mascot/ecoMascot';
+import { MoneyInput } from '../ui/MoneyInput';
 import { TimerControls } from '../time/TimerControls';
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
@@ -511,6 +512,9 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
   const hasAnyHubSpotDeals = useMemo(() => {
     return commercialStructureDraft.some((s) => Boolean(s.hubspotDealId));
   }, [commercialStructureDraft]);
+  const missingHubspotDeals = commercialStructureDraft.filter(
+    (s) => !s.hubspotDealId && s.hubspotDealStage !== 'Cierre perdido'
+  ).length;
 
   // Guardar cotización (primera vez o cambios tras el feedback del cliente). Ronda 2: cada guardado
   // crea una versión y, si ya hay negocios en HubSpot, se envían los valores nuevos (ECO → HubSpot).
@@ -2894,18 +2898,14 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                             <label className="font-semibold text-[#475569] block text-xs">
                               Valor total del servicio ({quoteCurrencyDraft}): <span className="text-red-500">*</span>
                             </label>
-                            <input
-                              type="text"
-                              inputMode="numeric"
+                            <MoneyInput
                               placeholder="0"
-                              value={item.totalValue !== undefined && item.totalValue !== null ? item.totalValue.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') : ''}
-                              onChange={(e) => {
-                                const raw = e.target.value.replace(/\D/g, '');
-                                const val = raw === '' ? undefined : parseInt(raw, 10);
+                              value={item.totalValue ?? undefined}
+                              onValueChange={(val) =>
                                 setCommercialStructureDraft((prev) =>
                                   prev.map((s) => (s.serviceId === item.serviceId ? { ...s, totalValue: val } : s))
-                                );
-                              }}
+                                )
+                              }
                               className="w-full max-w-sm p-2.5 rounded-xl border border-[#cbd5e1] font-bold text-sm text-[#0f172a] focus:ring-2 focus:ring-[#501f92] focus:border-[#501f92] bg-white transition-all"
                             />
                           </div>
@@ -2915,18 +2915,14 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                               <label className="font-semibold text-[#475569] block text-xs">
                                 Valor mensual ({quoteCurrencyDraft}): <span className="text-red-500">*</span>
                               </label>
-                              <input
-                                type="text"
-                                inputMode="numeric"
+                              <MoneyInput
                                 placeholder="0"
-                                value={item.monthlyValue !== undefined && item.monthlyValue !== null ? item.monthlyValue.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') : ''}
-                                onChange={(e) => {
-                                  const raw = e.target.value.replace(/\D/g, '');
-                                  const val = raw === '' ? undefined : parseInt(raw, 10);
+                                value={item.monthlyValue ?? undefined}
+                                onValueChange={(val) =>
                                   setCommercialStructureDraft((prev) =>
                                     prev.map((s) => (s.serviceId === item.serviceId ? { ...s, monthlyValue: val } : s))
-                                  );
-                                }}
+                                  )
+                                }
                                 className="w-full p-2.5 rounded-xl border border-[#cbd5e1] font-bold text-sm text-[#059669] focus:ring-2 focus:ring-[#059669] focus:border-[#059669] bg-white transition-all"
                               />
                             </div>
@@ -3142,53 +3138,38 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                 {/* Acciones de HubSpot y Conversión (habilitadas cuando la cotización está guardada) */}
                 {!isEditingQuoteFields && isQuoteDiligenciada && (
                   <div className="flex items-center gap-2 flex-wrap">
-                    {/* Botón 1: Crear negocios en HubSpot (1 por cada servicio) */}
-                    <button
-                      type="button"
-                      onClick={() => setIsHubspotCreateDealsOpen(true)}
-                      className={`px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5 active:scale-95 ${
-                        hasAnyHubSpotDeals
-                          ? 'border border-[#fed7aa] bg-[#fff7ed] text-[#c2410c] hover:bg-[#ffedd5]'
-                          : 'bg-[#ea580c] hover:bg-[#c2410c] text-white'
-                      }`}
-                      title={
-                        hasAnyHubSpotDeals
-                          ? 'Los negocios ya fueron generados en HubSpot (puedes volver a abrir para revisar o recrear)'
-                          : 'Crear un negocio independiente en HubSpot por cada servicio del alcance'
-                      }
-                    >
-                      {hasAnyHubSpotDeals ? (
-                        <CheckCircle2 className="w-3.5 h-3.5 text-[#ea580c]" />
-                      ) : (
+                    {/* HubSpot: un solo botón (ronda 2). Antes de crear los negocios → «Crear negocios en HubSpot»;
+                        después → «Sincronizar con HubSpot». Solo si se agregó un servicio sin negocio aparece
+                        «Crear negocio faltante» junto a sincronizar. */}
+                    {!hasAnyHubSpotDeals || missingHubspotDeals > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => setIsHubspotCreateDealsOpen(true)}
+                        className="px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5 active:scale-95 bg-[#ea580c] hover:bg-[#c2410c] text-white"
+                        title="Crear un negocio independiente en HubSpot por cada servicio del alcance"
+                      >
                         <span className="w-2 h-2 rounded-full bg-white inline-block animate-pulse" />
-                      )}
-                      <span>{hasAnyHubSpotDeals ? 'Negocios en HubSpot ✓' : 'Crear negocios en HubSpot'}</span>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold ${
-                        hasAnyHubSpotDeals ? 'bg-[#ffedd5] text-[#9a3412]' : 'bg-white/20 text-white'
-                      }`}>
-                        {commercialStructureDraft.length}
-                      </span>
-                    </button>
-
-                    {/* Botón 2: Sincronizar con HubSpot (CTA primario tras crear negocios) */}
-                    <button
-                      type="button"
-                      onClick={() => setIsHubspotSyncOpen(true)}
-                      disabled={!hasAnyHubSpotDeals}
-                      className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5 active:scale-95 ${
-                        hasAnyHubSpotDeals
-                          ? 'bg-[#ea580c] hover:bg-[#c2410c] text-white shadow-md'
-                          : 'border border-[#fed7aa] bg-[#fff7ed] text-[#c2410c] opacity-40 cursor-not-allowed'
-                      }`}
-                      title={
-                        hasAnyHubSpotDeals
-                          ? 'Sincronizar y conciliar etapas comerciales con HubSpot'
-                          : 'Crea primero los negocios en HubSpot para sincronizar etapas'
-                      }
-                    >
-                      <RefreshCw className={`w-3.5 h-3.5 ${hasAnyHubSpotDeals ? 'text-white' : 'text-[#ea580c]'}`} />
-                      <span>Sincronizar con HubSpot</span>
-                    </button>
+                        <span>
+                          {hasAnyHubSpotDeals
+                            ? `Crear negocio${missingHubspotDeals === 1 ? '' : 's'} faltante${missingHubspotDeals === 1 ? '' : 's'}`
+                            : 'Crear negocios en HubSpot'}
+                        </span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold bg-white/20 text-white">
+                          {hasAnyHubSpotDeals ? missingHubspotDeals : commercialStructureDraft.length}
+                        </span>
+                      </button>
+                    ) : null}
+                    {hasAnyHubSpotDeals && (
+                      <button
+                        type="button"
+                        onClick={() => setIsHubspotSyncOpen(true)}
+                        className="px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer flex items-center gap-1.5 active:scale-95 bg-[#ea580c] hover:bg-[#c2410c] text-white"
+                        title="Sincronizar y conciliar etapas comerciales con HubSpot"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5 text-white" />
+                        <span>Sincronizar con HubSpot</span>
+                      </button>
+                    )}
 
                     {/* Botón 3: Aprobación Comercial Manual (cuando HubSpot no responde o es oportunidad manual) */}
                     {!hasAnyWonServices && activeOpp.status !== 'won' && (

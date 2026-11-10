@@ -17,7 +17,7 @@ import { CloseProjectModal } from './projects/CloseProjectModal';
 import { canViewProjectNotifications } from './integrations/googleChat';
 import { calculateBusinessDays } from './health/projectHealthEngine';
 import { can } from './auth/permissions';
-import { suggestedClientInputs, kickoffWaitFromInputs, inputsToDependencies, type ClientInputTemplate } from './schedule/clientInputs';
+import { suggestedClientInputs, pickPhaseId, inputsToDependencies, type ClientInputTemplate } from './schedule/clientInputs';
 import { UserAvatar } from './UserAvatar';
 import {
   Button,
@@ -146,7 +146,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   const [scheduleRollover, setScheduleRollover] = useState<'none' | 'carry_over' | 'contractual_cap'>('none'); // Fee: horas no usadas
   const [scheduleRecalculateTasks, setScheduleRecalculateTasks] = useState<boolean>(true);
   // Ronda 2: insumos a solicitar al cliente (precargados por servicio; se crean como Dependencias)
-  const [scheduleInputs, setScheduleInputs] = useState<(ClientInputTemplate & { selected: boolean })[]>([]);
+  const [scheduleInputs, setScheduleInputs] = useState<(ClientInputTemplate & { selected: boolean; deliverableId?: string })[]>([]);
   const [scheduleInputsLabel, setScheduleInputsLabel] = useState('');
   const [newInputTitle, setNewInputTitle] = useState('');
   const [showRoundsEditor, setShowRoundsEditor] = useState(false);
@@ -637,7 +637,8 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
         [currentProject.name, ...(currentProject.deliverables || []).map((d) => d.name)].join(' ')
       );
       setScheduleInputsLabel(sugg.label);
-      setScheduleInputs(sugg.inputs.map((i) => ({ ...i, selected: true })));
+      const phases = (currentProject.deliverables || []).map((d) => ({ id: d.id, name: d.name }));
+      setScheduleInputs(sugg.inputs.map((i) => ({ ...i, selected: true, deliverableId: pickPhaseId(i, phases) })));
       setNewInputTitle('');
       setShowRoundsEditor(false);
       // Semanas de producción: fuente de verdad = Alcance (productionWeeks heredado de la conversión)
@@ -656,8 +657,9 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   // Los insumos se piden solo en el primer arranque (si el proyecto aún no tiene dependencias).
   const askClientInputs = Boolean(currentProject && !currentProject.isKickedOff && (currentProject.dependencies || []).length === 0);
   const selectedScheduleInputs = scheduleInputs.filter((i) => i.selected);
-  // La espera tras el kickoff sale de los insumos bloqueantes (ya no es un campo aparte).
-  const effectiveKickoffWaitDays = askClientInputs ? kickoffWaitFromInputs(selectedScheduleInputs) : scheduleKickoffWaitDays;
+  // Ronda 2: los insumos NO suman días al cronograma. Cada uno se necesita para una fase y su
+  // fecha esperada es el inicio de esa fase (se gestionan con anticipación durante las anteriores).
+  const effectiveKickoffWaitDays = askClientInputs ? 0 : scheduleKickoffWaitDays;
 
   const scheduleConfigDraft = useMemo(() => ({
     clientKickoffWaitDays: effectiveKickoffWaitDays,
@@ -677,6 +679,25 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   }, [scheduleKickoffDate, scheduleDurationWeeks, scheduleConfigDraft, isCurrentProjectFee]);
 
   const calculatedEndDate = scheduleBreakdown?.endDate || '';
+
+  // Inicio de cada fase según el cronograma que se va a crear (para la fecha de cada insumo).
+  const phaseStartById = useMemo(() => {
+    const map = new Map<string, string>();
+    if (!currentProject || !scheduleKickoffDate || !isScheduleModalOpen) return map;
+    const projectTasks = (((currentProject as any).allTasks || currentProject.tasks) || []) as TaskItem[];
+    const plan = planProjectSchedule({
+      startDate: scheduleKickoffDate,
+      productionWeeks: isCurrentProjectFee ? 4 : scheduleDurationWeeks,
+      config: scheduleConfigDraft,
+      isFee: isCurrentProjectFee,
+      deliverables: (currentProject.deliverables || []).map((d) => ({ id: d.id, name: d.name, totalQuotedHours: d.totalQuotedHours })),
+      tasks: projectTasks.map((t) => ({ id: t.id, deliverableId: t.deliverableId, budgetedHours: t.budgetedHours }))
+    });
+    plan.deliverables.forEach((d) => map.set(d.id, d.startDate));
+    return map;
+  }, [currentProject, scheduleKickoffDate, isScheduleModalOpen, isCurrentProjectFee, scheduleDurationWeeks, scheduleConfigDraft]);
+  const inputExpectedDate = (deliverableId?: string) =>
+    (deliverableId && phaseStartById.get(deliverableId)) || scheduleKickoffDate;
 
   const handleConfirmKickoff = () => {
     if (!currentProject || !scheduleKickoffDate) return;
@@ -755,7 +776,10 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
               ...inputsToDependencies({
                 projectId: currentProject.id,
                 kickoffDate: finalStartDate,
-                inputs: selectedScheduleInputs,
+                inputs: selectedScheduleInputs.map((i) => {
+                  const planned = plan.deliverables.find((d) => d.id === i.deliverableId);
+                  return { ...i, expectedDate: planned?.startDate || finalStartDate };
+                }),
                 followUpOwnerUserId:
                   users?.find((u) => u.name === currentProject.leadName)?.id || currentUser?.id || '',
                 followUpOwnerName: currentProject.leadName
@@ -2038,7 +2062,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
           >
-            <div className="bg-white rounded-2xl max-w-lg w-full border border-[#e2e8f0] shadow-2xl p-5 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto animate-in zoom-in-95">
+            <div className="bg-white rounded-2xl max-w-2xl w-full border border-[#e2e8f0] shadow-2xl p-5 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto animate-in zoom-in-95">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-[#501f92]/10 text-[#501f92] flex items-center justify-center shrink-0">
@@ -2200,7 +2224,25 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                           >
                             {inp.blocking ? 'Bloquea' : 'No bloquea'}
                           </button>
-                          <span className="shrink-0 text-[10px] text-[#64748b] w-12 text-right">{inp.dueDays} d háb.</span>
+                          {(currentProject.deliverables || []).length > 0 ? (
+                            <select
+                              value={inp.deliverableId || ''}
+                              disabled={!inp.selected}
+                              onChange={(e) =>
+                                setScheduleInputs((prev) => prev.map((x, i) => (i === idx ? { ...x, deliverableId: e.target.value || undefined } : x)))
+                              }
+                              className="shrink-0 w-32 p-1 rounded-lg border border-[#e2e8f0] text-[10px] bg-white disabled:opacity-40"
+                              title={`Se necesita para esta fase: debe estar antes del ${formatDate(inputExpectedDate(inp.deliverableId))}`}
+                              aria-label={`Fase para la que se necesita ${inp.title}`}
+                            >
+                              {(currentProject.deliverables || []).map((d) => (
+                                <option key={d.id} value={d.id}>{d.name}</option>
+                              ))}
+                            </select>
+                          ) : null}
+                          <span className="shrink-0 text-[10px] text-[#64748b] w-14 text-right" title="Fecha en que debe estar (inicio de la fase)">
+                            {formatDate(inputExpectedDate(inp.deliverableId)).replace(/ \d{4}$/, '')}
+                          </span>
                         </li>
                       ))}
                     </ul>
@@ -2211,7 +2253,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                         onChange={(e) => setNewInputTitle(e.target.value)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' && newInputTitle.trim()) {
-                            setScheduleInputs((prev) => [...prev, { title: newInputTitle.trim(), type: 'client_input', blocking: false, dueDays: 3, selected: true }]);
+                            setScheduleInputs((prev) => [...prev, { title: newInputTitle.trim(), type: 'client_input', blocking: false, selected: true, deliverableId: currentProject.deliverables?.[0]?.id }]);
                             setNewInputTitle('');
                           }
                         }}
@@ -2222,7 +2264,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                         type="button"
                         disabled={!newInputTitle.trim()}
                         onClick={() => {
-                          setScheduleInputs((prev) => [...prev, { title: newInputTitle.trim(), type: 'client_input', blocking: false, dueDays: 3, selected: true }]);
+                          setScheduleInputs((prev) => [...prev, { title: newInputTitle.trim(), type: 'client_input', blocking: false, selected: true, deliverableId: currentProject.deliverables?.[0]?.id }]);
                           setNewInputTitle('');
                         }}
                         className="px-3 py-2 rounded-xl bg-[#f5f3ff] border border-[#ddd6fe] text-[#501f92] text-xs font-bold disabled:opacity-50 cursor-pointer"
@@ -2231,8 +2273,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                       </button>
                     </div>
                     <p className="text-[10.5px] text-[#64748b] leading-relaxed">
-                      Quedan en <strong>Dependencias</strong> con fecha esperada y seguimiento del líder. La producción arranca cuando vence el insumo que bloquea
-                      {effectiveKickoffWaitDays > 0 ? <> (<strong>{effectiveKickoffWaitDays} días hábiles</strong> tras el kickoff)</> : ' (ninguno bloquea: arranca de inmediato)'}; si llega tarde, el desvío es del cliente.
+                      Cada insumo se pide en el kickoff y se necesita para una fase: debe estar antes de que esa fase empiece. <strong>No suma días al cronograma</strong>; mientras tanto se gestiona con anticipación. Quedan en <strong>Dependencias</strong> con esa fecha. Si la fase llega sin el insumo y «Bloquea», la fase se detiene y el desvío es del cliente.
                     </p>
                   </div>
                 )}
@@ -2253,7 +2294,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                       </span>
                     </div>
                     <p className="text-[10.5px] text-[#475569] border-t border-[#e9d5ff] pt-2">
-                      Producción {scheduleBreakdown.productionDays} d · Insumos {scheduleBreakdown.kickoffWaitDays} d
+                      Producción {scheduleBreakdown.productionDays} d{scheduleBreakdown.kickoffWaitDays > 0 && <> · Espera inicial {scheduleBreakdown.kickoffWaitDays} d</>}
                       {scheduleBreakdown.reworkRounds > 0 && (
                         <> · Rondas {scheduleBreakdown.reworkRounds} × {scheduleBreakdown.reworkRoundDays} d = {scheduleBreakdown.reworkDays} d</>
                       )}

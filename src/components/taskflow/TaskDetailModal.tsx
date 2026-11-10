@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { TimerControls } from './time/TimerControls';
+import { EmojiPopover } from './ui/EmojiPopover';
 import {
   X,
   Play,
@@ -667,6 +668,32 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     }
 
     setAutocompleteState(null);
+  };
+
+  // Menciones en «Comentario de entrega» (ronda 2): mismo listado de equipo que en Mensajes.
+  const [deliveryMention, setDeliveryMention] = useState<{ query: string; index: number } | null>(null);
+  const deliveryNotesRef = useRef<HTMLTextAreaElement | null>(null);
+  const handleDeliveryNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    setDeliverableNotes(val);
+    const before = val.substring(0, e.target.selectionStart);
+    const at = before.lastIndexOf('@');
+    if (at >= 0 && (at === 0 || /\s/.test(before[at - 1]))) {
+      const query = before.substring(at + 1);
+      if (!/[\s]/.test(query)) {
+        setDeliveryMention({ query, index: at });
+        return;
+      }
+    }
+    setDeliveryMention(null);
+  };
+  const insertDeliveryMention = (name: string) => {
+    if (!deliveryMention) return;
+    const before = deliverableNotes.substring(0, deliveryMention.index);
+    const after = deliverableNotes.substring(deliveryMention.index + deliveryMention.query.length + 1);
+    setDeliverableNotes(`${before}@${name} ${after}`);
+    setDeliveryMention(null);
+    setTimeout(() => deliveryNotesRef.current?.focus(), 10);
   };
 
   // Insert mention into textarea
@@ -2184,36 +2211,13 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                                     );
                                   })}
 
-                                {/* Add reaction button (always visible or on hover) */}
-                                <div className="relative">
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setActiveReactionPickerMsgId(
-                                        activeReactionPickerMsgId === msg.id ? null : msg.id
-                                      )
-                                    }
-                                    className="p-1 rounded-full text-[#94a3b8] hover:text-[#501f92] hover:bg-white border border-transparent hover:border-[#e2e8f0] transition-colors cursor-pointer text-xs"
-                                    title="Añadir reacción"
-                                  >
-                                    <Smile className="w-3.5 h-3.5" />
-                                  </button>
-
-                                  {activeReactionPickerMsgId === msg.id && (
-                                    <div className="absolute left-0 bottom-full mb-1.5 flex items-center gap-1 bg-white p-1.5 rounded-full border border-[#e2e8f0] shadow-lg z-30 animate-in fade-in zoom-in-95 duration-100">
-                                      {QUICK_EMOJIS.map((emoji) => (
-                                        <button
-                                          key={emoji}
-                                          type="button"
-                                          onClick={() => handleToggleReaction(msg.id, emoji)}
-                                          className="p-1 hover:scale-125 transition-transform text-sm cursor-pointer rounded-full hover:bg-[#f1f5f9]"
-                                        >
-                                          {emoji}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
+                                {/* Reaccionar: más usados + ver todos; se cierra al hacer clic afuera (ronda 2) */}
+                                <EmojiPopover
+                                  trigger={<Smile className="w-3.5 h-3.5" />}
+                                  triggerTitle="Añadir reacción"
+                                  triggerClassName="p-1 rounded-full text-[#94a3b8] hover:text-[#501f92] hover:bg-white border border-transparent hover:border-[#e2e8f0] transition-colors cursor-pointer text-xs"
+                                  onPick={(emoji) => handleToggleReaction(msg.id, emoji)}
+                                />
                               </div>
                             </div>
 
@@ -2406,13 +2410,46 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                         <label className="block font-bold text-[#334155] mb-1">
                           Comentario de entrega (Opcional)
                         </label>
-                        <textarea
-                          rows={2}
-                          placeholder="Describe qué contiene la entrega o qué puntos clave deben revisarse..."
-                          value={deliverableNotes}
-                          onChange={(e) => setDeliverableNotes(e.target.value)}
-                          className="w-full p-2.5 rounded-xl border border-[#e2e8f0] bg-white text-xs text-[#0f172a] focus:outline-none focus:border-[#501f92] resize-none"
-                        />
+                        <div className="relative">
+                          <textarea
+                            ref={deliveryNotesRef}
+                            rows={2}
+                            placeholder="Describe qué contiene la entrega o qué revisar. Usa @ para mencionar a alguien…"
+                            value={deliverableNotes}
+                            onChange={handleDeliveryNotesChange}
+                            onKeyDown={(e) => e.key === 'Escape' && deliveryMention && (e.stopPropagation(), setDeliveryMention(null))}
+                            onBlur={() => setTimeout(() => setDeliveryMention(null), 150)}
+                            className="w-full p-2.5 rounded-xl border border-[#e2e8f0] bg-white text-xs text-[#0f172a] focus:outline-none focus:border-[#501f92] resize-none"
+                          />
+                          {deliveryMention && (() => {
+                            const q = deliveryMention.query.toLowerCase();
+                            const matches = TEAM_MEMBERS_POOL.filter((m) => m.name.toLowerCase().includes(q) || m.role.toLowerCase().includes(q)).slice(0, 8);
+                            return (
+                              <div className="absolute top-full left-0 mt-1 w-72 max-h-56 overflow-y-auto rounded-2xl bg-white border border-[#e2e8f0] shadow-xl py-1.5 z-40 text-xs">
+                                <div className="px-3 py-1 text-[10px] font-extrabold text-[#501f92] uppercase tracking-wider flex items-center gap-1.5 border-b border-[#f1f5f9] pb-1.5 mb-1">
+                                  <AtSign className="w-3 h-3" /> Mencionar miembro del equipo
+                                </div>
+                                {matches.length === 0 ? (
+                                  <div className="px-3 py-2 text-[#94a3b8] text-[11px]">No se encontraron miembros</div>
+                                ) : (
+                                  matches.map((m) => (
+                                    <button
+                                      key={m.name}
+                                      type="button"
+                                      onMouseDown={(e) => e.preventDefault()}
+                                      onClick={() => insertDeliveryMention(m.name)}
+                                      className="w-full px-3 py-1.5 text-left hover:bg-[#f8fafc] flex items-center justify-between gap-2 cursor-pointer"
+                                    >
+                                      <span className="font-bold text-[#0f172a] truncate">{m.name}</span>
+                                      <span className="text-[10px] text-[#64748b] shrink-0">{m.role}</span>
+                                    </button>
+                                  ))
+                                )}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                        <p className="text-[10px] text-[#64748b] mt-1">Las personas mencionadas reciben un aviso junto con el líder y el revisor.</p>
                       </div>
 
                       {/* CTA Enviar a revisión */}
@@ -2881,36 +2918,16 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                         <Link2 className="w-3.5 h-3.5" />
                       </button>
 
-                      {/* 😀 Quick Emoji bar */}
-                      <div className="relative">
-                        <button
-                          type="button"
-                          onClick={() => setQuickEmojiMenuOpen(!quickEmojiMenuOpen)}
-                          className="p-1.5 rounded-lg hover:bg-white hover:text-[#0f172a] transition-colors cursor-pointer"
-                          title="Insertar emoji"
-                        >
-                          <Smile className="w-3.5 h-3.5" />
-                        </button>
-
-                        {quickEmojiMenuOpen && (
-                          <div className="absolute bottom-full left-0 mb-2 p-1.5 rounded-2xl bg-white border border-[#e2e8f0] shadow-xl flex items-center gap-1 z-50 animate-in fade-in duration-100">
-                            {['👍', '🙌', '🚀', '👀', '🎉', '🔥', '✅', '❤️'].map((em) => (
-                              <button
-                                key={em}
-                                type="button"
-                                onClick={() => {
-                                  setMessageInput((prev) => `${prev} ${em}`);
-                                  setQuickEmojiMenuOpen(false);
-                                  inputRef.current?.focus();
-                                }}
-                                className="p-1 hover:scale-125 transition-transform text-sm cursor-pointer"
-                              >
-                                {em}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                      {/* 😀 Emojis: más usados + ver todos (ronda 2) */}
+                      <EmojiPopover
+                        trigger={<Smile className="w-3.5 h-3.5" />}
+                        triggerTitle="Insertar emoji"
+                        triggerClassName="p-1.5 rounded-lg hover:bg-white hover:text-[#0f172a] transition-colors cursor-pointer"
+                        onPick={(em) => {
+                          setMessageInput((prev) => `${prev}${prev && !prev.endsWith(' ') ? ' ' : ''}${em}`);
+                          inputRef.current?.focus();
+                        }}
+                      />
                     </div>
 
                     {/* Right side: Send button */}

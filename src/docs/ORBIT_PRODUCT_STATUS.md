@@ -1279,6 +1279,14 @@ Reconciliado con los módulos que ya existen en producción. Acceso: **ver** `ex
 12. **Tarea · timer:** solo ícono ▶; corriendo, ⏸ y ⏹ (ver punto 3).
 13. **Menú ··· de la tarea** se cierra al hacer clic afuera o con Esc.
 
+**3d. Ajustes tras probar la ronda 2 (10 Nov 2026).**
+1. **Valores con puntos de miles mientras se escribe** (3.000.000; decimales con coma, máx. 2) en costos externos y licencias y en los valores de la cotización.
+2. **Cargar tiempo:** la descripción del trabajo es **opcional**.
+3. **HubSpot, un solo botón:** «Crear negocios en HubSpot» hasta crearlos; después solo «Sincronizar con HubSpot». Si se agrega un servicio sin negocio aparece «Crear negocio faltante» junto a sincronizar.
+4. **Insumos por fase, sin sumar días** (reemplaza la regla de 3c.8 de «espera = bloqueante más largo»): cada insumo se pide en el kickoff y se necesita para una **fase** (entregable), elegible en el modal; su fecha esperada es el **inicio de esa fase**. Mientras esa fase no empiece, se gestiona con anticipación y no afecta el proyecto. Si la fase llega sin el insumo y está marcado «Bloquea», la fase se detiene y el desvío se atribuye al cliente. La plantilla sugiere la fase según el nombre (UX / wireframe → brochure o web actual, textos; prototipo o diseño → manual de marca; implementación → hosting y accesos; analítica o lanzamiento → GA4 / GTM, dominio). «Onboarding & Insumos» es donde se piden, no donde se usan.
+5. **Menciones (@) en «Comentario de entrega»:** las personas mencionadas reciben aviso junto con el líder y el revisor.
+6. **Emojis:** el selector se cierra al hacer clic afuera, con Esc o al elegir; muestra primero los más usados por la persona y «+» abre todos por categoría. Igual en reacciones y en el comentario.
+
 **4. Lo que solo es del prototipo (no va a producción):** Simulador QA, laboratorio de la mascota (`?buckyLab=true`), `?ecoMoods=fast`, datos de demostración y la comparación de personas por nombre.
 
 

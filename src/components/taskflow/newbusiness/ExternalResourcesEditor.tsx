@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, Trash2, Truck, KeyRound } from 'lucide-react';
 import type { ExternalResourceItem } from '../types';
+import { MoneyInput, formatMoneyText } from '../ui/MoneyInput';
 
 interface ExternalResourcesEditorProps {
   items: ExternalResourceItem[];
@@ -13,7 +14,7 @@ interface ExternalResourcesEditorProps {
 }
 
 const fmt = (n: number, currency: string) =>
-  `${currency === 'USD' ? 'US$' : '$'} ${Math.round(n).toLocaleString('es-CO')}`;
+  `${currency === 'USD' ? 'US$' : '$'} ${formatMoneyText(Math.round(n * 100) / 100) || '0'}`;
 
 const KIND_LABEL: Record<'external' | 'license', string> = {
   external: 'Recurso externo',
@@ -42,10 +43,10 @@ export const ExternalResourcesEditor: React.FC<ExternalResourcesEditorProps> = (
   const [description, setDescription] = useState('');
   const [costModel, setCostModel] = useState<'fixed' | 'hourly'>('fixed');
   const [recurrence, setRecurrence] = useState<'one_time' | 'monthly'>('one_time');
-  const [fixedCost, setFixedCost] = useState('');
+  const [fixedCost, setFixedCost] = useState<number | undefined>(undefined);
   const [months, setMonths] = useState('1');
   const [hours, setHours] = useState('');
-  const [rate, setRate] = useState('');
+  const [rate, setRate] = useState<number | undefined>(undefined);
   const [serviceId, setServiceId] = useState(services[0]?.id || '');
 
   const baseCost = costModel === 'fixed' ? Number(fixedCost) || 0 : (Number(hours) || 0) * (Number(rate) || 0);
@@ -61,10 +62,10 @@ export const ExternalResourcesEditor: React.FC<ExternalResourcesEditorProps> = (
     setDescription('');
     setCostModel('fixed');
     setRecurrence('one_time');
-    setFixedCost('');
+    setFixedCost(undefined);
     setMonths('1');
     setHours('');
-    setRate('');
+    setRate(undefined);
   };
 
   const handleAdd = () => {
@@ -214,19 +215,16 @@ export const ExternalResourcesEditor: React.FC<ExternalResourcesEditorProps> = (
             </div>
           )}
           {costModel === 'fixed' || kind === 'license' ? (
-            <input
+            <MoneyInput
               className={input}
-              type="number"
-              min="0"
-              step="0.01"
               placeholder={recurrence === 'monthly' ? `Costo mensual (${currency})` : `Costo total (${currency})`}
               value={fixedCost}
-              onChange={(e) => setFixedCost(e.target.value)}
+              onValueChange={setFixedCost}
             />
           ) : (
             <div className="grid grid-cols-2 gap-2">
               <input className={input} type="number" min="0" placeholder="Horas" value={hours} onChange={(e) => setHours(e.target.value)} />
-              <input className={input} type="number" min="0" step="0.01" placeholder={`Tarifa por hora (${currency})`} value={rate} onChange={(e) => setRate(e.target.value)} />
+              <MoneyInput className={input} placeholder={`Tarifa por hora (${currency})`} value={rate} onValueChange={setRate} />
             </div>
           )}
           {/* 5. Frecuencia */}
