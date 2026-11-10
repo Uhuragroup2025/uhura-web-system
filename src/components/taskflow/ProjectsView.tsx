@@ -245,6 +245,9 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   // Edit Project Modal State (Reemplaza la pestaña de configuración)
   const [isEditProjectModalOpen, setIsEditProjectModalOpen] = useState(false);
   const [editProjectName, setEditProjectName] = useState('');
+  // Menú de la tarjeta = mismo menú que dentro del proyecto (ronda 2). Las opciones que abren un
+  // modal entran al proyecto y lo abren allí.
+  const [pendingProjectAction, setPendingProjectAction] = useState<'edit' | 'notifications' | 'close' | null>(null);
   const [editProjectCode, setEditProjectCode] = useState('');
   const [editProjectLead, setEditProjectLead] = useState('');
   const [editProjectStatus, setEditProjectStatus] = useState<string>('Activo');
@@ -400,6 +403,24 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   const canStartProject =
     canEditProject ||
     ['commercial', 'client_relationship', 'executive', 'leader', 'system_admin'].includes(currentUser?.accessLevel || '');
+
+  useEffect(() => {
+    if (!pendingProjectAction || !currentProject) return;
+    if (pendingProjectAction === 'edit') {
+      setEditProjectName(currentProject.name);
+      setEditProjectCode(currentProject.code || '');
+      setEditProjectLead(currentProject.leadName || '');
+      setEditProjectStatus(currentProject.status || 'Activo');
+      setEditProjectBrief(currentProject.brief || '');
+      setIsEditProjectModalOpen(true);
+    } else if (pendingProjectAction === 'notifications') {
+      setIsNotificationsModalOpen(true);
+    } else if (pendingProjectAction === 'close') {
+      setIsCloseProjectModalOpen(true);
+    }
+    setPendingProjectAction(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingProjectAction, currentProject?.id]);
   const isCollaboratorView = currentUser?.accessLevel === 'collaborator';
   useEffect(() => {
     if (isCollaboratorView && (activeTab === 'matrix' || activeTab === 'team')) setActiveTab('overview');
@@ -2639,7 +2660,42 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                       </button>
 
                       {activeProjectMenu === prj.id && (
-                        <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-2xl shadow-xl border border-[#e2e8f0] py-1 z-50 animate-in fade-in zoom-in-95 duration-150 text-left">
+                        <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-2xl shadow-xl border border-[#e2e8f0] py-1 z-50 animate-in fade-in zoom-in-95 duration-150 text-left">
+                          {(() => {
+                            const prjClosed = ['completed', 'Cerrado', 'Completado'].includes(prj.status as string);
+                            const prjArchived = prj.status === 'Archivado';
+                            const prjPending = !prj.isKickedOff || !prj.startDate || prj.status === 'Planificación' || (prj.status as string) === 'Por empezar';
+                            const openIn = (action: 'edit' | 'notifications' | 'close') => {
+                              setActiveProjectMenu(null);
+                              setPendingProjectAction(action);
+                              handleCardClick(prj.id);
+                            };
+                            const item = 'w-full px-3 py-1.5 text-left text-xs font-semibold text-[#334155] hover:bg-[#f8fafc] flex items-center gap-2 cursor-pointer transition-colors';
+                            return (
+                              <>
+                                {canEditProject && (
+                                  <button onClick={() => openIn('edit')} className={item}>
+                                    <Pencil className="w-3.5 h-3.5 text-[#501f92]" />
+                                    <span>Editar proyecto</span>
+                                  </button>
+                                )}
+                                {canViewProjectNotifications(currentUser?.accessLevel) && (
+                                  <button onClick={() => openIn('notifications')} className={item}>
+                                    <Bell className="w-3.5 h-3.5 text-[#501f92]" />
+                                    <span>Notificaciones</span>
+                                  </button>
+                                )}
+                                {canEditProject && !prjPending && !prjClosed && !prjArchived && (
+                                  <button onClick={() => openIn('close')} className={item}>
+                                    <Flag className="w-3.5 h-3.5 text-[#501f92]" />
+                                    <span>Cerrar proyecto</span>
+                                  </button>
+                                )}
+                              </>
+                            );
+                          })()}
+                          {canEditProject && (
+                          <>
                           <button
                             onClick={() => {
                               if (onArchiveProject) {
@@ -2650,7 +2706,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                             className="w-full px-3 py-1.5 text-left text-xs font-semibold text-[#334155] hover:bg-[#f8fafc] flex items-center gap-2 cursor-pointer transition-colors"
                           >
                             <Archive className="w-3.5 h-3.5 text-[#501f92]" />
-                            <span>{prj.status === 'Archivado' ? 'Desarchivar' : 'Archivar'}</span>
+                            <span>{prj.status === 'Archivado' ? 'Desarchivar proyecto' : 'Archivar proyecto'}</span>
                           </button>
 
                           <button
@@ -2661,8 +2717,10 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                             className="w-full px-3 py-1.5 text-left text-xs font-semibold text-[#dc2626] hover:bg-[#fee2e2]/40 flex items-center gap-2 cursor-pointer transition-colors"
                           >
                             <Trash2 className="w-3.5 h-3.5 text-[#dc2626]" />
-                            <span>Eliminar</span>
+                            <span>Eliminar proyecto</span>
                           </button>
+                          </>
+                          )}
                         </div>
                       )}
                     </div>
