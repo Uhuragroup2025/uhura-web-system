@@ -74,6 +74,8 @@ export interface MiDiaViewProps {
   configuredCapacityHours?: number;
   targetDayHours?: number;
   onNavigateToView?: (view: OrbitView) => void;
+  /** Abre un proyecto concreto (Insumos por gestionar). */
+  onOpenProject?: (projectId: string) => void;
   opportunities?: any[];
   projects?: any[];
   clients?: any[];
@@ -104,6 +106,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
   configuredCapacityHours = 8.0,
   targetDayHours = 8.0,
   onNavigateToView,
+  onOpenProject,
   streakDays = 0,
   streakTodayCounts = false,
   isDayClosedToday = false,
@@ -311,32 +314,50 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
   }, [accessLevel, clients]);
 
   // Pendientes de Cliente (Insumos, Accesos, Aprobaciones de Gates)
-  const clientDependencies = useMemo(() => {
+  // Insumos por gestionar (ronda 2): solo los que importan hoy, no todas las dependencias.
+  // - Entran los vencidos y los que se necesitan en los próximos 5 días hábiles.
+  // - Orden: vencidos primero (más días de atraso arriba), luego bloqueantes, luego por la fecha en
+  //   que empieza la fase que los necesita.
+  // - Solo de los proyectos de los que soy responsable (líder, Comercial o Relación con clientes).
+  const DEP_WINDOW_DAYS = 5;
+  const { clientDependencies, laterDependenciesCount } = useMemo(() => {
     if (!['client_relationship', 'commercial', 'leader', 'executive', 'system_admin'].includes(accessLevel)) {
-      return [];
+      return { clientDependencies: [], laterDependenciesCount: 0 };
     }
     const todayStr = new Date().toISOString().slice(0, 10);
-    const allDeps: Array<ProjectDependency & { projectName: string; clientName: string; delayDays: number }> = [];
+    const allDeps: Array<ProjectDependency & { projectId: string; projectName: string; clientName: string; phaseName?: string; delayDays: number; daysLeft: number }> = [];
+    let later = 0;
 
     projects.forEach((proj: ProjectSummaryItem) => {
-      // Insumos del cliente: solo de proyectos de los que soy responsable (todos los perfiles)
       if (!isGlobalViewer && !myProjectIds.has(proj.id)) return;
       (proj.dependencies || []).forEach((dep) => {
-        if (dep.ownerType === 'client' && dep.status === 'pending') {
-          const delayDays = dep.expectedDate && todayStr > dep.expectedDate
-            ? calculateBusinessDays(dep.expectedDate, todayStr)
-            : 0;
-          allDeps.push({
-            ...dep,
-            projectName: proj.name,
-            clientName: proj.clientName,
-            delayDays
-          });
+        if (dep.ownerType !== 'client' || dep.status !== 'pending') return;
+        const expected = dep.expectedDate || todayStr;
+        const delayDays = todayStr > expected ? calculateBusinessDays(expected, todayStr) : 0;
+        const daysLeft = todayStr <= expected ? calculateBusinessDays(todayStr, expected) : 0;
+        if (delayDays === 0 && daysLeft > DEP_WINDOW_DAYS) {
+          later++;
+          return;
         }
+        allDeps.push({
+          ...dep,
+          projectId: proj.id,
+          projectName: proj.name,
+          clientName: proj.clientName,
+          phaseName: (proj.deliverables || []).find((d) => d.id === dep.deliverableId)?.name,
+          delayDays,
+          daysLeft
+        });
       });
     });
 
-    return allDeps.sort((a, b) => b.delayDays - a.delayDays);
+    allDeps.sort((a, b) => {
+      if ((a.delayDays > 0) !== (b.delayDays > 0)) return a.delayDays > 0 ? -1 : 1;
+      if (a.delayDays !== b.delayDays) return b.delayDays - a.delayDays;
+      if (a.blocking !== b.blocking) return a.blocking ? -1 : 1;
+      return (a.expectedDate || '').localeCompare(b.expectedDate || '');
+    });
+    return { clientDependencies: allDeps, laterDependenciesCount: later };
   }, [accessLevel, projects, isGlobalViewer, myProjectIds]);
 
   // Total de elementos accionables de atención
@@ -601,7 +622,8 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                   <div
                     key={`client-dep-${dep.id}`}
                     onClick={() => {
-                      if (onNavigateToView) onNavigateToView('proyectos');
+                      if (onOpenProject) onOpenProject(dep.projectId);
+                      else if (onNavigateToView) onNavigateToView('proyectos');
                     }}
                     className={`p-3 rounded-xl bg-white border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs cursor-pointer transition-all group shadow-2xs ${
                       dep.delayDays > 0
@@ -633,17 +655,30 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                           )}
                         </div>
                         <p className="text-[11px] text-[#64748b] mt-0.5">
-                          Aprobación pendiente · Puede impactar fechas del cronograma
+                          {dep.projectName}
+                          {dep.phaseName ? ` · para ${dep.phaseName}` : ''}
+                          {dep.delayDays > 0
+                            ? dep.blocking
+                              ? ' · está frenando esa fase'
+                              : ' · vencido'
+                            : dep.daysLeft === 0
+                              ? ' · se necesita hoy'
+                              : ` · faltan ${dep.daysLeft} día${dep.daysLeft === 1 ? '' : 's'} hábil${dep.daysLeft === 1 ? '' : 'es'}${dep.blocking ? ' para que bloquee' : ''}`}
                         </p>
                       </div>
                     </div>
 
                     <span className="px-2.5 py-1 rounded-lg text-[#334155] group-hover:bg-[#f1f5f9] group-hover:text-[#0f172a] font-semibold text-xs transition-colors shrink-0 self-start sm:self-auto inline-flex items-center gap-1">
-                      <span>Gestionar aprobación</span>
+                      <span>Gestionar insumo</span>
                       <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                     </span>
                   </div>
                 ))}
+                {clientDependencies.length > 0 && laterDependenciesCount > 0 && (
+                  <p className="text-[11px] text-[#64748b] px-1">
+                    + {laterDependenciesCount} insumo{laterDependenciesCount === 1 ? '' : 's'} más adelante (se necesitan en más de {DEP_WINDOW_DAYS} días hábiles). Los ves en Dependencias de cada proyecto.
+                  </p>
+                )}
 
                 {/* 3. Bloqueos de tareas */}
                 {ownBlockedTasks.map((t) => (

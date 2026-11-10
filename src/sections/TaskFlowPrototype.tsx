@@ -3255,6 +3255,10 @@ export const TaskFlowPrototype: React.FC = () => {
                     loggedHoursToday={loggedHoursToday}
                     targetDayHours={Number(((currentUser?.capacityHours || 42) / 5).toFixed(1))}
                     onNavigateToView={handleSelectView}
+                    onOpenProject={(projectId) => {
+                      setSelectedProjectIdForView(projectId);
+                      setCurrentView('proyectos');
+                    }}
                     streakDays={myStreak.current}
                     streakTodayCounts={myStreak.todayCounts}
                     isDayClosedToday={dayClosedToday}
