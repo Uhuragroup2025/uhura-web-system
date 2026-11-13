@@ -1381,6 +1381,8 @@ export interface TemplateBacklogItem {
   dependencyIds?: string[];       // IDs de otras actividades predecesoras
   dependencies?: string[];        // Alias retrocompatible
   optional?: boolean;             // Si la actividad es opcional o modular
+  /** Unidad de cotización (ej. 'PDP', 'post', 'SKU'): estimatedHours es por unidad y se multiplica por la cantidad. */
+  unit?: string;
 }
 
 /**
@@ -1414,6 +1416,12 @@ export interface ProductBacklogTemplate {
   totalHours: number;             // Rollup total de horas (Nivel 3)
   roleBudgetsRollup?: DeliverableRoleBudget[]; // Rollup de horas por rol (Nivel 2)
   estimatedDurationWeeks?: number;
+  /** Área dueña del servicio (Producto Digital, Creativo, Growth). */
+  area?: string;
+  /** Modalidad sugerida al agregarlo a una cotización; el comercial puede cambiarla. */
+  serviceType?: 'fixed_project' | 'fee_monthly' | null;
+  /** Unidad por la que se cotiza (ej. 'PDP', 'post'): habilita el campo «Cantidad» en Alcance. */
+  unitLabel?: string | null;
   createdByUserId?: string;
   createdAt: string;
   updatedAt: string;
@@ -1489,6 +1497,11 @@ export interface QuoteBacklogItem {
   estimatedHours: number;
   order: number;
   dependencies?: string[];
+  /** Actividad por unidad: horas = unitHours × quantity. El título lleva la cantidad («× 5 posts»). */
+  unit?: string;
+  unitHours?: number;
+  quantity?: number;
+  baseTitle?: string;
   // DECISIÓN 5: Por defecto null/vacío al convertir. Solo si hubo acuerdo explícito:
   suggestedUserId?: string | null;
   suggestedUserName?: string | null;
@@ -1501,6 +1514,8 @@ export interface QuoteDeliverable {
   id: string;
   quoteId: string;
   name: string;                   // ej. 'Landing Page', 'Pauta Digital'
+  /** Nombre original del catálogo (servicios por unidad: el nombre cambia con la cantidad). */
+  baseName?: string;
   description?: string;
   order: number;
   roleBudgets: QuoteRoleBudget[];

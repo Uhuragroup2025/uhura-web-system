@@ -16,7 +16,14 @@ import {
   findBestCandidateForRole,
   getScopeWeeks
 } from './teamCandidates';
-import { computeRoleBudgetsFromActivities, computeTotalHoursFromRoleBudgets } from '../templates/templateEngine';
+import {
+  computeRoleBudgetsFromActivities,
+  computeTotalHoursFromRoleBudgets,
+  unitFieldsFromTemplate,
+  applyQuantityToItem,
+  nameForQuantity,
+  pluralUnit
+} from '../templates/templateEngine';
 import {
   Plus,
   Trash2,
@@ -40,7 +47,31 @@ import {
 } from 'lucide-react';
 
 // Metadatos visuales de la sesión; no forman parte del modelo ni del contrato de la oportunidad.
-export type ScopeServiceDraft = { id: string; name: string; deliverableIds: string[]; weeks: string; saved?: boolean };
+export type ScopeServiceDraft = {
+  id: string; name: string; deliverableIds: string[]; weeks: string; saved?: boolean;
+  /** Modalidad sugerida por la plantilla (el comercial la puede cambiar en Cotización). */
+  modality?: 'fixed_project' | 'fee_monthly';
+  /** Servicio por unidad (ej. 'post', 'PDP'): muestra el campo Cantidad. */
+  unitLabel?: string | null;
+  quantity?: number;
+  /** Nombre del catálogo; con cantidad > 1 el nombre visible pasa a «Diseño de 18 posts…». */
+  baseName?: string;
+};
+
+/** Borrador de servicio a partir de una plantilla del catálogo. */
+export function serviceDraftFromTemplate(tpl: ProductBacklogTemplate | undefined, id: string, deliverableIds: string[]): ScopeServiceDraft {
+  return {
+    id,
+    name: tpl?.name || 'Servicio importado',
+    deliverableIds,
+    weeks: tpl?.estimatedDurationWeeks ? String(tpl.estimatedDurationWeeks) : '',
+    saved: false,
+    modality: tpl?.serviceType || undefined,
+    unitLabel: tpl?.unitLabel || null,
+    quantity: tpl?.unitLabel ? 1 : undefined,
+    baseName: tpl?.unitLabel ? tpl.name : undefined
+  };
+}
 
 interface BacklogScoperProps {
   readOnly?: boolean;
@@ -307,7 +338,12 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
           };
         }
         if (field === 'estimatedHours') {
-          return { ...act, estimatedHours: Math.max(0, parseFloat(value) || 0) };
+          const hours = Math.max(0, parseFloat(value) || 0);
+          // Actividad por unidad: editar el total ajusta las horas por unidad
+          return act.unit ? { ...act, estimatedHours: hours, unitHours: hours / (act.quantity || 1) } : { ...act, estimatedHours: hours };
+        }
+        if (field === 'title' && act.unit) {
+          return { ...act, title: value, baseTitle: String(value).replace(/ \(× .*\)$/, '') };
         }
         return { ...act, [field]: value };
       });
@@ -315,6 +351,29 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
     });
 
     onUpdateQuote(recomputeQuoteRollups(updated));
+  };
+
+  // Servicio por unidad: la cantidad multiplica las horas de sus actividades por unidad
+  const handleChangeQuantity = (service: ScopeServiceDraft, raw: string) => {
+    const quantity = Math.max(1, Math.round(Number(raw)) || 1);
+    const unit = service.unitLabel || '';
+    const serviceBase = service.baseName || service.name;
+    const updated = quote.deliverables.map((d) => {
+      if (!service.deliverableIds.includes(d.id)) return d;
+      const deliverableBase = d.baseName || d.name;
+      return {
+        ...d,
+        baseName: deliverableBase,
+        // El entregable que se llama igual que el servicio cambia de nombre; los demás solo si dicen «1 post» o «por post»
+        name: nameForQuantity(deliverableBase, unit, quantity, deliverableBase === serviceBase),
+        backlogItems: d.backlogItems.map((item) => applyQuantityToItem(item, quantity))
+      };
+    });
+    // Primero la cotización y luego el servicio: el padre reescribe los servicios al actualizar la cotización
+    onUpdateQuote(recomputeQuoteRollups(updated));
+    onChangeServices(services.map((item) => item.id === service.id
+      ? { ...item, quantity, baseName: serviceBase, name: nameForQuantity(serviceBase, unit, quantity), saved: false }
+      : item));
   };
 
   const handleDuplicateActivity = (delId: string, actId: string) => {
@@ -389,7 +448,8 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
           estimatedHours: act.estimatedHours,
           suggestedUserId: null,
           suggestedUserName: null,
-          order: aIdx + 1
+          order: aIdx + 1,
+          ...unitFieldsFromTemplate(act)
         };
       });
 
@@ -422,9 +482,7 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
     }));
 
     // Semanas precargadas desde la plantilla (el líder puede ajustarlas)
-    onChangeServices([...services, { id: importId, name: tpl.name,
-      deliverableIds: importedDeliverables.map((deliverable) => deliverable.id),
-      weeks: tpl.estimatedDurationWeeks ? String(tpl.estimatedDurationWeeks) : '', saved: false }]);
+    onChangeServices([...services, serviceDraftFromTemplate(tpl, importId, importedDeliverables.map((deliverable) => deliverable.id))]);
     const updated = recomputeQuoteRollups([...quote.deliverables, ...importedDeliverables]);
     onUpdateQuote(updated);
     setIsImportModalOpen(false);
@@ -458,7 +516,8 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h3 className="font-bold text-[#3b176d]">{service.name}</h3>
         <span className="rounded-full px-2 py-1 bg-[#ede9fe] text-xs font-bold text-[#501f92]">{serviceHours.toLocaleString('es-CO')} h</span>
-        {locked && <span className="rounded-full px-2 py-1 bg-[#ede9fe] text-xs font-bold text-[#501f92]">{service.weeks} semanas</span>}
+        {locked && <span className="rounded-full px-2 py-1 bg-[#ede9fe] text-xs font-bold text-[#501f92]">{service.weeks} sem.</span>}
+        {locked && service.unitLabel && <span className="rounded-full px-2 py-1 bg-[#fef3c7] text-xs font-bold text-[#92400e]">× {service.quantity || 1} {pluralUnit(service.unitLabel, service.quantity || 1)}</span>}
         <button type="button" disabled={!locked && issues.length > 0} aria-label={`${locked ? 'Editar' : 'Guardar'} servicio ${service.name}`}
           onClick={() => {
             if (!locked && issues.length > 0) return;
@@ -494,11 +553,31 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
       )}
       {savedServiceFeedback === service.id && <p role="status" className="text-xs font-semibold text-[#047857]">Servicio guardado. El alcance general continúa pendiente de revisión.</p>}
       {!locked && issues.map((issue) => <p key={issue} role="status" className="text-xs text-[#b45309]">{issue}</p>)}
-      {!locked && <label className="flex items-center gap-3 text-xs font-semibold text-[#475569]">Duración del servicio en semanas
-          <input aria-label={`Semanas del servicio ${service.name}`} type="number" min="1" step="1" value={service.weeks}
-            onChange={(event) => onChangeServices(services.map((item) => item.id === service.id ? { ...item, weeks: event.target.value, saved: false } : item))}
-            className="w-24 border border-[#c4b5fd] rounded-lg bg-white px-2 py-1.5" />
-        </label>}
+      {!locked && (() => {
+        const items = quote.deliverables.filter((d) => service.deliverableIds.includes(d.id)).flatMap((d) => d.backlogItems);
+        const perUnit = items.filter((item) => item.unit).reduce((sum, item) => sum + (item.unitHours ?? item.estimatedHours), 0);
+        const fixed = items.filter((item) => !item.unit).reduce((sum, item) => sum + item.estimatedHours, 0);
+        const q = service.quantity || 1;
+        // Semanas y cantidad en una sola fila, con etiquetas cortas
+        return <div className="flex items-center gap-x-5 gap-y-2 flex-wrap text-xs font-semibold text-[#475569]">
+          <label className="flex items-center gap-2" title="Duración del servicio en semanas">Semanas
+            <input aria-label={`Semanas del servicio ${service.name}`} type="number" min="1" step="1" value={service.weeks}
+              onChange={(event) => onChangeServices(services.map((item) => item.id === service.id ? { ...item, weeks: event.target.value, saved: false } : item))}
+              className="w-16 border border-[#c4b5fd] rounded-lg bg-white px-2 py-1.5" />
+          </label>
+          {service.unitLabel && <>
+            <label className="flex items-center gap-2" title="Cantidad de unidades del servicio">Cant.
+              <input aria-label={`Cantidad del servicio ${service.name}`} type="number" min="1" step="1" value={q}
+                onChange={(event) => handleChangeQuantity(service, event.target.value)}
+                className="w-16 border border-[#c4b5fd] rounded-lg bg-white px-2 py-1.5" />
+              <span>{pluralUnit(service.unitLabel, q)}</span>
+            </label>
+            <span className="font-normal text-[#64748b]">
+              {perUnit.toLocaleString('es-CO')} h/{service.unitLabel} × {q}{fixed > 0 ? ` + ${fixed.toLocaleString('es-CO')} h fijas` : ''}
+            </span>
+          </>}
+        </div>;
+      })()}
     </section>;
   };
 
@@ -917,11 +996,24 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
                 className="w-full text-xs font-semibold p-2.5 rounded-xl border border-[#cbd5e1] bg-[#f8fafc] text-[#0f172a] focus:ring-2 focus:ring-[#501f92]"
               >
                 <option value="">-- Elige una plantilla del catálogo --</option>
-                {templates.map((tpl) => (
-                  <option key={tpl.id} value={tpl.id}>
-                    {tpl.name} ({tpl.totalHours}h totales)
-                  </option>
+                {Array.from(new Set(templates.map((tpl) => tpl.area || 'Otros'))).map((area) => (
+                  <optgroup key={area} label={area === 'Otros' ? 'Otros' : area}>
+                    {templates.filter((tpl) => (tpl.area || 'Otros') === area && tpl.category !== 'tiempos_sueltos').map((tpl) => (
+                      <option key={tpl.id} value={tpl.id}>
+                        {tpl.name} · {tpl.totalHours.toLocaleString('es-CO')} h{tpl.serviceType === 'fee_monthly' ? ' / mes' : ''}
+                      </option>
+                    ))}
+                  </optgroup>
                 ))}
+                {templates.some((tpl) => tpl.category === 'tiempos_sueltos') && (
+                  <optgroup label="Tiempos sueltos (por unidad)">
+                    {templates.filter((tpl) => tpl.category === 'tiempos_sueltos').map((tpl) => (
+                      <option key={tpl.id} value={tpl.id}>
+                        {tpl.name} · {tpl.totalHours.toLocaleString('es-CO')} h por {tpl.unitLabel}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
             </div>
 
@@ -935,7 +1027,7 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
                       <div className="font-bold text-[#0f172a]">{t.name}</div>
                       <div>{t.description}</div>
                       <div className="text-[11px] text-[#501f92] font-semibold pt-1">
-                        Aportará {t.deliverables.length} servicios y {t.totalHours}h de actividades al alcance actual.
+                        Aportará {t.deliverables.length} {t.deliverables.length === 1 ? 'entregable' : 'entregables'} y {t.totalHours.toLocaleString('es-CO')} h{t.unitLabel ? ` (por ${t.unitLabel}; la cantidad se ajusta en el servicio)` : ''}.
                       </div>
                     </>
                   );
