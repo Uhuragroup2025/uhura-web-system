@@ -52,6 +52,7 @@ import {
 } from 'lucide-react';
 import { initialUsers } from '../mockData';
 import { ProjectDependenciesSection } from './ProjectDependenciesSection';
+import { TimerControls } from '../time/TimerControls';
 
 interface ProjectTasksTabProps {
   project: ProjectSummaryItem;
@@ -62,6 +63,7 @@ interface ProjectTasksTabProps {
   activeTimer?: ActiveTimerState | null;
   onStartTimer?: (task: TaskItem) => void;
   onPauseResumeTimer?: () => void;
+  onStopTimer?: () => void;
   onOpenTaskDetail?: (task: TaskItem) => void;
   onUpdateTasks?: (tasks: TaskItem[]) => void;
   onUpdateProject?: (project: ProjectSummaryItem) => void;
@@ -76,6 +78,7 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
   activeTimer,
   onStartTimer,
   onPauseResumeTimer,
+  onStopTimer,
   onOpenTaskDetail,
   onUpdateTasks,
   onUpdateProject
@@ -912,23 +915,16 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
                           {/* Col 5: Timer y Estado */}
                           <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                             {onStartTimer && (
-                              <button
-                                onClick={() => {
-                                  if (isRunning && onPauseResumeTimer) {
-                                    onPauseResumeTimer();
-                                  } else {
-                                    onStartTimer(task);
-                                  }
-                                }}
-                                className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
-                                  isRunning
-                                    ? 'bg-[#10b981] text-white border-[#10b981]'
-                                    : 'bg-[#f8fafc] text-[#64748b] hover:text-[#501f92] border-[#e2e8f0]'
-                                }`}
-                                title={isRunning ? 'Pausar temporizador' : 'Iniciar temporizador sobre esta tarea'}
-                              >
-                                {isRunning ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-                              </button>
+                              // Ronda 3: mismos controles que el detalle de la tarea. Antes la fila no
+                              // distinguía «en pausa» y no tenía Detener: parecía que la pausa no funcionaba.
+                              <TimerControls
+                                size="sm"
+                                isRunning={isRunning}
+                                isPaused={isRunning && Boolean(activeTimer?.isPaused)}
+                                onStart={() => onStartTimer(task)}
+                                onPauseResume={onPauseResumeTimer}
+                                onStop={onStopTimer}
+                              />
                             )}
 
                             {/* Selector de Estado Canónico */}

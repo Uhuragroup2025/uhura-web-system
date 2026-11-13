@@ -707,24 +707,12 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
     productionWeeks: scheduleDurationWeeks
   }), [effectiveKickoffWaitDays, scheduleReworkRounds, scheduleReworkRoundDays, scheduleDurationWeeks]);
 
-  const scheduleBreakdown = useMemo(() => {
-    if (!scheduleKickoffDate) return null;
-    return computeScheduleBaseline({
-      startDate: scheduleKickoffDate,
-      productionWeeks: scheduleDurationWeeks,
-      config: scheduleConfigDraft,
-      isFee: isCurrentProjectFee
-    });
-  }, [scheduleKickoffDate, scheduleDurationWeeks, scheduleConfigDraft, isCurrentProjectFee]);
-
-  const calculatedEndDate = scheduleBreakdown?.endDate || '';
-
-  // Inicio de cada fase según el cronograma que se va a crear (para la fecha de cada insumo).
-  const phaseStartById = useMemo(() => {
-    const map = new Map<string, string>();
-    if (!currentProject || !scheduleKickoffDate || !isScheduleModalOpen) return map;
+  // Plan que se va a crear (mismo motor que «Confirmar inicio»): la vista previa usa este plan
+  // para que la entrega mostrada sea la misma que queda en el proyecto (ronda 3).
+  const kickoffPlan = useMemo(() => {
+    if (!currentProject || !scheduleKickoffDate || !isScheduleModalOpen) return null;
     const projectTasks = (((currentProject as any).allTasks || currentProject.tasks) || []) as TaskItem[];
-    const plan = planProjectSchedule({
+    return planProjectSchedule({
       startDate: scheduleKickoffDate,
       productionWeeks: isCurrentProjectFee ? 4 : scheduleDurationWeeks,
       config: scheduleConfigDraft,
@@ -732,9 +720,27 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
       deliverables: (currentProject.deliverables || []).map((d) => ({ id: d.id, name: d.name, totalQuotedHours: d.totalQuotedHours })),
       tasks: projectTasks.map((t) => ({ id: t.id, deliverableId: t.deliverableId, budgetedHours: t.budgetedHours }))
     });
-    plan.deliverables.forEach((d) => map.set(d.id, d.startDate));
-    return map;
   }, [currentProject, scheduleKickoffDate, isScheduleModalOpen, isCurrentProjectFee, scheduleDurationWeeks, scheduleConfigDraft]);
+
+  const scheduleBreakdown = useMemo(() => {
+    if (!scheduleKickoffDate) return null;
+    if (kickoffPlan && (currentProject?.deliverables || []).length > 0) return kickoffPlan.baseline;
+    return computeScheduleBaseline({
+      startDate: scheduleKickoffDate,
+      productionWeeks: scheduleDurationWeeks,
+      config: scheduleConfigDraft,
+      isFee: isCurrentProjectFee
+    });
+  }, [kickoffPlan, currentProject, scheduleKickoffDate, scheduleDurationWeeks, scheduleConfigDraft, isCurrentProjectFee]);
+
+  const calculatedEndDate = scheduleBreakdown?.endDate || '';
+
+  // Inicio de cada fase según el cronograma que se va a crear (para la fecha de cada insumo).
+  const phaseStartById = useMemo(() => {
+    const map = new Map<string, string>();
+    kickoffPlan?.deliverables.forEach((d) => map.set(d.id, d.startDate));
+    return map;
+  }, [kickoffPlan]);
   const inputExpectedDate = (deliverableId?: string) =>
     (deliverableId && phaseStartById.get(deliverableId)) || scheduleKickoffDate;
 
@@ -1384,6 +1390,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             activeTimer={activeTimer}
             onStartTimer={onStartTimer}
             onPauseResumeTimer={onPauseResumeTimer}
+            onStopTimer={onStopTimer}
             onOpenTaskDetail={onOpenTaskDetail}
             onUpdateTasks={(newTasks) => {
               // Fuente única: la lista global de tareas. Se reemplazan las tareas visibles del proyecto
