@@ -19,7 +19,7 @@ import {
   NewBusinessOpportunity,
   TeamAbsenceEvent
 } from '../components/taskflow/types';
-import type { ScopeServiceDraft } from '../components/taskflow/newbusiness/BacklogScoper';
+import { serviceDraftFromTemplate, type ScopeServiceDraft } from '../components/taskflow/newbusiness/BacklogScoper';
 import { SOWModal } from '../components/taskflow/newbusiness/SOWModal';
 import { isEligibleScopingLeader, suggestActivityOwners } from '../components/taskflow/newbusiness/teamCandidates';
 import { getOperationalQuote, withOperationalQuote } from '../components/taskflow/newbusiness/quoteRules';
@@ -899,6 +899,10 @@ export const TaskFlowPrototype: React.FC = () => {
       budgetedRoleId: task.budgetedRoleId || task.budgetedRole || 'Creative Designer',
       isOutsideRegularSchedule: isWeekend
     });
+    // Ronda 3: empezar a medir tiempo es empezar la tarea. «Por hacer» pasa a «En proceso»
+    // (las tareas en revisión, listas o bloqueadas no cambian de estado).
+    const current = tasks.find((t) => t.id === task.id) || task;
+    if (current.status === 'To Do') handleUpdateTaskStatus(task.id, 'In Progress');
   };
 
   // Start / Switch Live Timer (Global: One active timer at a time)
@@ -2816,9 +2820,8 @@ export const TaskFlowPrototype: React.FC = () => {
     const targetQuoteId = current?.id || quote.id;
     const importedTemplate = productTemplates.find((item) => item.id === quote.templateId);
     // Semanas precargadas desde la plantilla (editables por el líder)
-    const service = { id: quote.id, name: importedTemplate?.name || 'Servicio importado',
-      deliverableIds: quote.deliverables.map((_, index) => `qdel-import-${quote.id}-${index}`),
-      weeks: importedTemplate?.estimatedDurationWeeks ? String(importedTemplate.estimatedDurationWeeks) : '', saved: false };
+    const service = serviceDraftFromTemplate(importedTemplate, quote.id,
+      quote.deliverables.map((_, index) => `qdel-import-${quote.id}-${index}`));
     setScopeUi((previous) => ({ ...previous, [targetQuoteId]: { saved: false,
       services: [...(previous[targetQuoteId]?.services || []).filter((item) => item.id !== service.id), service] } }));
     setOpportunities((prev) =>
@@ -2871,11 +2874,9 @@ export const TaskFlowPrototype: React.FC = () => {
 
     if (quote.templateId) {
       const importedTemplate = productTemplates.find((item) => item.id === quote.templateId);
-      setScopeUi((previous) => ({ ...previous, [finalizedQuote.id]: { saved: false, services: [{
-        id: quote.id, name: importedTemplate?.name || 'Servicio importado',
-        deliverableIds: quote.deliverables.map((item) => item.id),
-        weeks: importedTemplate?.estimatedDurationWeeks ? String(importedTemplate.estimatedDurationWeeks) : '', saved: false
-      }] } }));
+      setScopeUi((previous) => ({ ...previous, [finalizedQuote.id]: { saved: false, services: [
+        serviceDraftFromTemplate(importedTemplate, quote.id, quote.deliverables.map((item) => item.id))
+      ] } }));
     }
     const newOpp: NewBusinessOpportunity = {
       id: newOpportunityId,

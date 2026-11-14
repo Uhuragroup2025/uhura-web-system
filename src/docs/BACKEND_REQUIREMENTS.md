@@ -401,6 +401,14 @@ Para no bloquear New Business cuando la app privada de HubSpot esté caída o si
 1. Las oportunidades pueden crearse 100% de forma manual (sin ID de HubSpot).
 2. En la Cotización, Comercial puede aprobar manualmente los servicios ganados pulsando **«Marcar como ganada 🏆»**, lo que dispara el flujo de conversión sin consultar la API de HubSpot.
 3. Se registra una entrada de auditoría en la tabla de trazabilidad (`status: 'success'`, `source: 'orbit'`) indicando que la aprobación fue manual y que la reconciliación con el CRM queda pendiente.
+4. **Orden de los botones en Cotización (13 Nov 2026).** «Crear negocios en HubSpot» y «Marcar como ganada 🏆» **nunca están activos a la vez**:
+
+   | Situación | «Crear negocios en HubSpot» | «Marcar como ganada 🏆» |
+   |---|---|---|
+   | HubSpot conectado | Aparece al guardar la cotización: es el **primer paso**. Después pasa a «Sincronizar con HubSpot». | Solo **después** de crear los negocios. Lo normal es que «ganada» llegue al sincronizar (Cierre ganado). |
+   | Sin HubSpot (sin credencial) | No se muestra. | Aparece al guardar la cotización: único camino para convertir. |
+
+   Sin HubSpot tampoco se muestran «Traer desde HubSpot», «Trazabilidad HubSpot» ni las etiquetas «Sin negocio en HubSpot»: menos avisos mientras llega la credencial. Al conectarla, todo vuelve a aparecer sin cambiar código. En el prototipo se prueba con el interruptor «HubSpot conectado» del Simulador QA.
 
 ### 12.5 Estados Operativos de Proyecto («Por iniciar» vs «En ejecución»)
 * **La conversión NO define fechas.** Cerrar un negocio y convertirlo en Cliente + Proyecto no lo hace ejecutable: el proyecto nace con `start_date = NULL`, `end_date = NULL`, `is_kicked_off = false` y se presenta como **«Por iniciar»** con la acción **«Iniciar proyecto 🚀»**.
@@ -587,6 +595,7 @@ Para no bloquear New Business cuando la app privada de HubSpot esté caída o si
 * `POST /users/{id}/temporary-password` → recibe la contraseña temporal por HTTPS, la guarda con hash, marca `must_change_password = true` e invalida las sesiones activas. Mínimo 8 caracteres.
 * `POST /users/{id}/deactivate` / `reactivate` → sin borrado físico; desactivado no inicia sesión ni aparece para asignar trabajo.
 * Cada acción queda en `UserProfileAuditEntry` (quién y cuándo), **sin** el valor de la contraseña. Nada de esto se registra en logs.
+* **Pantalla de ingreso (13 Nov 2026, prototipo: `auth/LoginScreen.tsx`, se ve con `?login=1` o al cerrar sesión).** Fondo degradado a pantalla completa (lila → blanco → lila). Computador: a la izquierda un panel morado con bordes redondeados con el saludo «¡Hola, soy ECO!» en Playfair Display itálica (fuente de acento de ECO) y «Somos el Espacio de Creación y Operaciones de Uhura» (E, C y O resaltadas en lima), más ECO animado; a la derecha el formulario directamente sobre el fondo, sin tarjeta. Celular: solo el formulario con el logo arriba y un ECO animado pequeño encima. **ECO animado** (`auth/AnimatedEco.tsx`, sprite de 6 poses `src/assets/images/eco/eco-walk-sprite.webp`) reemplaza la imagen fija del panel: entra caminando desde fuera del panel (pasos alternados con leve rebote) se pone las manos en la cintura y guiña (lo mismo al terminar cada paseo); cada 2,5–4 s hace algo distinto (guiña, mira de frente o da un paseo corto de ida y vuelta, volteándose al regresar); guiña al pulsar «Ingresar» (~0,65 s antes de entrar) y se pone de frente si falta un dato. Con «reducir movimiento» activo (`prefers-reduced-motion`) queda quieto. Campos «Usuario» (`login_username`) y «Contraseña» con botón para mostrarla; botón «Ingresar». «¿Olvidaste tu contraseña?» muestra: pedirle a Administración una contraseña temporal (sin autoservicio por correo mientras no exista el buzón de notificaciones). Si la cuenta tiene `must_change_password`, el siguiente paso es «Crea tu contraseña» (nueva + confirmación, mínimo 8 caracteres) antes de entrar. Errores en línea, sin revelar si el usuario existe. Pie: «Uhura Group · ECO» (no el nombre del proveedor).
 
 ### 16.2 Gobernanza de Perfil Personal (`Mi Perfil`) y Vacaciones
 * **Autoservicio limitado:** Cualquier usuario autenticado puede consultar y editar **únicamente su propio perfil** (`user_id == request.user.id`), restringido a los campos `hobbies` (pasatiempos e intereses) y `personal_dream` (sueño o meta personal).
@@ -860,3 +869,40 @@ Especificación funcional en `ORBIT_PRODUCT_STATUS.md` §8.0 puntos 3b, 3c y 3d.
 * **Eliminar entregable:** `DELETE /api/projects/{id}/deliverables/{deliverableId}` (leader y system_admin) elimina también sus tareas; 409 si alguna tiene registros de tiempo. Tras eliminar una tarea o un entregable en un proyecto único iniciado, el servidor replanifica entregables y tareas no completadas desde `start_date` con el mismo motor del «Iniciar proyecto» (sin tocar la línea base).
 * **Crear tarea:** el servidor valida título, entregable, rol, fecha de inicio y de entrega (entrega ≥ inicio) y responde 422 con los campos faltantes.
 * **Insumos por gestionar (Mi Día):** endpoint con las dependencias `owner_type = client` y `status = pending` de los proyectos de los que la persona es responsable (líder, Comercial o Relación con clientes), filtradas a vencidas o con `expected_date` dentro de 5 días hábiles, ordenadas por atraso, bloqueante y `expected_date`, con el nombre de la fase (`deliverable_id`) y el conteo de las que quedan más adelante.
+
+## 29. Catálogo de servicios 2026 y cantidad en servicios por unidad (12 Nov 2026)
+
+Fuente: `servicios-uhura-2026-para-eco.xlsx` (catálogo normalizado: 24 servicios + 17 tiempos sueltos, solo roles existentes de ECO). En el prototipo se genera en `templates/catalog2026.ts` desde ese mismo archivo.
+
+* **Carga (sin desarrollo):** cada servicio es una plantilla (fase = entregable, actividad = tarea con rol y horas). La columna *Alcance incluido* es la descripción. Cada tiempo suelto (ej. «Página adicional en sitio web WordPress», 4,5 h) es una plantilla de una unidad.
+* **Modalidad sugerida:** la plantilla guarda `service_type` (`fixed_project` | `fee_monthly`); al agregarla al alcance, la cotización preselecciona esa modalidad y el comercial la puede cambiar.
+* **Cantidad (mejora, ticket aparte):**
+  * `template_activities.unit` (texto, opcional: «PDP», «post», «SKU», «artículo», «campaña»…): si existe, `estimated_hours` es por unidad. `templates.unit_label` = la unidad del servicio.
+  * `scope_services.quantity` (entero ≥ 1, por defecto 1) en la línea del servicio en Alcance.
+  * Al cambiar la cantidad: en las actividades con `unit`, `estimated_hours = unit_hours × quantity` y el título lleva la cantidad («Diseño gráfico · post (estático) (× 5 posts)»). Las actividades sin `unit` (gestión, aprobación, informe) no se multiplican. Guardar `unit`, `unit_hours` y `quantity` en la actividad cotizada para trazabilidad.
+  * El **nombre del servicio y del entregable** también cambia con la cantidad (se guarda el nombre original del catálogo como `base_name`): «Diseño de 1 post (estático)» × 18 → «Diseño de 18 posts (estático)»; «1 campaña de email» × 3 → «3 campañas de email»; «Creativos de pauta (por creativo)» × 3 → «Creativos de pauta (× 3 creativos)»; si el nombre no dice «1 …» ni «por …» se agrega «(× N unidades)». Ese nombre es el que llega a Cotización, al nombre del proyecto y a la fase de las tareas al convertir. Con cantidad 1 vuelve al nombre original.
+  * Al convertir se crea **una** tarea por actividad con las horas ya multiplicadas y el título con la cantidad (no N tareas). El rollup por rol que va a la calculadora no cambia de forma.
+  * Si el líder edita a mano las horas de una actividad por unidad, `unit_hours = horas / quantity`.
+
+## 30. Ronda 3: ajustes tras la validación en producción (12 Nov 2026)
+
+Salen de la prueba de punta a punta en producción (`orbit-00167-dij`). Aquí van solo las reglas; la diferencia con producción está en el ticket.
+
+**Cambios del prototipo (nuevos):**
+* **Fase sugerida de los insumos:** la fase de recolección («Onboarding», «Insumos», «Kickoff», «Kick Off», «Kick-off») nunca es la fase sugerida. Comparar sin importar espacios ni guiones.
+* **«Solicitar revisión» abre el panel de solicitud:** el botón rápido ya no pasa la tarea a `review` sin más. Abre el panel con enlace, archivo, mensaje y @menciones, **todos opcionales** (a veces la revisión es solo confirmar cambios hechos en una plataforma externa). Al enviar: la tarea pasa a `review`, queda un mensaje «Solicitó revisión a @revisor» (con el enlace o el mensaje si los hay) y se avisa al líder, al revisor y a los mencionados. Solo se crea un `task_deliverables` si hay enlace o archivo.
+* **Timer en las filas de tareas:** mismos controles que el detalle: ▶ iniciar; corriendo: punto, ⏸ pausar / ▶ reanudar y ⏹ detener. La fila debe mostrar el estado «en pausa» y permitir detener sin abrir la tarea.
+* **Detalle de la tarea en celular y tablet:** la X de cerrar va arriba a la derecha, en la línea de la ruta (cliente › proyecto › entregable); debajo el título y luego timer y «···». En escritorio, las acciones y la X quedan a la derecha del título.
+* **Vista previa de «Iniciar proyecto» = plan real:** la entrega que muestra el modal sale del mismo motor que planifica las tareas (cada entregable mínimo 1 día hábil, festivos de Colombia, rondas). Si el reparto necesita más días que las semanas indicadas, la producción y la entrega mostradas crecen. Nunca mostrar una fecha distinta a la que queda guardada.
+* **Iniciar el timer inicia la tarea:** al arrancar un timer sobre una tarea `todo`, pasa a `in_progress` (con registro en Actividad). Las tareas en revisión, listas o bloqueadas no cambian de estado. Iniciar la tarea no reinicia un timer que ya está corriendo.
+* **«Pendiente» en Equipo del proyecto:** horas por ejecutar de las tareas abiertas = asignado − ejecutado (nunca negativo).
+* **Horas sin asignar (Capacidad → Organización):** tareas abiertas sin responsable, agrupadas por rol cotizado: horas por ejecutar, horas de esta semana (tareas cuyo rango cae en la semana), número de tareas y proyectos. No suman a la carga de ninguna persona.
+
+**Reglas que ya estaban en el prototipo y producción debe cumplir:**
+* **Fee: el mes 1 cabe en el mes.** Las tareas del alcance son la plantilla del mes 1 y se planifican en 4 semanas desde el kickoff (`productionWeeks = 4`, sin rondas de ajuste). Ninguna tarea del mes 1 puede vencer después del fin del ciclo.
+* **Decimales en la cotización:** se guardan y se muestran con decimales (formato es-CO: `4.500.000,50`); los totales no se redondean.
+* **Carga planificada por proyecto (Mi capacidad):** agrupa las horas planificadas de las tareas abiertas de la persona por proyecto; si hay horas planificadas, el desglose no puede quedar vacío.
+* **Dependencia manual con fase:** el formulario de «Nueva dependencia» permite elegir el entregable (`deliverable_id`); la fecha esperada sugerida es el inicio de esa fase.
+* **Mi Día · «¿Qué requiere mi atención?»:** una tarjeta con contador y filas compactas; la acción es un enlace de texto a la derecha («Ver tarea →», «Listo para revisar →», «Gestionar insumo →»). Los insumos dicen «para {fase} · faltan N días hábiles para que bloquee».
+* **Modelo de la propuesta:** el Resumen de la oportunidad muestra el tipo general (Proyecto único, Fee mensual o Mixta) según los servicios; no fijarlo en «Proyecto único».
+

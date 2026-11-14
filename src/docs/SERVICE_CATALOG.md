@@ -12,6 +12,8 @@
 > - Interfaz de Biblioteca: [`src/components/taskflow/templates/TemplateLibraryView.tsx`](../components/taskflow/templates/TemplateLibraryView.tsx)
 > - Modal de Clonación e Integración con New Business: [`src/components/taskflow/templates/CloneToQuoteModal.tsx`](../components/taskflow/templates/CloneToQuoteModal.tsx)
 
+> **ACTUALIZACIÓN 12 NOV 2026 — fuente vigente:** el catálogo se reemplazó por `servicios-uhura-2026-para-eco.xlsx` (24 servicios de Producto Digital, Creativo y Growth + 17 tiempos sueltos, solo roles existentes de ECO), generado en [`templates/catalog2026.ts`](../components/taskflow/templates/catalog2026.ts). Las categorías ahora son por área (Producto Digital, Creativo, Growth, Tiempos sueltos, A la medida). Los servicios por unidad (por PDP, por post, por artículo…) y los tiempos sueltos tienen campo **Cantidad** en Alcance (horas por unidad × cantidad; ver BACKEND_REQUIREMENTS §29). Las secciones 4.1 y 5 de este documento describen el catálogo anterior y quedan como referencia histórica.
+
 > **AVISO DE PRIVACIDAD Y GOBERNANZA:**
 > La documentación pública define reglas, estructuras y comportamientos. La identidad nominal de colaboradores, correos, relaciones de reporte, calendarios individuales y crosswalk con backend se administra exclusivamente mediante **Equipo Canónico Privado**.
 

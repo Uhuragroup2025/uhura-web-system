@@ -1189,10 +1189,8 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   // Submit Deliverable
   const handleSubmitDeliverable = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!deliverableUrl.trim() && !uploadedFileName) {
-      showToast('Ingresa una URL o sube un archivo');
-      return;
-    }
+    // Ronda 3: solicitar revisión no exige enlace, archivo ni comentario. A veces la revisión es
+    // solo confirmar que se hicieron cambios en una plataforma externa.
 
     // Ronda 2: entregar NUNCA completa la tarea. Pasa a «En revisión», queda un mensaje de quien
     // entregó con el enlace y se avisa al líder y al revisor; ellos aprueban o devuelven.
@@ -1201,7 +1199,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     const link = deliverableUrl.trim();
     const reviewerName = reviewer?.name || task.reviewer?.name || task.projectLead?.name;
 
-    if (onAddDeliverable) {
+    if (onAddDeliverable && (link || uploadedFileName)) {
       onAddDeliverable(task.id, {
         url: link || uploadedFileName || 'Entrega de producción',
         title: deliverableNotes.trim() || 'Entregable de producción',
@@ -1224,7 +1222,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
       authorInitials: submitterName.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase(),
       authorAvatarBg: 'bg-[#501f92]',
       timestamp: 'Ahora mismo',
-      content: `📦 Envió el entregable a revisión${reviewerName ? ` de @${reviewerName}` : ''}.${link ? `\n${link}` : uploadedFileName ? `\nArchivo: ${uploadedFileName}` : ''}${deliverableNotes.trim() ? `\n${deliverableNotes.trim()}` : ''}`,
+      content: `📦 Solicitó revisión${reviewerName ? ` a @${reviewerName}` : ''}.${link ? `\n${link}` : uploadedFileName ? `\nArchivo: ${uploadedFileName}` : ''}${deliverableNotes.trim() ? `\n${deliverableNotes.trim()}` : ''}`,
       reactions: []
     };
     const updatedMessages = [...chatMessages, deliveryMessage];
@@ -1234,7 +1232,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     setDeliverableUrl('');
     setDeliverableNotes('');
     setUploadedFileName(null);
-    showToast(`Entregable enviado a revisión${reviewerName ? ` · se avisó a ${reviewerName}` : ''}`);
+    showToast(`Revisión solicitada${reviewerName ? ` · se avisó a ${reviewerName}` : ''}`);
     setActiveTab('mensajes');
   };
 
@@ -1365,9 +1363,11 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
         onUpdateTaskStatus(task.id, 'Done');
         showToast('Tarea aprobada y marcada como Completada');
       } else {
-        logActivity('status_change', 'Estado cambiado de "In Progress" a "Review"', 'In Progress', 'Review');
-        onUpdateTaskStatus(task.id, 'Review');
-        showToast('Tarea enviada a Revisión');
+        // Ronda 3: «Solicitar revisión» abre el panel de solicitud (enlace, archivo, mensaje y @menciones,
+        // todo opcional); el estado cambia a Revisión al enviarla, aunque vaya vacía.
+        setActiveTab('entregables');
+        setTimeout(() => document.getElementById('tab-entregables-content')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+        showToast('Agrega un mensaje o enlace si quieres y envía la solicitud');
       }
     } else if (task.status === 'Review') {
       logActivity('status_change', 'Estado cambiado de "Review" a "Done" (Completada)', 'Review', 'Done');
@@ -1416,11 +1416,13 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
         {/* ========================================================= */}
         <div
           id="task-detail-header"
-          className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-[#f1f5f9] bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0"
+          className="px-4 sm:px-6 py-3 sm:py-4 border-b border-[#f1f5f9] bg-white flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 lg:gap-3 shrink-0"
         >
           {/* Left: Interactive Breadcrumbs & Title */}
           <div className="space-y-1.5 flex-1 min-w-0">
-            <div className="flex flex-wrap items-center gap-1.5 text-xs text-[#64748b]">
+            {/* Ronda 3: en celular y tablet la X va arriba a la derecha, en la línea de la ruta */}
+            <div className="flex items-start justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-1.5 text-xs text-[#64748b] min-w-0">
               <button
                 type="button"
                 onClick={() => {
@@ -1471,6 +1473,16 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                   </span>
                 </>
               )}
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Cerrar tarea"
+              title="Cerrar"
+              className="lg:hidden -mt-1 -mr-1 p-2 rounded-xl text-[#64748b] hover:text-[#0f172a] hover:bg-[#f1f5f9] transition-colors cursor-pointer shrink-0"
+            >
+              <X className="w-5 h-5" />
+            </button>
             </div>
 
             {isEditingTitle ? (
@@ -1539,7 +1551,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
           </div>
 
           {/* Right: Actions Toolbar */}
-          <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
+          <div className="flex items-center gap-2 shrink-0 self-start lg:self-center">
             {/* Timer: solo íconos (▶ / ⏸ ⏹) + 🕒 carga manual, igual en toda ECO */}
             <TimerControls
               isRunning={isRunning}
@@ -1621,7 +1633,9 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
             <button
               id="task-detail-close-btn"
               onClick={onClose}
-              className="p-2 rounded-xl text-[#64748b] hover:text-[#0f172a] hover:bg-[#f1f5f9] transition-colors cursor-pointer"
+              aria-label="Cerrar tarea"
+              title="Cerrar"
+              className="hidden lg:inline-flex p-2 rounded-xl text-[#64748b] hover:text-[#0f172a] hover:bg-[#f1f5f9] transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -2302,16 +2316,16 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                 <div id="tab-entregables-content" className="space-y-5">
                   <div className="p-4 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] space-y-4 text-xs">
                     <div>
-                      <h3 className="font-extrabold text-sm text-[#0f172a]">Entrega Formal de Trabajo</h3>
+                      <h3 className="font-extrabold text-sm text-[#0f172a]">Solicitar revisión</h3>
                       <p className="text-[11px] text-[#64748b] mt-0.5">
-                        Registra el entregable final con sus enlaces de producción o archivos para validación.
+                        Todo es opcional: agrega un enlace, un archivo o un mensaje si ayuda al revisor (por ejemplo, «ya hice los cambios en Shopify»).
                       </p>
                     </div>
 
                     <form onSubmit={handleSubmitDeliverable} className="space-y-3.5">
                       {/* URL / Enlace */}
                       <div>
-                        <label className="block font-bold text-[#334155] mb-1">URL / Enlace de Producción *</label>
+                        <label className="block font-bold text-[#334155] mb-1">Enlace del entregable (opcional)</label>
                         <div className="relative">
                           <input
                             type="url"

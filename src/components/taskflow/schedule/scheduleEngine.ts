@@ -199,8 +199,10 @@ export function planProjectSchedule(params: ScheduleInput & {
 
   // El fin real del plan (puede crecer si algún entregable necesitó el mínimo de 1 día)
   const planEnd = businessDayAt(baseline.startDate, cursor - 1);
+  // Ronda 3: la producción real también crece, para que la vista previa del «Iniciar proyecto»
+  // muestre exactamente la misma entrega que queda en el proyecto.
   const finalBaseline = planEnd > baseline.endDate
-    ? { ...baseline, endDate: planEnd, totalBusinessDays: cursor }
+    ? { ...baseline, endDate: planEnd, totalBusinessDays: cursor, productionDays: baseline.productionDays + (cursor - baseline.totalBusinessDays) }
     : baseline;
 
   return { baseline: finalBaseline, deliverables: plannedDels, tasks };

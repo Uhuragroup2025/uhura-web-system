@@ -26,7 +26,7 @@ export interface TeamMemberRow {
   isLead: boolean;
   roles: TeamRoleLine[];
   weekHours: number;       // Carga de esta semana en este proyecto
-  pendingHours: number;    // Horas asignadas en tareas no completadas
+  pendingHours: number;    // Horas por ejecutar en tareas no completadas (asignado − ejecutado)
   executedHours: number;
   tasksCount: number;
   hasCoverage: boolean;
@@ -211,7 +211,8 @@ export function buildTeamFromTasks(params: {
       row.tasksCount += hoursByUser.has(id) ? 1 : 0;
       row.executedHours += execByUser.get(id) || 0;
       row.weekHours += weekByUser.get(id) || 0;
-      if (!isDone(t)) row.pendingHours += hoursByUser.get(id) || 0;
+      // Ronda 3: pendiente = lo que falta por ejecutar de sus tareas abiertas (asignado − ejecutado, nunca negativo)
+      if (!isDone(t)) row.pendingHours += Math.max(0, (hoursByUser.get(id) || 0) - (execByUser.get(id) || 0));
     });
   });
 

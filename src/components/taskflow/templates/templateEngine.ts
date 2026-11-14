@@ -48,7 +48,7 @@ export function computeRoleBudgetsFromActivities(
     .map(([roleId, data]) => ({
       roleId,
       roleName: data.roleName,
-      quotedHours: Math.round(data.hours * 10) / 10
+      quotedHours: Math.round(data.hours * 100) / 100
     }))
     .filter((rb) => rb.quotedHours > 0)
     .sort((a, b) => b.quotedHours - a.quotedHours);
@@ -61,7 +61,7 @@ export function computeTotalHoursFromRoleBudgets(
   roleBudgets: { quotedHours: number }[]
 ): number {
   const total = roleBudgets.reduce((acc, rb) => acc + (Number(rb.quotedHours) || 0), 0);
-  return Math.round(total * 10) / 10;
+  return Math.round(total * 100) / 100;
 }
 
 /**
@@ -108,6 +108,65 @@ export function recalculateTemplateHours(template: ProductBacklogTemplate): Prod
 }
 
 /**
+ * SERVICIOS POR UNIDAD (cantidad)
+ *
+ * Una actividad de plantilla con `unit` (ej. 'post', 'PDP', 'SKU') tiene horas POR UNIDAD.
+ * En la cotización: horas = unitHours × quantity, y el título lleva la cantidad
+ * («Diseño de post (× 5 posts)»), así la tarea creada al convertir dice exactamente qué se vendió.
+ */
+const IRREGULAR_PLURALS: Record<string, string> = { mail: 'mails', banner: 'banners', post: 'posts' };
+
+export function pluralUnit(unit: string, quantity: number): string {
+  if (quantity === 1) return unit;
+  if (IRREGULAR_PLURALS[unit]) return IRREGULAR_PLURALS[unit];
+  if (unit === unit.toUpperCase()) return `${unit}s`;
+  if (/ón$/.test(unit)) return unit.replace(/ón$/, 'ones');
+  if (/[aeiouáéíóú]$/i.test(unit)) return `${unit}s`;
+  return `${unit}es`;
+}
+
+export function unitFieldsFromTemplate(act: TemplateBacklogItem): Partial<QuoteBacklogItem> {
+  if (!act.unit) return {};
+  return { unit: act.unit, unitHours: act.estimatedHours, quantity: 1, baseTitle: act.title };
+}
+
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * Nombre de un servicio o entregable por unidad según la cantidad:
+ *  «Diseño de 1 post (estático)» × 18 → «Diseño de 18 posts (estático)»
+ *  «Creativos de pauta (por creativo)» × 3 → «Creativos de pauta (× 3 creativos)»
+ *  «Formulario adicional» × 2 → «Formulario adicional (× 2 formularios)» (solo si `append`)
+ */
+export function nameForQuantity(baseName: string, unit: string, quantity: number, append = true): string {
+  const q = Math.max(1, Math.round(quantity) || 1);
+  if (q === 1 || !unit) return baseName;
+  const plural = pluralUnit(unit, q);
+  const u = escapeRegExp(unit);
+  const one = new RegExp(`(^|\\s)1 ${u}(?=$|[\\s),.])`, 'i');
+  if (one.test(baseName)) return baseName.replace(one, `$1${q} ${plural}`);
+  const per = new RegExp(`por ${u}(?=$|[\\s),.])`, 'i');
+  if (per.test(baseName)) return baseName.replace(per, `× ${q} ${plural}`);
+  return append ? `${baseName} (× ${q} ${plural})` : baseName;
+}
+
+/** Aplica una cantidad a una actividad por unidad (las demás quedan igual). */
+export function applyQuantityToItem(item: QuoteBacklogItem, quantity: number): QuoteBacklogItem {
+  if (!item.unit) return item;
+  const q = Math.max(1, Math.round(quantity) || 1);
+  const unitHours = item.unitHours ?? item.estimatedHours / (item.quantity || 1);
+  const baseTitle = item.baseTitle ?? item.title;
+  return {
+    ...item,
+    unitHours,
+    quantity: q,
+    baseTitle,
+    estimatedHours: Math.round(unitHours * q * 100) / 100,
+    title: q > 1 ? `${baseTitle} (× ${q} ${pluralUnit(item.unit, q)})` : baseTitle
+  };
+}
+
+/**
  * REGLA FUNDAMENTAL: CLONADO INDEPENDIENTE
  *
  * Clona una ProductBacklogTemplate hacia una QuoteProposal sin modificar
@@ -138,7 +197,8 @@ export function cloneTemplateToQuote(
       estimatedHours: act.estimatedHours,
       order: act.order || aIdx + 1,
       dependencies: act.dependencyIds ? [...act.dependencyIds] : [],
-      suggestedUserId: null // Regla: sin ejecutor asignado al clonar
+      suggestedUserId: null, // Regla: sin ejecutor asignado al clonar
+      ...unitFieldsFromTemplate(act)
     }));
 
     // Nivel 2: Role budgets del entregable

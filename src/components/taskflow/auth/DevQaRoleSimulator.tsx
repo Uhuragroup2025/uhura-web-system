@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { UserItem, OrbitAccessLevel } from '../types';
 import { Shield, Sparkles, ChevronUp, ChevronDown, Check, UserCheck, AlertTriangle } from 'lucide-react';
+import { setHubSpotConnected, useHubSpotConnected } from '../newbusiness/hubspotConnection';
 
 interface DevQaRoleSimulatorProps {
   currentUser: UserItem;
@@ -62,6 +63,7 @@ export const DevQaRoleSimulator: React.FC<DevQaRoleSimulatorProps> = ({
   onSelectUser
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const hubspotConnected = useHubSpotConnected();
 
   // Filtramos solo los usuarios confirmados oficialmente con accessLevel definido
   const confirmedUsers = availableUsers.filter((u) => Boolean(u.accessLevel));
@@ -139,6 +141,21 @@ export const DevQaRoleSimulator: React.FC<DevQaRoleSimulatorProps> = ({
               Herramienta exclusiva de desarrollo para probar visibilidad y guards RBAC. En producción, la identidad se obtiene de la sesión del usuario.
             </span>
           </div>
+
+          {/* Integración HubSpot: cambia qué botones ve Comercial en Cotización */}
+          <label className="flex items-center justify-between gap-2 p-2 rounded-lg bg-white/5 border border-[#261845] text-xs text-white cursor-pointer">
+            <span className="min-w-0">
+              <span className="block font-medium">HubSpot conectado</span>
+              <span className="block text-[10px] text-[#c9b7ff]/70">{hubspotConnected ? 'Crear negocios → luego marcar ganada' : 'Sin credencial: aprobación manual'}</span>
+            </span>
+            <input
+              type="checkbox"
+              checked={hubspotConnected}
+              onChange={(event) => setHubSpotConnected(event.target.checked)}
+              aria-label="Simular HubSpot conectado"
+              className="w-4 h-4 accent-[#d4ff4a] cursor-pointer shrink-0"
+            />
+          </label>
 
           <div className="space-y-1 max-h-56 overflow-y-auto custom-scrollbar pr-1">
             {simulationOptions.map((opt) => {

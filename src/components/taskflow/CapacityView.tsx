@@ -173,6 +173,38 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
     return { weekDays: days, todayIdx: currentIdx, weekRangeLabel: label };
   }, []);
 
+  // Ronda 3: demanda sin asignar (tareas abiertas sin responsable). No es carga de nadie todavía,
+  // pero es trabajo vendido que hay que cubrir: se muestra por rol cotizado en «Organización».
+  const unassignedDemand = useMemo(() => {
+    const monday = weekDays[0]?.fullDate || '';
+    const friday = weekDays[4]?.fullDate || '';
+    const byRole = new Map<string, { role: string; pending: number; week: number; tasks: number; projects: Set<string> }>();
+    tasks.forEach((t) => {
+      if (t.status === 'Done' || (t as any).completed) return;
+      const unassigned = (!t.assigneeIds || t.assigneeIds.length === 0) && (!t.assignee?.id || /^sin asignar/i.test(t.assignee?.name || ''));
+      if (!unassigned) return;
+      const pending = Math.max(0, (t.budgetedHours || 0) - (t.consumedSeconds || 0) / 3600);
+      if (pending <= 0) return;
+      const role = t.budgetedRole || t.assignee?.role || 'Sin rol cotizado';
+      const start = (t.scheduledDate || t.dueDate || '').slice(0, 10);
+      const end = (t.dueDate || t.scheduledDate || '').slice(0, 10);
+      const inWeek = Boolean(start && end && start <= friday && end >= monday);
+      const line = byRole.get(role) || { role, pending: 0, week: 0, tasks: 0, projects: new Set<string>() };
+      line.pending += pending;
+      if (inWeek) line.week += pending;
+      line.tasks += 1;
+      line.projects.add(t.projectName || t.board || '');
+      byRole.set(role, line);
+    });
+    const rows = Array.from(byRole.values()).sort((a, b) => b.pending - a.pending);
+    return {
+      rows,
+      total: rows.reduce((s, r) => s + r.pending, 0),
+      week: rows.reduce((s, r) => s + r.week, 0),
+      tasks: rows.reduce((s, r) => s + r.tasks, 0)
+    };
+  }, [tasks, weekDays]);
+
   // Helper para calcular disponibilidad de un usuario según periodo
   const getUserConfiguredCapacity = (configuredWeeklyHours: number, period: CapacityTimeframe) => {
     const dailyBase = configuredWeeklyHours / 5;
@@ -1140,6 +1172,41 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
                 </div>
               );
             })()}
+          </div>
+        </div>
+      )}
+
+      {/* Demanda sin asignar (solo Organización) */}
+      {perspective === 'org' && unassignedDemand.rows.length > 0 && (
+        <div className="bg-white p-5 rounded-2xl border border-[#fde68a] shadow-xs space-y-3" aria-label="Horas sin asignar">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-start gap-2.5">
+              <AlertTriangle className="w-4 h-4 text-[#b45309] mt-0.5 shrink-0" />
+              <div>
+                <h3 className="text-sm font-bold text-[#0f172a]">Horas sin asignar</h3>
+                <p className="text-xs text-[#64748b]">
+                  Trabajo vendido en tareas abiertas que aún no tienen responsable. No suma a la carga de nadie hasta asignarlo.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-4 text-xs shrink-0">
+              <span><strong className="text-base text-[#b45309]">{unassignedDemand.total.toFixed(1).replace('.', ',')} h</strong> en {unassignedDemand.tasks} tareas</span>
+              <span><strong className="text-base text-[#0f172a]">{unassignedDemand.week.toFixed(1).replace('.', ',')} h</strong> esta semana</span>
+            </div>
+          </div>
+          <div className="divide-y divide-[#f1f5f9] text-xs">
+            {unassignedDemand.rows.map((r) => (
+              <div key={r.role} className="flex items-center justify-between gap-3 py-2">
+                <div className="min-w-0">
+                  <span className="font-semibold text-[#0f172a]">{r.role}</span>
+                  <span className="text-[#64748b]"> · {r.tasks} tarea{r.tasks === 1 ? '' : 's'} en {r.projects.size} proyecto{r.projects.size === 1 ? '' : 's'}</span>
+                </div>
+                <span className="whitespace-nowrap text-[#334155]">
+                  <strong>{r.pending.toFixed(1).replace('.', ',')} h</strong>
+                  {r.week > 0 && <span className="text-[#b45309]"> · {r.week.toFixed(1).replace('.', ',')} h esta semana</span>}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       )}

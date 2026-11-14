@@ -122,7 +122,7 @@ export function pickPhaseId(input: ClientInputTemplate, phases: { id: string; na
     if (hit) return hit.id;
   }
   // Sin coincidencia: la primera fase que no sea la de recolección de insumos.
-  return (phases.find((p) => !/onboarding|insumo|kickoff/i.test(p.name)) || phases[0]).id;
+  return (phases.find((p) => !/onboarding|insumo|kick[ -]?off/i.test(p.name)) || phases[0]).id;
 }
 
 export interface SelectedClientInput extends ClientInputTemplate {
