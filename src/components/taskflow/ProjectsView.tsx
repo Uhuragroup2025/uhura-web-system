@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { formatDate, formatDateRange } from '../../utils/formatters';
 import { PageHeader } from './PageHeader';
 import { TaskItem, ActiveTimerState, ClientProfile, ProjectType, ProjectPhaseItem, ProjectSummaryItem, TaskPriority, UserItem, normalizeProjectType, STANDARD_UHURA_ROLES } from './types';
@@ -9,8 +9,17 @@ import { ImportBacklogModal } from './ImportBacklogModal';
 import { ProjectOverviewTab } from './projects/ProjectOverviewTab';
 import { ProjectTeamTab } from './projects/ProjectTeamTab';
 import { ProjectTasksTab } from './projects/ProjectTasksTab';
-import { initialUsers } from './mockData';
-import { computeScheduleBaseline, planProjectSchedule } from './schedule/scheduleEngine';
+import { initialUsers, initialAbsenceEvents } from './mockData';
+import { computeScheduleBaseline, planProjectSchedule, buildExistingLoad, businessDaysInRange, DEFAULT_DAILY_CAPACITY, type CapacityContext } from './schedule/scheduleEngine';
+import { matchesQuotedRole, isEligibleTeamMember, resolveServiceArea } from './newbusiness/teamCandidates';
+import { CATALOG_2026 } from './templates/catalog2026';
+import { ClientKickoffView, defaultClientAgreements, type ClientKickoffViewProps } from './projects/ClientKickoffView';
+import { computePhaseSchedule, defaultPhaseSteps, planTasksFromPhases, buildDefaultSteps, isClientReviewedPhase, notBeforeFromDependencies, removeRound, appendRound, rebalanceToTarget, productionTotal, productionMinimum, type PhaseSteps, type PhaseOverflow } from './schedule/clientTimeline';
+import { PhaseOverflowModal } from './projects/PhaseOverflowModal';
+import { openBridge, saveSnapshot, toClientViewData, clientScheduleUrl } from './projects/clientScheduleBridge';
+import { suggestLoadRebalance } from './schedule/teamLoadAdvisor';
+import { makeUserResolver, roleFit } from './projects/teamFromTasks';
+import { distributeReviewRounds } from './schedule/scheduleEngine';
 import { buildFeeCycles, contractEndDate as computeContractEnd, monthKeyOf, taskCycleKey, generateCycleTasks, daysUntil, RENEWAL_NOTICE_DAYS } from './schedule/feeCycles';
 import { ProjectNotificationsModal } from './integrations/ProjectNotificationsModal';
 import { CloseProjectModal } from './projects/CloseProjectModal';
@@ -146,18 +155,46 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   const [isCloseProjectModalOpen, setIsCloseProjectModalOpen] = useState(false);
   const [scheduleSuccessMessage, setScheduleSuccessMessage] = useState<string | null>(null);
   const [scheduleKickoffDate, setScheduleKickoffDate] = useState<string>('');
+  // Borradores de la vista «Cronograma y acuerdos» (kickoff: se guardan al iniciar; proyecto: con «Aplicar»)
+  const [phaseStepsDraft, setPhaseStepsDraft] = useState<PhaseSteps[] | null>(null);
+  const [clientContactsDraft, setClientContactsDraft] = useState<{ approver: string; backup: string } | null>(null);
+  const [agreementsDraft, setAgreementsDraft] = useState<string[] | null>(null);
+  const [approvalDraft, setApprovalDraft] = useState<{ name: string; date: string } | null | undefined>(undefined);
+  const [projectStepsDraft, setProjectStepsDraft] = useState<PhaseSteps[] | null>(null);
+  // Vista amplia para el cliente: 'kickoff' (desde Iniciar proyecto) o 'project' (proyecto ya iniciado)
+  const [clientViewMode, setClientViewMode] = useState<null | 'kickoff' | 'project'>(null);
+  // El cronograma se abre en una pestaña propia (?app=eco&cronograma=1) conectada a ECO por un canal entre
+  // pestañas; si el navegador la bloquea, se muestra como modal aquí mismo.
+  const [clientViewExternal, setClientViewExternal] = useState(false);
+  // Sugerencias de carga que el líder decidió ignorar (por tarea)
+  const [dismissedLoadTasks, setDismissedLoadTasks] = useState<string[]>([]);
+  const clientViewPropsRef = useRef<ClientKickoffViewProps | null>(null);
+  const clientBridgeRef = useRef<ReturnType<typeof openBridge> | null>(null);
+  const lastClientSnapshotRef = useRef('');
+  const clientCloseTimerRef = useRef<number | undefined>(undefined);
+  // «Cronograma cliente» / «Ver cronograma y acuerdos» se abre dentro de ECO (siempre conectado).
+  // Desde ahí, «Pestaña nueva» abre la vista aparte; si el navegador la abre en otra pestaña, queda
+  // conectada en vivo y la vista de ECO se cierra.
+  const openClientView = (mode: 'kickoff' | 'project') => {
+    setClientViewExternal(false);
+    setClientViewMode(mode);
+  };
+  const openClientViewInNewTab = (viewProps: ClientKickoffViewProps) => {
+    const data = toClientViewData(viewProps);
+    saveSnapshot(data);
+    const w = window.open(clientScheduleUrl(data), '_blank');
+    if (w) setClientViewExternal(true);
+  };
   const [scheduleDurationWeeks, setScheduleDurationWeeks] = useState<number>(4);
   const [scheduleReworkRounds, setScheduleReworkRounds] = useState<number>(2);
   const [scheduleReworkRoundDays, setScheduleReworkRoundDays] = useState<number>(5);
   const [scheduleKickoffWaitDays, setScheduleKickoffWaitDays] = useState<number>(3);
   const [scheduleContractMonths, setScheduleContractMonths] = useState<number>(6); // Fee: vigencia
   const [scheduleRollover, setScheduleRollover] = useState<'none' | 'carry_over' | 'contractual_cap'>('none'); // Fee: horas no usadas
-  const [scheduleRecalculateTasks, setScheduleRecalculateTasks] = useState<boolean>(true);
   // Ronda 2: insumos a solicitar al cliente (precargados por servicio; se crean como Dependencias)
-  const [scheduleInputs, setScheduleInputs] = useState<(ClientInputTemplate & { selected: boolean; deliverableId?: string })[]>([]);
+  const [scheduleInputs, setScheduleInputs] = useState<(ClientInputTemplate & { selected: boolean; deliverableId?: string; committedDate?: string })[]>([]);
   const [scheduleInputsLabel, setScheduleInputsLabel] = useState('');
   const [newInputTitle, setNewInputTitle] = useState('');
-  const [showRoundsEditor, setShowRoundsEditor] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'fee_monthly' | 'fixed_project' | 'internal_non_billable' | 'risk'>('all');
   const [filterClient, setFilterClient] = useState<string>('all');
@@ -279,6 +316,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             ...renewals.map((r) => ({ months: r.addedMonths, monthlyHours: r.monthlyHours }))
           ],
           rolloverPolicy: prj.rolloverPolicy,
+          rolloverOverrides: prj.rolloverOverrides,
           tasks: allProjectTasks,
           generatedKeys: (prj.monthlyCycles || []).filter((c) => c.tasksGenerated).map((c) => c.monthKey)
         });
@@ -542,6 +580,10 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   // Roles Breakdown (Vendido vs. Ejecutado por Rol)
   const rolesBreakdown = useMemo(() => {
     if (!currentProject) return [];
+    const pool = users && users.length > 0 ? users : initialUsers;
+    const resolveId = makeUserResolver(pool);
+    const userOf = (name?: string, id?: string) => pool.find((u) => u.id === (id || resolveId(name)));
+    const displayName = (name?: string, id?: string) => userOf(name, id)?.name || name || 'Sin asignar';
 
     const rolesMap: Record<string, {
       role: string;
@@ -549,6 +591,8 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
       executedHours: number;
       tasksCount: number;
       assignees: Set<string>;
+      // Por persona: horas asignadas (tareas a su nombre) y horas que registró de verdad
+      people: Map<string, { assigned: number; executed: number }>;
     }> = {};
 
     currentProject.tasks.forEach((task) => {
@@ -559,16 +603,31 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
           budgetedHours: 0,
           executedHours: 0,
           tasksCount: 0,
-          assignees: new Set<string>()
+          assignees: new Set<string>(),
+          people: new Map()
         };
       }
+      const r = rolesMap[roleName];
+      const bump = (name: string, k: 'assigned' | 'executed', h: number) => {
+        const row = r.people.get(name) || { assigned: 0, executed: 0 };
+        row[k] += h;
+        r.people.set(name, row);
+      };
 
-      rolesMap[roleName].budgetedHours += task.budgetedHours || 0;
-      rolesMap[roleName].executedHours += (task.consumedSeconds || 0) / 3600;
-      rolesMap[roleName].tasksCount += 1;
-      if (task.assignee?.name) {
-        rolesMap[roleName].assignees.add(task.assignee.name);
+      r.budgetedHours += task.budgetedHours || 0;
+      r.executedHours += (task.consumedSeconds || 0) / 3600;
+      r.tasksCount += 1;
+      const assigneeName = task.assignee?.name && task.assignee.name !== '-' ? displayName(task.assignee.name, task.assignee.id) : '';
+      if (assigneeName) {
+        r.assignees.add(assigneeName);
+        bump(assigneeName, 'assigned', task.budgetedHours || 0);
       }
+      // Quién ejecutó: los registros de tiempo; lo que no tenga registro se atribuye al asignado
+      const logs = (task.timeLogs || []).filter((l) => !l.isDeleted && l.durationSeconds > 0);
+      const logged = logs.reduce((acc, l) => acc + l.durationSeconds, 0);
+      logs.forEach((l) => bump(displayName(l.userName, l.userId), 'executed', l.durationSeconds / 3600));
+      const rest = Math.max(0, (task.consumedSeconds || 0) - logged) / 3600;
+      if (rest > 0 && assigneeName) bump(assigneeName, 'executed', rest);
     });
 
     return Object.values(rolesMap).map((r) => {
@@ -578,10 +637,14 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
         diff,
         isOverbudget: diff > 0.05,
         percent: r.budgetedHours > 0 ? Math.round((r.executedHours / r.budgetedHours) * 100) : 100,
+        peopleList: Array.from(r.people.entries()).map(([name, h]) => {
+          const u = userOf(name);
+          return { name, assigned: h.assigned, executed: h.executed, fit: u ? roleFit(u, r.role) : 'own' as const };
+        }).sort((a, b) => b.assigned - a.assigned || b.executed - a.executed),
         assigneesList: Array.from(r.assignees)
       };
     });
-  }, [currentProject]);
+  }, [currentProject, users]);
 
   const toggleCollapseFrente = (frenteName: string, defaultCollapsed: boolean = false) => {
     setCollapsedFrentes((prev) => {
@@ -679,7 +742,6 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
       const phases = (currentProject.deliverables || []).map((d) => ({ id: d.id, name: d.name }));
       setScheduleInputs(sugg.inputs.map((i) => ({ ...i, selected: true, deliverableId: pickPhaseId(i, phases) })));
       setNewInputTitle('');
-      setShowRoundsEditor(false);
       // Semanas de producción: fuente de verdad = Alcance (productionWeeks heredado de la conversión)
       const scopeWeeks = currentProject.scheduleConfig?.productionWeeks;
       if (scopeWeeks && scopeWeeks > 0) {
@@ -707,20 +769,363 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
     productionWeeks: scheduleDurationWeeks
   }), [effectiveKickoffWaitDays, scheduleReworkRounds, scheduleReworkRoundDays, scheduleDurationWeeks]);
 
+  // Compromisos del cliente: un insumo BLOQUEANTE con fecha comprometida posterior al inicio de
+  // su fase corre esa fase (y las siguientes) hasta esa fecha.
+  const deliverableNotBefore = useMemo(() => {
+    const map: Record<string, string> = {};
+    if (!askClientInputs) return map;
+    selectedScheduleInputs.forEach((i) => {
+      if (!i.blocking || !i.committedDate || !i.deliverableId) return;
+      if (!map[i.deliverableId] || i.committedDate > map[i.deliverableId]) map[i.deliverableId] = i.committedDate;
+    });
+    return map;
+  }, [askClientInputs, selectedScheduleInputs]);
+
+  // Agenda por capacidad: carga ya agendada de cada persona en sus OTROS proyectos (nueva en cada plan,
+  // porque el motor la va llenando al ubicar las tareas).
+  const buildCapacityContext = (projectTasks: TaskItem[]): CapacityContext => {
+    const ids = new Set(projectTasks.map((t) => t.id));
+    const assigneeById = new Map(projectTasks.map((t) => [t.id, t.assignee?.name && t.assignee.name !== '-' ? t.assignee.name : undefined]));
+    return {
+      assigneeOf: (taskId) => assigneeById.get(taskId),
+      existingLoad: buildExistingLoad(tasks, ids),
+      dailyCapacity: DEFAULT_DAILY_CAPACITY
+    };
+  };
+
   // Plan que se va a crear (mismo motor que «Confirmar inicio»): la vista previa usa este plan
   // para que la entrega mostrada sea la misma que queda en el proyecto (ronda 3).
+  // Pasos por defecto del arranque (los mismos para el modal, la vista del cliente y el proyecto)
+  const kickoffDefaultSteps = useMemo((): PhaseSteps[] => {
+    if (!currentProject || isCurrentProjectFee) return [];
+    const projectTasks = (((currentProject as any).allTasks || currentProject.tasks) || []) as TaskItem[];
+    const dels = currentProject.deliverables || [];
+    return buildDefaultSteps(
+      dels.map((d) => ({
+        id: d.id,
+        name: d.name,
+        hours: d.totalQuotedHours || projectTasks.filter((t) => t.deliverableId === d.id || t.frente === d.name).reduce((a, t) => a + (t.budgetedHours || 0), 0)
+      })),
+      scheduleDurationWeeks,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      {
+        // Nombres de las presentaciones según el área del servicio (Producto, Creativo, Growth)
+        area: resolveServiceArea({
+          serviceName: currentProject.name.split(' — ')[0],
+          catalog: CATALOG_2026,
+          activities: projectTasks.map((t) => ({ roleName: t.budgetedRole || t.assignee?.role || '', estimatedHours: t.budgetedHours || 0 }))
+        }),
+        serviceName: currentProject.name
+      }
+    );
+  }, [currentProject, isCurrentProjectFee, scheduleDurationWeeks]);
+
   const kickoffPlan = useMemo(() => {
     if (!currentProject || !scheduleKickoffDate || !isScheduleModalOpen) return null;
     const projectTasks = (((currentProject as any).allTasks || currentProject.tasks) || []) as TaskItem[];
-    return planProjectSchedule({
+    const dels = currentProject.deliverables || [];
+    // Respaldo para datos legados: asociar por nombre del frente si el id no coincide
+    const taskInputs = projectTasks.map((t) => {
+      const delId = dels.some((d) => d.id === t.deliverableId) ? t.deliverableId : dels.find((d) => d.name === t.frente)?.id || t.deliverableId;
+      return { id: t.id, deliverableId: delId, budgetedHours: t.budgetedHours, title: t.title };
+    });
+    const enginePlan = planProjectSchedule({
       startDate: scheduleKickoffDate,
       productionWeeks: isCurrentProjectFee ? 4 : scheduleDurationWeeks,
       config: scheduleConfigDraft,
       isFee: isCurrentProjectFee,
-      deliverables: (currentProject.deliverables || []).map((d) => ({ id: d.id, name: d.name, totalQuotedHours: d.totalQuotedHours })),
-      tasks: projectTasks.map((t) => ({ id: t.id, deliverableId: t.deliverableId, budgetedHours: t.budgetedHours }))
+      deliverables: dels.map((d) => ({ id: d.id, name: d.name, totalQuotedHours: d.totalQuotedHours })),
+      tasks: taskInputs,
+      capacity: buildCapacityContext(projectTasks),
+      deliverableNotBefore
     });
-  }, [currentProject, scheduleKickoffDate, isScheduleModalOpen, isCurrentProjectFee, scheduleDurationWeeks, scheduleConfigDraft]);
+    if (isCurrentProjectFee || dels.length === 0) return enginePlan;
+    // Proyecto único: siempre por fases (producción → QA → rondas con ajustes). Sin edición, los pasos
+    // salen del reparto automático; si se editaron en «Cronograma y acuerdos», mandan esos.
+    const steps = phaseStepsDraft || kickoffDefaultSteps;
+    const sched = computePhaseSchedule(scheduleKickoffDate, steps, deliverableNotBefore);
+    const planned = planTasksFromPhases(sched.phases, taskInputs, buildCapacityContext(projectTasks));
+    const start = sched.phases[0]?.start || enginePlan.baseline.startDate;
+    return {
+      baseline: { ...enginePlan.baseline, startDate: start, endDate: sched.endDate, totalBusinessDays: businessDaysInRange(start, sched.endDate).length },
+      deliverables: sched.phases.map((ph) => ({ id: ph.id, startDate: ph.start, endDate: ph.end, reviewRounds: ph.rounds.length })),
+      tasks: planned.tasks,
+      conflicts: planned.conflicts,
+      phases: sched.phases
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentProject, scheduleKickoffDate, isScheduleModalOpen, isCurrentProjectFee, scheduleDurationWeeks, scheduleConfigDraft, deliverableNotBefore, tasks, phaseStepsDraft, kickoffDefaultSteps]);
+
+  // Si cambian semanas, rondas o la fecha de arranque, las fases editadas se vuelven a sugerir
+  useEffect(() => { setPhaseStepsDraft(null); }, [scheduleDurationWeeks, scheduleKickoffDate, currentProject?.id]);
+
+
+  // Tareas que no caben en la agenda de su colaborador: ECO sugiere a alguien del MISMO ROL con espacio
+  // en esa ventana (la persona propuesta en el alcance pudo ocuparse desde entonces).
+  const capacitySuggestions = useMemo(() => {
+    if (!kickoffPlan || !currentProject) return [];
+    const projectTasks = (((currentProject as any).allTasks || currentProject.tasks) || []) as TaskItem[];
+    const baseLoad = buildExistingLoad(tasks, new Set(projectTasks.map((t) => t.id)));
+    const pool = (users && users.length > 0 ? users : initialUsers).filter(isEligibleTeamMember);
+    return kickoffPlan.conflicts.map((c) => {
+      const task = projectTasks.find((t) => t.id === c.taskId);
+      const role = task?.budgetedRole || task?.assignee?.role || '';
+      const days = businessDaysInRange(c.windowStart, c.windowEnd);
+      const best = pool
+        .filter((u) => u.name !== c.person && role && matchesQuotedRole(u, role))
+        .map((u) => {
+          const perDay = baseLoad.get(u.name) || new Map<string, number>();
+          const free = days.reduce((acc, d) => acc + Math.max(0, DEFAULT_DAILY_CAPACITY - (perDay.get(d) || 0)), 0);
+          return { user: u, free: Number(free.toFixed(1)) };
+        })
+        .filter((x) => x.free >= c.hours)
+        .sort((a, b) => b.free - a.free)[0];
+      return { conflict: c, task, role, suggestion: best };
+    });
+  }, [kickoffPlan, currentProject, tasks, users]);
+
+  // Datos de la vista «Cronograma y acuerdos» (cliente). Sin horas internas.
+  const buildClientViewProps = (mode: 'kickoff' | 'project'): ClientKickoffViewProps | null => {
+    if (!currentProject) return null;
+    const projectTasks = (((currentProject as any).allTasks || currentProject.tasks) || []) as TaskItem[];
+    const dels = currentProject.deliverables || [];
+    const isFee = isCurrentProjectFee;
+    const cfg = currentProject.scheduleConfig;
+    const rounds = mode === 'kickoff' ? scheduleReworkRounds : (cfg?.includedReworkRounds ?? 0);
+    const roundDays = mode === 'kickoff' ? scheduleReworkRoundDays : (cfg?.reworkRoundDays ?? 5);
+    const roundsAt = distributeReviewRounds(dels, isFee ? 0 : rounds);
+    const phaseInput = dels.map((d, i) => {
+      const planned = mode === 'kickoff' ? kickoffPlan?.deliverables.find((x) => x.id === d.id) : undefined;
+      return {
+        id: d.id,
+        name: d.name,
+        startDate: (planned?.startDate || d.startDate || '') as string,
+        endDate: (planned?.endDate || (d as { endDate?: string }).endDate || d.dueDate || '') as string,
+        reviewRounds: planned?.reviewRounds ?? (roundsAt.get(i) || 0)
+      };
+    });
+    const suggestedSteps = defaultPhaseSteps(phaseInput, roundDays);
+    const steps = mode === 'kickoff'
+      ? (phaseStepsDraft || kickoffDefaultSteps)
+      : (projectStepsDraft || currentProject.phaseSteps || suggestedSteps);
+
+    // Equipo líder: quienes ejecutan (más horas asignadas), sin el líder ni Comercial
+    const hoursByPerson = new Map<string, number>();
+    projectTasks.forEach((t) => {
+      const n = t.assignee?.name;
+      if (!n || n === '-' || n === currentProject.leadName || n === currentProject.commercialOwnerName) return;
+      if (/client relationship|comercial/i.test(t.budgetedRole || t.assignee?.role || '')) return;
+      hoursByPerson.set(n, (hoursByPerson.get(n) || 0) + (t.budgetedHours || 0));
+    });
+    // Nombres del perfil (no alias como «Paola (Lead PM)») y sin repetir al líder en «Equipo líder»
+    const peoplePool = users && users.length > 0 ? users : initialUsers;
+    const resolvePerson = makeUserResolver(peoplePool);
+    const fullName = (n?: string) => peoplePool.find((u) => u.id === resolvePerson(n))?.name || n || '';
+    const leaderFull = fullName(currentProject.leadName);
+    const teamLeads = Array.from(hoursByPerson.entries())
+      .map(([n, h]) => [fullName(n), h] as const)
+      .filter(([n]) => n && n !== leaderFull)
+      .reduce((acc, [n, h]) => acc.set(n, (acc.get(n) || 0) + h), new Map<string, number>());
+    const teamLeadNames = Array.from(teamLeads.entries()).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([n]) => n);
+
+    const clientContact = clients?.find((c) => c.name === currentProject.clientName)?.commercialInfo?.contactName || '';
+    const approver = mode === 'kickoff' ? (clientContactsDraft?.approver ?? currentProject.clientApproverName ?? clientContact) : (currentProject.clientApproverName ?? clientContact);
+    const backup = mode === 'kickoff' ? (clientContactsDraft?.backup ?? currentProject.clientApproverBackupName ?? '') : (currentProject.clientApproverBackupName ?? '');
+
+    const commitments = mode === 'kickoff'
+      ? (askClientInputs ? scheduleInputs.map((i, idx) => ({ i, idx })).filter(({ i }) => i.selected).map(({ i, idx }) => ({
+          key: String(idx),
+          title: i.title,
+          date: i.committedDate || inputExpectedDate(i.deliverableId) || '',
+          blocking: Boolean(i.blocking),
+          phase: dels.find((d) => d.id === i.deliverableId)?.name || ''
+        })) : [])
+      : (currentProject.dependencies || []).map((dep) => ({
+          key: dep.id,
+          title: dep.title,
+          date: dep.expectedDate,
+          blocking: Boolean(dep.blocking),
+          phase: dels.find((d) => d.id === dep.deliverableId)?.name || ''
+        }));
+
+    // Proyecto iniciado: insumos bloqueantes pendientes con fecha posterior al inicio de su fase corren la fase
+    const projectNotBefore: Record<string, string> = mode === 'project' ? notBeforeFromDependencies(currentProject.dependencies) : {};
+
+    const rolloverLabel = { none: 'no se acumulan', carry_over: 'pasan al mes siguiente', contractual_cap: 'pasan hasta un 25 % al mes siguiente' }[currentProject.rolloverPolicy || 'none'];
+    const approvalDays = steps.find((st) => st.rounds.length > 0)?.rounds[0]?.reviewDays ?? Math.max(1, roundDays - 2);
+    const agreements = (mode === 'kickoff' ? agreementsDraft : null) ?? currentProject.clientAgreements ?? defaultClientAgreements(isFee, rounds, approvalDays, rolloverLabel);
+
+    const startDate = mode === 'kickoff' ? (kickoffPlan?.baseline.startDate || scheduleKickoffDate) : (currentProject.startDate || '');
+
+    const viewProps: ClientKickoffViewProps = {
+      projectName: currentProject.name,
+      clientName: currentProject.clientName,
+      isFee,
+      startDate,
+      leaderName: leaderFull || currentProject.leadName,
+      teamLeads: teamLeadNames,
+      commercialName: currentProject.commercialOwnerName,
+      clientApprover: approver,
+      clientApproverBackup: backup,
+      onChangeClientContacts: (a, b) => {
+        if (mode === 'kickoff') setClientContactsDraft({ approver: a, backup: b });
+        else onUpdateProject?.({ ...currentProject, clientApproverName: a, clientApproverBackupName: b });
+      },
+      steps,
+      onChangeSteps: (next) => (mode === 'kickoff' ? setPhaseStepsDraft(next) : setProjectStepsDraft(next)),
+      notBefore: mode === 'kickoff' ? deliverableNotBefore : projectNotBefore,
+      commitments,
+      onChangeCommitmentDate: (key, date) => {
+        if (mode === 'kickoff') {
+          setScheduleInputs((prev) => prev.map((x, i) => (String(i) === key ? { ...x, committedDate: date || undefined } : x)));
+        } else {
+          onUpdateProject?.({ ...currentProject, dependencies: (currentProject.dependencies || []).map((d) => (d.id === key ? { ...d, expectedDate: date } : d)) });
+          setProjectStepsDraft((prev) => prev || steps); // un insumo bloqueante puede correr fases: permite aplicar
+        }
+      },
+      agreements,
+      clientApproval: mode === 'kickoff' ? (approvalDraft === undefined ? currentProject.clientScheduleApproval ?? null : approvalDraft) : currentProject.clientScheduleApproval ?? null,
+      onClientApproval: (approval) => (mode === 'kickoff' ? setApprovalDraft(approval) : onUpdateProject?.({ ...currentProject, clientScheduleApproval: approval })),
+      onChangeAgreements: (list) => (mode === 'kickoff' ? setAgreementsDraft(list) : onUpdateProject?.({ ...currentProject, clientAgreements: list })),
+      monthPlan: isFee ? (() => {
+        const firstKey = (currentProject.monthlyCycles || [])[0]?.monthKey;
+        const template = firstKey ? projectTasks.filter((t) => !t.cycleKey || t.cycleKey === firstKey) : projectTasks;
+        const groups = new Map<string, Set<string>>();
+        template.forEach((t) => {
+          const phase = dels.find((d) => d.id === t.deliverableId)?.name || t.frente || 'Plan del mes';
+          groups.set(phase, (groups.get(phase) || new Set<string>()).add(t.title.replace(/\s*\(\d+\)$/, '')));
+        });
+        return Array.from(groups.entries()).map(([phase, items]) => ({ phase, items: Array.from(items) }));
+      })() : undefined,
+      // Qué incluye cada fase (títulos de sus tareas, sin horas)
+      phaseSummaries: Object.fromEntries(dels.map((d) => [d.id, Array.from(new Set(projectTasks
+        .filter((t) => t.deliverableId === d.id || t.frente === d.name)
+        .map((t) => t.title.replace(/\s*\(\d+\)$/, ''))))])),
+      contractMonths: mode === 'kickoff' ? scheduleContractMonths : (currentProject.contractMonths ?? undefined),
+      onApply: mode === 'project' ? () => handleApplyPhaseSteps(steps, projectNotBefore) : undefined,
+      applyPending: mode === 'project' && projectStepsDraft !== null,
+      onClose: () => { setClientViewMode(null); setClientViewExternal(false); }
+    };
+    viewProps.onOpenInNewTab = () => openClientViewInNewTab(viewProps);
+    return viewProps;
+  };
+
+  // Canal con la pestaña «Cronograma y acuerdos»: aplica sus ediciones aquí y le devuelve la versión nueva
+  useEffect(() => {
+    if (!clientViewMode || !clientViewExternal) return;
+    const bridge = openBridge((msg) => {
+      if (msg.kind !== 'command') return;
+      const cmd = msg.cmd;
+      const p = clientViewPropsRef.current;
+      if (cmd.type === 'hello') {
+        window.clearTimeout(clientCloseTimerRef.current); // recargó la pestaña: sigue conectada
+        if (p) bridge.post({ kind: 'snapshot', data: toClientViewData(p) });
+        return;
+      }
+      if (cmd.type === 'closed') {
+        clientCloseTimerRef.current = window.setTimeout(() => { setClientViewMode(null); setClientViewExternal(false); }, 2000);
+        return;
+      }
+      if (!p) return;
+      if (cmd.type === 'contacts') p.onChangeClientContacts(cmd.approver, cmd.backup);
+      else if (cmd.type === 'steps') p.onChangeSteps(cmd.steps);
+      else if (cmd.type === 'commitmentDate') p.onChangeCommitmentDate(cmd.key, cmd.date);
+      else if (cmd.type === 'agreements') p.onChangeAgreements(cmd.list);
+      else if (cmd.type === 'approval') p.onClientApproval(cmd.approval);
+      else if (cmd.type === 'apply') p.onApply?.();
+    });
+    clientBridgeRef.current = bridge;
+    return () => {
+      bridge.post({ kind: 'snapshot', data: null }); // la pestaña queda en «no conectada»
+      bridge.close();
+      clientBridgeRef.current = null;
+      lastClientSnapshotRef.current = '';
+    };
+  }, [clientViewMode, clientViewExternal]);
+
+  // Después de cada render, si los datos cambiaron, se publican a la pestaña
+  useEffect(() => {
+    const p = clientViewPropsRef.current;
+    if (!clientViewMode || !clientViewExternal || !p || !clientBridgeRef.current) return;
+    const data = toClientViewData(p);
+    const json = JSON.stringify(data);
+    if (json === lastClientSnapshotRef.current) return;
+    lastClientSnapshotRef.current = json;
+    saveSnapshot(data);
+    clientBridgeRef.current.post({ kind: 'snapshot', data });
+  });
+
+  // Proyecto iniciado: reprograma fases y tareas abiertas con los pasos editados (no toca la línea base)
+  const handleApplyPhaseSteps = (steps: PhaseSteps[], notBefore: Record<string, string>, baseProject?: ProjectSummaryItem) => {
+    if (!currentProject || !currentProject.startDate) return;
+    const base = baseProject || currentProject;
+    const projectTasks = (((currentProject as any).allTasks || currentProject.tasks) || []) as TaskItem[];
+    const sched = computePhaseSchedule(currentProject.startDate, steps, notBefore);
+    const openTasks = projectTasks.filter((t) => !t.completed && t.status !== 'Done');
+    const planned = planTasksFromPhases(sched.phases, openTasks.map((t) => ({ id: t.id, deliverableId: t.deliverableId, budgetedHours: t.budgetedHours, title: t.title })), buildCapacityContext(openTasks));
+    const byId = new Map(sched.phases.map((ph) => [ph.id, ph]));
+    onUpdateProject?.({
+      ...base,
+      phaseSteps: steps,
+      deliverables: (base.deliverables || []).map((d) => {
+        const ph = byId.get(d.id);
+        return ph ? { ...d, startDate: ph.start, dueDate: ph.end, endDate: ph.end } as typeof d : d;
+      }),
+      endDate: sched.endDate,
+      forecastEndDate: sched.endDate
+    });
+    if (onUpdateAllTasks) {
+      onUpdateAllTasks(tasks.map((t) => {
+        const slot = planned.tasks[t.id];
+        return slot ? { ...t, date: slot.scheduledDate, startDate: slot.scheduledDate, scheduledDate: slot.scheduledDate, dueDate: slot.dueDate, dueText: `Deadline: ${formatDate(slot.dueDate)}` } : t;
+      }));
+    }
+    setProjectStepsDraft(null);
+    setScheduleSuccessMessage(`Cronograma actualizado: entrega final ${formatDate(sched.endDate)}.`);
+    setTimeout(() => setScheduleSuccessMessage(null), 5000);
+  };
+
+  // Insumo recibido DESPUÉS de su fecha: ¿corre el cronograma? Se pregunta antes de mover hitos.
+  const [lateInputPrompt, setLateInputPrompt] = useState<{ depId: string; title: string; receivedDate: string; daysLate: number; overflow: PhaseOverflow } | null>(null);
+  const handleDependencyReceived = (depId: string, updatedProject: ProjectSummaryItem) => {
+    const steps = updatedProject.phaseSteps;
+    const dep = (updatedProject.dependencies || []).find((d) => d.id === depId);
+    if (!dep || !dep.blocking || !dep.deliverableId || !steps?.length || !updatedProject.startDate || isCurrentProjectFee) return;
+    const receivedDate = (dep.receivedAt || new Date().toISOString()).slice(0, 10);
+    if (!dep.expectedDate || receivedDate <= dep.expectedDate) return;
+    const before = computePhaseSchedule(updatedProject.startDate, steps, notBeforeFromDependencies(updatedProject.dependencies));
+    const shifted = (updatedProject.dependencies || []).map((d) => (d.id === depId ? { ...d, shiftsSchedule: true } : d));
+    const after = computePhaseSchedule(updatedProject.startDate, steps, notBeforeFromDependencies(shifted));
+    if (after.endDate === before.endDate) return; // llegó tarde pero la fase aún no empezaba: no corre nada
+    const idx = Math.max(0, steps.findIndex((st) => st.id === dep.deliverableId));
+    const daysLate = businessDaysInRange(dep.expectedDate, receivedDate).filter((d) => d > dep.expectedDate).length;
+    setLateInputPrompt({
+      depId,
+      title: dep.title,
+      receivedDate,
+      daysLate,
+      overflow: { phaseIndex: idx, phaseName: steps[idx]?.name || '', productionEnd: before.phases[idx]?.productionEnd || '', extraDays: daysLate, nextSteps: steps, before, after }
+    });
+  };
+  const confirmLateInputShift = (shift: boolean) => {
+    if (!lateInputPrompt || !currentProject) { setLateInputPrompt(null); return; }
+    const deps = (currentProject.dependencies || []).map((d) => (d.id === lateInputPrompt.depId ? { ...d, shiftsSchedule: shift } : d));
+    const base = { ...currentProject, dependencies: deps };
+    if (shift && currentProject.phaseSteps) handleApplyPhaseSteps(currentProject.phaseSteps, notBeforeFromDependencies(deps), base);
+    else onUpdateProject?.(base);
+    setLateInputPrompt(null);
+  };
+
+  const handleReassignForCapacity = (taskId: string, user: UserItem) => {
+    if (!onUpdateAllTasks) return;
+    const initials = user.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase();
+    onUpdateAllTasks(tasks.map((t) => (t.id === taskId
+      ? { ...t, assignee: { ...t.assignee, id: user.id, name: user.name, initials, role: user.officialRole || t.budgetedRole || t.assignee?.role }, collaborators: [] }
+      : t)));
+  };
 
   const scheduleBreakdown = useMemo(() => {
     if (!scheduleKickoffDate) return null;
@@ -749,26 +1154,9 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
     // Todas las tareas del proyecto (por id o, en datos legados, por nombre), sin filtro de ciclo
     const projectTasks = ((currentProject as any).allTasks || currentProject.tasks) as TaskItem[];
     const projectTaskIds = new Set(projectTasks.map((t) => t.id));
-    const plan = planProjectSchedule({
-      startDate: scheduleKickoffDate,
-      // Fee: las tareas del alcance son la plantilla del PRIMER mes (≈ 4 semanas)
-      productionWeeks: isCurrentProjectFee ? 4 : scheduleDurationWeeks,
-      config: scheduleConfigDraft,
-      isFee: isCurrentProjectFee,
-      deliverables: (currentProject.deliverables || []).map((d) => ({
-        id: d.id,
-        name: d.name,
-        totalQuotedHours: d.totalQuotedHours
-      })),
-      tasks: projectTasks.map((t) => {
-        const dels = currentProject.deliverables || [];
-        // Respaldo para datos legados: asociar por nombre del frente si el id no coincide
-        const delId = dels.some((d) => d.id === t.deliverableId)
-          ? t.deliverableId
-          : dels.find((d) => d.name === t.frente)?.id || t.deliverableId;
-        return { id: t.id, deliverableId: delId, budgetedHours: t.budgetedHours };
-      })
-    });
+    // Mismo plan que la vista previa (incluye fases editadas en «Cronograma y acuerdos»)
+    const plan = kickoffPlan;
+    if (!plan) return;
     const finalStartDate = plan.baseline.startDate;
     const finalEndDate = plan.baseline.endDate;
     const plannedDelById = new Map(plan.deliverables.map((d) => [d.id, d]));
@@ -823,7 +1211,8 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                 kickoffDate: finalStartDate,
                 inputs: selectedScheduleInputs.map((i) => {
                   const planned = plan.deliverables.find((d) => d.id === i.deliverableId);
-                  return { ...i, expectedDate: planned?.startDate || finalStartDate };
+                  // Fecha que el cliente se comprometió en el kickoff; si no, el inicio de la fase
+                  return { ...i, expectedDate: i.committedDate || planned?.startDate || finalStartDate };
                 }),
                 followUpOwnerUserId:
                   users?.find((u) => u.name === currentProject.leadName)?.id || currentUser?.id || '',
@@ -832,6 +1221,11 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             ]
           : currentProject.dependencies,
       isKickedOff: true,
+      phaseSteps: isCurrentProjectFee ? currentProject.phaseSteps : (phaseStepsDraft || kickoffDefaultSteps),
+      clientApproverName: clientContactsDraft?.approver ?? currentProject.clientApproverName,
+      clientApproverBackupName: clientContactsDraft?.backup ?? currentProject.clientApproverBackupName,
+      clientAgreements: agreementsDraft ?? currentProject.clientAgreements,
+      clientScheduleApproval: approvalDraft === undefined ? currentProject.clientScheduleApproval : approvalDraft,
       scheduleConfig: isCurrentProjectFee
         ? { ...scheduleConfigDraft, includedReworkRounds: 0 }
         : scheduleConfigDraft,
@@ -842,10 +1236,12 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
       onUpdateProject(updatedProject);
     }
 
-    if ((isFirstKickoff || scheduleRecalculateTasks) && onUpdateAllTasks && projectTasks.length > 0) {
+    if (onUpdateAllTasks && projectTasks.length > 0) {
       const updatedAllTasks = tasks.map((t) => {
         const slot = projectTaskIds.has(t.id) ? plan.tasks[t.id] : undefined;
         if (!slot) return t;
+        // Reajuste de un proyecto ya iniciado: lo terminado conserva sus fechas reales
+        if (!isFirstKickoff && (t.completed || t.status === 'Done')) return t;
         return {
           ...t,
           ...(isCurrentProjectFee ? { cycleKey: t.cycleKey || feeStartKey } : {}),
@@ -923,9 +1319,11 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
         {/* Project Header Banner */}
         <div className="bg-white rounded-2xl p-5 sm:p-6 border border-[#e2e8f0] shadow-xs space-y-4">
-          <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-            <div className="space-y-1.5">
-              <div className="flex flex-wrap items-center gap-2">
+          {/* Fila 1: cliente y tipo a la izquierda, acciones a la derecha (misma línea, también en tablet).
+              Debajo, el título a todo el ancho con corte equilibrado. */}
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1.5 items-start">
+            <div className="contents">
+              <div className="flex flex-wrap items-center gap-2 col-start-1 row-start-1 self-center">
                 <span
                   onClick={() => onNavigateToClient && onNavigateToClient(currentProject.clientName)}
                   className="text-xs font-bold text-[#501f92] hover:underline cursor-pointer flex items-center gap-1"
@@ -951,13 +1349,13 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                 </span>
               </div>
               
-              <h1 className="text-2xl font-extrabold text-[#0f172a] pt-0.5 tracking-tight">{currentProject.name}</h1>
+              <h1 className="col-span-2 text-xl sm:text-2xl font-extrabold text-[#0f172a] pt-0.5 tracking-tight [text-wrap:balance] max-w-4xl">{currentProject.name}</h1>
               
-              <p className="text-xs text-[#64748b]">
+              <p className="col-span-2 text-xs text-[#64748b]">
                 Líder del proyecto: <strong className="text-[#0f172a]">{currentProject.leadName}</strong>
               </p>
               {/* Badges de Estado, Gates y Tandas */}
-              <div className="flex items-center gap-2 flex-wrap pt-1.5">
+              <div className="col-span-2 flex items-center gap-2 flex-wrap pt-1.5">
                 {/* 1. Estado Chip con la misma UI exacta de Gates y Tandas */}
                 <span
                   className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
@@ -995,7 +1393,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             </div>
 
             {/* Schedule Kickoff Action Button & Project Options Menu (siempre en la misma fila) */}
-            <div className="flex items-center gap-2 flex-nowrap min-w-0 max-w-full">
+            <div className="col-start-2 row-start-1 flex items-center justify-end gap-2 flex-wrap min-w-0">
               {isProjectCompleted ? (
                 <span className="px-4 py-2 rounded-2xl bg-[#f1f5f9] border border-[#e2e8f0] text-[#334155] text-xs font-bold">
                   🏁 Cerrado · Fin real: {formatDate(currentProject.actualEndDate || currentProject.closure?.actualEndDate)}
@@ -1008,32 +1406,37 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsScheduleModalOpen(true)}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold shadow-md hover:shadow-lg transition-all hover:scale-[1.02] cursor-pointer"
+                  className="inline-flex items-center gap-1.5 h-9 px-4 rounded-full bg-[#501f92] hover:bg-[#3d1572] text-white text-xs font-semibold whitespace-nowrap shrink-0 shadow-sm transition-colors cursor-pointer"
                   title="Fijar fecha oficial de arranque y sincronizar automáticamente los deadlines de las actividades del equipo"
                 >
-                  <Play className="w-4 h-4 fill-current text-[#d4ff4a]" />
-                  <span className="text-sm font-black tracking-tight">Iniciar proyecto</span>
+                  <Play className="w-3.5 h-3.5 fill-current text-[#d4ff4a]" />
+                  <span>Iniciar proyecto</span>
                 </button>
               ) : (
                 <button
                   type="button"
                   disabled={!canEditProject}
                   onClick={() => canEditProject && setIsScheduleModalOpen(true)}
-                  className="disabled:cursor-default flex flex-wrap md:flex-nowrap md:whitespace-nowrap items-center gap-x-2 gap-y-0.5 min-w-0 text-left px-4 py-2 rounded-2xl bg-white hover:bg-[#f8fafc] border border-[#cbd5e1] hover:border-[#501f92] text-[#0f172a] text-xs font-bold transition-all shadow-xs cursor-pointer group"
-                  title="Proyecto iniciado. Clic para ajustar fechas o recalcular cronograma"
+                  className="disabled:cursor-default inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full whitespace-nowrap shrink-0 bg-white hover:bg-[#f8fafc] border border-[#cbd5e1] hover:border-[#501f92] text-[#0f172a] text-xs font-semibold transition-colors cursor-pointer group"
+                  title="Proyecto iniciado. Clic para ajustar el arranque o recalcular el cronograma (las fechas están en la tarjeta «Cronograma»)"
                 >
-                  <Calendar className="w-3.5 h-3.5 text-[#501f92]" />
-                  <span className="text-xs text-[#334155] font-semibold">
-                    Inicio: {formatDate(currentProject.startDate)}
-                  </span>
-                  <span className="text-[11px] text-[#64748b]">
-                    · Fin: {formatDate(currentProject.endDate, 'Por definir')}
-                  </span>
+                  <span className={`w-2 h-2 rounded-full ${isProjectScheduled ? 'bg-[#8a4dff]' : 'bg-[#16a34a]'}`} aria-hidden="true" />
+                  <span className="text-xs text-[#334155] font-semibold">{isProjectScheduled ? 'Programado' : 'Iniciado'}</span>
                   {canEditProject && (
-                    <span className="text-[10px] text-[#64748b] group-hover:text-[#501f92] underline ml-1">
+                    <span className="text-[11px] text-[#64748b] group-hover:text-[#501f92] underline ml-1">
                       Ajustar
                     </span>
                   )}
+                </button>
+              )}
+              {!isProjectPendingToStart && (isCurrentProjectFee || (currentProject.deliverables || []).length > 0) && (
+                <button
+                  type="button"
+                  onClick={() => openClientView('project')}
+                  className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full border border-[#cbd5e1] bg-white hover:bg-[#faf5ff] hover:border-[#501f92] text-[#501f92] text-xs font-semibold whitespace-nowrap shrink-0 cursor-pointer"
+                  title="Cronograma, reuniones y acuerdos para mostrar al cliente (se corrige con «Ajustar»)"
+                >
+                  <Calendar className="w-3.5 h-3.5" /> Cronograma cliente
                 </button>
               )}
 
@@ -1171,6 +1574,39 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                     Bolsa {viewCycle.quotedHours}h{viewCycle.rolloverHoursIn ? ` + ${viewCycle.rolloverHoursIn}h trasladadas` : ''} · {viewCycle.executedHours}h ejecutadas
                   </span>
                 )}
+                {/* Al abrir cada mes: decidir qué pasa con las horas no usadas del mes anterior
+                    (excepción puntual; por defecto aplica la regla del contrato). */}
+                {(() => {
+                  if (!viewCycle || viewCycle.monthKey === firstKey) return null;
+                  const prevIdx = cycles.findIndex((c) => c.monthKey === viewCycle.monthKey) - 1;
+                  const prev = prevIdx >= 0 ? cycles[prevIdx] : null;
+                  if (!prev || prev.status !== 'closed') return null;
+                  const unused = Math.max(0, prev.quotedHours + (prev.rolloverHoursIn || 0) - prev.executedHours);
+                  const override = currentProject.rolloverOverrides?.[viewCycle.monthKey];
+                  const ruleLabel = { none: 'no se acumulan', carry_over: 'pasan todas', contractual_cap: 'pasan hasta 25 %' }[currentProject.rolloverPolicy || 'none'];
+                  return (
+                    <label className="flex items-center gap-2 text-[#475569]">
+                      <span>Horas no usadas de {prev.monthLabel.split(' ')[0].toLowerCase()} ({unused.toFixed(1)}h):</span>
+                      <select
+                        value={override || ''}
+                        disabled={!canEditProject || unused <= 0}
+                        onChange={(e) => {
+                          const value = e.target.value as '' | 'none' | 'carry_over' | 'contractual_cap';
+                          const next = { ...(currentProject.rolloverOverrides || {}) };
+                          if (value) next[viewCycle.monthKey] = value; else delete next[viewCycle.monthKey];
+                          onUpdateProject?.({ ...currentProject, rolloverOverrides: next });
+                        }}
+                        className="px-2 py-1 rounded-lg border border-[#cbd5e1] bg-white text-[#0f172a] font-semibold disabled:opacity-50"
+                        title="Excepción solo para este mes. Sin excepción aplica la regla del contrato."
+                      >
+                        <option value="">Regla del contrato ({ruleLabel})</option>
+                        <option value="none">Excepción: no pasan</option>
+                        <option value="carry_over">Excepción: pasan todas</option>
+                        <option value="contractual_cap">Excepción: pasan hasta 25 %</option>
+                      </select>
+                    </label>
+                  );
+                })()}
                 {canGenerate && (
                   <button
                     type="button"
@@ -1351,6 +1787,99 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
           )}
         </div>
 
+        {/* Carga del equipo (proyecto en curso): personas por encima de su jornada en los días de sus
+            tareas, con una persona del mismo rol que tiene espacio. El líder decide; nada cambia solo. */}
+        {activeTab === 'overview' && !isProjectPendingToStart && !isProjectCompleted && !isProjectArchived && (() => {
+          const projectTasks = (((currentProject as any).allTasks || currentProject.tasks) || []) as TaskItem[];
+          const pool = users && users.length > 0 ? users : initialUsers;
+          const list = suggestLoadRebalance({ projectTasks, allTasks: tasks, users: pool, absences: initialAbsenceEvents, todayIso: todayStr })
+            .filter((x) => !dismissedLoadTasks.includes(x.taskId));
+          if (list.length === 0) return null;
+          const people = Array.from(new Set(list.map((x) => x.from)));
+          const applicable = list.filter((x) => x.to);
+          return (
+            <div className="p-4 rounded-2xl bg-[#fffbeb] border border-[#fde68a] text-xs space-y-3">
+              <div className="flex items-start justify-between gap-3 flex-wrap">
+                <div>
+                  <p className="font-extrabold text-sm text-[#92400e]">Carga del equipo: {list.length} tarea{list.length === 1 ? '' : 's'} con la agenda llena</p>
+                  <p className="text-[#92400e]/80 mt-0.5">El alcance se cotizó por rol. Según todos sus proyectos, estas personas pasan su jornada en los días de estas tareas; ECO sugiere a alguien del mismo rol con espacio.</p>
+                </div>
+                {applicable.length > 1 && canEditProject && (
+                  <button type="button" onClick={() => applicable.forEach((x) => handleReassignForCapacity(x.taskId, x.to!.user))} className="shrink-0 px-3 py-1.5 rounded-lg bg-[#501f92] hover:bg-[#3d1572] text-white font-bold cursor-pointer">
+                    Aplicar las {applicable.length} sugerencias
+                  </button>
+                )}
+              </div>
+              {people.map((person) => {
+                const rows = list.filter((x) => x.from === person);
+                const peak = Math.max(...rows.map((x) => x.peakPct));
+                const roles = Array.from(new Set(rows.map((x) => x.role))).join(', ');
+                return (
+                  <div key={person} className="space-y-1.5">
+                    <p className="text-[#0f172a]"><strong>{person}</strong> {peak >= 999 ? 'está ausente esos días' : `llega al ${peak} % de su jornada`}{rows.some((x) => x.fromAbsent) && peak < 999 ? ' (tiene una ausencia esos días)' : ''} · {rows.length} tarea{rows.length === 1 ? '' : 's'} sin empezar de {roles}</p>
+                    <ul className="space-y-1.5">
+                      {rows.map((x) => (
+                        <li key={x.taskId} className="flex items-center justify-between gap-2 bg-white rounded-lg border border-[#fde68a] px-2.5 py-1.5 flex-wrap">
+                          <span className="min-w-0">
+                            <button
+                              type="button"
+                              onClick={() => { const task = projectTasks.find((t) => t.id === x.taskId); if (task) onOpenTaskDetail(task); }}
+                              className="block font-semibold text-[#0f172a] truncate hover:text-[#501f92] hover:underline cursor-pointer text-left"
+                              title="Abrir la tarea"
+                            >
+                              {x.taskTitle}
+                            </button>
+                            <span className="block text-[10.5px] text-[#64748b]">{x.hours}h · {formatDate(x.windowStart)} → {formatDate(x.windowEnd)} · {x.overHours}h por encima de su jornada</span>
+                          </span>
+                          <span className="flex items-center gap-2 shrink-0">
+                            {x.to ? (
+                              <button
+                                type="button"
+                                disabled={!canEditProject}
+                                onClick={() => handleReassignForCapacity(x.taskId, x.to!.user)}
+                                className="px-2.5 py-1 rounded-lg bg-[#501f92] hover:bg-[#3d1572] text-white text-[10.5px] font-bold cursor-pointer disabled:opacity-50"
+                                title={`${x.to.user.name} (${x.to.fit === 'affine' ? `rol afín a ${x.role}` : x.role}) tiene ${x.to.freeHours}h libres en esa ventana`}
+                              >
+                                Asignar a {x.to.user.name.split(' ')[0]}{x.to.user.name.split(' ')[1] ? ` ${x.to.user.name.split(' ')[1]}` : ''} · {x.to.freeHours}h libres
+                              </button>
+                            ) : (
+                              <span className="text-[10.5px] text-[#92400e] font-semibold">Nadie más del rol tiene espacio: mueve la fecha o habla con Dirección</span>
+                            )}
+                            {/* Elegir a mano: todas las personas activas, primero las del rol y con más espacio */}
+                            <select
+                              value=""
+                              disabled={!canEditProject}
+                              onChange={(e) => { const opt = x.options.find((o) => o.user.id === e.target.value); if (opt) handleReassignForCapacity(x.taskId, opt.user); }}
+                              className="h-7 max-w-[190px] px-2 rounded-lg border border-[#cbd5e1] bg-white text-[10.5px] font-semibold text-[#334155] cursor-pointer"
+                              aria-label={`Elegir otra persona para ${x.taskTitle}`}
+                            >
+                              <option value="">Otra persona…</option>
+                              {(['own', 'affine', 'cover'] as const).map((fit) => {
+                                const group = x.options.filter((o) => o.fit === fit);
+                                if (group.length === 0) return null;
+                                return (
+                                  <optgroup key={fit} label={fit === 'own' ? `Mismo rol (${x.role})` : fit === 'affine' ? 'Rol afín' : 'Otro rol (queda «cubre rol»)'}>
+                                    {group.map((o) => (
+                                      <option key={o.user.id} value={o.user.id}>
+                                        {o.user.name} · {o.peakPct >= 999 ? 'ausente' : `${o.freeHours}h libres`}
+                                      </option>
+                                    ))}
+                                  </optgroup>
+                                );
+                              })}
+                            </select>
+                            <button type="button" onClick={() => setDismissedLoadTasks((prev) => [...prev, x.taskId])} className="text-[10.5px] text-[#64748b] hover:text-[#0f172a] underline cursor-pointer">Ignorar</button>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
+
         {/* TAB 0: RESUMEN EJECUTIVO (OVERVIEW) */}
         {activeTab === 'overview' && (
           <ProjectOverviewTab
@@ -1382,6 +1911,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
         {/* TAB 1: TAREAS (NORMALIZADO PASO 4 - ATOMIC UNIT) */}
         {activeTab === "tasks" && (
           <ProjectTasksTab
+            onDependencyReceived={handleDependencyReceived}
             project={currentProject}
             tasks={currentProject.tasks}
             allProjects={projectsList}
@@ -1890,7 +2420,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                           <th className="py-3 px-4 text-right min-w-[100px]">HORAS COTIZADAS</th>
                           <th className="py-3 px-4 text-right min-w-[100px]">HORAS EJECUTADAS</th>
                           <th className="py-3 px-4 text-right min-w-[110px]">DESVIACIÓN (VAR)</th>
-                          <th className="py-3 px-4 min-w-[140px]">RESPONSABLES REALES</th>
+                          <th className="py-3 px-4 min-w-[220px]" title="Horas asignadas a la persona y horas que registró. Si alguien registró horas sin estar asignado o en un rol que no es el suyo, se marca">ASIGNADO · EJECUTÓ</th>
                           <th className="py-3 px-5 text-right pr-6 min-w-[120px]">SALUD / ALERTA</th>
                         </tr>
                       </thead>
@@ -1921,12 +2451,22 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                               </td>
 
                               <td className="py-3.5 px-4">
-                                <div className="flex flex-wrap gap-1">
-                                  {r.assigneesList.map((name) => (
-                                    <span key={name} className="px-2 py-0.5 rounded-lg bg-[#f1f5f9] text-[10px] font-semibold text-[#475569]">
-                                      {name}
-                                    </span>
-                                  ))}
+                                <div className="flex flex-col gap-1">
+                                  {r.peopleList.map((p) => {
+                                    const notAssigned = p.assigned === 0 && p.executed > 0;
+                                    const cover = p.fit === 'cover';
+                                    return (
+                                      <span
+                                        key={p.name}
+                                        className={`inline-flex items-center gap-1.5 w-fit px-2 py-0.5 rounded-lg text-[10px] font-semibold ${cover || notAssigned ? 'bg-[#fffbeb] text-[#92400e] border border-[#fde68a]' : 'bg-[#f1f5f9] text-[#475569]'}`}
+                                        title={notAssigned ? `${p.name} registró horas en tareas de ${r.role} sin estar asignado` : cover ? `${p.name} cubre ${r.role}: no es su rol` : undefined}
+                                      >
+                                        <span className="text-[#0f172a]">{p.name}</span>
+                                        <span className="font-mono">{p.assigned > 0 ? `${p.assigned.toFixed(1)}h asig.` : 'no asignado'} · {p.executed.toFixed(1)}h ejec.</span>
+                                        {cover && <span className="font-bold">cubre rol</span>}
+                                      </span>
+                                    );
+                                  })}
                                 </div>
                               </td>
 
@@ -2135,36 +2675,48 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
               <div className="space-y-4 text-xs">
                 {/* 1. Kickoff + semanas (o vigencia) en una sola fila */}
-                <div className="grid grid-cols-[1fr_auto] gap-3 items-end">
+                {/* Campos del arranque en una grilla simétrica: misma altura y etiqueta arriba */}
+                <div className={`grid grid-cols-1 gap-3 ${isCurrentProjectFee ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
                   <label className="space-y-1 block">
                     <span className="font-bold text-[#334155] block">Fecha del kickoff</span>
                     <input
                       type="date"
                       value={scheduleKickoffDate}
                       onChange={(e) => setScheduleKickoffDate(e.target.value)}
-                      className="w-full p-2 rounded-xl border border-[#cbd5e1] font-semibold text-xs text-[#0f172a] focus:ring-2 focus:ring-[#501f92] bg-white"
+                      className="w-full h-10 px-3 rounded-xl border border-[#cbd5e1] font-semibold text-xs text-[#0f172a] focus:ring-2 focus:ring-[#501f92] bg-white"
                     />
                   </label>
                   {isCurrentProjectFee ? (
-                    <label className="space-y-1 block">
-                      <span className="font-bold text-[#334155] block">Vigencia</span>
-                      <span className="flex items-center gap-1.5">
+                    <>
+                      <label className="space-y-1 block">
+                        <span className="font-bold text-[#334155] block">Vigencia (meses)</span>
                         <input
                           type="number"
                           min="1"
                           max="36"
                           value={scheduleContractMonths}
                           onChange={(e) => setScheduleContractMonths(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                          className="w-16 p-2 rounded-xl border border-[#cbd5e1] font-bold text-xs text-[#0f172a] bg-white"
+                          className="w-full h-10 px-3 rounded-xl border border-[#cbd5e1] font-semibold text-xs text-[#0f172a] focus:ring-2 focus:ring-[#501f92] bg-white"
                           aria-label="Vigencia del contrato en meses"
                         />
-                        <span className="text-[#64748b]">meses</span>
-                      </span>
-                    </label>
+                      </label>
+                      <label className="space-y-1 block">
+                        <span className="font-bold text-[#334155] block">Horas no usadas del mes</span>
+                        <select
+                          value={scheduleRollover}
+                          onChange={(e) => setScheduleRollover(e.target.value as 'none' | 'carry_over' | 'contractual_cap')}
+                          className="w-full h-10 px-3 rounded-xl border border-[#cbd5e1] font-semibold text-xs text-[#0f172a] focus:ring-2 focus:ring-[#501f92] bg-white"
+                        >
+                          <option value="none">No se acumulan</option>
+                          <option value="carry_over">Pasan al mes siguiente</option>
+                          <option value="contractual_cap">Pasan hasta un 25 %</option>
+                        </select>
+                      </label>
+                    </>
                   ) : (
                     <label className="space-y-1 block">
                       <span className="font-bold text-[#334155] block" title="Vienen del Alcance; cámbialas solo si hace falta">
-                        Semanas
+                        Semanas de producción
                       </span>
                       <input
                         type="number"
@@ -2172,69 +2724,93 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                         max="52"
                         value={scheduleDurationWeeks}
                         onChange={(e) => setScheduleDurationWeeks(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                        className="w-20 p-2 rounded-xl border border-[#cbd5e1] font-bold text-xs text-[#0f172a] bg-white"
+                        className="w-full h-10 px-3 rounded-xl border border-[#cbd5e1] font-semibold text-xs text-[#0f172a] focus:ring-2 focus:ring-[#501f92] bg-white"
                         aria-label="Semanas de producción"
                       />
                     </label>
                   )}
                 </div>
 
-                {/* Fee: horas no usadas del mes */}
-                {isCurrentProjectFee && (
-                  <label className="flex items-center justify-between gap-3">
-                    <span className="font-bold text-[#334155]">Horas no usadas del mes</span>
-                    <select
-                      value={scheduleRollover}
-                      onChange={(e) => setScheduleRollover(e.target.value as 'none' | 'carry_over' | 'contractual_cap')}
-                      className="p-2 rounded-xl border border-[#cbd5e1] font-bold text-xs text-[#0f172a] bg-white"
-                    >
-                      <option value="none">No se acumulan</option>
-                      <option value="carry_over">Pasan al mes siguiente</option>
-                      <option value="contractual_cap">Pasan hasta un 25 %</option>
-                    </select>
-                  </label>
-                )}
-
-                {/* Proyecto único: rondas de ajuste (vienen de la conversión), en una línea */}
-                {!isCurrentProjectFee && (
-                  <div className="flex items-center justify-between gap-2 flex-wrap text-[11px] text-[#475569]">
-                    {showRoundsEditor ? (
-                      <span className="flex items-center gap-1.5 flex-wrap">
-                        <input
-                          type="number"
-                          min="0"
-                          max="10"
-                          value={scheduleReworkRounds}
-                          onChange={(e) => setScheduleReworkRounds(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                          className="w-14 p-1.5 rounded-lg border border-[#cbd5e1] font-bold text-xs bg-white"
-                          aria-label="Rondas de ajuste incluidas"
-                        />
-                        rondas de ajuste ×
-                        <input
-                          type="number"
-                          min="0"
-                          max="15"
-                          value={scheduleReworkRoundDays}
-                          onChange={(e) => setScheduleReworkRoundDays(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                          className="w-14 p-1.5 rounded-lg border border-[#cbd5e1] font-bold text-xs bg-white"
-                          aria-label="Días hábiles por ronda"
-                        />
-                        días hábiles
-                      </span>
-                    ) : (
-                      <span>
-                        🔄 <strong>{scheduleReworkRounds}</strong> rondas de ajuste × <strong>{scheduleReworkRoundDays}</strong> días hábiles
-                      </span>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => setShowRoundsEditor((v) => !v)}
-                      className="font-semibold text-[#501f92] hover:underline cursor-pointer"
-                    >
-                      {showRoundsEditor ? 'Listo' : 'Ajustar'}
-                    </button>
-                  </div>
-                )}
+                {/* Presentaciones al cliente (misma fuente que «Ver cronograma y acuerdos»): una fila por
+                    presentación con su fase, tipo y días. Por defecto: wireframe (checkpoint), prototipo y
+                    funcionalidad; se agregan más con «Añadir». */}
+                {!isCurrentProjectFee && (() => {
+                  const steps = phaseStepsDraft || kickoffDefaultSteps;
+                  // Cambiar presentaciones no cambia la producción: siempre = semanas del alcance × 5 (si cabe)
+                  const setSteps = (next: PhaseSteps[]) => setPhaseStepsDraft(rebalanceToTarget(next, scheduleDurationWeeks * 5));
+                  const rows = steps.flatMap((st, i) => st.rounds.map((r, k) => ({ st, i, r, k })));
+                  const patchRound = (i: number, k: number, patch: Partial<PhaseSteps['rounds'][number]>) =>
+                    setSteps(steps.map((st, j) => {
+                      if (j !== i) return st;
+                      // Los ajustes son tareas dentro de la producción: subir sus días los toma de la producción
+                      const delta = patch.adjustDays !== undefined ? patch.adjustDays - (st.rounds[k].adjustDays || 0) : 0;
+                      return {
+                        ...st,
+                        productionDays: Math.max(1, st.productionDays - delta),
+                        rounds: st.rounds.map((r, m) => (m === k ? { ...r, ...patch } : r))
+                      };
+                    }));
+                  const moveToPhase = (i: number, k: number, target: number) => {
+                    if (target === i) return;
+                    const round = steps[i].rounds[k];
+                    setSteps(steps.map((st, j) => {
+                      if (j === i) return removeRound(st, k);
+                      if (j === target) return appendRound(st, round);
+                      return st;
+                    }));
+                  };
+                  const addRow = () => {
+                    const target = Math.max(0, steps.map((st) => isClientReviewedPhase(st.name)).lastIndexOf(true));
+                    setSteps(steps.map((st, j) => (j === target
+                      ? appendRound(st, { label: 'Nueva presentación', kind: 'approval', reviewDays: 3, adjustDays: 2 })
+                      : st)));
+                  };
+                  return (
+                    <div className="space-y-2">
+                      <span className="font-bold text-[#334155] block">Presentaciones al cliente</span>
+                      <div className="overflow-x-auto rounded-xl border border-[#e2e8f0]">
+                        <table className="w-full text-xs">
+                          <thead className="bg-[#f8fafc] text-[#64748b] text-left">
+                            <tr>
+                              <th className="px-2 py-1.5 font-semibold">Presentación</th>
+                              <th className="px-2 py-1.5 font-semibold">Fase</th>
+                              <th className="px-2 py-1.5 font-semibold">Tipo</th>
+                              <th className="px-2 py-1.5 font-semibold text-center text-[#92400e]" title="Días que tiene el cliente para revisar">QA cliente</th>
+                              <th className="px-2 py-1.5 font-semibold text-center" title="Ventana de las tareas de ajustes después del QA del cliente. Son tareas: ya están dentro de la producción, no suman días.">Ajustes</th>
+                              <th className="px-1 py-1.5" />
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-[#f1f5f9]">
+                            {rows.length === 0 && <tr><td colSpan={6} className="px-3 py-2 text-[#94a3b8]">Sin presentaciones: el cliente solo recibe la entrega final.</td></tr>}
+                            {rows.map(({ st, i, r, k }) => (
+                              <tr key={`${st.id}-${k}`}>
+                                <td className="px-2 py-1"><input value={r.label || st.name} onChange={(e) => patchRound(i, k, { label: e.target.value })} className="w-full min-w-[110px] h-8 px-2 rounded-lg border border-[#e2e8f0] font-semibold" aria-label="Nombre de la presentación" /></td>
+                                <td className="px-2 py-1">
+                                  <select value={i} onChange={(e) => moveToPhase(i, k, Number(e.target.value))} className="h-8 px-1 rounded-lg border border-[#e2e8f0] bg-white max-w-[130px]" aria-label="Fase de la presentación">
+                                    {steps.map((x, j) => <option key={x.id} value={j}>{x.name}</option>)}
+                                  </select>
+                                </td>
+                                <td className="px-2 py-1">
+                                  <select value={r.kind || 'approval'} onChange={(e) => patchRound(i, k, { kind: e.target.value as 'checkpoint' | 'approval' })} className="h-8 px-1 rounded-lg border border-[#e2e8f0] bg-white" aria-label="Tipo" title="Checkpoint: revisión informal, se sigue sin aprobación por correo. Aprobación: el cliente aprueba formalmente.">
+                                    <option value="checkpoint">Checkpoint</option>
+                                    <option value="approval">Aprobación</option>
+                                  </select>
+                                </td>
+                                <td className="px-2 py-1 text-center bg-[#fffbeb]/60"><input type="number" min="1" max="20" value={r.reviewDays} onChange={(e) => patchRound(i, k, { reviewDays: Math.max(1, parseInt(e.target.value, 10) || 1) })} className="w-11 h-8 px-1 rounded-lg border border-[#cbd5e1] font-bold text-xs bg-white text-center" aria-label="Días de QA del cliente" /></td>
+                                <td className="px-2 py-1 text-center"><input type="number" min="0" max="20" value={r.adjustDays} onChange={(e) => patchRound(i, k, { adjustDays: Math.max(0, parseInt(e.target.value, 10) || 0) })} className="w-11 h-8 px-1 rounded-lg border border-[#cbd5e1] font-bold text-xs bg-white text-center" aria-label="Días de ajustes internos" /></td>
+                                <td className="px-1 py-1"><button type="button" onClick={() => setSteps(steps.map((x, j) => (j === i ? removeRound(x, k) : x)))} className="p-1 rounded-md text-[#94a3b8] hover:text-[#dc2626] hover:bg-[#fef2f2] cursor-pointer" aria-label="Quitar presentación"><Trash2 className="w-3.5 h-3.5" /></button></td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <button type="button" onClick={addRow} className="w-full inline-flex items-center justify-center gap-1 h-8 rounded-xl border border-dashed border-[#c4b5fd] text-[#501f92] font-semibold hover:bg-[#faf5ff] cursor-pointer">
+                        <Plus className="w-3.5 h-3.5" /> Añadir presentación
+                      </button>
+                      <p className="text-[11px] text-[#64748b]">Días hábiles (sin fines de semana ni festivos). El QA interno y los ajustes son tareas de la producción; solo el QA del cliente suma días. Cada presentación incluye una ronda de ajustes; una adicional agrega otra ventana y se cotiza.</p>
+                    </div>
+                  );
+                })()}
 
                 {/* 2. Insumos a solicitar al cliente (solo primer arranque): se crean como Dependencias */}
                 {askClientInputs && (
@@ -2295,9 +2871,29 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                               ))}
                             </select>
                           ) : null}
-                          <span className="shrink-0 text-[10px] text-[#64748b] w-14 text-right" title="Fecha en que debe estar (inicio de la fase)">
-                            {formatDate(inputExpectedDate(inp.deliverableId))}
-                          </span>
+                          {/* Fecha que se acuerda con el cliente en vivo (por defecto: inicio de la fase) */}
+                          <input
+                            type="date"
+                            disabled={!inp.selected}
+                            value={inp.committedDate || inputExpectedDate(inp.deliverableId) || ''}
+                            onChange={(e) =>
+                              setScheduleInputs((prev) => prev.map((x, i) => (i === idx ? { ...x, committedDate: e.target.value || undefined } : x)))
+                            }
+                            className={`shrink-0 w-[118px] p-1 rounded-lg border text-[10px] bg-white disabled:opacity-40 ${
+                              inp.committedDate && inp.committedDate > (inputExpectedDate(inp.deliverableId) || '') ? 'border-[#f59e0b] text-[#b45309] font-bold' : 'border-[#e2e8f0]'
+                            }`}
+                            title={`Fecha en que el cliente lo entrega. Debe estar antes del ${formatDate(inputExpectedDate(inp.deliverableId))}; si es «Bloquea» y llega después, la fase se corre.`}
+                            aria-label={`Fecha comprometida por el cliente para ${inp.title}`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setScheduleInputs((prev) => prev.filter((_, i) => i !== idx))}
+                            className="shrink-0 p-1 rounded-md text-[#94a3b8] hover:text-[#dc2626] hover:bg-[#fef2f2] cursor-pointer"
+                            title="Quitar este insumo de la lista"
+                            aria-label={`Quitar ${inp.title}`}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </li>
                       ))}
                     </ul>
@@ -2337,7 +2933,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                       <div className="flex items-center gap-2">
                         <Calendar className="w-4 h-4 text-[#501f92] shrink-0" />
                         <div>
-                          <span className="text-[10.5px] text-[#64748b] block">Entrega (línea base)</span>
+                          <span className="text-xs text-[#64748b] block">Entrega final</span>
                           <strong className="text-[#501f92] font-bold text-xs">{formatDate(scheduleBreakdown.endDate)}</strong>
                         </div>
                       </div>
@@ -2345,29 +2941,79 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                         {scheduleBreakdown.totalBusinessDays} días hábiles
                       </span>
                     </div>
-                    <p className="text-[10.5px] text-[#475569] border-t border-[#e9d5ff] pt-2">
-                      Producción {scheduleBreakdown.productionDays} d{scheduleBreakdown.kickoffWaitDays > 0 && <> · Espera inicial {scheduleBreakdown.kickoffWaitDays} d</>}
-                      {scheduleBreakdown.reworkRounds > 0 && (
-                        <> · Rondas {scheduleBreakdown.reworkRounds} × {scheduleBreakdown.reworkRoundDays} d = {scheduleBreakdown.reworkDays} d</>
-                      )}
-                    </p>
+                    {(() => {
+                      const phs = (kickoffPlan as { phases?: { productionDays: number; qaDays: number; rounds: { approvalDays: number; adjustDays: number; workDays: number; preQaDays: number }[] }[] } | null)?.phases || [];
+                      const prod = phs.reduce((a, p) => a + p.productionDays + p.qaDays + p.rounds.reduce((x, r) => x + r.workDays + r.preQaDays + r.adjustDays, 0), 0);
+                      const client = phs.reduce((a, p) => a + p.rounds.reduce((x, r) => x + r.approvalDays, 0), 0);
+                      const target = scheduleDurationWeeks * 5;
+                      const steps = phaseStepsDraft || kickoffDefaultSteps;
+                      const min = productionMinimum(steps);
+                      return (
+                        <div className="border-t border-[#e9d5ff] pt-2 space-y-1.5">
+                          <p className="text-xs text-[#475569]">
+                            Producción <strong>{prod}</strong> de {target} ({scheduleDurationWeeks} semana{scheduleDurationWeeks === 1 ? '' : 's'}, incluye QA interno y ajustes) + QA del cliente <strong>{client}</strong> = <strong>{prod + client} días hábiles</strong>
+                          </p>
+                          {prod > target && (
+                            <p className="text-xs font-semibold text-[#b45309] bg-[#fffbeb] border border-[#fde68a] rounded-lg px-2.5 py-1.5">
+                              No cabe en {scheduleDurationWeeks} semana{scheduleDurationWeeks === 1 ? '' : 's'}: {steps.length} fases (mínimo 1 día cada una) y sus ajustes necesitan al menos {min} días. Sube las semanas o quita presentaciones.
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
 
-                {/* Cronograma de tareas + equipo, en una línea cada uno */}
-                {/* Primer arranque: las fechas de todas las tareas se programan siempre desde el kickoff.
-                    Al reprogramar un proyecto ya iniciado se puede elegir no tocar las tareas. */}
-                {currentProject.isKickedOff && (
-                  <label className="flex items-center gap-2 cursor-pointer text-[11px] text-[#334155]">
-                    <input
-                      type="checkbox"
-                      checked={scheduleRecalculateTasks}
-                      onChange={(e) => setScheduleRecalculateTasks(e.target.checked)}
-                      className="rounded text-[#501f92] focus:ring-[#501f92] cursor-pointer"
-                    />
-                    Programar las fechas de las {currentProject.deliverables?.length || 0} entregas y sus tareas desde el kickoff
-                  </label>
+                {/* Agenda por capacidad: tareas que no caben en la agenda de su colaborador */}
+                {capacitySuggestions.length > 0 && (
+                  <div className="p-3 rounded-xl bg-[#fffbeb] border border-[#fde68a] text-xs space-y-2">
+                    <p className="font-bold text-[#92400e]">
+                      {capacitySuggestions.length} tarea(s) no caben en la agenda de su colaborador
+                    </p>
+                    <p className="text-[10.5px] text-[#92400e]/80 leading-snug">
+                      ECO ubica cada tarea en el primer día de su ventana en que la persona tiene espacio (según todos sus proyectos). Estas no caben antes de su fecha límite: reasigna a alguien del mismo rol o ajusta el arranque.
+                    </p>
+                    <ul className="space-y-1.5">
+                      {capacitySuggestions.map(({ conflict, task, role, suggestion }) => (
+                        <li key={conflict.taskId} className="flex items-center justify-between gap-2 bg-white rounded-lg border border-[#fde68a] px-2.5 py-1.5">
+                          <span className="min-w-0">
+                            <span className="block font-semibold text-[#0f172a] truncate">{task?.title || 'Tarea'}</span>
+                            <span className="block text-[10px] text-[#64748b]">
+                              {conflict.person} · {conflict.hours}h · libre {conflict.freeInWindow}h entre {formatDate(conflict.windowStart)} y {formatDate(conflict.windowEnd)}
+                            </span>
+                          </span>
+                          {suggestion ? (
+                            <button
+                              type="button"
+                              onClick={() => handleReassignForCapacity(conflict.taskId, suggestion.user)}
+                              className="shrink-0 px-2 py-1 rounded-lg bg-[#501f92] text-white text-[10.5px] font-bold cursor-pointer hover:bg-[#3d1572]"
+                              title={`${suggestion.user.name} (${role}) tiene ${suggestion.free}h libres en esa ventana`}
+                            >
+                              Asignar a {suggestion.user.name.split(' ')[0]}
+                            </button>
+                          ) : (
+                            <span className="shrink-0 text-[10px] text-[#92400e] font-semibold">Sin otra persona del rol con espacio</span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 )}
+
+
+                {kickoffPlan && (isCurrentProjectFee || (currentProject.deliverables || []).length > 0) && (
+                  <button
+                    type="button"
+                    onClick={() => openClientView('kickoff')}
+                    className="w-full inline-flex items-center justify-center gap-1.5 h-9 rounded-full border border-[#501f92] text-[#501f92] bg-white hover:bg-[#faf5ff] text-xs font-semibold cursor-pointer"
+                  >
+                    <Calendar className="w-3.5 h-3.5" /> Ver cronograma y acuerdos
+                  </button>
+                )}
+
+
+                {/* Al reajustar un proyecto iniciado se reprograman siempre las tareas abiertas desde el
+                    nuevo arranque; las terminadas conservan sus fechas (antes había un check opcional). */}
               </div>
 
               {/* Botones de acción */}
@@ -2392,6 +3038,27 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             </div>
           </div>
         )}
+
+        {lateInputPrompt && (
+          <PhaseOverflowModal
+            taskTitle={lateInputPrompt.title}
+            overflow={lateInputPrompt.overflow}
+            title="Este insumo llegó tarde"
+            description={<>«{lateInputPrompt.title}» llegó el <strong>{formatDate(lateInputPrompt.receivedDate)}</strong>, {lateInputPrompt.daysLate} día{lateInputPrompt.daysLate === 1 ? '' : 's'} hábil{lateInputPrompt.daysLate === 1 ? '' : 'es'} después de lo acordado. Como bloquea «{lateInputPrompt.overflow.phaseName}», el cronograma se corre así:</>}
+            hint="Es un retraso del cliente: avísale la nueva fecha. Según los acuerdos, el segundo pago se mantiene en la fecha original si el corrimiento supera 15 días hábiles."
+            confirmLabel="Recalcular cronograma"
+            cancelLabel="Mantener fechas"
+            onExtend={() => confirmLateInputShift(true)}
+            onKeepTaskOnly={() => confirmLateInputShift(false)}
+          />
+        )}
+
+        {clientViewMode && (() => {
+          const viewProps = buildClientViewProps(clientViewMode);
+          clientViewPropsRef.current = viewProps;
+          if (!viewProps || clientViewExternal) return null; // en pestaña propia: se publica por el canal
+          return <ClientKickoffView {...viewProps} />;
+        })()}
 
         {/* Modal: Editar Información del Proyecto */}
         {isEditProjectModalOpen && (

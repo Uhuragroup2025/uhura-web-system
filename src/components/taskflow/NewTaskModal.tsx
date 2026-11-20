@@ -34,10 +34,15 @@ import { DropdownMenu } from '../ui/DropdownMenu';
 import {
   clientProjectHierarchy,
   FEE_ACTIVITY_TEMPLATES,
-  initialUsers
+  initialUsers,
+  initialAbsenceEvents
 } from './mockData';
 import { ProjectSummaryItem } from './ProjectsView';
 import { checkAssigneeAvailability } from './copilot/teamLifeEngine';
+import { CapacityAssignWarning } from './CapacityAssignWarning';
+import { canExecuteTask, roleFit, makeUserResolver } from './projects/teamFromTasks';
+
+const resolveUserId = makeUserResolver(initialUsers);
 import { UserAvatar } from './UserAvatar';
 
 export interface NewTaskModalProps {
@@ -69,7 +74,7 @@ const TEAM_MEMBERS = [
   { name: 'Melisa Gil', initials: 'MG', avatarBg: 'bg-[#d946ef]', defaultRole: 'Creative Designer' },
   { name: 'Camilo Velez', initials: 'CV', avatarBg: 'bg-[#059669]', defaultRole: 'Growth Manager' },
   { name: 'Juan Camilo Torres', initials: 'JT', avatarBg: 'bg-[#6366f1]', defaultRole: 'Creative Designer' },
-  { name: 'Alejando Florez Vargas', initials: 'AF', avatarBg: 'bg-[#06b6d4]', defaultRole: 'Creative Designer' },
+  { name: 'Diego Alejandro Flores Vargas', initials: 'DF', avatarBg: 'bg-[#06b6d4]', defaultRole: 'Creative Designer' },
   { name: 'Sara Mar L', initials: 'SM', avatarBg: 'bg-[#f43f5e]', defaultRole: 'Creative Designer' },
   { name: 'Laura Viviana Salazar Perez', initials: 'LS', avatarBg: 'bg-[#64748b]', defaultRole: 'Administrativa' }
 ];
@@ -298,9 +303,8 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
 
   // Responsable selection does NOT overwrite budgetedRole
   const handleAssigneeChange = (newAssigneeName: string) => {
-    if (!collaborators.includes(newAssigneeName)) {
-      setCollaborators([newAssigneeName, ...collaborators]);
-    }
+    // Un solo colaborador por tarea: elegir otro lo reemplaza
+    setCollaborators([newAssigneeName]);
   };
 
   // Sync default project lead
@@ -809,28 +813,30 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1 border-t border-[#e2e8f0]/80">
-              {/* Colaboradores (Multiselección) */}
+              {/* Colaborador: uno solo por tarea (acuerdo con Dirección, 17 Nov 2026). Trabajo en paralelo =
+                  duplicar la tarea desde su detalle. */}
               <div>
-                <label className="block font-bold text-[#0f172a] text-[11px] mb-1 flex items-center gap-1.5">
+                <label className="block font-bold text-[#0f172a] text-[11px] mb-1 flex items-center gap-1.5" title="Una tarea tiene un solo colaborador. Si dos personas trabajan en paralelo, duplica la tarea después de crearla.">
                   <Users className="w-3.5 h-3.5 text-[#10b981]" />
-                  <span>Colaboradores (Ejecutan) *</span>
+                  <span>Colaborador (ejecuta) *</span>
                 </label>
                 <DropdownMenu
-                  multiple={true}
-                  value={collaborators}
-                  onChange={() => {}}
-                  onMultiChange={(vals) => {
-                    if (vals.length > 0) {
-                      setCollaborators(vals);
-                    }
-                  }}
-                  options={TEAM_MEMBERS.map((m) => {
-                    const u = initialUsers.find((usr) => usr.name === m.name);
+                  value={collaborators[0] || ''}
+                  onChange={(val) => { if (val) setCollaborators([val]); }}
+                  options={TEAM_MEMBERS.filter((m) => {
+                    // Cualquier persona activa puede ser colaboradora (también Comercial y Dirección, p. ej. para QA)
+                    const id = resolveUserId(m.name);
+                    return canExecuteTask(initialUsers.find((usr) => usr.id === id));
+                  }).map((m) => {
+                    const id = resolveUserId(m.name);
+                    const u = initialUsers.find((usr) => usr.id === id);
                     const onVac = u?.vacationStatus?.onVacation;
+                    const fit = u ? roleFit(u, budgetedRole) : 'own';
+                    const fitNote = fit === 'cover' ? ' • cubre otro rol' : '';
                     return {
                       id: m.name,
                       label: m.name,
-                      sublabel: onVac ? `${m.defaultRole} • 🏖️ De vacaciones` : m.defaultRole,
+                      sublabel: `${m.defaultRole}${fitNote}${onVac ? ' • 🏖️ De vacaciones' : ''}`,
                       icon: (
                         <UserAvatar
                           name={m.name}
@@ -846,7 +852,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
                     <div className="w-full bg-white border border-[#cbd5e1] px-3 py-2 rounded-xl text-xs font-semibold text-[#0f172a] flex items-center justify-between cursor-pointer">
                       <div className="flex items-center gap-1.5 truncate">
                         {collaborators.length === 0 ? (
-                          <span className="text-[#94a3b8]">Seleccionar colaboradores...</span>
+                          <span className="text-[#94a3b8]">Seleccionar colaborador...</span>
                         ) : (
                           <div className="flex items-center gap-1 flex-wrap">
                             <span className="font-bold text-[#501f92]">
@@ -860,6 +866,21 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
                   }
                   className="w-full"
                   menuClassName="w-full z-40 max-h-56"
+                />
+                <CapacityAssignWarning
+                  personName={collaborators[0]}
+                  role={budgetedRole}
+                  start={new Date().toISOString().slice(0, 10)}
+                  due={dueDate}
+                  hours={Number(budgetedHours) || 0}
+                  tasks={existingTasks}
+                  users={initialUsers}
+                  absences={initialAbsenceEvents}
+                  onPick={(u) => {
+                    // Usa el nombre de la lista del selector si existe (mismo perfil)
+                    const m = TEAM_MEMBERS.find((tm) => resolveUserId(tm.name) === u.id);
+                    setCollaborators([m ? m.name : u.name]);
+                  }}
                 />
               </div>
 

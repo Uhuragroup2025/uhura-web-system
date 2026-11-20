@@ -177,24 +177,29 @@ export const ProjectTeamTab: React.FC<ProjectTeamTabProps> = ({
                         <span className="text-[11px] text-[#94a3b8]">Sin tareas asignadas aún</span>
                       ) : (
                         <div className="space-y-1.5">
-                          {m.roles.map((r) => (
+                          {m.roles.map((r) => {
+                            const tone = {
+                              own: { box: 'bg-[#f8fafc] border-[#f1f5f9]', dot: 'bg-[#0284c7]', tag: '', tagCls: '', title: undefined as string | undefined },
+                              affine: { box: 'bg-[#f8fafc] border-[#f1f5f9]', dot: 'bg-[#0284c7]', tag: '', tagCls: '', title: `${r.role} es un rol afín al de ${m.user.name}` },
+                              cover: { box: 'bg-[#fffbeb] border-[#fde68a]', dot: 'bg-[#f59e0b]', tag: 'cubre rol', tagCls: 'text-[#b45309]', title: `${m.user.name} cubre ${r.role}: no es su rol ni un rol afín` }
+                            }[r.fit];
+                            return (
                             <div
                               key={r.role}
-                              className={`flex items-center justify-between gap-2 p-1.5 rounded-lg border text-[11px] ${
-                                r.isCoverage ? 'bg-[#fffbeb] border-[#fde68a]' : 'bg-[#f8fafc] border-[#f1f5f9]'
-                              }`}
-                              title={r.isCoverage ? `${m.user.name} cubre el rol ${r.role}, distinto a su rol oficial` : undefined}
+                              className={`flex items-center justify-between gap-2 p-1.5 rounded-lg border text-[11px] ${tone.box}`}
+                              title={tone.title}
                             >
                               <div className="flex items-center gap-1.5 min-w-0">
-                                <span className={`w-2 h-2 rounded-full shrink-0 ${r.isCoverage ? 'bg-[#f59e0b]' : 'bg-[#0284c7]'}`} />
+                                <span className={`w-2 h-2 rounded-full shrink-0 ${tone.dot}`} />
                                 <span className="font-bold text-[#0f172a] truncate">{r.role}</span>
-                                {r.isCoverage && <span className="text-[10px] font-bold text-[#b45309] shrink-0">cubre rol</span>}
+                                {tone.tag && <span className={`text-[10px] font-bold shrink-0 ${tone.tagCls}`}>{tone.tag}</span>}
                               </div>
                               <span className="font-mono font-bold text-[#501f92] shrink-0">
                                 {r.assignedHours.toFixed(1)}h · {r.executedHours.toFixed(1)}h
                               </span>
                             </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       )}
                     </td>

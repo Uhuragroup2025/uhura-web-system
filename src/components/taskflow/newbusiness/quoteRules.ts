@@ -99,7 +99,21 @@ export const withOperationalQuote = (
     : [...opportunity.quotes, quote]
 });
 
+/** Uno o varios responsables comerciales (se guardan como nombres separados por coma o como id). */
 export const getCommercialOwnerName = (opportunity: NewBusinessOpportunity, users: UserItem[]): string => {
-  const owner = users.find((user) => user.id === opportunity.commercialOwner || user.name === opportunity.commercialOwner);
-  return owner?.status === 'Active' ? owner.name : 'Sin asignar';
+  const raw = opportunity.commercialOwner || '';
+  const whole = users.find((user) => user.id === raw || user.name === raw);
+  const owners = whole
+    ? [whole]
+    : raw.split(',').map((part) => part.trim()).filter(Boolean)
+        .map((part) => users.find((user) => user.id === part || user.name === part))
+        .filter((user): user is UserItem => Boolean(user));
+  const names = owners.filter((user) => user.status === 'Active').map((user) => user.name);
+  return names.length > 0 ? names.join(', ') : 'Sin asignar';
+};
+
+/** Todos los líderes responsables del alcance (uno o varios). */
+export const getScopeLeadNames = (opportunity: NewBusinessOpportunity, users: UserItem[]): string => {
+  const ids = opportunity.leadUserIds?.length ? opportunity.leadUserIds : [opportunity.leadUserId];
+  return users.filter((user) => ids.includes(user.id)).map((user) => user.name).join(', ') || 'Sin asignar';
 };

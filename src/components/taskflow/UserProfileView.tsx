@@ -460,10 +460,10 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
               onChange={(e) => setWorkCalendar(e.target.value as 'CO' | 'MX')}
               className="w-full px-3.5 py-2.5 bg-white border border-[#e2e8f0] rounded-xl text-xs text-[#0f172a] focus:outline-none focus:ring-2 focus:ring-[#8a4dff]"
             >
-              <option value="CO">Colombia</option>
-              <option value="MX">México</option>
+              <option value="CO">Colombia · 8:00–18:00</option>
+              <option value="MX">México · 9:00–19:00 (hora Colombia)</option>
             </select>
-            <span className="text-[10.5px] text-[#64748b] mt-1 block">Define qué festivos descuentan su capacidad.</span>
+            <span className="text-[10.5px] text-[#64748b] mt-1 block">Define los festivos que descuentan su capacidad y su horario: el recordatorio de horas sale a las 4:00 p. m. (Colombia) o 5:00 p. m. (México), hora Colombia.</span>
           </div>
           <div>
             <label className="block text-[11px] font-bold text-[#64748b] tracking-wider uppercase mb-1.5">

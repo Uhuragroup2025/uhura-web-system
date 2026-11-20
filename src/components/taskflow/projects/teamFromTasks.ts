@@ -12,13 +12,16 @@
  *    colaborador en la tarea.
  */
 import type { TaskItem, UserItem } from '../types';
+import { hasAffineRole } from '../newbusiness/teamCandidates';
 import { calculateBusinessDays, isBusinessDay } from '../health/projectHealthEngine';
 
 export interface TeamRoleLine {
   role: string;
   assignedHours: number;   // Horas cotizadas de las tareas de ese rol asignadas a la persona
   executedHours: number;   // Horas registradas por la persona en tareas de ese rol
-  isCoverage: boolean;     // La persona no tiene este rol como rol oficial
+  /** 'own' su rol · 'affine' rol afín (p. ej. Digital Designer ↔ Front-End) · 'cover' cubre otro rol (se marca) */
+  fit: RoleFit;
+  isCoverage: boolean;     // fit === 'cover' (cubre un rol que no es suyo ni afín)
 }
 
 export interface TeamMemberRow {
@@ -71,7 +74,16 @@ export function makeUserResolver(users: UserItem[]): IdResolver {
     const byFirst = users.filter((u) => norm(u.name).split(' ')[0] === first);
     if (byFirst.length === 1) return byFirst[0].id;
     const keyParts = key.split(/[\s()]+/).filter(Boolean);
-    return byFirst.find((u) => norm(u.name).split(' ').some((part, i) => i > 0 && keyParts.includes(part)))?.id;
+    const exactPart = byFirst.find((u) => norm(u.name).split(' ').some((part, i) => i > 0 && keyParts.includes(part)));
+    if (exactPart) return exactPart.id;
+    // Nombres abreviados del selector («Sara Mar L» → Sara María Lagos): cada parte es el inicio de un apellido/nombre
+    const rest = keyParts.slice(1);
+    if (rest.length === 0) return undefined;
+    const byPrefix = byFirst.filter((u) => {
+      const parts = norm(u.name).split(' ').slice(1);
+      return rest.every((k) => parts.some((p) => p.startsWith(k)));
+    });
+    return byPrefix.length === 1 ? byPrefix[0].id : undefined;
   };
 }
 
@@ -144,6 +156,29 @@ export function userHasRole(user: UserItem, role: string): boolean {
   return candidates.includes(r);
 }
 
+/**
+ * Quién ejecuta qué (19 Nov 2026, acordado con Dirección):
+ *  - Cualquier persona activa puede ser colaboradora de una tarea, también Comercial y Dirección
+ *    (p. ej. hacen el QA o gestionan algo puntual).
+ *  - La tarea es del rol cotizado. Si la persona tiene ese rol (oficial o profesional) es «su rol»;
+ *    si es un rol afín (`AFFINE_ROLE_GROUPS`, p. ej. Digital Designer ↔ Front-End Dev), es normal y no se
+ *    marca; si no, «cubre otro rol» (se marca
+ *    para que el líder lo vea, no se bloquea). Las horas cuentan para el rol cotizado y para quien las
+ *    registró, así se ve quién estaba asignado y quién ejecutó.
+ */
+export type RoleFit = 'own' | 'affine' | 'cover';
+
+export function roleFit(user: UserItem, role: string): RoleFit {
+  if (userHasRole(user, role)) return 'own';
+  if (hasAffineRole(user, role)) return 'affine';
+  return 'cover';
+}
+
+/** Para los selectores de «Colaborador»: cualquier persona activa. */
+export function canExecuteTask(user: UserItem | undefined): boolean {
+  return !user || user.status !== 'Inactive';
+}
+
 export function buildTeamFromTasks(params: {
   projectTasks: TaskItem[];
   users: UserItem[];
@@ -198,11 +233,13 @@ export function buildTeamFromTasks(params: {
     ids.forEach((id) => {
       const row = ensure(id, t.assignee?.name);
       const roles = roleMaps.get(id)!;
+      const fit = roleFit(row.user, role);
       const line = roles.get(role) || {
         role,
         assignedHours: 0,
         executedHours: 0,
-        isCoverage: !userHasRole(row.user, role)
+        fit,
+        isCoverage: fit === 'cover'
       };
       line.assignedHours += hoursByUser.get(id) || 0;
       line.executedHours += execByUser.get(id) || 0;

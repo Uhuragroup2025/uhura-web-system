@@ -56,7 +56,14 @@ export function buildFeeCycles(params: {
   tasks: TaskItem[];
   generatedKeys?: string[];
   todayIso?: string;
+  /**
+   * Excepción por mes (17 Nov 2026): al abrir un mes, el líder decide qué pasa con las horas no
+   * usadas del mes anterior. Clave = mes que RECIBE las horas (YYYY-MM). Sin excepción, aplica la
+   * política del contrato.
+   */
+  rolloverOverrides?: Record<string, FeeRolloverPolicy>;
 }): ProjectMonthlyCycle[] {
+  const policyFor = (key: string): FeeRolloverPolicy | undefined => params.rolloverOverrides?.[key] ?? params.rolloverPolicy;
   const todayKey = monthKeyOf(params.todayIso || new Date().toISOString());
   const startKey = monthKeyOf(params.contractStartDate);
   const executedBy = new Map<string, number>();
@@ -73,7 +80,8 @@ export function buildFeeCycles(params: {
       const key = addMonthsToKey(startKey, offset);
       const status: ProjectMonthlyCycle['status'] = key < todayKey ? 'closed' : key === todayKey ? 'active' : 'upcoming';
       const executed = Number((executedBy.get(key) || 0).toFixed(1));
-      const rolloverIn = params.rolloverPolicy && params.rolloverPolicy !== 'none' ? carry : 0;
+      const policyIn = policyFor(key);
+      const rolloverIn = policyIn && policyIn !== 'none' ? carry : 0;
       cycles.push({
         monthKey: key,
         monthLabel: monthLabel(key),
@@ -87,9 +95,10 @@ export function buildFeeCycles(params: {
       // Saldo que pasa al siguiente mes (solo meses cerrados)
       const available = period.monthlyHours + rolloverIn;
       const unused = status === 'closed' ? Math.max(0, available - executed) : 0;
-      carry = params.rolloverPolicy === 'carry_over'
+      const nextPolicy = policyFor(addMonthsToKey(key, 1));
+      carry = nextPolicy === 'carry_over'
         ? unused
-        : params.rolloverPolicy === 'contractual_cap'
+        : nextPolicy === 'contractual_cap'
           ? Math.min(unused, period.monthlyHours * ROLLOVER_CAP_RATIO)
           : 0;
     }

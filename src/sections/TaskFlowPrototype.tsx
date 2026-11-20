@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   OrbitView,
   TaskItem,
@@ -22,6 +22,7 @@ import {
 import { serviceDraftFromTemplate, type ScopeServiceDraft } from '../components/taskflow/newbusiness/BacklogScoper';
 import { SOWModal } from '../components/taskflow/newbusiness/SOWModal';
 import { isEligibleScopingLeader, suggestActivityOwners } from '../components/taskflow/newbusiness/teamCandidates';
+import { withUpcomingUtilization } from '../components/taskflow/schedule/teamLoadAdvisor';
 import { getOperationalQuote, withOperationalQuote } from '../components/taskflow/newbusiness/quoteRules';
 import { INITIAL_PRODUCT_BACKLOG_TEMPLATES } from '../components/taskflow/templates/templateData';
 import { TemplateLibraryView } from '../components/taskflow/templates/TemplateLibraryView';
@@ -81,6 +82,10 @@ import { LicensesView } from '../components/taskflow/assets/LicensesView';
 import type { HardwareAsset, SoftwareLicense } from '../components/taskflow/types';
 import { AccessDeniedCard } from '../components/taskflow/auth/AccessDeniedCard';
 import { DevQaRoleSimulator } from '../components/taskflow/auth/DevQaRoleSimulator';
+import { PhaseOverflowModal } from '../components/taskflow/projects/PhaseOverflowModal';
+import { normalizeProjectType } from '../components/taskflow/types';
+import { detectPhaseOverflow, notBeforeFromDependencies, planTasksFromPhases, type PhaseOverflow } from '../components/taskflow/schedule/clientTimeline';
+import { buildExistingLoad, DEFAULT_DAILY_CAPACITY } from '../components/taskflow/schedule/scheduleEngine';
 import { isEcoAppMode } from '../pwa/appMode';
 import {
   Sparkles,
@@ -98,281 +103,9 @@ import {
   FileSpreadsheet
 } from 'lucide-react';
 
+// Datos de prueba limpios (19 Nov 2026): un proyecto único en curso y un fee mensual que vence el
+// 30 Nov (para ejercitar la renovación y el arranque de diciembre). Tareas en mockData.initialTasks.
 const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
-  {
-    id: 'prj-yam-navidad',
-    code: 'YAM-NAV-01',
-    name: 'Campaña Navidad Yamaha',
-    clientId: 'cli-yamaha',
-    clientName: 'INCOLMOTOS YAMAHA S.A.',
-    taxEntityId: null, // 100% opcional, sin asignar
-    brand: 'Yamaha',
-    leadName: 'Paola (Lead PM)',
-    leadAvatarBg: 'bg-[#501f92]',
-    leadRole: 'Lead Project Manager',
-    projectType: 'fee_monthly',
-    serviceBase: 'Fee Mensual · Campaña & Social',
-    budgetedHours: 59,
-    soldHours: 59,
-    startDate: '2026-08-15',
-    endDate: '2026-12-31',
-    status: 'Activo',
-    healthStatus: 'verde',
-    healthNote: 'Consumo dentro de lo proyectado para el ciclo actual',
-    rolloverPolicy: 'carry_over',
-    currentMonthCycle: '2026-09',
-    // Contrato de ejemplo: fee de 6 meses (ciclos ago-2026 → ene-2027)
-    isKickedOff: true,
-    contractMonths: 6,
-    contractStartDate: '2026-08-01',
-    contractEndDate: '2027-01-31',
-    monthlyCycles: [
-      {
-        monthKey: '2026-08',
-        monthLabel: 'Agosto 2026',
-        quotedHours: 59,
-        executedHours: 54.5,
-        status: 'closed',
-        notes: 'Ciclo cerrado sin desvíos'
-      },
-      {
-        monthKey: '2026-09',
-        monthLabel: 'Septiembre 2026',
-        quotedHours: 59,
-        executedHours: 27.0,
-        status: 'active',
-        notes: 'Ciclo mensual en curso'
-      },
-      {
-        monthKey: '2026-10',
-        monthLabel: 'Octubre 2026',
-        quotedHours: 59,
-        executedHours: 0,
-        status: 'upcoming'
-      }
-    ],
-    deliverables: [
-      {
-        id: 'del-yam-rs',
-        projectId: 'prj-yam-navidad',
-        name: 'Redes Sociales',
-        description: 'Parrilla mensual de contenidos, copies y carruseles',
-        order: 1,
-        status: 'in_progress',
-        roleBudgets: [
-          { id: 'rb-1', roleId: 'Creative Designer', roleName: 'Creative Designer', quotedHours: 24 },
-          { id: 'rb-2', roleId: 'Community Manager', roleName: 'Community Manager', quotedHours: 4 },
-          { id: 'rb-3', roleId: 'Digital Content Specialist', roleName: 'Digital Content Specialist', quotedHours: 4 }
-        ],
-        totalQuotedHours: 32,
-        totalExecutedHours: 14.5,
-        progressPercentage: 45
-      },
-      {
-        id: 'del-yam-lp',
-        projectId: 'prj-yam-navidad',
-        name: 'Landing Page',
-        description: 'Wireframes, diseño UI y maquetación web de temporada',
-        order: 2,
-        status: 'in_progress',
-        roleBudgets: [
-          { id: 'rb-4', roleId: 'Product Lead', roleName: 'Product Lead', quotedHours: 2 },
-          { id: 'rb-5', roleId: 'Content Creator', roleName: 'Content Creator', quotedHours: 3 },
-          { id: 'rb-6', roleId: 'Digital Designer', roleName: 'Digital Designer', quotedHours: 6 },
-          { id: 'rb-7', roleId: 'Front-End Dev', roleName: 'Front-End Dev', quotedHours: 8 }
-        ],
-        totalQuotedHours: 19,
-        totalExecutedHours: 8.5,
-        progressPercentage: 44
-      },
-      {
-        id: 'del-yam-pd',
-        projectId: 'prj-yam-navidad',
-        name: 'Pauta Digital & Ads',
-        description: 'Estrategia de puja, audiencias y optimización de campañas',
-        order: 3,
-        status: 'in_progress',
-        roleBudgets: [
-          { id: 'rb-8', roleId: 'Trafficker Media', roleName: 'Trafficker Media', quotedHours: 8 }
-        ],
-        totalQuotedHours: 8,
-        totalExecutedHours: 4.0,
-        progressPercentage: 50
-      }
-    ],
-    coreTeam: [
-      { id: 'u-2', name: 'Paola Monsalve', role: 'Product Lead', avatarBg: 'bg-[#501f92]', initials: 'PM', isLead: true, weeklyAllocatedHours: 4 },
-      { id: 'u-7', name: 'Diego Cadavid', role: 'Creative Designer', avatarBg: 'bg-[#dc2626]', initials: 'DC', weeklyAllocatedHours: 12 },
-      { id: 'u-8', name: 'Sara Rivera', role: 'Community Manager', avatarBg: 'bg-[#ec4899]', initials: 'SR', weeklyAllocatedHours: 4 },
-      { id: 'u-16', name: 'Sebastián Caicedo', role: 'Trafficker Media', avatarBg: 'bg-[#10b981]', initials: 'SC', weeklyAllocatedHours: 4 }
-    ],
-    // Asignaciones nativas con soporte multirol (Paola en Gobernanza + Ejecución Digital Designer)
-    assignments: [
-      {
-        id: 'asg-yam-1',
-        projectId: 'prj-yam-navidad',
-        userId: 'u-2', // Paola Monsalve
-        roleId: 'Product Lead',
-        nature: 'governance',
-        deliverableId: null,
-        allocations: [
-          {
-            id: 'alloc-yam-1-1',
-            startDate: '2026-08-15',
-            endDate: '2026-12-31',
-            weeklyHours: 3,
-            notes: 'Dirección de proyecto, control de alcance y gestión de riesgos'
-          }
-        ],
-        isActive: true,
-        notes: 'Líder operativa'
-      },
-      {
-        id: 'asg-yam-2',
-        projectId: 'prj-yam-navidad',
-        userId: 'u-2', // Paola Monsalve en función operativa simultánea
-        roleId: 'Product Lead',
-        nature: 'core_execution',
-        deliverableId: 'del-yam-lp',
-        allocations: [
-          {
-            id: 'alloc-yam-2-1',
-            startDate: '2026-08-15',
-            endDate: '2026-10-15',
-            weeklyHours: 2,
-            notes: 'Conceptualización de wireframes y UX de la Landing Page'
-          }
-        ],
-        isActive: true,
-        notes: 'Ejecución UX'
-      },
-      {
-        id: 'asg-yam-3',
-        projectId: 'prj-yam-navidad',
-        userId: 'u-7', // Diego Cadavid
-        roleId: 'Creative Designer',
-        nature: 'core_execution',
-        deliverableId: 'del-yam-rs',
-        allocations: [
-          {
-            id: 'alloc-yam-3-1',
-            startDate: '2026-08-15',
-            endDate: '2026-12-31',
-            weeklyHours: 12,
-            notes: 'Línea gráfica y producción de parrilla mensual'
-          }
-        ],
-        isActive: true
-      },
-      {
-        id: 'asg-yam-4',
-        projectId: 'prj-yam-navidad',
-        userId: 'u-8', // Sara Rivera
-        roleId: 'Community Manager',
-        nature: 'core_execution',
-        deliverableId: 'del-yam-rs',
-        allocations: [
-          {
-            id: 'alloc-yam-4-1',
-            startDate: '2026-08-15',
-            endDate: '2026-12-31',
-            weeklyHours: 4,
-            notes: 'Gestión y calendarización en Meta Business Suite'
-          }
-        ],
-        isActive: true
-      },
-      {
-        id: 'asg-yam-5',
-        projectId: 'prj-yam-navidad',
-        userId: 'u-16', // Sebastián Caicedo
-        roleId: 'Trafficker Media',
-        nature: 'core_execution',
-        deliverableId: 'del-yam-pd',
-        allocations: [
-          {
-            id: 'alloc-yam-5-1',
-            startDate: '2026-09-01',
-            endDate: '2026-12-31',
-            weeklyHours: 4,
-            notes: 'Optimización y pauta digital de temporada'
-          }
-        ],
-        isActive: true
-      },
-      {
-        id: 'asg-yam-6',
-        projectId: 'prj-yam-navidad',
-        userId: 'u-3', // Laura Gómez
-        roleId: 'Front-End Dev',
-        nature: 'temporary_support',
-        deliverableId: 'del-yam-lp',
-        allocations: [
-          {
-            id: 'alloc-yam-6-1',
-            startDate: '2026-09-10',
-            endDate: '2026-10-10',
-            weeklyHours: 4,
-            notes: 'Soporte puntual en integración del formulario de leads'
-          }
-        ],
-        isActive: true,
-        notes: 'Refuerzo de desarrollo'
-      }
-    ],
-    // Stakeholders informados (sin rol cotizado ni cómputo de horas)
-    stakeholders: [
-      {
-        id: 'stk-yam-1',
-        projectId: 'prj-yam-navidad',
-        userId: 'u-3', // Luisa Urazán
-        titleOrDepartment: 'Client Relationship Strategist',
-        notes: 'Seguimiento de relación con Incolmotos Yamaha'
-      },
-      {
-        id: 'stk-yam-2',
-        projectId: 'prj-yam-navidad',
-        userId: 'u-1', // Ana María Giraldo
-        titleOrDepartment: 'Dirección C-Level',
-        notes: 'Supervisión de cuenta clave'
-      }
-    ],
-    // Auditoría inmutable de cambios de equipo
-    assignmentHistory: [
-      {
-        id: 'hist-yam-1',
-        projectId: 'prj-yam-navidad',
-        assignmentId: 'asg-yam-6',
-        userId: 'u-3',
-        roleId: 'Front-End Dev',
-        action: 'created',
-        previousWeeklyHours: null,
-        newWeeklyHours: 4,
-        reason: 'temporary_reinforcement',
-        notes: 'Refuerzo temporal para acelerar entrega de maquetación Landing Page',
-        affectedPeriod: '2026-W37',
-        changedByUserId: 'u-2',
-        changedByName: 'Paola Monsalve',
-        changedAt: '2026-09-08T14:30:00Z'
-      },
-      {
-        id: 'hist-yam-2',
-        projectId: 'prj-yam-navidad',
-        assignmentId: 'asg-yam-1',
-        userId: 'u-2',
-        roleId: 'Product Lead',
-        action: 'created',
-        previousWeeklyHours: null,
-        newWeeklyHours: 3,
-        reason: 'project_kickoff',
-        notes: 'Asignación inicial de liderazgo operativo y entrega',
-        affectedPeriod: '2026-W33',
-        changedByUserId: 'u-1',
-        changedByName: 'Ana María Giraldo',
-        changedAt: '2026-08-15T09:00:00Z'
-      }
-    ]
-  },
   {
     id: 'prj-battsaver-1',
     code: 'BATT-SHO-01',
@@ -384,350 +117,171 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
     leadName: 'Paola (Lead PM)',
     leadAvatarBg: 'bg-[#501f92]',
     leadRole: 'Lead Project Manager',
+    commercialOwnerName: 'Luisa Fernanda Urazán',
+    clientApproverName: 'Andrés Mejía',
+    clientApproverBackupName: 'Valentina Ríos',
     projectType: 'fixed_project',
     serviceBase: 'Ecommerce / Shopify',
-    budgetedHours: 110,
-    soldHours: 110,
-    startDate: '2026-08-15',
-    endDate: '2026-11-15',
-    baselineStartDate: '2026-08-15',
-    baselineEndDate: '2026-11-15',
-    forecastEndDate: '2026-11-20',
+    budgetedHours: 100,
+    soldHours: 100,
+    isKickedOff: true,
+    startDate: '2026-11-03',
+    endDate: '2026-12-18',
+    baselineStartDate: '2026-11-03',
+    baselineEndDate: '2026-12-18',
+    forecastEndDate: '2026-12-18',
     scheduleConfig: {
       clientKickoffWaitDays: 3,
-      includedReworkRounds: 2
+      includedReworkRounds: 1,
+      reworkRoundDays: 5
     },
+    // Presentaciones al cliente (cronograma acordado en el kickoff): checkpoint de wireframes,
+    // aprobación del prototipo y de la tienda en staging. Entrega final: 18 Dic.
+    phaseSteps: [
+      { id: 'del-batt-1', name: 'Discovery & Arquitectura', productionDays: 4, qaDays: 0, rounds: [] },
+      { id: 'del-batt-2', name: 'UI/UX & Prototipado', productionDays: 4, qaDays: 0, rounds: [
+        { label: 'Wireframes', kind: 'checkpoint', reviewDays: 1, adjustDays: 0, workDays: 0, qaDays: 0 },
+        { label: 'Prototipo', kind: 'approval', reviewDays: 3, adjustDays: 2, workDays: 5, qaDays: 1 }
+      ] },
+      { id: 'del-batt-3', name: 'Implementación Shopify', productionDays: 6, qaDays: 1, rounds: [
+        { label: 'Tienda en staging', kind: 'approval', reviewDays: 2, adjustDays: 1, workDays: 0, qaDays: 0 }
+      ] },
+      { id: 'del-batt-4', name: 'QA & Salida', productionDays: 2, qaDays: 0, rounds: [] }
+    ],
     dependencies: [
       {
         id: 'dep-batt-1',
         projectId: 'prj-battsaver-1',
-        title: 'Manual de Identidad y Paleta Gráfica',
+        deliverableId: 'del-batt-2',
+        title: 'Manual de marca y fotos de producto',
         type: 'client_input',
         ownerType: 'client',
         followUpOwnerUserId: 'u-3',
-        followUpOwnerName: 'Luisa Urazán',
-        requestedAt: '2026-08-16',
-        expectedDate: '2026-08-20',
-        completedAt: '2026-08-19',
-        receivedAt: '2026-08-19',
+        followUpOwnerName: 'Luisa Fernanda Urazán',
+        requestedAt: '2026-11-03',
+        expectedDate: '2026-11-06',
+        completedAt: '2026-11-05',
+        receivedAt: '2026-11-05',
         status: 'received',
         blocking: true
       },
       {
         id: 'dep-batt-2',
         projectId: 'prj-battsaver-1',
-        title: 'Aprobación ronda 1 (UI Figma Prototipo)',
-        type: 'approval',
-        ownerType: 'client',
-        followUpOwnerUserId: 'u-3',
-        followUpOwnerName: 'Luisa Urazán',
-        requestedAt: '2026-09-20',
-        expectedDate: '2026-09-26',
-        status: 'pending',
-        blocking: true,
-        lastFollowUpAt: '2026-09-29T11:00:00Z',
-        followUpNotes: 'Seguimiento registrado ayer por Luisa: el cliente revisa con gerencia general'
-      },
-      {
-        id: 'dep-batt-3',
-        projectId: 'prj-battsaver-1',
-        title: 'Credenciales pasarela Wompi / Shopify',
+        deliverableId: 'del-batt-3',
+        title: 'Credenciales de Shopify y Wompi',
         type: 'access',
         ownerType: 'client',
-        followUpOwnerUserId: 'u-8',
-        followUpOwnerName: 'Catalina Tejada',
-        requestedAt: '2026-09-28',
-        expectedDate: '2026-10-08',
+        followUpOwnerUserId: 'u-3',
+        followUpOwnerName: 'Luisa Fernanda Urazán',
+        requestedAt: '2026-11-03',
+        expectedDate: '2026-11-27',
         status: 'pending',
         blocking: true
       }
     ],
-    reworkRounds: [
-      {
-        id: 'rw-batt-1',
-        projectId: 'prj-battsaver-1',
-        roundNumber: 1,
-        cause: 'client_adjustment',
-        requestedAt: '2026-09-22',
-        completedAt: '2026-09-24',
-        estimatedHours: 4,
-        actualHours: 4.5,
-        note: 'Ajuste en paleta de botones de checkout y tipografía de banners',
-        createdByUserId: 'u-3',
-        createdByName: 'Luisa Urazán'
-      }
-    ],
-    scheduleHistory: [
-      {
-        id: 'sch-batt-1',
-        projectId: 'prj-battsaver-1',
-        previousForecastEndDate: '2026-11-15',
-        newForecastEndDate: '2026-11-20',
-        deltaBusinessDays: 3,
-        cause: 'client_approval_delay',
-        dependencyId: 'dep-batt-2',
-        confirmedByUserId: 'u-2',
-        confirmedByName: 'Paola Monsalve',
-        note: 'Espera de validación directiva en la ronda 1',
-        createdAt: '2026-09-26T16:00:00Z'
-      }
-    ],
     status: 'Activo',
-    healthStatus: 'amarillo',
-    healthNote: 'Backlog habilitado: Discovery (14h), UX/UI (36h), Implementación (48h), QA (12h)',
+    healthStatus: 'verde',
+    healthNote: 'Discovery cerrado; diseño en curso',
     deliverables: [
       {
         id: 'del-batt-1',
         projectId: 'prj-battsaver-1',
         name: 'Discovery & Arquitectura',
-        description: 'Flujos de compra y arquitectura de catálogo',
+        description: 'Kickoff, flujos de compra y arquitectura del catálogo',
         order: 1,
         status: 'completed',
-        roleBudgets: [{ id: 'rb-b1', roleId: 'Product Lead', roleName: 'Product Lead', quotedHours: 14 }],
-        totalQuotedHours: 14,
-        totalExecutedHours: 14,
+        startDate: '2026-11-03',
+        dueDate: '2026-11-06',
+        roleBudgets: [
+          { id: 'rb-b1a', roleId: 'Client Relationship Strategist', roleName: 'Client Relationship Strategist', quotedHours: 2 },
+          { id: 'rb-b1b', roleId: 'Product Lead', roleName: 'Product Lead', quotedHours: 8 }
+        ],
+        totalQuotedHours: 10,
         progressPercentage: 100
       },
       {
         id: 'del-batt-2',
         projectId: 'prj-battsaver-1',
         name: 'UI/UX & Prototipado',
-        description: 'Diseño en Figma de vistas desktop y mobile',
+        description: 'Wireframes, UI kit, piezas gráficas y prototipo navegable',
         order: 2,
         status: 'in_progress',
-        roleBudgets: [{ id: 'rb-b2', roleId: 'Digital Designer', roleName: 'Digital Designer', quotedHours: 36 }],
-        totalQuotedHours: 36,
-        totalExecutedHours: 22,
-        progressPercentage: 60
+        startDate: '2026-11-09',
+        dueDate: '2026-12-01',
+        roleBudgets: [
+          { id: 'rb-b2a', roleId: 'Digital Designer', roleName: 'Digital Designer', quotedHours: 34 },
+          { id: 'rb-b2b', roleId: 'Creative Designer', roleName: 'Creative Designer', quotedHours: 10 }
+        ],
+        totalQuotedHours: 44,
+        progressPercentage: 45
       },
       {
         id: 'del-batt-3',
         projectId: 'prj-battsaver-1',
-        name: 'Implementación Shopify Dev',
-        description: 'Configuración de Liquid, checkout y pasarelas',
+        name: 'Implementación Shopify',
+        description: 'Tema, checkout, pasarela de pagos y carga del catálogo',
         order: 3,
         status: 'pending',
-        roleBudgets: [{ id: 'rb-b3', roleId: 'Front-End Dev', roleName: 'Front-End Dev', quotedHours: 48 }],
-        totalQuotedHours: 48,
-        totalExecutedHours: 0,
+        startDate: '2026-12-02',
+        dueDate: '2026-12-16',
+        roleBudgets: [
+          { id: 'rb-b3a', roleId: 'Front-End Dev', roleName: 'Front-End Dev', quotedHours: 28 },
+          { id: 'rb-b3b', roleId: 'Digital Content Specialist', roleName: 'Digital Content Specialist', quotedHours: 8 }
+        ],
+        totalQuotedHours: 36,
         progressPercentage: 0
       },
       {
         id: 'del-batt-4',
         projectId: 'prj-battsaver-1',
-        name: 'QA, Testing & Salida',
-        description: 'Pruebas de pago, inventario y capacitación',
+        name: 'QA & Salida',
+        description: 'QA de compra, salida a producción y capacitación',
         order: 4,
         status: 'pending',
-        roleBudgets: [{ id: 'rb-b4', roleId: 'Product Lead', roleName: 'Product Lead', quotedHours: 12 }],
-        totalQuotedHours: 12,
-        totalExecutedHours: 0,
+        startDate: '2026-12-17',
+        dueDate: '2026-12-18',
+        roleBudgets: [{ id: 'rb-b4', roleId: 'Product Lead', roleName: 'Product Lead', quotedHours: 10 }],
+        totalQuotedHours: 10,
         progressPercentage: 0
       }
-    ],
-    coreTeam: [
-      { id: 'u-paola', name: 'Paola Monsalve', role: 'Product Lead', avatarBg: 'bg-[#501f92]', initials: 'PM', isLead: true, weeklyAllocatedHours: 4 },
-      { id: 'u-oscar', name: 'Oscar Cerpa', role: 'Front-End Dev', avatarBg: 'bg-[#f59e0b]', initials: 'OC', weeklyAllocatedHours: 8 },
-      { id: 'u-catalina', name: 'Catalina Tejada', role: 'Directora Comercial', avatarBg: 'bg-[#7c3aed]', initials: 'CT', weeklyAllocatedHours: 15 },
-      { id: 'u-laura', name: 'Laura Isabel Gómez', role: 'Digital Designer', avatarBg: 'bg-[#0284c7]', initials: 'LG', weeklyAllocatedHours: 18 }
     ]
   },
   {
-    id: 'prj-uhura-orbit',
-    code: 'UHU-ORB-03',
-    name: 'ECO 3.0 · Sistema Operativo Uhura',
-    clientId: 'cli-uhura-internal',
-    clientName: 'UHURA Group Internal',
+    id: 'prj-yam-fee',
+    code: 'YAM-FEE-01',
+    name: 'Fee mensual Contenido y Social · Yamaha',
+    clientId: 'cli-yamaha',
+    clientName: 'INCOLMOTOS YAMAHA S.A.',
     taxEntityId: null,
-    brand: 'UHURA Group',
+    brand: 'Yamaha',
     leadName: 'Paola (Lead PM)',
     leadAvatarBg: 'bg-[#501f92]',
     leadRole: 'Lead Project Manager',
-    projectType: 'internal_non_billable',
-    serviceBase: 'Desarrollo de Producto Interno',
-    budgetedHours: 0,
-    soldHours: 0,
-    startDate: '2026-06-01',
-    endDate: '2026-12-31',
-    status: 'Activo',
-    healthStatus: 'verde',
-    healthNote: 'Iniciativa interna estratégica sin techo comercial (0h cotizadas válido)',
-    deliverables: [
-      {
-        id: 'del-orb-core',
-        projectId: 'prj-uhura-orbit',
-        name: 'Arquitectura & Módulos Core',
-        description: 'Modelado de Cliente, Proyecto, Tareas y Capacidad',
-        order: 1,
-        status: 'in_progress',
-        roleBudgets: [{ id: 'rb-oc1', roleId: 'Product Lead', roleName: 'Product Lead', quotedHours: 0 }],
-        totalQuotedHours: 0,
-        totalExecutedHours: 42,
-        progressPercentage: 65
-      },
-      {
-        id: 'del-orb-ux',
-        projectId: 'prj-uhura-orbit',
-        name: 'Diseño de Interfaz & Componentes UI',
-        description: 'Design System de ECO y ergonomía operativa',
-        order: 2,
-        status: 'in_progress',
-        roleBudgets: [{ id: 'rb-oc2', roleId: 'Product Lead', roleName: 'Product Lead', quotedHours: 0 }],
-        totalQuotedHours: 0,
-        totalExecutedHours: 28,
-        progressPercentage: 70
-      }
-    ],
-    coreTeam: [
-      { id: 'u-paola', name: 'Paola Monsalve', role: 'Product Lead', avatarBg: 'bg-[#501f92]', initials: 'PM', isLead: true, weeklyAllocatedHours: 5 },
-      { id: 'u-oscar', name: 'Oscar Cerpa', role: 'Front-End Dev', avatarBg: 'bg-[#f59e0b]', initials: 'OC', weeklyAllocatedHours: 10 }
-    ]
-  },
-  {
-    id: 'prj-1',
-    name: 'Fee Mantenimiento Q3 · Tuya',
-    clientId: 'cli-tuya',
-    clientName: 'TUYA S.A.',
-    brand: 'Tuya',
-    leadName: 'Paola (Lead PM)',
-    leadAvatarBg: 'bg-[#501f92]',
-    projectType: 'fee_monthly',
-    serviceBase: 'Mantenimiento Web',
-    budgetedHours: 45,
-    startDate: '2026-07-01',
-    endDate: '2026-09-30',
-    status: 'Activo',
-    healthStatus: 'verde',
-    healthNote: 'Horas y entregas en presupuesto',
-    rolloverPolicy: 'none',
-    deliverables: [
-      {
-        id: 'del-tuya-1',
-        projectId: 'prj-1',
-        name: 'Soporte Web & Ajustes',
-        order: 1,
-        status: 'in_progress',
-        roleBudgets: [{ id: 'rb-t1', roleId: 'Front-End Dev', roleName: 'Front-End Dev', quotedHours: 45 }]
-      }
-    ]
-  },
-  {
-    id: 'prj-2',
-    name: 'Pauta & Growth Q3 · Flamingo',
-    clientId: 'cli-flamingo',
-    clientName: 'FLAMINGO S.A.S.',
-    brand: 'Flamingo',
-    leadName: 'Camilo Velez',
-    leadAvatarBg: 'bg-[#059669]',
-    projectType: 'fee_monthly',
-    serviceBase: 'Paid Media & Ads Performance',
-    budgetedHours: 60,
-    startDate: '2026-07-01',
-    endDate: '2026-09-30',
-    status: 'Activo',
-    healthStatus: 'verde',
-    healthNote: 'Campaña activa con ROAS positivo',
-    rolloverPolicy: 'none',
-    deliverables: [
-      {
-        id: 'del-flam-1',
-        projectId: 'prj-2',
-        name: 'Gestión de Pauta & Ads',
-        order: 1,
-        status: 'in_progress',
-        roleBudgets: [{ id: 'rb-fl1', roleId: 'Trafficker Media', roleName: 'Trafficker Media', quotedHours: 60 }]
-      }
-    ]
-  },
-  {
-    id: 'prj-3',
-    name: 'Mantenimiento Web E-commerce · Distrihogar',
-    clientId: 'cli-distrihogar',
-    clientName: 'DISTRIHOGAR S.A.S.',
-    brand: 'Distrihogar',
-    leadName: 'Catalina Tejada',
-    leadAvatarBg: 'bg-[#7c3aed]',
-    projectType: 'fee_monthly',
-    serviceBase: 'Mantenimiento Web',
-    budgetedHours: 35,
-    startDate: '2026-08-01',
-    endDate: '2026-08-31',
-    status: 'Activo',
-    healthStatus: 'verde',
-    healthNote: 'Dentro del consumo acordado'
-  },
-  {
-    id: 'prj-4',
-    name: 'Parrilla Redes & Social · Tupperware',
-    clientId: 'cli-dart',
-    clientName: 'DART DE COLOMBIA S.A.S.',
-    brand: 'Tupperware',
-    leadName: 'Catalina Tejada',
-    leadAvatarBg: 'bg-[#7c3aed]',
-    projectType: 'fee_monthly',
-    serviceBase: 'Parrilla de Contenidos & Social',
-    budgetedHours: 30,
-    startDate: '2026-08-01',
-    endDate: '2026-08-31',
-    status: 'Activo',
-    healthStatus: 'verde',
-    healthNote: 'Entregables aprobados'
-  },
-  {
-    id: 'prj-5',
-    name: 'Landing Page STEM · Parque Explora',
-    clientId: 'cli-explora',
-    clientName: 'CORPORACION PARQUE EXPLORA',
-    brand: 'Parque Explora',
-    leadName: 'Paola (Lead PM)',
-    leadAvatarBg: 'bg-[#501f92]',
-    projectType: 'fixed_project',
-    serviceBase: 'Desarrollo Web & E-commerce',
-    budgetedHours: 55,
-    startDate: '2026-08-10',
-    endDate: '2026-09-20',
-    status: 'Activo',
-    healthStatus: 'amarillo',
-    healthNote: 'Alerta: esperando insumos de diseño'
-  },
-  {
-    id: 'prj-6',
-    name: 'Rediseño Portal B2B · Almacenes Éxito',
-    clientId: 'cli-exito',
-    clientName: 'ALMACENES EXITO S.A.',
-    brand: 'Éxito',
-    leadName: 'Paola (Lead PM)',
-    leadAvatarBg: 'bg-[#501f92]',
-    projectType: 'fixed_project',
-    serviceBase: 'Desarrollo Web & E-commerce',
-    budgetedHours: 80,
-    startDate: '2026-06-01',
-    endDate: '2026-08-15',
-    status: 'Activo',
-    healthStatus: 'rojo',
-    healthNote: 'Desvío en horas y mora en pago'
-  },
-  {
-    id: 'prj-neroli-fee',
-    code: 'NER-FEE-01',
-    name: 'Fee mensual — Neroli Fragancias',
-    clientId: 'cli-neroli',
-    clientName: 'Neroli Fragancias',
-    taxEntityId: null,
-    brand: 'Neroli',
-    leadName: 'Paola (Lead PM)',
-    leadAvatarBg: 'bg-[#501f92]',
-    leadRole: 'Lead Project Manager',
+    commercialOwnerName: 'Catalina Tejada',
+    clientApproverName: 'Mauricio Saldarriaga',
+    clientApproverBackupName: 'Paula Restrepo',
     projectType: 'fee_monthly',
     serviceBase: 'Fee Mensual · Contenido & Social',
-    budgetedHours: 40,
-    soldHours: 40,
+    budgetedHours: 42,
+    soldHours: 42,
+    isKickedOff: true,
+    startDate: '2026-09-01',
+    endDate: '2026-11-30',
+    // Contrato de 3 meses (sep–nov 2026) que vence el 30 Nov: aviso de renovación y, al renovar, diciembre
+    contractMonths: 3,
+    contractStartDate: '2026-09-01',
+    contractEndDate: '2026-11-30',
+    rolloverPolicy: 'carry_over',
     status: 'Activo',
     healthStatus: 'verde',
-    healthNote: 'Primer proyecto de adopción de Google Chat (hereda la integración del cliente)',
-    rolloverPolicy: 'none',
+    healthNote: 'Noviembre en curso; el contrato vence el 30 Nov',
     deliverables: [],
-    googleChatMode: 'inherit_client'
+    monthlyCycles: [
+      { monthKey: '2026-09', monthLabel: 'Septiembre 2026', quotedHours: 42, executedHours: 40.5, status: 'closed', tasksGenerated: true },
+      { monthKey: '2026-10', monthLabel: 'Octubre 2026', quotedHours: 42, executedHours: 43.5, status: 'closed', tasksGenerated: true },
+      { monthKey: '2026-11', monthLabel: 'Noviembre 2026', quotedHours: 42, executedHours: 14.5, status: 'active', tasksGenerated: true }
+    ]
   }
 ];
 
@@ -765,6 +319,8 @@ export const TaskFlowPrototype: React.FC = () => {
   const [sowOpportunityId, setSowOpportunityId] = useState<string | null>(null);
   const [sowVersions, setSowVersions] = useState<Record<string, string>>({});
   const [absenceEvents, setAbsenceEvents] = useState<TeamAbsenceEvent[]>(initialAbsenceEvents);
+  // New Business: ocupación real próxima (4 semanas) para sugerir al colaborador del rol con más espacio
+  const usersWithLoad = useMemo(() => withUpcomingUtilization(users, tasks, absenceEvents), [users, tasks, absenceEvents]);
 
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
@@ -821,6 +377,8 @@ export const TaskFlowPrototype: React.FC = () => {
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
 
   const [newBusinessResetSignal, setNewBusinessResetSignal] = useState(0);
+  // Abrir una oportunidad concreta desde Mi Día (p. ej. Comercial ve «Alcance actualizado» → va directo a Cotización)
+  const [newBusinessFocus, setNewBusinessFocus] = useState<{ id: string; tab: 'resumen' | 'scoping' | 'cotizacion'; nonce: number } | null>(null);
 
   // Global view selection with automatic reset to section root (allows optional targetId)
   const handleSelectView = (view: OrbitView, targetId?: string | null) => {
@@ -1027,6 +585,8 @@ export const TaskFlowPrototype: React.FC = () => {
     };
 
     setTimeLogs((prev) => [newLog, ...prev]);
+    // El registro queda también en la tarea: así se ve quién ejecutó (puede no ser el asignado)
+    setTasks((prev) => prev.map((t) => (t.id === newLog.taskId ? { ...t, timeLogs: [...(t.timeLogs || []), newLog] } : t)));
 
     // Finalizar sesión y cerrar sin doble confirmación; si había cambio en cola, iniciar nueva tarea
     setIsStopTimerModalOpen(false);
@@ -1190,6 +750,8 @@ export const TaskFlowPrototype: React.FC = () => {
     };
 
     setTimeLogs((prev) => [newLog, ...prev]);
+    // El registro queda también en la tarea: así se ve quién ejecutó (puede no ser el asignado)
+    setTasks((prev) => prev.map((t) => (t.id === newLog.taskId ? { ...t, timeLogs: [...(t.timeLogs || []), newLog] } : t)));
 
     // If task detail modal is open for this task, synchronize its consumedSeconds in real time
     if (selectedTaskForDetail && selectedTaskForDetail.id === data.taskId) {
@@ -1357,6 +919,9 @@ export const TaskFlowPrototype: React.FC = () => {
   };
 
   // Update Task Dates (Inicio y Vencimiento)
+  // Tarea → cronograma: si una tarea sale de la producción de su fase, se pregunta antes de correr hitos
+  const [phaseOverflowPrompt, setPhaseOverflowPrompt] = useState<{ taskId: string; taskTitle: string; projectId: string; overflow: PhaseOverflow } | null>(null);
+
   const handleUpdateTaskDates = (taskId: string, startDate: string, dueDate: string, dueText?: string) => {
     setTasks((prev) =>
       prev.map((t) =>
@@ -1364,12 +929,30 @@ export const TaskFlowPrototype: React.FC = () => {
           ? {
               ...t,
               startDate,
+              scheduledDate: startDate || t.scheduledDate,
               dueDate,
               dueText: dueText || t.dueText
             }
           : t
       )
     );
+    // ¿La nueva fecha límite pasa el fin de la producción de su fase? (proyecto único ya iniciado)
+    const task = tasks.find((t) => t.id === taskId);
+    const project = task && projectsList.find((p) => p.id === task.projectId || p.name === task.projectName);
+    if (task && project && project.isKickedOff && project.startDate && project.phaseSteps?.length && normalizeProjectType(project.projectType) === 'fixed_project') {
+      const phaseId = project.phaseSteps.some((st) => st.id === task.deliverableId)
+        ? task.deliverableId!
+        : (project.deliverables || []).find((d) => d.name === task.frente)?.id;
+      const overflow = phaseId ? detectPhaseOverflow({
+        startDate: project.startDate,
+        steps: project.phaseSteps,
+        notBefore: notBeforeFromDependencies(project.dependencies),
+        phaseId,
+        newDueDate: (dueDate || '').slice(0, 10),
+        taskTitle: task.title
+      }) : null;
+      if (overflow) setPhaseOverflowPrompt({ taskId, taskTitle: task.title, projectId: project.id, overflow });
+    }
     if (selectedTaskForDetail && selectedTaskForDetail.id === taskId) {
       setSelectedTaskForDetail((prev) =>
         prev
@@ -1382,6 +965,43 @@ export const TaskFlowPrototype: React.FC = () => {
           : null
       );
     }
+  };
+
+  // Extender la fase: guarda los pasos, corre fases, presentaciones y entrega, y reprograma las tareas
+  // abiertas de las fases SIGUIENTES (las de la misma fase y la tarea movida no se tocan).
+  const handleExtendPhaseForTask = () => {
+    if (!phaseOverflowPrompt) return;
+    const { projectId, overflow, taskId } = phaseOverflowPrompt;
+    const project = projectsList.find((p) => p.id === projectId);
+    if (!project) { setPhaseOverflowPrompt(null); return; }
+    const after = overflow.after;
+    const laterPhaseIds = new Set(after.phases.slice(overflow.phaseIndex + 1).map((ph) => ph.id));
+    const projectTasks = tasks.filter((t) => t.projectId === project.id || t.projectName === project.name);
+    const toReplan = projectTasks.filter((t) => t.id !== taskId && !t.completed && t.status !== 'Done' && t.deliverableId && laterPhaseIds.has(t.deliverableId));
+    const replanIds = new Set(toReplan.map((t) => t.id));
+    const assignee = new Map(toReplan.map((t) => [t.id, t.assignee?.name && t.assignee.name !== '-' ? t.assignee.name : undefined]));
+    const planned = planTasksFromPhases(
+      after.phases.filter((ph) => laterPhaseIds.has(ph.id)),
+      toReplan.map((t) => ({ id: t.id, deliverableId: t.deliverableId, budgetedHours: t.budgetedHours, title: t.title })),
+      { assigneeOf: (id) => assignee.get(id), existingLoad: buildExistingLoad(tasks, replanIds), dailyCapacity: DEFAULT_DAILY_CAPACITY }
+    );
+    setTasks((prev) => prev.map((t) => {
+      const slot = replanIds.has(t.id) ? planned.tasks[t.id] : undefined;
+      return slot ? { ...t, date: slot.scheduledDate, startDate: slot.scheduledDate, scheduledDate: slot.scheduledDate, dueDate: slot.dueDate, dueText: `Deadline: ${slot.dueDate}` } : t;
+    }));
+    const byId = new Map(after.phases.map((ph) => [ph.id, ph]));
+    const updated: ProjectSummaryItem = {
+      ...project,
+      phaseSteps: overflow.nextSteps,
+      deliverables: (project.deliverables || []).map((d) => {
+        const ph = byId.get(d.id);
+        return ph ? ({ ...d, startDate: ph.start, dueDate: ph.end, endDate: ph.end } as typeof d) : d;
+      }),
+      endDate: after.endDate,
+      forecastEndDate: after.endDate
+    };
+    setProjectsList((prev) => prev.map((p) => (p.id === projectId ? updated : p)));
+    setPhaseOverflowPrompt(null);
   };
 
   // Update Task Team (Project Lead, Assignee, Collaborators, Followers, BudgetedRole, etc.)
@@ -1743,6 +1363,38 @@ export const TaskFlowPrototype: React.FC = () => {
     }
   };
 
+  // Duplicar tarea: una tarea = un colaborador. Si dos personas trabajan en paralelo (p. ej. dos
+  // propuestas de logo), se duplica y las horas cotizadas se reparten en partes iguales.
+  const handleDuplicateTask = (taskId: string) => {
+    const original = tasks.find((t) => t.id === taskId);
+    if (!original) return;
+    const half = Math.round(((original.budgetedHours || 0) / 2) * 100) / 100;
+    const copy: TaskItem = {
+      ...original,
+      id: `${original.id}-dup-${Date.now()}`,
+      title: `${original.title} (2)`,
+      status: 'To Do',
+      completed: false,
+      completedAt: undefined,
+      budgetedHours: half,
+      consumedSeconds: 0,
+      executionSeconds: 0,
+      managementSeconds: 0,
+      timeLogs: [],
+      reworks: [],
+      collaborators: []
+    };
+    setTasks((prev) => {
+      const idx = prev.findIndex((t) => t.id === taskId);
+      const next = prev.map((t) => (t.id === taskId ? { ...t, budgetedHours: half } : t));
+      next.splice(idx + 1, 0, copy);
+      return next;
+    });
+    if (selectedTaskForDetail?.id === taskId) {
+      setSelectedTaskForDetail((prev) => (prev ? { ...prev, budgetedHours: half } : prev));
+    }
+  };
+
   // Archive / Unarchive Task
   const handleArchiveTask = (taskId: string) => {
     setTasks((prev) =>
@@ -1813,7 +1465,8 @@ export const TaskFlowPrototype: React.FC = () => {
         if (t.id === targetLog.taskId) {
           return {
             ...t,
-            consumedSeconds: Math.max(0, t.consumedSeconds - targetLog.durationSeconds)
+            consumedSeconds: Math.max(0, t.consumedSeconds - targetLog.durationSeconds),
+            timeLogs: (t.timeLogs || []).filter((l) => l.id !== targetLog.id)
           };
         }
         return t;
@@ -2828,7 +2481,7 @@ export const TaskFlowPrototype: React.FC = () => {
       prev.map((opp) => {
         if (opp.id === opportunityId) {
           const current = getOperationalQuote(opp);
-          const suggested = suggestActivityOwners(quote.deliverables, users, current?.deliverables || []);
+          const suggested = suggestActivityOwners(quote.deliverables, usersWithLoad, current?.deliverables || []);
           const imported = suggested.map((del, index) => {
             const id = `qdel-import-${quote.id}-${index}`;
             return { ...del, id, quoteId: current?.id || quote.id,
@@ -2868,7 +2521,7 @@ export const TaskFlowPrototype: React.FC = () => {
     const newOpportunityId = quote.opportunityId || `opp-${Date.now()}`;
     const finalizedQuote: QuoteProposal = {
       ...quote,
-      deliverables: quote.templateId ? suggestActivityOwners(quote.deliverables, users) : quote.deliverables,
+      deliverables: quote.templateId ? suggestActivityOwners(quote.deliverables, usersWithLoad) : quote.deliverables,
       opportunityId: newOpportunityId
     };
 
@@ -3256,6 +2909,10 @@ export const TaskFlowPrototype: React.FC = () => {
                     loggedHoursToday={loggedHoursToday}
                     targetDayHours={Number(((currentUser?.capacityHours || 42) / 5).toFixed(1))}
                     onNavigateToView={handleSelectView}
+                    onOpenOpportunity={(id, tab) => {
+                      handleSelectView('new-business');
+                      setNewBusinessFocus({ id, tab, nonce: Date.now() });
+                    }}
                     onOpenProject={(projectId) => {
                       setSelectedProjectIdForView(projectId);
                       setCurrentView('proyectos');
@@ -3500,6 +3157,7 @@ export const TaskFlowPrototype: React.FC = () => {
                 {currentView === 'new-business' && (
                   <NewBusinessView
                     resetToOverviewSignal={newBusinessResetSignal}
+                    focusOpportunity={newBusinessFocus}
                     scopeUi={scopeUi}
                     onChangeScopeUi={(quoteId, state) => setScopeUi((previous) => ({ ...previous, [quoteId]: state }))}
                     onOpenSow={setSowOpportunityId}
@@ -3514,7 +3172,7 @@ export const TaskFlowPrototype: React.FC = () => {
                     clients={clients}
                     templates={productTemplates}
                     currentUser={currentUser}
-                    users={users}
+                    users={usersWithLoad}
                     tasks={tasks}
                     timeLogs={timeLogs}
                     activeTimer={activeTimer}
@@ -3693,6 +3351,7 @@ export const TaskFlowPrototype: React.FC = () => {
             onUpdatePhase={handleUpdateTaskPhase}
             onDeleteTask={handleDeleteTask}
             onArchiveTask={handleArchiveTask}
+            onDuplicateTask={handleDuplicateTask}
             onNavigateToClient={(clientName) => {
               setIsTaskDetailModalOpen(false);
               const match = orbitClientsData.find(
@@ -3859,6 +3518,15 @@ export const TaskFlowPrototype: React.FC = () => {
       />
 
       {/* Herramienta de QA / Simulación de Roles & Permisos (RBAC Bloque 3) */}
+      {phaseOverflowPrompt && (
+        <PhaseOverflowModal
+          taskTitle={phaseOverflowPrompt.taskTitle}
+          overflow={phaseOverflowPrompt.overflow}
+          onExtend={handleExtendPhaseForTask}
+          onKeepTaskOnly={() => setPhaseOverflowPrompt(null)}
+        />
+      )}
+
       <DevQaRoleSimulator
         currentUser={currentUser}
         availableUsers={users}

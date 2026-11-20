@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { allocateTaskHours } from './schedule/scheduleEngine';
 import { formatDate, formatDateRange } from '../../utils/formatters';
 import { PageHeader } from './PageHeader';
 import { nextColombianHoliday } from './health/projectHealthEngine';
@@ -648,16 +649,32 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
     }
     return Math.max(1, n);
   };
+  /** Horas que una tarea planifica para un día (prorrateo por días hábiles entre inicio y entrega). */
+  // Agenda por capacidad: las horas se ubican desde el día de trabajo (scheduledDate) llenando la
+  // jornada, sin pasar de la fecha límite (mismo reparto que usa el motor del cronograma).
+  const taskPlanForDay = (t: TaskItem, dayIso: string): number => {
+    const start = isoOk(t.scheduledDate) ? t.scheduledDate!.slice(0, 10) : isoOk(t.dueDate) ? t.dueDate!.slice(0, 10) : null;
+    const due = isoOk(t.dueDate) ? t.dueDate!.slice(0, 10) : start;
+    if (!start || !due || dayIso < start || dayIso > due) return 0;
+    return allocateTaskHours(getUserTaskPlannedHours(t, currentUser), start, due).get(dayIso) || 0;
+  };
+  /** Plan de la semana hasta hoy (incluye tareas ya completadas): base del ritmo personal. */
+  const plannedThroughToday = useMemo(() => {
+    const limit = todayIdx < 0 ? weekDays.length - 1 : todayIdx;
+    return Number(
+      weekDays
+        .slice(0, limit + 1)
+        .reduce((sum, day) => sum + myTasks.reduce((acc, t) => acc + taskPlanForDay(t, day.fullDate), 0), 0)
+        .toFixed(1)
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myTasks, weekDays, todayIdx, currentUser]);
+
   const plannedByDay = useMemo(() => {
     return weekDays.map((day) => {
       const total = myTasks
         .filter((t) => !t.completed)
-        .reduce((sum, t) => {
-          const start = isoOk(t.scheduledDate) ? t.scheduledDate!.slice(0, 10) : isoOk(t.dueDate) ? t.dueDate!.slice(0, 10) : null;
-          const due = isoOk(t.dueDate) ? t.dueDate!.slice(0, 10) : start;
-          if (!start || !due || day.fullDate < start || day.fullDate > due) return sum;
-          return sum + getUserTaskPlannedHours(t, currentUser) / businessDaysBetween(start, due);
-        }, 0);
+        .reduce((sum, t) => sum + taskPlanForDay(t, day.fullDate), 0);
       return Number(total.toFixed(1));
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -876,7 +893,7 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
           </div>
         </div>
 
-        {/* KPI 3: Ritmo de Avance (Pacing) */}
+        {/* KPI 3: Tu avance / Avance del equipo */}
         {(() => {
           const dayOfWeek = new Date().getDay(); // 0=Dom, 1=Lun..5=Vie, 6=Sab
           const businessDayIndex = dayOfWeek === 0 || dayOfWeek === 6 ? 5 : dayOfWeek;
@@ -885,9 +902,22 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
           const baseCap = perspective === 'personal' ? periodLegalCapacity : currentSummary.totalCapacity;
           const productiveTarget = Number((baseCap * 0.85).toFixed(1));
           const execHours = perspective === 'personal' ? myCurrentExecuted : currentSummary.totalExecuted;
-          const actualPacingPct = productiveTarget > 0 ? Math.round((execHours / productiveTarget) * 100) : 0;
-          const pacingDelta = actualPacingPct - expectedWeekPct;
-          const pacingLabel = pacingDelta > 10 ? 'Adelantado' : pacingDelta < -10 ? 'Rezagado' : 'En Ritmo';
+          // Personal: el ritmo se mide contra lo PLANEADO hasta hoy (tareas agendadas), no contra la
+          // capacidad: sin tareas planeadas no se puede estar «rezagado».
+          const isPersonalPacing = perspective === 'personal';
+          const noPlanYet = isPersonalPacing && plannedThroughToday <= 0;
+          const actualPacingPct = isPersonalPacing
+            ? (plannedThroughToday > 0 ? Math.round((execHours / plannedThroughToday) * 100) : 0)
+            : productiveTarget > 0 ? Math.round((execHours / productiveTarget) * 100) : 0;
+          const pacingDelta = isPersonalPacing ? actualPacingPct - 100 : actualPacingPct - expectedWeekPct;
+          // Textos amables (19 Nov 2026): nada de «Rezagado»
+          const pacingLabel = noPlanYet
+            ? 'Sin plan aún'
+            : pacingDelta > 10
+              ? (isPersonalPacing ? 'Vas adelantado' : 'Equipo adelantado')
+              : pacingDelta < -10
+                ? (isPersonalPacing ? 'Tienes horas por cargar' : 'Faltan horas por cargar')
+                : (isPersonalPacing ? 'Vas al día' : 'Equipo al día');
           const pacingBadgeClass =
             pacingDelta > 10
               ? 'text-[#059669] bg-[#ecfdf5] border-[#a7f3d0]'
@@ -898,7 +928,7 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
           return (
             <div className="bg-white p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] shadow-xs space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-[#64748b] uppercase tracking-wider">Ritmo de Avance (Pacing)</span>
+                <span className="text-xs font-bold text-[#64748b] uppercase tracking-wider">{perspective === 'personal' ? 'Tu avance' : 'Avance del equipo'}</span>
                 <div className="w-8 h-8 rounded-xl bg-[#eff6ff] text-[#2563eb] flex items-center justify-center">
                   <TrendingUp className="w-4 h-4" />
                 </div>
@@ -907,12 +937,22 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
               <div>
                 <div className="flex items-baseline gap-2">
                   <span className="text-2xl font-extrabold text-[#0f172a]">{pacingLabel}</span>
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-lg border ${pacingBadgeClass}`}>
-                    {pacingDelta >= 0 ? `+${pacingDelta}%` : `${pacingDelta}%`} vs esperado
-                  </span>
+                  {!noPlanYet && (
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-lg border ${pacingBadgeClass}`}>
+                      {pacingDelta >= 0 ? `+${pacingDelta}%` : `${pacingDelta}%`} vs {isPersonalPacing ? 'lo planeado' : 'esperado'}
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs text-[#64748b] mt-1 leading-relaxed">
-                  Semana al <strong>{expectedWeekPct}%</strong> ({dayNames[dayOfWeek]}). Meta productiva (85%): <strong className="font-mono text-[#0f172a]">{productiveTarget}h</strong>.
+                  {isPersonalPacing ? (
+                    noPlanYet ? (
+                      <>No tienes tareas agendadas hasta hoy ({dayNames[dayOfWeek]}): nada que medir todavía.</>
+                    ) : (
+                      <>Planeado hasta hoy ({dayNames[dayOfWeek]}): <strong className="font-mono text-[#0f172a]">{plannedThroughToday}h</strong> · cargado: <strong className="font-mono text-[#0f172a]">{execHours.toFixed(1)}h</strong>.</>
+                    )
+                  ) : (
+                    <>Semana al <strong>{expectedWeekPct}%</strong> ({dayNames[dayOfWeek]}). Meta productiva (85%): <strong className="font-mono text-[#0f172a]">{productiveTarget}h</strong>.</>
+                  )}
                 </p>
               </div>
             </div>
@@ -1058,13 +1098,59 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
                     })}
                   </div>
 
+                  {/* Agendado para el día seleccionado: para ver qué viene y adelantar trabajo */}
+                  {(() => {
+                    const dayIso = weekDays[dayIdx]?.fullDate || '';
+                    const scheduled = myTasks
+                      .filter((t) => !t.completed && t.status !== 'Done')
+                      .map((t) => ({ task: t, hours: taskPlanForDay(t, dayIso) }))
+                      .filter((x) => x.hours > 0)
+                      .sort((a, b) => b.hours - a.hours);
+                    return (
+                      <div className="pt-3 border-t border-[#f1f5f9] space-y-2">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-xs font-bold text-[#0f172a] uppercase tracking-wider">
+                            Agendado
+                          </h4>
+                          <span className="text-xs font-mono font-bold text-[#64748b]">
+                            {scheduled.reduce((a, x) => a + x.hours, 0).toFixed(1)}h planeadas
+                          </span>
+                        </div>
+                        {scheduled.length === 0 ? (
+                          <p className="text-xs text-[#94a3b8] py-2.5 text-center bg-[#f8fafc] rounded-xl border border-[#e2e8f0]">
+                            Nada agendado el {activeDayName.toLowerCase()}.
+                          </p>
+                        ) : (
+                          <div className="space-y-1.5">
+                            {scheduled.map(({ task, hours }) => (
+                              <button
+                                key={task.id}
+                                type="button"
+                                onClick={() => onOpenTaskDetail?.(task)}
+                                className="w-full p-2.5 rounded-xl bg-white hover:bg-[#f2ecfb]/60 border border-[#e2e8f0] hover:border-[#8a4dff]/40 flex items-center justify-between gap-3 transition-colors cursor-pointer text-left group"
+                              >
+                                <span className="min-w-0">
+                                  <span className="block text-xs font-semibold text-[#0f172a] group-hover:text-[#501f92] truncate">{task.title}</span>
+                                  <span className="block text-[10.5px] text-[#64748b] truncate">{task.projectName || task.clientName || ''}{isoOk(task.dueDate) ? ` · entrega ${task.dueDate!.slice(0, 10)}` : ''}</span>
+                                </span>
+                                <span className="font-mono text-xs font-bold text-[#334155] bg-[#f8fafc] px-2 py-0.5 rounded-lg border border-[#e2e8f0] shrink-0">
+                                  {hours.toFixed(1)}h
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
                   {/* Timesheets del día seleccionado (clickeable por día y por tarea) */}
                   <div className="pt-3 border-t border-[#f1f5f9] space-y-2.5">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Clock className="w-3.5 h-3.5 text-[#501f92]" />
                         <h4 className="text-xs font-bold text-[#0f172a] uppercase tracking-wider">
-                          Timesheets · {activeDayName}
+                          Tiempos registrados
                         </h4>
                       {dayIdx === todayIdx && (
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#f2ecfb] text-[#501f92]">
@@ -1155,23 +1241,6 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
               })}
             </div>
 
-            {/* Próximo festivo (calculado desde el calendario laboral; sin fecha si no hay) */}
-            {(() => {
-              const next = nextColombianHoliday(new Date().toISOString().slice(0, 10));
-              if (!next) return null;
-              const label = new Date(`${next}T12:00:00`).toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
-              const weekHours = Number((myConfiguredWeeklyHours - myConfiguredWeeklyHours / 5).toFixed(1));
-              return (
-                <div className="p-3 rounded-xl bg-[#eff6ff] border border-[#bfdbfe] text-xs text-[#1e40af] space-y-1">
-                  <p className="font-bold flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5" /> Próximo festivo (Colombia)
-                  </p>
-                  <p className="text-[11px] text-[#1d4ed8]">
-                    <strong className="capitalize">{label}</strong> · Esa semana tendrá {weekHours}h de capacidad.
-                  </p>
-                </div>
-              );
-            })()}
           </div>
         </div>
       )}

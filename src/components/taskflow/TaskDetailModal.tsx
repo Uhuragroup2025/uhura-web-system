@@ -24,6 +24,7 @@ import {
   UploadCloud,
   FileText,
   Copy,
+  CopyPlus,
   Archive,
   Trash2,
   MoreHorizontal,
@@ -82,7 +83,11 @@ import {
   UserItem
 } from './types';
 import { DropdownMenu, DropdownOption } from '../ui/DropdownMenu';
-import { initialUsers } from './mockData';
+import { initialUsers, initialAbsenceEvents } from './mockData';
+import { CapacityAssignWarning } from './CapacityAssignWarning';
+import { canExecuteTask, roleFit, makeUserResolver } from './projects/teamFromTasks';
+
+const resolveUserId = makeUserResolver(initialUsers);
 import { checkAssigneeAvailability } from './copilot/teamLifeEngine';
 import { UserAvatar } from './UserAvatar';
 
@@ -110,7 +115,7 @@ const TEAM_MEMBERS_POOL: TeamMemberProfile[] = [
   { name: 'Melisa Gil', initials: 'MG', avatarBg: 'bg-[#d946ef]', role: 'Creative Designer' },
   { name: 'Camilo Velez', initials: 'CV', avatarBg: 'bg-[#059669]', role: 'Growth Manager' },
   { name: 'Juan Camilo Torres', initials: 'JT', avatarBg: 'bg-[#6366f1]', role: 'Creative Designer' },
-  { name: 'Alejando Florez Vargas', initials: 'AF', avatarBg: 'bg-[#06b6d4]', role: 'Creative Designer' },
+  { name: 'Diego Alejandro Flores Vargas', initials: 'DF', avatarBg: 'bg-[#06b6d4]', role: 'Creative Designer' },
   { name: 'Sara Mar L', initials: 'SM', avatarBg: 'bg-[#f43f5e]', role: 'Creative Designer' },
   { name: 'Laura Viviana Salazar Perez', initials: 'LS', avatarBg: 'bg-[#64748b]', role: 'Administrativa' }
 ];
@@ -199,6 +204,8 @@ interface TaskDetailModalProps {
   onUpdatePhase?: (taskId: string, phase: ProjectPhase) => void;
   onDeleteTask?: (taskId: string) => void;
   onArchiveTask?: (taskId: string) => void;
+  /** Duplica la tarea y reparte las horas cotizadas a la mitad (trabajo en paralelo). */
+  onDuplicateTask?: (taskId: string) => void;
   onNavigateToClient?: (clientName: string) => void;
   onNavigateToProject?: (projectName: string) => void;
   onOpenManualLog?: (taskId: string) => void;
@@ -234,6 +241,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   onSelectTask,
   onDeleteTask,
   onArchiveTask,
+  onDuplicateTask,
   onNavigateToClient,
   onNavigateToProject,
   onOpenManualLog
@@ -274,6 +282,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   const [isAddingRework, setIsAddingRework] = useState(false);
   const [reworkOrigin, setReworkOrigin] = useState<ReworkOrigin>('client');
   const [reworkReason, setReworkReason] = useState('');
+  const [reworkCause, setReworkCause] = useState<'client_feedback' | 'scope_change' | 'internal_error'>('client_feedback');
   const [reworkRequestedBy, setReworkRequestedBy] = useState('');
   const [reworkHours, setReworkHours] = useState('1.0');
 
@@ -1319,11 +1328,13 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   };
   const isCurrentUserCollaborator =
     matchesCurrentUser(assignee) || collaborators.some((c) => matchesCurrentUser(c));
+  // Solo el Project Lead de la tarea (o su revisor asignado) aprueba, completa o devuelve.
+  // Los seguidores siguen la tarea pero no ven esos botones. Si la tarea no tiene Project Lead
+  // (datos legados), aprueba un líder o administrador. Si el líder se ausenta, se cambia el Project Lead.
   const isCurrentUserLeadOrFollower =
     matchesCurrentUser(projectLead) ||
-    followers.some((f) => matchesCurrentUser(f)) ||
     matchesCurrentUser(reviewer) ||
-    (!isCurrentUserCollaborator &&
+    (!projectLead?.name && !isCurrentUserCollaborator &&
       Boolean(
         currentUser?.accessLevel &&
           ['leader', 'system_admin', 'client_relationship', 'executive'].includes(
@@ -1349,7 +1360,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
     if (task.status === 'To Do') {
       if (isCurrentUserLeadOrFollower && !isCurrentUserCollaborator) {
-        logActivity('status_change', 'Tarea aprobada y completada directamente por líder/seguidor', 'To Do', 'Done');
+        logActivity('status_change', 'Tarea aprobada y completada directamente por el Project Lead', 'To Do', 'Done');
         onUpdateTaskStatus(task.id, 'Done');
         showToast('Tarea aprobada y marcada como Completada');
       } else {
@@ -1359,7 +1370,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
       }
     } else if (task.status === 'In Progress') {
       if (isCurrentUserLeadOrFollower && !isCurrentUserCollaborator) {
-        logActivity('status_change', 'Tarea aprobada y completada por líder/seguidor', 'In Progress', 'Done');
+        logActivity('status_change', 'Tarea aprobada y completada por el Project Lead', 'In Progress', 'Done');
         onUpdateTaskStatus(task.id, 'Done');
         showToast('Tarea aprobada y marcada como Completada');
       } else {
@@ -1585,7 +1596,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               </button>
 
               {isMenuOpen && (
-                <div className="absolute right-0 mt-1.5 w-48 rounded-2xl bg-white border border-[#e2e8f0] shadow-xl py-1.5 z-50 text-xs font-medium animate-in fade-in zoom-in-95 duration-100">
+                <div className="absolute left-0 lg:left-auto lg:right-0 mt-1.5 w-48 rounded-2xl bg-white border border-[#e2e8f0] shadow-xl py-1.5 z-50 text-xs font-medium animate-in fade-in zoom-in-95 duration-100">
                   <button
                     onClick={() => {
                       navigator.clipboard.writeText(window.location.href);
@@ -1597,6 +1608,21 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                     <Copy className="w-3.5 h-3.5 text-[#64748b]" />
                     <span>Copiar enlace</span>
                   </button>
+
+                  {onDuplicateTask && !isCurrentUserCollaborator && (
+                    <button
+                      onClick={() => {
+                        onDuplicateTask(task.id);
+                        showToast('Tarea duplicada: las horas se repartieron a la mitad. Asigna el colaborador de la copia.');
+                        setIsMenuOpen(false);
+                      }}
+                      title="Para trabajo en paralelo: crea una copia y reparte las horas a la mitad"
+                      className="w-full px-3.5 py-2 text-left hover:bg-[#f8fafc] text-[#334155] flex items-center gap-2 cursor-pointer"
+                    >
+                      <CopyPlus className="w-3.5 h-3.5 text-[#64748b]" />
+                      <span>Duplicar tarea</span>
+                    </button>
+                  )}
 
                   <button
                     onClick={() => {
@@ -1733,7 +1759,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                 type="button"
                 onClick={handleProgressTaskStatus}
                 className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
-                title="Pasar a revisión para que el Project Lead o seguidor valide la tarea"
+                title="Pasar a revisión para que el Project Lead valide la tarea"
               >
                 <Eye className="w-3 h-3" />
                 <span>Solicitar revisión →</span>
@@ -3319,7 +3345,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                   <div className="flex items-center justify-between mb-1.5 relative">
                     <span className="text-[11px] font-bold text-[#0f172a] flex items-center gap-1.5">
                       <Users className="w-3.5 h-3.5 text-[#10b981]" />
-                      <span>Colaboradores</span>
+                      <span>Colaborador</span>
                       <button
                         type="button"
                         onClick={() => setShowCollabTooltip((prev) => !prev)}
@@ -3334,75 +3360,51 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
                     {showCollabTooltip && (
                       <div className="absolute left-0 top-6 z-50 w-64 p-2.5 rounded-xl bg-[#0f172a] text-white text-[11px] leading-relaxed shadow-lg border border-[#334155]">
-                        El colaborador absorbe el <strong>100%</strong> de las horas cotizadas. Si agregas más colaboradores, se repartirán las horas cotizadas.
+                        Una tarea tiene <strong>un solo colaborador</strong>, que absorbe el 100% de las horas cotizadas. Elegir otra persona la reasigna. Si dos personas trabajan en paralelo (p. ej. dos propuestas), usa <strong>«Duplicar tarea»</strong> en el menú ⋯: las horas se reparten a la mitad. Quien solo hace seguimiento va en Seguidores.
                       </div>
                     )}
                   </div>
 
                   <DropdownMenu
-                    multiple={true}
-                    value={
-                      // Use collaborators combined with assignee if applicable
-                      Array.from(
-                        new Set(
-                          [assignee?.name, ...collaborators.map((c) => c?.name)]
-                            .filter((n): n is string => Boolean(n && n !== '-'))
-                        )
-                      )
-                    }
-                    onChange={() => {}}
-                    onMultiChange={(selectedNames) => {
-                      if (selectedNames.length === 0) {
-                        showToast('La tarea debe tener al menos un colaborador');
-                        return;
-                      }
-                      const selectedMembers = selectedNames
-                        .map((name) => TEAM_MEMBERS_POOL.find((m) => m.name === name))
-                        .filter(Boolean) as TeamMemberProfile[];
-
-                      const primary = selectedMembers[0] || {
-                        name: 'Catalina Tejada',
-                        initials: 'CT',
-                        avatarBg: 'bg-[#501f92]',
-                        role: 'Creative Designer'
-                      };
-                      const rest = selectedMembers.slice(1).map((m) => ({
-                        name: m.name,
-                        initials: m.initials,
-                        avatarBg: m.avatarBg,
-                        role: m.role
-                      }));
-
+                    value={assignee?.name && assignee.name !== '-' ? assignee.name : ''}
+                    onChange={(selectedName) => {
+                      // Una tarea = un colaborador: elegir otra persona la reasigna (reemplaza).
+                      const member = TEAM_MEMBERS_POOL.find((m) => m.name === selectedName);
+                      if (!member) return;
                       const primaryAssignee = {
-                        name: primary.name,
-                        initials: primary.initials,
-                        avatarBg: primary.avatarBg,
-                        role: primary.role
+                        name: member.name,
+                        initials: member.initials,
+                        avatarBg: member.avatarBg,
+                        role: member.role
                       };
-
                       const taskBudget = task?.budgetedHours || Number(budgetValue) || 1;
-                      const nextAllocations = buildEqualAllocations(selectedMembers, taskBudget);
-                      setIsEditingHoursSplit(selectedMembers.length > 1);
-
+                      setIsEditingHoursSplit(false);
                       applyTeamUpdate(
                         primaryAssignee,
-                        rest,
+                        [],
                         reviewer,
                         requestedBy,
                         budgetedRole,
                         requiresValidation,
                         projectLead,
                         followers,
-                        nextAllocations
+                        buildEqualAllocations([member], taskBudget)
                       );
                     }}
-                    options={TEAM_MEMBERS_POOL.map((m) => {
-                      const u = initialUsers.find((usr) => usr.name === m.name);
+                    options={TEAM_MEMBERS_POOL.filter((m) => {
+                      // Cualquier persona activa puede ser colaboradora (también Comercial y Dirección, p. ej. para QA)
+                      const id = resolveUserId(m.name);
+                      return canExecuteTask(initialUsers.find((usr) => usr.id === id));
+                    }).map((m) => {
+                      const id = resolveUserId(m.name);
+                      const u = initialUsers.find((usr) => usr.id === id);
                       const onVac = u?.vacationStatus?.onVacation;
+                      const fit = u && budgetedRole ? roleFit(u, budgetedRole) : 'own';
+                      const fitNote = fit === 'cover' ? ' • cubre otro rol' : '';
                       return {
                         id: m.name,
                         label: m.name,
-                        sublabel: onVac ? `${m.role} • 🏖️ De vacaciones` : m.role,
+                        sublabel: `${m.role}${fitNote}${onVac ? ' • 🏖️ De vacaciones' : ''}`,
                         icon: (
                           <UserAvatar
                             name={m.name}
@@ -3467,6 +3469,28 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                     className="w-full"
                     menuClassName="w-full z-40 max-h-56"
                   />
+                  {task && !task.completed && (
+                    <CapacityAssignWarning
+                      personName={assignee?.name}
+                      role={budgetedRole || task.budgetedRole || ''}
+                      start={task.scheduledDate || undefined}
+                      due={task.dueDate}
+                      hours={task.budgetedHours || 0}
+                      tasks={tasksList}
+                      users={initialUsers}
+                      absences={initialAbsenceEvents}
+                      excludeTaskId={task.id}
+                      onPick={(u) => {
+                        const member = TEAM_MEMBERS_POOL.find((m) => resolveUserId(m.name) === u.id);
+                        const picked = member || { name: u.name, initials: u.initials, avatarBg: u.avatarBg, role: u.officialRole || u.role };
+                        const primaryAssignee = { name: picked.name, initials: picked.initials, avatarBg: picked.avatarBg, role: picked.role };
+                        const taskBudget = task.budgetedHours || Number(budgetValue) || 1;
+                        setIsEditingHoursSplit(false);
+                        applyTeamUpdate(primaryAssignee, [], reviewer, requestedBy, budgetedRole, requiresValidation, projectLead, followers, buildEqualAllocations([picked as any], taskBudget));
+                        showToast(`Tarea asignada a ${picked.name}`);
+                      }}
+                    />
+                  )}
 
                   {/* Desglose de bolsa por colaborador y acción rápida Mover a Seguidores */}
                   {(() => {
@@ -3781,7 +3805,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                       <div className="grid grid-cols-2 gap-1.5">
                         <button
                           type="button"
-                          onClick={() => setReworkOrigin('client')}
+                          onClick={() => { setReworkOrigin('client'); setReworkCause('client_feedback'); }}
                           className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                             reworkOrigin === 'client'
                               ? 'bg-[#501f92] text-white shadow-xs'
@@ -3792,7 +3816,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                         </button>
                         <button
                           type="button"
-                          onClick={() => setReworkOrigin('internal')}
+                          onClick={() => { setReworkOrigin('internal'); setReworkCause('internal_error'); }}
                           className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                             reworkOrigin === 'internal'
                               ? 'bg-[#501f92] text-white shadow-xs'
@@ -3804,15 +3828,41 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                       </div>
                     </div>
 
+                    {/* Causa raíz: cambia con el origen (antes el formulario era igual para ambos) */}
                     <div>
                       <label className="text-[10px] font-bold text-[#64748b] block mb-1">
-                        Motivo / Observación del ajuste:
+                        Causa raíz:
+                      </label>
+                      {reworkOrigin === 'client' ? (
+                        <select
+                          value={reworkCause}
+                          onChange={(e) => setReworkCause(e.target.value as 'client_feedback' | 'scope_change')}
+                          className="w-full px-2 py-1.5 rounded-lg border border-[#cbd5e1] bg-white text-xs text-[#0f172a] focus:outline-none focus:border-[#501f92]"
+                        >
+                          <option value="client_feedback">Feedback del cliente</option>
+                          <option value="scope_change">Cambio de alcance</option>
+                        </select>
+                      ) : (
+                        <div className="px-2 py-1.5 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] text-xs font-semibold text-[#0f172a]">Error interno detectado en QA</div>
+                      )}
+                      <p className="text-[10px] text-[#64748b] mt-1 leading-snug">
+                        {reworkOrigin === 'client'
+                          ? reworkCause === 'scope_change'
+                            ? 'Pide algo que no estaba cotizado: avisa a Comercial para cotizarlo aparte.'
+                            : 'Cuenta como ronda de ajuste del cliente. Si supera las incluidas, se cobra.'
+                          : 'No consume rondas del cliente ni se cobra: es un costo interno de Uhura.'}
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold text-[#64748b] block mb-1">
+                        {reworkOrigin === 'client' ? 'Qué pidió el cliente:' : 'Qué se encontró:'}
                       </label>
                       <textarea
                         rows={2}
                         value={reworkReason}
                         onChange={(e) => setReworkReason(e.target.value)}
-                        placeholder="Ej: Cambio de copies por nueva directriz del cliente..."
+                        placeholder={reworkOrigin === 'client' ? 'Ej: Cambio de copies por nueva directriz del cliente…' : 'Ej: El menú no funciona en móvil; faltó revisar el contraste…'}
                         className="w-full px-2.5 py-1.5 rounded-lg border border-[#cbd5e1] bg-white text-xs text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal focus:outline-none focus:border-[#501f92] resize-none"
                       />
                     </div>
@@ -3820,13 +3870,13 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <label className="text-[10px] font-bold text-[#64748b] block mb-1">
-                          Solicitado por:
+                          {reworkOrigin === 'client' ? 'Solicitado por (cliente):' : 'Detectado por:'}
                         </label>
                         <input
                           type="text"
                           value={reworkRequestedBy}
                           onChange={(e) => setReworkRequestedBy(e.target.value)}
-                          placeholder="Nombre persona"
+                          placeholder={reworkOrigin === 'client' ? 'Persona del cliente' : 'Persona de Uhura'}
                           className="w-full px-2 py-1 rounded-lg border border-[#cbd5e1] bg-white text-xs text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal focus:outline-none focus:border-[#501f92]"
                         />
                       </div>
@@ -3861,6 +3911,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                         if (onAddRework) {
                           onAddRework(task.id, {
                             origin: reworkOrigin,
+                            rootCause: reworkOrigin === 'client' ? reworkCause : 'internal_error',
                             roundNumber: nextRound,
                             reason: reasonText,
                             requestedBy: requesterName,

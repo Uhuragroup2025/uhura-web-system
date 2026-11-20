@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { TaskItem, TimeLog } from './types';
+import { timeLogDateWindow, timeLogDateError } from './schedule/timeLogWindow';
 import {
   X,
   Clock,
@@ -35,10 +36,10 @@ export const ManualTimeLogModal: React.FC<ManualTimeLogModalProps> = ({
   const [isTaskSelectorOpen, setIsTaskSelectorOpen] = useState(!defaultTaskId);
 
   // Form Fields (Duration only: Hours & Minutes; Date; Description)
-  const [logDate, setLogDate] = useState(() => {
-    const today = new Date();
-    return today.toISOString().split('T')[0]; // Format: YYYY-MM-DD
-  });
+  // Fecha local (no UTC: de noche en Colombia el ISO ya marca el día siguiente)
+  const [logDate, setLogDate] = useState(() => timeLogDateWindow().max);
+  const logWindow = useMemo(() => timeLogDateWindow(), []);
+  const logDateError = timeLogDateError(logDate);
   const [hours, setHours] = useState('1');
   const [minutes, setMinutes] = useState('00');
   const [note, setNote] = useState('');
@@ -95,6 +96,7 @@ export const ManualTimeLogModal: React.FC<ManualTimeLogModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTask) return;
+    if (logDateError) return; // mes cerrado o fecha futura
 
     const totalSeconds = (parseInt(hours || '0', 10) * 3600) + (parseInt(minutes || '0', 10) * 60);
     if (totalSeconds <= 0) return;
@@ -348,9 +350,16 @@ export const ManualTimeLogModal: React.FC<ManualTimeLogModalProps> = ({
                 type="date"
                 required
                 value={logDate}
+                min={logWindow.min}
+                max={logWindow.max}
                 onChange={(e) => setLogDate(e.target.value)}
-                className="w-full bg-white border border-[#cbd5e1] px-3.5 py-2.5 rounded-xl text-xs font-semibold text-[#0f172a] focus:outline-none focus:border-[#501f92] cursor-pointer"
+                className={`w-full bg-white border px-3.5 py-2.5 rounded-xl text-xs font-semibold text-[#0f172a] focus:outline-none focus:border-[#501f92] cursor-pointer ${logDateError ? 'border-[#dc2626]' : 'border-[#cbd5e1]'}`}
               />
+              <p className={`mt-1 text-[10.5px] leading-snug ${logDateError ? 'text-[#dc2626] font-semibold' : 'text-[#64748b]'}`}>
+                {logDateError || (logWindow.graceOpen
+                  ? 'Hoy es el último día para cargar horas del mes anterior.'
+                  : 'Solo se cargan horas del mes en curso: un mes cerrado no recibe horas.')}
+              </p>
             </div>
 
             {/* Duración (Solo Horas y Minutos) */}
@@ -482,7 +491,7 @@ export const ManualTimeLogModal: React.FC<ManualTimeLogModalProps> = ({
           <button
             type="submit"
             form="manual-log-form"
-            disabled={!selectedTask}
+            disabled={!selectedTask || Boolean(logDateError)}
             className="px-5 py-2.5 rounded-xl bg-[#501f92] hover:bg-[#381566] disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold shadow-xs cursor-pointer transition-colors"
           >
             Cargar Horas
