@@ -22,6 +22,7 @@ import {
   resolveColonyChallenge
 } from './coloniaEngine';
 import { playScoreChime, playWinFanfare, playTapSound } from './coloniaAudio';
+import { TorreDeTroncos, SaltoDeNenufares } from './arcade/ArcadeGames';
 import {
   X,
   Trophy,
@@ -67,7 +68,7 @@ export const ColoniaMinigames: React.FC<ColoniaMinigamesProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-150">
-      <div className="relative w-full max-w-lg bg-[#120822] border border-[#8a4dff]/50 rounded-3xl p-5 sm:p-6 text-white shadow-2xl space-y-4 max-h-[94vh] overflow-y-auto">
+      <div className="relative w-full max-w-xl bg-gradient-to-b from-[#1c0f3a] to-[#120822] border border-[#8a4dff]/50 rounded-[28px] p-4 sm:p-5 text-white shadow-2xl space-y-4 max-h-[94vh] overflow-y-auto">
         {/* Header del Modal */}
         <div className="flex items-center justify-between border-b border-white/10 pb-3">
           <div className="flex items-center gap-2.5">
@@ -535,84 +536,20 @@ const TorreCedroMinigame: React.FC<MinigameSubProps> = ({
   onClose
 }) => {
   const [gameState, setGameState] = useState<'intro' | 'playing' | 'gameover'>('intro');
-  const [timeLeft, setTimeLeft] = useState(15);
   const [score, setScore] = useState(0);
-  const [movingPos, setMovingPos] = useState(50);
-  const [direction, setDirection] = useState<1 | -1>(1);
-  const [tower, setTower] = useState<number[]>([50]);
-  const [feedback, setFeedback] = useState<string | null>(null);
-
-  // Timer de 15 segundos
-  useEffect(() => {
-    if (gameState !== 'playing') return;
-
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          setGameState('gameover');
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [gameState]);
-
-  // Movimiento oscilante del tronco
-  useEffect(() => {
-    if (gameState !== 'playing') return;
-
-    const speed = 25;
-    const interval = setInterval(() => {
-      setMovingPos((prev) => {
-        let next = prev + direction * 2.5;
-        if (next >= 85) {
-          setDirection(-1);
-          next = 85;
-        } else if (next <= 15) {
-          setDirection(1);
-          next = 15;
-        }
-        return next;
-      });
-    }, speed);
-
-    return () => clearInterval(interval);
-  }, [gameState, direction]);
-
-  const handleDrop = () => {
-    if (gameState !== 'playing') return;
-
-    const lastBlock = tower[tower.length - 1];
-    const diff = Math.abs(movingPos - lastBlock);
-
-    if (diff < 15) {
-      const perfect = diff < 5;
-      const pts = perfect ? 3 : 1;
-      setScore((s) => s + pts);
-      setTower((prev) => [...prev.slice(-6), movingPos]);
-      setFeedback(perfect ? '¡PERFECTO! +3' : '¡ENCAJÓ! +1');
-    } else {
-      setFeedback('¡Ups, tambaleó!');
-    }
-
-    setTimeout(() => setFeedback(null), 600);
-  };
+  const [round, setRound] = useState(0);
 
   if (gameState === 'intro') {
     return (
       <GameIntroScreen
         activeUserId={currentUser?.id}
         title="Torre de Troncos"
-        oneRule="Toca la pantalla cuando el tronco esté alineado con la base para soltarlo y apilarlo lo más alto posible."
+        oneRule="Toca para soltar el tronco sobre la torre. Lo que sobresale se corta; si lo alineas perfecto, suma +3."
         gameId="torre"
         activeChallenge={activeChallenge}
         onStart={() => {
           setScore(0);
-          setTimeLeft(15);
-          setTower([50]);
+          setRound((r) => r + 1);
           setGameState('playing');
         }}
       />
@@ -630,8 +567,7 @@ const TorreCedroMinigame: React.FC<MinigameSubProps> = ({
         currentUser={currentUser}
         onPlayAgain={() => {
           setScore(0);
-          setTimeLeft(15);
-          setTower([50]);
+          setRound((r) => r + 1);
           setGameState('playing');
         }}
         onChallengeCreated={onChallengeCreated}
@@ -644,63 +580,13 @@ const TorreCedroMinigame: React.FC<MinigameSubProps> = ({
   }
 
   return (
-    <div className="space-y-3 select-none" onClick={handleDrop}>
-      {/* HUD del juego */}
-      <div className="flex items-center justify-between px-2 py-1.5 bg-white/5 rounded-xl border border-white/10 text-xs">
-        <div className="flex items-center gap-2">
-          <Clock className="w-4 h-4 text-[#d4ff4a] animate-pulse" />
-          <span className="font-mono font-bold text-white">
-            Tiempo: <strong className="text-[#d4ff4a] text-sm">{timeLeft}s</strong>
-          </span>
-        </div>
-        <div className="font-mono font-black text-white text-sm">
-          Pisos: <strong className="text-[#d4ff4a]">{score}</strong>
-        </div>
-      </div>
-
-      {/* Área de la Torre */}
-      <div className="relative h-64 sm:h-72 rounded-2xl bg-gradient-to-b from-[#1b0d33] via-[#140b24] to-[#0a0414] border-2 border-[#8a4dff]/40 overflow-hidden flex flex-col justify-between p-4 cursor-pointer shadow-inner">
-        {/* Tronco móvil superior */}
-        <div className="relative h-10 w-full">
-          <div
-            style={{ left: `${movingPos}%` }}
-            className="absolute -translate-x-1/2 top-0 px-4 py-1.5 rounded-xl bg-gradient-to-r from-[#d97706] to-[#b45309] border-2 border-[#fde68a] text-white font-mono text-xs font-black shadow-lg"
-          >
-            🪵 CEDRO
-          </div>
-        </div>
-
-        {/* Feedback visual */}
-        {feedback && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-            <span className="text-xl sm:text-2xl font-black text-[#d4ff4a] bg-black/70 px-4 py-2 rounded-2xl border border-[#d4ff4a] animate-in zoom-in-50">
-              {feedback}
-            </span>
-          </div>
-        )}
-
-        {/* Base de la torre */}
-        <div className="relative h-40 w-full flex flex-col-reverse items-center justify-start pb-2">
-          {tower.map((pos, idx) => (
-            <div
-              key={idx}
-              className="absolute -translate-x-1/2 px-4 py-1.5 rounded-xl bg-[#78350f] border border-[#d97706] text-white font-mono text-[10px] font-bold shadow-md"
-              style={{
-                left: `${pos}%`,
-                bottom: `${idx * 24}px`
-              }}
-            >
-              🪵 PISO {idx + 1}
-            </div>
-          ))}
-          <div className="absolute bottom-0 w-3/4 h-2 bg-[#501f92] rounded-full" />
-        </div>
-      </div>
-
-      <p className="text-[11px] text-center text-[#c9b7ff]">
-        👆 Toca cualquier parte de la pantalla para soltar el tronco
-      </p>
-    </div>
+    <TorreDeTroncos
+      key={round}
+      onFinish={(sc) => {
+        setScore(sc);
+        setGameState('gameover');
+      }}
+    />
   );
 };
 
@@ -716,70 +602,20 @@ const ReflejosNenufarMinigame: React.FC<MinigameSubProps> = ({
   onClose
 }) => {
   const [gameState, setGameState] = useState<'intro' | 'playing' | 'gameover'>('intro');
-  const [timeLeft, setTimeLeft] = useState(15);
   const [score, setScore] = useState(0);
-  const [activePad, setActivePad] = useState<number>(0);
-
-  // Timer de 15 segundos
-  useEffect(() => {
-    if (gameState !== 'playing') return;
-
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          setGameState('gameover');
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [gameState]);
-
-  // Cambiar nenúfar activo
-  useEffect(() => {
-    if (gameState !== 'playing') return;
-
-    const interval = setInterval(() => {
-      setActivePad((prev) => {
-        let next = Math.floor(Math.random() * 4);
-        while (next === prev) {
-          next = Math.floor(Math.random() * 4);
-        }
-        return next;
-      });
-    }, 750);
-
-    return () => clearInterval(interval);
-  }, [gameState]);
-
-  const handlePadClick = (index: number) => {
-    if (gameState !== 'playing') return;
-
-    if (index === activePad) {
-      setScore((s) => s + 1);
-      let next = Math.floor(Math.random() * 4);
-      while (next === index) {
-        next = Math.floor(Math.random() * 4);
-      }
-      setActivePad(next);
-    }
-  };
+  const [round, setRound] = useState(0);
 
   if (gameState === 'intro') {
     return (
       <GameIntroScreen
         activeUserId={currentUser?.id}
         title="Salto de Nenúfares"
-        oneRule="Toca el nenúfar donde aparezca ECO lo más rápido que puedas antes de que salte a otro."
+        oneRule="Toca a ECO en el nenúfar donde cae, antes de que salte a otro. Con racha, salta más rápido."
         gameId="nenufar"
         activeChallenge={activeChallenge}
         onStart={() => {
           setScore(0);
-          setTimeLeft(15);
-          setActivePad(Math.floor(Math.random() * 4));
+          setRound((r) => r + 1);
           setGameState('playing');
         }}
       />
@@ -797,8 +633,7 @@ const ReflejosNenufarMinigame: React.FC<MinigameSubProps> = ({
         currentUser={currentUser}
         onPlayAgain={() => {
           setScore(0);
-          setTimeLeft(15);
-          setActivePad(Math.floor(Math.random() * 4));
+          setRound((r) => r + 1);
           setGameState('playing');
         }}
         onChallengeCreated={onChallengeCreated}
@@ -811,52 +646,12 @@ const ReflejosNenufarMinigame: React.FC<MinigameSubProps> = ({
   }
 
   return (
-    <div className="space-y-3 select-none">
-      {/* HUD del juego */}
-      <div className="flex items-center justify-between px-2 py-1.5 bg-white/5 rounded-xl border border-white/10 text-xs">
-        <div className="flex items-center gap-2">
-          <Clock className="w-4 h-4 text-[#d4ff4a] animate-pulse" />
-          <span className="font-mono font-bold text-white">
-            Tiempo: <strong className="text-[#d4ff4a] text-sm">{timeLeft}s</strong>
-          </span>
-        </div>
-        <div className="font-mono font-black text-white text-sm">
-          Aciertos: <strong className="text-[#4be5ff]">{score}</strong>
-        </div>
-      </div>
-
-      {/* Cuadrante de Nenúfares (2x2) */}
-      <div className="h-64 sm:h-72 rounded-2xl bg-gradient-to-b from-[#0a2f44] to-[#041724] border-2 border-[#38bdf8]/40 p-4 grid grid-cols-2 gap-3.5 shadow-inner">
-        {[0, 1, 2, 3].map((idx) => {
-          const isActive = idx === activePad;
-          return (
-            <button
-              key={idx}
-              onPointerDown={() => handlePadClick(idx)}
-              className={`rounded-2xl flex flex-col items-center justify-center p-3 transition-all transform cursor-pointer border-2 select-none ${
-                isActive
-                  ? 'bg-gradient-to-br from-[#166534] to-[#14532d] border-[#d4ff4a] scale-105 shadow-xl shadow-[#d4ff4a]/20 animate-pulse'
-                  : 'bg-[#0f3b2e]/60 border-[#10b981]/20 hover:border-[#10b981]/40'
-              }`}
-            >
-              <span className="text-3xl sm:text-4xl">
-                {isActive ? '🦫' : '🪷'}
-              </span>
-              <span
-                className={`text-[10px] font-black uppercase mt-1 ${
-                  isActive ? 'text-[#d4ff4a]' : 'text-white/40'
-                }`}
-              >
-                {isActive ? '¡TOCA AQUÍ!' : 'Nenúfar'}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-      <p className="text-[11px] text-center text-[#c9b7ff]">
-        👆 Reacciona tocando el nenúfar donde salta ECO
-      </p>
-    </div>
+    <SaltoDeNenufares
+      key={round}
+      onFinish={(sc) => {
+        setScore(sc);
+        setGameState('gameover');
+      }}
+    />
   );
 };

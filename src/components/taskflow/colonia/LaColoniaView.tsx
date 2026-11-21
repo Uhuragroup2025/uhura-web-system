@@ -542,7 +542,7 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
                   >
                     <ArrowRight className="w-4 h-4 rotate-180" />
                   </button>
-                  <h2 className="text-lg sm:text-xl font-black text-white tracking-tight">Universo de juegos</h2>
+                  <h2 className="text-lg sm:text-xl font-black text-white tracking-tight">Arcade</h2>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 p-1.5 rounded-2xl bg-black/30 border border-white/10 backdrop-blur-md">
                   <button
