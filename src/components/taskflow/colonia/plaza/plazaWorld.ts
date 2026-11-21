@@ -19,6 +19,24 @@ import char4 from '../../../../assets/images/plaza/char-4.webp';
 import char5 from '../../../../assets/images/plaza/char-5.webp';
 import char6 from '../../../../assets/images/plaza/char-6.webp';
 import char7 from '../../../../assets/images/plaza/char-7.webp';
+import char1Up from '../../../../assets/images/plaza/char-1-up.webp';
+import char1Side from '../../../../assets/images/plaza/char-1-side.webp';
+import char2Up from '../../../../assets/images/plaza/char-2-up.webp';
+import char2Side from '../../../../assets/images/plaza/char-2-side.webp';
+import char4Up from '../../../../assets/images/plaza/char-4-up.webp';
+import char4Side from '../../../../assets/images/plaza/char-4-side.webp';
+import char5Up from '../../../../assets/images/plaza/char-5-up.webp';
+import char5Side from '../../../../assets/images/plaza/char-5-side.webp';
+import char6Up from '../../../../assets/images/plaza/char-6-up.webp';
+import char6Side from '../../../../assets/images/plaza/char-6-side.webp';
+import char3Up from '../../../../assets/images/plaza/char-3-up.webp';
+import char3Side from '../../../../assets/images/plaza/char-3-side.webp';
+import char7Up from '../../../../assets/images/plaza/char-7-up.webp';
+import char7Side from '../../../../assets/images/plaza/char-7-side.webp';
+import bldEstudio from '../../../../assets/images/plaza/bld-estudio.webp';
+import estudioInterior from '../../../../assets/images/plaza/estudio-interior.webp';
+
+export const ESTUDIO_INTERIOR = estudioInterior;
 import ecoDown from '../../../../assets/images/plaza/eco-down.webp';
 import ecoUp from '../../../../assets/images/plaza/eco-up.webp';
 import ecoLeft from '../../../../assets/images/plaza/eco-left.webp';
@@ -39,26 +57,29 @@ export const SKY_PAD = 90;
 export const WORLD_W = MAP_W;
 export const WORLD_H = MAP_H + SKY_PAD;
 
-export const CHARACTERS = [
-  { id: 'c1', img: char1, name: 'Rizos' },
-  { id: 'c2', img: char2, name: 'Bomber' },
-  { id: 'c3', img: char3, name: 'Trenzas' },
-  { id: 'c4', img: char4, name: 'Clásico' },
-  { id: 'c5', img: char5, name: 'Blazer' },
-  { id: 'c6', img: char6, name: 'Urbano' },
-  { id: 'c7', img: char7, name: 'Lila' }
-] as const;
+/** Personajes: frente, espalda y lado (mirando a la derecha; la izquierda es su espejo). */
+export interface PlazaCharacter { id: string; name: string; img: string; up?: string; side?: string }
+export const CHARACTERS: PlazaCharacter[] = [
+  { id: 'c1', img: char1, up: char1Up, side: char1Side, name: 'Rizos' },
+  { id: 'c2', img: char2, up: char2Up, side: char2Side, name: 'Bomber' },
+  { id: 'c3', img: char3, up: char3Up, side: char3Side, name: 'Trenzas' },
+  { id: 'c4', img: char4, up: char4Up, side: char4Side, name: 'Clásico' },
+  { id: 'c5', img: char5, up: char5Up, side: char5Side, name: 'Blazer' },
+  { id: 'c6', img: char6, up: char6Up, side: char6Side, name: 'Urbano' },
+  { id: 'c7', img: char7, up: char7Up, side: char7Side, name: 'Lila' }
+];
 
 export const ECO_SPRITES = { down: ecoDown, up: ecoUp, left: ecoLeft, right: ecoRight };
 
-export type ZoneId = 'arcade' | 'cafe' | 'stage' | 'wall';
+export type ZoneId = 'arcade' | 'cafe' | 'stage' | 'estudio' | 'wall';
 
 export interface Zone {
   id: ZoneId;
   name: string;
   verb: string;
   emoji: string;
-  img: string;
+  /** Sin imagen: se pinta un edificio provisional. */
+  img?: string;
   /** Centro inferior del edificio (en coordenadas del mapa). */
   x: number;
   y: number;
@@ -72,7 +93,8 @@ export const ZONES: Zone[] = [
   { id: 'arcade', name: 'Arcade', verb: 'Jugar', emoji: '🕹️', img: bldArcade, x: 742, y: 212, width: 300, height: 290, door: { x: 742, y: 240 } },
   { id: 'cafe', name: 'Café', verb: 'Entrar al café', emoji: '☕', img: bldCafe, x: 222, y: 608, width: 330, height: 333, door: { x: 222, y: 636 } },
   { id: 'stage', name: 'Escenario', verb: 'Poner música', emoji: '🎧', img: bldStage, x: 1242, y: 608, width: 320, height: 319, door: { x: 1242, y: 636 } },
-  { id: 'wall', name: 'Muro', verb: 'Ver el muro', emoji: '🎉', img: bldWall, x: 747, y: 870, width: 236, height: 233, door: { x: 747, y: 640 } }
+  { id: 'estudio', name: 'El Estudio', verb: 'Entrar al Estudio', emoji: '💻', img: bldEstudio, x: 747, y: 884, width: 255, height: 254, door: { x: 747, y: 612 } },
+  { id: 'wall', name: 'Muro', verb: 'Ver el muro', emoji: '🎉', img: bldWall, x: 300, y: 905, width: 196, height: 194, door: { x: 425, y: 676 } }
 ];
 
 export const DOOR_RADIUS = 80;
@@ -85,8 +107,8 @@ export const PROPS: { img: string; x: number; y: number; h: number }[] = [
   { img: propGuitar, x: 1395, y: 600, h: 58 },
   { img: propCoffee, x: 392, y: 600, h: 30 },
   { img: propPlant, x: 46, y: 612, h: 46 },
-  { img: propBalloons, x: 590, y: 862, h: 88 },
-  { img: propGift, x: 905, y: 868, h: 42 }
+  { img: propBalloons, x: 172, y: 900, h: 80 },
+  { img: propGift, x: 425, y: 905, h: 40 }
 ];
 
 type Rect = { x0: number; y0: number; x1: number; y1: number };
@@ -96,7 +118,7 @@ const BLOCK_RECTS: Rect[] = [
   { x0: 520, y0: 0, x1: 965, y1: 214 },     // Arcade (lote norte)
   { x0: 58, y0: 285, x1: 388, y1: 606 },    // Café (lote oeste)
   { x0: 1094, y0: 285, x1: 1400, y1: 606 }, // Escenario (lote este)
-  { x0: 488, y0: 662, x1: 1006, y1: 878 },  // Muro (lote sur)
+  { x0: 488, y0: 662, x1: 1006, y1: 878 },  // El Estudio (lote sur)
   { x0: 0, y0: 690, x1: 466, y1: 941 },     // Jardín suroeste
   { x0: 1030, y0: 690, x1: 1672, y1: 941 }, // Jardín sureste
   { x0: 1398, y0: 0, x1: 1672, y1: 941 }    // Río

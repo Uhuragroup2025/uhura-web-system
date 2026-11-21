@@ -83,6 +83,7 @@ type ColoniaTabMode = 'plaza' | 'fichas' | 'habitat';
 type FilterCategory = 'todos' | 'cumples' | 'aniversarios';
 
 export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
+  tasks = [],
   currentUser,
   teamUsers = [],
   timeLogs = [],
@@ -247,6 +248,7 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
         <LaPlazaView
           currentUser={currentUser}
           teamUsers={teamUsers}
+          tasks={tasks}
           absenceEvents={absenceEvents}
           onOpenArcade={() => setActiveTabMode('habitat')}
           onOpenTeam={() => setActiveTabMode('fichas')}
