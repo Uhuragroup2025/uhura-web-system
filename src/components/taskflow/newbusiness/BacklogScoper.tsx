@@ -512,32 +512,39 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
     const issues = serviceValidationMessages(service);
     const serviceHours = quote.deliverables.filter((item) => service.deliverableIds.includes(item.id)).flatMap((item) => item.backlogItems).reduce((sum, item) => sum + item.estimatedHours, 0);
     const locked = Boolean(readOnly || service.saved) && issues.length === 0;
-    return <section data-service={service.id} className="rounded-xl border border-[#ddd6fe] bg-[#f5f3ff] px-4 py-3 space-y-2">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <h3 className="font-bold text-[#3b176d]">{service.name}</h3>
-        <span className="rounded-full px-2 py-1 bg-[#ede9fe] text-xs font-bold text-[#501f92]">{serviceHours.toLocaleString('es-CO')} h</span>
-        {locked && <span className="rounded-full px-2 py-1 bg-[#ede9fe] text-xs font-bold text-[#501f92]">{service.weeks} sem.</span>}
-        {locked && service.unitLabel && <span className="rounded-full px-2 py-1 bg-[#fef3c7] text-xs font-bold text-[#92400e]">× {service.quantity || 1} {pluralUnit(service.unitLabel, service.quantity || 1)}</span>}
-        <button type="button" disabled={!locked && issues.length > 0} aria-label={`${locked ? 'Editar' : 'Guardar'} servicio ${service.name}`}
-          onClick={() => {
-            if (!locked && issues.length > 0) return;
-            if (readOnly) onRequestEdit?.();
-            onChangeServices(services.map((item) => item.id === service.id ? { ...item, saved: !locked } : item));
-            setSavedServiceFeedback(locked ? null : service.id);
-          }} className={`inline-flex items-center gap-1.5 rounded-lg border px-4 py-2 text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed ${locked ? 'bg-white border-[#cbd5e1] text-[#501f92]' : 'bg-[#501f92] border-[#501f92] text-white hover:bg-[#3d1572] shadow-sm'}`}>
-          {locked ? <Pencil className="w-3 h-3" /> : <CheckCircle2 className="w-3 h-3" />}{locked ? 'Editar servicio' : 'Guardar servicio'}
-        </button>
-        {!readOnly && (
-          <button
-            type="button"
-            onClick={() => setConfirmRemoveServiceId(service.id)}
-            aria-label={`Eliminar servicio ${service.name}`}
-            title="Eliminar este servicio del alcance"
-            className="p-2 rounded-lg border border-[#fecaca] bg-white text-[#dc2626] hover:bg-[#fef2f2] cursor-pointer"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
+    const hoursLabel = (Math.round(serviceHours * 10) / 10).toLocaleString('es-CO');
+    return <section data-service={service.id} className="rounded-2xl border border-[#ddd6fe] bg-[#f5f3ff] px-4 py-3 space-y-2">
+      {/* Fila 1: título a la izquierda, acciones compactas a la derecha (no se desordena en tablet/celular) */}
+      <div className="flex items-start gap-3">
+        {/* Título con sus datos al lado (horas, semanas, cantidad); si el título es largo, bajan */}
+        <div className="flex-1 min-w-0 flex items-center gap-x-2 gap-y-1 flex-wrap">
+          <h3 className="font-bold text-[#3b176d] leading-snug">{service.name}</h3>
+          <span className="rounded-full px-2 py-0.5 bg-[#ede9fe] text-xs font-bold text-[#501f92] whitespace-nowrap">{hoursLabel} h</span>
+          {locked && <span className="rounded-full px-2 py-0.5 bg-[#ede9fe] text-xs font-bold text-[#501f92] whitespace-nowrap">{service.weeks} sem.</span>}
+          {locked && service.unitLabel && <span className="rounded-full px-2 py-0.5 bg-[#fef3c7] text-xs font-bold text-[#92400e] whitespace-nowrap">× {service.quantity || 1} {pluralUnit(service.unitLabel, service.quantity || 1)}</span>}
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button type="button" disabled={!locked && issues.length > 0} aria-label={`${locked ? 'Editar' : 'Guardar'} servicio ${service.name}`}
+            onClick={() => {
+              if (!locked && issues.length > 0) return;
+              if (readOnly) onRequestEdit?.();
+              onChangeServices(services.map((item) => item.id === service.id ? { ...item, saved: !locked } : item));
+              setSavedServiceFeedback(locked ? null : service.id);
+            }} className={`inline-flex items-center gap-1.5 h-8 rounded-full border px-3.5 text-xs font-semibold whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${locked ? 'bg-white border-[#cbd5e1] text-[#501f92] hover:bg-[#faf5ff]' : 'bg-[#501f92] border-[#501f92] text-white hover:bg-[#3d1572] shadow-sm'}`}>
+            {locked ? <Pencil className="w-3 h-3" /> : <CheckCircle2 className="w-3 h-3" />}{locked ? 'Editar' : 'Guardar'}<span className="hidden sm:inline">&nbsp;servicio</span>
           </button>
-        )}
+          {!readOnly && (
+            <button
+              type="button"
+              onClick={() => setConfirmRemoveServiceId(service.id)}
+              aria-label={`Eliminar servicio ${service.name}`}
+              title="Eliminar este servicio del alcance"
+              className="h-8 w-8 inline-flex items-center justify-center rounded-full border border-[#fecaca] bg-white text-[#dc2626] hover:bg-[#fef2f2] cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       </div>
       {confirmRemoveServiceId === service.id && (
         <div role="alertdialog" className="flex items-center justify-between gap-3 flex-wrap rounded-lg border border-[#fecaca] bg-[#fef2f2] px-3 py-2 text-xs text-[#991b1b]">
@@ -622,7 +629,7 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
 
   const readingDeliverable = (deliverable: QuoteDeliverable) => <article className="bg-white border border-[#e2e8f0] rounded-xl overflow-hidden">
     <div className="px-4 py-3 flex justify-between gap-3"><h4 className="font-bold text-sm">{deliverable.name}</h4><strong className="text-xs text-[#501f92] whitespace-nowrap">Subtotal: {deliverable.backlogItems.reduce((sum, item) => sum + item.estimatedHours, 0).toLocaleString('es-CO')} h</strong></div>
-    <div className="overflow-x-auto"><table className="w-full text-xs text-left"><thead className="bg-[#f8fafc] text-[#64748b]"><tr><th className="px-4 py-2 font-medium">Actividad</th><th className="px-3 py-2 font-medium">Rol</th><th className="px-3 py-2 font-medium">Responsable</th><th className="px-3 py-2 font-medium">Horas</th></tr></thead>
+    <div className="overflow-x-auto"><table className="w-full text-xs text-left"><thead className="bg-[#f8fafc] text-[#64748b]"><tr><th className="px-4 py-2 font-medium">Actividad</th><th className="px-3 py-2 font-medium">Rol</th><th className="px-3 py-2 font-medium">Colaborador</th><th className="px-3 py-2 font-medium">Horas</th></tr></thead>
     <tbody className="divide-y divide-[#f1f5f9]">{[...deliverable.backlogItems].sort((a,b) => a.order-b.order).map((activity) => <tr key={activity.id}><td className="px-4 py-2">{activity.title || 'Actividad sin título'}</td><td className="px-3 py-2">{activity.roleName}</td><td className="px-3 py-2"><span className="inline-block rounded bg-[#f1f5f9] px-2 py-1 whitespace-nowrap">{users.find((user) => user.id === activity.suggestedUserId)?.name || 'Sin asignar'}</span></td><td className="px-3 py-2 whitespace-nowrap">{activity.estimatedHours.toLocaleString('es-CO')} h</td></tr>)}</tbody></table></div>
   </article>;
 
@@ -847,7 +854,7 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
                                     </select>
                                   </div>
 
-                                  {/* Responsable de Ejecución */}
+                                  {/* Colaborador (ejecuta la tarea) */}
                                   <div className="shrink-0">
                                     <select
                                       value={users.some((user) => user.id === act.suggestedUserId) ? act.suggestedUserId || '' : ''}
@@ -855,9 +862,9 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
                                         handleUpdateActivity(del.id, act.id, 'suggestedUserId', e.target.value || null);
                                       }}
                                       className="text-[11px] font-medium px-2 py-0.5 rounded-lg border border-[#e2e8f0] bg-white text-[#334155] hover:border-[#cbd5e1] focus:ring-1 focus:ring-[#501f92] cursor-pointer outline-hidden transition-colors max-w-[130px] truncate"
-                                      title="Persona responsable de ejecutar la actividad"
+                                      title="Colaborador: la persona que ejecuta la tarea"
                                     >
-                                      <option value="">👤 (Sin responsable)</option>
+                                      <option value="">👤 (Sin colaborador)</option>
                                       {users.filter(isEligibleTeamMember).map((u) => (
                                         <option key={u.id} value={u.id} className="text-[#0f172a]">
                                           {u.name}

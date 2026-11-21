@@ -497,6 +497,7 @@ Para no bloquear New Business cuando la app privada de HubSpot esté caída o si
 * El endpoint debe devolver el campo `department` normalizado (`Área Creatividad`, `Área Growth`, `Área Producto`, `Área Administrativa`, `Área Comercial`, `C-Level`) para soportar el filtrado por área en el frontend.
 
 ### 13.4 Prorrateo Multi-Colaborador (`assigneeAllocations`) y Regla `0h` para `Seguidores` / `Project Lead`
+> **Actualizado 18 Nov 2026 (§31):** una tarea tiene **un solo colaborador**; el trabajo en paralelo se hace con «Duplicar tarea» (horas a la mitad). El reparto entre varios colaboradores queda solo para tareas legadas.
 * **Prorrateo de Bolsa en Tareas con Múltiples Ejecutores:**
   * Cuando una tarea tiene `N > 1` colaboradores (`Colaboradores`), el backend **no debe** sumar el 100% de `budgeted_hours` a cada colaborador.
   * Debe utilizar `assignee_allocations` (horas específicas asignadas a cada ejecutor sobre la bolsa de la tarea) o, en su defecto, prorratear `budgeted_hours / N` entre los colaboradores activos.
@@ -906,3 +907,496 @@ Salen de la prueba de punta a punta en producción (`orbit-00167-dij`). Aquí va
 * **Mi Día · «¿Qué requiere mi atención?»:** una tarjeta con contador y filas compactas; la acción es un enlace de texto a la derecha («Ver tarea →», «Listo para revisar →», «Gestionar insumo →»). Los insumos dicen «para {fase} · faltan N días hábiles para que bloquee».
 * **Modelo de la propuesta:** el Resumen de la oportunidad muestra el tipo general (Proyecto único, Fee mensual o Mixta) según los servicios; no fijarlo en «Proyecto único».
 
+
+## 31. Ronda 4: inducción con Dirección y prueba en producción (17–18 Nov 2026)
+
+> **Estado vigente del cronograma de proyecto único (lean esto primero; 19 Nov 2026).** Las subsecciones 31 a 31.12 muestran cómo evolucionó el modelo; donde se contradicen, manda este resumen y la subsección más reciente.
+> 1. **Una sola fuente de verdad:** los pasos por fase (`phase_steps`). El modal «Iniciar proyecto», su resumen, «Cronograma y acuerdos», las fechas de las tareas, el aviso de tarea fuera de fase y el insumo tardío salen del mismo cálculo (`schedule/clientTimeline.ts`).
+> 2. **Total = semanas de producción × 5 + Σ días de QA del cliente.** El QA interno y los ajustes internos son tareas: van dentro de la producción. El QA del cliente es tiempo del cliente y es lo único que suma días. Días hábiles con los festivos de Colombia.
+> 3. **Presentaciones al cliente** por fase, con nombre, tipo (checkpoint o aprobación) y días de QA del cliente y de ajustes. Por defecto según el área del servicio (§31.10). Quitar o agregar presentaciones no cambia la producción total (§31.12).
+> 4. **Tareas:** se reparten en los días de trabajo de su fase (producción + trabajo previo a cada presentación; nunca en el QA del cliente). Las tareas de ajustes del cliente van en la ventana de ajustes de la aprobación formal de su fase.
+> 5. **Cambios después de iniciar:**
+>    - una tarea que pasa el último día de trabajo de su fase pide «Extender la fase» (§31.6);
+>    - un insumo bloqueante recibido tarde pide «Recalcular cronograma» (§31.9);
+>    - una fecha editada en «Cronograma cliente» recalcula todo lo que sigue y se aplica con «Aplicar al cronograma».
+>    - La línea base no cambia; el forecast sí.
+> 6. «Rondas incluidas por presentación» ya no es un campo: cada presentación incluye una ronda; una adicional es otra presentación que se cotiza (§31.9).
+> 7. «Cronograma y acuerdos» se abre en una **pestaña propia** con su propia dirección, conectada en vivo al proyecto (§31.16). Si el navegador la bloquea, se muestra como modal. Es el primer paso hacia un portal del cliente.
+
+Salen de la presentación de ECO a Dirección y RR. HH. y de la prueba con «PRUEBA CLIENTE». Aquí van las reglas; la diferencia con producción va en el ticket.
+
+**Agenda por capacidad (motor del cronograma, `schedule/scheduleEngine.ts`):**
+* Cada tarea tiene una **ventana**: desde que puede empezar (su turno en el entregable) hasta su **fecha límite** (`due_date`, protege la entrega). El **día de trabajo** (`scheduled_date`) es el primer día hábil de la ventana en que al colaborador le cabe la tarea, según lo que ya tiene agendado en **todos** sus proyectos (jornada 8,4 h; festivos).
+* Reparto de horas para «Plan» (Capacidad y motor): desde el día de trabajo se llena la jornada y lo que sobra pasa al día siguiente, sin pasar de la fecha límite (`allocateTaskHours`). Reemplaza el prorrateo uniforme entre inicio y vencimiento.
+* Si una tarea no cabe en su ventana, queda en el día con más espacio y se reporta como **conflicto** en «Iniciar proyecto», con una persona sugerida **del mismo rol** que sí tenga espacio en esa ventana («Asignar a …»). La persona propuesta en el Alcance puede haberse ocupado entre la cotización y el arranque: la revisión se hace al iniciar.
+* Mi Día muestra la tarea desde su día de trabajo hasta la fecha límite (no toda la ventana), así no se acumulan tareas de varios días.
+
+**Cronograma para el cliente en «Iniciar proyecto»:**
+* Cada insumo tiene una **fecha acordada con el cliente** (editable en vivo en el kickoff; por defecto, el inicio de la fase). Si un insumo **bloqueante** se acuerda después del inicio de su fase, esa fase y las siguientes se corren hasta esa fecha (`deliverableNotBefore`), y la entrega se recalcula.
+* La dependencia se crea con la fecha acordada como `expected_date`.
+* El panel «Cronograma para el cliente» muestra fases, rondas, compromisos y entrega final; se **descarga** (PDF desde el navegador) y se **envía por correo** (en producción, con el buzón de ECO). Queda como compromiso de ambas partes, base de las penalidades del contrato.
+
+**Conversión a proyecto:**
+* **Líder operativo por área del servicio:** Producto Digital → Product Lead; Creativo → Creative Strategy Lead; Growth → Growth Manager. El área sale del catálogo (por nombre del servicio) y, si no aparece, del área de los roles con más horas. Prefiere a los líderes asignados a la oportunidad. Comercial lo puede cambiar.
+* Las notas «Las fechas no se definen aquí…» y «Pendiente de formalización…» pasan a un tooltip («¿Y las fechas?»).
+* La ventana de «Propuesta ganada» muestra **todos** los líderes del alcance y **todos** los comerciales asignados.
+* El aviso «Oportunidad ganada: la cotización V1 quedó aprobada y congelada» se cierra solo (como los demás avisos).
+
+**Tareas:**
+* **Un solo colaborador por tarea.** Elegir otra persona la reasigna. Para trabajo en paralelo (p. ej. dos propuestas de logo) se usa **«Duplicar tarea»**: crea una copia sin colaborador ni horas cargadas y reparte las horas cotizadas a la mitad. Quien solo hace seguimiento va en Seguidores (0 h, notificado solo si lo mencionan).
+* **Aprobar y completar / Devolver:** solo el **Project Lead de la tarea** (o su revisor asignado). Los seguidores y colaboradores no ven esos botones. Si el Project Lead se ausenta, se cambia el Project Lead. Tareas legadas sin Project Lead: aprueba un líder o administrador.
+* **Retrabajos:** el formulario cambia con el origen. Cliente: causa «Feedback del cliente» (cuenta como ronda; si supera las incluidas se cobra) o «Cambio de alcance» (avisar a Comercial para cotizarlo); «Solicitado por (cliente)». QA/Interno: causa «Error interno detectado en QA» (no consume rondas ni se cobra); «Detectado por». Campo `rework.root_cause`: `client_feedback | scope_change | internal_error`.
+* Al guardar horas (cronómetro o manual) el usuario **se queda donde estaba** (tarea o proyecto); no se navega a Mi Día.
+
+**Horas:**
+* **Mes cerrado no recibe horas** («si no se cargó a tiempo, se perdió»). Se puede cargar del mes en curso hasta hoy; el mes anterior queda abierto solo hasta el final del **primer día hábil** del mes nuevo. Nada a futuro. Validar también en el servidor (`work_date`). Aplica a todos los perfiles; las correcciones después del cierre semanal siguen la regla de §10.
+* **Horario por calendario:** Colombia 8:00–18:00; México 9:00–19:00 (hora Colombia). El recordatorio de horas sale a las 4:00 p. m. (Colombia) o 5:00 p. m. (México), hora Colombia.
+
+**Capacidad:**
+* **Ritmo personal** = horas cargadas ÷ horas **planeadas** hasta hoy en la semana (incluye tareas ya completadas). Sin tareas planeadas hasta hoy: «Sin plan aún» (nunca «Rezagado»). La vista Organización mantiene el ritmo contra la capacidad.
+* Al elegir un día: lista **«Agendado»** (tareas de la persona con horas planeadas ese día, con su proyecto y fecha límite; clic abre la tarea) además de los registros del día. Sirve para adelantar trabajo de otros días.
+* Las tarjetas de entregable del proyecto muestran **horas cargadas / cotizadas** además del avance por tareas completadas.
+
+**Fee mensual:**
+* Al abrir cada mes, el líder decide qué pasa con las horas no usadas del mes anterior: **regla del contrato** (por defecto) o excepción solo para ese mes (no pasan / pasan todas / hasta 25 %). Campo `projects.rollover_overrides` (clave = mes que recibe, `YYYY-MM`).
+
+**New Business:**
+* **Pedir ajuste de alcance** (Comercial, después de marcar el alcance listo y antes de ganar): nota obligatoria; la oportunidad vuelve a «en elaboración» y les llega a los líderes del alcance en Mi Día («🔁 Ajustar alcance: …»). Se limpia al volver a «Marcar alcance listo». Campo `opportunity.scope_change_request`.
+* En Alcance la columna de la persona se llama **«Colaborador»** (es quien ejecuta la tarea que se crea).
+* El brief **no** se sincroniza desde HubSpot (las notas del lead/negocio no traen el brief): Comercial lo escribe en ECO.
+* Aviso de cotización: se recalcula al corregir los campos (no queda el texto de un intento anterior).
+
+**Proyectos internos:** un proyecto del cliente Uhura nace **no facturable** (`internal_non_billable`), por ejemplo Administrativo, Finanzas o RR. HH., para que esas áreas puedan crear tareas y cargar horas.
+
+**Perfil:** «Sueño» pasa a **«Mi propósito»** (campo `personal_dream` sin cambio de nombre).
+
+**Correo semanal a líderes (pendiente del buzón):** los viernes, a cada líder, cómo cerró la semana su equipo: quién cargó sus horas (meta diaria de §24) y quién no, con enlace a Capacidad. Se configura en Correos.
+
+### 31.1 Ajustes tras la revisión del prototipo (19 Nov 2026)
+
+**Cronograma y acuerdos para el cliente (`projects/ClientKickoffView.tsx`, `schedule/clientTimeline.ts`):**
+* Vista amplia para proyectar en el kickoff. Se abre desde «Iniciar proyecto» y, con el proyecto ya iniciado, desde el botón «Cronograma cliente» del encabezado. Si algo quedó mal, se corrige con «Ajustar» (fechas, rondas, insumos) y se vuelve a abrir. Se descarga como PDF y se envía por correo.
+* **Nunca muestra horas internas ni tarifas** (regla del SOW).
+* Contenido de un **proyecto único**: quién está a cargo (líder, **líder suplente**, comercial o relación con el cliente, equipo); cómo se trabaja cada fase; cronograma por fase con sus hitos; insumos del cliente con la fecha acordada y qué pasa si no llegan; y los acuerdos.
+* Pasos de cada fase: producción → QA interno → presentación → aprobación del cliente → ajustes de Uhura.
+* Hitos de una fase que revisa el cliente: producción (inicio → fin) → QA interno (último día de producción) → **presentación** al cliente (fecha tentativa; asisten el líder y el comercial o relación con el cliente, más los técnicos de esa fase si hace falta) → **ventana de aprobación** del cliente (días por ronda − 2) → **ajustes de Uhura** (2 días hábiles, una ventana, no 16 h). Una ronda = presentación + aprobación + ajustes. El total de días no cambia.
+* **Las rondas se reparten entre las fases que el cliente revisa.** Prioridad: fases marcadas «gate/aprobación»; si no hay, todas menos las de arranque o cierre (Onboarding, Insumos, Kickoff, Entrega, Cierre). Antes todas caían en la última fase. La fecha de entrega no cambia.
+* Contenido de un **fee mensual**:
+  * cómo funciona cada mes: semana 1, planeación y aprobación de la parrilla en 3 días hábiles; semanas 2 y 3, producción y QA; durante el mes, publicación o ejecución; semana 4, reporte y reunión de resultados;
+  * lo que recibe cada mes: las tareas del primer ciclo agrupadas por frente, sin horas;
+  * los acuerdos del fee.
+* **Acuerdos sugeridos** (resumen del SOW; prevalece el contrato firmado; validar con Dirección):
+  * rondas incluidas; las adicionales se cotizan;
+  * aprobación tácita si el cliente no responde en la ventana;
+  * comentarios consolidados por un solo interlocutor;
+  * un insumo bloqueante tardío corre la fase y la entrega los mismos días;
+  * si la espera supera 10 días hábiles, el proyecto se pausa y se reprograma;
+  * los cambios de alcance se cotizan antes de ejecutarse;
+  * el líder suplente asume en ausencias.
+* **Líder suplente** (`projects.backup_lead`): se elige en «Iniciar proyecto» entre líderes, dirección y administración. Asume el proyecto si el líder está de vacaciones o ausente.
+
+**New Business:**
+* **Responsables del alcance = líderes de área** (`leader`, `executive`, `system_admin`). Comercial y Client Relationship van solo en «Responsable comercial». Así «Solución & Scoping» y «Comercial estrella» coinciden con lo asignado al crear la oportunidad.
+* **Sugerencia de colaborador en Alcance:** solo personas con **el mismo rol oficial**. Dos roles oficiales distintos nunca son equivalentes: Creative Designer ≠ Digital Designer y Content Creator ≠ Digital Content Specialist. Sin candidatos, la actividad queda «Sin colaborador». Antes caía a todo el equipo.
+* Personas inactivas (p. ej., quien ya no está en Uhura) nunca se sugieren ni se asignan.
+* **Confirmar servicios ganados** (ventana previa a la celebración): Comercial marca qué servicios aprobó el cliente; solo esos se convierten. Producción hoy celebra sin preguntar: implementar esta ventana antes de la celebración.
+* Las horas se muestran con un decimal y formato es-CO, por ejemplo «42,1 h». Nunca el número crudo, como «42.10000000000001 h».
+* El botón de la conversión dice **«Crear proyecto»** o **«Crear proyectos»**.
+* **Edición después de ganar:** la cotización ganada queda congelada y no se reescribe en silencio el negocio cerrado en HubSpot. Un cambio pedido por el cliente después de ganar se maneja como **orden de cambio**: nueva versión o nueva oportunidad (upsell) con su propio negocio en HubSpot; los proyectos ya creados no se modifican solos. Antes de ganar, cada guardado crea una versión y actualiza los valores en HubSpot (ECO → HubSpot); de HubSpot a ECO solo llega la etapa.
+
+**Interfaz:** «Iniciar proyecto», «Ver proyecto» y «Cronograma cliente» son botones tipo píldora, compactos y en una sola línea, también en tablet. El encabezado de cada servicio en Alcance tiene dos filas: título con acciones a la derecha, y horas, semanas y cantidad debajo.
+
+### 31.2 Cronograma y acuerdos editable (19 Nov 2026)
+
+* **Fases con pasos editables** (días hábiles; Colombia: sin fines de semana ni festivos): producción → QA interno → por cada ronda: presentación + QA del cliente (aprobación) → ajustes. Se pueden agregar o quitar presentaciones por fase. Las fases van una tras otra desde el arranque. **Cualquier cambio recalcula las fases, la entrega final y las tareas** (las tareas se reparten dentro de la producción de su fase, con agenda por capacidad). Campo `projects.phase_steps` (por fase: `production_days`, `qa_days`, `rounds[{review_days, adjust_days}]`).
+* **Antes de iniciar:** lo que se edita en «Ver cronograma y acuerdos» se usa al confirmar «Iniciar proyecto».
+* **Proyecto iniciado:** «Cronograma cliente» → «Editar» → **«Aplicar al cronograma»**. Reprograma las fases y las tareas abiertas (no las completadas), la fecha de fin y el forecast. La línea base no cambia.
+* **Insumos («Lo que necesitamos de ti»):** la fecha sugerida es el inicio de la fase y se puede editar. Un insumo bloqueante con fecha posterior al inicio de su fase corre la fase.
+* **Acuerdos:** lista simple (sin tarjetas) que se puede editar; se agregan o se quitan. Campo `projects.client_agreements`.
+* **Quién está a cargo:**
+  * líder del proyecto;
+  * **equipo líder**: las personas con más horas asignadas, sin el líder ni Comercial;
+  * relación y aprobaciones con el cliente (Comercial);
+  * **encargado del cliente** y su **suplente**, por si sale a vacaciones. Por defecto, el contacto del cliente (HubSpot).
+  * Campos `projects.client_approver_name` y `client_approver_backup_name`.
+  * Se elimina el «líder suplente» de Uhura.
+* **Acuerdo de continuidad:** si el encargado del cliente no está, aprueba su suplente; si ninguno responde dentro de la ventana, la entrega se da por aprobada.
+* **Responsable comercial** (New Business): Comercial, Client Relationship y Dirección, p. ej. Catalina, Luisa y Ana María. Es quien sale en «Comercial estrella».
+* **Capacidad:**
+  * «Tu avance» / «Avance del equipo», con estados «Vas al día», «Vas adelantado», «Tienes horas por cargar» y «Sin plan aún» (nunca «Rezagado»);
+  * los encabezados del día son «Agendado» y «Tiempos registrados»;
+  * el **próximo festivo** se muestra en la barra lateral de **Mi Día**.
+* **Mensaje al convertir:** «🎉 N proyectos creados. Siguiente paso: «Iniciar proyecto»».
+* En un proyecto, «Iniciar proyecto» es el único botón principal; «Nuevo insumo» y «Nuevo entregable» son secundarios (contorno).
+* Perfil: «Mi propósito y/o sueño es…».
+
+### 31.3 Ajustes del 19 Nov 2026 (segunda revisión)
+
+* **Mi Día · Radar del equipo** = vacaciones y ausencias + **cumpleaños** + **aniversarios en Uhura**, de los próximos 30 días y con la **fecha real de hoy** (cruzando meses y años). El prototipo tenía los cumpleaños fijos al 19 de octubre y no mostraba aniversarios. Fuentes: `birth_date` y `anniversary_date`/fecha de ingreso. Personas inactivas, nunca.
+* **Semana corta (Mi Día):** «Se viene semana corta: el {día} es festivo; esa semana tienes {capacidad − 1 día} h en vez de {capacidad} h». Según el calendario de la persona (Colombia o México).
+* **Pedir ajuste de alcance → notificación obligatoria** (en la app y por correo cuando exista el buzón) a **todos los líderes del alcance** de la oportunidad (`lead_user_ids`), con la nota de Comercial. Se marca como atendida al volver a «Marcar alcance listo». Botón con ícono de devolver (↶).
+* **Alcance listo:** una vez marcado, solo se ve el tag «Listo para cotizar», sin un botón que invite a hacer clic.
+* **Aviso de conversión:** el texto corto lleva solo un enlace de texto «Ver proyecto». «Ver cliente» y «Ver proyecto» ya están en el encabezado.
+* **Encabezado del proyecto:**
+  * Fila 1: cliente y tipo a la izquierda; acciones («Iniciar proyecto» o fechas, «Cronograma cliente», ⋮) a la derecha, en la misma línea también en tablet.
+  * Fila 2: título a todo el ancho con corte equilibrado (`text-wrap: balance`).
+* **Modal «Iniciar proyecto»:**
+  * Campos en grilla simétrica, con la misma altura y la etiqueta arriba. Fee: kickoff · vigencia · horas no usadas. Proyecto único: kickoff · semanas.
+  * Cada insumo se puede **quitar** con un ícono sutil. Desmarcarlo lo excluye sin borrarlo.
+* **Proyecto único: siempre por fases.**
+  * Arranque, vista previa y cronograma salen del mismo cálculo: producción → QA interno → por ronda: presentación + aprobación del cliente → ajustes. Sin edición, los pasos se derivan del reparto automático.
+  * Las **tareas de ajustes del cliente** («Aplicación de ajustes», «Ajustes de/del cliente», «Ronda…», «Post-entrega», «Retrabajo») se ubican en la **ventana de ajustes** de las rondas de su fase, no en producción.
+  * Las tareas de producción que dicen «ajustes» (p. ej. «Ajustes visuales sobre base») se quedan en producción.
+* **Catálogo:** solo 10 de 35 servicios de proyecto único cotizan horas de ajustes de cliente. Las ventanas de ajustes están en el cronograma, pero sin una actividad cotizada esas horas no existen en el presupuesto. Recomendación para los líderes: agregar «Ajustes ronda de cliente» en cada fase que el cliente revisa.
+* **«Cronograma y acuerdos» compacto:**
+  * Encabezado más bajo, con «Inicio» y «Entrega final» siempre visibles.
+  * Flujo de una línea: producción → QA interno → presentación → tu aprobación → ajustes → siguiente fase.
+  * Tabla **«Entregables y fechas»**: fase, qué incluye (títulos de sus tareas, sin horas), producción, presentaciones con su aprobación y sus ajustes, y fin de fase. Es editable en línea.
+* **«Lo que necesitamos de ti» resaltado:** un insumo bloqueante tardío corre la fase y la entrega; más de 10 días hábiles pausa el proyecto. Acuerdo nuevo: si la pausa supera 30 días calendario, se factura lo ejecutado y el reinicio se agenda de común acuerdo.
+
+**Dónde cargar el tiempo que no es de un proyecto de cliente.** Todos son proyectos internos del cliente Uhura, no facturables; así cuentan en Capacidad sin ensuciar la rentabilidad de los clientes:
+
+| Tiempo | Dónde |
+|---|---|
+| Comité operativo, weekly general, 1:1, dailies | Proyecto interno **«Rituales del equipo»** (una tarea recurrente por ritual) |
+| Reuniones con leads o prospectos, aun sin HubSpot o si resultan «lead basura» | **«New Business · Prospección»** (tarea general); cuando ya existe la oportunidad, su tarea de scoping |
+| Innovación, ECO, formación, retos al equipo | **«Innovación y retos»** |
+| Administrativo, Finanzas, RR. HH. | Su proyecto interno |
+| Seguimientos y weeklies **de un cliente** | El proyecto de ese cliente (regla de Dirección), en la tarea «Gestión y seguimiento con el cliente» |
+
+### 31.4 Cronograma editable por fechas y aprobación del cliente (19 Nov 2026)
+
+* **«Cómo avanza tu proyecto»:** el flujo real, fase por fase y con fechas: fase (producción) → QA interno → **Presentación** (destacada) → **QA del cliente · N días** (otro color, con borde: es la ventana crítica) → Ajustes · N días → siguiente fase.
+* **«Entregables y fechas»:** fase · qué incluye · fechas de la fase · QA interno · presentación · QA del cliente (días y fecha límite) · ajustes. No muestra la columna de producción.
+* **Edición por fechas** (en la reunión se habla de fechas, no de días). Cada fecha se traduce a días hábiles y **todo lo que sigue se corre**, incluidas la entrega final y las tareas:
+  * fecha de la **presentación 1** → días de producción de la fase (sin contar el QA interno);
+  * fecha de la **presentación 2 o siguientes** → días de ajustes de la ronda anterior;
+  * **«QA del cliente hasta»** → días de aprobación de esa ronda;
+  * **fin** de una fase sin presentaciones → sus días de producción;
+  * el QA interno y los ajustes se editan en días.
+  * Se guarda como pasos (`phase_steps`), no como fechas sueltas: así un cambio arriba arrastra todo lo de abajo.
+* **Aprobación del cliente** (`projects.client_schedule_approval {name, date}`): al final de la vista, «Registrar aprobación» con el nombre de quien aprueba. En el PDF sale una línea de firma si aún no está aprobado. Si alguna fecha no le sirve al cliente, se mueve en la misma reunión antes de aprobar.
+* **Acuerdo de facturación** (sugerido, editable): 50 % al iniciar y 50 % en la entrega final; si la entrega se corre más de 15 días hábiles por causas del cliente, el segundo pago se factura en la fecha original.
+* **Mi Día:**
+  * cumpleaños y aniversarios dicen «Hoy», «Mañana» o «En N días»;
+  * el aviso de semana corta ya no menciona horas;
+  * en Alcance, las horas y semanas del servicio van al lado del título.
+
+### 31.5 Modelo único de cronograma para proyecto único (19 Nov 2026; reemplaza lo de rondas de §31–31.4)
+
+**Problema:** las fechas salían de dos modelos y el término «ronda» mezclaba dos cosas.
+* El modal partía «rondas × días» en aprobación + ajustes (3 días = 1 de QA del cliente + 2 de ajustes).
+* La vista del cliente calculaba sus pasos por otro camino.
+* «Ronda» se usaba a la vez para las veces que el cliente puede pedir cambios (contrato) y para los momentos del cronograma.
+
+**Modelo único (una sola fuente de verdad: los pasos por fase, `phase_steps`):**
+* **Producción:** las semanas del alcance × 5 días hábiles, repartidas entre fases según sus horas (mínimo 1 día por fase).
+* **Cada fase que revisa el cliente** (todas menos Onboarding, Insumos, Kickoff, Entrega y Cierre) tiene: QA interno (1 día) → **una presentación** → **QA del cliente (N días)** → **ajustes de Uhura (N días)**.
+* **En el modal «Iniciar proyecto»:** «QA del cliente __ días · Ajustes __ días · Rondas incluidas __, por presentación». Cambiar el QA o los ajustes se aplica a todas las presentaciones, también si ya se editaron fases.
+* **«Rondas incluidas» es contrato, no cronograma:** cuántas veces el cliente puede pedir cambios en cada presentación. Si usa una ronda extra, se agrega otra ventana de QA y ajustes, corre el forecast y se cotiza.
+* El modal, su resumen («Producción X d · QA interno Y d · N presentaciones…»), «Ver cronograma y acuerdos», el plan de tareas y lo que se guarda al iniciar salen del **mismo** cálculo. Se guardan `phase_steps` al iniciar, aunque no se hayan editado.
+* **Tareas → cronograma:** las fechas de las tareas se derivan de las fases. Mover una tarea dentro de su fase no cambia los hitos. Recomendación para la siguiente iteración: si una tarea se mueve más allá del fin de su fase, ECO avisa «esto corre la presentación del {fecha}» y ofrece extender la fase (se guarda en `phase_steps` y recalcula lo que sigue).
+* Vista del cliente con un solo tamaño de texto (13 px). Los títulos de sección son de 16 px.
+
+### 31.6 Tarea → cronograma: aviso y extensión de fase (19 Nov 2026)
+
+* Al cambiar la fecha límite de una tarea de un **proyecto único ya iniciado** (con `phase_steps`), si la nueva fecha **pasa el fin de la producción de su fase**, ECO no corre nada en silencio: muestra «Esta fecha corre el cronograma».
+  * Muestra los días hábiles que habría que extender la fase y qué se corre: cada presentación (antes → después) y la entrega final.
+  * **Extender la fase:** se suman esos días a la producción de la fase (`phase_steps`); se recalculan fases, presentaciones, entrega y forecast (la línea base no cambia); se reprograman las tareas abiertas de las **fases siguientes** con agenda por capacidad. Las tareas de la misma fase y la tarea movida no se tocan.
+  * **Solo mover la tarea:** queda con su nueva fecha; el cronograma no cambia y la fase queda en riesgo.
+* No aplica a tareas de ajustes del cliente (van en la ventana de ajustes) ni a fechas que caben dentro de la fase.
+* Si el cambio lo pidió el cliente, se le avisa la nueva fecha; si es interno, se busca apoyo del mismo rol antes de correr la entrega.
+* Prototipo: `schedule/clientTimeline.ts` (`detectPhaseOverflow`), `projects/PhaseOverflowModal.tsx`; se dispara desde el cambio de fechas en el detalle de la tarea.
+
+### 31.7 Presentaciones al cliente configurables (19 Nov 2026; precisa §31.5)
+
+* El modal «Iniciar proyecto» ya no usa un número único de QA y ajustes. Muestra la lista **«Presentaciones al cliente»**; cada una tiene:
+  * **nombre** (Wireframe, Prototipo, Implementación…);
+  * **tipo:** **checkpoint** (revisión informal: el cliente comenta, ajustamos y seguimos sin exigir aprobación por correo) o **aprobación formal**;
+  * **QA del cliente** (días hábiles);
+  * **ajustes internos** (días hábiles; ventana, no horas);
+  * se puede quitar.
+* **Por defecto:** una aprobación formal por fase que revisa el cliente. La primera tiene 5 días de QA del cliente (p. ej. prototipo) y las siguientes 3 (p. ej. implementación). Ajustes internos: 2 días.
+* **«+ Checkpoint de wireframe»** parte la producción de la primera fase revisada: primero el wireframe, con un checkpoint de 2 días de revisión y 1 de ajustes; luego el resto de la producción y el QA interno antes de la aprobación formal (p. ej. prototipo).
+* **«+ Presentación en…»** agrega otra aprobación a la fase que se elija.
+* **Rondas de cambios incluidas por presentación:** sigue siendo un dato del contrato, no del cronograma.
+* **Modelo de cada presentación:** `rounds[{label, kind: 'checkpoint'|'approval', review_days, adjust_days, work_days, qa_days}]`. `work_days` y `qa_days` son el trabajo y el QA interno antes de esa presentación (desde la 2.ª de la fase).
+* **Al editar la fecha de una presentación 2+** en la vista del cliente, cambian sus días de trabajo previos.
+* El resumen del modal lista cada presentación: «Prototipo (aprobación: QA cliente 5 d + ajustes internos 2 d)». La vista del cliente muestra el checkpoint con borde punteado y «Revisión del cliente», y la aprobación formal destacada como «QA del cliente».
+* Caso landing «presentada sobre la implementación»: se quitan las presentaciones de UX y queda una sola en Implementación con 1 día de QA del cliente.
+
+### 31.8 Editor de presentaciones simplificado (19 Nov 2026; reemplaza los botones de §31.7)
+
+* **«Presentaciones al cliente»** es una tabla: presentación · fase · tipo (checkpoint/aprobación) · **QA interno** · **QA del cliente** · **ajustes internos** (días hábiles) · quitar. Un solo botón **«+ Añadir presentación»**.
+  * Cambiar la fase mueve la presentación a esa fase.
+  * El QA interno de la 1.ª presentación de una fase es el de la fase; el de las siguientes es propio.
+* **Por defecto** (proyectos con fase de UX/diseño):
+  * **Wireframe** (checkpoint: QA del cliente 2 d, ajustes 1 d);
+  * **Prototipo** (aprobación: QA del cliente 5 d, ajustes 2 d);
+  * **Funcionalidad** en Implementación (aprobación: QA del cliente 3 d, ajustes 2 d);
+  * QA interno de 1 día antes de prototipo y funcionalidad.
+* Sin fase de UX: una aprobación por fase revisada.
+* Se elimina el campo «Rondas de cambios incluidas»: cada presentación incluye una ronda de ajustes; una adicional se agrega como otra presentación y se cotiza.
+* El resumen muestra la suma explícita: «Producción X + QA interno Y + QA del cliente Z + ajustes internos W = N días hábiles».
+* **Ejemplo verificado** (landing de 2 semanas desde el 23 de noviembre, festivo del 8 de diciembre):
+  * 10 d de producción + 5 + 2 (prototipo) + 3 + 2 (funcionalidad) = **22 días → 23 de diciembre**;
+  * con 1 día de QA interno antes de cada aprobación son 24 días: 28 de diciembre, porque el 25 es festivo;
+  * con el checkpoint de wireframe por defecto (2 + 1) son 27 días: 31 de diciembre.
+
+### 31.9 Insumo recibido tarde y rondas adicionales del cliente (19 Nov 2026)
+
+**Insumo recibido tarde (implementado en el prototipo):**
+* «Marcar recibido» guarda `received_at`. Si el insumo **bloquea**, su fecha acordada ya pasó y la recepción **corre** la fase (es decir, la fase ya debía haber empezado), ECO pregunta «Este insumo llegó tarde».
+  * Muestra los días hábiles de retraso y qué se corre: presentaciones y entrega final, antes → después.
+* **Recalcular cronograma:**
+  * marca `dependency.shifts_schedule = true`: la fase no empieza antes del día hábil siguiente a la recepción;
+  * recalcula fases, presentaciones, entrega y forecast (la línea base no cambia);
+  * reprograma las tareas abiertas.
+* **Mantener fechas:** el equipo absorbe el retraso y el cronograma no cambia.
+* Si llegó tarde pero la fase todavía no empezaba, no se pregunta nada.
+* El aviso recuerda que es un retraso del cliente: se le informa la nueva fecha y aplica el acuerdo de facturación (segundo pago en la fecha original si el corrimiento supera 15 días hábiles).
+
+**Rondas adicionales del cliente (recomendación, pendiente de implementar):**
+* **Qué hay hoy:**
+  * cada tarea registra **retrabajos** (origen cliente/QA, causa, horas);
+  * el proyecto tiene el modelo `ProjectReworkRound` con `is_additional_iteration`, pero no está conectado al cronograma;
+  * el chip «Rondas de ajuste» del encabezado solo informa.
+* **Regla propuesta:** cada presentación incluye **una** ronda de ajustes. Si el cliente pide otra:
+  1. En el proyecto, sobre esa presentación: **«Registrar ronda adicional»**. Agrega otra ventana de QA del cliente + ajustes internos, con el mismo aviso de «qué se corre», y crea el registro `ProjectReworkRound` con `is_additional_iteration = true`, la nota del cliente y las horas estimadas.
+  2. **Aviso a Comercial** (en la app y en Google Chat) para cotizarla como orden de cambio: horas × tarifa. La ronda **no se ejecuta** hasta que el cliente la aprueba (acuerdo «las adicionales se cotizan antes de ejecutarlas»).
+  3. El corrimiento queda atribuido al cliente (forecast ≠ línea base) y no mueve el segundo pago más de lo pactado.
+  4. **Dirección y Finanzas** cuenta las rondas adicionales por cliente y por servicio, para ajustar recetas y precios.
+* **Ajustes pequeños** que no justifican otra ronda: se registran como retrabajo de la tarea (origen cliente), sin mover el cronograma. Si se acumulan más de X horas, el líder los convierte en ronda adicional.
+
+### 31.10 Presentaciones por área del servicio (19 Nov 2026)
+
+La lógica es la misma en todas las áreas: presentación → QA del cliente → ajustes, con checkpoint (informal) o aprobación formal. Lo que cambia es el **nombre** y la **fase** donde va cada presentación. El área sale del catálogo, por el nombre del servicio, o de los roles con más horas. Reglas en `schedule/clientTimeline.ts` (`PRESETS`, `presetPresentations`).
+
+| Área | Servicio (ejemplo) | Presentaciones por defecto |
+|---|---|---|
+| Producto Digital | Landing / sitio WordPress | Wireframe (checkpoint 2 d + 1 d) · Prototipo (aprobación 5 d + 2 d) · Funcionalidad (aprobación 3 d + 2 d) |
+| Producto Digital | Tienda Shopify | Diseño de la tienda (5 + 2) · Funcionalidad, en «QA funcional» (3 + 2) |
+| Producto Digital | Chatbot · Mercado Libre · Digital Shelf | Flujo conversacional + Funcionalidad · Publicaciones · Contenido e Imágenes de PDP |
+| Creativo | Posts, parrilla, piezas, mailing, creativos de pauta | «Piezas / Mailing / Creativos para aprobación» en «Entrega de material» (3 d) |
+| Creativo | Creatividad y campañas (KV) | Concepto creativo (checkpoint) · Propuestas de key visual (aprobación) |
+| Creativo | Diseño de marca | Naming (aprobación) · Marca, en «Presentación de marca» (5 d) |
+| Growth | SEO / GEO | Keywords (checkpoint) · Estrategia SEO / GEO (aprobación 5 d) |
+| Growth | Medición y tracking | Validación de la medición · Dashboard |
+| Growth | Pauta · Blog · Email · CRO · Onboarding | Plan de medios + Anuncios · Calendario editorial + Artículos · Diseño de correos · Backlog de experimentos + Resultados (checkpoint) · Objetivos |
+
+* **Creativo:** el catálogo ya trae «Calidad» (QA interno) y «Ajustes de cliente» (el trabajo de ajustes) como fases. Por eso la presentación no suma días extra de QA ni de ajustes: esas fases ya tienen su tiempo.
+* Si ninguna regla aplica (servicio nuevo o fuera del catálogo), queda una aprobación por fase revisada con el nombre de la fase.
+* Todo se puede renombrar, mover, agregar («+ Añadir presentación») o quitar en «Iniciar proyecto».
+
+### 31.11 Solo el QA del cliente suma días (19 Nov 2026; precisa §31.7–31.10)
+
+* **Regla:** el QA interno y los ajustes internos son **tareas con horas**, así que ya están dentro de las **semanas de producción** del alcance. El **QA del cliente** no es tarea de nadie (nadie carga horas ahí): es tiempo del cliente y **es lo único que suma días hábiles**.
+  * **Total = semanas de producción × 5 + Σ días de QA del cliente.**
+  * Ejemplo: landing de 2 semanas, con QA del cliente de 2 + 5 + 3 días = 20 días hábiles. Desde el 23 de noviembre, con el festivo del 8 de diciembre, la entrega cae el **21 de diciembre**.
+* **Cómo se ubica:** la ventana de ajustes de cada presentación se **descuenta de la producción de su fase**; las tareas de ajustes del cliente se agendan en esa ventana. El QA interno queda al final de la producción (`qa_days = 0`).
+  * Si una fase corta no alcanza a absorber sus ajustes, el excedente sale de las fases con más producción, para que se cumplan las semanas del alcance.
+  * Subir los días de ajustes en el editor los toma de la producción de esa fase.
+* **Editor:** sin columna de QA interno. «Ajustes» indica que es una ventana de tareas, dentro de la producción. Resumen: «Producción N (incluye QA interno y ajustes) + QA del cliente M = T días hábiles».
+* **Condición:** para que esto sea cierto, cada servicio debe tener cotizadas sus tareas de QA interno y de ajustes de cliente. Revisión del catálogo 2026 (servicios de varias fases):
+  * **QA interno:** lo tienen todos menos «Onboarding Growth» e «Implementación de SEO».
+  * **Ajustes de cliente cotizados:** solo landing, sitio web y los 5 servicios de Creativo. **Faltan** en Shopify, Chatbot, Mercado Libre, Digital Shelf y en todos los de Growth.
+  * Recomendación para los líderes de Producto y de Growth: agregar «Ajustes de cliente» por cada presentación. Si no, esas horas no existen en la cotización, el proyecto se pasa de horas y la ventana de ajustes queda sin tareas.
+
+### 31.12 Quitar o agregar presentaciones no cambia la producción (19 Nov 2026)
+
+* **Error corregido:** al quitar la presentación de wireframe se perdían su ventana de ajustes y el trabajo previo del prototipo. En un sitio web de 8 semanas, la producción bajaba de 40 a 33 días.
+* **Regla:** quitar una presentación devuelve a la producción de su fase sus días de ajustes y su trabajo previo (`removeRound`). Agregar una descuenta sus ajustes de la producción (`appendRound`). La producción total siempre es igual a las semanas del alcance × 5. Así, en el ejemplo, 40 de producción + 8 de QA del cliente = 48 días hábiles.
+* El trabajo previo (`work_days`) de una presentación cuenta también si queda como primera de su fase.
+
+### 31.13 QA de la ronda 4 (19 Nov 2026)
+
+Errores encontrados y corregidos en el prototipo:
+* **Tareas del prototipo en el día del wireframe:** las tareas solo se repartían en la producción de la fase. Con wireframe, todo caía antes del checkpoint. Ahora se reparten en todos los días de trabajo de la fase (`phaseWorkDays`).
+* **Falso aviso de «corre el cronograma»:** se comparaba con el fin de la producción del wireframe. Ahora se compara con el último día de trabajo de la fase, y la extensión se suma a ese último tramo.
+* **Tareas de ajustes en una ventana demasiado amplia** (del wireframe al prototipo): ahora van en la ventana de ajustes de la aprobación formal.
+* **Primer día hábil del mes** para el cierre de horas: ahora salta los festivos (p. ej. el 1 de enero).
+* **Quitar el wireframe** borraba 7 días de producción (§31.12).
+* Se limpió estado sin uso del modal anterior: rondas × días, QA del cliente global y líder suplente.
+
+Verificado con casos de cálculo: landing de 2 y 3 semanas, sitio web de 8 semanas, ocho servicios de las tres áreas, tarea dentro y fuera de su fase, insumo tardío y ventana de horas en enero. **Falta recorrer las pantallas.**
+
+### 31.14 Enlace vencido y pedir un enlace nuevo (19 Nov 2026; existe en producción, ahora también en el prototipo)
+
+* **«Este enlace ya no sirve»:** el enlace de un solo uso para crear o recuperar la contraseña ya se usó o venció. Ofrece «Pedir un enlace nuevo» (botón principal) y «Volver a ingresar».
+  * Usa el mismo diseño de la pantalla de ingreso: panel con ECO y el pie «By Uhura Group · ECO».
+  * Prototipo: `?app=eco&login=enlace-vencido`.
+* **Pedir un enlace nuevo** (mismo texto que producción): «¿Olvidaste tu contraseña?», «Escribe tu correo corporativo o tu usuario de ingreso y te enviamos un enlace para crear una contraseña nueva.», campo «Correo o usuario», botón «Enviar enlace» y «Volver a ingresar».
+  * La respuesta es siempre la misma, exista o no la cuenta (para no revelar usuarios): «Si hay una cuenta con ese usuario, te enviamos un enlace nuevo. Sirve una sola vez y vence pronto».
+  * Ofrece «Volver a ingresar» y la ayuda «¿No te llegó? Revisa spam o pídeselo a Administración».
+* **«¿Olvidaste tu contraseña?»** en el ingreso lleva directo a esa pantalla, como en producción. La contraseña temporal de Administración queda como alternativa si el correo no llega.
+* Depende del buzón de notificaciones de ECO (§26). Recomendado: enlace válido 30 minutos, un solo uso, y máximo 3 solicitudes por hora por usuario.
+
+### 31.15 Las semanas del alcance mandan (19 Nov 2026)
+
+* **Producción total = semanas del alcance × 5 días hábiles, siempre que quepa.** Incluye el trabajo, el QA interno y los ajustes internos, que son tareas. Solo el QA del cliente se suma aparte.
+  * Ejemplo: 1 semana = 5 días de producción + 3 días de QA del cliente = 8 días hábiles; desde el 23 de noviembre, la entrega cae el 2 de diciembre.
+* **Editar presentaciones** (agregar, quitar, cambiar días de ajustes o mover de fase) no cambia el total de producción. Lo que sobra o falta se compensa en la fase con más producción (`rebalanceToTarget`).
+* **Si no cabe**, se avisa en el modal en vez de alargar en silencio: «No cabe en N semanas: F fases (mínimo 1 día cada una) y sus ajustes necesitan al menos M días. Sube las semanas o quita presentaciones». El mínimo es 1 día por fase más los días de ajustes.
+* **Alcance corto por defecto:** si las presentaciones sugeridas no caben (p. ej. landing de 1 semana), ECO deja solo la presentación final, con 1 día de ajustes (o 0 si aun así no cabe).
+* El resumen dice «Producción X de Y (N semanas, incluye QA interno y ajustes) + QA del cliente Z = T días hábiles».
+* **Cambios hechos a propósito en «Cronograma y acuerdos»** después del kickoff (mover una presentación más tarde, extender una fase) sí pueden pasar del alcance: quedan como forecast frente a la línea base.
+
+### 31.16 Revisión del 19 Nov 2026 (tarde)
+
+**«Cronograma y acuerdos» en pestaña propia.**
+* Antes la ventana nueva quedaba en blanco y «Cronograma cliente» no hacía nada: la ventana se abría vacía y se le «pintaba» el contenido desde ECO, y algunos navegadores no lo permiten.
+* Ahora es una **página con su propia dirección**.
+  * Prototipo: `?app=eco&cronograma=1`. Los datos van entre pestañas por `BroadcastChannel`, con localStorage de respaldo (`projects/clientScheduleBridge.ts`, `projects/ClientScheduleWindow.tsx`).
+  * Lo que se edita en una pestaña se ve en la otra. Si ECO se cierra, la pestaña muestra la última versión con el aviso «no está conectada a ECO».
+* **Producción:** la ruta `/proyectos/:id/cronograma` lee el proyecto del backend (misma pantalla, sin canal entre pestañas). Con permiso de solo lectura, es la base del portal del cliente.
+
+**Vista más liviana.**
+* Encabezado blanco: nombre del proyecto, inicio y entrega final.
+* Acciones discretas: Editar, PDF, Correo, Cerrar.
+* «Quién está a cargo» sin tarjetas.
+* **Una sola lista «Cronograma»**: una fila por fase con sus hitos (producción, QA interno, presentación o checkpoint, QA del cliente, ajustes). Reemplaza el flujo de chips y la tabla de 7 columnas.
+* Solo tres acentos de color:
+  * morado para la presentación (punto hueco si es checkpoint);
+  * ámbar para el tiempo del cliente;
+  * gris para el trabajo interno.
+* «Lo que necesitamos de ti» con borde ámbar. Acuerdos en lista numerada.
+* En «Editar», las mismas filas muestran los campos de fecha y días.
+
+**Reglas de New Business para Indunova: alcance editado después de cotizar y volver a guardar la cotización.**
+
+*Problema en el prototipo (y a revisar en producción):*
+* El líder agregó un servicio (landing) a un alcance ya marcado listo y ya cotizado. No pudo volver a marcarlo listo y Comercial no recibió aviso.
+* En Cotización, el servicio nuevo apareció para llenar su valor, pero no había botón para guardar: «Editar cotización» solo aparece si la cotización coincide con la guardada, y «Guardar» solo en modo edición.
+
+*Regla 1. El alcance listo tiene una huella.*
+* Al «Marcar alcance listo» se guarda en la oportunidad:
+  * `scope_ready_signature`: servicios del alcance más las horas por entregable, redondeadas a 0,1;
+  * `scope_ready_services`: id y nombre de cada servicio;
+  * `scope_ready_hours`: total de horas.
+* Si la oportunidad ya estaba lista antes de este cambio y no tiene huella, se toma la del alcance actual la primera vez que se abre.
+
+*Regla 2. Si el alcance cambia después de marcarlo listo* (se agrega o quita un servicio, o cambian las horas) *y la oportunidad no está ganada ni perdida:*
+* el alcance vuelve a «por marcar listo»;
+* se muestra «El alcance cambió después de marcarlo listo. Guarda los servicios y vuelve a "Marcar alcance listo"…»;
+* el botón «Marcar alcance listo» vuelve a estar disponible;
+* la etapa del negocio **no retrocede** (si iba en propuesta enviada o negociación, se queda ahí);
+* con la oportunidad ganada no aplica: los cambios van por control de cambios del proyecto.
+
+*Regla 3. Al marcarlo listo de nuevo, Comercial recibe el aviso.*
+* Se guardan la huella nueva y `scope_update_notice` (fecha, quién, servicios agregados, servicios quitados, horas antes → después).
+* Mensaje al líder: «✓ Alcance actualizado (+ Landing page) · 138h. Comercial recibe el aviso para ajustar la cotización».
+* **Mi Día de Comercial** (dueño de la oportunidad) y de Dirección: «🔁 Alcance actualizado: + Landing page · actualiza la cotización». Aparece aunque la oportunidad ya no esté en «En scoping».
+  * «Abrir oportunidad» lleva directo a esa oportunidad, en la pestaña **Cotización** con el banner de la regla 4 (no a la lista de New Business). Para el líder abre la pestaña Alcance.
+  * Etiqueta de la tarjeta según quién la ve. Líder: «🟣 Nuevo brief asignado». Comercial y Dirección ven lo que les falta: «⏳ En alcance con el líder» (en scoping) → «💰 Alcance listo · por cotizar» (alcance listo, sin cotización guardada) → «📨 Lista para enviar la propuesta» (cotización guardada). Con alcance listo, «Abrir oportunidad» también lleva a Cotización.
+* Marcar listo también guarda el alcance: si el enlace de la presentación ya está y es válido, no se pide otro «Guardar». La etiqueta «Listo para cotizar» sale de la etapa del negocio + la huella (no de un flag de guardado de la pantalla).
+* **Notificación:** campana y correo (§26) al comercial dueño. Nunca al cliente.
+
+*Regla 4. Volver a guardar la cotización mientras no esté ganada.*
+* La cotización está **desactualizada** cuando la guardada no coincide con el alcance actual: hay un servicio nuevo o quitado, o un valor cambió.
+* Si está desactualizada y la oportunidad no está ganada:
+  * se muestra «Guardar cambios» directamente, sin pasar por «Editar cotización»;
+  * aparece el banner «🔁 Paola actualizó el alcance: + Landing page · 111h → 138h. Completa los valores y guarda la cotización de nuevo».
+* Guardar valida igual que la primera vez (valor de cada servicio y hoja financiera) y crea una **versión nueva** (v2, v3…, con fecha y autor).
+* Si hay negocios en HubSpot, se envían los valores nuevos (ECO → HubSpot) y se crea el negocio del servicio nuevo con «Crear negocio faltante».
+* Al guardar se apaga `scope_update_notice`.
+* Con la oportunidad ganada, la cotización queda solo lectura.
+
+*Criterios de aceptación:*
+1. Alcance listo → cotización guardada v1 → agregar un servicio en Alcance → aparecen el aviso y «Marcar alcance listo».
+2. Marcar listo de nuevo → el comercial dueño ve el aviso en Mi Día y en la campana, con el servicio agregado.
+3. En Cotización se ve el banner y «Guardar cambios». Llenar el valor del servicio nuevo y guardar crea la v2 y apaga el aviso.
+4. Con la oportunidad ganada, nada de lo anterior se habilita.
+5. Cambiar solo horas (sin servicios nuevos) también pide marcar listo de nuevo y avisa «horas antes → después».
+
+**Quién ejecuta qué rol (Equipo asignado, selector de «Colaborador» y matriz de horas).** Regla en `projects/teamFromTasks.ts` (`roleFit`):
+1. **Cualquier persona activa puede ser colaboradora de una tarea**, también Comercial y Dirección. Por ejemplo, hacen el QA o gestionan algo puntual. No se bloquea a nadie por su nivel de acceso.
+2. **La tarea pertenece al rol cotizado** (`budgeted_role`), no a la persona. Para cada persona y rol, ECO marca:
+   * **su rol:** la persona tiene ese rol oficial o profesional. Sin marca.
+   * **rol afín:** roles distintos pero parecidos, definidos POR ROL (no por persona) en `AFFINE_ROLE_GROUPS` (tabla que mantiene Administración). Hoy: Digital Designer ↔ Front-End Dev (Laura ↔ Oscar). Sin marca ni alerta. Fuera de esos grupos no aplica: Laura no reemplaza a un Trafficker (Simón) ni a Comercial (Catalina).
+   * **cubre rol:** cualquier otro caso. Se permite (p. ej. Comercial haciendo un QA), pero queda en ámbar y suma en «N cubren otro rol».
+   * Ya no existe el concepto «respaldo» por persona (`backup_roles`).
+3. **Asignado y quién ejecutó son datos distintos.** El asignado es `task.assignee`; quién ejecutó sale de los registros de tiempo (`time_log.user_id`). Las horas cuentan para el rol cotizado de la tarea y para la persona que las registró.
+   * La «Matriz horas por rol» muestra por persona «Xh asig. · Yh ejec.».
+   * Quien registró horas sin estar asignado sale como «no asignado · Yh ejec.» (y «cubre rol» si no es su rol ni un rol afín).
+   * Ejemplo en el prototipo: Paola registra 1,5 h en una tarea de diseño de Laura y sale «cubre rol» en Digital Designer.
+   * El prototipo ahora guarda cada registro también en la tarea (`task.timeLogs`). En backend es la relación `time_logs.task_id`.
+
+**Sugerir a otra persona del mismo rol según la capacidad** (`schedule/teamLoadAdvisor.ts`, `suggestLoadRebalance`).
+* El alcance se cotiza por rol. La persona propuesta en el alcance puede estar llena cuando el proyecto arranca, o llenarse después. **El líder no debería tener que preguntar a mano quién puede.**
+* **Cuándo:**
+  * al «Iniciar proyecto» (panel de conflictos, §31);
+  * mientras el proyecto está en curso: tarjeta «Carga del equipo» en el Resumen del proyecto.
+* **Regla de carga:**
+  * Carga del día = horas de las tareas abiertas de la persona en **todos** sus proyectos.
+  * Cada tarea llena la jornada (8,4 h) desde su día de trabajo hasta su fecha límite (`allocateTaskHours`).
+  * Una tarea está en sobrecarga si, en los días que ocupa (desde hoy), la persona pasa su jornada en más de 0,5 h.
+* **A quién sugiere:** personas activas con el rol cotizado de la tarea (o un rol afín) que tengan, en la ventana de la tarea (hoy o día de trabajo → fecha límite), horas libres ≥ horas de la tarea.
+  * Gana quien tiene el rol como propio; después, el rol afín; dentro de cada grupo, quien tenga más horas libres.
+  * **Ausencias** (vacaciones, incapacidades, permisos de Google Calendar) restan sus horas de la capacidad del día: no se sugiere a alguien de vacaciones en esa ventana.
+  * **Solo tareas sin empezar** (por hacer y sin horas registradas). Las tareas en curso suman a la carga, pero no se propone cambiarlas de manos.
+  * El detalle de las 9 reglas, en orden, está en el encabezado de `schedule/teamLoadAdvisor.ts`.
+  * Al sugerirle una tarea, esas horas se le descuentan para no proponerle más de lo que le cabe.
+* **Qué ve el líder:**
+  * «Sara María Lagos llega al 200 % de su jornada · 1 tarea de Creative Designer», con la tarea, sus horas, la ventana y las horas por encima.
+  * Botones: «Asignar a Juan Camilo · 33,6 h libres», «Aplicar las N sugerencias» e «Ignorar».
+  * Si nadie del rol tiene espacio: «Nadie más del rol tiene espacio: mueve la fecha o habla con Dirección».
+  * **Nada se reasigna solo.**
+* **Backend:**
+  * Endpoint de solo lectura `GET /api/projects/:id/load-suggestions` con la misma regla.
+  * Reasignar = `PATCH` de la tarea (cambia el colaborador; las horas cotizadas no cambian).
+  * «Ignorar» se guarda por tarea y por líder, y se vuelve a mostrar si cambian las fechas o la carga.
+
+**Aviso de capacidad al asignar una tarea (nueva tarea y cambio de colaborador).** Componente `CapacityAssignWarning`, regla `checkAssignment`:
+* **Día lleno:** la carga de la persona ese día ya es ≥ 85 % de su capacidad, en todos sus proyectos y descontando ausencias. El 15 % restante es para chats, correos y reuniones.
+* Si la persona elegida tiene días llenos en las fechas de la tarea, está ausente, o con esta tarea pasa del 100 %, ECO lo avisa. Ejemplo: «Agenda llena: Sara ya tiene ocupado el 100 % del 19 nov y el 162 % del 20 nov».
+* Debajo propone hasta 3 personas del mismo rol (o de un rol afín) con espacio para toda la tarea. Un clic las asigna.
+* **No bloquea:** el líder puede dejar a la persona elegida o tomar cualquier otra del selector, que queda «cubre rol» si no es su rol. Se decidió así porque a veces la única persona que puede hacerlo es la que está llena.
+* **Antes de este cambio:** al asignar solo se avisaba si la persona estaba de vacaciones (`checkAssigneeAvailability`); la carga no se revisaba al asignar, solo al iniciar el proyecto.
+* **Backend:** `GET /api/capacity/check?userId&start&due&hours&role` con la misma regla. La validación es informativa, no rechaza el PATCH.
+
+**Tarjeta «Carga del equipo»: elegir a mano.**
+* La tarea sugerida se puede abrir con un clic.
+* Además de «Asignar a [sugerida]», hay un selector «Otra persona…» con todas las personas activas, agrupadas en mismo rol, rol afín y otro rol. Cada una muestra sus horas libres en esos días, o «ausente».
+
+**Encabezado del proyecto iniciado.**
+* La pastilla dice solo «Iniciado · Ajustar» («Programado» si arranca en el futuro). Las fechas están en la tarjeta «Cronograma».
+
+**Reajustar un proyecto iniciado.**
+* Se quitó el check «Programar las fechas de las N entregas y sus tareas desde el kickoff». Solo aparecía al reajustar.
+* Si se desmarcaba, las fases cambiaban pero las tareas no, y quedaban fuera de su fase.
+* Ahora siempre se reprograman las tareas abiertas. Las terminadas conservan sus fechas reales.
+
+**Alcance de New Business: colaborador sugerido por capacidad real.**
+* Cuando un rol lo tienen varias personas (p. ej. tres Creative Designer), el Alcance propone a la de **menor ocupación real en las próximas 4 semanas**. La ocupación son las horas de sus tareas abiertas más sus ausencias, divididas entre 8,4 h por día hábil (`withUpcomingUtilization`). Antes usaba un % fijo del perfil.
+* Dentro del mismo alcance se suman las horas ya propuestas, para no cargarle todo a la misma persona.
+* Se usa un rol afín solo si no hay nadie del rol, o si todos están al 100 % y la persona afín está por debajo del 85 %.
+* Nunca se propone a alguien de otro rol.
+
+**Cómo se abre «Cronograma y acuerdos».**
+* «Cronograma cliente» y «Ver cronograma y acuerdos» la abren dentro de ECO, siempre conectada.
+* «Pestaña nueva» abre la vista aparte con los datos en el enlace (`#d=…`):
+  * en Chrome o Safari queda conectada en vivo;
+  * si se abre en otro navegador o sin ECO abierto, es una vista de solo lectura para compartir.
+* Motivo: el panel del navegador de la app de escritorio reemplaza la pestaña de ECO al abrir una ventana, y esa pestaña quedaba desconectada.
+* Rediseño de la vista:
+  * encabezado con inicio, entrega, duración y estado de aprobación;
+  * personas con avatar;
+  * barra de fases;
+  * una tarjeta por fase con su estado (terminada o en curso) y los pasos con ícono;
+  * fechas en formato «mié 4 nov 2026».
+
+**Otros.**
+* El popover «Reasignar» del responsable de alcance se cierra al hacer clic por fuera o con Esc.
+
+**Datos de prueba del prototipo (limpios).** Solo dos proyectos, con fecha de hoy (19 Nov 2026):
+1. **«Tienda Online BattSaver»** (Rock and Ride), proyecto único en curso del 3 Nov al 18 Dic. Tiene 11 tareas hechas, en curso y por hacer, y ejemplos de rol afín (Oscar en diseño), de «cubre rol» y de Comercial haciendo QA.
+2. **«Fee mensual Contenido y Social · Yamaha»**, contrato de septiembre a noviembre que vence el 30 Nov. Septiembre y octubre están cerrados y noviembre en curso. Para practicar el mes siguiente: «Renovar fee» y luego «Generar tareas de Diciembre».
+* Sara María Lagos queda con la agenda llena del 19 al 24 Nov, para ver la sugerencia de capacidad.
+* Se quitaron los proyectos, tareas, alertas, actividad y clientes de ejemplo antiguos. Se mantienen las bolsas internas de UHURA (rituales, New Business).
+
+Verificado en el prototipo:
+* Equipo de BattSaver sin falsas alertas.
+* Pestaña del cronograma conectada: la aprobación registrada en la pestaña queda en ECO y sigue después de recargar.
+* Flujo completo con una oportunidad de prueba: alcance listo → cotización v1 → agregar landing → aviso y «Marcar alcance listo» → aviso en Cotización → «Guardar cambios» → v2.
+* Datos limpios: carga del equipo con la sugerencia «Asignar a Juan Camilo» (y reasignación aplicada), matriz con asignado y ejecutado, fee con «Contrato vence en 11 días», renovación y «Generar tareas de Diciembre» (6 tareas).
+* **Falta ver el aviso en el Mi Día de un usuario Comercial.**

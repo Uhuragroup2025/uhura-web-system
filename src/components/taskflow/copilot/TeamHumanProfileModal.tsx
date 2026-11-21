@@ -188,7 +188,7 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
     return calculateAgeFromBirthDate(activeUser?.birthDate);
   }, [activeUser?.birthDate]);
 
-  // Permisos: Solo el colaborador dueño de la ficha puede editar su propio perfil (pasatiempos y sueño).
+  // Permisos: Solo el colaborador dueño de la ficha puede editar su propio perfil (pasatiempos y propósito).
   // La edición de otros perfiles es exclusiva del Administrador desde Equipo & Accesos.
   const isSelf = Boolean(currentUser && activeUser && currentUser.id === activeUser.id);
   const canEdit = isSelf;
@@ -341,7 +341,7 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
               </div>
               <p className="text-xs text-white/80 mt-0.5">
                 {singleUserMode
-                  ? 'Edita tus pasatiempos, tu sueño personal y consulta tus vacaciones sincronizadas con Calendar.'
+                  ? 'Edita tus pasatiempos, tu propósito y consulta tus vacaciones sincronizadas con Calendar.'
                   : 'Conoce la dimensión humana de la colonia: pasatiempos, fechas y aspiraciones.'}
               </p>
             </div>
@@ -653,7 +653,7 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
                         type="button"
                         onClick={handleStartEdit}
                         className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-[#501f92] hover:text-white bg-[#f5f3ff] hover:bg-[#501f92] border border-[#ddd6fe] hover:border-[#501f92] transition-all cursor-pointer self-start sm:self-auto shadow-2xs"
-                        title="Editar mis pasatiempos y sueño personal"
+                        title="Editar mis pasatiempos y mi propósito"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
                         <span>Editar mi perfil</span>
@@ -690,7 +690,7 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
                         </h4>
                       </div>
                       <span className="text-[11px] text-[#64748b]">
-                        Actualiza tus pasatiempos y tu sueño personal
+                        Actualiza tus pasatiempos y tu propósito
                       </span>
                     </div>
 
@@ -708,14 +708,14 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
                       />
                     </div>
 
-                    {/* Su sueño es... */}
+                    {/* Mi propósito (antes «sueño»): conecta a cada persona con el propósito de Uhura */}
                     <div className="text-xs space-y-1">
                       <label className="font-bold text-[#334155] block">
-                        ⭐ Tu sueño o meta personal
+                        ⭐ Mi propósito y/o sueño es…
                       </label>
                       <textarea
                         rows={2}
-                        placeholder="Cuéntanos un sueño personal o proyecto que te inspire (Ej: viajar a un lugar especial, aprender algo nuevo...)"
+                        placeholder="¿Qué te mueve? Cuéntanos tu propósito (Ej: crear experiencias que le simplifiquen la vida a la gente…)"
                         value={editPersonalDream}
                         onChange={(e) => setEditPersonalDream(e.target.value)}
                         className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-xs focus:outline-[#7c3aed] bg-[#f8fafc] leading-relaxed text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal"
@@ -844,14 +844,14 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
 
                       <div className="border-t border-[#f1f5f9]" />
 
-                      {/* 2. Su Sueño es... (Real o Vacío Elegante sin inventar) */}
+                      {/* 2. Su propósito (real o vacío elegante, sin inventar) */}
                       <div className="flex items-start gap-3.5">
                         <div className="w-9 h-9 rounded-xl bg-[#f5f3ff] text-[#7c3aed] flex items-center justify-center shrink-0 mt-0.5">
                           <Star className="w-4 h-4" />
                         </div>
                         <div className="flex-1">
                           <h4 className="text-xs font-bold text-[#0f172a] uppercase tracking-wider">
-                            Su Sueño es...
+                            Mi propósito y/o sueño es…
                           </h4>
                           {activeUser.personalDream ? (
                             <p className="text-xs text-[#334155] leading-relaxed mt-1 font-medium italic">
@@ -859,7 +859,7 @@ export const TeamHumanProfileModal: React.FC<TeamHumanProfileModalProps> = ({
                             </p>
                           ) : (
                             <p className="text-xs text-[#94a3b8] leading-relaxed mt-1 italic">
-                              Aún no registrado — Cuéntanos algo que te gustaría lograr 💜
+                              Aún no registrado — Cuéntanos qué te mueve 💜
                             </p>
                           )}
                         </div>

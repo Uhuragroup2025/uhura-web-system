@@ -263,6 +263,8 @@ export interface ProjectDependency {
   expectedDate: string;
   completedAt?: string | null;
   receivedAt?: string | null;
+  /** Llegó tarde y se decidió correr el cronograma: la fase no empieza antes del día hábil siguiente a la recepción. */
+  shiftsSchedule?: boolean;
   status: DependencyStatus;
   blocking: boolean;
   // Campos de seguimiento auditable objetivo
@@ -422,6 +424,15 @@ export interface ProjectSummaryItem {
   /** Comercial responsable (owner de la oportunidad que originó el proyecto). */
   commercialOwnerId?: string;
   commercialOwnerName?: string;
+  /** Encargado de aprobaciones del lado del cliente y su suplente (si sale a vacaciones). */
+  clientApproverName?: string;
+  clientApproverBackupName?: string;
+  /** Acuerdos para el cliente (kickoff), editables. */
+  clientAgreements?: string[];
+  /** El cliente aprobó el cronograma y los acuerdos (kickoff). */
+  clientScheduleApproval?: { name: string; date: string } | null;
+  /** Pasos editables de cada fase (días hábiles): producción, QA interno y rondas de presentación/aprobación/ajustes. */
+  phaseSteps?: { id: string; name: string; productionDays: number; qaDays: number; rounds: { reviewDays: number; adjustDays: number; label?: string; kind?: 'checkpoint' | 'approval'; workDays?: number; qaDays?: number }[] }[];
   projectType: ProjectType;
   serviceBase: string;
   areas?: string[];
@@ -467,6 +478,8 @@ export interface ProjectSummaryItem {
   assignmentHistory?: AssignmentHistory[]; // Auditoría inmutable de cambios de equipo
 
   rolloverPolicy?: FeeRolloverPolicy;
+  /** Excepción mes a mes (clave = mes que recibe las horas, YYYY-MM): se decide al abrir cada mes. */
+  rolloverOverrides?: Record<string, FeeRolloverPolicy>;
   currentMonthCycle?: string;
   monthlyCycles?: ProjectMonthlyCycle[];
   
@@ -538,12 +551,15 @@ export interface TaskBlockerInfo {
 }
 
 export type ReworkOrigin = 'client' | 'internal';
+export type ReworkRootCause = 'client_feedback' | 'scope_change' | 'internal_error';
 
 export interface TaskRework {
   id: string;
   taskId: string;
   reworkRoundId?: string; // FK hacia ProjectReworkRound (fuente de verdad canónica)
   origin: ReworkOrigin; // 'client' (ajustes solicitados por el cliente) | 'internal' (calidad / QA interno de Uhura)
+  /** Causa raíz: depende del origen (cliente: feedback o cambio de alcance; interno: error de QA). */
+  rootCause?: ReworkRootCause;
   roundNumber: number; // Ronda 1, Ronda 2, etc.
   reason: string;
   requestedBy: string;
@@ -997,7 +1013,7 @@ export interface UserItem {
   anniversaryDate?: string;    // Formato ISO 'YYYY-MM-DD'
   anniversaryYears?: number;   // ej. 2
   hobbies?: string;            // Intereses y pasiones declarados del colaborador
-  personalDream?: string;      // Meta o sueño personal (si está registrado)
+  personalDream?: string;      // «Mi propósito» (antes «sueño»; se conserva el nombre del campo)
   petNames?: string;           // Nombre de mascotas (cuando existan)
   vacationStatus?: {
     onVacation: boolean;
@@ -1788,6 +1804,18 @@ export type FormalizationGateStatus =
  */
 export interface NewBusinessOpportunity {
   id: string;
+  /**
+   * Ajuste de alcance pedido por Comercial tras presentar (17 Nov 2026): vuelve el alcance a
+   * «en elaboración» y les llega a los líderes del alcance en Mi Día. Se limpia al marcarlo listo.
+   */
+  scopeChangeRequest?: { requestedAt: string; requestedByName: string; note: string } | null;
+  /** Huella del alcance cuando se marcó listo (servicios + horas). Si cambia después, hay que volver a marcarlo listo. */
+  scopeReadySignature?: string;
+  /** Servicios que había al marcar listo (para decirle a Comercial qué cambió). */
+  scopeReadyServices?: { id: string; name: string }[];
+  scopeReadyHours?: number;
+  /** Aviso a Comercial: el alcance cambió después de cotizar. Se limpia al guardar la cotización de nuevo. */
+  scopeUpdateNotice?: { at: string; byName: string; added: string[]; removed: string[]; hoursBefore?: number; hoursAfter?: number } | null;
   title: string;                  // Título comercial de la oportunidad
   type: OpportunityType;          // 'new_client' | 'upsell' | 'cross_sell' | 'renewal'
   projectType?: ProjectType;      // 'fixed_project' (proyecto único) | 'fee_monthly' (fee mensual) | 'internal_non_billable'

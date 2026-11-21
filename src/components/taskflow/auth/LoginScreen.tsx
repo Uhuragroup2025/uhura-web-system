@@ -1,12 +1,12 @@
 import React, { useRef, useState } from 'react';
-import { Eye, EyeOff, Lock, User, ArrowRight, Info, CheckCircle2 } from 'lucide-react';
+import { Eye, EyeOff, Lock, User, ArrowRight, CheckCircle2, Link2Off, MailCheck, Mail } from 'lucide-react';
 import { AnimatedEco, AnimatedEcoHandle } from './AnimatedEco';
 
 /**
  * Pantalla de ingreso a ECO (usuario + contraseña asignados por Administración, §16.1.1).
  *
- * Paso 1 «Ingresar»: usuario y contraseña. «¿Olvidaste tu contraseña?» explica que Administración
- * asigna una temporal (no hay autoservicio por correo mientras no exista el buzón de notificaciones).
+ * Paso 1 «Ingresar»: usuario y contraseña. «¿Olvidaste tu contraseña?» lleva a pedir un enlace por
+ * correo (como en producción); si no llega, Administración asigna una contraseña temporal.
  * Paso 2 «Crea tu contraseña»: solo cuando la cuenta tiene `must_change_password` (primer ingreso o
  * contraseña temporal). Mínimo 8 caracteres y confirmación.
  *
@@ -14,17 +14,24 @@ import { AnimatedEco, AnimatedEcoHandle } from './AnimatedEco';
  */
 interface LoginScreenProps {
   onSignedIn: () => void;
+  /**
+   * Paso inicial. 'link-expired' = el enlace de crear/recuperar contraseña ya se usó o venció (pantalla
+   * de producción «Este enlace ya no sirve»). En el prototipo: `?login=enlace-vencido`.
+   */
+  initialStep?: 'login' | 'link-expired';
 }
+
+type LoginStep = 'login' | 'new-password' | 'link-expired' | 'request-link' | 'link-sent';
 
 const inputBase =
   'w-full pl-10 pr-3 py-3 rounded-xl border bg-white/90 text-sm text-[#0f172a] placeholder:text-[#94a3b8] shadow-[0_1px_2px_rgba(80,31,146,0.06)] focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#501f92]/25 focus:border-[#501f92] transition-colors';
 
-export const LoginScreen: React.FC<LoginScreenProps> = ({ onSignedIn }) => {
-  const [step, setStep] = useState<'login' | 'new-password'>('login');
+export const LoginScreen: React.FC<LoginScreenProps> = ({ onSignedIn, initialStep = 'login' }) => {
+  const [step, setStep] = useState<LoginStep>(initialStep);
+  const [linkIdentity, setLinkIdentity] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [showHelp, setShowHelp] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -111,7 +118,92 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSignedIn }) => {
             <AnimatedEco ref={ecoMobile} height={128} />
           </div>
 
-          {step === 'login' ? (
+          {step === 'link-expired' ? (
+            // Enlace de un solo uso ya usado o vencido (producción): pedir otro o volver a ingresar
+            <div className="space-y-6 text-center" role="alert" aria-live="polite">
+              <div className="mx-auto w-12 h-12 rounded-2xl bg-[#fef3c7] text-[#92400e] flex items-center justify-center">
+                <Link2Off className="w-6 h-6" />
+              </div>
+              <div className="space-y-2">
+                <h1 className="text-[26px] font-extrabold text-[#0f172a] tracking-tight">Este enlace ya no sirve</h1>
+                <p className="text-sm text-[#64748b] leading-relaxed">El enlace ya se usó o venció. Pide uno nuevo y úsalo apenas te llegue.</p>
+              </div>
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={() => { setError(null); setStep('request-link'); }}
+                  className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl bg-[#501f92] hover:bg-[#3d1572] active:scale-[0.99] text-white text-sm font-bold shadow-sm transition-all cursor-pointer"
+                >
+                  Pedir un enlace nuevo <ArrowRight className="w-4 h-4" />
+                </button>
+                <button type="button" onClick={() => { setError(null); setStep('login'); }} className="text-sm font-semibold text-[#501f92] hover:underline cursor-pointer">
+                  Volver a ingresar
+                </button>
+              </div>
+            </div>
+          ) : step === 'request-link' ? (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!linkIdentity.trim()) { fail('Escribe tu correo o tu usuario.'); return; }
+                setError(null);
+                eco.current?.wink();
+                setStep('link-sent');
+              }}
+              noValidate
+              className="space-y-6"
+              aria-label="Olvidaste tu contraseña"
+            >
+              <div className="space-y-1.5 text-center">
+                <h1 className="text-[26px] font-extrabold text-[#0f172a] tracking-tight">¿Olvidaste tu contraseña?</h1>
+                <p className="text-sm text-[#64748b] leading-relaxed">Escribe tu correo corporativo o tu usuario de ingreso y te enviamos un enlace para crear una contraseña nueva.</p>
+              </div>
+              <label className="block space-y-1.5">
+                <span className="text-xs font-semibold text-[#334155]">Correo o usuario</span>
+                <span className="relative block">
+                  <Mail className="w-4 h-4 text-[#94a3b8] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    autoComplete="username"
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    value={linkIdentity}
+                    onChange={(e) => setLinkIdentity(e.target.value)}
+                    placeholder="Correo o usuario"
+                    className={`${inputBase} ${error ? 'border-[#dc2626]' : 'border-[#e4dcf5]'}`}
+                  />
+                </span>
+              </label>
+              {error && <p role="alert" className="text-xs font-semibold text-[#dc2626]">{error}</p>}
+              <div className="space-y-3 text-center">
+                <button type="submit" className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl bg-[#501f92] hover:bg-[#3d1572] active:scale-[0.99] text-white text-sm font-bold shadow-sm transition-all cursor-pointer">
+                  Enviar enlace <ArrowRight className="w-4 h-4" />
+                </button>
+                <button type="button" onClick={() => { setError(null); setStep('login'); }} className="text-sm font-semibold text-[#501f92] hover:underline cursor-pointer">
+                  Volver a ingresar
+                </button>
+              </div>
+            </form>
+          ) : step === 'link-sent' ? (
+            // Mismo mensaje exista o no la cuenta (no revelar usuarios)
+            <div className="space-y-6 text-center" role="status">
+              <div className="mx-auto w-12 h-12 rounded-2xl bg-[#ecfdf5] text-[#047857] flex items-center justify-center">
+                <MailCheck className="w-6 h-6" />
+              </div>
+              <div className="space-y-2">
+                <h1 className="text-[26px] font-extrabold text-[#0f172a] tracking-tight">Revisa tu correo</h1>
+                <p className="text-sm text-[#64748b] leading-relaxed">
+                  Si hay una cuenta con ese usuario, te enviamos un enlace nuevo. Sirve una sola vez y vence pronto: úsalo apenas te llegue.
+                </p>
+              </div>
+              <div className="space-y-3">
+                <button type="button" onClick={() => setStep('login')} className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl bg-white border border-[#ddd6fe] hover:bg-[#faf5ff] text-[#501f92] text-sm font-bold transition-all cursor-pointer">
+                  Volver a ingresar
+                </button>
+                <p className="text-xs text-[#94a3b8]">¿No te llegó? Revisa spam o pídeselo a Administración.</p>
+              </div>
+            </div>
+          ) : step === 'login' ? (
             <form onSubmit={handleLogin} noValidate className="space-y-6" aria-label="Ingresar a ECO">
               <div className="space-y-1.5 text-center">
                 <h1 className="text-[26px] font-extrabold text-[#0f172a] tracking-tight">Hola de nuevo 👋</h1>
@@ -162,8 +254,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSignedIn }) => {
                   {error ? <p role="alert" className="text-xs font-semibold text-[#dc2626]">{error}</p> : <span />}
                   <button
                     type="button"
-                    onClick={() => setShowHelp((v) => !v)}
-                    aria-expanded={showHelp}
+                    onClick={() => { setError(null); setStep('request-link'); }}
                     className="shrink-0 text-xs font-semibold text-[#501f92] hover:underline cursor-pointer"
                   >
                     ¿Olvidaste tu contraseña?
@@ -178,14 +269,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSignedIn }) => {
                 >
                   Ingresar <ArrowRight className="w-4 h-4" />
                 </button>
-                {showHelp && (
-                  <div role="note" className="flex gap-2.5 p-3 rounded-xl bg-[#f5f3ff] border border-[#ddd6fe] text-xs text-[#3b176d]">
-                    <Info className="w-4 h-4 shrink-0 text-[#501f92] mt-0.5" />
-                    <p>
-                      Pídele a <strong>Administración</strong> una contraseña temporal. Cuando entres con ella, ECO te pedirá crear una nueva.
-                    </p>
-                  </div>
-                )}
               </div>
             </form>
           ) : (
@@ -240,6 +323,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSignedIn }) => {
           )}
 
         </div>
+        <p className="mt-10 text-xs text-[#94a3b8]">By Uhura Group · ECO</p>
         </main>
       </div>
     </div>

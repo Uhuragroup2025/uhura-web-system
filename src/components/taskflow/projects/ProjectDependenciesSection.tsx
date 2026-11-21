@@ -24,6 +24,7 @@ interface ProjectDependenciesSectionProps {
   allUsers?: UserItem[];
   canManageDependencies?: boolean;
   onUpdateProject?: (updatedProject: ProjectSummaryItem) => void;
+  onDependencyReceived?: (depId: string, updatedProject: ProjectSummaryItem) => void;
 }
 
 export const ProjectDependenciesSection: React.FC<ProjectDependenciesSectionProps> = ({
@@ -31,7 +32,8 @@ export const ProjectDependenciesSection: React.FC<ProjectDependenciesSectionProp
   currentUser,
   allUsers = [],
   canManageDependencies = true,
-  onUpdateProject
+  onUpdateProject,
+  onDependencyReceived
 }) => {
   const dependencies = project.dependencies || [];
   const pendingCount = dependencies.filter((d) => d.status === 'pending').length;
@@ -75,10 +77,10 @@ export const ProjectDependenciesSection: React.FC<ProjectDependenciesSectionProp
       }
       return d;
     });
-    onUpdateProject({
-      ...project,
-      dependencies: updated
-    });
+    const updatedProject = { ...project, dependencies: updated };
+    onUpdateProject(updatedProject);
+    // Si llegó después de la fecha acordada y bloquea, se pregunta si se recalcula el cronograma
+    onDependencyReceived?.(depId, updatedProject);
   };
 
   const handleSaveFollowUp = () => {
@@ -214,7 +216,7 @@ export const ProjectDependenciesSection: React.FC<ProjectDependenciesSectionProp
             <button
               type="button"
               onClick={() => setIsNewDependencyModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold transition-all cursor-pointer shadow-2xs"
+              className="inline-flex items-center gap-1.5 h-8 px-3.5 rounded-full border border-[#cbd5e1] bg-white hover:bg-[#faf5ff] hover:border-[#501f92] text-[#501f92] text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Nuevo insumo</span>

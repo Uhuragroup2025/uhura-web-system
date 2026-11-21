@@ -8,7 +8,8 @@ import {
   ServiceCommercialItem,
   QuoteDeliverable
 } from '../types';
-import { isEligibleTeamMember } from './teamCandidates';
+import { isEligibleTeamMember, resolveServiceArea, leadForArea } from './teamCandidates';
+import { CATALOG_2026 } from '../templates/catalog2026';
 import { formatCurrency } from '../../../utils/formatters';
 import {
   CheckCircle2,
@@ -17,7 +18,6 @@ import {
   Calendar,
   Sparkles,
   FolderOpen,
-  ShieldCheck,
   AlertCircle
 } from 'lucide-react';
 
@@ -209,19 +209,29 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
     return eligibleLeaders[0] || null;
   }, [opportunity, users, eligibleLeaders]);
 
-  // Inicializar líderes por servicio con el líder de scoping por defecto
+  // Líder por servicio según su área: Producto Digital → Product Lead, Creativo → Creative
+  // Strategy Lead, Growth → Growth Manager. Si no se puede inferir, el líder del scoping.
   useEffect(() => {
     setServiceLeadUserIds((prev) => {
-      const defaultId = initialLeadUser?.id || eligibleLeaders[0]?.id || '';
-      const missing = defaultId ? wonServices.filter((svc) => !prev[svc.serviceId]) : [];
+      const fallbackId = initialLeadUser?.id || eligibleLeaders[0]?.id || '';
+      const missing = wonServices.filter((svc) => !prev[svc.serviceId]);
       if (missing.length === 0) return prev; // sin cambios: evita re-render en bucle
+      const preferredIds = opportunity.leadUserIds?.length ? opportunity.leadUserIds : [opportunity.leadUserId];
       const next = { ...prev };
       missing.forEach((svc) => {
-        next[svc.serviceId] = defaultId;
+        const area = resolveServiceArea({
+          serviceName: svc.serviceName,
+          catalog: CATALOG_2026,
+          activities: getDeliverablesForService(svc).flatMap((d) => d.backlogItems)
+        });
+        const areaLead = leadForArea(area, users, preferredIds);
+        const id = areaLead?.id || fallbackId;
+        if (id) next[svc.serviceId] = id;
       });
       return next;
     });
-  }, [wonServices, initialLeadUser, eligibleLeaders]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wonServices, initialLeadUser, eligibleLeaders, users, opportunity.leadUserIds, opportunity.leadUserId]);
 
   // Selección múltiple de líderes operativos
   const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>(() =>
@@ -510,7 +520,7 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
                         }}
                         className="w-full p-2.5 rounded-xl border border-[#cbd5e1] text-[#0f172a] text-xs font-semibold focus:ring-2 focus:ring-[#501f92] bg-white shadow-2xs cursor-pointer"
                       >
-                        {eligibleLeaders.map((u) => (
+                        {[...eligibleLeaders, ...users.filter((u) => Object.values(serviceLeadUserIds).includes(u.id) && !eligibleLeaders.some((l) => l.id === u.id))].map((u) => (
                           <option key={u.id} value={u.id}>
                             {u.name} — {u.officialRole || u.professionalRole || u.role || 'Líder de Proyecto'}
                           </option>
@@ -657,25 +667,18 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
                 })}
               </div>
             </div>
-
-            <div className="p-3 rounded-xl bg-[#faf5ff] border border-[#e9d5ff] text-[11px] text-[#501f92] flex items-start gap-2">
-              <Calendar className="w-4 h-4 shrink-0 mt-0.5" />
-              <span>
-                Las fechas de inicio y entrega <strong>no se definen aquí</strong>. Cada proyecto nace <strong>Por iniciar</strong> y el líder fija el arranque con <strong>«Iniciar proyecto 🚀»</strong>, donde ECO calcula la entrega con las semanas del alcance, los gates y las tandas de ajuste.
-              </span>
-            </div>
-          </div>
-
-          {/* Nota de gobernanza */}
-          <div className="p-3 rounded-xl bg-[#f0fdf4] border border-[#bbf7d0] text-[11px] text-[#166534] flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-[#16a34a] shrink-0" />
-            <span>
-              Los proyectos nacerán en estado <strong>Pendiente de Formalización</strong>. La recopilación de RUT y formalización administrativa se gestiona en la ficha del Cliente sin bloquear la estructuración técnica.
-            </span>
           </div>
 
           {/* Footer Actions */}
           <div className="pt-3 border-t border-[#f1f5f9] flex items-center justify-end gap-2.5">
+            {/* Ayuda en tooltip (antes eran dos avisos fijos que hacían ruido) */}
+            <span className="group relative mr-auto inline-flex items-center gap-1 text-[11px] font-semibold text-[#64748b] cursor-help" tabIndex={0}>
+              <Calendar className="w-3.5 h-3.5" />
+              ¿Y las fechas?
+              <span role="tooltip" className="pointer-events-none absolute bottom-full left-0 mb-2 w-80 rounded-xl bg-[#0f172a] p-3 text-[11px] font-normal leading-snug text-white shadow-lg opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity z-20">
+                Las fechas no se definen aquí: cada proyecto nace <strong>Por iniciar</strong> y el líder fija el arranque con «Iniciar proyecto», donde ECO calcula la entrega con las semanas del alcance y las rondas de ajuste. La formalización (RUT) se gestiona en la ficha del Cliente y no bloquea el proyecto.
+              </span>
+            </span>
             <button
               type="button"
               onClick={onClose}
@@ -689,7 +692,7 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
               className="px-5 py-2.5 text-xs font-bold text-white bg-[#501f92] hover:bg-[#3d1572] rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-2 hover:scale-[1.01]"
             >
               <CheckCircle2 className="w-4 h-4 text-[#d4ff4a]" />
-              <span>Confirmar y Crear {wonServices.length} Proyecto(s) →</span>
+              <span>{wonServices.length === 1 ? 'Crear proyecto' : 'Crear proyectos'} →</span>
             </button>
           </div>
         </form>

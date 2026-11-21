@@ -56,118 +56,16 @@ export const PROJECT_PHASES_TEMPLATES = [
 // JERARQUÍA DE 3 NIVELES (CLIENTES → PROYECTOS CON TIPO FEE VS PUNTUAL)
 export const clientProjectHierarchy: ClientProjectNode[] = [
   {
-    id: 'cli-prisma',
-    name: 'Prisma Kiddos',
-    isInternal: false,
-    projects: [
-      {
-        id: 'prj-pris-1',
-        name: 'Fee Mantenimiento Web Prisma',
-        budgetedHours: 20.0,
-        projectType: 'fee_monthly',
-        feeCategory: 'Mantenimiento Web'
-      },
-      {
-        id: 'prj-pris-2',
-        name: 'E-commerce & Landing STEM (Proyecto Web)',
-        budgetedHours: 85.0,
-        projectType: 'fixed_project',
-        startDate: '10 Ago 2026',
-        endDate: '30 Sep 2026',
-        phases: [
-          'Discovery & Arquitectura',
-          'UI/UX & Prototipado',
-          'Implementación / Dev',
-          'QA & Testing',
-          'Despliegue & Cierre'
-        ]
-      }
-    ]
-  },
-  {
-    id: 'cli-danone',
-    name: 'Danone S.A.',
-    isInternal: false,
-    projects: [
-      {
-        id: 'prj-dan-1',
-        name: 'Fee Parrilla Digital Q3 · Banners & Social',
-        budgetedHours: 40.0,
-        projectType: 'fee_monthly',
-        feeCategory: 'Parrilla & Redes'
-      },
-      {
-        id: 'prj-dan-2',
-        name: 'Campaña Navidad 2026 (Flujo Creativos → Pauta)',
-        budgetedHours: 65.0,
-        projectType: 'fixed_project',
-        startDate: '15 Ago 2026',
-        endDate: '15 Nov 2026',
-        phases: [
-          'Discovery & Arquitectura',
-          'UI/UX & Prototipado',
-          'Implementación / Dev',
-          'QA & Testing',
-          'Despliegue & Cierre'
-        ]
-      }
-    ]
-  },
-  {
-    id: 'cli-bambu',
-    name: 'BAMBÚ BPO',
-    isInternal: false,
-    projects: [
-      {
-        id: 'prj-bam-1',
-        name: 'Fee Admin de Pauta & Ads Performance',
-        budgetedHours: 35.0,
-        projectType: 'fee_monthly',
-        feeCategory: 'Growth & Pauta'
-      }
-    ]
-  },
-  {
     id: 'cli-yamaha',
-    name: 'Incolmotos Yamaha S.A.',
+    name: 'INCOLMOTOS YAMAHA S.A.',
     isInternal: false,
     projects: [
       {
-        id: 'prj-yam-navidad',
-        name: 'Campaña Navidad Yamaha',
-        budgetedHours: 59.0,
+        id: 'prj-yam-fee',
+        name: 'Fee mensual Contenido y Social · Yamaha',
+        budgetedHours: 42.0,
         projectType: 'fee_monthly',
         feeCategory: 'Parrilla & Redes'
-      },
-      {
-        id: 'prj-yam-1',
-        name: 'Yamaha R15 · Campaña Social & Web',
-        budgetedHours: 80.0,
-        projectType: 'fixed_project',
-        startDate: '01 Ago 2026',
-        endDate: '15 Oct 2026',
-        phases: [
-          'Discovery & Arquitectura',
-          'UI/UX & Prototipado',
-          'Implementación / Dev',
-          'QA & Testing',
-          'Despliegue & Cierre'
-        ]
-      },
-      {
-        id: 'prj-yam-2',
-        name: 'Yamaha MT-03 · Lanzamiento',
-        budgetedHours: 50.0,
-        projectType: 'fixed_project',
-        startDate: '15 Ago 2026',
-        endDate: '20 Nov 2026',
-        phases: [
-          'Discovery & Arquitectura',
-          'UI/UX & Prototipado',
-          'Implementación / Dev',
-          'QA & Testing',
-          'Despliegue & Cierre'
-        ]
       }
     ]
   },
@@ -179,17 +77,11 @@ export const clientProjectHierarchy: ClientProjectNode[] = [
       {
         id: 'prj-battsaver-1',
         name: 'Tienda Online BattSaver',
-        budgetedHours: 110.0,
+        budgetedHours: 100.0,
         projectType: 'fixed_project',
-        startDate: '15 Ago 2026',
-        endDate: '15 Nov 2026',
-        phases: [
-          'Discovery',
-          'UX/UI',
-          'Implementación',
-          'QA',
-          'Cierre'
-        ]
+        startDate: '3 Nov 2026',
+        endDate: '18 Dic 2026',
+        phases: ['Discovery & Arquitectura', 'UI/UX & Prototipado', 'Implementación Shopify', 'QA & Salida']
       }
     ]
   },
@@ -198,21 +90,6 @@ export const clientProjectHierarchy: ClientProjectNode[] = [
     name: '🏢 Uhura Interno / No Facturable',
     isInternal: true,
     projects: [
-      {
-        id: 'prj-uhu-1',
-        name: 'Innovación & ECO OS Labs',
-        budgetedHours: 25.0,
-        projectType: 'fixed_project',
-        startDate: '01 Jul 2026',
-        endDate: '31 Dic 2026',
-        phases: [
-          'Discovery & Arquitectura',
-          'UI/UX & Prototipado',
-          'Implementación / Dev',
-          'QA & Testing',
-          'Despliegue & Cierre'
-        ]
-      },
       {
         id: 'prj-uhu-2',
         name: 'Gestión Administrativa & Operaciones',
@@ -244,34 +121,7 @@ export const orbitServicesProfitability: ServiceProfitability[] = [
 ];
 
 // ALERTAS OPERATIVAS
-export const orbitOperationalAlerts: OperationalAlert[] = [
-  {
-    id: 'alt-1',
-    type: 'RETRASO',
-    title: 'Admin de pauta Bambú BPO',
-    client: 'BAMBÚ BPO',
-    description: 'Lleva 7 semanas (4 planeadas) y sigue abierto.',
-    weeksElapsed: 7,
-    weeksPlanned: 4,
-    impactLevel: 'alto',
-    severity: 'high',
-    read: false,
-    timeAgo: 'Hace 2 horas',
-    date: '22 Ago 2026'
-  },
-  {
-    id: 'alt-2',
-    type: 'RENTABILIDAD',
-    title: 'Danone · Banners Q3 desvío horas',
-    client: 'Danone S.A.',
-    description: 'Consumo al 82% del presupuesto con entregas pendientes.',
-    impactLevel: 'medio',
-    severity: 'critical',
-    read: false,
-    timeAgo: 'Hace 4 horas',
-    date: '22 Ago 2026'
-  }
-];
+export const orbitOperationalAlerts: OperationalAlert[] = [];
 
 // CLIENTES TOP
 export const orbitTopClients: TopClient[] = [
@@ -362,1370 +212,186 @@ export const orbitTeamCapacity: TeamMemberCapacity[] = [
 ];
 
 // HISTORIAL INICIAL DE TIEMPOS REGISTRADOS
-export const initialTimeLogs: TimeLog[] = [
-  {
-    id: 'log-1',
-    taskId: 't-1',
-    taskTitle: 'Diseño de Banners Promocionales Campaña Q3',
-    clientName: 'Danone S.A.',
-    projectName: 'Campaña Q3 · Banners & Social',
-    userName: 'Catalina Tejada',
-    userInitials: 'CT',
-    userAvatarBg: 'bg-[#7c3aed]',
+// Registros de esta sesión (los históricos de cada tarea están en task.timeLogs)
+export const initialTimeLogs: TimeLog[] = [];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DATOS DE PRUEBA (limpios, 19 Nov 2026): solo dos proyectos para ejercitar ECO.
+//  1. «Tienda Online BattSaver» (Rock and Ride): proyecto único en curso, con tareas
+//     hechas, en curso y por hacer; Laura recibe apoyo de Oscar (rol afín) y de Paola
+//     (cubre rol); Catalina (Comercial) hace el QA de compra.
+//  2. «Fee mensual Contenido y Social · Yamaha»: contrato sep–nov 2026 que vence el
+//     30 Nov. Septiembre y octubre cerrados; noviembre en curso. Al renovar se abre
+//     diciembre y se generan sus tareas desde la plantilla (septiembre).
+//  Sara María Lagos queda con la agenda llena del 19 al 24 Nov (tareas de los dos
+//  proyectos): ECO sugiere a otra persona del mismo rol (Creative Designer).
+// ─────────────────────────────────────────────────────────────────────────────
+type SeedPerson = { id: string; name: string; initials: string; avatarBg: string; role: string };
+const SEED_PEOPLE: Record<string, SeedPerson> = {
+  paola: { id: 'u-2', name: 'Paola Monsalve', initials: 'PM', avatarBg: 'bg-[#501f92]', role: 'Product Lead' },
+  luisa: { id: 'u-3', name: 'Luisa Fernanda Urazán', initials: 'LU', avatarBg: 'bg-[#0284c7]', role: 'Client Relationship Strategist' },
+  esmeralda: { id: 'u-5', name: 'Esmeralda Duque Ramírez', initials: 'ED', avatarBg: 'bg-[#8b5cf6]', role: 'Content Creator' },
+  nayeliz: { id: 'u-6', name: 'Nayeliz Brunal', initials: 'NB', avatarBg: 'bg-[#14b8a6]', role: 'Digital Content Specialist' },
+  laura: { id: 'u-7', name: 'Laura Isabel Gómez', initials: 'LG', avatarBg: 'bg-[#0284c7]', role: 'Digital Designer' },
+  catalina: { id: 'u-8', name: 'Catalina Tejada', initials: 'CT', avatarBg: 'bg-[#7c3aed]', role: 'Directora Comercial' },
+  oscar: { id: 'u-10', name: 'Oscar Cerpa', initials: 'OC', avatarBg: 'bg-[#f59e0b]', role: 'Front-End Dev' },
+  saraRivera: { id: 'u-11', name: 'Sara Rivera', initials: 'SR', avatarBg: 'bg-[#ec4899]', role: 'Community Manager' },
+  juanCamilo: { id: 'u-15', name: 'Juan Camilo Torres', initials: 'JT', avatarBg: 'bg-[#6366f1]', role: 'Creative Designer' },
+  saraLagos: { id: 'u-17', name: 'Sara María Lagos Obando', initials: 'SL', avatarBg: 'bg-[#f43f5e]', role: 'Creative Designer' }
+};
+
+const SEED_TODAY = '2026-11-19';
+
+type SeedProject = { id: string; name: string; clientName: string; projectType: 'fixed_project' | 'fee_monthly' };
+const SEED_BATT: SeedProject = { id: 'prj-battsaver-1', name: 'Tienda Online BattSaver', clientName: 'Rock and Ride S.A.S.', projectType: 'fixed_project' };
+const SEED_YAM: SeedProject = { id: 'prj-yam-fee', name: 'Fee mensual Contenido y Social · Yamaha', clientName: 'INCOLMOTOS YAMAHA S.A.', projectType: 'fee_monthly' };
+
+function seedLog(taskId: string, p: SeedProject, title: string, who: SeedPerson, hours: number, date: string): TimeLog {
+  return {
+    id: `log-${taskId}-${who.id}-${date}`,
+    taskId,
+    taskTitle: title,
+    projectName: p.name,
+    clientName: p.clientName,
+    userId: who.id,
+    userName: who.name,
+    userInitials: who.initials,
+    userAvatarBg: who.avatarBg,
     categoryType: 'client',
-    durationSeconds: 7200, // 2.0h
-    startTime: '09:00',
-    endTime: '11:00',
-    isLiveTimer: true,
-    date: 'Hoy, 22 Ago 2026',
-    note: 'Creación de variantes 1080x1080 y 1080x1920 en Figma. Exportados a Drive.',
-    deliverableUrl: 'https://figma.com/design/danone-q3-banners'
-  },
-  {
-    id: 'log-2',
-    taskId: 't-4',
-    taskTitle: 'Desarrollo de Módulo de Tiempos ECO OS',
-    clientName: '🏢 Uhura Interno / No Facturable',
-    projectName: 'Innovación & ECO OS Labs',
-    userName: 'Oscar Cerpa',
-    userInitials: 'OC',
-    userAvatarBg: 'bg-[#f59e0b]',
-    categoryType: 'internal',
-    durationSeconds: 5400, // 1.5h
-    startTime: '11:15',
-    endTime: '12:45',
-    isLiveTimer: true,
-    date: 'Hoy, 22 Ago 2026',
-    note: 'Refactor de componentes y reducción de fricción en la UI.'
-  }
+    source: 'manual',
+    durationSeconds: Math.round(hours * 3600),
+    date
+  };
+}
+
+function seedTask(p: SeedProject, t: {
+  id: string;
+  title: string;
+  role: string;
+  who: SeedPerson;
+  hours: number;
+  start: string;
+  due: string;
+  status: 'Done' | 'In Progress' | 'To Do';
+  frente: string;
+  deliverableId?: string;
+  cycleKey?: string;
+  /** Horas registradas: [persona, horas, fecha] (puede ser alguien distinto al asignado). */
+  logs?: [SeedPerson, number, string][];
+  priority?: 'Low' | 'Medium' | 'High';
+  description?: string;
+}): TaskItem {
+  const done = t.status === 'Done';
+  const logs = (t.logs || []).map(([who, h, d]) => seedLog(t.id, p, t.title, who, h, d));
+  const consumed = logs.reduce((acc, l) => acc + l.durationSeconds, 0);
+  const daysLeft = Math.round((new Date(t.due).getTime() - new Date(SEED_TODAY).getTime()) / 86400000);
+  const dueStatus: TaskItem['dueStatus'] = done ? 'normal' : daysLeft < 0 ? 'overdue' : daysLeft === 0 ? 'urgent' : daysLeft === 1 ? 'tomorrow' : daysLeft <= 3 ? 'soon' : 'normal';
+  return {
+    id: t.id,
+    title: t.title,
+    description: t.description,
+    department: t.frente,
+    board: p.name,
+    projectId: p.id,
+    projectName: p.name,
+    clientName: p.clientName,
+    projectType: p.projectType,
+    categoryType: 'client',
+    frente: t.frente,
+    fase: t.frente,
+    phase: t.frente,
+    deliverableId: t.deliverableId,
+    cycleKey: t.cycleKey,
+    budgetedRole: t.role,
+    executedRoleSnapshot: t.role,
+    assignee: { id: t.who.id, name: t.who.name, initials: t.who.initials, avatarBg: t.who.avatarBg, role: t.who.role },
+    requestedBy: 'Paola Monsalve',
+    reviewer: { name: 'Paola (Lead PM)', initials: 'PM', avatarBg: 'bg-[#501f92]', role: 'Product Lead' },
+    scheduledDate: t.start,
+    date: t.start,
+    startDate: t.start,
+    dueDate: t.due,
+    baselineStartDate: t.start,
+    baselineDueDate: t.due,
+    dueStatus,
+    dueText: done ? 'Completada' : `Fecha límite: ${t.due}`,
+    status: t.status,
+    priority: t.priority || 'Medium',
+    completed: done,
+    completedAt: done ? `${t.due}T17:00:00-05:00` : undefined,
+    budgetedHours: t.hours,
+    consumedSeconds: consumed,
+    timeLogs: logs,
+    tags: []
+  } as TaskItem;
+}
+
+const P = SEED_PEOPLE;
+
+// 1) Proyecto único en curso
+const battsaverTasks: TaskItem[] = [
+  seedTask(SEED_BATT, { id: 't-bs-1', title: 'Kickoff con el cliente', role: 'Client Relationship Strategist', who: P.luisa, hours: 2, start: '2026-11-03', due: '2026-11-03', status: 'Done', frente: 'Discovery & Arquitectura', deliverableId: 'del-batt-1', logs: [[P.luisa, 2, '2026-11-03']] }),
+  seedTask(SEED_BATT, { id: 't-bs-2', title: 'Arquitectura de información y catálogo', role: 'Product Lead', who: P.paola, hours: 8, start: '2026-11-04', due: '2026-11-06', status: 'Done', frente: 'Discovery & Arquitectura', deliverableId: 'del-batt-1', logs: [[P.paola, 5, '2026-11-04'], [P.paola, 4, '2026-11-05']] }),
+  // Laura ejecuta con apoyo de Oscar (Front-End, rol afín a Digital Designer): la matriz muestra quién registró qué
+  seedTask(SEED_BATT, { id: 't-bs-3', title: 'Wireframes y flujo de checkout', role: 'Digital Designer', who: P.laura, hours: 12, start: '2026-11-09', due: '2026-11-12', status: 'Done', frente: 'UI/UX & Prototipado', deliverableId: 'del-batt-2', logs: [[P.laura, 9, '2026-11-11'], [P.oscar, 2, '2026-11-12']] }),
+  // Paola registra horas en una tarea de diseño: «cubre rol»
+  seedTask(SEED_BATT, { id: 't-bs-4', title: 'UI kit y vistas en Figma', role: 'Digital Designer', who: P.laura, hours: 16, start: '2026-11-17', due: '2026-11-23', status: 'In Progress', frente: 'UI/UX & Prototipado', deliverableId: 'del-batt-2', priority: 'High', logs: [[P.laura, 5, '2026-11-18'], [P.paola, 1.5, '2026-11-18']] }),
+  seedTask(SEED_BATT, { id: 't-bs-5', title: 'Banners y piezas gráficas de la tienda', role: 'Creative Designer', who: P.saraLagos, hours: 10, start: '2026-11-19', due: '2026-11-23', status: 'To Do', frente: 'UI/UX & Prototipado', deliverableId: 'del-batt-2' }),
+  seedTask(SEED_BATT, { id: 't-bs-6', title: 'Prototipo navegable y QA interno', role: 'Digital Designer', who: P.laura, hours: 6, start: '2026-11-23', due: '2026-11-24', status: 'To Do', frente: 'UI/UX & Prototipado', deliverableId: 'del-batt-2' }),
+  seedTask(SEED_BATT, { id: 't-bs-7', title: 'Setup de Shopify y tema', role: 'Front-End Dev', who: P.oscar, hours: 16, start: '2026-12-02', due: '2026-12-04', status: 'To Do', frente: 'Implementación Shopify', deliverableId: 'del-batt-3' }),
+  seedTask(SEED_BATT, { id: 't-bs-8', title: 'Pasarela de pagos Wompi y PSE', role: 'Front-End Dev', who: P.oscar, hours: 12, start: '2026-12-07', due: '2026-12-10', status: 'To Do', frente: 'Implementación Shopify', deliverableId: 'del-batt-3' }),
+  seedTask(SEED_BATT, { id: 't-bs-9', title: 'Carga del catálogo y fichas de producto', role: 'Digital Content Specialist', who: P.nayeliz, hours: 8, start: '2026-12-07', due: '2026-12-10', status: 'To Do', frente: 'Implementación Shopify', deliverableId: 'del-batt-3' }),
+  // Comercial también puede tener tareas (p. ej. QA): se permite y queda marcado «cubre rol»
+  seedTask(SEED_BATT, { id: 't-bs-10', title: 'QA de compra de punta a punta', role: 'Product Lead', who: P.catalina, hours: 4, start: '2026-12-11', due: '2026-12-11', status: 'To Do', frente: 'QA & Salida', deliverableId: 'del-batt-4' }),
+  seedTask(SEED_BATT, { id: 't-bs-11', title: 'Salida a producción y capacitación', role: 'Product Lead', who: P.paola, hours: 6, start: '2026-12-17', due: '2026-12-18', status: 'To Do', frente: 'QA & Salida', deliverableId: 'del-batt-4' })
 ];
 
-// TAREAS INICIALES CON JERARQUÍA DE 3 NIVELES, FASES & FEES
-export const initialTasks: TaskItem[] = [
-  // --- FRENTE 1: REDES SOCIALES (Campaña Navidad Yamaha · 32 h) ---
-  {
-    id: 't-yam-rs-1',
-    title: 'Estrategia de contenido',
-    description: 'Estructuración de pilares de comunicación navideña, mensajes clave y formatos para IG/FB.',
-    department: 'Creatividad & Social',
-    board: 'Campaña Navidad Yamaha',
-    clientName: 'INCOLMOTOS YAMAHA S.A.',
-    projectName: 'Campaña Navidad Yamaha',
-    frente: 'Redes Sociales',
-    phase: 'Discovery & Estrategia',
-    fase: 'Discovery & Estrategia',
-    budgetedRole: 'Digital Content Specialist',
-    executedRoleSnapshot: 'Digital Content Specialist',
-    projectType: 'fixed_project',
-    categoryType: 'client',
-    assignee: {
-      name: 'Camilo Vélez',
-      initials: 'CV',
-      avatarBg: 'bg-[#10b981]',
-      role: 'Digital Content Specialist'
-    },
-    requestedBy: 'Paola (Lead PM)',
-    reviewer: {
-      name: 'Paola (Lead PM)',
-      initials: 'PL',
-      avatarBg: 'bg-[#501f92]',
-      role: 'Product Lead'
-    },
-    date: '16 Ago 2026',
-    startDate: '15 ago. 2026',
-    dueDate: '2026-08-18',
-    baselineStartDate: '2026-08-15',
-    baselineDueDate: '2026-08-18',
-    dueStatus: 'normal',
-    dueText: 'Completado a tiempo',
-    status: 'Done',
-    priority: 'High',
-    completed: true,
-    budgetedHours: 4.0,
-    consumedSeconds: 14400, // 4.0h
-    tags: ['Navidad', 'Redes Sociales', 'Estrategia'],
-    acceptanceCriteria: [
-      { id: 'crit-rs1-1', text: 'Pilares temáticos aprobados por marca', completed: true },
-      { id: 'crit-rs1-2', text: 'Calendario de entregables sincronizado', completed: true }
-    ]
-  },
-  {
-    id: 't-yam-rs-2',
-    title: 'Diseño de piezas',
-    description: 'Diseño de key visuals, carruseles y adaptaciones 1:1, 9:16 y banners display para pauta.',
-    department: 'Creatividad & Diseño',
-    board: 'Campaña Navidad Yamaha',
-    clientName: 'INCOLMOTOS YAMAHA S.A.',
-    projectName: 'Campaña Navidad Yamaha',
-    frente: 'Redes Sociales',
-    phase: 'UI/UX & Prototipado',
-    fase: 'UI/UX & Prototipado',
-    budgetedRole: 'Creative Designer',
-    executedRoleSnapshot: 'Creative Designer',
-    projectType: 'fixed_project',
-    categoryType: 'client',
-    assignee: {
-      name: 'Diego Cadavid',
-      initials: 'DC',
-      avatarBg: 'bg-[#f59e0b]',
-      role: 'Creative Designer'
-    },
-    requestedBy: 'Paola (Lead PM)',
-    reviewer: {
-      name: 'Catalina Tejada',
-      initials: 'CT',
-      avatarBg: 'bg-[#7c3aed]',
-      role: 'Digital Designer'
-    },
-    dependencyTaskId: 't-yam-rs-1',
-    dependencyTaskTitle: 'Estrategia de contenido',
-    date: '20 Ago 2026',
-    startDate: '18 ago. 2026',
-    dueDate: '2026-08-28',
-    baselineStartDate: '2026-08-18',
-    baselineDueDate: '2026-08-28',
-    dueStatus: 'soon',
-    dueText: 'Vence en 2 días',
-    status: 'In Progress',
-    priority: 'High',
-    completed: false,
-    budgetedHours: 24.0,
-    consumedSeconds: 72000, // 20.0h ejecutadas
-    tags: ['Navidad', 'Figma', 'Key Visuals', 'Piezas'],
-    acceptanceCriteria: [
-      { id: 'crit-rs2-1', text: '12 artes para feed y stories en alta resolución', completed: true },
-      { id: 'crit-rs2-2', text: 'Adaptaciones para anuncios de pauta en Meta', completed: false }
-    ]
-  },
-  {
-    id: 't-yam-rs-3',
-    title: 'Redacción y publicación',
-    description: 'Redacción de copys finales con emojis y hashtags, y programación en plataforma.',
-    department: 'Social Media',
-    board: 'Campaña Navidad Yamaha',
-    clientName: 'INCOLMOTOS YAMAHA S.A.',
-    projectName: 'Campaña Navidad Yamaha',
-    frente: 'Redes Sociales',
-    phase: 'Implementación Frontend & Backend',
-    fase: 'Implementación Frontend & Backend',
-    budgetedRole: 'Community Manager',
-    executedRoleSnapshot: 'Community Manager',
-    projectType: 'fixed_project',
-    categoryType: 'client',
-    assignee: {
-      name: 'Mateo Ruiz',
-      initials: 'MR',
-      avatarBg: 'bg-[#8b5cf6]',
-      role: 'Community Manager'
-    },
-    requestedBy: 'Paola (Lead PM)',
-    dependencyTaskId: 't-yam-rs-2',
-    dependencyTaskTitle: 'Diseño de piezas',
-    date: '24 Ago 2026',
-    startDate: '28 ago. 2026',
-    dueDate: '2026-08-30',
-    baselineStartDate: '2026-08-28',
-    baselineDueDate: '2026-08-30',
-    dueStatus: 'soon',
-    dueText: 'Programado para entrega',
-    status: 'To Do',
-    priority: 'Medium',
-    completed: false,
-    budgetedHours: 4.0,
-    consumedSeconds: 0,
-    tags: ['Copys', 'Social', 'Publicación']
-  },
-
-  // --- FRENTE 2: LANDING PAGE (Campaña Navidad Yamaha · 19 h) ---
-  {
-    id: 't-yam-lp-1',
-    title: 'Conceptualización',
-    description: 'Definición de flujo de conversión, arquitectura de secciones y oferta de temporada.',
-    department: 'Producto & Dirección',
-    board: 'Campaña Navidad Yamaha',
-    clientName: 'INCOLMOTOS YAMAHA S.A.',
-    projectName: 'Campaña Navidad Yamaha',
-    frente: 'Landing Page',
-    phase: 'Discovery & Estrategia',
-    fase: 'Discovery & Estrategia',
-    budgetedRole: 'Product Lead',
-    executedRoleSnapshot: 'Product Lead',
-    projectType: 'fixed_project',
-    categoryType: 'client',
-    assignee: {
-      name: 'Paola Monsalve',
-      initials: 'PM',
-      avatarBg: 'bg-[#501f92]',
-      role: 'Product Lead'
-    },
-    requestedBy: 'Paola (Lead PM)',
-    date: '17 Ago 2026',
-    startDate: '16 ago. 2026',
-    dueDate: '2026-08-18',
-    baselineStartDate: '2026-08-16',
-    baselineDueDate: '2026-08-18',
-    dueStatus: 'normal',
-    dueText: 'Completado',
-    status: 'Done',
-    priority: 'High',
-    completed: true,
-    budgetedHours: 2.0,
-    consumedSeconds: 10800, // 3.0h (desvío +1h)
-    tags: ['Landing Page', 'Discovery', 'UX Flow'],
-    acceptanceCriteria: [
-      { id: 'crit-lp1-1', text: 'Wireframe en baja fidelidad aprobado', completed: true }
-    ]
-  },
-  {
-    id: 't-yam-lp-2',
-    title: 'Copy',
-    description: 'Redacción de textos persuasivos, claims navideños y microcopys para formulario de cotización.',
-    department: 'Creatividad & Copy',
-    board: 'Campaña Navidad Yamaha',
-    clientName: 'INCOLMOTOS YAMAHA S.A.',
-    projectName: 'Campaña Navidad Yamaha',
-    frente: 'Landing Page',
-    phase: 'Discovery & Estrategia',
-    fase: 'Discovery & Estrategia',
-    budgetedRole: 'Content Creator',
-    executedRoleSnapshot: 'Content Creator',
-    projectType: 'fixed_project',
-    categoryType: 'client',
-    assignee: {
-      name: 'Mariana Toro',
-      initials: 'MT',
-      avatarBg: 'bg-[#ec4899]',
-      role: 'Content Creator'
-    },
-    requestedBy: 'Paola Monsalve',
-    dependencyTaskId: 't-yam-lp-1',
-    dependencyTaskTitle: 'Conceptualización',
-    date: '19 Ago 2026',
-    startDate: '18 ago. 2026',
-    dueDate: '2026-08-20',
-    baselineStartDate: '2026-08-18',
-    baselineDueDate: '2026-08-20',
-    dueStatus: 'normal',
-    dueText: 'Completado a tiempo',
-    status: 'Done',
-    priority: 'Medium',
-    completed: true,
-    budgetedHours: 1.0,
-    consumedSeconds: 3600, // 1.0h
-    tags: ['Landing Page', 'Copywriting', 'Claims']
-  },
-  {
-    id: 't-yam-lp-3',
-    title: 'Prototipo',
-    description: 'Diseño UI interactivo en Figma de la landing page responsive para desktop y mobile.',
-    department: 'Creatividad & Diseño',
-    board: 'Campaña Navidad Yamaha',
-    clientName: 'INCOLMOTOS YAMAHA S.A.',
-    projectName: 'Campaña Navidad Yamaha',
-    frente: 'Landing Page',
-    phase: 'UI/UX & Prototipado',
-    fase: 'UI/UX & Prototipado',
-    budgetedRole: 'Digital Designer',
-    executedRoleSnapshot: 'Digital Designer',
-    projectType: 'fixed_project',
-    categoryType: 'client',
-    assignee: {
-      name: 'Catalina Tejada',
-      initials: 'CT',
-      avatarBg: 'bg-[#7c3aed]',
-      role: 'Digital Designer'
-    },
-    requestedBy: 'Paola Monsalve',
-    reviewer: {
-      name: 'Paola (Lead PM)',
-      initials: 'PL',
-      avatarBg: 'bg-[#501f92]',
-      role: 'Product Lead'
-    },
-    dependencyTaskId: 't-yam-lp-2',
-    dependencyTaskTitle: 'Copy',
-    date: '21 Ago 2026',
-    startDate: '20 ago. 2026',
-    dueDate: '2026-08-23',
-    baselineStartDate: '2026-08-20',
-    baselineDueDate: '2026-08-23',
-    dueStatus: 'normal',
-    dueText: 'Aprobado por cliente',
-    status: 'Done',
-    priority: 'High',
-    completed: true,
-    budgetedHours: 8.0,
-    consumedSeconds: 25200, // 7.0h
-    tags: ['Landing Page', 'Figma', 'UI/UX', 'Prototipo'],
-    acceptanceCriteria: [
-      { id: 'crit-lp3-1', text: 'Prototipo en Figma con interacciones completas', completed: true },
-      { id: 'crit-lp3-2', text: 'Validación de contraste y legibilidad', completed: true }
-    ]
-  },
-  {
-    id: 't-yam-lp-4',
-    title: 'Implementación',
-    description: 'Maquetación frontend responsive en React/Tailwind, conexión con API de CRM y eventos de analítica.',
-    department: 'Desarrollo Frontend',
-    board: 'Campaña Navidad Yamaha',
-    clientName: 'INCOLMOTOS YAMAHA S.A.',
-    projectName: 'Campaña Navidad Yamaha',
-    frente: 'Landing Page',
-    phase: 'Implementación Frontend & Backend',
-    fase: 'Implementación Frontend & Backend',
-    budgetedRole: 'Front-End Dev',
-    executedRoleSnapshot: 'Front-End Dev',
-    projectType: 'fixed_project',
-    categoryType: 'client',
-    assignee: {
-      name: 'Laura Gómez',
-      initials: 'LG',
-      avatarBg: 'bg-[#0284c7]',
-      role: 'Front-End Dev'
-    },
-    requestedBy: 'Paola (Lead PM)',
-    reviewer: {
-      name: 'Paola Monsalve',
-      initials: 'PM',
-      avatarBg: 'bg-[#501f92]',
-      role: 'Product Lead'
-    },
-    dependencyTaskId: 't-yam-lp-3',
-    dependencyTaskTitle: 'Prototipo',
-    date: '23 Ago 2026',
-    startDate: '23 ago. 2026',
-    dueDate: '2026-08-27',
-    baselineStartDate: '2026-08-23',
-    baselineDueDate: '2026-08-27',
-    dueStatus: 'soon',
-    dueText: 'Vence en 1 día',
-    status: 'In Progress',
-    priority: 'High',
-    completed: false,
-    budgetedHours: 8.0,
-    consumedSeconds: 36000, // 10.0h ejecutadas (desvío +2h)
-    tags: ['Landing Page', 'Frontend', 'React', 'Analytics'],
-    acceptanceCriteria: [
-      { id: 'crit-lp4-1', text: 'Puntuación Lighthouse > 90 en performance', completed: false },
-      { id: 'crit-lp4-2', text: 'Envío correcto de leads al webhook de Yamaha', completed: true }
-    ]
-  },
-
-  // --- FRENTE 3: PAUTA (Campaña Navidad Yamaha · 8 h) ---
-  {
-    id: 't-yam-pt-1',
-    title: 'Carga/publicación de anuncios',
-    description: 'Configuración de campañas en Meta Ads Manager y Google Ads, carga de creativos y segmentación.',
-    department: 'Growth & Performance',
-    board: 'Campaña Navidad Yamaha',
-    clientName: 'INCOLMOTOS YAMAHA S.A.',
-    projectName: 'Campaña Navidad Yamaha',
-    frente: 'Pauta',
-    phase: 'QA & Testing',
-    fase: 'QA & Testing',
-    budgetedRole: 'Trafficker Media',
-    executedRoleSnapshot: 'Trafficker Media',
-    projectType: 'fixed_project',
-    categoryType: 'client',
-    assignee: {
-      name: 'Sebas (Trafficker)',
-      initials: 'ST',
-      avatarBg: 'bg-[#0284c7]',
-      role: 'Trafficker Media'
-    },
-    requestedBy: 'Paola (Lead PM)',
-    dependencyTaskId: 't-yam-rs-2',
-    dependencyTaskTitle: 'Diseño de piezas',
-    date: '25 Ago 2026',
-    startDate: '25 ago. 2026',
-    dueDate: '2026-08-28',
-    baselineStartDate: '2026-08-25',
-    baselineDueDate: '2026-08-28',
-    dueStatus: 'soon',
-    dueText: 'En revisión de QC',
-    status: 'Review',
-    priority: 'High',
-    completed: false,
-    budgetedHours: 3.0,
-    consumedSeconds: 10800, // 3.0h
-    tags: ['Pauta', 'Meta Ads', 'Google Ads', 'Trafficker Media'],
-    acceptanceCriteria: [
-      { id: 'crit-pt1-1', text: 'Verificación de UTMs y tracking de conversión', completed: true },
-      { id: 'crit-pt1-2', text: 'Presupuesto diario y puja configurada correctamente', completed: true }
-    ]
-  },
-  {
-    id: 't-yam-pt-2',
-    title: 'Seguimiento/optimización',
-    description: 'Monitoreo diario de CPA, CPL y ROAS, reasignación de presupuestos a creativos ganadores.',
-    department: 'Growth & Performance',
-    board: 'Campaña Navidad Yamaha',
-    clientName: 'INCOLMOTOS YAMAHA S.A.',
-    projectName: 'Campaña Navidad Yamaha',
-    frente: 'Pauta',
-    phase: 'Despliegue & Cierre',
-    fase: 'Despliegue & Cierre',
-    budgetedRole: 'Trafficker Media',
-    executedRoleSnapshot: 'Trafficker Media',
-    projectType: 'fixed_project',
-    categoryType: 'client',
-    assignee: {
-      name: 'Sebas (Trafficker)',
-      initials: 'ST',
-      avatarBg: 'bg-[#0284c7]',
-      role: 'Trafficker Media'
-    },
-    requestedBy: 'Paola (Lead PM)',
-    dependencyTaskId: 't-yam-pt-1',
-    dependencyTaskTitle: 'Carga/publicación de anuncios',
-    date: '26 Ago 2026',
-    startDate: '28 ago. 2026',
-    dueDate: '2026-11-30',
-    baselineStartDate: '2026-08-28',
-    baselineDueDate: '2026-11-30',
-    dueStatus: 'normal',
-    dueText: 'Optimización continua',
-    status: 'To Do',
-    priority: 'Medium',
-    completed: false,
-    budgetedHours: 5.0,
-    consumedSeconds: 0,
-    tags: ['Pauta', 'Optimización', 'ROAS', 'Reporting']
-  },
-
-  // =========================================================================
-  // PROYECTO 2: TIENDA ONLINE BATTSAVER · CLIENTE ROCK AND RIDE S.A.S.
-  // MODALIDAD: PROYECTO ÚNICO (E-COMMERCE / SHOPIFY CON BACKLOG & FASES)
-  // FASES: Discovery -> UX/UI -> Implementación -> QA -> Cierre (12 TAREAS)
-  // =========================================================================
-
-  // --- FASE 1: DISCOVERY (14 h) ---
-  {
-    id: 't-bs-1',
-    title: 'Benchmark y requerimientos e-commerce',
-    description: 'Análisis de competencia en baterías de alto rendimiento, levantamiento de arquitectura de catálogo y requerimientos funcionales para Shopify.',
-    department: 'Investigación & Producto',
-    board: 'Tienda Online BattSaver',
-    clientName: 'Rock and Ride S.A.S.',
-    projectName: 'Tienda Online BattSaver',
-    frente: 'Investigación',
-    fase: 'Discovery',
-    phase: 'Discovery',
-    budgetedRole: 'Growth Manager',
-    executedRoleSnapshot: 'Growth Manager',
-    projectType: 'fixed_project',
-    categoryType: 'client',
-    assignee: {
-      name: 'Camilo Velez',
-      initials: 'CV',
-      avatarBg: 'bg-[#059669]',
-      role: 'Growth Manager'
-    },
-    requestedBy: 'Paola Monsalve',
-    date: '15 Ago 2026',
-    startDate: '15 ago. 2026',
-    dueDate: '2026-08-20',
-    baselineStartDate: '2026-08-15',
-    baselineDueDate: '2026-08-20',
-    dueStatus: 'normal',
-    dueText: 'Completado',
-    status: 'Done',
-    priority: 'High',
-    completed: true,
-    budgetedHours: 6.0,
-    consumedSeconds: 21600, // 6.0h
-    tags: ['Shopify', 'Discovery', 'Benchmark'],
-    acceptanceCriteria: [
-      { id: 'c-bs1-1', text: 'Matriz comparativa de tiendas e-commerce', completed: true },
-      { id: 'c-bs1-2', text: 'Documento de alcance funcional firmado', completed: true }
-    ]
-  },
-  {
-    id: 't-bs-2',
-    title: 'Arquitectura de información y catálogo Shopify',
-    description: 'Definición de colecciones, taxonomía de productos (baterías por marca/modelo de vehículo), filtros y navegación principal.',
-    department: 'Arquitectura & Tech',
-    board: 'Tienda Online BattSaver',
-    clientName: 'Rock and Ride S.A.S.',
-    projectName: 'Tienda Online BattSaver',
-    frente: 'Arquitectura',
-    fase: 'Discovery',
-    phase: 'Discovery',
-    budgetedRole: 'Product Lead',
-    executedRoleSnapshot: 'Product Lead',
-    projectType: 'fixed_project',
-    categoryType: 'client',
-    assignee: {
-      name: 'Paola (Lead PM)',
-      initials: 'PL',
-      avatarBg: 'bg-[#501f92]',
-      role: 'Product Lead'
-    },
-    requestedBy: 'Paola Monsalve',
-    dependencyTaskId: 't-bs-1',
-    dependencyTaskTitle: 'Benchmark y requerimientos e-commerce',
-    date: '20 Ago 2026',
-    startDate: '20 ago. 2026',
-    dueDate: '2026-08-25',
-    baselineStartDate: '2026-08-20',
-    baselineDueDate: '2026-08-25',
-    dueStatus: 'normal',
-    dueText: 'Completado',
-    status: 'Done',
-    priority: 'High',
-    completed: true,
-    budgetedHours: 8.0,
-    consumedSeconds: 28800, // 8.0h
-    tags: ['Shopify', 'Taxonomía', 'Arquitectura']
-  },
-
-  // --- FASE 2: UX/UI (36 h) ---
-  {
-    id: 't-bs-3',
-    title: 'UI Kit y Design System en Figma',
-    description: 'Diseño de componentes base, tipografía, paleta de color de BattSaver, tokens de diseño y componentes de cards de producto.',
-    department: 'Diseño UI/UX',
-    board: 'Tienda Online BattSaver',
-    clientName: 'Rock and Ride S.A.S.',
-    projectName: 'Tienda Online BattSaver',
-    frente: 'Diseño UX/UI',
-    fase: 'UX/UI',
-    phase: 'UX/UI',
-    budgetedRole: 'Digital Designer',
-    executedRoleSnapshot: 'Digital Designer',
-    projectType: 'fixed_project',
-    categoryType: 'client',
-    assignee: {
-      name: 'Catalina Tejada',
-      initials: 'CT',
-      avatarBg: 'bg-[#7c3aed]',
-      role: 'Digital Designer'
-    },
-    requestedBy: 'Paola (Lead PM)',
-    date: '26 Ago 2026',
-    startDate: '26 ago. 2026',
-    dueDate: '2026-09-02',
-    baselineStartDate: '2026-08-26',
-    baselineDueDate: '2026-09-02',
-    dueStatus: 'normal',
-    dueText: 'Completado a tiempo',
-    status: 'Done',
-    priority: 'High',
-    completed: true,
-    budgetedHours: 14.0,
-    consumedSeconds: 50400, // 14.0h
-    tags: ['Figma', 'Design System', 'UI Kit']
-  },
-  {
-    id: 't-bs-4',
-    title: 'Diseño Wireframes y Flujo de Checkout',
-    description: 'Diseño responsive de páginas clave: Home, PDP (Página de Detalle de Batería), Carrito lateral y Checkout optimizado en Shopify.',
-    department: 'Diseño UI/UX',
-    board: 'Tienda Online BattSaver',
-    clientName: 'Rock and Ride S.A.S.',
-    projectName: 'Tienda Online BattSaver',
-    frente: 'Diseño UX/UI',
-    fase: 'UX/UI',
-    phase: 'UX/UI',
-    budgetedRole: 'Digital Designer',
-    executedRoleSnapshot: 'Digital Designer',
-    projectType: 'fixed_project',
-    categoryType: 'client',
-    assignee: {
-      name: 'Catalina Tejada',
-      initials: 'CT',
-      avatarBg: 'bg-[#7c3aed]',
-      role: 'Digital Designer'
-    },
-    requestedBy: 'Paola Monsalve',
-    dependencyTaskId: 't-bs-3',
-    dependencyTaskTitle: 'UI Kit y Design System en Figma',
-    date: '02 Sep 2026',
-    startDate: '02 sep. 2026',
-    dueDate: '2026-09-08',
-    baselineStartDate: '2026-09-02',
-    baselineDueDate: '2026-09-08',
-    dueStatus: 'soon',
-    dueText: 'En proceso de diseño',
-    status: 'In Progress',
-    priority: 'High',
-    completed: false,
-    budgetedHours: 16.0,
-    consumedSeconds: 21600, // 6.0h
-    tags: ['Figma', 'PDP', 'Checkout', 'UX Flow']
-  },
-  {
-    id: 't-bs-5',
-    title: 'Prototipo interactivo mobile y validación',
-    description: 'Enlace interactivo en Figma con microinteracciones para aprobación del cliente Rock and Ride S.A.S.',
-    department: 'Diseño UI/UX',
-    board: 'Tienda Online BattSaver',
-    clientName: 'Rock and Ride S.A.S.',
-    projectName: 'Tienda Online BattSaver',
-    frente: 'Diseño UX/UI',
-    fase: 'UX/UI',
-    phase: 'UX/UI',
-    budgetedRole: 'Digital Designer',
-    executedRoleSnapshot: 'Digital Designer',
-    projectType: 'fixed_project',
-    categoryType: 'client',
-    assignee: {
-      name: 'Catalina Tejada',
-      initials: 'CT',
-      avatarBg: 'bg-[#7c3aed]',
-      role: 'Digital Designer'
-    },
-    requestedBy: 'Paola (Lead PM)',
-    dependencyTaskId: 't-bs-4',
-    dependencyTaskTitle: 'Diseño Wireframes y Flujo de Checkout',
-    date: '08 Sep 2026',
-    startDate: '08 sep. 2026',
-    dueDate: '2026-09-10',
-    baselineStartDate: '2026-09-08',
-    baselineDueDate: '2026-09-10',
-    dueStatus: 'soon',
-    dueText: 'Próxima entrega',
-    status: 'To Do',
-    priority: 'Medium',
-    completed: false,
-    budgetedHours: 6.0,
-    consumedSeconds: 0,
-    tags: ['Figma', 'Prototipo', 'Mobile']
-  },
-
-  // --- FASE 3: IMPLEMENTACIÓN (48 h) ---
-  {
-    id: 't-bs-6',
-    title: 'Setup de Store Shopify & Tema Liquid',
-    description: 'Instalación de Shopify Plus/Advanced, configuración de theme Dawn/Custom, secciones modulares Liquid y ajustes CSS.',
-    department: 'Desarrollo Frontend',
-    board: 'Tienda Online BattSaver',
-    clientName: 'Rock and Ride S.A.S.',
-    projectName: 'Tienda Online BattSaver',
-    frente: 'Desarrollo Web',
-    fase: 'Implementación',
-    phase: 'Implementación',
-    budgetedRole: 'Front-End Dev',
-    executedRoleSnapshot: 'Front-End Dev',
-    projectType: 'fixed_project',
-    categoryType: 'client',
-    assignee: {
-      name: 'Laura Gómez',
-      initials: 'LG',
-      avatarBg: 'bg-[#0284c7]',
-      role: 'Front-End Dev'
-    },
-    requestedBy: 'Paola Monsalve',
-    dependencyTaskId: 't-bs-5',
-    dependencyTaskTitle: 'Prototipo interactivo mobile y validación',
-    date: '11 Sep 2026',
-    startDate: '11 sep. 2026',
-    dueDate: '2026-09-22',
-    baselineStartDate: '2026-09-11',
-    baselineDueDate: '2026-09-22',
-    dueStatus: 'normal',
-    dueText: 'Pendiente de inicio',
-    status: 'To Do',
-    priority: 'High',
-    completed: false,
-    budgetedHours: 18.0,
-    consumedSeconds: 0,
-    tags: ['Shopify', 'Liquid', 'Frontend', 'CSS']
-  },
-  {
-    id: 't-bs-7',
-    title: 'Integración pasarela de pagos Wompi & PSE',
-    description: 'Conexión con checkout transparente de Wompi, configuración de webhooks de notificación de pago y pruebas en sandbox.',
-    department: 'Integraciones & Backend',
-    board: 'Tienda Online BattSaver',
-    clientName: 'Rock and Ride S.A.S.',
-    projectName: 'Tienda Online BattSaver',
-    frente: 'Integraciones',
-    fase: 'Implementación',
-    phase: 'Implementación',
-    budgetedRole: 'Front-End Dev',
-    executedRoleSnapshot: 'Front-End Dev',
-    projectType: 'fixed_project',
-    categoryType: 'client',
-    assignee: {
-      name: 'Laura Gómez',
-      initials: 'LG',
-      avatarBg: 'bg-[#0284c7]',
-      role: 'Front-End Dev'
-    },
-    requestedBy: 'Paola (Lead PM)',
-    dependencyTaskId: 't-bs-6',
-    dependencyTaskTitle: 'Setup de Store Shopify & Tema Liquid',
-    date: '23 Sep 2026',
-    startDate: '23 sep. 2026',
-    dueDate: '2026-10-02',
-    baselineStartDate: '2026-09-23',
-    baselineDueDate: '2026-10-02',
-    dueStatus: 'normal',
-    dueText: 'Programado',
-    status: 'To Do',
-    priority: 'High',
-    completed: false,
-    budgetedHours: 14.0,
-    consumedSeconds: 0,
-    tags: ['Wompi', 'PSE', 'Pasarela', 'Webhooks']
-  },
-  {
-    id: 't-bs-8',
-    title: 'Carga masiva de catálogo y configuración de filtros',
-    description: 'Importación de SKU de baterías por marca de moto/auto, matriz de compatibilidad y filtros dinámicos por amperaje y medidas.',
-    department: 'Operaciones Web',
-    board: 'Tienda Online BattSaver',
-    clientName: 'Rock and Ride S.A.S.',
-    projectName: 'Tienda Online BattSaver',
-    frente: 'Operaciones Web',
-    fase: 'Implementación',
-    phase: 'Implementación',
-    budgetedRole: 'Front-End Dev',
-    executedRoleSnapshot: 'Front-End Dev',
-    projectType: 'fixed_project',
-    categoryType: 'client',
-    assignee: {
-      name: 'Mateo Ruiz',
-      initials: 'MR',
-      avatarBg: 'bg-[#8b5cf6]',
-      role: 'Community Manager'
-    },
-    requestedBy: 'Laura Gómez',
-    date: '03 Oct 2026',
-    startDate: '03 oct. 2026',
-    dueDate: '2026-10-09',
-    baselineStartDate: '2026-10-03',
-    baselineDueDate: '2026-10-09',
-    dueStatus: 'normal',
-    dueText: 'Programado',
-    status: 'To Do',
-    priority: 'Medium',
-    completed: false,
-    budgetedHours: 10.0,
-    consumedSeconds: 0,
-    tags: ['Catálogo', 'Filtros', 'Shopify CSV']
-  },
-  {
-    id: 't-bs-9',
-    title: 'Optimización SEO On-Page y Core Web Vitals',
-    description: 'Estructura de metadatos, Schema.org para productos, optimización de imágenes WebP y score móvil.',
-    department: 'Growth Manager',
-    board: 'Tienda Online BattSaver',
-    clientName: 'Rock and Ride S.A.S.',
-    projectName: 'Tienda Online BattSaver',
-    frente: 'Growth Manager',
-    fase: 'Implementación',
-    phase: 'Implementación',
-    budgetedRole: 'Growth Manager',
-    executedRoleSnapshot: 'Growth Manager',
-    projectType: 'fixed_project',
-    categoryType: 'client',
-    assignee: {
-      name: 'Sebas (Trafficker)',
-      initials: 'ST',
-      avatarBg: 'bg-[#0284c7]',
-      role: 'Trafficker Media'
-    },
-    requestedBy: 'Camilo Velez',
-    date: '10 Oct 2026',
-    startDate: '10 oct. 2026',
-    dueDate: '2026-10-15',
-    baselineStartDate: '2026-10-10',
-    baselineDueDate: '2026-10-15',
-    dueStatus: 'normal',
-    dueText: 'Programado',
-    status: 'To Do',
-    priority: 'Medium',
-    completed: false,
-    budgetedHours: 6.0,
-    consumedSeconds: 0,
-    tags: ['SEO', 'Core Web Vitals', 'Performance']
-  },
-
-  // --- FASE 4: QA (14 h) ---
-  {
-    id: 't-bs-10',
-    title: 'Pruebas integrales de flujo de compra y pasarela (End-to-End)',
-    description: 'Simulación de compras reales, pagos con tarjetas de prueba, rechazos, reintentos y generación de órdenes en Shopify Admin.',
-    department: 'Calidad & QA',
-    board: 'Tienda Online BattSaver',
-    clientName: 'Rock and Ride S.A.S.',
-    projectName: 'Tienda Online BattSaver',
-    frente: 'Calidad & QA',
-    fase: 'QA',
-    phase: 'QA',
-    budgetedRole: 'Product Lead',
-    executedRoleSnapshot: 'Product Lead',
-    projectType: 'fixed_project',
-    categoryType: 'client',
-    assignee: {
-      name: 'Paola (Lead PM)',
-      initials: 'PL',
-      avatarBg: 'bg-[#501f92]',
-      role: 'Product Lead'
-    },
-    requestedBy: 'Paola Monsalve',
-    dependencyTaskId: 't-bs-7',
-    dependencyTaskTitle: 'Integración pasarela de pagos Wompi & PSE',
-    date: '16 Oct 2026',
-    startDate: '16 oct. 2026',
-    dueDate: '2026-10-21',
-    baselineStartDate: '2026-10-16',
-    baselineDueDate: '2026-10-21',
-    dueStatus: 'normal',
-    dueText: 'Programado',
-    status: 'To Do',
-    priority: 'High',
-    completed: false,
-    budgetedHours: 8.0,
-    consumedSeconds: 0,
-    tags: ['QA', 'E2E', 'Checkout Testing']
-  },
-  {
-    id: 't-bs-11',
-    title: 'Testing multidispositivo (iOS, Android, Safari, Chrome)',
-    description: 'Auditoría cross-browser en resoluciones mobile, tablet y desktop, verificando menús, filtros y botones sticky.',
-    department: 'Calidad & QA',
-    board: 'Tienda Online BattSaver',
-    clientName: 'Rock and Ride S.A.S.',
-    projectName: 'Tienda Online BattSaver',
-    frente: 'Calidad & QA',
-    fase: 'QA',
-    phase: 'QA',
-    budgetedRole: 'Product Lead',
-    executedRoleSnapshot: 'Product Lead',
-    projectType: 'fixed_project',
-    categoryType: 'client',
-    assignee: {
-      name: 'Catalina Tejada',
-      initials: 'CT',
-      avatarBg: 'bg-[#7c3aed]',
-      role: 'Digital Designer'
-    },
-    requestedBy: 'Paola (Lead PM)',
-    date: '22 Oct 2026',
-    startDate: '22 oct. 2026',
-    dueDate: '2026-10-25',
-    baselineStartDate: '2026-10-22',
-    baselineDueDate: '2026-10-25',
-    dueStatus: 'normal',
-    dueText: 'Programado',
-    status: 'To Do',
-    priority: 'Medium',
-    completed: false,
-    budgetedHours: 6.0,
-    consumedSeconds: 0,
-    tags: ['QA', 'Cross-browser', 'Mobile Testing']
-  },
-
-  // --- FASE 5: CIERRE (8 h) ---
-  {
-    id: 't-bs-12',
-    title: 'Configuración Dominio, SSL y Launch Checklist',
-    description: 'Apuntamientos DNS a servidores de Shopify, certificado SSL, verificación de Google Search Console y analytics de lanzamiento.',
-    department: 'Despliegue & DevOps',
-    board: 'Tienda Online BattSaver',
-    clientName: 'Rock and Ride S.A.S.',
-    projectName: 'Tienda Online BattSaver',
-    frente: 'Despliegue',
-    fase: 'Cierre',
-    phase: 'Cierre',
-    budgetedRole: 'Product Lead',
-    executedRoleSnapshot: 'Product Lead',
-    projectType: 'fixed_project',
-    categoryType: 'client',
-    assignee: {
-      name: 'Oscar Cerpa',
-      initials: 'OC',
-      avatarBg: 'bg-[#f59e0b]',
-      role: 'Front-End Dev'
-    },
-    requestedBy: 'Paola (Lead PM)',
-    dependencyTaskId: 't-bs-10',
-    dependencyTaskTitle: 'Pruebas integrales de flujo de compra y pasarela (End-to-End)',
-    date: '26 Oct 2026',
-    startDate: '26 oct. 2026',
-    dueDate: '2026-10-30',
-    baselineStartDate: '2026-10-26',
-    baselineDueDate: '2026-10-30',
-    dueStatus: 'normal',
-    dueText: 'Programado',
-    status: 'To Do',
-    priority: 'High',
-    completed: false,
-    budgetedHours: 4.0,
-    consumedSeconds: 0,
-    tags: ['Go-Live', 'DNS', 'Shopify SSL']
-  },
-  {
-    id: 't-bs-13',
-    title: 'Capacitación al equipo de Rock and Ride en Shopify Admin',
-    description: 'Sesión virtual de 2 horas para el equipo de operaciones: gestión de pedidos, creación de cupones, actualización de inventario y manual PDF.',
-    department: 'Capacitación & Cierre',
-    board: 'Tienda Online BattSaver',
-    clientName: 'Rock and Ride S.A.S.',
-    projectName: 'Tienda Online BattSaver',
-    frente: 'Capacitación',
-    fase: 'Cierre',
-    phase: 'Cierre',
-    budgetedRole: 'Product Lead',
-    executedRoleSnapshot: 'Product Lead',
-    projectType: 'fixed_project',
-    categoryType: 'client',
-    assignee: {
-      name: 'Paola (Lead PM)',
-      initials: 'PL',
-      avatarBg: 'bg-[#501f92]',
-      role: 'Product Lead'
-    },
-    requestedBy: 'Santiago Giraldo',
-    date: '02 Nov 2026',
-    startDate: '02 nov. 2026',
-    dueDate: '2026-11-05',
-    baselineStartDate: '2026-11-02',
-    baselineDueDate: '2026-11-05',
-    dueStatus: 'normal',
-    dueText: 'Hito final de entrega',
-    status: 'To Do',
-    priority: 'Medium',
-    completed: false,
-    budgetedHours: 4.0,
-    consumedSeconds: 0,
-    tags: ['Capacitación', 'Shopify Admin', 'Manual']
-  },
-
-  {
-    id: 't-cor-1',
-    title: 'Actualización de Precios & Carga de Banners Campaña',
-    department: 'Desarrollo Web & IT',
-    board: 'Mantenimiento',
-    clientName: 'Prisma Kiddos',
-    projectName: 'Fee Mantenimiento Web Prisma',
-    projectType: 'fee_monthly',
-    feeCategory: 'Mantenimiento Web',
-    categoryType: 'client',
-    assignee: {
-      name: 'Laura Gómez',
-      initials: 'LG',
-      avatarBg: 'bg-[#0284c7]',
-      role: 'Front-End Dev'
-    },
-    collaborators: [
-      {
-        name: 'Catalina Tejada',
-        initials: 'CT',
-        avatarBg: 'bg-[#7c3aed]',
-        role: 'Product Lead'
-      }
-    ],
-    followers: [
-      {
-        name: 'Paola (Lead PM)',
-        initials: 'PL',
-        avatarBg: 'bg-[#501f92]',
-        role: 'Product Lead'
-      }
-    ],
-    date: '22 Ago 2026',
-    startDate: '20 ago. 2026, 08:00',
-    dueDate: '2026-08-25',
-    dueStatus: 'soon',
-    dueText: '25 ago. 2026, 18:00',
-    status: 'Done',
-    priority: 'Medium',
-    completed: true,
-    budgetedHours: 2.5,
-    plannedHours: 2.0,
-    consumedSeconds: 9000, // 2.5h
-    taskType: 'Mantenimiento Web',
-    tags: ['Fee Recurrente', 'Banners', 'Precios', 'Shopify'],
-    recurrence: 'Mensual',
-    deliverables: [
-      {
-        id: 'del-cor-1',
-        taskId: 't-cor-1',
-        url: 'https://prismakiddos.com/pages/stem',
-        title: 'Página de sustentabilidad & Actualización de Precios',
-        submittedAt: 'Hoy, 08:10 AM',
-        submittedBy: 'Laura Gómez',
-        status: 'approved',
-        notes: 'Ajustes de banners mobile y precios actualizados en catálogo.',
-        taggedReviewer: 'Catalina Tejada'
-      }
-    ],
-    messages: [
-      {
-        id: 'msg-1',
-        authorName: 'Laura Gómez',
-        authorInitials: 'LG',
-        authorAvatarBg: 'bg-[#0284c7]',
-        timestamp: 'Hoy 08:10 AM',
-        content: 'Hola @Catalina Tejada ya quedaron subidos los banners y los nuevos precios en el e-commerce.',
-        mentionedUsers: ['Catalina Tejada']
-      }
-    ]
-  },
-  {
-    id: 't-1',
-    title: 'Conceptualización & Diseño de Carruseles para Redes (Semana 34)',
-    department: 'Creatividad & Diseño',
-    board: 'Parrilla Digital',
-    clientName: 'Danone S.A.',
-    projectName: 'Fee Parrilla Digital Q3 · Banners & Social',
-    projectType: 'fee_monthly',
-    feeCategory: 'Parrilla & Redes',
-    categoryType: 'client',
-    assignee: {
-      name: 'Catalina Tejada',
-      initials: 'CT',
-      avatarBg: 'bg-[#7c3aed]',
-      role: 'Digital Designer'
-    },
-    collaborators: [
-      {
-        name: 'Paola (Lead PM)',
-        initials: 'PL',
-        avatarBg: 'bg-[#501f92]',
-        role: 'Product Lead'
-      }
-    ],
-    followers: [
-      {
-        name: 'Paola Monsalve',
-        initials: 'PM',
-        avatarBg: 'bg-[#501f92]',
-        role: 'Product Lead'
-      }
-    ],
-    date: '22 Ago 2026',
-    startDate: '20 ago. 2026, 09:00',
-    dueDate: '2026-08-24',
-    dueStatus: 'soon',
-    dueText: '24 ago. 2026, 18:00',
-    status: 'In Progress',
-    priority: 'High',
-    completed: false,
-    budgetedHours: 8.0,
-    plannedHours: 4.0,
-    consumedSeconds: 16200, // 4.5h consumidas
-    taskType: 'Parrilla Mensual',
-    tags: ['Fee Social', 'Figma', 'Carruseles', 'Copys'],
-    recurrence: 'Mensual',
-    messages: [
-      {
-        id: 'msg-dan-1',
-        authorName: 'Catalina Tejada',
-        authorInitials: 'CT',
-        authorAvatarBg: 'bg-[#7c3aed]',
-        timestamp: '21 de ago. de 2026 14:30 hs',
-        content: 'Hola @Paola ya monté las propuestas de carruseles en Figma para validación.',
-        mentionedUsers: ['Paola'],
-        linkUrl: 'https://figma.com/file/danone-q3-banners-artes',
-        linkPreviewTitle: 'Figma: Artes Finales en 5 formatos',
-        linkPreviewDesc: 'danone-q3-banners-artes · Archivo de producción'
-      }
-    ],
-    deliverables: [
-      {
-        id: 'del-1',
-        taskId: 't-1',
-        url: 'https://figma.com/file/danone-q3-banners-artes',
-        title: 'Figma: Artes Finales en 5 formatos',
-        submittedAt: 'Hoy, 11:02 AM',
-        submittedBy: 'Catalina Tejada',
-        status: 'submitted',
-        notes: '@Paola ya quedaron listos los formatos verticales y feed.',
-        taggedReviewer: 'Paola (Lead PM)'
-      }
-    ]
-  },
-  {
-    id: 't-stem-1',
-    title: 'Arquitectura de Información & Wireframes E-commerce STEM',
-    department: 'Desarrollo Web & IT',
-    board: 'E-commerce STEM',
-    clientName: 'Prisma Kiddos',
-    projectName: 'E-commerce & Landing STEM (Proyecto Web)',
-    projectType: 'fixed_project',
-    phase: 'Discovery & Arquitectura',
-    categoryType: 'client',
-    assignee: {
-      name: 'Oscar Cerpa',
-      initials: 'OC',
-      avatarBg: 'bg-[#f59e0b]',
-      role: 'Front-End Dev'
-    },
-    collaborators: [
-      {
-        name: 'Paola (Lead PM)',
-        initials: 'PL',
-        avatarBg: 'bg-[#501f92]',
-        role: 'Product Lead'
-      }
-    ],
-    date: '18 Ago 2026',
-    startDate: '10 ago. 2026',
-    dueDate: '2026-08-18',
-    dueStatus: 'normal',
-    dueText: 'Completado a tiempo',
-    status: 'Done',
-    priority: 'High',
-    completed: true,
-    budgetedHours: 16.0,
-    consumedSeconds: 54000, // 15.0h
-    tags: ['Proyecto Web', 'Fase 1: Discovery', 'Sitemap', 'User Flows'],
-    deliverables: [
-      {
-        id: 'del-stem-1',
-        taskId: 't-stem-1',
-        url: 'https://miro.com/app/board/stem-wireframes',
-        title: 'Miro: Sitemap & Arquitectura de Navegación Aprobada',
-        submittedAt: '18 Ago 2026',
-        submittedBy: 'Oscar Cerpa',
-        status: 'approved',
-        notes: 'Cliente aprobó sitemap en sesión de Discovery.',
-        taggedReviewer: 'Paola (Lead PM)'
-      }
-    ]
-  },
-  {
-    id: 't-stem-2',
-    title: 'Diseño UI en Figma & Componentes del Checkout',
-    department: 'Creatividad & Diseño',
-    board: 'E-commerce STEM',
-    clientName: 'Prisma Kiddos',
-    projectName: 'E-commerce & Landing STEM (Proyecto Web)',
-    projectType: 'fixed_project',
-    phase: 'UI/UX & Prototipado',
-    categoryType: 'client',
-    assignee: {
-      name: 'Catalina Tejada',
-      initials: 'CT',
-      avatarBg: 'bg-[#7c3aed]',
-      role: 'Digital Designer'
-    },
-    date: '20 Ago 2026',
-    startDate: '18 ago. 2026',
-    dueDate: '2026-08-26',
-    dueStatus: 'soon',
-    dueText: 'Vence en 3 días',
-    status: 'In Progress',
-    priority: 'High',
-    completed: false,
-    budgetedHours: 24.0,
-    consumedSeconds: 43200, // 12.0h
-    tags: ['Proyecto Web', 'Fase 2: UI/UX', 'Figma', 'Design System'],
-    acceptanceCriteria: [
-      { id: 'crit-st-1', text: 'Diseño de catálogo responsive mobile/desktop', completed: true },
-      { id: 'crit-st-2', text: 'Flujo de carrito y checkout 3 pasos', completed: true },
-      { id: 'crit-st-3', text: 'Validación de contraste y accesibilidad WCAG', completed: false }
-    ]
-  },
-  {
-    id: 't-stem-3',
-    title: 'Integración Pasarela de Pagos & Backend de Pedidos',
-    department: 'Desarrollo Web & IT',
-    board: 'E-commerce STEM',
-    clientName: 'Prisma Kiddos',
-    projectName: 'E-commerce & Landing STEM (Proyecto Web)',
-    projectType: 'fixed_project',
-    phase: 'Implementación / Dev',
-    categoryType: 'client',
-    assignee: {
-      name: 'Esteban Mora',
-      initials: 'EM',
-      avatarBg: 'bg-[#f59e0b]',
-      role: 'Front-End Dev'
-    },
-    collaborators: [
-      {
-        name: 'Oscar Cerpa',
-        initials: 'OC',
-        avatarBg: 'bg-[#f59e0b]',
-        role: 'Front-End Dev'
-      }
-    ],
-    date: '22 Ago 2026',
-    startDate: '22 ago. 2026',
-    dueDate: '2026-08-30',
-    dueStatus: 'soon',
-    dueText: 'En Standby (+4d retraso cliente)',
-    status: 'To Do',
-    priority: 'High',
-    completed: false,
-    budgetedHours: 20.0,
-    consumedSeconds: 7200, // 2.0h
-    tags: ['Proyecto Web', 'Fase 3: Dev', 'Pasarela', 'Backend'],
-    // STANDBY / BLOQUEO POR INSUMOS DEL CLIENTE
-    blockerInfo: {
-      isBlocked: true,
-      reason: 'client_inputs',
-      reasonText: 'Esperando credenciales de producción y llaves API de la Pasarela del Cliente',
-      responsibleParty: 'Cliente',
-      blockedDays: 4,
-      blockedAt: '18 Ago 2026',
-      notes: 'El cliente no ha entregado accesos de pasarela. Cronograma en riesgo de desfase.'
-    }
-  },
-  {
-    id: 't-nav-1',
-    title: 'Concepto Creativo & Piezas Gráficas Campaña Navidad',
-    department: 'Creatividad & Diseño',
-    board: 'Campaña Navidad',
-    clientName: 'Danone S.A.',
-    projectName: 'Campaña Navidad 2026 (Flujo Creativos → Pauta)',
-    projectType: 'fixed_project',
-    phase: 'UI/UX & Prototipado',
-    categoryType: 'client',
-    assignee: {
-      name: 'Catalina Tejada',
-      initials: 'CT',
-      avatarBg: 'bg-[#7c3aed]',
-      role: 'Digital Designer'
-    },
-    collaborators: [
-      {
-        name: 'Paola (Lead PM)',
-        initials: 'PL',
-        avatarBg: 'bg-[#501f92]',
-        role: 'Product Lead'
-      }
-    ],
-    date: '22 Ago 2026',
-    startDate: '19 ago. 2026',
-    dueDate: '2026-08-23',
-    dueStatus: 'tomorrow',
-    dueText: 'En Revisión de Lead',
-    status: 'Review',
-    priority: 'High',
-    completed: false,
-    budgetedHours: 15.0,
-    consumedSeconds: 46800, // 13.0h
-    tags: ['Campaña Navidad', 'Creativos', 'Video', 'Aprobación'],
-    deliverables: [
-      {
-        id: 'del-nav-1',
-        taskId: 't-nav-1',
-        url: 'https://drive.google.com/drive/folders/danone-navidad-artes',
-        title: 'Google Drive: Master de Creativos & Formatos 9:16 y 1:1',
-        submittedAt: 'Hoy, 09:30 AM',
-        submittedBy: 'Catalina Tejada',
-        status: 'submitted',
-        notes: '@Paola esperando visto bueno para desbloquear la pauta de Sebas.',
-        taggedReviewer: 'Paola (Lead PM)'
-      }
-    ]
-  },
-  {
-    id: 't-nav-2',
-    title: 'Montaje & Activación de Pauta en Meta & TikTok Ads (Sebas Trafficker)',
-    department: 'Growth & Performance',
-    board: 'Campaña Navidad',
-    clientName: 'Danone S.A.',
-    projectName: 'Campaña Navidad 2026 (Flujo Creativos → Pauta)',
-    projectType: 'fixed_project',
-    phase: 'Implementación / Dev',
-    categoryType: 'client',
-    assignee: {
-      name: 'Sebas (Trafficker)',
-      initials: 'ST',
-      avatarBg: 'bg-[#0284c7]',
-      role: 'Trafficker Media'
-    },
-    date: '22 Ago 2026',
-    startDate: '23 ago. 2026',
-    dueDate: '2026-08-26',
-    dueStatus: 'soon',
-    dueText: 'En Espera de Creativos',
-    status: 'To Do',
-    priority: 'High',
-    completed: false,
-    budgetedHours: 6.0,
-    consumedSeconds: 0,
-    tags: ['Campaña Navidad', 'Pauta', 'Meta Ads', 'TikTok Ads'],
-    dependencyTaskId: 't-nav-1',
-    dependencyTaskTitle: 'Concepto Creativo & Piezas Gráficas Campaña Navidad',
-    // BLOQUEADO POR DEPENDENCIA INTERNA (CREATIVOS NO APROBADOS AÚN)
-    blockerInfo: {
-      isBlocked: true,
-      reason: 'dependency',
-      reasonText: 'Bloqueado: Requiere aprobación del entregable de creativos de Catalina (#t-nav-1)',
-      responsibleParty: 'Uhura / Interno',
-      blockedDays: 1,
-      blockedAt: '21 Ago 2026',
-      notes: 'Sebas activará la pauta inmediatamente una vez Paola apruebe los entregables.'
-    }
-  },
-  {
-    id: 't-2',
-    title: 'Optimización de Pauta Semanal en Meta & Google Ads',
-    department: 'Growth & Performance',
-    board: 'Growth',
-    clientName: 'BAMBÚ BPO',
-    projectName: 'Fee Admin de Pauta & Ads Performance',
-    projectType: 'fee_monthly',
-    feeCategory: 'Growth & Pauta',
-    categoryType: 'client',
-    assignee: {
-      name: 'Camilo Vélez',
-      initials: 'CV',
-      avatarBg: 'bg-[#10b981]',
-      role: 'Growth Manager'
-    },
-    date: '21 Ago 2026',
-    dueDate: '2026-08-23',
-    dueStatus: 'tomorrow',
-    dueText: 'Vence mañana',
-    status: 'In Progress',
-    priority: 'High',
-    completed: false,
-    budgetedHours: 6.0,
-    consumedSeconds: 19800, // 5.5h
-    tags: ['Fee Pauta', 'Google Ads', 'Meta Ads'],
-    deliverables: []
-  },
-  {
-    id: 't-4',
-    title: 'Desarrollo de Módulo de Tiempos & Zero-Scroll ECO OS',
-    department: 'Innovación & Labs',
-    board: 'Labs',
-    clientName: '🏢 Uhura Interno / No Facturable',
-    projectName: 'Innovación & ECO OS Labs',
-    projectType: 'fixed_project',
-    phase: 'Implementación / Dev',
-    categoryType: 'internal',
-    assignee: {
-      name: 'Oscar Cerpa',
-      initials: 'OC',
-      avatarBg: 'bg-[#f59e0b]',
-      role: 'Front-End Dev'
-    },
-    date: '22 Ago 2026',
-    dueDate: '2026-08-25',
-    dueStatus: 'soon',
-    dueText: 'Vence en 3 días',
-    status: 'In Progress',
-    priority: 'High',
-    completed: false,
-    budgetedHours: 10.0,
-    consumedSeconds: 5400, // 1.5h
-    tags: ['Uhura Labs', 'Fase 3: Dev', 'Time Tracking'],
-    deliverables: [
-      {
-        id: 'del-2',
-        taskId: 't-4',
-        url: 'https://github.com/uhura-labs/orbit-os-timetrack',
-        title: 'PR #12: Control de Bloqueos, Jerarquía & Fases de Proyecto',
-        submittedAt: 'Hoy, 12:45 PM',
-        submittedBy: 'Oscar Cerpa',
-        status: 'submitted',
-        notes: 'Listo para revisión del equipo.',
-        taggedReviewer: 'Paola (Lead PM)'
-      }
-    ]
-  }
+// 2) Fee mensual: septiembre (plantilla) y octubre cerrados, noviembre en curso
+type FeeRow = [string, string, SeedPerson, number, string, string, 'Done' | 'In Progress' | 'To Do', number];
+const feeMonth = (key: string, rows: FeeRow[]) => rows.map(([slug, title, who, hours, start, due, status, executed], i) =>
+  seedTask(SEED_YAM, {
+    id: `t-yam-${slug}-${key}`,
+    title,
+    role: ['Digital Content Specialist', 'Content Creator', 'Creative Designer', 'Creative Designer', 'Community Manager', 'Product Lead'][i],
+    who,
+    hours,
+    start,
+    due,
+    status,
+    frente: 'Parrilla del mes',
+    cycleKey: key,
+    logs: executed > 0 ? [[who, executed, due]] : []
+  }));
+const yamahaFeeTasks: TaskItem[] = [
+  ...feeMonth('2026-09', [
+    ['plan', 'Planeación de la parrilla', P.nayeliz, 4, '2026-09-01', '2026-09-03', 'Done', 4],
+    ['copys', 'Copys de la parrilla', P.esmeralda, 8, '2026-09-04', '2026-09-10', 'Done', 8.5],
+    ['piezas', 'Diseño de piezas de la parrilla', P.saraLagos, 14, '2026-09-11', '2026-09-18', 'Done', 13],
+    ['pauta', 'Creativos de pauta', P.juanCamilo, 8, '2026-09-21', '2026-09-24', 'Done', 7],
+    ['publicacion', 'Publicación y comunidad', P.saraRivera, 6, '2026-09-21', '2026-09-28', 'Done', 6],
+    ['reporte', 'Reporte y comité del mes', P.paola, 2, '2026-09-28', '2026-09-30', 'Done', 2]
+  ]),
+  ...feeMonth('2026-10', [
+    ['plan', 'Planeación de la parrilla', P.nayeliz, 4, '2026-10-01', '2026-10-02', 'Done', 3.5],
+    ['copys', 'Copys de la parrilla', P.esmeralda, 8, '2026-10-05', '2026-10-09', 'Done', 8],
+    ['piezas', 'Diseño de piezas de la parrilla', P.saraLagos, 14, '2026-10-13', '2026-10-20', 'Done', 15],
+    ['pauta', 'Creativos de pauta', P.juanCamilo, 8, '2026-10-21', '2026-10-24', 'Done', 8.5],
+    ['publicacion', 'Publicación y comunidad', P.saraRivera, 6, '2026-10-21', '2026-10-28', 'Done', 6],
+    ['reporte', 'Reporte y comité del mes', P.paola, 2, '2026-10-28', '2026-10-30', 'Done', 2]
+  ]),
+  // Noviembre: los creativos de pauta quedaron a cargo de Sara María (agenda llena del 19 al 24)
+  ...feeMonth('2026-11', [
+    ['plan', 'Planeación de la parrilla', P.nayeliz, 4, '2026-11-03', '2026-11-05', 'Done', 4],
+    ['copys', 'Copys de la parrilla', P.esmeralda, 8, '2026-11-06', '2026-11-12', 'Done', 7.5],
+    ['piezas', 'Diseño de piezas de la parrilla', P.saraLagos, 14, '2026-11-19', '2026-11-23', 'In Progress', 3],
+    ['pauta', 'Creativos de pauta', P.saraLagos, 8, '2026-11-20', '2026-11-24', 'To Do', 0],
+    ['publicacion', 'Publicación y comunidad', P.saraRivera, 6, '2026-11-23', '2026-11-27', 'To Do', 0],
+    ['reporte', 'Reporte y comité del mes', P.paola, 2, '2026-11-27', '2026-11-30', 'To Do', 0]
+  ])
 ];
+
+export const initialTasks: TaskItem[] = [...battsaverTasks, ...yamahaFeeTasks];
+
 
 export const orbitUpcomingMilestones: UpcomingMilestone[] = [
   {
@@ -2118,7 +784,7 @@ export const initialUsers: UserItem[] = [
     avatarBg: 'bg-[#d946ef]',
     avatarUrl: '/assets/team/melisa-gil.webp',
     role: 'Member',
-    status: 'Active',
+    status: 'Inactive', // Ya no está en Uhura (13 Nov 2026): no se sugiere ni se asigna
     tasksCount: 8,
     joinedDate: 'Ene 2024',
     capacityHours: 42,
@@ -2178,14 +844,14 @@ export const initialUsers: UserItem[] = [
     joinedDate: '01 Feb 2024',
     capacityHours: 42,
     utilizedPercent: 82,
-    jobTitle: 'Creative Strategist',
+    jobTitle: 'Creative Designer',
     department: 'Creatividad & Contenidos',
     leaderId: 'u-4',
     reportsTo: 'u-4',
     leaderName: 'Diego Cadavid',
     city: 'Medellín',
-    officialRole: 'Creative Strategy Lead',
-    professionalRole: 'Creative Strategy Lead',
+    officialRole: 'Creative Designer',
+    professionalRole: 'Creative Designer',
     accessLevel: 'collaborator',
     birthDate: '1996-10-18',
     birthDateFormatted: '18 de Oct',
@@ -2234,14 +900,14 @@ export const initialUsers: UserItem[] = [
     joinedDate: '12 Feb 2026',
     capacityHours: 42,
     utilizedPercent: 89,
-    jobTitle: 'Creative Specialist',
+    jobTitle: 'Creative Designer',
     department: 'Creatividad & Contenidos',
     leaderId: 'u-4',
     reportsTo: 'u-4',
     leaderName: 'Diego Cadavid',
     city: 'Medellín',
-    officialRole: 'Digital Content Specialist',
-    professionalRole: 'Digital Content Specialist',
+    officialRole: 'Creative Designer',
+    professionalRole: 'Creative Designer',
     accessLevel: 'collaborator',
     birthDate: '1997-09-22',
     birthDateFormatted: '22 de Sep',
@@ -2313,6 +979,20 @@ export const initialUsers: UserItem[] = [
  */
 export const initialAbsenceEvents: TeamAbsenceEvent[] = [
   {
+    id: 'abs-df-vac-1',
+    userId: 'u-16',
+    userName: 'Diego Alejandro Flores Vargas',
+    type: 'vacation',
+    title: 'Vacaciones — Diego Flores',
+    startDate: '2026-11-19',
+    endDate: '2026-11-27',
+    allDay: true,
+    impactHoursPerDay: 8.0,
+    status: 'active',
+    source: 'google_calendar',
+    notes: 'Ejemplo: ECO no lo sugiere para tareas de esos días.'
+  },
+  {
     id: 'abs-lu-vac-1',
     userId: 'u-3',
     userName: 'Luisa Fernanda Urazán',
@@ -2365,30 +1045,7 @@ export const initialAbsenceEvents: TeamAbsenceEvent[] = [
   }
 ];
 
-export const initialActivities: ActivityItem[] = [
-  {
-    id: 'act-1',
-    user: {
-      name: 'Catalina Tejada',
-      initials: 'CT',
-      avatarBg: 'bg-[#7c3aed]'
-    },
-    action: 'adjuntó el entregable de Figma en',
-    target: 'Diseño de Banners Promocionales Campaña Q3',
-    timeAgo: 'hace 10 minutos'
-  },
-  {
-    id: 'act-2',
-    user: {
-      name: 'Paola (Lead PM)',
-      initials: 'PL',
-      avatarBg: 'bg-[#501f92]'
-    },
-    action: 'actualizó las horas presupuestadas a 8.0h en',
-    target: 'Diseño de Banners Promocionales',
-    timeAgo: 'hace 25 minutos'
-  }
-];
+export const initialActivities: ActivityItem[] = [];
 
 export const UHURA_INTERNAL_CLIENT: ClientProfile = {
   id: 'cli-uhura-internal',
@@ -2505,113 +1162,6 @@ export const UHURA_INTERNAL_CLIENT: ClientProfile = {
 export const orbitClientsData: ClientProfile[] = [
   UHURA_INTERNAL_CLIENT,
   {
-    id: 'cli-danone',
-    name: 'Danone S.A.',
-    nit: '860.003.456-2',
-    isInternal: false,
-    status: 'active',
-    type: 'Fee mensual',
-    healthStatus: 'Saludable',
-    portalActive: true,
-    projectsCount: 2,
-    activeProjectsCount: 2,
-    closedProjectsCount: 3,
-    averageMarginPercent: 42.8,
-    billedCOP: '$450.000.000',
-    billedInvoicesCount: 12,
-    receivableCOP: '$28.500.000',
-    receivableStatus: 'al día',
-    accountManagerId: 'u-17',
-    accountManagerName: 'Catalina Tejada',
-    taxEntities: [
-      {
-        id: 'tax-dan-1',
-        nit: '860.003.456-2',
-        businessName: 'Bonafont Colombia S.A.S.',
-        city: 'Bogotá',
-        isPrimary: true,
-        alegraContactId: 'alg-dan-001',
-        notes: 'Facturación principal para parrilla digital y banners mensuales'
-      },
-      {
-        id: 'tax-dan-2',
-        nit: '830.551.229-4',
-        businessName: 'Envasadoras de Aguas Danone de Colombia S.A.',
-        city: 'Cali',
-        isPrimary: false,
-        alegraContactId: 'alg-dan-002',
-        notes: 'Razón social alternativa para campañas especiales de temporada'
-      }
-    ],
-    contacts: [
-      {
-        id: 'con-dan-1',
-        name: 'Carlos Mendoza',
-        roleTitle: 'Brand & Growth Director',
-        email: 'carlos.mendoza@danone.com',
-        phone: '+57 (310) 902-8314',
-        contactType: 'directivo',
-        isPrimary: true
-      },
-      {
-        id: 'con-dan-2',
-        name: 'Marcela Arango',
-        roleTitle: 'Líder de Facturación & Proveedores',
-        email: 'marcela.arango@danone.com',
-        phone: '+57 (301) 455-8910',
-        contactType: 'facturacion',
-        isPrimary: false
-      },
-      {
-        id: 'con-dan-3',
-        name: 'Esteban Quintero',
-        roleTitle: 'Product Manager Aguas & Bebidas',
-        email: 'esteban.quintero@danone.com',
-        phone: '+57 (315) 234-9988',
-        contactType: 'operativo',
-        isPrimary: false
-      }
-    ],
-    commercialInfo: {
-      contactName: 'Carlos Mendoza',
-      contactRole: 'Brand & Growth Director',
-      contactEmail: 'carlos.mendoza@danone.com',
-      contactPhone: '+57 (310) 902-8314',
-      clientSince: '10 de Febrero de 2025',
-      brands: ['Danone', 'Activia', 'Bonafont']
-    },
-    behavior: {
-      rentabilidad: 88,
-      cartera: 95,
-      cumplimiento: 86,
-      relacion: 95
-    },
-    projectsHistory: [
-      {
-        id: 'prj-dan-hist-1',
-        name: 'Fee Parrilla Digital Q3 · Banners & Social',
-        tag: 'FEE',
-        brand: 'Danone',
-        status: 'Activo',
-        quotedValueCOP: '$18.500.000',
-        realMarginPercent: 44.5,
-        trafficLight: 'verde',
-        progressPercent: 65
-      },
-      {
-        id: 'prj-dan-hist-2',
-        name: 'Campaña Navidad 2026 (Flujo Creativos → Pauta)',
-        tag: 'DEV',
-        brand: 'Activia',
-        status: 'Activo',
-        quotedValueCOP: '$45.000.000',
-        realMarginPercent: 41.2,
-        trafficLight: 'amarillo',
-        progressPercent: 30
-      }
-    ]
-  },
-  {
     id: 'cli-yamaha',
     name: 'INCOLMOTOS YAMAHA S.A.',
     nit: '890.900.943-1',
@@ -2620,16 +1170,16 @@ export const orbitClientsData: ClientProfile[] = [
     type: 'Fee mensual',
     healthStatus: 'Saludable',
     portalActive: true,
-    projectsCount: 2,
-    activeProjectsCount: 2,
-    closedProjectsCount: 5,
+    projectsCount: 1,
+    activeProjectsCount: 1,
+    closedProjectsCount: 0,
     averageMarginPercent: 41.5,
     billedCOP: '$380.000.000',
     billedInvoicesCount: 9,
     receivableCOP: '$18.000.000',
     receivableStatus: 'al día',
-    accountManagerId: 'u-18',
-    accountManagerName: 'Luisa Urazán',
+    accountManagerId: 'u-8',
+    accountManagerName: 'Catalina Tejada',
     taxEntities: [
       {
         id: 'tax-yam-1',
@@ -2677,309 +1227,15 @@ export const orbitClientsData: ClientProfile[] = [
     },
     projectsHistory: [
       {
-        id: 'prj-yam-hist-1',
-        name: 'Campaña Navidad Yamaha',
-        tag: 'DEV',
+        id: 'prj-yam-fee',
+        name: 'Fee mensual Contenido y Social · Yamaha',
+        tag: 'FEE',
         brand: 'Yamaha',
         status: 'Activo',
-        quotedValueCOP: '$38.000.000',
-        realMarginPercent: 41.5,
+        quotedValueCOP: '$12.600.000 / mes',
+        realMarginPercent: 40,
         trafficLight: 'verde',
-        progressPercent: 45
-      }
-    ]
-  },
-  {
-    id: 'cli-bambu',
-    name: 'BAMBÚ BPO',
-    nit: '999999999',
-    isInternal: false,
-    status: 'active',
-    type: 'Proyecto único',
-    healthStatus: 'Saludable',
-    portalActive: false,
-    projectsCount: 1,
-    activeProjectsCount: 1,
-    closedProjectsCount: 0,
-    averageMarginPercent: null,
-    billedCOP: '$0',
-    billedInvoicesCount: 0,
-    receivableCOP: '$0',
-    receivableStatus: 'al día',
-    accountManagerId: 'u-17',
-    accountManagerName: 'Catalina Tejada',
-    taxEntities: [
-      {
-        id: 'tax-bam-1',
-        nit: '900.551.482-1',
-        businessName: 'Bambú Business Process Outsourcing S.A.S.',
-        city: 'Medellín',
-        isPrimary: true,
-        alegraContactId: 'alg-bam-001'
-      }
-    ],
-    contacts: [
-      {
-        id: 'con-bam-1',
-        name: 'Mariana Zapata',
-        roleTitle: 'Coordinadora Comercial',
-        email: 'mariana.zapata@bambubpo.com',
-        phone: '+57 (301) 489-2210',
-        contactType: 'comercial',
-        isPrimary: true
-      }
-    ],
-    commercialInfo: {
-      contactName: 'Mariana Zapata',
-      contactRole: 'Coordinadora Comercial',
-      contactEmail: 'mariana.zapata@bambubpo.com',
-      contactPhone: '+57 (301) 489-2210',
-      clientSince: '15 de Julio de 2026',
-      brands: ['BAMBÚ BPO']
-    },
-    behavior: {
-      rentabilidad: 35,
-      cartera: 100,
-      cumplimiento: 80,
-      relacion: 40
-    },
-    projectsHistory: [
-      {
-        id: 'prj-bam-hist-1',
-        name: 'Admin de pauta BAMBÚ BPO',
-        tag: 'FIN',
-        brand: 'BAMBÚ BPO',
-        status: 'Activo',
-        quotedValueCOP: '$950.000',
-        realMarginPercent: null,
-        trafficLight: 'rojo',
-        progressPercent: 78
-      }
-    ]
-  },
-  {
-    id: 'cli-prisma',
-    name: 'Prisma Kiddos',
-    nit: '900.876.543-9',
-    isInternal: false,
-    status: 'active',
-    type: 'Mixto',
-    healthStatus: 'Saludable',
-    portalActive: true,
-    projectsCount: 2,
-    activeProjectsCount: 2,
-    closedProjectsCount: 1,
-    averageMarginPercent: 36.4,
-    billedCOP: '$128.000.000',
-    billedInvoicesCount: 6,
-    receivableCOP: '$0',
-    receivableStatus: 'al día',
-    accountManagerId: 'u-18',
-    accountManagerName: 'Luisa Urazán',
-    taxEntities: [
-      {
-        id: 'tax-pris-1',
-        nit: '900.876.543-9',
-        businessName: 'Prisma Kiddos Education S.A.S.',
-        city: 'Bogotá',
-        isPrimary: true,
-        alegraContactId: 'alg-pris-001'
-      }
-    ],
-    contacts: [
-      {
-        id: 'con-pris-1',
-        name: 'Valeria Restrepo',
-        roleTitle: 'Directora Digital & E-commerce',
-        email: 'valeria@prismakiddos.com',
-        phone: '+57 (315) 771-4402',
-        contactType: 'comercial',
-        isPrimary: true
-      }
-    ],
-    commercialInfo: {
-      contactName: 'Valeria Restrepo',
-      contactRole: 'Directora Digital & E-commerce',
-      contactEmail: 'valeria@prismakiddos.com',
-      contactPhone: '+57 (315) 771-4402',
-      clientSince: '20 de Marzo de 2025',
-      brands: ['Prisma Kiddos', 'STEM Labs Kids']
-    },
-    behavior: {
-      rentabilidad: 78,
-      cartera: 100,
-      cumplimiento: 88,
-      relacion: 85
-    },
-    projectsHistory: [
-      {
-        id: 'prj-pris-hist-1',
-        name: 'Fee Mantenimiento Web Prisma',
-        tag: 'FEE',
-        brand: 'Prisma Kiddos',
-        status: 'Activo',
-        quotedValueCOP: '$6.500.000',
-        realMarginPercent: 38.0,
-        trafficLight: 'verde',
-        progressPercent: 40
-      },
-      {
-        id: 'prj-pris-hist-2',
-        name: 'E-commerce & Landing STEM (Proyecto Web)',
-        tag: 'DEV',
-        brand: 'STEM Labs Kids',
-        status: 'Activo',
-        quotedValueCOP: '$32.000.000',
-        realMarginPercent: 35.2,
-        trafficLight: 'verde',
-        progressPercent: 55
-      }
-    ]
-  },
-  {
-    id: 'cli-bancolombia',
-    name: 'Bancolombia',
-    nit: '890.903.938-8',
-    isInternal: false,
-    status: 'active',
-    type: 'Proyecto único',
-    healthStatus: 'Saludable',
-    portalActive: true,
-    projectsCount: 1,
-    activeProjectsCount: 1,
-    closedProjectsCount: 5,
-    averageMarginPercent: 45.0,
-    billedCOP: '$240.000.000',
-    billedInvoicesCount: 4,
-    receivableCOP: '$0',
-    receivableStatus: 'al día',
-    accountManagerId: 'u-17',
-    accountManagerName: 'Catalina Tejada',
-    taxEntities: [
-      {
-        id: 'tax-bco-1',
-        nit: '890.903.938-8',
-        businessName: 'Bancolombia S.A.',
-        city: 'Medellín',
-        isPrimary: true,
-        alegraContactId: 'alg-bco-001'
-      }
-    ],
-    contacts: [
-      {
-        id: 'con-bco-1',
-        name: 'Andrea Henao',
-        roleTitle: 'Líder Canales Digitales',
-        email: 'ahenao@bancolombia.com.co',
-        phone: '+57 (300) 554-1189',
-        contactType: 'directivo',
-        isPrimary: true
-      }
-    ],
-    commercialInfo: {
-      contactName: 'Andrea Henao',
-      contactRole: 'Líder Canales Digitales',
-      contactEmail: 'ahenao@bancolombia.com.co',
-      contactPhone: '+57 (300) 554-1189',
-      clientSince: '12 de Agosto de 2024',
-      brands: ['Bancolombia', 'Nequi']
-    },
-    behavior: {
-      rentabilidad: 92,
-      cartera: 100,
-      cumplimiento: 94,
-      relacion: 68
-    },
-    projectsHistory: [
-      {
-        id: 'prj-bco-hist-1',
-        name: 'Rediseño App Móvil & Microinteracciones',
-        tag: 'DEV',
-        brand: 'Bancolombia',
-        status: 'Activo',
-        quotedValueCOP: '$60.000.000',
-        realMarginPercent: 45.0,
-        trafficLight: 'verde',
-        progressPercent: 70
-      }
-    ]
-  },
-  {
-    id: 'cli-exito',
-    name: 'Grupo Éxito',
-    nit: '890.900.608-9',
-    isInternal: false,
-    status: 'active',
-    type: 'Fee mensual',
-    healthStatus: 'Saludable',
-    portalActive: true,
-    projectsCount: 2,
-    activeProjectsCount: 2,
-    closedProjectsCount: 6,
-    averageMarginPercent: 39.2,
-    billedCOP: '$195.000.000',
-    billedInvoicesCount: 7,
-    receivableCOP: '$12.000.000',
-    receivableStatus: 'al día',
-    accountManagerId: 'u-17',
-    accountManagerName: 'Catalina Tejada',
-    taxEntities: [
-      {
-        id: 'tax-ext-1',
-        nit: '890.900.608-9',
-        businessName: 'Almacenes Éxito S.A.',
-        city: 'Envigado',
-        isPrimary: true,
-        alegraContactId: 'alg-ext-001'
-      }
-    ],
-    contacts: [
-      {
-        id: 'con-ext-1',
-        name: 'Felipe Gómez',
-        roleTitle: 'Director E-commerce',
-        email: 'fgomez@grupo-exito.com',
-        phone: '+57 (318) 402-9912',
-        contactType: 'directivo',
-        isPrimary: true
-      }
-    ],
-    commercialInfo: {
-      contactName: 'Felipe Gómez',
-      contactRole: 'Director E-commerce',
-      contactEmail: 'fgomez@grupo-exito.com',
-      contactPhone: '+57 (318) 402-9912',
-      clientSince: '14 de Junio de 2024',
-      brands: ['Éxito', 'Carulla']
-    },
-    behavior: {
-      rentabilidad: 82,
-      cartera: 90,
-      cumplimiento: 85,
-      relacion: 90
-    },
-    projectsHistory: [
-      {
-        id: 'prj-ext-hist-1',
-        name: 'Fee Estrategia Digital Q3 & Pauta Retail',
-        tag: 'FEE',
-        brand: 'Éxito',
-        status: 'Activo',
-        quotedValueCOP: '$22.000.000',
-        realMarginPercent: 40.1,
-        trafficLight: 'verde',
-        progressPercent: 60
-      },
-      {
-        id: 'prj-ext-hist-2',
-        name: 'Campaña Black Friday & Cyberlunes 2026',
-        tag: 'DEV',
-        brand: 'Carulla',
-        status: 'Activo',
-        quotedValueCOP: '$35.000.000',
-        realMarginPercent: 38.5,
-        trafficLight: 'verde',
-        progressPercent: 25
+        progressPercent: 90
       }
     ]
   },
@@ -2988,20 +1244,20 @@ export const orbitClientsData: ClientProfile[] = [
     name: 'Rock and Ride S.A.S.',
     nit: '901.442.890-1',
     isInternal: false,
-    status: 'paused',
+    status: 'active',
     type: 'Proyecto único',
     healthStatus: 'Saludable',
     portalActive: true,
     projectsCount: 1,
-    activeProjectsCount: 0,
-    closedProjectsCount: 1,
+    activeProjectsCount: 1,
+    closedProjectsCount: 0,
     averageMarginPercent: 44.0,
     billedCOP: '$48.000.000',
     billedInvoicesCount: 2,
     receivableCOP: '$0',
     receivableStatus: 'al día',
-    accountManagerId: 'u-18',
-    accountManagerName: 'Luisa Urazán',
+    accountManagerId: 'u-3',
+    accountManagerName: 'Luisa Fernanda Urazán',
     taxEntities: [
       {
         id: 'tax-rnr-1',
@@ -3044,53 +1300,11 @@ export const orbitClientsData: ClientProfile[] = [
         tag: 'DEV',
         brand: 'BattSaver',
         status: 'Activo',
-        quotedValueCOP: '$48.000.000',
-        realMarginPercent: 44.0,
+        quotedValueCOP: '$32.000.000',
+        realMarginPercent: 42,
         trafficLight: 'verde',
         progressPercent: 35
       }
     ]
-  },
-  {
-    id: 'cli-neroli',
-    name: 'Neroli Fragancias',
-    isInternal: false,
-    status: 'active',
-    type: 'Fee mensual',
-    healthStatus: 'Saludable',
-    portalActive: false,
-    projectsCount: 1,
-    activeProjectsCount: 1,
-    closedProjectsCount: 0,
-    averageMarginPercent: null,
-    billedCOP: '$0',
-    billedInvoicesCount: 0,
-    receivableCOP: '$0',
-    receivableStatus: 'al día',
-    accountManagerName: 'Luisa Urazán',
-    taxEntities: [],
-    contacts: [],
-    commercialInfo: {
-      contactName: '',
-      contactRole: '',
-      contactEmail: '',
-      contactPhone: '',
-      clientSince: 'Noviembre de 2026',
-      brands: ['Neroli']
-    },
-    projectsHistory: [],
-    // Integración de ejemplo: sin URL real; solo referencia enmascarada
-    googleChat: {
-      spaceName: 'Neroli Fragancias',
-      hasWebhook: true,
-      webhookMask: '••••••••••••aB92',
-      status: 'active',
-      lastTestAt: '2026-11-06T18:30:00.000Z',
-      lastTestResult: 'success',
-      lastTestMessage: 'Mensaje de prueba entregado (simulado).',
-      updatedAt: '2026-11-06T18:30:00.000Z',
-      updatedByName: 'Administrador del Sistema',
-      isDefaultForProjects: true
-    }
   }
 ];

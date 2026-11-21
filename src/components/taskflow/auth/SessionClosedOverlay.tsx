@@ -5,7 +5,8 @@ import { LoginScreen } from './LoginScreen';
 /**
  * Cerrar sesión (ronda 2): disponible en el menú de perfil (computador, tablet y celular) y en
  * «Más» del menú inferior del celular. Cierra la sesión y muestra la pantalla de ingreso.
- * En el prototipo también se abre con `?login=1`.
+ * En el prototipo también se abre con `?login=1`, y con `?login=enlace-vencido` la pantalla
+ * «Este enlace ya no sirve» (enlace de contraseña usado o vencido).
  */
 export const LOGOUT_EVENT = 'eco:logout';
 export const requestLogout = () => window.dispatchEvent(new CustomEvent(LOGOUT_EVENT));
@@ -13,7 +14,8 @@ export const requestLogout = () => window.dispatchEvent(new CustomEvent(LOGOUT_E
 export const SessionClosedOverlay: React.FC = () => {
   const [closed, setClosed] = useState(() => {
     try {
-      return new URLSearchParams(window.location.search).get('login') === '1';
+      const v = new URLSearchParams(window.location.search).get('login');
+      return v === '1' || v === 'enlace-vencido';
     } catch {
       return false;
     }
@@ -39,7 +41,10 @@ export const SessionClosedOverlay: React.FC = () => {
   // Portal al body: el encabezado crea su propio contexto de apilamiento.
   return createPortal(
     <div role="dialog" aria-modal="true" aria-label="Ingresar a ECO" className="fixed inset-0 z-[9999] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      <LoginScreen onSignedIn={() => setClosed(false)} />
+      <LoginScreen
+        onSignedIn={() => setClosed(false)}
+        initialStep={new URLSearchParams(window.location.search).get('login') === 'enlace-vencido' ? 'link-expired' : 'login'}
+      />
     </div>,
     document.body
   );

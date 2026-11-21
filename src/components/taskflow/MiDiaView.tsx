@@ -51,9 +51,10 @@ import { getUserAccessLevel, can } from './auth/permissions';
 import { makePersonMatcher, getTaskRelation, isProjectResponsible, makeTaskProjectResolver, isScheduledForDay, makeTaskComparator, isUrgentTask, taskScheduleDate } from './auth/taskVisibility';
 import { initialUsers, initialAbsenceEvents } from './mockData';
 import { processTeamLifeEvents } from './copilot/teamLifeEngine';
-import { calculateBusinessDays } from './health/projectHealthEngine';
+import { calculateBusinessDays, nextColombianHoliday } from './health/projectHealthEngine';
 import { TeamHumanProfileModal } from './copilot/TeamHumanProfileModal';
 import { UserAvatar } from './UserAvatar';
+import { getOperationalQuote } from './newbusiness/quoteRules';
 
 export interface MiDiaViewProps {
   tasks: TaskItem[];
@@ -74,6 +75,8 @@ export interface MiDiaViewProps {
   configuredCapacityHours?: number;
   targetDayHours?: number;
   onNavigateToView?: (view: OrbitView) => void;
+  /** Abre una oportunidad de New Business en la pestaña indicada. */
+  onOpenOpportunity?: (opportunityId: string, tab: 'resumen' | 'scoping' | 'cotizacion') => void;
   /** Abre un proyecto concreto (Insumos por gestionar). */
   onOpenProject?: (projectId: string) => void;
   opportunities?: any[];
@@ -106,6 +109,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
   configuredCapacityHours = 8.0,
   targetDayHours = 8.0,
   onNavigateToView,
+  onOpenOpportunity,
   onOpenProject,
   streakDays = 0,
   streakTodayCounts = false,
@@ -279,7 +283,9 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
     return opportunities.filter((o) => {
       const isActionableStatus =
         o.status === 'discovery' || o.status === 'quoting' || o.status === 'internal_review';
-      if (!isActionableStatus) return false;
+      // El líder actualizó el alcance después de cotizar: Comercial (y Dirección) lo ven hasta guardar la cotización
+      const hasScopeUpdate = Boolean(o.scopeUpdateNotice) && o.status !== 'won' && o.status !== 'lost' && accessLevel !== 'leader';
+      if (!isActionableStatus && !hasScopeUpdate) return false;
 
       // Solo las que la persona lidera o le tocan (#147), también para Dirección
       if (accessLevel === 'commercial' || accessLevel === 'system_admin' || accessLevel === 'executive') {
@@ -459,30 +465,31 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
   }, [effectiveAbsences, effectiveUsers]);
 
   // Próximos cumpleaños (próximos 14 días de Octubre)
-  const upcomingBirthdays = useMemo(() => {
-    const currentMonth = 10;
-    const currentDay = 19;
+  // Fechas del equipo con la fecha REAL de hoy (antes estaba fija al 19 de octubre): próximos 30 días,
+  // cruzando meses y año. Radar del equipo = vacaciones/ausencias + cumpleaños + aniversarios.
+  const upcomingTeamDates = (field: 'birthDate' | 'anniversaryDate', windowDays = 30) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     return effectiveUsers
-      .filter((u) => {
-        if (!u.birthDate) return false;
-        const parts = u.birthDate.split('-');
-        const m = parseInt(parts[1], 10);
-        const d = parseInt(parts[2], 10);
-        return m === currentMonth && d >= currentDay && d <= currentDay + 14;
-      })
+      .filter((u) => u.status !== 'Inactive' && /^\d{4}-\d{2}-\d{2}/.test(u[field] || ''))
       .map((u) => {
-        const parts = u.birthDate!.split('-');
-        const d = parseInt(parts[2], 10);
-        const days = d - currentDay;
+        const [y, m, d] = (u[field] as string).slice(0, 10).split('-').map(Number);
+        let next = new Date(today.getFullYear(), m - 1, d);
+        if (next < today) next = new Date(today.getFullYear() + 1, m - 1, d);
+        const daysRemaining = Math.round((next.getTime() - today.getTime()) / 86400000);
         return {
           user: u,
           day: d,
-          daysRemaining: days,
-          dateFormatted: u.birthDateFormatted || `${d} de Octubre`
+          daysRemaining,
+          years: next.getFullYear() - y,
+          dateFormatted: next.toLocaleDateString('es-CO', { day: 'numeric', month: 'long' })
         };
       })
+      .filter((x) => x.daysRemaining <= windowDays)
       .sort((a, b) => a.daysRemaining - b.daysRemaining);
-  }, [effectiveUsers]);
+  };
+  const upcomingBirthdays = useMemo(() => upcomingTeamDates('birthDate'), [effectiveUsers]);
+  const upcomingAnniversaries = useMemo(() => upcomingTeamDates('anniversaryDate').filter((x) => x.years > 0), [effectiveUsers]);
 
   // Cuentas y proyectos liderados por Luisa para coordinación de traspasos
   const luisaAccounts = useMemo(() => {
@@ -786,9 +793,22 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                             <span className="font-extrabold text-[#0f172a]">
                               {opp.prospectAccountName || opp.clientName || 'Nuevo Prospecto'} · {opp.title}
                             </span>
-                            <span className="px-2 py-0.2 rounded-full text-[10px] font-bold bg-[#501f92]/10 text-[#501f92]">
-                              🟣 Nuevo brief asignado
-                            </span>
+                            {opp.scopeUpdateNotice && accessLevel !== 'leader' ? (
+                              <span className="px-2 py-0.2 rounded-full text-[10px] font-bold bg-[#fef3c7] text-[#92400e]">
+                                🔁 Alcance actualizado{opp.scopeUpdateNotice.added.length ? `: + ${opp.scopeUpdateNotice.added.join(', ')}` : ''} · actualiza la cotización
+                              </span>
+                            ) : (
+                              <span className={`px-2 py-0.2 rounded-full text-[10px] font-bold ${opp.scopeChangeRequest ? 'bg-[#fef3c7] text-[#92400e]' : 'bg-[#501f92]/10 text-[#501f92]'}`}>
+                                {opp.scopeChangeRequest
+                                  ? `🔁 Ajustar alcance: ${opp.scopeChangeRequest.note}`
+                                  : accessLevel === 'leader'
+                                    ? '🟣 Nuevo brief asignado'
+                                    // Comercial / Dirección: qué le falta a su lado del negocio
+                                    : opp.status === 'internal_review'
+                                      ? ((getOperationalQuote(opp)?.commercialVersions?.length || 0) > 0 ? '📨 Lista para enviar la propuesta' : '💰 Alcance listo · por cotizar')
+                                      : '⏳ En alcance con el líder'}
+                              </span>
+                            )}
                             <span className="text-[10px] text-[#0284c7] font-mono">
                               SLA ~{oppHandoffSla}h handoff
                             </span>
@@ -818,9 +838,15 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                             <span>{isTimerRunningOnScoping ? 'Grabando...' : 'Timer Preventa'}</span>
                           </button>
                         )}
-                        {onNavigateToView && (
+                        {(onOpenOpportunity || onNavigateToView) && (
                           <button
-                            onClick={() => onNavigateToView('new-business')}
+                            onClick={() => {
+                              if (onOpenOpportunity) {
+                                // Comercial va a Cotización si hay algo que cotizar (alcance listo o actualizado)
+                                const commercialUpdate = accessLevel !== 'leader' && (Boolean(opp.scopeUpdateNotice) || opp.status === 'internal_review');
+                                onOpenOpportunity(opp.id, commercialUpdate ? 'cotizacion' : accessLevel === 'leader' ? 'scoping' : 'resumen');
+                              } else onNavigateToView?.('new-business');
+                            }}
                             className="px-3.5 py-1.5 rounded-xl bg-[#f5f3ff] text-[#501f92] border border-[#ddd6fe] hover:bg-[#ede9fe] font-semibold text-xs transition-colors cursor-pointer"
                           >
                             Abrir oportunidad →
@@ -1183,6 +1209,18 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
         {/* SIDEBAR DERECHO: RADAR DEL EQUIPO (PRÓXIMAS VACACIONES Y CULTURA) */}
         {/* ==================================================================== */}
         <aside className="w-full xl:w-84 shrink-0 space-y-4">
+          {/* Próximo festivo (antes en Capacidad): ayuda a planear la semana */}
+          {(() => {
+            const next = nextColombianHoliday(new Date().toISOString().slice(0, 10));
+            if (!next) return null;
+            const label = new Date(`${next}T12:00:00`).toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
+            return (
+              <div className="p-4 rounded-2xl bg-[#eff6ff] border border-[#bfdbfe] text-xs text-[#1e40af] space-y-1">
+                <p className="font-bold flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> Se viene semana corta</p>
+                <p className="text-[11px] text-[#1d4ed8]">El <strong>{label}</strong> es festivo. Planea tus entregas y avisa si algo no alcanza.</p>
+              </div>
+            );
+          })()}
           {/* Tarjeta Principal del Radar de Ausencias */}
           <div className="bg-white rounded-2xl p-5 border border-[#e2e8f0] shadow-xs space-y-4 transition-all">
             {/* Header del Sidebar */}
@@ -1277,6 +1315,26 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
               </div>
             )}
 
+            {/* PRÓXIMOS ANIVERSARIOS EN UHURA (fecha de ingreso) */}
+            {upcomingAnniversaries.length > 0 && (
+              <div className="pt-2 border-t border-[#f1f5f9] space-y-2">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#501f92] block">
+                  🏅 Aniversarios en Uhura
+                </span>
+                {upcomingAnniversaries.map((item) => (
+                  <div key={item.user.id} className="p-3 rounded-2xl bg-[#faf5ff] border border-[#ede9fe] flex items-center justify-between gap-3 text-xs">
+                    <div className="min-w-0">
+                      <p className="font-bold text-[#0f172a] truncate">{item.user.name}</p>
+                      <p className="text-[10px] text-[#64748b] truncate">{item.dateFormatted} · {item.years} {item.years === 1 ? 'año' : 'años'}</p>
+                    </div>
+                    <span className="text-[10.5px] font-semibold text-[#501f92] whitespace-nowrap">
+                      {item.daysRemaining === 0 ? '¡Hoy!' : item.daysRemaining === 1 ? 'Mañana' : `En ${item.daysRemaining} días`}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* SECCIÓN DE PRÓXIMOS CUMPLEAÑOS */}
             {upcomingBirthdays.length > 0 && (
               <div className="pt-2 border-t border-[#f1f5f9] space-y-2">
@@ -1297,13 +1355,13 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                           {item.user.name}
                         </p>
                         <p className="text-[10px] text-[#64748b] truncate">
-                          {item.dateFormatted} {item.daysRemaining > 0 ? `(en ${item.daysRemaining}d)` : '(¡Hoy!)'}
+                          {item.dateFormatted}
                         </p>
                       </div>
                     </div>
 
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white text-[#db2777] border border-[#fecdd3]">
-                      🎉 {item.daysRemaining === 0 ? 'Hoy' : `${item.daysRemaining}d`}
+                    <span className="text-[10.5px] font-semibold text-[#db2777] whitespace-nowrap">
+                      {item.daysRemaining === 0 ? '¡Hoy! 🎉' : item.daysRemaining === 1 ? 'Mañana' : `En ${item.daysRemaining} días`}
                     </span>
                   </div>
                 ))}

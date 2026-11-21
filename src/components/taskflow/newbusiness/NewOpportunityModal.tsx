@@ -54,10 +54,12 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
 
   // Commercial team members filtered strictly by functional capacity 'commercial'
   const commercialUsers: UserItem[] = useMemo(() => {
+    // Quienes traen negocios: Comercial, Client Relationship y Dirección (p. ej. Catalina, Luisa y Ana María)
     return availableUsers.filter(isEligibleTeamMember).filter(
       (u: UserItem) =>
         u.accessLevel === 'commercial' ||
         u.accessLevel === 'client_relationship' ||
+        u.accessLevel === 'executive' ||
         (u.department && u.department.toLowerCase().includes('comercial')) ||
         (u.jobTitle && u.jobTitle.toLowerCase().includes('comercial'))
     );

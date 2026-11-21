@@ -111,7 +111,7 @@ export const AVAILABLE_TEAM_MEMBERS: {
   { id: 'tm-13', name: 'Melisa Gil', role: 'Creative Designer', avatarBg: 'bg-[#d946ef]', initials: 'MG', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 29 },
   { id: 'tm-14', name: 'Camilo Velez', role: 'Growth Manager', avatarBg: 'bg-[#059669]', initials: 'CV', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 22 },
   { id: 'tm-15', name: 'Juan Camilo Torres', role: 'Creative Designer', avatarBg: 'bg-[#6366f1]', initials: 'JT', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 24 },
-  { id: 'tm-16', name: 'Alejando Florez Vargas', role: 'Creative Designer', avatarBg: 'bg-[#06b6d4]', initials: 'AF', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 20 },
+  { id: 'tm-16', name: 'Diego Alejandro Flores Vargas', role: 'Creative Designer', avatarBg: 'bg-[#06b6d4]', initials: 'DF', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 20 },
   { id: 'tm-17', name: 'Sara Mar L', role: 'Creative Designer', avatarBg: 'bg-[#f43f5e]', initials: 'SM', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 25 },
   { id: 'tm-18', name: 'Laura Viviana Salazar Perez', role: 'Administrativa', avatarBg: 'bg-[#64748b]', initials: 'LS', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 20 }
 ];

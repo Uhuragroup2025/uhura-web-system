@@ -67,9 +67,12 @@ interface ProjectTasksTabProps {
   onOpenTaskDetail?: (task: TaskItem) => void;
   onUpdateTasks?: (tasks: TaskItem[]) => void;
   onUpdateProject?: (project: ProjectSummaryItem) => void;
+  /** Un insumo se marcó recibido (para revisar si llegó tarde y corre el cronograma). */
+  onDependencyReceived?: (depId: string, updatedProject: ProjectSummaryItem) => void;
 }
 
 export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
+  onDependencyReceived,
   project,
   tasks = [],
   allProjects = [],
@@ -621,6 +624,7 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
         currentUser={currentUser}
         allUsers={users}
         onUpdateProject={onUpdateProject}
+        onDependencyReceived={onDependencyReceived}
       />
 
       {/* 3. BARRA DE CONTROL, VISTAS Y BÚSQUEDA */}
@@ -684,7 +688,7 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
           <button
             onClick={() => setIsDeliverableModalOpen(true)}
             disabled={!onUpdateProject}
-            className="px-4 py-2 text-xs font-bold text-white bg-[#501f92] hover:bg-[#3f1675] disabled:opacity-50 rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
+            className="inline-flex items-center gap-1.5 h-8 px-3.5 rounded-full border border-[#cbd5e1] bg-white hover:bg-[#faf5ff] hover:border-[#501f92] text-[#501f92] text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer disabled:opacity-50"
             title="Agregar un entregable o frente de trabajo. Las tareas se crean desde «+ Tarea» en cada entregable."
           >
             <Plus className="w-3.5 h-3.5" />

@@ -491,13 +491,16 @@ const FloatingBeaverCore: React.FC<FloatingBeaverCoreProps> = ({
   const nextTask = todayTasks.length === 0
     ? tasks.filter((t) => !t.completed).sort(makeTaskComparator(todayIsoMascot))[0]
     : undefined;
-  // Recordatorio de horas: día hábil, sin ausencia hoy y desde las 4:00 p. m.
+  // Recordatorio de horas: día hábil, sin ausencia hoy y desde las 4:00 p. m. (hora Colombia; 5:00 p. m. para México).
   const myAbsentToday = (absenceEvents && absenceEvents.length > 0 ? absenceEvents : initialAbsenceEvents).some(
     (a) => a.userId === currentUser?.id && a.status === 'active' && a.startDate <= todayIsoMascot && todayIsoMascot <= (a.endDate || a.startDate)
   );
-  const nowLocal = new Date();
+  // Horario por calendario laboral (17 Nov 2026): México entra y sale una hora más tarde que
+  // Colombia (9:00–19:00 hora Colombia), así que su recordatorio sale a las 5:00 p. m. hora Colombia.
+  const bogotaHour = Number(new Intl.DateTimeFormat('en-US', { hour: 'numeric', hourCycle: 'h23', timeZone: 'America/Bogota' }).format(new Date()));
+  const reminderHourBogota = (currentUser as { workCalendar?: 'CO' | 'MX' } | undefined)?.workCalendar === 'MX' ? 17 : 16;
   const timeLogReminderDue =
-    Boolean(currentUser) && isBusinessDay(new Date(`${todayIsoMascot}T00:00:00Z`)) && !myAbsentToday && nowLocal.getHours() >= 16;
+    Boolean(currentUser) && isBusinessDay(new Date(`${todayIsoMascot}T00:00:00Z`)) && !myAbsentToday && bogotaHour >= reminderHourBogota;
 
   const [isFirstVisitToday] = useState<boolean>(() => {
     try {

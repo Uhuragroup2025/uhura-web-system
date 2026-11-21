@@ -355,6 +355,14 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
                       className="h-full rounded-full bg-[#10b981]"
                     />
                   </div>
+
+                  {/* Horas: el avance (%) cuenta tareas completadas; las horas cargadas se ven aparte */}
+                  <div className="flex items-center justify-between text-[11px] text-[#64748b] mt-2">
+                    <span>Horas cargadas</span>
+                    <span className={`font-mono font-bold ${delQuotedHours > 0 && delExecutedHours > delQuotedHours ? 'text-[#dc2626]' : 'text-[#0f172a]'}`}>
+                      {delExecutedHours.toFixed(1)}h / {delQuotedHours}h
+                    </span>
+                  </div>
                 </div>
               </div>
             );
