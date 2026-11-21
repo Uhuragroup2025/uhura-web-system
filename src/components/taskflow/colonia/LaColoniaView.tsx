@@ -31,6 +31,7 @@ import {
 import { ColoniaMinigames } from './ColoniaMinigames';
 import { ColoniaSocialInbox } from './ColoniaSocialInbox';
 import { ColoniaRankingView } from './ColoniaRankingView';
+import { LaPlazaView } from './plaza/LaPlazaView';
 import { UserAvatar } from '../UserAvatar';
 import {
   isSoundEnabled,
@@ -78,7 +79,7 @@ interface LaColoniaViewProps {
 }
 
 type AmbientTime = 'night' | 'sunset' | 'day';
-type ColoniaTabMode = 'fichas' | 'habitat';
+type ColoniaTabMode = 'plaza' | 'fichas' | 'habitat';
 type FilterCategory = 'todos' | 'cumples' | 'aniversarios';
 
 export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
@@ -90,7 +91,7 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
   onUpdateUser
 }) => {
   // Pestaña principal: 'fichas' (Grid canónico de Staging) o 'habitat' (Minijuegos y diorama 3D)
-  const [activeTabMode, setActiveTabMode] = useState<ColoniaTabMode>('fichas');
+  const [activeTabMode, setActiveTabMode] = useState<ColoniaTabMode>('plaza');
 
   // Filtros de Fichas Humanas
   const [selectedFilter, setSelectedFilter] = useState<FilterCategory>('todos');
@@ -229,7 +230,7 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
   };
 
   return (
-    <div className={`min-h-full flex flex-col ${activeTabMode === 'habitat' ? 'bg-[#0a0418] text-white' : 'bg-[#f8fafc] text-[#0f172a]'}`}>
+    <div className={`min-h-full flex flex-col ${activeTabMode !== 'fichas' ? 'bg-[#0a0418] text-white' : 'bg-[#f8fafc] text-[#0f172a]'}`}>
       {/* Toast efímero */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-[#0f172a] text-white text-xs font-semibold shadow-xl border border-white/10 animate-in slide-in-from-bottom-2">
@@ -241,6 +242,17 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
       {/* ==================================================================== */}
       {/* VISTA 1: FICHAS HUMANAS (RÉPLICA FIEL DE STAGING) */}
       {/* ==================================================================== */}
+      {/* VISTA 0: LA PLAZA (experimental: el lugar del equipo) */}
+      {activeTabMode === 'plaza' && (
+        <LaPlazaView
+          currentUser={currentUser}
+          teamUsers={teamUsers}
+          absenceEvents={absenceEvents}
+          onOpenArcade={() => setActiveTabMode('habitat')}
+          onOpenTeam={() => setActiveTabMode('fichas')}
+        />
+      )}
+
       {activeTabMode === 'fichas' && (
         <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto w-full">
           {/* Banner Superior "Conoce La Colonia" */}
@@ -296,6 +308,17 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
                   <span>🎉 Aniversarios del mes</span>
                 </button>
               </div>
+
+              {/* Volver a La Plaza */}
+              <button
+                type="button"
+                onClick={() => setActiveTabMode('plaza')}
+                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#d4ff3f] hover:brightness-105 text-[#1a0f30] text-xs font-bold transition-all shadow-xs cursor-pointer shrink-0 ml-1"
+                title="Volver a La Plaza"
+              >
+                <ArrowRight className="w-3.5 h-3.5 rotate-180" />
+                <span>La Plaza</span>
+              </button>
 
               {/* Toggle a Jugar en La Colonia */}
               <button
@@ -510,10 +533,10 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setActiveTabMode('fichas')}
+                    onClick={() => setActiveTabMode('plaza')}
                     className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white cursor-pointer"
-                    aria-label="Volver a La Colonia"
-                    title="Volver a La Colonia"
+                    aria-label="Volver a La Plaza"
+                    title="Volver a La Plaza"
                   >
                     <ArrowRight className="w-4 h-4 rotate-180" />
                   </button>
