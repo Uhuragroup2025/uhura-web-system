@@ -457,9 +457,9 @@ Para no bloquear New Business cuando la app privada de HubSpot esté caída o si
 
 ### 12.9 Fee mensual: contrato y ciclos
 * En `projects` (fee): `contract_months`, `contract_start_date`, `contract_end_date`, `rollover_policy` (`none` | `carry_over` | `contractual_cap` = 25 % de la bolsa mensual).
-* `project_cycles` (un registro por mes de vigencia): `cycle_key` (`YYYY-MM`), `period_number`, `quoted_hours`, `rollover_hours_in`, `executed_hours` (rollup de `time_logs` de tareas del ciclo), `status` (`closed` | `active` | `upcoming`), `tasks_generated`.
+* `project_cycles` (un registro por mes de vigencia): `cycle_key` (`YYYY-MM` del mes en que empieza), `start_date` y `end_date` (actualizado 23 Nov 2026: el ciclo va del día del contrato al día anterior del mes siguiente; ver §34.1), `period_number`, `quoted_hours`, `rollover_hours_in`, `executed_hours` (rollup de `time_logs` de tareas del ciclo), `status` (`closed` | `active` | `upcoming`), `tasks_generated`.
 * `project_contract_renewals`: `renewed_at`, `renewed_by_user_id`, `added_months`, `monthly_hours`, `note`. Una renovación agrega ciclos sin modificar los cerrados.
-* `tasks.cycle_key` para fees. Job programado el día 1 de cada mes: abre el ciclo y clona las tareas plantilla del mes 1 (sin tiempo ni estado); idempotente por `(project_id, cycle_key)`.
+* `tasks.cycle_key` para fees. Job programado el primer día de cada ciclo (el día 1 si el contrato empieza el 1): abre el ciclo y clona las tareas plantilla del mes 1 (sin tiempo ni estado); idempotente por `(project_id, cycle_key)`.
 * Endpoints con filtro `?cycle=YYYY-MM` para KPIs, tareas y matriz de horas; por defecto el ciclo activo.
 * Notificación de renovación 30 días antes de `contract_end_date` al líder y a comercial.
 
@@ -546,7 +546,7 @@ Para no bloquear New Business cuando la app privada de HubSpot esté caída o si
 | Relación con la tarea | Cómo se determina | Dónde aparece | Urgencia |
 |---|---|---|---|
 | **Responsable de ejecución** | `assignee_id`, `collaborators` o `assignee_allocations` | «Qué tengo que hacer hoy» (Mi Día) y «Mis tareas» | Normal: cuenta en pendientes, prioridad y capacidad |
-| **Revisor** | Tarea en `Review` y `reviewer_id == user.id` (si no hay revisor, `project.lead_user_id == user.id`) | Mi Día y «Mis tareas» | Normal |
+| **Revisor** | Tarea en `Review` y el usuario está en `task_reviewers` (§33.4); si la tarea no tiene, el revisor por defecto del proyecto; si no, `project.lead_user_id` | Mi Día y «Mis tareas» | Normal |
 | **Seguidor** | `followers` | «Siguiendo» (Mi Día plegado y pestaña en Tareas) | **Sin urgencia**: no suma a pendientes, contadores de atención, capacidad ni alertas |
 | Ninguna | — | No aparece | — |
 
@@ -575,6 +575,7 @@ Para no bloquear New Business cuando la app privada de HubSpot esté caída o si
 ### 15.3 Reglas de Transición de Estados por Rol en la Tarea
 * **Gobernanza de Cierre:** Las vistas de lista (`Mi Día` y `Mis Tareas`) no deben exponer checkbox circular de completado rápido; el cierre y aprobación de tareas se ejecuta desde el detalle de la tarea.
 * **Auto-transición a `In Progress` (`En proceso`):** Si una tarea está en `To Do` y un **Colaborador** ejecuta cualquier acción (iniciar timer, comentar, subir entregable o registrar tiempo), su estado debe pasar automáticamente a `In Progress`.
+* ⚠ **Cambio (24 Nov 2026):** la tarea simplificada de §33 reemplaza esta sección: un solo botón según el momento (Iniciar → Entregar o Terminar → Aprobar o Pedir ajustes), sin selector de estado salvo para Dirección.
 * **Visibilidad de Acciones por Rol:**
   * **Colaborador:** puede ejecutar `Iniciar tarea` (`To Do → In Progress`) y `Solicitar revisión` (`In Progress → Review`).
   * **Project Lead / Seguidor / Revisor:** **no** debe ver `Solicitar revisión`; tiene habilitado `Completar y aprobar` (y al marcar manualmente la tarea como completada, se asume aprobada en `Done`). Cuando la tarea entra en `Review`, se le habilitan **`Devolver`** (`Review → In Progress`) y **`Aprobar y Completar`** (`Review → Done`).
@@ -944,7 +945,7 @@ Salen de la presentación de ECO a Dirección y RR. HH. y de la prueba con «PRU
 
 **Tareas:**
 * **Un solo colaborador por tarea.** Elegir otra persona la reasigna. Para trabajo en paralelo (p. ej. dos propuestas de logo) se usa **«Duplicar tarea»**: crea una copia sin colaborador ni horas cargadas y reparte las horas cotizadas a la mitad. Quien solo hace seguimiento va en Seguidores (0 h, notificado solo si lo mencionan).
-* **Aprobar y completar / Devolver:** solo el **Project Lead de la tarea** (o su revisor asignado). Los seguidores y colaboradores no ven esos botones. Si el Project Lead se ausenta, se cambia el Project Lead. Tareas legadas sin Project Lead: aprueba un líder o administrador.
+* **Aprobar y completar / Devolver:** solo el **Project Lead de la tarea** (o su revisor asignado). Los seguidores y colaboradores no ven esos botones. Si el Project Lead se ausenta, se cambia el Project Lead. Tareas legadas sin Project Lead: aprueba un líder o administrador. ⚠ *Cambio (24 Nov 2026, §33.4): «Aprobar» y «Pedir ajustes» los ven los revisores de la tarea; por defecto revisa el líder del proyecto; si el revisor está ausente, ECO sugiere otro.*
 * **Retrabajos:** el formulario cambia con el origen. Cliente: causa «Feedback del cliente» (cuenta como ronda; si supera las incluidas se cobra) o «Cambio de alcance» (avisar a Comercial para cotizarlo); «Solicitado por (cliente)». QA/Interno: causa «Error interno detectado en QA» (no consume rondas ni se cobra); «Detectado por». Campo `rework.root_cause`: `client_feedback | scope_change | internal_error`.
 * Al guardar horas (cronómetro o manual) el usuario **se queda donde estaba** (tarea o proyecto); no se navega a Mi Día.
 
@@ -1400,3 +1401,101 @@ Verificado en el prototipo:
 * Flujo completo con una oportunidad de prueba: alcance listo → cotización v1 → agregar landing → aviso y «Marcar alcance listo» → aviso en Cotización → «Guardar cambios» → v2.
 * Datos limpios: carga del equipo con la sugerencia «Asignar a Juan Camilo» (y reasignación aplicada), matriz con asignado y ejecutado, fee con «Contrato vence en 11 días», renovación y «Generar tareas de Diciembre» (6 tareas).
 * **Falta ver el aviso en el Mi Día de un usuario Comercial.**
+
+
+## 33. Tarea simplificada (aprobada por Paola el 21 Nov 2026; entrega del 24 Nov 2026)
+**Objetivo:** que la tarea tenga solo lo necesario para trabajar, sin reglas escondidas y sin acciones manuales que el sistema puede hacer solo. Lo automático ya existe: al ganar una oportunidad se crean cliente, proyectos por servicio y tareas con su colaborador (§12.3); «Iniciar proyecto» programa las fechas por capacidad y sugiere a otra persona del mismo rol si alguien pasa del 85 % de su jornada. Esta sección cubre lo que pasa dentro de la tarea.
+
+### 33.1 Un solo botón según el momento
+| Estado | Quien hace la tarea | Quien revisa | Los demás |
+|---|---|---|---|
+| Por hacer | «Iniciar tarea» (también se inicia sola al arrancar el cronómetro o comentar) | «Aprobar» (sin esperar entrega) | — |
+| En proceso | «Entregar →» (con revisión) o «Terminar» (sin revisión) | «Aprobar»; si ya pidió ajustes: «Esperando ajustes de {Nombre}» | — |
+| En revisión | — | «Pedir ajustes» y «Aprobar» | «Esperando a {revisores}» |
+| Terminada | «Reabrir» | «Reabrir» | — |
+
+* El banner dice quién la hace y quién revisa: «La hace Laura · revisa Paola» / «sin revisión» / «Aprobada por Paola».
+* **Pedir ajustes** pide un texto (obligatorio): qué hay que ajustar. La tarea vuelve a «En proceso», el último entregable queda `changes_requested` con `changes_note`, y se publica un mensaje «🔁 Pidió ajustes a @{Nombre}: …». Ajustar es lo normal: no resta nada.
+* **Aprobar** deja `approved_by` y `approved_at`, marca el último entregable `approved` y publica «✅ Aprobó la tarea».
+* Las listas (Proyecto → Tareas) no cambian el estado: el círculo abre la tarea.
+
+### 33.2 Estado y prioridad
+* **El selector de estado sale de la tarea.** Solo `executive` y `system_admin` ven «Corregir estado», para errores. Queda en la Actividad. `PATCH /api/tasks/{id}/status` queda solo para ellos.
+* **Prioridad:** Baja · Media · Alta · **Urgente** (`urgent`, la que usa el orden de Mi Día, §15.1). Disponible en la tarea, en Nueva tarea y en el formulario de tareas del proyecto.
+
+### 33.3 Entregar
+* Formulario «Entregar» (o «Terminar» sin revisión): **«¿Qué hiciste?»** obligatorio (una línea, admite @menciones) · enlace (opcional) · archivo (opcional) · **«Es un paso de otra tarea»** (opcional; lista las tareas del mismo proyecto; el resultado final vive en esa tarea) · criterios de aceptación.
+* Con revisión → `Review` y aviso a los revisores. Sin revisión → `Done`.
+* La pestaña Entregables muestra el historial de entregas: quién, cuándo, la línea, el enlace, «Paso de: …», y el estado (Entregada · Con ajustes · Aprobada). El formulario solo lo ve quien hace la tarea mientras está por hacer o en proceso.
+* `task_deliverables` suma `step_of_task_id` (opcional) y `changes_note`. `tasks` suma `approved_by`, `approved_at` y `requires_review` (por defecto `true`).
+
+### 33.4 Quién revisa: un solo término, «Revisa»
+* Cada tarea tiene **uno o varios revisores** (`task_reviewers`: `task_id`, `user_id`, `is_manual`). **Por defecto, el líder del proyecto.** El revisor puede ser cualquier persona de Uhura, del mismo equipo o de otra área. **Basta un revisor** para aprobar o pedir ajustes.
+* En la tarea el campo se llama **«Revisa»**. El Project Lead **sale de la tarea**: vive en el proyecto, donde responde por bloqueos, insumos y desvíos.
+* **Tres niveles:** (1) automático: al crearse la tarea la revisa el revisor por defecto del proyecto (`projects.default_reviewer_id`; si es nulo, el líder); (2) por proyecto: el líder o Dirección cambian «Revisa por defecto» y se actualizan las tareas abiertas que no se cambiaron a mano; (3) por tarea, para excepciones.
+* **Quién cambia qué:** quien hace la tarea puede **sumar** revisores, no quitarlos. Quitar revisores o poner **«Sin revisión»** (`requires_review = false`) solo lo hacen el líder del proyecto o Dirección.
+* **Revisor ausente:** si todos los revisores tienen una ausencia activa hoy (§20), la tarea dice «{Nombre} no está hasta el {fecha}» y ECO sugiere a otra persona (primero el líder del proyecto; si también falta, alguien del mismo rol). El líder o Dirección lo aplican con un clic; los demás ven «ECO le avisó al líder del proyecto».
+* **Migración:** `reviewer_id` actual pasa a una fila de `task_reviewers` (`is_manual = true`).
+* `PUT /api/projects/{id}/default-reviewer` → `{ user_id }` (solo líder del proyecto o Dirección). `PUT /api/tasks/{id}/reviewers` → `{ user_ids[] }`.
+
+### 33.5 Qué ve cada quien en la columna derecha
+* **Todos:** prioridad, horas, cronograma, bloqueo («Marcar la tarea como bloqueada» con su motivo, y «Ya se desbloqueó»), «Revisa», colaborador, seguidores (quedan enterados, sin urgencia ni carga; aviso solo si los mencionan).
+* **Solo líderes y Dirección:** rol cotizado y retrabajos.
+* **Ya no está:** Project Lead (vive en el proyecto) y el selector de estado (salvo Dirección).
+
+### 33.6 Pestañas
+Mensajes · Entregables · Actividad.
+
+### 33.7 Endpoints
+* `POST /api/tasks/{id}/deliver` → `{ what, url?, file_id?, step_of_task_id?, criteria_checked[] }`. Con revisión pasa a `Review`; sin revisión, a `Done`. `what` obligatorio.
+* `POST /api/tasks/{id}/approve` (solo revisores) · `POST /api/tasks/{id}/request-changes` → `{ note }` (solo revisores; `note` obligatorio).
+* Prototipo: `TaskDetailModal.tsx` (banner, formulario de entrega, «Revisa»), `BlockerControl.tsx`, `TaskFlowPrototype.tsx` (`handleReviewDecision`, `handleUpdateReviewSettings`, `handleChangeProjectReviewer`), `ProjectsView.tsx` («Revisa por defecto»).
+
+
+## 34. Mejoras del 23 y 24 Nov 2026 (rama `claude/mejoras-2026-11-24`)
+Todo lo de esta sección es independiente de La Colonia. La propuesta de La Plaza sigue en otra rama, a la espera de aprobación.
+
+### 34.1 Correcciones tras el QA de punta a punta
+* **Ciclos del fee por fechas del contrato.** Un ciclo va del día del contrato al día anterior del mes siguiente (23 Nov – 22 Dic, 23 Dic – 22 Ene…): un contrato de 3 meses tiene 3 ciclos. Si el contrato empieza el día 1, el ciclo es el mes calendario («Noviembre 2026»); si no, se nombra por sus fechas. Si el día no existe en un mes (31), se usa el último día. El estado (cerrado / en curso / próximo) sale de las fechas. El encabezado dice «Ciclo X de N». `project_cycles` suma `start_date` y `end_date` (§12.9).
+* **Rondas = presentaciones.** Cada presentación al cliente trae su ronda de ajustes: al «Iniciar proyecto» (y al editar el cronograma) `schedule_config.included_rework_rounds` = número de presentaciones.
+* **Fee mensual sin rondas.** Un fee nunca tiene rondas de ajuste: `included_rework_rounds = 0` (también al convertir una propuesta; antes se guardaba 2 aunque el cálculo ya las ignoraba).
+* **Un solo nombre de estado** del proyecto: **Por iniciar** · **Programado** · **En ejecución** · **En pausa** · **Cerrado** · **Archivado**. La etiqueta se deriva de `status`, `is_kicked_off` y `start_date`.
+* **Responsable de cliente nunca vacío** tras convertir: el del cliente si ya tiene; si no, la persona con `client_relationship`; si no hay, el comercial de la oportunidad (§8.2).
+* **«Creada el»** usa `created_at` de la tarea (nuevo campo, lo fija el servidor), no su fecha de trabajo.
+* **Comercial por defecto** en una oportunidad nueva = quien la crea, si trae negocios (`commercial`, `client_relationship` o `executive`); si no, queda vacío y se elige.
+* **«Pedir ajuste de alcance»** solo para Comercial: el comercial de la oportunidad, su equipo comercial, `commercial`, `client_relationship`, `executive` y `system_admin`. `POST /api/opportunities/{id}/scope-change-request` responde 403 a los demás.
+* **Comercial no reasigna personas** (#145): en «Iniciar proyecto» y en «Carga del equipo» ve la sugerencia como texto («Sugerido: Laura · lo decide el líder»).
+* **Capacidad semanal:** la vista semanal suma solo lo que el cronograma pone en esa semana (mismo reparto que el motor, desde el día de trabajo hasta la fecha límite). Antes sumaba todas las tareas asignadas, de cualquier fecha (119 % de «sobrecarga» sin plan).
+
+### 34.2 Proyecto → Tareas: las tareas primero
+* **Orden:** primero entregables y tareas; debajo, **«Insumos del cliente»** (antes «Dependencias, insumos y aprobaciones de cliente», arriba de todo). El texto aclara: «Lo que el cliente nos debe entregar… No son tareas del equipo: las tareas se crean arriba, en cada entregable». Motivo: una persona creó un insumo pensando que era una tarea.
+* **Sin filtros** (Todas · Bloqueantes · Pendientes): un proyecto tiene 3 o 4 insumos. Orden fijo: pendientes que bloquean, pendientes por fecha, recibidos al final. La sección se abre sola si hay algo que bloquea.
+* **Eliminar un insumo** creado por error: 🗑 con confirmación («¿Eliminar este insumo?»). `DELETE /api/projects/{id}/dependencies/{dep_id}` (líder del proyecto, Comercial, Relación con clientes, Dirección y Admin).
+* **«Frentes» → «Entregables»** en el selector de vista, el filtro, el formulario de tarea y la importación de tareas. Un solo término en toda ECO.
+* **Proyecto interno:** la sección de insumos no aparece (no hay cliente que entregue), salvo que ya tenga alguno.
+
+### 34.3 «Cronograma de cliente» en tablet
+En celular y tablet las acciones (Editar, PDF, Correo, Pestaña nueva, ✕) van arriba y el título del proyecto ocupa todo el ancho; desde escritorio, lado a lado. Antes el título quedaba en una columna angosta con un espacio en blanco al lado.
+
+### 34.4 New Business: mismos nombres en todo el alcance
+* Botones del alcance: **«Importar alcance»** (desde el catálogo de servicios) y **«Crear alcance»**. Los mismos al empezar y debajo de los servicios ya agregados (antes «Agregar alcance», «Crear alcance a medida» y «Servicio a medida»). Un alcance creado desde cero se llama «Alcance a medida». Solo cambian los nombres; la lógica es la misma.
+* **«Actividad» → «Tarea»** en el alcance, la cotización y el catálogo de servicios (agregar, duplicar y eliminar tarea; «N tarea(s)»). Lo que se cotiza en el alcance es exactamente la tarea que se crea al ganar. El SOW (documento para el cliente) no cambia.
+* **Esfuerzo de preventa solo en horas.** El resumen de la oportunidad muestra las horas por persona; **no** muestra costo en pesos (generaba ansiedad). Se retira el costo de preventa de §28 / §12.10 de la vista de la oportunidad.
+
+### 34.5 Mi Día: botones cortos
+En las oportunidades de «¿Qué requiere mi atención?»: el timer de preventa es solo el ícono ▶ (el nombre va en el tooltip y en `aria-label`, como el resto de timers de ECO) y «Abrir oportunidad →» pasa a **«Abrir →»**.
+
+### 34.6 Nuevo proyecto desde Proyectos = mismo flujo que New Business
+Antes «Nuevo proyecto» tenía su propio formulario («Frentes», equipo a mano, tipo «Interno» como tercera opción y fecha fin a mano). Ahora sigue el mismo modelo que un proyecto que nace en New Business:
+1. **Proyecto:** cliente, razón social (opcional), nombre, líder del proyecto, responsable de cliente (opcional), brief (opcional) y **tipo: Proyecto único o Fee mensual**. **«Interno · no facturable» es una característica**, no un tipo: se marca sola si el cliente es UHURA Group y se puede cambiar. **Fecha de inicio** para ambos; el fee pide además **meses del contrato** y qué pasa con las horas no usadas (regla general: no pasan; pactado: todas o hasta 25 %). El fee **no** tiene fecha fin.
+2. **Alcance:** el mismo editor de New Business («Importar alcance» / «Crear alcance»): entregables, tareas, rol, colaborador, horas y semanas por servicio. En un fee, son las tareas del primer mes.
+3. **Fechas y revisión** (proyecto único): la **entrega sugerida** sale del **mismo cálculo de «Iniciar proyecto»**: semanas de producción + QA del cliente de cada presentación (las presentaciones se sugieren por el área del servicio; cada una trae su ronda de ajustes), en días hábiles sin festivos. Se muestra el desglose («producción 10 días + QA del cliente 5 días (1 presentación) = 15 días hábiles»). **La entrega se puede editar:** los días que gana o pierde van a la producción, así «Iniciar proyecto» llega a la misma fecha. Interno: sin presentaciones; todo el tiempo es producción.
+* El proyecto nace **«Por iniciar»** con sus entregables, tareas y horas cotizadas por rol, y `schedule_config` (`production_weeks`, `included_rework_rounds` = presentaciones, `client_kickoff_wait_days = 0`). **«Iniciar proyecto»** programa cada tarea con el mismo motor que un proyecto convertido.
+* **Backend:** `projects.non_billable` (boolean, por defecto `false`). Los proyectos con `project_type = 'internal_non_billable'` se leen como no facturables (sin migración obligatoria). El filtro «Proyectos internos» usa `non_billable` o el tipo antiguo.
+* **Proyecto interno en «Iniciar proyecto»:** sin presentaciones al cliente, sin rondas y sin «Insumos a solicitar al cliente». El encabezado del proyecto muestra «Interno · no facturable» y no muestra «Rondas de ajuste». Motivo: al iniciar «Gerencia UHURA» producción mostraba 2 rondas de 5 días e insumos de un proyecto web.
+* Prototipo: `NewProjectModal.tsx` (reemplaza el formulario anterior), `isInternalProject()` en `types.ts`, `ProjectsView.tsx` (iniciar proyecto interno), `ProjectOverviewTab.tsx`.
+
+### 34.7 Reportado en producción (para Indunova)
+* **Detener el timer en el encabezado de una propuesta (New Business):** en producción se detiene sin abrir la ventana para confirmar el tiempo, y lleva a Mi Día. Debe abrir la misma ventana «Registrar tiempo» que el resto de ECO y, al guardar, dejar a la persona en la propuesta (§31: «se queda donde estaba»). En el prototipo funciona así.
+* **«Plazo del alcance» (Editar) en el encabezado de la oportunidad:** al elegir día y hora y hacer clic afuera, se cierra sin guardar; el calendario tapa «Guardar plazo». Debe guardarse al elegir la fecha y la hora (sin botón), con un aviso «Plazo guardado», y cerrar solo con Esc o ✕ sin perder lo elegido.
+* **Esfuerzo de preventa con costo en pesos ($32.986):** quitarlo; solo horas (§34.4).

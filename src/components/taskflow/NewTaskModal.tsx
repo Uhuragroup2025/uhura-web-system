@@ -5,7 +5,8 @@ import {
   ProjectType,
   STANDARD_UHURA_ROLES,
   FeeActivityCategory,
-  ClientProfile
+  ClientProfile,
+  isInternalProject
 } from './types';
 import {
   X,
@@ -423,7 +424,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
     const primaryAssignee = collaboratorObjects[0];
     const secondaryCollaborators = collaboratorObjects.slice(1);
 
-    const isInternal = activeProject.projectType === 'internal_non_billable';
+    const isInternal = isInternalProject(activeProject);
     const hoursNum = parseFloat(budgetedHours) || 4.0;
 
     const finalFrente = isCustomFrente ? customFrenteText.trim() || 'General' : frente || availableFrentes[0] || 'General';
@@ -438,6 +439,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
 
     const newTask: TaskItem = {
       id: `t-${Date.now()}`,
+      createdAt: new Date().toISOString(),
       title: title.trim(),
       description: description.trim() || undefined,
       department: activeProject.projectType === 'fee_monthly' ? 'Servicios Recurrentes' : 'Desarrollo & Proyectos',
@@ -983,6 +985,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
                 <option value="Low">Baja</option>
                 <option value="Medium">Media</option>
                 <option value="High">Alta</option>
+                <option value="urgent">Urgente</option>
                 <option value="Critical">Crítica / Urgente</option>
               </select>
             </div>

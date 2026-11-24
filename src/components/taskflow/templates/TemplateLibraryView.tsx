@@ -354,7 +354,7 @@ export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
           <Search className="w-4 h-4 absolute left-3.5 top-2.5 text-[#94a3b8]" />
           <input
             type="text"
-            placeholder="Buscar plantilla, entregable o actividad..."
+            placeholder="Buscar plantilla, entregable o tarea..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-9 pr-8 py-2 text-xs rounded-xl border border-[#cbd5e1] focus:ring-2 focus:ring-[#8a4dff] focus:border-transparent outline-hidden bg-[#f8fafc] text-[#0f172a]"
@@ -475,13 +475,13 @@ export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
                         </span>
                       </div>
 
-                      {/* Sub-línea 2: Horas totales · Entregables · Actividades */}
+                      {/* Sub-línea 2: Horas totales · Entregables · Tareas */}
                       <div className="flex items-center gap-2 text-xs text-[#334155] pt-0.5">
                         <span className="text-sm font-extrabold text-[#8a4dff]">{tmpl.totalHours} h</span>
                         <span className="text-[#cbd5e1]">•</span>
                         <span className="font-semibold">{tmpl.deliverables.length} entregables</span>
                         <span className="text-[#cbd5e1]">•</span>
-                        <span className="text-[#64748b]">{totalActivitiesCount} actividades</span>
+                        <span className="text-[#64748b]">{totalActivitiesCount} tareas</span>
                       </div>
 
                       {/* Descripción concisa (1 sola línea, o se expande en Ver detalle) */}
@@ -694,12 +694,12 @@ export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
                       )}
                     </div>
 
-                    {/* Entregables y Actividades Técnicas */}
+                    {/* Entregables y Tareas Técnicas */}
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-[#0f172a] uppercase tracking-wider flex items-center gap-1.5">
                           <Layers className="w-3.5 h-3.5 text-[#10b981]" />
-                          Entregables marco ({tmpl.deliverables.length}) y Actividades técnicas ({totalActivitiesCount})
+                          Entregables marco ({tmpl.deliverables.length}) y Tareas técnicas ({totalActivitiesCount})
                         </span>
                       </div>
 

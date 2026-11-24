@@ -310,11 +310,25 @@ export const CapacityView: React.FC<CapacityViewProps> = ({
   };
 
   // Horas asignadas (presupuestadas de tareas activas/pendientes)
+  // Vista semanal: solo lo que el cronograma pone en ESTA semana (mismo reparto que el motor:
+  // desde el día de trabajo hasta la fecha límite). QA 22 Nov 2026: antes sumaba todas las tareas
+  // asignadas, de cualquier fecha, contra la capacidad de una semana (119 % «de sobrecarga» sin plan).
   const myAssignedHours = useMemo(() => {
+    if (timeframe === 'week' && weekDays.length) {
+      const ok = (v?: string | null) => Boolean(v && /^\d{4}-\d{2}-\d{2}/.test(v));
+      const total = myTasks.reduce((acc, t) => {
+        const start = ok(t.scheduledDate) ? t.scheduledDate!.slice(0, 10) : ok(t.dueDate) ? t.dueDate!.slice(0, 10) : null;
+        const due = ok(t.dueDate) ? t.dueDate!.slice(0, 10) : start;
+        if (!start || !due) return acc;
+        const plan = allocateTaskHours(getUserTaskPlannedHours(t, currentUser), start, due);
+        return acc + weekDays.reduce((s2, d) => s2 + (plan.get(d.fullDate) || 0), 0);
+      }, 0);
+      return Number(total.toFixed(1));
+    }
     return Number(
       myTasks.reduce((acc, t) => acc + getUserTaskPlannedHours(t, currentUser), 0).toFixed(1)
     );
-  }, [myTasks, currentUser]);
+  }, [myTasks, currentUser, timeframe, weekDays]);
 
   // Horas ejecutadas (horas reales consumidas/trackeadas)
   const myExecutedHours = useMemo(() => {

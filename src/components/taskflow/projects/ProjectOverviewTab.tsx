@@ -25,7 +25,8 @@ import {
   ProjectScheduleChange,
   ScheduleChangeCause,
   UserItem,
-  normalizeProjectType
+  normalizeProjectType,
+  isInternalProject
 } from '../types';
 import { UserAvatar } from '../UserAvatar';
 import { evaluateProjectHealth, calculateBusinessDays, addBusinessDays } from '../health/projectHealthEngine';
@@ -70,6 +71,8 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
   const normalizedType = normalizeProjectType(project.projectType);
   const isFixed = normalizedType === 'fixed_project';
   const isFee = normalizedType === 'fee_monthly';
+  // Proyecto interno: sin rondas de ajuste ni tiempos del cliente
+  const isInternal = isInternalProject(project);
 
   // Modal states
   const [isReforecastModalOpen, setIsReforecastModalOpen] = useState(false);
@@ -378,11 +381,13 @@ export const ProjectOverviewTab: React.FC<ProjectOverviewTabProps> = ({
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-[#501f92]" />
                 <h3 className="font-extrabold text-sm text-[#0f172a]">
-                  Cronograma y rondas de ajuste
+                  {isInternal ? 'Cronograma' : 'Cronograma y rondas de ajuste'}
                 </h3>
               </div>
               <p className="text-xs text-[#64748b] mt-0.5">
-                Tiempos del cliente incluidos en la línea base. No consumen capacidad del equipo.
+                {isInternal
+                  ? 'Proyecto interno: todo el tiempo es producción, sin rondas de ajuste ni tiempos del cliente.'
+                  : 'Tiempos del cliente incluidos en la línea base. No consumen capacidad del equipo.'}
               </p>
             </div>
 

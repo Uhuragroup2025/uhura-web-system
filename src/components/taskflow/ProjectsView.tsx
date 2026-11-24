@@ -1,7 +1,8 @@
+import { makePersonMatcher } from './auth/taskVisibility';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { formatDate, formatDateRange } from '../../utils/formatters';
 import { PageHeader } from './PageHeader';
-import { TaskItem, ActiveTimerState, ClientProfile, ProjectType, ProjectPhaseItem, ProjectSummaryItem, TaskPriority, UserItem, normalizeProjectType, STANDARD_UHURA_ROLES } from './types';
+import { TaskItem, ActiveTimerState, ClientProfile, ProjectType, ProjectPhaseItem, ProjectSummaryItem, TaskPriority, UserItem, normalizeProjectType, isInternalProject, STANDARD_UHURA_ROLES } from './types';
 export type { ProjectSummaryItem };
 import { BoardView } from './BoardView';
 import { ManagePhasesModal } from './ManagePhasesModal';
@@ -11,7 +12,7 @@ import { ProjectTeamTab } from './projects/ProjectTeamTab';
 import { ProjectTasksTab } from './projects/ProjectTasksTab';
 import { initialUsers, initialAbsenceEvents } from './mockData';
 import { computeScheduleBaseline, planProjectSchedule, buildExistingLoad, businessDaysInRange, DEFAULT_DAILY_CAPACITY, type CapacityContext } from './schedule/scheduleEngine';
-import { matchesQuotedRole, isEligibleTeamMember, resolveServiceArea } from './newbusiness/teamCandidates';
+import { matchesQuotedRole, isEligibleTeamMember, resolveServiceArea, hasAffineRole } from './newbusiness/teamCandidates';
 import { CATALOG_2026 } from './templates/catalog2026';
 import { ClientKickoffView, defaultClientAgreements, type ClientKickoffViewProps } from './projects/ClientKickoffView';
 import { computePhaseSchedule, defaultPhaseSteps, planTasksFromPhases, buildDefaultSteps, isClientReviewedPhase, notBeforeFromDependencies, removeRound, appendRound, rebalanceToTarget, productionTotal, productionMinimum, type PhaseSteps, type PhaseOverflow } from './schedule/clientTimeline';
@@ -102,6 +103,8 @@ interface ProjectsViewProps {
   onToggleTask: (taskId: string) => void;
   onNavigateToClient?: (clientName: string) => void;
   onUpdateProject?: (updatedProject: ProjectSummaryItem) => void;
+  /** Cambia quién revisa por defecto las tareas abiertas del proyecto (§33.4). */
+  onChangeProjectReviewer?: (projectName: string, person: NonNullable<TaskItem['reviewer']>) => void;
   onUpdateClient?: (updatedClient: ClientProfile) => void;
   onAddTaskToProject?: (newTask: Partial<TaskItem>) => void;
   onImportTasksToProject?: (importedTasks: Partial<TaskItem>[]) => void;
@@ -122,6 +125,10 @@ const projectStatusBucket = (status?: string): 'active' | 'closed' | 'archived' 
   return 'active';
 };
 
+/** Rondas de ajuste incluidas = número de presentaciones al cliente (cada una trae su ronda). */
+const roundsFromSteps = (steps?: Array<{ rounds: unknown[] }> | null): number | undefined =>
+  steps && steps.length ? steps.reduce((n, st) => n + st.rounds.length, 0) : undefined;
+
 export const ProjectsView: React.FC<ProjectsViewProps> = ({
   tasks,
   clients,
@@ -139,6 +146,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   onToggleTask,
   onNavigateToClient,
   onUpdateProject,
+  onChangeProjectReviewer,
   onAddTaskToProject,
   onImportTasksToProject,
   onArchiveProject,
@@ -328,7 +336,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
         ? (selectedCycleKey === 'all' ? null : (selectedCycleKey || activeCycleKey))
         : null;
       const viewCycle = cycles.find((c) => c.monthKey === viewCycleKey) || null;
-      const projectTasks = viewCycleKey ? allProjectTasks.filter((t) => taskCycleKey(t) === viewCycleKey) : allProjectTasks;
+      const projectTasks = viewCycleKey ? allProjectTasks.filter((t) => taskCycleKey(t, prj.contractStartDate) === viewCycleKey) : allProjectTasks;
 
       const tasksAssignedHours = projectTasks.reduce((acc, t) => acc + (t.budgetedHours || 0), 0);
       const projectSoldHours = prj.soldHours || prj.budgetedHours || 0;
@@ -410,7 +418,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
       const normalizedProjectType = normalizeProjectType(p.projectType);
       if (filterType === 'fee_monthly') matchType = normalizedProjectType === 'fee_monthly';
       else if (filterType === 'fixed_project') matchType = normalizedProjectType === 'fixed_project';
-      else if (filterType === 'internal_non_billable') matchType = normalizedProjectType === 'internal_non_billable';
+      else if (filterType === 'internal_non_billable') matchType = isInternalProject(p);
       else if (filterType === 'risk') matchType = p.healthStatus === 'rojo' || p.healthStatus === 'amarillo' || p.consumedHours > p.budgetedHours;
 
       const bucket = projectStatusBucket(p.status as string);
@@ -672,6 +680,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
     const newTaskPayload: Partial<TaskItem> = {
       id: `task-${Date.now()}`,
+      createdAt: new Date().toISOString(),
       title: quickTitle.trim(),
       projectName: currentProject.name,
       clientName: currentProject.clientName,
@@ -694,6 +703,8 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
       baselineDueDate: currentProject.endDate || '',
       dueStatus: 'normal',
       dueText: 'En fecha',
+      // Revisa por defecto: el del proyecto (§33.4); si no hay, el líder del proyecto
+      reviewers: currentProject.defaultReviewer ? [currentProject.defaultReviewer] : undefined,
       assignee: {
         name: quickAssignee,
         initials: quickAssignee.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase() || 'TM',
@@ -730,7 +741,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   useEffect(() => {
     if (currentProject) {
       setScheduleKickoffDate(currentProject.startDate || new Date().toISOString().slice(0, 10));
-      setScheduleReworkRounds(currentProject.scheduleConfig?.includedReworkRounds ?? 2);
+      setScheduleReworkRounds(currentProject.scheduleConfig?.includedReworkRounds ?? (isInternalProject(currentProject) ? 0 : 2));
       setScheduleReworkRoundDays(currentProject.scheduleConfig?.reworkRoundDays ?? 5);
       setScheduleKickoffWaitDays(currentProject.scheduleConfig?.clientKickoffWaitDays ?? 3);
       setScheduleContractMonths(currentProject.contractMonths ?? 6);
@@ -756,7 +767,9 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   const isCurrentProjectFee = normalizeProjectType(currentProject?.projectType) === 'fee_monthly';
 
   // Los insumos se piden solo en el primer arranque (si el proyecto aún no tiene dependencias).
-  const askClientInputs = Boolean(currentProject && !currentProject.isKickedOff && (currentProject.dependencies || []).length === 0);
+  const isCurrentProjectInternal = isInternalProject(currentProject);
+  // Un proyecto interno no tiene cliente que entregue insumos: no se piden al iniciar.
+  const askClientInputs = Boolean(currentProject && !isCurrentProjectInternal && !currentProject.isKickedOff && (currentProject.dependencies || []).length === 0);
   const selectedScheduleInputs = scheduleInputs.filter((i) => i.selected);
   // Ronda 2: los insumos NO suman días al cronograma. Cada uno se necesita para una fase y su
   // fecha esperada es el inicio de esa fase (se gestionan con anticipación durante las anteriores).
@@ -783,12 +796,26 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
   // Agenda por capacidad: carga ya agendada de cada persona en sus OTROS proyectos (nueva en cada plan,
   // porque el motor la va llenando al ubicar las tareas).
+  // Una sola regla con el resto de ECO (teamLoadAdvisor): las ausencias (vacaciones, incapacidades,
+  // permisos) ocupan esos días. QA 22 Nov 2026: «Iniciar proyecto» ponía tareas en plenas vacaciones.
+  const withAbsences = (load: Map<string, Map<string, number>>) => {
+    const pool = users && users.length > 0 ? users : initialUsers;
+    initialAbsenceEvents.filter((a) => a.status !== 'cancelled').forEach((a) => {
+      const u = pool.find((x) => x.id === a.userId);
+      if (!u) return;
+      const perDay = load.get(u.name) || new Map<string, number>();
+      // Ausencia de día completo: el día queda sin espacio (no se le acomodan tareas en «sobrantes» de 0,4 h)
+      businessDaysInRange(a.startDate, a.endDate).forEach((d) => perDay.set(d, (perDay.get(d) || 0) + (a.allDay ? DEFAULT_DAILY_CAPACITY : Math.min(DEFAULT_DAILY_CAPACITY, a.impactHoursPerDay || DEFAULT_DAILY_CAPACITY))));
+      load.set(u.name, perDay);
+    });
+    return load;
+  };
   const buildCapacityContext = (projectTasks: TaskItem[]): CapacityContext => {
     const ids = new Set(projectTasks.map((t) => t.id));
     const assigneeById = new Map(projectTasks.map((t) => [t.id, t.assignee?.name && t.assignee.name !== '-' ? t.assignee.name : undefined]));
     return {
       assigneeOf: (taskId) => assigneeById.get(taskId),
-      existingLoad: buildExistingLoad(tasks, ids),
+      existingLoad: withAbsences(buildExistingLoad(tasks, ids)),
       dailyCapacity: DEFAULT_DAILY_CAPACITY
     };
   };
@@ -800,7 +827,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
     if (!currentProject || isCurrentProjectFee) return [];
     const projectTasks = (((currentProject as any).allTasks || currentProject.tasks) || []) as TaskItem[];
     const dels = currentProject.deliverables || [];
-    return buildDefaultSteps(
+    const built = buildDefaultSteps(
       dels.map((d) => ({
         id: d.id,
         name: d.name,
@@ -821,7 +848,11 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
         serviceName: currentProject.name
       }
     );
-  }, [currentProject, isCurrentProjectFee, scheduleDurationWeeks]);
+    // Proyecto interno: no hay cliente que revise. Sin presentaciones ni rondas; todo el tiempo es producción.
+    return isCurrentProjectInternal
+      ? rebalanceToTarget(built.map((st) => ({ ...st, rounds: [] })), scheduleDurationWeeks * 5)
+      : built;
+  }, [currentProject, isCurrentProjectFee, isCurrentProjectInternal, scheduleDurationWeeks]);
 
   const kickoffPlan = useMemo(() => {
     if (!currentProject || !scheduleKickoffDate || !isScheduleModalOpen) return null;
@@ -868,14 +899,15 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   const capacitySuggestions = useMemo(() => {
     if (!kickoffPlan || !currentProject) return [];
     const projectTasks = (((currentProject as any).allTasks || currentProject.tasks) || []) as TaskItem[];
-    const baseLoad = buildExistingLoad(tasks, new Set(projectTasks.map((t) => t.id)));
+    const baseLoad = withAbsences(buildExistingLoad(tasks, new Set(projectTasks.map((t) => t.id))));
     const pool = (users && users.length > 0 ? users : initialUsers).filter(isEligibleTeamMember);
     return kickoffPlan.conflicts.map((c) => {
       const task = projectTasks.find((t) => t.id === c.taskId);
       const role = task?.budgetedRole || task?.assignee?.role || '';
       const days = businessDaysInRange(c.windowStart, c.windowEnd);
-      const best = pool
-        .filter((u) => u.name !== c.person && role && matchesQuotedRole(u, role))
+      // Mismo rol primero; si nadie tiene espacio, un rol afín (como en el resto de ECO)
+      const rank = (sameRole: boolean) => pool
+        .filter((u) => u.name !== c.person && role && (sameRole ? matchesQuotedRole(u, role) : !matchesQuotedRole(u, role) && hasAffineRole(u, role)))
         .map((u) => {
           const perDay = baseLoad.get(u.name) || new Map<string, number>();
           const free = days.reduce((acc, d) => acc + Math.max(0, DEFAULT_DAILY_CAPACITY - (perDay.get(d) || 0)), 0);
@@ -883,6 +915,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
         })
         .filter((x) => x.free >= c.hours)
         .sort((a, b) => b.free - a.free)[0];
+      const best = rank(true) || rank(false);
       return { conflict: c, task, role, suggestion: best };
     });
   }, [kickoffPlan, currentProject, tasks, users]);
@@ -1070,6 +1103,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
     onUpdateProject?.({
       ...base,
       phaseSteps: steps,
+      scheduleConfig: { ...(base.scheduleConfig || {}), includedReworkRounds: roundsFromSteps(steps) ?? base.scheduleConfig?.includedReworkRounds } as typeof base.scheduleConfig,
       deliverables: (base.deliverables || []).map((d) => {
         const ph = byId.get(d.id);
         return ph ? { ...d, startDate: ph.start, dueDate: ph.end, endDate: ph.end } as typeof d : d;
@@ -1226,9 +1260,10 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
       clientApproverBackupName: clientContactsDraft?.backup ?? currentProject.clientApproverBackupName,
       clientAgreements: agreementsDraft ?? currentProject.clientAgreements,
       clientScheduleApproval: approvalDraft === undefined ? currentProject.clientScheduleApproval : approvalDraft,
+      // Cada presentación al cliente incluye una ronda de ajustes: las rondas del proyecto = presentaciones (23 Nov 2026)
       scheduleConfig: isCurrentProjectFee
         ? { ...scheduleConfigDraft, includedReworkRounds: 0 }
-        : scheduleConfigDraft,
+        : { ...scheduleConfigDraft, includedReworkRounds: roundsFromSteps(phaseStepsDraft || kickoffDefaultSteps) ?? scheduleConfigDraft.includedReworkRounds },
       healthNote: `Proyecto iniciado formalmente el ${finalStartDate} con cronograma alineado.`
     };
 
@@ -1281,6 +1316,13 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
     );
     const isProjectScheduled = !isProjectPendingToStart && !isProjectCompleted && !isProjectArchived &&
       Boolean(currentProject.startDate && currentProject.startDate > todayStr);
+    // Un solo nombre de estado en toda la ficha (23 Nov 2026): Por iniciar · Programado · En ejecución · En pausa · Cerrado · Archivado
+    const projectStageLabel = isProjectArchived ? 'Archivado'
+      : isProjectCompleted ? 'Cerrado'
+      : currentProject.status === 'En Pausa' ? 'En pausa'
+      : isProjectPendingToStart ? 'Por iniciar'
+      : isProjectScheduled ? 'Programado'
+      : 'En ejecución';
 
     return (
       <div className="space-y-6 animate-in fade-in duration-200">
@@ -1347,12 +1389,41 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                     ? 'Proyecto único'
                     : 'Interno / No facturable'}
                 </span>
+                {currentProject.nonBillable && (
+                  <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-[#ecfdf5] text-[#047857] border border-[#a7f3d0]" title="Proyecto de UHURA Group: no se cobra">
+                    Interno · no facturable
+                  </span>
+                )}
               </div>
               
               <h1 className="col-span-2 text-xl sm:text-2xl font-extrabold text-[#0f172a] pt-0.5 tracking-tight [text-wrap:balance] max-w-4xl">{currentProject.name}</h1>
               
-              <p className="col-span-2 text-xs text-[#64748b]">
-                Líder del proyecto: <strong className="text-[#0f172a]">{currentProject.leadName}</strong>
+              <p className="col-span-2 text-xs text-[#64748b] flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span>Líder del proyecto: <strong className="text-[#0f172a]">{currentProject.leadName}</strong></span>
+                <span className="text-[#cbd5e1]">·</span>
+                <span>Revisa por defecto:</span>
+                {onChangeProjectReviewer && (currentUser?.accessLevel === 'executive' || currentUser?.accessLevel === 'system_admin' || (!!currentUser && makePersonMatcher(currentUser, users || [])({ name: currentProject.leadName }))) ? (
+                  <select
+                    id="project-default-reviewer"
+                    value={currentProject.defaultReviewer?.name || currentProject.leadName}
+                    title="Se aplica a las tareas abiertas que siguen con el revisor por defecto. Las que alguien cambió a mano no se tocan."
+                    onChange={(e) => {
+                      const u = (users || []).find((x) => x.name === e.target.value);
+                      const person = u
+                        ? { name: u.name, initials: u.initials, avatarBg: u.avatarBg, role: u.jobTitle || String(u.role) }
+                        : { name: currentProject.leadName, initials: currentProject.leadName.split(' ').map((w) => w[0]).slice(0, 2).join(''), avatarBg: currentProject.leadAvatarBg, role: currentProject.leadRole };
+                      onChangeProjectReviewer(currentProject.name, person);
+                    }}
+                    className="rounded-lg border border-[#e2e8f0] bg-white px-2 py-0.5 text-xs font-bold text-[#0f172a] cursor-pointer"
+                  >
+                    {!(users || []).some((u) => u.name === currentProject.leadName) && <option value={currentProject.leadName}>{currentProject.leadName}</option>}
+                    {(users || []).filter((u) => u.status === 'Active').map((u) => (
+                      <option key={u.id} value={u.name}>{u.name}{u.name === currentProject.leadName ? ' (líder)' : ''}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <strong className="text-[#0f172a]">{currentProject.defaultReviewer?.name || currentProject.leadName}</strong>
+                )}
               </p>
               {/* Badges de Estado, Gates y Tandas */}
               <div className="col-span-2 flex items-center gap-2 flex-wrap pt-1.5">
@@ -1375,11 +1446,11 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                     }`}
                   />
                   <span>
-                    Estado: {isProjectArchived ? 'Archivado' : isProjectCompleted ? 'Cerrado' : isProjectPendingToStart ? 'Por iniciar' : isProjectScheduled ? `Programado · inicia ${formatDate(currentProject.startDate)}` : 'En ejecución'}
+                    Estado: {isProjectScheduled ? `Programado · inicia ${formatDate(currentProject.startDate)}` : projectStageLabel}
                   </span>
                 </span>
 
-                {!isFeeProject && (
+                {!isFeeProject && !isInternalProject(currentProject) && (
                   <>
                     <span
                       className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#f0fdf4] text-[#166534] border border-[#bbf7d0]"
@@ -1421,7 +1492,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                   title="Proyecto iniciado. Clic para ajustar el arranque o recalcular el cronograma (las fechas están en la tarjeta «Cronograma»)"
                 >
                   <span className={`w-2 h-2 rounded-full ${isProjectScheduled ? 'bg-[#8a4dff]' : 'bg-[#16a34a]'}`} aria-hidden="true" />
-                  <span className="text-xs text-[#334155] font-semibold">{isProjectScheduled ? 'Programado' : 'Iniciado'}</span>
+                  <span className="text-xs text-[#334155] font-semibold">{projectStageLabel}</span>
                   {canEditProject && (
                     <span className="text-[11px] text-[#64748b] group-hover:text-[#501f92] underline ml-1">
                       Ajustar
@@ -1543,7 +1614,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             const years = Array.from(new Set(others.map((c) => c.monthKey.slice(0, 4))));
             const viewCycle = cycles.find((c) => c.monthKey === viewKey) || null;
             const firstKey = cycles[0].monthKey;
-            const templateTasks = allTasks.filter((t) => taskCycleKey(t) === firstKey);
+            const templateTasks = allTasks.filter((t) => taskCycleKey(t, currentProject.contractStartDate) === firstKey);
             const canGenerate = canEditProject && viewCycle && viewCycle.status !== 'closed' && currentProject.tasks.length === 0 && templateTasks.length > 0 && viewCycle.monthKey !== firstKey;
             const daysLeft = currentProject.contractEndDate ? daysUntil(currentProject.contractEndDate) : null;
             return (
@@ -1586,7 +1657,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                   const ruleLabel = { none: 'no se acumulan', carry_over: 'pasan todas', contractual_cap: 'pasan hasta 25 %' }[currentProject.rolloverPolicy || 'none'];
                   return (
                     <label className="flex items-center gap-2 text-[#475569]">
-                      <span>Horas no usadas de {prev.monthLabel.split(' ')[0].toLowerCase()} ({unused.toFixed(1)}h):</span>
+                      <span>Horas no usadas del ciclo anterior ({prev.monthLabel}: {unused.toFixed(1)}h):</span>
                       <select
                         value={override || ''}
                         disabled={!canEditProject || unused <= 0}
@@ -1620,7 +1691,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                       });
                     }}
                     className="px-3 py-1.5 rounded-xl bg-[#501f92] hover:bg-[#3d1572] text-white font-bold cursor-pointer"
-                    title="Crea las tareas recurrentes del mes a partir de la plantilla del primer mes (en producción lo hace ECO automáticamente el día 1)"
+                    title="Crea las tareas recurrentes del mes a partir de la plantilla del primer mes (en producción lo hace ECO automáticamente el primer día del ciclo)"
                   >
                     Generar tareas de {viewCycle!.monthLabel}
                   </button>
@@ -1714,7 +1785,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                     ? 'bg-[#faf5ff] text-[#501f92]'
                     : 'bg-[#ecfdf5] text-[#166534]'
                 }`}>
-                  {isProjectPendingToStart ? 'Por iniciar' : (currentProject.status || 'Activo')}
+                  {projectStageLabel}
                 </span>
               </div>
             </div>
@@ -1831,6 +1902,11 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                             </button>
                             <span className="block text-[10.5px] text-[#64748b]">{x.hours}h · {formatDate(x.windowStart)} → {formatDate(x.windowEnd)} · {x.overHours}h por encima de su jornada</span>
                           </span>
+                          {!canEditProject ? (
+                            <span className="shrink-0 text-[10.5px] text-[#475569] font-semibold" title="Comercial no reasigna personas (#145): lo decide el líder del proyecto">
+                              {x.to ? `Sugerido: ${x.to.user.name.split(' ')[0]} (${x.to.freeHours}h libres) · lo decide el líder` : 'Nadie más del rol tiene espacio · lo decide el líder'}
+                            </span>
+                          ) : (
                           <span className="flex items-center gap-2 shrink-0">
                             {x.to ? (
                               <button
@@ -1870,6 +1946,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                             </select>
                             <button type="button" onClick={() => setDismissedLoadTasks((prev) => [...prev, x.taskId])} className="text-[10.5px] text-[#64748b] hover:text-[#0f172a] underline cursor-pointer">Ignorar</button>
                           </span>
+                          )}
                         </li>
                       ))}
                     </ul>
@@ -2074,7 +2151,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                   onChange={(e) => setSelectedFrenteFilter(e.target.value)}
                   className="px-3 py-1.5 text-xs bg-[#f8fafc] border border-[#e2e8f0] rounded-xl focus:outline-none focus:border-[#501f92] font-semibold text-[#0f172a]"
                 >
-                  <option value="all">Todos los servicios ({frentesBreakdown.length})</option>
+                  <option value="all">Todos los entregables ({frentesBreakdown.length})</option>
                   {frentesBreakdown.map((f) => (
                     <option key={f.name} value={f.name}>
                       {f.name} ({f.tasks.length})
@@ -2550,7 +2627,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                                     ? 'bg-[#ecfdf5] text-[#065f46]'
                                     : 'bg-[#f1f5f9] text-[#475569]'
                                 }`}>
-                                  {f.completedCount === f.tasks.length && f.tasks.length > 0 ? 'Entregado' : isProjectPendingToStart ? 'Por iniciar' : 'En Ejecución'}
+                                  {f.completedCount === f.tasks.length && f.tasks.length > 0 ? 'Entregado' : isProjectPendingToStart ? 'Por iniciar' : isProjectScheduled ? 'Programado' : 'En ejecución'}
                                 </span>
                               </td>
                             </tr>
@@ -2578,7 +2655,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                             )}
                           </td>
                           <td className="py-3.5 px-4 text-center font-mono">{percentHours}%</td>
-                          <td className="py-3.5 px-5 text-right pr-6 text-[#501f92]">{isProjectPendingToStart ? 'Por iniciar' : currentProject.status}</td>
+                          <td className="py-3.5 px-5 text-right pr-6 text-[#501f92]">{projectStageLabel}</td>
                         </tr>
                       </tfoot>
                     </table>
@@ -2734,7 +2811,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                 {/* Presentaciones al cliente (misma fuente que «Ver cronograma y acuerdos»): una fila por
                     presentación con su fase, tipo y días. Por defecto: wireframe (checkpoint), prototipo y
                     funcionalidad; se agregan más con «Añadir». */}
-                {!isCurrentProjectFee && (() => {
+                {!isCurrentProjectFee && !isCurrentProjectInternal && (() => {
                   const steps = phaseStepsDraft || kickoffDefaultSteps;
                   // Cambiar presentaciones no cambia la producción: siempre = semanas del alcance × 5 (si cabe)
                   const setSteps = (next: PhaseSteps[]) => setPhaseStepsDraft(rebalanceToTarget(next, scheduleDurationWeeks * 5));
@@ -2982,7 +3059,11 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                               {conflict.person} · {conflict.hours}h · libre {conflict.freeInWindow}h entre {formatDate(conflict.windowStart)} y {formatDate(conflict.windowEnd)}
                             </span>
                           </span>
-                          {suggestion ? (
+                          {suggestion && !canEditProject ? (
+                            <span className="shrink-0 text-[10.5px] text-[#475569] font-semibold" title="Comercial no reasigna personas (#145): lo decide el líder del proyecto en «Carga del equipo»">
+                              Sugerido: {suggestion.user.name.split(' ')[0]} · lo decide el líder
+                            </span>
+                          ) : suggestion ? (
                             <button
                               type="button"
                               onClick={() => handleReassignForCapacity(conflict.taskId, suggestion.user)}
@@ -3299,6 +3380,9 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                     >
                       {prj.projectType === 'fee_monthly' ? 'Fee mensual' : 'Proyecto único'}
                     </span>
+                    {isInternalProject(prj) && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-[#ecfdf5] text-[#047857]">Interno</span>
+                    )}
                     {prj.status === 'Archivado' ? (
                       <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-lg bg-[#f1f5f9] text-[#64748b]">
                         Archivado
@@ -3307,8 +3391,12 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                       <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-lg bg-[#ecfdf5] text-[#065f46] border border-[#a7f3d0]">
                         Cerrado
                       </span>
-                    ) : !prj.startDate ? (
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-lg bg-[#eff6ff] text-[#1d4ed8] border border-[#bfdbfe]">
+                    ) : prj.status === 'En Pausa' ? (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-lg bg-[#fffbeb] text-[#b45309] border border-[#fde68a]">
+                        En pausa
+                      </span>
+                    ) : (!prj.startDate || !prj.isKickedOff || prj.status === 'Planificación') ? (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-lg bg-[#faf5ff] text-[#501f92] border border-[#e9d5ff]">
                         Por iniciar
                       </span>
                     ) : prj.startDate > todayStr ? (
@@ -3436,7 +3524,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                 <div className="flex items-center justify-between text-[11px] text-[#64748b] pt-1">
                   <span>{prj.completedTasksCount} / {prj.totalTasksCount} tareas listas</span>
                   <span className="font-bold text-[#501f92] flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
-                    Ver frentes & tareas →
+                    Ver entregables y tareas →
                   </span>
                 </div>
               </div>

@@ -40,8 +40,45 @@ export function contractEndDate(startIso: string, months: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-export function taskCycleKey(t: Pick<TaskItem, 'cycleKey' | 'scheduledDate' | 'dueDate' | 'date'>): string {
-  return t.cycleKey || monthKeyOf(t.scheduledDate || t.dueDate || t.date);
+const MONTHS_SHORT = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+const shortDate = (iso: string) => { const [, m, d] = iso.split('-').map(Number); return `${d} ${MONTHS_SHORT[(m || 1) - 1]}`; };
+
+/**
+ * Inicio del ciclo N (0 = primero): el ciclo va de «día del contrato» a «día del contrato − 1» del mes
+ * siguiente (23 Nov – 22 Dic). Si el día no existe en ese mes (31), se usa el último día del mes.
+ */
+export function cycleStartDate(contractStartIso: string, offset: number): string {
+  const [y, m, d] = contractStartIso.slice(0, 10).split('-').map(Number);
+  const idx = y * 12 + (m - 1) + offset;
+  const ty = Math.floor(idx / 12);
+  const tm = idx % 12;
+  const last = new Date(Date.UTC(ty, tm + 1, 0)).getUTCDate();
+  return `${ty}-${String(tm + 1).padStart(2, '0')}-${String(Math.min(d, last)).padStart(2, '0')}`;
+}
+const dayBefore = (iso: string) => { const dt = new Date(`${iso}T00:00:00Z`); dt.setUTCDate(dt.getUTCDate() - 1); return dt.toISOString().slice(0, 10); };
+
+/**
+ * Nombre del ciclo (23 Nov 2026): si el contrato empieza el día 1, el ciclo es el mes calendario
+ * («Noviembre 2026»); si empieza otro día, se nombra por sus fechas reales («23 Nov – 22 Dic»), para que
+ * nunca haya tareas de un «Noviembre» que terminan en diciembre.
+ */
+export function cycleLabel(startIso: string, endIso: string): string {
+  if (startIso.endsWith('-01')) return monthLabel(startIso.slice(0, 7));
+  return `${shortDate(startIso)} – ${shortDate(endIso)}${startIso.slice(0, 4) !== endIso.slice(0, 4) ? ` ${endIso.slice(0, 4)}` : ''}`;
+}
+
+/**
+ * Ciclo al que pertenece una tarea. Primero su `cycleKey`; si no lo tiene, se deriva de su fecha:
+ * con el inicio del contrato, por el ciclo real (23 Nov – 22 Dic → '2026-11'); sin él, por el mes.
+ */
+export function taskCycleKey(t: Pick<TaskItem, 'cycleKey' | 'scheduledDate' | 'dueDate' | 'date'>, contractStartIso?: string | null): string {
+  if (t.cycleKey) return t.cycleKey;
+  const iso = (t.scheduledDate || t.dueDate || t.date || '').slice(0, 10);
+  if (!contractStartIso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return monthKeyOf(iso);
+  const startDay = Number(contractStartIso.slice(8, 10));
+  const day = Number(iso.slice(8, 10));
+  // Antes del día del contrato, la fecha pertenece al ciclo que empezó el mes anterior
+  return day >= startDay || startDay === 1 ? monthKeyOf(iso) : addMonthsToKey(monthKeyOf(iso), -1);
 }
 
 
@@ -64,11 +101,11 @@ export function buildFeeCycles(params: {
   rolloverOverrides?: Record<string, FeeRolloverPolicy>;
 }): ProjectMonthlyCycle[] {
   const policyFor = (key: string): FeeRolloverPolicy | undefined => params.rolloverOverrides?.[key] ?? params.rolloverPolicy;
-  const todayKey = monthKeyOf(params.todayIso || new Date().toISOString());
+  const today = (params.todayIso || new Date().toISOString()).slice(0, 10);
   const startKey = monthKeyOf(params.contractStartDate);
   const executedBy = new Map<string, number>();
   params.tasks.forEach((t) => {
-    const k = taskCycleKey(t);
+    const k = taskCycleKey(t, params.contractStartDate);
     executedBy.set(k, (executedBy.get(k) || 0) + (t.consumedSeconds || 0) / 3600);
   });
 
@@ -78,13 +115,17 @@ export function buildFeeCycles(params: {
   params.periods.forEach((period, pIdx) => {
     for (let i = 0; i < period.months; i++, offset++) {
       const key = addMonthsToKey(startKey, offset);
-      const status: ProjectMonthlyCycle['status'] = key < todayKey ? 'closed' : key === todayKey ? 'active' : 'upcoming';
+      const startDate = cycleStartDate(params.contractStartDate, offset);
+      const endDate = dayBefore(cycleStartDate(params.contractStartDate, offset + 1));
+      const status: ProjectMonthlyCycle['status'] = endDate < today ? 'closed' : startDate <= today ? 'active' : 'upcoming';
       const executed = Number((executedBy.get(key) || 0).toFixed(1));
       const policyIn = policyFor(key);
       const rolloverIn = policyIn && policyIn !== 'none' ? carry : 0;
       cycles.push({
         monthKey: key,
-        monthLabel: monthLabel(key),
+        monthLabel: cycleLabel(startDate, endDate),
+        startDate,
+        endDate,
         quotedHours: period.monthlyHours,
         rolloverHoursIn: rolloverIn > 0 ? Number(rolloverIn.toFixed(1)) : undefined,
         executedHours: executed,
@@ -125,6 +166,7 @@ export function generateCycleTasks(templateTasks: TaskItem[], fromKey: string, t
     ...t,
     id: `${t.id.split('@')[0]}@${toKey}-${i}`,
     cycleKey: toKey,
+    createdAt: new Date().toISOString(),
     status: 'todo',
     completed: false,
     completedAt: undefined,

@@ -827,15 +827,15 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                           <button
                             type="button"
                             onClick={() => onStartTimer(scopingTask)}
-                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                            className={`w-8 h-8 rounded-xl transition-colors cursor-pointer flex items-center justify-center ${
                               isTimerRunningOnScoping
                                 ? 'bg-[#ef4444] text-white animate-pulse'
-                                : 'bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[#0f172a]'
+                                : 'bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[#501f92]'
                             }`}
-                            title="Iniciar timer para imputar horas de preventa a UHURA Group / New Business"
+                            title={isTimerRunningOnScoping ? 'Timer de preventa corriendo' : 'Iniciar timer de preventa (horas a UHURA Group · New Business)'}
+                            aria-label={isTimerRunningOnScoping ? 'Timer de preventa corriendo' : 'Iniciar timer de preventa'}
                           >
-                            <Play className="w-3.5 h-3.5 text-[#501f92]" />
-                            <span>{isTimerRunningOnScoping ? 'Grabando...' : 'Timer Preventa'}</span>
+                            <Play className="w-3.5 h-3.5" />
                           </button>
                         )}
                         {(onOpenOpportunity || onNavigateToView) && (
@@ -848,8 +848,9 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                               } else onNavigateToView?.('new-business');
                             }}
                             className="px-3.5 py-1.5 rounded-xl bg-[#f5f3ff] text-[#501f92] border border-[#ddd6fe] hover:bg-[#ede9fe] font-semibold text-xs transition-colors cursor-pointer"
+                            title="Abrir la oportunidad"
                           >
-                            Abrir oportunidad →
+                            Abrir →
                           </button>
                         )}
                       </div>
