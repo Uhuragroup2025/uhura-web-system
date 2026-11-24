@@ -306,7 +306,9 @@ function seedTask(p: SeedProject, t: {
     executedRoleSnapshot: t.role,
     assignee: { id: t.who.id, name: t.who.name, initials: t.who.initials, avatarBg: t.who.avatarBg, role: t.who.role },
     requestedBy: 'Paola Monsalve',
-    reviewer: { name: 'Paola (Lead PM)', initials: 'PM', avatarBg: 'bg-[#501f92]', role: 'Product Lead' },
+    reviewer: { name: 'Paola Monsalve', initials: 'PM', avatarBg: 'bg-[#501f92]', role: 'Product Lead' },
+    // Líder del proyecto con su nombre real (no el alias «Paola (Lead PM)»): permisos por persona, no por primer nombre
+    projectLead: { name: 'Paola Monsalve', initials: 'PM', avatarBg: 'bg-[#501f92]', role: 'Product Lead' },
     scheduledDate: t.start,
     date: t.start,
     startDate: t.start,

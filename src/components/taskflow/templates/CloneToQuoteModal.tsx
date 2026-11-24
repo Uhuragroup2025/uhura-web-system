@@ -206,7 +206,7 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
     const newAct: QuoteBacklogItem = {
       id: `qbi-${Date.now()}-${targetDel.backlogItems.length + 1}`,
       quoteDeliverableId: delId,
-      title: 'Nueva actividad ajustada para el cliente',
+      title: 'Nueva tarea ajustada para el cliente',
       description: '',
       roleId: 'Front-End Dev',
       roleName: 'Front-End Dev',
@@ -365,7 +365,7 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                     </span>
                   </div>
                   <p className="text-[11px] text-[#64748b] leading-relaxed">
-                    Clona entregables, actividades y horas desde la biblioteca gobernada por Producto.
+                    Clona entregables, tareas y horas desde la biblioteca gobernada por Producto.
                   </p>
                 </button>
 
@@ -533,7 +533,7 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                           <div className="text-[10px] text-[#64748b] flex items-center gap-2 border-t border-[#f1f5f9] pt-1.5">
                             <span>{t.deliverables.length} entregables</span>
                             <span>·</span>
-                            <span>{t.deliverables.flatMap((d) => d.activities).length} actividades</span>
+                            <span>{t.deliverables.flatMap((d) => d.activities).length} tareas</span>
                           </div>
                         </div>
                       );
@@ -622,7 +622,7 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                     Copia editable independiente generada con éxito (ID: {clonedQuote.id})
                   </p>
                   <p className="text-[11px] text-[#047857] leading-relaxed">
-                    Cualquier cambio de actividades, horas o roles que realices aquí afectará únicamente a esta cotización. 
+                    Cualquier cambio de tareas, horas o roles que realices aquí afectará únicamente a esta cotización. 
                     La plantilla maestra original en la biblioteca permanece 100% inalterada.
                   </p>
                 </div>
@@ -642,7 +642,7 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                 </div>
               </div>
 
-              {/* Entregables y Actividades de la Cotización */}
+              {/* Entregables y Tareas de la Cotización */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-[#334155] uppercase tracking-wider">
@@ -670,7 +670,7 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                           </span>
                           <span className="text-xs font-bold text-[#0f172a]">{del.name}</span>
                           <span className="text-[11px] text-[#64748b]">
-                            ({del.backlogItems.length} actividades)
+                            ({del.backlogItems.length} tareas)
                           </span>
                         </div>
                         <span className="text-xs font-bold text-[#8a4dff] px-2 py-0.5 rounded-lg bg-[#8a4dff]/10">
@@ -689,7 +689,7 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                                 {dIdx + 1}.{aIdx + 1}
                               </span>
 
-                              {/* Título de la actividad */}
+                              {/* Título de la tarea */}
                               <div className="flex-1 min-w-[200px]">
                                 <input
                                   type="text"
@@ -750,7 +750,7 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                                 <span className="text-[11px] text-[#64748b]">hrs</span>
                               </div>
 
-                              {/* Eliminar actividad */}
+                              {/* Eliminar tarea */}
                               <button
                                 type="button"
                                 onClick={() => handleRemoveActivityFromCloned(del.id, act.id)}
@@ -767,7 +767,7 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                             className="w-full py-1.5 border border-dashed border-[#cbd5e1] hover:border-[#8a4dff] text-[#8a4dff] text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 bg-[#fcfaff]/50 transition-colors cursor-pointer"
                           >
                             <Plus className="w-3.5 h-3.5" />
-                            <span>Agregar actividad personalizada</span>
+                            <span>Agregar tarea personalizada</span>
                           </button>
                         </div>
                       )}

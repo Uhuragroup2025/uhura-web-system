@@ -705,7 +705,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
     const invalid = scopeState.services.filter((sv) => serviceValidationMessages(sv).length > 0);
     const problems = [
       !scopeHasLink ? 'Falta el enlace de la presentación.' : '',
-      scopeState.services.length === 0 || !hasHours ? 'Agrega al menos un servicio con actividades y horas.' : '',
+      scopeState.services.length === 0 || !hasHours ? 'Agrega al menos un servicio con tareas y horas.' : '',
       ...invalid.map((sv) => `${sv.name}: ${serviceValidationMessages(sv).join(' ')}`),
       unsaved.length ? `Guarda ${unsaved.length === 1 ? 'el servicio' : 'los servicios'}: ${unsaved.map((sv) => sv.name).join(', ')}.` : ''
     ].filter(Boolean);
@@ -836,9 +836,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
     }
     return Array.from(map.values()).sort((a, b) => b.hours - a.hours);
   }, [scopingTask, timeLogs, users]);
-  const canSeePreventaCost = Boolean(
-    currentUser && ['system_admin', 'commercial', 'executive', 'administrative'].includes(currentUser.accessLevel || '')
-  );
+  // Solo horas, sin costo en pesos (decisión 24 Nov 2026): el costo en la propuesta generaba ansiedad.
 
   // Context counts for pipeline overview
   const porDimensionarCount = opportunities.filter((o) => o.status === 'discovery').length;
@@ -916,6 +914,17 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
 
   // Callback when a new opportunity is created
   const [commercialTeamUi, setCommercialTeamUi] = useState<Record<string, string[]>>({});
+  // «Pedir ajuste de alcance» es de Comercial (§31): quien trae el negocio, Client Relationship,
+  // Dirección y Admin. Un líder lo ve solo si es el comercial de esta oportunidad (23 Nov 2026).
+  const canRequestScopeChange = useMemo(() => {
+    if (qaOverrideCommercialPermissions !== null) return qaOverrideCommercialPermissions;
+    if (!currentUser) return true;
+    const ownerMatch = activeOpp?.commercialOwner && (currentUser.id === activeOpp.commercialOwner || currentUser.name === activeOpp.commercialOwner);
+    const team = (activeOpp && commercialTeamUi[activeOpp.id]) || [];
+    return Boolean(ownerMatch) || team.includes(currentUser.id) ||
+      ['commercial', 'client_relationship', 'executive', 'system_admin'].includes(currentUser.accessLevel || '');
+  }, [currentUser, activeOpp, commercialTeamUi, qaOverrideCommercialPermissions]);
+
   const handleCreatedOpportunity = (newOpp: NewBusinessOpportunity, commercialUserIds: string[] = []) => {
     setCommercialTeamUi((previous) => ({ ...previous, [newOpp.id]: commercialUserIds }));
     onCreateOpportunity(newOpp);
@@ -1339,7 +1348,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                     </button>
                   </div>
                   <p className="text-[11.5px] text-white/90 leading-relaxed bg-white/5 p-2.5 rounded-xl border border-white/10 mb-3">
-                    El espacio donde los líderes dimensionan técnicamente las oportunidades recibidas de Comercial (briefs), construyen entregables y actividades, generan cotizaciones y habilitan la transición a Proyectos. El SOW se gestiona desde el Cliente, dentro del proyecto correspondiente.
+                    El espacio donde los líderes dimensionan técnicamente las oportunidades recibidas de Comercial (briefs), construyen entregables y tareas, generan cotizaciones y habilitan la transición a Proyectos. El SOW se gestiona desde el Cliente, dentro del proyecto correspondiente.
                   </p>
                   <div className="space-y-2.5 text-[11px] text-white/85 leading-relaxed">
                     <div className="flex items-start gap-2">
@@ -1801,6 +1810,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
           existingClients={clients}
           templates={templates}
           users={users}
+          currentUser={currentUser}
           onClose={() => setIsNewOppModalOpen(false)}
           onSaveOpportunity={handleCreatedOpportunity}
         />
@@ -2435,11 +2445,6 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                         ))}
                       </ul>
                     )}
-                    {canSeePreventaCost && preventaByPerson.length > 0 && (
-                      <p className="text-[10.5px] text-[#64748b] leading-snug">
-                        Costo de preventa: disponible cuando ECO tenga el costo hora de cada persona (Costos de operación).
-                      </p>
-                    )}
                   </div>
                 </div>
               </div>
@@ -2553,7 +2558,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                   <CheckCircle2 className={`w-3.5 h-3.5 ${isScopeMarkedReady ? 'text-[#d4ff4a]' : scopeCanBeMarkedReady ? 'text-white' : 'text-[#501f92]'}`} />
                   <span>{isScopeMarkedReady ? 'Listo para cotizar' : 'Marcar alcance listo'}</span>
                 </button>}
-                {isScopeMarkedReady && activeOpp?.status !== 'won' && canEditOpp && (
+                {isScopeMarkedReady && activeOpp?.status !== 'won' && canEditOpp && canRequestScopeChange && (
                   <button
                     type="button"
                     onClick={() => setIsScopeChangeOpen((v) => !v)}
@@ -2644,7 +2649,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                   </button>
                 </div>
                 {scopeMissingLink && <p role="alert" className="text-[11px] font-semibold text-[#dc2626]">Falta el enlace de la presentación o propuesta en Drive.</p>}
-                {scopeAttempted && scopeState.services.length === 0 && <p role="alert" className="text-[11px] font-semibold text-[#dc2626]">Agrega al menos un servicio con actividades y horas.</p>}
+                {scopeAttempted && scopeState.services.length === 0 && <p role="alert" className="text-[11px] font-semibold text-[#dc2626]">Agrega al menos un servicio con tareas y horas.</p>}
               </div>
 
             </div>
@@ -3463,6 +3468,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
         existingClients={clients}
         templates={templates}
         users={users}
+        currentUser={currentUser}
         onClose={() => setIsNewOppModalOpen(false)}
         onSaveOpportunity={handleCreatedOpportunity}
       />

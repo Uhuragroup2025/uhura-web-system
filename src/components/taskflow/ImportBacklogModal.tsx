@@ -21,7 +21,7 @@ interface ImportBacklogModalProps {
   onImportTasks: (importedTasks: Partial<TaskItem>[]) => void;
 }
 
-const SAMPLE_CSV_DATA = `Fase	Frente	Tarea	Rol	Responsable	Horas	Inicio	Entrega	Dependencia
+const SAMPLE_CSV_DATA = `Fase	Entregable	Tarea	Rol	Responsable	Horas	Inicio	Entrega	Dependencia
 Discovery & Estrategia	Investigación	Benchmark de competencia y arquitectura	Product Lead	Paola Monsalve	4	2026-09-01	2026-09-03	
 Discovery & Estrategia	Investigación	Entrevistas a usuarios & mapa de empatía	Product Lead	Paola Monsalve	6	2026-09-04	2026-09-08	Benchmark de competencia y arquitectura
 UI/UX & Prototipado	Diseño UI	Design System & Tokens en Figma	Digital Designer	Laura Isabel Gómez	12	2026-09-09	2026-09-15	Entrevistas a usuarios & mapa de empatía
@@ -210,7 +210,7 @@ export const ImportBacklogModal: React.FC<ImportBacklogModalProps> = ({
               value={rawText}
               onChange={(e) => setRawText(e.target.value)}
               className="w-full text-xs font-mono p-3.5 rounded-2xl bg-white text-[#0f172a] border-2 border-[#cbd5e1] focus:border-[#501f92] focus:ring-2 focus:ring-[#501f92]/20 outline-none leading-relaxed shadow-inner placeholder:text-[#7C8AA0]"
-              placeholder="Fase	Frente	Tarea	Rol	Responsable	Horas	Inicio	Entrega	Dependencia"
+              placeholder="Fase	Entregable	Tarea	Rol	Responsable	Horas	Inicio	Entrega	Dependencia"
             />
           </div>
 

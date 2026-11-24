@@ -14,7 +14,8 @@ import {
   MessageSquare,
   X,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Trash2
 } from 'lucide-react';
 import { calculateBusinessDays } from '../health/projectHealthEngine';
 
@@ -38,8 +39,9 @@ export const ProjectDependenciesSection: React.FC<ProjectDependenciesSectionProp
   const dependencies = project.dependencies || [];
   const pendingCount = dependencies.filter((d) => d.status === 'pending').length;
   const blockingCount = dependencies.filter((d) => d.blocking && d.status === 'pending').length;
+  // Un proyecto tiene 3 o 4 insumos: sin filtros. Se abre solo si hay algo pendiente que bloquea.
   const [isExpanded, setIsExpanded] = useState(blockingCount > 0);
-  const [depFilter, setDepFilter] = useState<'all' | 'blocking' | 'pending' | 'received'>('all');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   // Modal states
   const [isNewDependencyModalOpen, setIsNewDependencyModalOpen] = useState(false);
@@ -56,12 +58,18 @@ export const ProjectDependenciesSection: React.FC<ProjectDependenciesSectionProp
   const [newDepFollowUpOwnerId, setNewDepFollowUpOwnerId] = useState(currentUser?.id || 'u-3');
   const [newDepDeliverableId, setNewDepDeliverableId] = useState<string>('');
 
-  const filteredDependencies = dependencies.filter((d) => {
-    if (depFilter === 'blocking') return d.blocking && d.status === 'pending';
-    if (depFilter === 'pending') return d.status === 'pending';
-    if (depFilter === 'received') return d.status === 'received';
-    return true;
+  // Orden: pendientes que bloquean, luego pendientes por fecha, y al final los recibidos.
+  const filteredDependencies = [...dependencies].sort((a, b) => {
+    const rank = (d: ProjectDependency) => (d.status === 'received' ? 2 : d.blocking ? 0 : 1);
+    return rank(a) - rank(b) || String(a.expectedDate || '').localeCompare(String(b.expectedDate || ''));
   });
+
+  /** Eliminar un insumo creado por error (con confirmación). Queda fuera del proyecto. */
+  const handleDeleteDependency = (depId: string) => {
+    if (!onUpdateProject) return;
+    onUpdateProject({ ...project, dependencies: dependencies.filter((d) => d.id !== depId) });
+    setConfirmDeleteId(null);
+  };
 
   const handleMarkReceived = (depId: string) => {
     if (!onUpdateProject) return;
@@ -154,64 +162,26 @@ export const ProjectDependenciesSection: React.FC<ProjectDependenciesSectionProp
             <div className="flex items-center gap-2 flex-wrap">
               <Hourglass className="w-4 h-4 text-[#501f92]" />
               <h3 className="font-extrabold text-sm text-[#0f172a]">
-                Dependencias, Insumos & Aprobaciones de Cliente
+                Insumos del cliente{dependencies.length > 0 ? ` (${dependencies.length})` : ''}
               </h3>
               {blockingCount > 0 && (
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#fef2f2] text-[#b91c1c] border border-[#fecaca]">
                   {blockingCount} bloqueante{blockingCount > 1 ? 's' : ''}
                 </span>
               )}
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#e0f2fe] text-[#0369a1]">
-                {pendingCount} pendiente{pendingCount !== 1 ? 's' : ''}
-              </span>
+              {pendingCount > 0 && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#e0f2fe] text-[#0369a1]">
+                  {pendingCount} pendiente{pendingCount !== 1 ? 's' : ''}
+                </span>
+              )}
             </div>
             <p className="text-[11px] text-[#64748b] mt-0.5">
-              Control de entregables y tareas bloqueadas por accesos, manuales o feedback del cliente.
+              Lo que el cliente nos debe entregar (accesos, manual de marca, aprobaciones). <strong className="text-[#475569]">No son tareas del equipo:</strong> las tareas se crean arriba, en cada entregable.
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap self-end sm:self-center">
-          {/* Filter Pills */}
-          <div className="flex items-center bg-[#f1f5f9] p-0.5 rounded-xl text-xs font-semibold">
-            <button
-              type="button"
-              onClick={() => {
-                setDepFilter('all');
-                setIsExpanded(true);
-              }}
-              className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-                depFilter === 'all' ? 'bg-white text-[#501f92] shadow-2xs font-bold' : 'text-[#64748b]'
-              }`}
-            >
-              Todas ({dependencies.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setDepFilter('blocking');
-                setIsExpanded(true);
-              }}
-              className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-                depFilter === 'blocking' ? 'bg-white text-[#501f92] shadow-2xs font-bold' : 'text-[#64748b]'
-              }`}
-            >
-              Bloqueantes
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setDepFilter('pending');
-                setIsExpanded(true);
-              }}
-              className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-                depFilter === 'pending' ? 'bg-white text-[#501f92] shadow-2xs font-bold' : 'text-[#64748b]'
-              }`}
-            >
-              Pendientes
-            </button>
-          </div>
-
           {canManageDependencies && (
             <button
               type="button"
@@ -230,9 +200,9 @@ export const ProjectDependenciesSection: React.FC<ProjectDependenciesSectionProp
         <div className="space-y-2">
           {filteredDependencies.length === 0 ? (
             <div className="text-center py-5 bg-[#f8fafc] rounded-2xl border border-dashed border-[#cbd5e1]">
-              <p className="text-xs font-bold text-[#475569]">No hay dependencias registradas en este filtro</p>
+              <p className="text-xs font-bold text-[#475569]">Este proyecto no tiene insumos del cliente</p>
               <p className="text-[11px] text-[#64748b] mt-0.5">
-                Registra insumos pendientes de cliente como manuales de marca, accesos o aprobaciones de gates.
+                Registra lo que el cliente debe entregar: manual de marca, accesos o una aprobación.
               </p>
             </div>
           ) : (
@@ -340,6 +310,38 @@ export const ProjectDependenciesSection: React.FC<ProjectDependenciesSectionProp
                         <CheckCircle2 className="w-3.5 h-3.5" /> Recibido
                       </span>
                     )}
+
+                    {canManageDependencies && onUpdateProject && (
+                      confirmDeleteId === dep.id ? (
+                        <span className="flex items-center gap-1.5 text-[11px]">
+                          <span className="font-bold text-[#991b1b]">¿Eliminar este insumo?</span>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteDependency(dep.id)}
+                            className="px-2 py-1 rounded-lg bg-[#dc2626] hover:bg-[#b91c1c] text-white font-bold cursor-pointer"
+                          >
+                            Eliminar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeleteId(null)}
+                            className="px-2 py-1 rounded-lg text-[#64748b] font-bold cursor-pointer hover:bg-[#f1f5f9]"
+                          >
+                            Cancelar
+                          </button>
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDeleteId(dep.id)}
+                          className="p-1.5 rounded-lg text-[#94a3b8] hover:text-[#dc2626] hover:bg-[#fef2f2] cursor-pointer"
+                          title="Eliminar insumo (si se creó por error)"
+                          aria-label={`Eliminar insumo ${dep.title}`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )
+                    )}
                   </div>
                 </div>
               );
@@ -355,7 +357,7 @@ export const ProjectDependenciesSection: React.FC<ProjectDependenciesSectionProp
             <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-3">
               <div className="flex items-center gap-2">
                 <Hourglass className="w-4 h-4 text-[#501f92]" />
-                <h3 className="text-base font-extrabold text-[#0f172a]">Registrar insumo</h3>
+                <h3 className="text-base font-extrabold text-[#0f172a]">Nuevo insumo del cliente</h3>
               </div>
               <button
                 type="button"
@@ -368,7 +370,7 @@ export const ProjectDependenciesSection: React.FC<ProjectDependenciesSectionProp
 
             <form onSubmit={handleCreateDependency} className="space-y-3.5 text-xs">
               <div>
-                <label className="block text-xs font-bold text-[#334155] mb-1">Título del Insumo / Gate:</label>
+                <label className="block text-xs font-bold text-[#334155] mb-1">¿Qué debe entregar el cliente?</label>
                 <input
                   type="text"
                   required

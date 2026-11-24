@@ -227,13 +227,14 @@ export const ClientKickoffView: React.FC<ClientKickoffViewProps> = (props) => {
         <header className="bg-white rounded-2xl border border-[#e7e3ef] shadow-sm overflow-hidden">
           <div className="h-1.5 bg-gradient-to-r from-[#501f92] via-[#8a4dff] to-[#d4ff4a]" />
           <div className="px-6 sm:px-7 pt-5 pb-5">
-            <div className="flex items-start justify-between gap-4 flex-wrap">
-              <div className="min-w-0 flex-1">
+            {/* En celular y tablet las acciones van arriba y el título ocupa todo el ancho (sin espacio en blanco al lado); desde escritorio, lado a lado. */}
+            <div className="flex flex-col-reverse gap-3 lg:flex-row lg:items-start lg:justify-between lg:gap-4">
+              <div className="min-w-0 lg:flex-1">
                 <p className="text-[12px] font-medium text-[#64748b]">{props.clientName || 'Cliente'} · Uhura Group</p>
                 <h2 className="text-[22px] font-extrabold text-[#0f172a] leading-tight [text-wrap:balance] mt-0.5">{props.projectName}</h2>
                 <p className="text-[13px] text-[#64748b] mt-1">Cronograma y acuerdos del proyecto</p>
               </div>
-              <div className="no-print flex items-center gap-1.5 shrink-0 flex-wrap">
+              <div className="no-print flex items-center justify-end gap-1.5 flex-wrap lg:shrink-0">
                 {canEdit && props.onApply && props.applyPending && (
                   <button type="button" onClick={props.onApply} className="inline-flex items-center h-8 px-3 rounded-lg bg-[#501f92] hover:bg-[#3d1572] text-white text-[13px] font-semibold cursor-pointer" title="Reprograma las fases y las tareas del proyecto con estos cambios">
                     Aplicar al cronograma

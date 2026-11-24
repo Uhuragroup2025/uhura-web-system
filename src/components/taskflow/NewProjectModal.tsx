@@ -1,43 +1,38 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { formatDate } from '../../utils/formatters';
-import {
-  X,
-  Briefcase,
-  Layers,
-  Users,
-  CheckCircle2,
-  Calendar,
-  Clock,
-  Plus,
-  Trash2,
-  Building2,
-  ChevronRight,
-  ChevronLeft,
-  Info,
-  ShieldCheck,
-  Search,
-  Sparkles,
-  Check,
-  AlertCircle,
-  UserPlus,
-  UserCheck,
-  AlertTriangle
-} from 'lucide-react';
+/**
+ * Nuevo proyecto desde Proyectos (24 Nov 2026): mismo flujo que un proyecto que nace en New Business.
+ *
+ * 1. Proyecto: cliente, nombre, líder, tipo (Proyecto único o Fee mensual) y la característica
+ *    «Interno · no facturable». Fecha de inicio para ambos; el fee pide además los meses del contrato.
+ * 2. Alcance: el mismo editor de New Business («Importar alcance» / «Crear alcance»), con entregables,
+ *    tareas, rol, horas y semanas por servicio.
+ * 3. Fechas: en un proyecto único, la fecha de entrega se sugiere con el MISMO cálculo de «Iniciar proyecto»
+ *    (semanas de producción + QA del cliente de cada presentación; cada presentación trae su ronda de
+ *    ajustes; días hábiles sin festivos) y se puede editar. El fee no tiene fecha fin ni rondas.
+ *
+ * El proyecto nace «Por iniciar» con sus entregables y tareas. «Iniciar proyecto» programa las fechas
+ * de cada tarea con el mismo motor que usa un proyecto convertido desde New Business.
+ */
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ClientProfile,
-  ProjectType,
-  ProjectDeliverable,
-  DeliverableRoleBudget,
-  ProjectTeamMember,
   FeeRolloverPolicy,
-  STANDARD_UHURA_ROLES,
-  StandardUhuraRole,
+  ProductBacklogTemplate,
+  ProjectDeliverable,
+  ProjectScheduleConfig,
+  ProjectTeamMember,
+  ProjectType,
+  QuoteProposal,
   TaskItem,
   UserItem
 } from './types';
 import { initialUsers } from './mockData';
-import { checkAssigneeAvailability } from './copilot/teamLifeEngine';
-import { UserAvatar } from './UserAvatar';
+import { BacklogScoper, ScopeServiceDraft } from './newbusiness/BacklogScoper';
+import { getScopeWeeks, resolveServiceArea } from './newbusiness/teamCandidates';
+import { CATALOG_2026 } from './templates/catalog2026';
+import { buildDefaultSteps, computePhaseSchedule, rebalanceToTarget } from './schedule/clientTimeline';
+import { businessDaysInRange } from './schedule/scheduleEngine';
+import { formatDate } from '../../utils/formatters';
+import { X, Briefcase, ChevronLeft, ChevronRight, CalendarDays, Layers, Info } from 'lucide-react';
 
 export interface NewProjectPayload {
   name: string;
@@ -46,6 +41,8 @@ export interface NewProjectPayload {
   taxEntityId?: string | null;
   brand: string;
   projectType: ProjectType;
+  /** Interno / no facturable: característica de un proyecto único o un fee (no un tipo aparte). */
+  nonBillable?: boolean;
   serviceBase: string;
   areas?: string[];
   leadName: string;
@@ -59,11 +56,16 @@ export interface NewProjectPayload {
   soldValueCOP?: number;
   soldCurrency?: 'COP' | 'USD';
   startDate: string;
+  /** Proyecto único: entrega sugerida (semanas + rondas) o la que eligió el líder. Fee: sin fecha fin. */
   endDate?: string;
   brief?: string;
   deliverables: ProjectDeliverable[];
   coreTeam: ProjectTeamMember[];
   rolloverPolicy?: FeeRolloverPolicy;
+  /** Fee mensual: meses del contrato. */
+  contractMonths?: number;
+  /** Semanas y rondas que usará «Iniciar proyecto» (igual que un proyecto convertido). */
+  scheduleConfig?: ProjectScheduleConfig;
   status: 'Activo' | 'Planificación';
   teamMembers?: { name: string; role: string; avatarBg: string; initials: string }[];
   tasksToCreate?: Omit<TaskItem, 'id'>[];
@@ -74,1741 +76,515 @@ interface NewProjectModalProps {
   onClose: () => void;
   clients: ClientProfile[];
   users?: UserItem[];
+  templates?: ProductBacklogTemplate[];
   preselectedClientId?: string | null;
   onAddProject: (projectData: NewProjectPayload) => void;
 }
 
-const AVAILABLE_LEADS = [
-  { id: 'lead-1', name: 'Paola Monsalve', role: 'Product Lead', avatarBg: 'bg-[#501f92]', initials: 'PM' },
-  { id: 'lead-2', name: 'Catalina Tejada', role: 'Directora Comercial', avatarBg: 'bg-[#7c3aed]', initials: 'CT' },
-  { id: 'lead-3', name: 'Diego Cadavid', role: 'Creative Strategy Lead', avatarBg: 'bg-[#dc2626]', initials: 'DC' },
-  { id: 'lead-4', name: 'Camilo Velez', role: 'Growth Manager', avatarBg: 'bg-[#059669]', initials: 'CV' },
-  { id: 'lead-5', name: 'Ana Giraldo', role: 'CEO', avatarBg: 'bg-[#501f92]', initials: 'AG' },
-  { id: 'lead-6', name: 'Luisa Fernanda Urazán', role: 'Client Relationship Strategist', avatarBg: 'bg-[#0284c7]', initials: 'LU' }
-];
+const today = () => new Date().toISOString().slice(0, 10);
 
-export const AVAILABLE_TEAM_MEMBERS: {
-  id: string;
-  name: string;
-  role: StandardUhuraRole | 'CEO' | 'Administrativa';
-  avatarBg: string;
-  initials: string;
-  configuredWeeklyHours: number;
-  currentAllocatedWeeklyHours: number;
-}[] = [
-  { id: 'tm-1', name: 'Luisa Fernanda Urazán', role: 'Client Relationship Strategist', avatarBg: 'bg-[#0284c7]', initials: 'LU', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 18 },
-  { id: 'tm-2', name: 'Diego Cadavid', role: 'Creative Strategy Lead', avatarBg: 'bg-[#dc2626]', initials: 'DC', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 28 },
-  { id: 'tm-3', name: 'Esmeralda Duque Ramírez', role: 'Content Creator', avatarBg: 'bg-[#8b5cf6]', initials: 'ED', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 22 },
-  { id: 'tm-4', name: 'Nayeliz Brunal', role: 'Digital Content Specialist', avatarBg: 'bg-[#14b8a6]', initials: 'NB', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 19 },
-  { id: 'tm-5', name: 'Laura Isabel Gómez', role: 'Digital Designer', avatarBg: 'bg-[#0284c7]', initials: 'LG', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 25 },
-  { id: 'tm-6', name: 'Catalina Tejada', role: 'Directora Comercial', avatarBg: 'bg-[#7c3aed]', initials: 'CT', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 20 },
-  { id: 'tm-7', name: 'Juan Sebastian', role: 'Trafficker Media', avatarBg: 'bg-[#10b981]', initials: 'JS', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 30 },
-  { id: 'tm-8', name: 'Paola Monsalve', role: 'Product Lead', avatarBg: 'bg-[#501f92]', initials: 'PM', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 24 },
-  { id: 'tm-9', name: 'Ana Giraldo', role: 'CEO', avatarBg: 'bg-[#501f92]', initials: 'AG', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 15 },
-  { id: 'tm-10', name: 'Oscar Cerpa', role: 'Front-End Dev', avatarBg: 'bg-[#f59e0b]', initials: 'OC', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 26 },
-  { id: 'tm-11', name: 'Sara Rivera', role: 'Community Manager', avatarBg: 'bg-[#ec4899]', initials: 'SR', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 18 },
-  { id: 'tm-12', name: 'Simón Vélez', role: 'Trafficker Media', avatarBg: 'bg-[#10b981]', initials: 'SV', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 27 },
-  { id: 'tm-13', name: 'Melisa Gil', role: 'Creative Designer', avatarBg: 'bg-[#d946ef]', initials: 'MG', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 29 },
-  { id: 'tm-14', name: 'Camilo Velez', role: 'Growth Manager', avatarBg: 'bg-[#059669]', initials: 'CV', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 22 },
-  { id: 'tm-15', name: 'Juan Camilo Torres', role: 'Creative Designer', avatarBg: 'bg-[#6366f1]', initials: 'JT', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 24 },
-  { id: 'tm-16', name: 'Diego Alejandro Flores Vargas', role: 'Creative Designer', avatarBg: 'bg-[#06b6d4]', initials: 'DF', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 20 },
-  { id: 'tm-17', name: 'Sara Mar L', role: 'Creative Designer', avatarBg: 'bg-[#f43f5e]', initials: 'SM', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 25 },
-  { id: 'tm-18', name: 'Laura Viviana Salazar Perez', role: 'Administrativa', avatarBg: 'bg-[#64748b]', initials: 'LS', configuredWeeklyHours: 40, currentAllocatedWeeklyHours: 20 }
-];
+const emptyQuote = (): QuoteProposal => ({
+  id: `quote-new-project-${Date.now()}`,
+  opportunityId: 'new-project',
+  versionLabel: 'Alcance del proyecto',
+  order: 1,
+  status: 'draft',
+  deliverables: [],
+  totalHoursRollup: 0,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString()
+});
+
+const LEAD_LEVELS = ['leader', 'executive', 'system_admin', 'commercial', 'client_relationship'];
 
 export const NewProjectModal: React.FC<NewProjectModalProps> = ({
   isOpen,
   onClose,
   clients,
   users = initialUsers,
+  templates = [],
   preselectedClientId,
   onAddProject
 }) => {
-  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
-
-  // Available users from runtime or fallback
-  const availableUsers = useMemo(() => {
-    return users && users.length > 0 ? users : initialUsers;
-  }, [users]);
-
-  // Client Relationship Managers filtered strictly by functional capacity 'client_relationship'
-  const clientRelationshipUsers = useMemo(() => {
-    const list = availableUsers.filter(
-      (u) =>
-        u.accessLevel === 'client_relationship' ||
-        (u.officialRole && u.officialRole.toLowerCase().includes('client relationship')) ||
-        (u.jobTitle && u.jobTitle.toLowerCase().includes('cuentas')) ||
-        (u.jobTitle && u.jobTitle.toLowerCase().includes('relationship'))
-    );
-    return list.length > 0 ? list : availableUsers;
-  }, [availableUsers]);
-
-  // --- Step 1: Identidad & Marco ---
-  const [selectedClientId, setSelectedClientId] = useState<string>(
-    preselectedClientId || clients[0]?.id || ''
-  );
-  const [clientSearchQuery, setClientSearchQuery] = useState<string>('');
-  const [taxEntityId, setTaxEntityId] = useState<string>('none');
-  const [projectName, setProjectName] = useState<string>('');
-  const [brand, setBrand] = useState<string>('');
-  const [projectType, setProjectType] = useState<ProjectType>('fee_monthly');
-  const [startDate, setStartDate] = useState<string>(
-    new Date().toISOString().split('T')[0]
-  );
-  const [endDate, setEndDate] = useState<string>('');
-  const [selectedLead, setSelectedLead] = useState(AVAILABLE_LEADS[0]);
-  
-  // Responsable de cliente (Uhura) - inherited from ClientProfile if present
-  const initialClient = clients.find((c) => c.id === (preselectedClientId || clients[0]?.id));
-  const [accountManagerId, setAccountManagerId] = useState<string>(
-    initialClient?.accountManagerId || ''
-  );
-  const [accountManagerName, setAccountManagerName] = useState<string>(
-    initialClient?.accountManagerName || ''
+  const people = users.length ? users : initialUsers;
+  const leads = useMemo(
+    () => people.filter((u) => u.status !== 'Inactive' && LEAD_LEVELS.includes(u.accessLevel || '')),
+    [people]
   );
 
-  const [brief, setBrief] = useState<string>('');
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [attempted, setAttempted] = useState(false);
 
-  // --- Step 2: Alcance (Frentes, Horas & Asignación de Equipo) ---
+  // Paso 1 · Proyecto
+  const [clientId, setClientId] = useState('');
+  const [taxEntityId, setTaxEntityId] = useState('none');
+  const [name, setName] = useState('');
+  const [leadId, setLeadId] = useState('');
+  const [accountManagerId, setAccountManagerId] = useState('');
+  const [projectType, setProjectType] = useState<'fixed_project' | 'fee_monthly'>('fixed_project');
+  const [nonBillable, setNonBillable] = useState(false);
+  const [startDate, setStartDate] = useState(today());
+  const [contractMonths, setContractMonths] = useState(6);
   const [rolloverPolicy, setRolloverPolicy] = useState<FeeRolloverPolicy>('none');
-  const [deliverables, setDeliverables] = useState<{
-    id: string;
-    name: string;
-    description: string;
-    roleBudgets: {
-      id: string;
-      roleName: StandardUhuraRole;
-      quotedHours: number;
-      assignedMemberIds: string[];
-    }[];
-  }[]>([
-    {
-      id: 'del-draft-1',
-      name: 'Gestión de Redes & Contenido',
-      description: 'Parrilla mensual de publicaciones, copys y diseño de piezas',
-      roleBudgets: [
-        { id: 'rb-draft-1', roleName: 'Creative Designer', quotedHours: 16, assignedMemberIds: ['tm-13'] },
-        { id: 'rb-draft-2', roleName: 'Community Manager', quotedHours: 8, assignedMemberIds: ['tm-11'] }
-      ]
-    },
-    {
-      id: 'del-draft-2',
-      name: 'Landing Page & Activos Web',
-      description: 'Diseño, prototipado y ajustes de interfaz web',
-      roleBudgets: [
-        { id: 'rb-draft-3', roleName: 'Digital Designer', quotedHours: 6, assignedMemberIds: ['tm-5'] },
-        { id: 'rb-draft-4', roleName: 'Front-End Dev', quotedHours: 10, assignedMemberIds: ['tm-10'] }
-      ]
-    }
-  ]);
+  const [brief, setBrief] = useState('');
 
-  // Target for the immediate assignee picker popover/modal
-  const [assigneeModalTarget, setAssigneeModalTarget] = useState<{
-    delId: string;
-    delName: string;
-    roleBudgetId: string;
-    roleName: StandardUhuraRole;
-    quotedHours: number;
-  } | null>(null);
-  const [assigneeSearchQuery, setAssigneeSearchQuery] = useState<string>('');
+  // Paso 2 · Alcance (el mismo editor de New Business)
+  const [quote, setQuote] = useState<QuoteProposal>(emptyQuote);
+  const [services, setServices] = useState<ScopeServiceDraft[]>([]);
 
-  // Dedicación semanal en equipo base
-  const [selectedTeam, setSelectedTeam] = useState<{
-    memberId: string;
-    weeklyHours: number;
-  }[]>([
-    { memberId: 'tm-13', weeklyHours: 6 },
-    { memberId: 'tm-11', weeklyHours: 4 },
-    { memberId: 'tm-5', weeklyHours: 4 },
-    { memberId: 'tm-10', weeklyHours: 6 }
-  ]);
+  // Paso 3 · Fechas (solo proyecto único)
+  const [weeksOverride, setWeeksOverride] = useState<number | null>(null);
+  const [endDateOverride, setEndDateOverride] = useState<string | null>(null);
 
-  // Unique member IDs assigned across all deliverables
-  const assignedMemberIds = useMemo(() => {
-    const set = new Set<string>();
-    deliverables.forEach((del) => {
-      del.roleBudgets.forEach((rb) => {
-        rb.assignedMemberIds.forEach((mId) => set.add(mId));
-      });
-    });
-    return Array.from(set);
-  }, [deliverables]);
+  const client = clients.find((c) => c.id === clientId);
+  const isFee = projectType === 'fee_monthly';
 
-  // Sync selectedTeam automatically when deliverables assignees change
+  // Al abrir: todo limpio, con el cliente preseleccionado si viene de la ficha del cliente
   useEffect(() => {
-    setSelectedTeam((prev) => {
-      // Keep existing allocations for members still assigned
-      const kept = prev.filter((p) => assignedMemberIds.includes(p.memberId));
-      // Add newly assigned members with default sensible allocation (4h/sem)
-      assignedMemberIds.forEach((mId) => {
-        if (!kept.some((p) => p.memberId === mId)) {
-          kept.push({ memberId: mId, weeklyHours: 4 });
-        }
-      });
-      return kept;
-    });
-  }, [assignedMemberIds]);
+    if (!isOpen) return;
+    const first = clients.find((c) => c.id === preselectedClientId) || clients[0];
+    setStep(1);
+    setAttempted(false);
+    setClientId(first?.id || '');
+    setTaxEntityId('none');
+    setName('');
+    setLeadId(leads[0]?.id || '');
+    setAccountManagerId(first?.accountManagerId || '');
+    setProjectType('fixed_project');
+    setNonBillable(Boolean(first?.isInternal));
+    setStartDate(today());
+    setContractMonths(6);
+    setRolloverPolicy('none');
+    setBrief('');
+    setQuote(emptyQuote());
+    setServices([]);
+    setWeeksOverride(null);
+    setEndDateOverride(null);
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Calculated hours assigned per member in this project across deliverables
-  const memberHoursInProject = useMemo(() => {
-    const map: Record<string, number> = {};
-    deliverables.forEach((del) => {
-      del.roleBudgets.forEach((rb) => {
-        const count = rb.assignedMemberIds.length;
-        if (count > 0) {
-          const share = rb.quotedHours / count;
-          rb.assignedMemberIds.forEach((mId) => {
-            map[mId] = (map[mId] || 0) + share;
-          });
-        }
-      });
-    });
-    return map;
-  }, [deliverables]);
+  const totalHours = quote.deliverables.reduce(
+    (sum, d) => sum + d.backlogItems.reduce((s, i) => s + (Number(i.estimatedHours) || 0), 0),
+    0
+  );
+  const taskCount = quote.deliverables.reduce((n, d) => n + d.backlogItems.length, 0);
+  const scopeWeeks = getScopeWeeks(quote, services);
+  const productionWeeks = weeksOverride ?? scopeWeeks;
 
-  // Proactive ECO team alerts (vacations or overcapacity)
-  const teamOperationalAlerts = useMemo(() => {
-    const alerts: { memberName: string; type: 'vacation' | 'capacity'; message: string }[] = [];
-    assignedMemberIds.forEach((mId) => {
-      const member = AVAILABLE_TEAM_MEMBERS.find((m) => m.id === mId);
-      if (!member) return;
-      const userAvail = checkAssigneeAvailability(member.name, initialUsers);
-      if (userAvail.isOnVacation) {
-        alerts.push({
-          memberName: member.name,
-          type: 'vacation',
-          message: `${member.name} está de vacaciones (retorna el ${userAvail.returnDate || 'pronto'}). Considera respaldo.`
-        });
-      }
-      const freeCap = member.configuredWeeklyHours - member.currentAllocatedWeeklyHours;
-      const teamEntry = selectedTeam.find((t) => t.memberId === mId);
-      const weeklyHours = teamEntry ? teamEntry.weeklyHours : 4;
-      if (weeklyHours > freeCap) {
-        alerts.push({
-          memberName: member.name,
-          type: 'capacity',
-          message: `${member.name} tiene ${freeCap}h libres/sem pero se le asignan ${weeklyHours}h/sem.`
-        });
-      }
-    });
-    return alerts;
-  }, [assignedMemberIds, selectedTeam]);
-
-  // Sync preselected client when opening
-  useEffect(() => {
-    if (preselectedClientId) {
-      setSelectedClientId(preselectedClientId);
-      const matched = clients.find((c) => c.id === preselectedClientId);
-      if (matched) {
-        setBrand(matched.commercialInfo?.brands?.[0] || matched.name);
-        if (matched.isInternal) {
-          setProjectType('internal_non_billable');
-        }
-      }
-    }
-  }, [preselectedClientId, clients]);
-
-  // Current client object
-  const currentClient = useMemo(() => {
-    return clients.find((c) => c.id === selectedClientId) || clients[0];
-  }, [clients, selectedClientId]);
-
-  // Synchronize account manager when client changes
-  useEffect(() => {
-    if (currentClient) {
-      if (currentClient.accountManagerId) {
-        setAccountManagerId(currentClient.accountManagerId);
-        // Find corresponding user name if available
-        const matchedUser = availableUsers.find((u) => u.id === currentClient.accountManagerId);
-        setAccountManagerName(matchedUser ? matchedUser.name : (currentClient.accountManagerName || ''));
-      } else if (currentClient.accountManagerName) {
-        setAccountManagerName(currentClient.accountManagerName);
-        const matchedUser = availableUsers.find((u) => u.name.toLowerCase() === currentClient.accountManagerName?.toLowerCase());
-        setAccountManagerId(matchedUser ? matchedUser.id : '');
-      } else {
-        setAccountManagerId('');
-        setAccountManagerName('');
-      }
-    }
-  }, [currentClient, availableUsers]);
-
-  // Filtered clients for quick picker
-  const filteredClients = useMemo(() => {
-    if (!clientSearchQuery.trim()) return clients;
-    const q = clientSearchQuery.toLowerCase();
-    return clients.filter(
-      (c) =>
-        c.name.toLowerCase().includes(q) ||
-        (c.commercialInfo?.brands && c.commercialInfo.brands.some((b: string) => b.toLowerCase().includes(q)))
-    );
-  }, [clients, clientSearchQuery]);
-
-  // Dynamic calculated rollup: Total Quoted Hours
-  const totalQuotedHours = useMemo(() => {
-    return deliverables.reduce((acc, del) => {
-      const delHours = del.roleBudgets.reduce((rAcc, rb) => rAcc + (rb.quotedHours || 0), 0);
-      return acc + delHours;
-    }, 0);
-  }, [deliverables]);
-
-  // Step 1 Validation
-  const canProceedStep1 = useMemo(() => {
-    if (!selectedClientId) return false;
-    if (!projectName.trim()) return false;
-    if (!startDate) return false;
-    if (projectType === 'fixed_project' && !endDate) return false;
-    return true;
-  }, [selectedClientId, projectName, startDate, endDate, projectType]);
-
-  // Step 2 Validation: at least one deliverable, all role hours >= 0 (0h permitted)
-  const canProceedStep2 = useMemo(() => {
-    if (deliverables.length === 0) return false;
-    return deliverables.every((del) => del.name.trim().length > 0);
-  }, [deliverables]);
-
-  // Handlers for Deliverables
-  const handleAddDeliverable = () => {
-    const newId = `del-draft-${Date.now()}`;
-    setDeliverables((prev) => [
-      ...prev,
+  // Mismo cálculo que «Iniciar proyecto»: fases por entregable, presentaciones por área del servicio
+  // (cada una con su QA del cliente y su ronda de ajustes). Interno: sin presentaciones.
+  const suggested = useMemo(() => {
+    if (isFee || !startDate || productionWeeks <= 0 || quote.deliverables.length === 0) return null;
+    const ordered = [...quote.deliverables].sort((a, b) => a.order - b.order);
+    const built = buildDefaultSteps(
+      ordered.map((d) => ({ id: d.id, name: d.name, hours: d.backlogItems.reduce((s, i) => s + (Number(i.estimatedHours) || 0), 0) })),
+      productionWeeks,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
       {
-        id: newId,
-        name: `Nuevo Frente ${prev.length + 1}`,
-        description: '',
-        roleBudgets: [
-          { id: `rb-${Date.now()}-1`, roleName: 'Creative Designer', quotedHours: 0, assignedMemberIds: [] }
-        ]
+        area: resolveServiceArea({
+          serviceName: name,
+          catalog: CATALOG_2026,
+          activities: ordered.flatMap((d) => d.backlogItems.map((i) => ({ roleName: i.roleName || '', estimatedHours: Number(i.estimatedHours) || 0 })))
+        }),
+        serviceName: name
       }
-    ]);
-  };
-
-  const handleRemoveDeliverable = (delId: string) => {
-    if (deliverables.length <= 1) return;
-    setDeliverables((prev) => prev.filter((d) => d.id !== delId));
-  };
-
-  const handleUpdateDeliverableName = (delId: string, name: string) => {
-    setDeliverables((prev) =>
-      prev.map((d) => (d.id === delId ? { ...d, name } : d))
     );
-  };
-
-  const handleUpdateDeliverableDesc = (delId: string, description: string) => {
-    setDeliverables((prev) =>
-      prev.map((d) => (d.id === delId ? { ...d, description } : d))
-    );
-  };
-
-  const handleAddRoleToDeliverable = (delId: string) => {
-    setDeliverables((prev) =>
-      prev.map((d) => {
-        if (d.id !== delId) return d;
-        return {
-          ...d,
-          roleBudgets: [
-            ...d.roleBudgets,
-            { id: `rb-${Date.now()}`, roleName: 'Front-End Dev', quotedHours: 0, assignedMemberIds: [] }
-          ]
-        };
-      })
-    );
-  };
-
-  const handleRemoveRoleFromDeliverable = (delId: string, roleBudgetId: string) => {
-    setDeliverables((prev) =>
-      prev.map((d) => {
-        if (d.id !== delId) return d;
-        if (d.roleBudgets.length <= 1) return d;
-        return {
-          ...d,
-          roleBudgets: d.roleBudgets.filter((rb) => rb.id !== roleBudgetId)
-        };
-      })
-    );
-  };
-
-  const handleUpdateRoleBudget = (
-    delId: string,
-    roleBudgetId: string,
-    field: 'roleName' | 'quotedHours',
-    val: any
-  ) => {
-    setDeliverables((prev) =>
-      prev.map((d) => {
-        if (d.id !== delId) return d;
-        return {
-          ...d,
-          roleBudgets: d.roleBudgets.map((rb) => {
-            if (rb.id !== roleBudgetId) return rb;
-            return {
-              ...rb,
-              [field]: field === 'quotedHours' ? Math.max(0, parseFloat(val) || 0) : val
-            };
-          })
-        };
-      })
-    );
-  };
-
-  const handleToggleAssigneeToRole = (delId: string, roleBudgetId: string, memberId: string) => {
-    setDeliverables((prev) =>
-      prev.map((d) => {
-        if (d.id !== delId) return d;
-        return {
-          ...d,
-          roleBudgets: d.roleBudgets.map((rb) => {
-            if (rb.id !== roleBudgetId) return rb;
-            const exists = rb.assignedMemberIds.includes(memberId);
-            const next = exists
-              ? rb.assignedMemberIds.filter((id) => id !== memberId)
-              : [...rb.assignedMemberIds, memberId];
-            return { ...rb, assignedMemberIds: next };
-          })
-        };
-      })
-    );
-  };
-
-  // Handlers for Team Selection
-  const toggleTeamMember = (memberId: string) => {
-    setSelectedTeam((prev) => {
-      const exists = prev.find((p) => p.memberId === memberId);
-      if (exists) {
-        return prev.filter((p) => p.memberId !== memberId);
-      } else {
-        return [...prev, { memberId, weeklyHours: 4 }];
-      }
-    });
-  };
-
-  const updateMemberWeeklyHours = (memberId: string, hours: number) => {
-    setSelectedTeam((prev) =>
-      prev.map((p) => (p.memberId === memberId ? { ...p, weeklyHours: Math.max(0, hours) } : p))
-    );
-  };
-
-  // Submit Final
-  const handleSubmit = (status: 'Activo' | 'Planificación') => {
-    if (!currentClient || !projectName.trim()) return;
-
-    const formattedDeliverables: ProjectDeliverable[] = deliverables.map((del, idx) => {
-      const roleBudgets: DeliverableRoleBudget[] = del.roleBudgets.map((rb) => ({
-        id: rb.id,
-        roleId: rb.roleName,
-        roleName: rb.roleName,
-        quotedHours: rb.quotedHours
-      }));
-      const delQuotedTotal = roleBudgets.reduce((acc, r) => acc + r.quotedHours, 0);
-
-      return {
-        id: del.id.startsWith('del-draft') ? `del-${Date.now()}-${idx}` : del.id,
-        projectId: '',
-        name: del.name.trim(),
-        description: del.description.trim() || undefined,
-        order: idx + 1,
-        status: 'pending',
-        startDate,
-        dueDate: endDate || undefined,
-        roleBudgets,
-        totalQuotedHours: delQuotedTotal,
-        totalExecutedHours: 0,
-        progressPercentage: 0
-      };
-    });
-
-    const coreTeam: ProjectTeamMember[] = selectedTeam.map((item) => {
-      const info = AVAILABLE_TEAM_MEMBERS.find((m) => m.id === item.memberId)!;
-      return {
-        id: info.id,
-        name: info.name,
-        initials: info.initials,
-        avatarBg: info.avatarBg,
-        role: info.role,
-        weeklyAllocatedHours: item.weeklyHours,
-        isLead: info.name === selectedLead.name
-      };
-    });
-
-    // If lead not explicitly in selectedTeam, add them
-    if (!coreTeam.some((m) => m.name === selectedLead.name)) {
-      coreTeam.unshift({
-        id: selectedLead.id,
-        name: selectedLead.name,
-        initials: selectedLead.initials,
-        avatarBg: selectedLead.avatarBg,
-        role: selectedLead.role,
-        weeklyAllocatedHours: 4,
-        isLead: true
-      });
-    }
-
-    const payload: NewProjectPayload = {
-      name: projectName.trim(),
-      clientId: currentClient.id,
-      clientName: currentClient.name,
-      taxEntityId: taxEntityId === 'none' ? null : taxEntityId,
-      brand: brand.trim() || currentClient.commercialInfo?.brands?.[0] || currentClient.name,
-      projectType,
-      serviceBase:
-        projectType === 'fee_monthly'
-          ? 'Fee Mensual Recurrente'
-          : projectType === 'fixed_project'
-          ? 'Proyecto Cerrado por Hitos'
-          : 'Iniciativa Interna Uhura',
-      leadName: selectedLead.name,
-      leadAvatarBg: selectedLead.avatarBg,
-      leadRole: selectedLead.role,
-      accountManagerId: accountManagerId || undefined,
-      accountManagerName: accountManagerName.trim() || undefined,
-      budgetedHours: totalQuotedHours,
-      soldHours: totalQuotedHours,
-      startDate,
-      endDate: endDate || undefined,
-      brief: brief.trim() || undefined,
-      deliverables: formattedDeliverables,
-      coreTeam,
-      rolloverPolicy: projectType === 'fee_monthly' ? rolloverPolicy : undefined,
-      status,
-      teamMembers: coreTeam.map((c) => ({
-        name: c.name,
-        role: c.role,
-        avatarBg: c.avatarBg,
-        initials: c.initials
-      }))
+    const steps = nonBillable ? rebalanceToTarget(built.map((st) => ({ ...st, rounds: [] })), productionWeeks * 5) : built;
+    const { endDate: end } = computePhaseSchedule(startDate, steps);
+    const presentations = steps.reduce((n, st) => n + st.rounds.length, 0);
+    const clientQaDays = steps.reduce((n, st) => n + st.rounds.reduce((a, r) => a + Math.max(1, Math.round(r.reviewDays)), 0), 0);
+    return {
+      endDate: end,
+      totalBusinessDays: businessDaysInRange(startDate, end).length,
+      productionDays: Math.round(productionWeeks * 5),
+      presentations,
+      clientQaDays
     };
+  }, [isFee, startDate, productionWeeks, quote.deliverables, nonBillable, name]);
+  const endDate = isFee ? undefined : endDateOverride || suggested?.endDate;
+  // Si el líder cambia la entrega, los días que gana o pierde van a la producción: así «Iniciar proyecto»
+  // llega a la misma fecha (producción = días hábiles hasta la entrega − QA del cliente).
+  const manualProductionDays = !isFee && endDateOverride && suggested && endDateOverride >= startDate
+    ? Math.max(quote.deliverables.length || 1, businessDaysInRange(startDate, endDateOverride).length - suggested.clientQaDays)
+    : null;
 
-    onAddProject(payload);
+  // Validación de cada paso: lo que falta se dice en rojo
+  const step1Missing = [
+    !clientId && 'el cliente',
+    !name.trim() && 'el nombre del proyecto',
+    !leadId && 'el líder del proyecto',
+    !startDate && 'la fecha de inicio',
+    isFee && (!contractMonths || contractMonths < 1) && 'los meses del contrato'
+  ].filter(Boolean) as string[];
+  const missingRole = quote.deliverables.some((d) => d.backlogItems.some((i) => !i.roleName));
+  const step2Missing = [
+    taskCount === 0 && 'al menos una tarea',
+    totalHours <= 0 && 'las horas',
+    missingRole && 'el rol de cada tarea',
+    !isFee && scopeWeeks <= 0 && 'las semanas de cada servicio'
+  ].filter(Boolean) as string[];
+  const step3Missing = [
+    !isFee && productionWeeks <= 0 && 'las semanas de producción',
+    !isFee && endDate && startDate && endDate < startDate && 'una entrega posterior al inicio'
+  ].filter(Boolean) as string[];
+  const missing = step === 1 ? step1Missing : step === 2 ? step2Missing : step3Missing;
+
+  const next = () => {
+    setAttempted(true);
+    if (missing.length) return;
+    setAttempted(false);
+    setStep((s) => (s === 1 ? 2 : 3));
+  };
+
+  const handleCreate = () => {
+    setAttempted(true);
+    if (step3Missing.length || step1Missing.length || step2Missing.length) return;
+    const lead = people.find((u) => u.id === leadId);
+    const manager = people.find((u) => u.id === accountManagerId);
+    const ordered = [...quote.deliverables].sort((a, b) => a.order - b.order);
+    const deliverables: ProjectDeliverable[] = ordered.map((qd, idx) => ({
+      id: `del-new-${idx + 1}`,
+      projectId: '',
+      name: qd.name,
+      description: qd.description,
+      order: idx + 1,
+      status: 'pending',
+      roleBudgets: (qd.roleBudgets || []).map((rb) => ({ id: `rb-${rb.id}`, roleId: rb.roleId, roleName: rb.roleName, quotedHours: rb.quotedHours })),
+      totalQuotedHours: qd.backlogItems.reduce((s, i) => s + (Number(i.estimatedHours) || 0), 0),
+      totalExecutedHours: 0,
+      progressPercentage: 0
+    } as ProjectDeliverable));
+    const tasksToCreate: Omit<TaskItem, 'id'>[] = [];
+    ordered.forEach((qd, dIdx) => {
+      [...qd.backlogItems].sort((a, b) => a.order - b.order).forEach((item) => {
+        const person = people.find((u) => u.id === item.suggestedUserId);
+        tasksToCreate.push({
+          title: item.title || 'Tarea sin título',
+          status: 'todo',
+          priority: 'Medium',
+          projectName: name.trim(),
+          clientName: client?.name,
+          deliverableId: `del-new-${dIdx + 1}`,
+          frente: qd.name,
+          board: name.trim(),
+          department: 'Operaciones',
+          date: today(),
+          dueDate: '', // Se programa al «Iniciar proyecto»
+          dueStatus: 'normal',
+          dueText: 'Se programa al iniciar el proyecto',
+          budgetedHours: Number(item.estimatedHours) || 0,
+          consumedSeconds: 0,
+          completed: false,
+          budgetedRole: item.roleName,
+          budgetedRoleId: item.roleId,
+          assigneeIds: person ? [person.id] : [],
+          assignee: person
+            ? { id: person.id, name: person.name, role: item.roleName, avatarBg: person.avatarBg || 'bg-[#501f92]', initials: person.initials || person.name.slice(0, 2).toUpperCase() }
+            : { id: undefined, name: `Sin asignar (${item.roleName})`, role: item.roleName, avatarBg: 'bg-[#94a3b8]', initials: '--' }
+        } as Omit<TaskItem, 'id'>);
+      });
+    });
+
+    onAddProject({
+      name: name.trim(),
+      clientId,
+      clientName: client?.name || '',
+      taxEntityId: taxEntityId === 'none' ? null : taxEntityId,
+      brand: client?.commercialInfo?.brands?.[0] || client?.name || '',
+      projectType,
+      nonBillable,
+      serviceBase: isFee ? 'Servicios Recurrentes & Fee Mensual' : 'Desarrollo & Proyectos Puntuales',
+      leadName: lead?.name || '',
+      leadAvatarBg: lead?.avatarBg || 'bg-[#501f92]',
+      leadRole: lead?.professionalRole || lead?.jobTitle,
+      accountManagerId: manager?.id,
+      accountManagerName: manager?.name,
+      budgetedHours: totalHours,
+      soldHours: totalHours,
+      startDate,
+      endDate,
+      brief: brief.trim() || undefined,
+      deliverables,
+      coreTeam: [],
+      rolloverPolicy: isFee ? rolloverPolicy : undefined,
+      contractMonths: isFee ? contractMonths : undefined,
+      scheduleConfig: {
+        clientKickoffWaitDays: 0,
+        // Cada presentación al cliente trae su ronda de ajustes (se ajustan en «Iniciar proyecto»)
+        includedReworkRounds: isFee || nonBillable ? 0 : suggested?.presentations ?? 0,
+        reworkRoundDays: isFee || nonBillable ? 0 : 5,
+        productionWeeks: isFee ? 4 : manualProductionDays ? manualProductionDays / 5 : productionWeeks
+      },
+      status: 'Planificación',
+      tasksToCreate
+    });
     onClose();
   };
 
   if (!isOpen) return null;
 
+  const field = 'w-full h-9 px-3 rounded-xl border border-[#cbd5e1] bg-white text-xs text-[#0f172a] focus:outline-none focus:border-[#501f92]';
+  const label = 'block text-xs font-bold text-[#334155] mb-1';
+  const steps = [
+    { n: 1, t: 'Proyecto' },
+    { n: 2, t: 'Alcance' },
+    { n: 3, t: isFee ? 'Revisión' : 'Fechas y revisión' }
+  ];
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl border border-[#e2e8f0] flex flex-col max-h-[92vh] overflow-hidden">
-        {/* Header Modal */}
-        <div className="px-6 py-4 border-b border-[#f1f5f9] flex items-center justify-between bg-[#f8fafc]/60">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#501f92]/10 text-[#501f92] flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs" role="dialog" aria-modal="true" aria-label="Nuevo proyecto">
+      <div className="bg-white rounded-2xl w-full max-w-5xl max-h-[94vh] flex flex-col shadow-2xl border border-[#e2e8f0] overflow-hidden">
+        {/* Encabezado */}
+        <div className="flex items-start justify-between gap-3 px-5 sm:px-6 pt-5 pb-4 border-b border-[#f1f5f9]">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-[#f5f3ff] text-[#501f92] flex items-center justify-center shrink-0">
               <Briefcase className="w-5 h-5" />
             </div>
-            <div>
-              <h2 className="text-lg font-bold text-[#0f172a]">Nuevo proyecto en ECO</h2>
-              <p className="text-xs text-[#64748b]">
-                Paso {currentStep} de 3: {
-                  currentStep === 1 ? 'Identidad & Marco Operativo' :
-                  currentStep === 2 ? 'Alcance' :
-                  'Revisión & Cierre'
-                }
-              </p>
+            <div className="min-w-0">
+              <h2 className="text-lg font-extrabold text-[#0f172a]">Nuevo proyecto</h2>
+              <p className="text-xs text-[#64748b]">Paso {step} de 3 · {steps[step - 1].t}</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-xl text-[#94a3b8] hover:text-[#334155] hover:bg-[#f1f5f9] transition-colors"
-          >
+          <button type="button" onClick={onClose} aria-label="Cerrar" className="p-1.5 rounded-lg text-[#94a3b8] hover:bg-[#f1f5f9] hover:text-[#0f172a] cursor-pointer">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Step Navigation Bar (3 Clean Steps) */}
-        <div className="px-6 py-3 bg-[#f8fafc] border-b border-[#f1f5f9] flex items-center justify-between">
-          {[
-            { step: 1, label: 'Identidad', icon: Building2 },
-            { step: 2, label: 'Alcance', icon: Layers },
-            { step: 3, label: 'Revisión & Cierre', icon: CheckCircle2 }
-          ].map((item) => {
-            const Icon = item.icon;
-            const isDone = currentStep > item.step;
-            const isCurrent = currentStep === item.step;
-            return (
-              <button
-                key={item.step}
-                type="button"
-                disabled={item.step > currentStep && ((item.step === 2 && !canProceedStep1) || (item.step === 3 && !canProceedStep2))}
-                onClick={() => {
-                  if (item.step < currentStep) setCurrentStep(item.step as any);
-                  else if (item.step === 2 && canProceedStep1) setCurrentStep(2);
-                  else if (item.step === 3 && canProceedStep1 && canProceedStep2) setCurrentStep(3);
-                }}
-                className={`flex items-center gap-2 py-1 px-3 rounded-lg text-xs font-semibold transition-all ${
-                  isCurrent
-                    ? 'bg-[#501f92] text-white shadow-xs'
-                    : isDone
-                    ? 'text-[#501f92] bg-[#501f92]/10 hover:bg-[#501f92]/15'
-                    : 'text-[#94a3b8] hover:text-[#64748b]'
-                }`}
-              >
-                <Icon className="w-3.5 h-3.5" />
-                <span>{item.step}. {item.label}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Body Steps */}
-        <div className="p-6 overflow-y-auto flex-1 text-[#0f172a]">
-          {/* STEP 1: IDENTIDAD & MARCO OPERATIVO */}
-          {currentStep === 1 && (
-            <div className="space-y-5 animate-in fade-in duration-200">
-              <div className="bg-[#f8fafc] p-4 rounded-xl border border-[#e2e8f0]/80">
-                <div className="text-xs font-bold uppercase tracking-wider text-[#64748b] mb-2 flex items-center gap-1.5">
-                  <Building2 className="w-3.5 h-3.5 text-[#501f92]" />
-                  <span>1. Cliente Operativo (Cuenta Sombrilla)</span>
-                </div>
-                
-                {/* Client Search and Select */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-[#475569] mb-1">
-                      Seleccionar Cliente *
-                    </label>
-                    <select
-                      value={selectedClientId}
-                      onChange={(e) => {
-                        const cId = e.target.value;
-                        setSelectedClientId(cId);
-                        const c = clients.find((x) => x.id === cId);
-                        if (c) {
-                          setBrand(c.commercialInfo?.brands?.[0] || c.name);
-                          setTaxEntityId('none');
-                          if (c.isInternal) {
-                            setProjectType('internal_non_billable');
-                          }
-                        }
-                      }}
-                      className="w-full text-xs font-medium border border-[#cbd5e1] rounded-xl px-3 py-2 bg-white text-[#0f172a] focus:ring-2 focus:ring-[#501f92] focus:border-transparent"
-                    >
-                      {filteredClients.map((client) => (
-                        <option key={client.id} value={client.id}>
-                          {client.name} {client.isInternal ? '(Interno Uhura)' : ''}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Tax Entity (100% Optional) */}
-                  <div>
-                    <label className="block text-xs font-medium text-[#475569] mb-1 flex items-center justify-between">
-                      <span>Razón Social / NIT</span>
-                      <span className="text-[10px] text-[#64748b] bg-[#e2e8f0]/60 px-1.5 py-0.5 rounded font-normal">
-                        Opcional
-                      </span>
-                    </label>
-                    <select
-                      value={taxEntityId}
-                      onChange={(e) => setTaxEntityId(e.target.value)}
-                      className="w-full text-xs font-medium border border-[#cbd5e1] rounded-xl px-3 py-2 bg-white text-[#0f172a] focus:ring-2 focus:ring-[#501f92] focus:border-transparent"
-                    >
-                      <option value="none">Sin asignar / Por definir (No bloquea la operación)</option>
-                      {currentClient?.taxEntities?.map((te) => (
-                        <option key={te.id} value={te.id}>
-                          {te.nit} · {te.businessName} {te.isPrimary ? '(Principal)' : ''}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {currentClient && (
-                  <div className="mt-3 pt-3 border-t border-[#e2e8f0] flex items-center justify-between text-xs text-[#64748b]">
-                    <div>
-                      Marca / Vertical:&nbsp;
-                      <input
-                        type="text"
-                        value={brand}
-                        onChange={(e) => setBrand(e.target.value)}
-                        placeholder="Ej: Yamaha, Danone..."
-                        className="font-semibold text-[#0f172a] bg-transparent border-b border-[#cbd5e1] px-1 py-0.5 focus:border-[#501f92] outline-hidden text-xs"
-                      />
-                    </div>
-                    {currentClient.isInternal && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#501f92]/10 text-[#501f92]">
-                        <ShieldCheck className="w-3 h-3" />
-                        Cliente Interno Protegido
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Project Name and Nature */}
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-xs font-medium text-[#475569] mb-1">
-                    Nombre del Proyecto *
-                  </label>
-                  <input
-                    type="text"
-                    value={projectName}
-                    onChange={(e) => setProjectName(e.target.value)}
-                    placeholder="Ej: Campaña Navidad 2026, E-commerce Shopify, Mantenimiento Q4..."
-                    className="w-full text-sm font-semibold border border-[#cbd5e1] rounded-xl px-3.5 py-2.5 bg-white text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal focus:ring-2 focus:ring-[#501f92] focus:border-transparent"
-                  />
-                </div>
-
-                {/* Project Typology */}
-                <div>
-                  <label className="block text-xs font-medium text-[#475569] mb-1.5">
-                    Naturaleza Operativa del Proyecto *
-                  </label>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    {[
-                      {
-                        type: 'fee_monthly' as ProjectType,
-                        title: 'Fee Mensual (Retainer)',
-                        desc: 'Ciclos mensuales con histórico acumulativo. Presupuesto evaluado por mes.',
-                        badge: 'Mensual'
-                      },
-                      {
-                        type: 'fixed_project' as ProjectType,
-                        title: 'Proyecto Cerrado',
-                        desc: 'Bolsa de horas cotizadas fija con fecha de cierre y frentes de entrega.',
-                        badge: 'Hitos'
-                      },
-                      {
-                        type: 'internal_non_billable' as ProjectType,
-                        title: 'Interno / No Facturable',
-                        desc: 'Iniciativas de UHURA Group. Permite 0h cotizadas sin considerarlo error.',
-                        badge: 'Uhura'
-                      }
-                    ].map((item) => {
-                      const isSelected = projectType === item.type;
-                      return (
-                        <div
-                          key={item.type}
-                          onClick={() => setProjectType(item.type)}
-                          className={`p-3.5 rounded-xl border-2 transition-all cursor-pointer text-left flex flex-col justify-between ${
-                            isSelected
-                              ? 'border-[#501f92] bg-[#501f92]/5 text-[#501f92]'
-                              : 'border-[#e2e8f0] hover:border-[#cbd5e1] bg-white text-[#334155]'
-                          }`}
-                        >
-                          <div>
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="font-bold text-xs">{item.title}</span>
-                              <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-[#f1f5f9] text-[#475569]">
-                                {item.badge}
-                              </span>
-                            </div>
-                            <p className="text-[11px] text-[#64748b] leading-relaxed">
-                              {item.desc}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Fechas & Roles Clave */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
-                  <div>
-                    <label className="block text-xs font-medium text-[#475569] mb-1 flex items-center gap-1">
-                      <Calendar className="w-3.5 h-3.5 text-[#501f92]" />
-                      <span>Fecha de Inicio *</span>
-                    </label>
-                    <input
-                      type="date"
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                      className="w-full text-xs border border-[#cbd5e1] rounded-xl px-3 py-2 bg-white text-[#0f172a] focus:ring-2 focus:ring-[#501f92]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-[#475569] mb-1 flex items-center gap-1">
-                      <Calendar className="w-3.5 h-3.5 text-[#64748b]" />
-                      <span>Fecha de Fin {projectType === 'fixed_project' ? '*' : '(Opcional)'}</span>
-                    </label>
-                    <input
-                      type="date"
-                      value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                      placeholder={projectType === 'fee_monthly' ? 'Abierto / Renovación' : ''}
-                      className="w-full text-xs border border-[#cbd5e1] rounded-xl px-3 py-2 bg-white text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal focus:ring-2 focus:ring-[#501f92]"
-                    />
-                  </div>
-                </div>
-
-                {/* Roles del Proyecto: Separación visual de Liderazgo Operativo vs Relación de Cuenta */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3.5 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl">
-                  <div>
-                    <label className="block text-xs font-bold text-[#334155] mb-1">
-                      Líder del proyecto *
-                    </label>
-                    <select
-                      value={selectedLead.name}
-                      onChange={(e) => {
-                        const lead = AVAILABLE_LEADS.find((l) => l.name === e.target.value);
-                        if (lead) setSelectedLead(lead);
-                      }}
-                      className="w-full text-xs border border-[#cbd5e1] rounded-xl px-3 py-2 bg-white text-[#0f172a] font-semibold focus:ring-2 focus:ring-[#501f92]"
-                    >
-                      {AVAILABLE_LEADS.map((lead) => (
-                        <option key={lead.id} value={lead.name} className="text-[#0f172a] font-medium">
-                          {lead.name} ({lead.role})
-                        </option>
-                      ))}
-                    </select>
-                    <span className="text-[10px] text-[#64748b] block mt-1">
-                      Responsable técnico y operativo de la ejecución / delivery
-                    </span>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-[#334155] mb-1">
-                      Responsable de cliente
-                    </label>
-                    <select
-                      value={accountManagerId || (accountManagerName ? `custom-${accountManagerName}` : '')}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (!val) {
-                          setAccountManagerId('');
-                          setAccountManagerName('');
-                          return;
-                        }
-                        const matched = clientRelationshipUsers.find((u) => u.id === val);
-                        if (matched) {
-                          setAccountManagerId(matched.id);
-                          setAccountManagerName(matched.name);
-                        } else {
-                          setAccountManagerId('');
-                          setAccountManagerName(val.replace('custom-', ''));
-                        }
-                      }}
-                      data-empty={!(accountManagerId || accountManagerName)}
-                      className={`w-full text-xs border border-[#cbd5e1] rounded-xl px-3 py-2 bg-white transition-colors focus:ring-2 focus:ring-[#501f92] ${
-                        !(accountManagerId || accountManagerName)
-                          ? 'text-[#64748b] font-normal'
-                          : 'text-[#0f172a] font-semibold'
-                      }`}
-                    >
-                      <option value="">Seleccionar responsable de cuenta...</option>
-                      {clientRelationshipUsers.map((user) => (
-                        <option key={user.id} value={user.id} className="text-[#0f172a] font-medium">
-                          {user.name} ({user.officialRole || user.jobTitle || user.role})
-                        </option>
-                      ))}
-                      {/* En caso de que el cliente traiga un nombre no mapeado aún en la lista */}
-                      {accountManagerName && !clientRelationshipUsers.some((u) => u.name.toLowerCase() === accountManagerName.toLowerCase()) && (
-                        <option value={`custom-${accountManagerName}`} className="text-[#0f172a] font-medium">
-                          {accountManagerName} (Asignado en Perfil del Cliente)
-                        </option>
-                      )}
-                    </select>
-                    <span className="text-[10px] text-[#64748b] block mt-1">
-                      Relación de cuenta y gestión del cliente (heredado de Cliente)
-                    </span>
-                  </div>
-                </div>
-
-                {/* Optional Brief */}
-                <div>
-                  <label className="block text-xs font-medium text-[#475569] mb-1">
-                    Descripción Breve u Objetivos del Proyecto (Opcional)
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={brief}
-                    onChange={(e) => setBrief(e.target.value)}
-                    placeholder="Contexto estratégico, entregables clave o alcance comercial..."
-                    className="w-full text-xs border border-[#cbd5e1] rounded-xl p-3 bg-white text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal focus:ring-2 focus:ring-[#501f92]"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* STEP 2: ALCANCE */}
-          {currentStep === 2 && (
-            <div className="space-y-5 animate-in fade-in duration-200">
-              {/* Top Operational Bar */}
-              <div className="p-4 bg-linear-to-r from-[#501f92]/8 via-[#7c3aed]/5 to-[#f8fafc] border border-[#501f92]/20 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-2xs">
-                <div className="max-w-md">
-                  <div className="flex items-center gap-2">
-                    <span className="p-1 rounded-lg bg-[#501f92] text-white">
-                      <Layers className="w-3.5 h-3.5" />
-                    </span>
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-[#501f92]">
-                      Alcance del Proyecto
-                    </h4>
-                  </div>
-                  <p className="text-[11px] text-[#64748b] mt-1 leading-relaxed">
-                    Define los frentes de entregables, dimensiona la bolsa de horas y asigna los colaboradores del equipo operativo.
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2.5">
-                  <div className="px-3.5 py-2 rounded-xl bg-white border border-[#501f92]/30 shadow-2xs text-center">
-                    <span className="text-[10px] text-[#64748b] uppercase font-bold block">
-                      Total Cotizado
-                    </span>
-                    <span className="text-base font-black text-[#501f92]">
-                      {totalQuotedHours}h
-                    </span>
-                    {projectType === 'fee_monthly' && (
-                      <span className="text-[9px] text-[#64748b] block">/ mes</span>
-                    )}
-                  </div>
-                  <div className="px-3.5 py-2 rounded-xl bg-white border border-[#e2e8f0] shadow-2xs text-center">
-                    <span className="text-[10px] text-[#64748b] uppercase font-bold block">
-                      Frentes
-                    </span>
-                    <span className="text-base font-black text-[#0f172a]">
-                      {deliverables.length}
-                    </span>
-                  </div>
-                  <div className="px-3.5 py-2 rounded-xl bg-white border border-[#e2e8f0] shadow-2xs text-center">
-                    <span className="text-[10px] text-[#64748b] uppercase font-bold block">
-                      Core Team
-                    </span>
-                    <span className="text-base font-black text-[#0f172a]">
-                      {assignedMemberIds.length} pers.
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* ECO Copilot Proactive Alerts */}
-              {teamOperationalAlerts.length > 0 && (
-                <div className="p-3 bg-[#fffbeb] border border-[#fde68a] rounded-xl text-xs text-[#92400e] flex items-start gap-2.5">
-                                    <div className="space-y-1 flex-1">
-                    <div className="font-bold flex items-center gap-1.5">
-                      <span>Alertas del equipo asignado</span>
-                    </div>
-                    <ul className="list-disc pl-4 space-y-0.5 text-[11px] text-[#78350f]">
-                      {teamOperationalAlerts.map((alt, i) => (
-                        <li key={i}>{alt.message}</li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              )}
-
-              {/* If Fee Monthly: Rollover policy selector */}
-              {projectType === 'fee_monthly' && (
-                <div className="bg-[#f8fafc] p-3.5 rounded-xl border border-[#e2e8f0] flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
-                  <div>
-                    <span className="text-xs font-bold text-[#0f172a] block">
-                      Política de Rollover de Horas (Fee Mensual)
-                    </span>
-                    <span className="text-[11px] text-[#64748b]">
-                      Define qué ocurre al cerrar cada ciclo mensual con horas no consumidas.
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => setRolloverPolicy('none')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                        rolloverPolicy === 'none'
-                          ? 'bg-[#501f92] text-white shadow-xs'
-                          : 'bg-white border border-[#cbd5e1] text-[#475569] hover:bg-[#f1f5f9]'
-                      }`}
-                    >
-                      Sin Rollover (Vencen al mes)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setRolloverPolicy('carry_over')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                        rolloverPolicy === 'carry_over'
-                          ? 'bg-[#501f92] text-white shadow-xs'
-                          : 'bg-white border border-[#cbd5e1] text-[#475569] hover:bg-[#f1f5f9]'
-                      }`}
-                    >
-                      Carry Over (Pasan al siguiente)
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Deliverables List with Direct Assignee Allocation */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-wider text-[#475569] flex items-center gap-1.5">
-                    <span>Frentes de Trabajo & Asignación de Roles</span>
-                    <span className="text-[10px] font-semibold bg-[#e2e8f0] text-[#475569] px-2 py-0.5 rounded-full">
-                      {deliverables.length}
-                    </span>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handleAddDeliverable}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-[#501f92] bg-[#501f92]/10 hover:bg-[#501f92]/15 rounded-lg transition-colors cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Agregar frente</span>
-                  </button>
-                </div>
-
-                {deliverables.map((del, delIdx) => {
-                  const delTotal = del.roleBudgets.reduce(
-                    (sum, r) => sum + (r.quotedHours || 0),
-                    0
-                  );
-                  const allRolesCovered = del.roleBudgets.every((rb) => rb.assignedMemberIds.length > 0);
-                  const unassignedRolesCount = del.roleBudgets.filter((rb) => rb.assignedMemberIds.length === 0).length;
-
-                  return (
-                    <div
-                      key={del.id}
-                      className="border border-[#e2e8f0] rounded-2xl p-4 bg-white shadow-xs space-y-3.5"
-                    >
-                      {/* Deliverable Header */}
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex-1 flex items-center gap-2">
-                          <span className="w-6 h-6 rounded-full bg-[#501f92]/10 text-[#501f92] text-xs font-bold flex items-center justify-center shrink-0">
-                            {delIdx + 1}
-                          </span>
-                          <input
-                            type="text"
-                            value={del.name}
-                            onChange={(e) => handleUpdateDeliverableName(del.id, e.target.value)}
-                            placeholder="Nombre del Frente (Ej: Redes Sociales, Landing Page, Paid Media...)"
-                            className="font-bold text-sm text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal border-b border-transparent hover:border-[#cbd5e1] focus:border-[#501f92] outline-hidden px-1 py-0.5 w-full transition-colors"
-                          />
-                        </div>
-                        <div className="flex items-center gap-3 shrink-0">
-                          <span className="text-xs font-bold text-[#501f92] bg-[#501f92]/10 px-2.5 py-1 rounded-lg">
-                            Subtotal: {delTotal}h
-                          </span>
-                          {deliverables.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveDeliverable(del.id)}
-                              className="p-1 text-[#94a3b8] hover:text-[#ef4444] transition-colors cursor-pointer"
-                              title="Eliminar este frente"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
-                      <input
-                        type="text"
-                        value={del.description}
-                        onChange={(e) => handleUpdateDeliverableDesc(del.id, e.target.value)}
-                        placeholder="Alcance u objetivos de este frente..."
-                        className="text-xs text-[#0f172a] placeholder:text-[#7C8AA0] placeholder:font-normal border-b border-transparent hover:border-[#e2e8f0] focus:border-[#501f92] outline-hidden px-1 py-0.5 w-full"
-                      />
-
-                      {/* Role Budgets + Direct Assignees within this deliverable */}
-                      <div className="pt-2 border-t border-[#f1f5f9] space-y-2.5">
-                        <div className="flex items-center justify-between text-[11px] font-semibold text-[#475569]">
-                          <span>Bolsa de Horas & Personas Asignadas:</span>
-                          <button
-                            type="button"
-                            onClick={() => handleAddRoleToDeliverable(del.id)}
-                            className="text-[#501f92] hover:underline flex items-center gap-1 font-bold cursor-pointer"
-                          >
-                            <Plus className="w-3 h-3" />
-                            <span>Añadir rol</span>
-                          </button>
-                        </div>
-
-                        <div className="space-y-2">
-                          {del.roleBudgets.map((rb) => {
-                            const assignedMembers = rb.assignedMemberIds.map((id) =>
-                              AVAILABLE_TEAM_MEMBERS.find((m) => m.id === id)
-                            ).filter(Boolean) as typeof AVAILABLE_TEAM_MEMBERS;
-
-                            return (
-                              <div
-                                key={rb.id}
-                                className="p-3 bg-[#f8fafc] rounded-xl border border-[#e2e8f0]/90 space-y-2.5"
-                              >
-                                {/* Role & Hours Line */}
-                                <div className="flex flex-wrap items-center justify-between gap-2.5">
-                                  <div className="flex items-center gap-2 flex-1 min-w-[220px]">
-                                    <span className="text-[11px] font-bold text-[#64748b] shrink-0">
-                                      Rol:
-                                    </span>
-                                    <select
-                                      value={rb.roleName}
-                                      onChange={(e) =>
-                                        handleUpdateRoleBudget(
-                                          del.id,
-                                          rb.id,
-                                          'roleName',
-                                          e.target.value as StandardUhuraRole
-                                        )
-                                      }
-                                      className="text-xs font-semibold bg-white border border-[#cbd5e1] rounded-lg px-2.5 py-1.5 text-[#0f172a] focus:ring-2 focus:ring-[#501f92] cursor-pointer flex-1"
-                                    >
-                                      {STANDARD_UHURA_ROLES.map((role) => (
-                                        <option key={role} value={role}>
-                                          {role}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  </div>
-
-                                  <div className="flex items-center gap-2 shrink-0">
-                                    <span className="text-[11px] font-bold text-[#64748b]">
-                                      Cotizado:
-                                    </span>
-                                    <input
-                                      type="number"
-                                      min="0"
-                                      step="0.5"
-                                      value={rb.quotedHours}
-                                      onChange={(e) =>
-                                        handleUpdateRoleBudget(
-                                          del.id,
-                                          rb.id,
-                                          'quotedHours',
-                                          e.target.value
-                                        )
-                                      }
-                                      className="w-16 text-right text-xs font-bold border border-[#cbd5e1] rounded-lg px-2 py-1 bg-white text-[#0f172a] focus:ring-1 focus:ring-[#501f92]"
-                                    />
-                                    <span className="text-xs font-black text-[#501f92]">h</span>
-
-                                    {del.roleBudgets.length > 1 && (
-                                      <button
-                                        type="button"
-                                        onClick={() => handleRemoveRoleFromDeliverable(del.id, rb.id)}
-                                        className="text-[#94a3b8] hover:text-[#ef4444] p-1 transition-colors cursor-pointer ml-1"
-                                        title="Eliminar este rol"
-                                      >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                      </button>
-                                    )}
-                                  </div>
-                                </div>
-
-                                {/* Immediate Assignee Line with Availability Pills */}
-                                <div className="pt-2 border-t border-[#e2e8f0]/60 flex flex-wrap items-center justify-between gap-2">
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    <span className="text-[11px] font-semibold text-[#475569] flex items-center gap-1">
-                                      <Users className="w-3 h-3 text-[#501f92]" />
-                                      <span>Asignado a:</span>
-                                    </span>
-
-                                    {assignedMembers.length === 0 ? (
-                                      <span className="text-[11px] text-[#94a3b8] italic">
-                                        Sin colaborador asignado aún
-                                      </span>
-                                    ) : (
-                                      assignedMembers.map((member) => {
-                                        const userAvail = checkAssigneeAvailability(member.name, initialUsers);
-                                        const freeCap = member.configuredWeeklyHours - member.currentAllocatedWeeklyHours;
-                                        return (
-                                          <div
-                                            key={member.id}
-                                            className="inline-flex items-center gap-1.5 bg-white border border-[#cbd5e1] rounded-lg pl-1.5 pr-2 py-1 text-xs shadow-2xs"
-                                          >
-                                            <UserAvatar
-                                              name={member.name}
-                                              initials={member.initials}
-                                              avatarBg={member.avatarBg}
-                                              size="custom"
-                                              className="w-4 h-4 rounded-full font-bold text-[9px]"
-                                            />
-                                            <span className="font-semibold text-[#0f172a] text-[11px]">
-                                              {member.name}
-                                            </span>
-                                            <span className="text-[10px] text-[#64748b]">
-                                              ({freeCap}h libres)
-                                            </span>
-                                            {userAvail.isOnVacation && (
-                                              <span
-                                                className="text-[10px] bg-[#fef3c7] text-[#92400e] px-1 rounded font-bold"
-                                                title={userAvail.alertMessage}
-                                              >
-                                                🏖️ Vacaciones
-                                              </span>
-                                            )}
-                                            <button
-                                              type="button"
-                                              onClick={() => handleToggleAssigneeToRole(del.id, rb.id, member.id)}
-                                              className="text-[#94a3b8] hover:text-[#ef4444] p-0.5 transition-colors cursor-pointer"
-                                              title="Remover de este rol"
-                                            >
-                                              <X className="w-3 h-3" />
-                                            </button>
-                                          </div>
-                                        );
-                                      })
-                                    )}
-                                  </div>
-
-                                  {/* Button to open Assignee Picker Popover */}
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setAssigneeModalTarget({
-                                        delId: del.id,
-                                        delName: del.name,
-                                        roleBudgetId: rb.id,
-                                        roleName: rb.roleName,
-                                        quotedHours: rb.quotedHours
-                                      })
-                                    }
-                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold text-[#501f92] bg-white hover:bg-[#501f92]/10 border border-[#501f92]/30 rounded-lg transition-colors cursor-pointer shrink-0 shadow-2xs"
-                                  >
-                                    <UserPlus className="w-3.5 h-3.5 text-[#501f92]" />
-                                    <span>
-                                      {assignedMembers.length === 0 ? 'Asignar colaborador' : 'Agregar otro'}
-                                    </span>
-                                  </button>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Deliverable Coverage Summary */}
-                      <div className="pt-2 border-t border-[#f1f5f9] flex items-center justify-between text-[11px]">
-                        <div className="text-[#64748b]">
-                          {allRolesCovered ? (
-                            <span className="text-[#059669] font-semibold flex items-center gap-1">
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                              <span>Todos los roles tienen colaboradores asignados</span>
-                            </span>
-                          ) : (
-                            <span className="text-[#d97706] font-semibold flex items-center gap-1">
-                              <AlertCircle className="w-3.5 h-3.5" />
-                              <span>{unassignedRolesCount} rol(es) pendiente(s) por asignar</span>
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-[#64748b]">
-                          Subtotal del frente: <strong className="text-[#0f172a]">{delTotal}h</strong>
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Consolidated Core Team Summary (Below Deliverables) */}
-              <div className="mt-6 pt-5 border-t border-[#e2e8f0] space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-[#0f172a] flex items-center gap-1.5">
-                      <Users className="w-4 h-4 text-[#501f92]" />
-                      <span>Equipo Base Consolidado del Proyecto ({assignedMemberIds.length} colaboradores)</span>
-                    </h4>
-                    <p className="text-[11px] text-[#64748b] mt-0.5">
-                      Consolidado automático de las personas asignadas a los frentes. Puedes ajustar la dedicación semanal estimada para cada uno.
-                    </p>
-                  </div>
-                </div>
-
-                {assignedMemberIds.length === 0 ? (
-                  <div className="p-4 bg-[#f8fafc] rounded-xl border border-dashed border-[#cbd5e1] text-center text-xs text-[#64748b]">
-                    Aún no has asignado colaboradores a los frentes. Haz clic en <strong>"+ Asignar Colaborador"</strong> en cualquiera de los frentes arriba.
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {assignedMemberIds.map((mId) => {
-                      const member = AVAILABLE_TEAM_MEMBERS.find((m) => m.id === mId);
-                      if (!member) return null;
-                      const assignment = selectedTeam.find((p) => p.memberId === member.id);
-                      const weeklyHours = assignment ? assignment.weeklyHours : 4;
-                      const freeCapacity = member.configuredWeeklyHours - member.currentAllocatedWeeklyHours;
-                      const userAvail = checkAssigneeAvailability(member.name, initialUsers);
-                      const projectHours = memberHoursInProject[member.id] || 0;
-                      const isOverloaded = weeklyHours > freeCapacity;
-
-                      return (
-                        <div
-                          key={member.id}
-                          className="p-3.5 rounded-xl border border-[#e2e8f0] bg-white shadow-xs space-y-2.5"
-                        >
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-2.5">
-                              <UserAvatar
-                                name={member.name}
-                                initials={member.initials}
-                                avatarBg={member.avatarBg}
-                                size="md"
-                                className="w-8 h-8 rounded-full text-xs shrink-0"
-                              />
-                              <div>
-                                <div className="text-xs font-bold text-[#0f172a]">{member.name}</div>
-                                <div className="text-[10px] text-[#64748b]">{member.role}</div>
-                              </div>
-                            </div>
-
-                            <div className="text-right">
-                              <span className="text-[10px] text-[#64748b] block">Total en Frentes</span>
-                              <span className="text-xs font-black text-[#501f92]">{projectHours}h</span>
-                            </div>
-                          </div>
-
-                          {/* Allocation & Availability Bar */}
-                          <div className="pt-2 border-t border-[#f1f5f9] flex items-center justify-between text-[11px]">
-                            <div className="text-[#64748b]">
-                              Capacidad:&nbsp;
-                              <span className="font-semibold text-[#0f172a]">
-                                {freeCapacity}h libres
-                              </span>
-                              <span className="text-[10px] text-[#94a3b8]">
-                                &nbsp;(de {member.configuredWeeklyHours}h/sem)
-                              </span>
-                            </div>
-
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-xs text-[#475569]">Dedicación:</span>
-                              <input
-                                type="number"
-                                min="0"
-                                max="40"
-                                value={weeklyHours}
-                                onChange={(e) =>
-                                  updateMemberWeeklyHours(
-                                    member.id,
-                                    parseFloat(e.target.value) || 0
-                                  )
-                                }
-                                className="w-12 text-center text-xs font-bold border border-[#cbd5e1] rounded-lg px-1.5 py-0.5 bg-white"
-                              />
-                              <span className="text-[10px] text-[#64748b]">h/sem</span>
-                            </div>
-                          </div>
-
-                          {userAvail.isOnVacation && (
-                            <div className="text-[10px] bg-[#fffbeb] text-[#92400e] px-2 py-1 rounded-lg font-medium flex items-center gap-1">
-                              <span>🏖️</span>
-                              <span>De vacaciones (retorna el {userAvail.returnDate || 'próxima semana'})</span>
-                            </div>
-                          )}
-
-                          {isOverloaded && (
-                            <div className="text-[10px] bg-[#fef2f2] text-[#ef4444] px-2 py-1 rounded-lg font-medium flex items-center gap-1">
-                              <AlertCircle className="w-3 h-3 shrink-0" />
-                              <span>Supera la disponibilidad semanal ({weeklyHours}h vs {freeCapacity}h libres)</span>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* STEP 3: REVISIÓN & CIERRE (ANTERIOR STEP 4) */}
-          {currentStep === 3 && (
-            <div className="space-y-5 animate-in fade-in duration-200">
-              <div className="p-4 bg-[#f8fafc] rounded-xl border border-[#e2e8f0] space-y-3">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#64748b]">
-                      Resumen del Proyecto
-                    </span>
-                    <h3 className="text-base font-bold text-[#0f172a]">{projectName}</h3>
-                    <p className="text-xs text-[#64748b]">
-                      Cliente: <span className="font-semibold text-[#0f172a]">{currentClient?.name}</span>
-                      {brand && ` · Marca: ${brand}`}
-                    </p>
-                  </div>
-                  <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-[#501f92]/10 text-[#501f92]">
-                    {projectType === 'fee_monthly'
-                      ? 'Fee Mensual'
-                      : projectType === 'fixed_project'
-                      ? 'Proyecto Cerrado'
-                      : 'Interno Uhura'}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-[#e2e8f0] text-xs">
-                  <div>
-                    <span className="text-[#64748b] block text-[10px]">Razón Social / NIT</span>
-                    <span className="font-semibold text-[#0f172a]">
-                      {taxEntityId !== 'none'
-                        ? currentClient?.taxEntities?.find((te) => te.id === taxEntityId)?.businessName || 'Asignada'
-                        : 'Por definir (Sin bloqueo)'}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[#64748b] block text-[10px]">Líder del proyecto</span>
-                    <span className="font-semibold text-[#0f172a]">{selectedLead.name}</span>
-                  </div>
-                  <div>
-                    <span className="text-[#64748b] block text-[10px]">Cronograma</span>
-                    <span className="font-semibold text-[#0f172a]">
-                      {formatDate(startDate)} {endDate ? `al ${formatDate(endDate)}` : '(Abierto)'}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[#64748b] block text-[10px]">Presupuesto Cotizado</span>
-                    <span className="font-black text-sm text-[#501f92]">
-                      {totalQuotedHours}h {projectType === 'fee_monthly' ? '/ mes' : 'totales'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Deliverables summary with assigned team members */}
-              <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-[#475569] block mb-2">
-                  Frentes / Entregables Configurados ({deliverables.length})
-                </span>
-                <div className="border border-[#e2e8f0] rounded-xl divide-y divide-[#f1f5f9] bg-white">
-                  {deliverables.map((del) => {
-                    const subtotal = del.roleBudgets.reduce(
-                      (acc, r) => acc + (r.quotedHours || 0),
-                      0
-                    );
-                    return (
-                      <div key={del.id} className="p-3.5 text-xs space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <div className="font-bold text-[#0f172a]">{del.name}</div>
-                          <div className="font-black text-[#501f92] text-right">
-                            {subtotal}h
-                          </div>
-                        </div>
-
-                        {/* List roles and assigned collaborators */}
-                        <div className="space-y-1 pt-1">
-                          {del.roleBudgets.map((rb) => {
-                            const assignedNames = rb.assignedMemberIds
-                              .map((id) => AVAILABLE_TEAM_MEMBERS.find((m) => m.id === id)?.name)
-                              .filter(Boolean)
-                              .join(', ');
-
-                            return (
-                              <div key={rb.id} className="flex items-center justify-between text-[11px] text-[#64748b]">
-                                <span>
-                                  <strong className="text-[#334155]">{rb.roleName}</strong> ({rb.quotedHours}h):&nbsp;
-                                  {assignedNames ? (
-                                    <span className="text-[#501f92] font-semibold">{assignedNames}</span>
-                                  ) : (
-                                    <span className="italic text-[#94a3b8]">Sin asignar</span>
-                                  )}
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Team summary */}
-              <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-[#475569] block mb-2">
-                  Equipo Base Asignado ({selectedTeam.length})
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  {selectedTeam.map((item) => {
-                    const member = AVAILABLE_TEAM_MEMBERS.find((m) => m.id === item.memberId);
-                    if (!member) return null;
-                    return (
-                      <div
-                        key={item.memberId}
-                        className="flex items-center gap-2 bg-[#f8fafc] border border-[#e2e8f0] px-3 py-1.5 rounded-xl text-xs"
-                      >
-                        <UserAvatar
-                          name={member.name}
-                          initials={member.initials}
-                          avatarBg={member.avatarBg}
-                          size="xs"
-                          className="w-6 h-6 rounded-full font-bold text-[10px]"
-                        />
-                        <div>
-                          <span className="font-bold text-[#0f172a]">{member.name}</span>
-                          <span className="text-[10px] text-[#64748b] ml-1.5 font-medium">
-                            {item.weeklyHours}h/sem
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Footer Navigation Buttons */}
-        <div className="px-6 py-4 border-t border-[#f1f5f9] bg-[#f8fafc]/80 flex items-center justify-between">
-          <div>
-            {currentStep > 1 && (
-              <button
-                type="button"
-                onClick={() => setCurrentStep((prev) => (prev - 1) as any)}
-                className="px-4 py-2 rounded-xl border border-[#cbd5e1] hover:bg-white text-[#475569] text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
-              >
-                <ChevronLeft className="w-4 h-4" />
-                <span>Atrás</span>
-              </button>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2.5">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-xl text-[#64748b] hover:text-[#0f172a] text-xs font-semibold transition-colors cursor-pointer"
+        <div className="flex gap-2 px-5 sm:px-6 py-3 border-b border-[#f1f5f9] text-xs">
+          {steps.map((s) => (
+            <span
+              key={s.n}
+              className={`px-3 py-1.5 rounded-full font-bold ${step === s.n ? 'bg-[#501f92] text-white' : step > s.n ? 'bg-[#ede9fe] text-[#501f92]' : 'bg-[#f1f5f9] text-[#64748b]'}`}
             >
-              Cancelar
-            </button>
+              {s.n}. {s.t}
+            </span>
+          ))}
+        </div>
 
-            {currentStep < 3 ? (
-              <button
-                type="button"
-                disabled={
-                  (currentStep === 1 && !canProceedStep1) ||
-                  (currentStep === 2 && !canProceedStep2)
-                }
-                onClick={() => setCurrentStep((prev) => (prev + 1) as any)}
-                className="px-5 py-2 rounded-xl bg-[#501f92] hover:bg-[#3d1572] disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
-              >
-                <span>Siguiente</span>
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            ) : (
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleSubmit('Planificación')}
-                  className="px-4 py-2 rounded-xl border border-[#501f92] text-[#501f92] hover:bg-[#501f92]/5 text-xs font-bold transition-colors cursor-pointer"
-                >
-                  Guardar borrador
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSubmit('Activo')}
-                  className="px-5 py-2 rounded-xl bg-[#501f92] hover:bg-[#3d1572] text-white text-xs font-bold transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
-                >
-                  <Check className="w-4 h-4" />
-                  <span>Crear e iniciar proyecto</span>
-                </button>
+        <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-5 text-xs">
+          {/* ── PASO 1 · PROYECTO ── */}
+          {step === 1 && (
+            <div className="space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className={label}>Cliente *</label>
+                  <select
+                    value={clientId}
+                    onChange={(e) => {
+                      const c = clients.find((x) => x.id === e.target.value);
+                      setClientId(e.target.value);
+                      setTaxEntityId('none');
+                      setAccountManagerId(c?.accountManagerId || '');
+                      setNonBillable(Boolean(c?.isInternal));
+                    }}
+                    className={field}
+                  >
+                    {clients.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}{c.isInternal ? ' (interno Uhura)' : ''}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className={label}>Razón social / NIT <span className="font-normal text-[#94a3b8]">(opcional)</span></label>
+                  <select value={taxEntityId} onChange={(e) => setTaxEntityId(e.target.value)} className={field}>
+                    <option value="none">Sin asignar</option>
+                    {(client?.taxEntities || []).map((t) => (
+                      <option key={t.id} value={t.id}>{t.businessName}{t.nit ? ` · ${t.nit}` : ''}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="md:col-span-2">
+                  <label className={label}>Nombre del proyecto *</label>
+                  <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej.: Tienda online, Campaña Navidad 2026, Gerencia UHURA" className={field} />
+                </div>
+                <div>
+                  <label className={label}>Líder del proyecto *</label>
+                  <select value={leadId} onChange={(e) => setLeadId(e.target.value)} className={field}>
+                    {leads.map((u) => (
+                      <option key={u.id} value={u.id}>{u.name}{u.professionalRole ? ` · ${u.professionalRole}` : ''}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className={label}>Responsable de cliente <span className="font-normal text-[#94a3b8]">(opcional)</span></label>
+                  <select value={accountManagerId} onChange={(e) => setAccountManagerId(e.target.value)} className={field}>
+                    <option value="">Sin asignar</option>
+                    {people.filter((u) => u.status !== 'Inactive').map((u) => (
+                      <option key={u.id} value={u.id}>{u.name}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
-            )}
-          </div>
+
+              <div>
+                <span className={label}>¿Qué tipo de proyecto es? *</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {([
+                    { type: 'fixed_project', title: 'Proyecto único', desc: 'Tiene inicio y entrega. Se planea con el alcance, las semanas de producción y las rondas de ajuste.' },
+                    { type: 'fee_monthly', title: 'Fee mensual', desc: 'Contrato por meses con una bolsa de horas cada mes. Sin fecha fin ni rondas de ajuste.' }
+                  ] as const).map((o) => (
+                    <button
+                      key={o.type}
+                      type="button"
+                      onClick={() => setProjectType(o.type)}
+                      aria-pressed={projectType === o.type}
+                      className={`text-left p-4 rounded-2xl border-2 transition-colors cursor-pointer ${projectType === o.type ? 'border-[#501f92] bg-[#faf7ff]' : 'border-[#e2e8f0] hover:border-[#cbd5e1]'}`}
+                    >
+                      <span className={`block text-sm font-extrabold ${projectType === o.type ? 'text-[#501f92]' : 'text-[#0f172a]'}`}>{o.title}</span>
+                      <span className="block text-[11px] text-[#64748b] mt-1">{o.desc}</span>
+                    </button>
+                  ))}
+                </div>
+                <label className="mt-3 flex items-start gap-2.5 p-3 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] cursor-pointer select-none">
+                  <input type="checkbox" checked={nonBillable} onChange={(e) => setNonBillable(e.target.checked)} className="mt-0.5 w-4 h-4 accent-[#501f92]" />
+                  <span>
+                    <span className="block font-bold text-[#0f172a]">Interno · no facturable</span>
+                    <span className="block text-[11px] text-[#64748b]">Proyecto de UHURA Group que no se cobra (Gerencia, Administrativo, Rituales…). Sin rondas de ajuste ni insumos del cliente.</span>
+                  </span>
+                </label>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className={label}>Fecha de inicio *</label>
+                  <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={field} />
+                </div>
+                {isFee ? (
+                  <>
+                    <div>
+                      <label className={label}>Meses del contrato *</label>
+                      <input type="number" min={1} max={36} value={contractMonths} onChange={(e) => setContractMonths(Number(e.target.value))} className={field} />
+                    </div>
+                    <div>
+                      <label className={label}>Horas no usadas del mes</label>
+                      <select value={rolloverPolicy} onChange={(e) => setRolloverPolicy(e.target.value as FeeRolloverPolicy)} className={field}>
+                        <option value="none">No pasan al mes siguiente (regla general)</option>
+                        <option value="carry_over">Pasan todas (pactado con el cliente)</option>
+                        <option value="contractual_cap">Pasan hasta el 25 % (pactado)</option>
+                      </select>
+                    </div>
+                  </>
+                ) : (
+                  <p className="sm:col-span-2 self-end text-[11px] text-[#64748b] flex items-start gap-1.5">
+                    <Info className="w-3.5 h-3.5 mt-0.5 shrink-0 text-[#501f92]" />
+                    La fecha de entrega se sugiere en el paso 3 con las semanas del alcance y las rondas de ajuste. La puedes cambiar.
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className={label}>Brief o contexto <span className="font-normal text-[#94a3b8]">(opcional)</span></label>
+                <textarea rows={3} value={brief} onChange={(e) => setBrief(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-[#cbd5e1] text-xs focus:outline-none focus:border-[#501f92]" />
+              </div>
+            </div>
+          )}
+
+          {/* ── PASO 2 · ALCANCE (mismo editor de New Business) ── */}
+          {step === 2 && (
+            <div className="space-y-3">
+              <p className="text-[11px] text-[#64748b] flex items-start gap-1.5">
+                <Layers className="w-3.5 h-3.5 mt-0.5 shrink-0 text-[#501f92]" />
+                {isFee
+                  ? 'Las tareas del primer mes. Cada mes nuevo copia estas tareas al abrir su ciclo.'
+                  : 'Entregables, tareas, rol y horas, y las semanas de cada servicio. Con esto se calcula la fecha de entrega.'}
+              </p>
+              <BacklogScoper
+                quote={quote}
+                onUpdateQuote={setQuote}
+                services={services}
+                onChangeServices={setServices}
+                templates={templates}
+                opportunityTitle={name}
+                prospectName={client?.name}
+                users={people}
+              />
+            </div>
+          )}
+
+          {/* ── PASO 3 · FECHAS Y REVISIÓN ── */}
+          {step === 3 && (
+            <div className="space-y-5">
+              {!isFee && (
+                <div className="rounded-2xl border border-[#e2e8f0] p-4 space-y-4">
+                  <p className="font-extrabold text-sm text-[#0f172a] flex items-center gap-2"><CalendarDays className="w-4 h-4 text-[#501f92]" /> Fecha de entrega</p>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    <div>
+                      <label className={label}>Semanas de producción</label>
+                      <input type="number" min={1} max={104} value={productionWeeks || ''} onChange={(e) => { setWeeksOverride(Number(e.target.value)); setEndDateOverride(null); }} className={field} />
+                      <span className="text-[10.5px] text-[#94a3b8]">Del alcance: {scopeWeeks || '—'}</span>
+                    </div>
+                    <div>
+                      <span className={label}>Presentaciones al cliente</span>
+                      <p className="h-9 flex items-center text-xs font-bold text-[#0f172a]">
+                        {nonBillable ? 'Ninguna (proyecto interno)' : `${suggested?.presentations ?? 0} · cada una con su ronda de ajustes`}
+                      </p>
+                      {!nonBillable && <span className="text-[10.5px] text-[#94a3b8]">Se ajustan al «Iniciar proyecto»</span>}
+                    </div>
+                    <div>
+                      <label className={label}>Entrega</label>
+                      <input type="date" value={endDate || ''} min={startDate} onChange={(e) => setEndDateOverride(e.target.value || null)} className={field} />
+                      {endDateOverride && suggested && endDateOverride !== suggested.endDate && (
+                        <>
+                          <span className="block text-[10.5px] text-[#92400e]">
+                            Elegiste otra entrega: quedan {manualProductionDays} días de producción y «Iniciar proyecto» llegará a esta fecha.
+                          </span>
+                          <button type="button" onClick={() => setEndDateOverride(null)} className="text-[10.5px] font-bold text-[#501f92] hover:underline cursor-pointer">
+                            Volver a la sugerida ({formatDate(suggested.endDate)})
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  {suggested && (
+                    <p className="text-[11px] text-[#475569] bg-[#faf7ff] border border-[#ede9fe] rounded-xl px-3 py-2">
+                      <strong>Entrega sugerida: {formatDate(suggested.endDate)}</strong> · producción {suggested.productionDays} días
+                      {suggested.clientQaDays > 0 ? ` + QA del cliente ${suggested.clientQaDays} días (${suggested.presentations} presentación${suggested.presentations === 1 ? '' : 'es'})` : ''}
+                      {` = ${suggested.totalBusinessDays} días hábiles`} (sin fines de semana ni festivos). Es el mismo cálculo de «Iniciar proyecto», donde se programa cada tarea.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div className="rounded-2xl border border-[#e2e8f0] p-4">
+                <p className="font-extrabold text-sm text-[#0f172a] mb-3">Resumen</p>
+                <dl className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div><dt className="text-[#64748b]">Tipo</dt><dd className="font-bold text-[#0f172a]">{isFee ? 'Fee mensual' : 'Proyecto único'}{nonBillable ? ' · interno' : ''}</dd></div>
+                  <div><dt className="text-[#64748b]">Inicio</dt><dd className="font-bold text-[#0f172a]">{formatDate(startDate)}</dd></div>
+                  <div><dt className="text-[#64748b]">{isFee ? 'Contrato' : 'Entrega'}</dt><dd className="font-bold text-[#0f172a]">{isFee ? `${contractMonths} meses` : endDate ? formatDate(endDate) : '—'}</dd></div>
+                  <div><dt className="text-[#64748b]">Alcance</dt><dd className="font-bold text-[#0f172a]">{quote.deliverables.length} entregables · {taskCount} tareas · {totalHours} h{isFee ? ' / mes' : ''}</dd></div>
+                </dl>
+                <p className="mt-3 text-[11px] text-[#64748b]">El proyecto nace «Por iniciar». Revisa que las horas y las personas tengan sentido y luego pulsa «Iniciar proyecto»: ahí se programa cada tarea.</p>
+              </div>
+            </div>
+          )}
+
+          {attempted && missing.length > 0 && (
+            <p role="alert" className="mt-4 text-[11px] font-semibold text-[#dc2626]">Falta: {missing.join(', ')}.</p>
+          )}
+        </div>
+
+        {/* Pie */}
+        <div className="flex items-center justify-between gap-3 px-5 sm:px-6 py-4 border-t border-[#f1f5f9] bg-[#f8fafc]">
+          {step > 1 ? (
+            <button type="button" onClick={() => { setAttempted(false); setStep((s) => (s === 3 ? 2 : 1)); }} className="inline-flex items-center gap-1 h-9 px-3 rounded-xl text-xs font-bold text-[#475569] hover:bg-[#e2e8f0] cursor-pointer">
+              <ChevronLeft className="w-4 h-4" /> Atrás
+            </button>
+          ) : (
+            <button type="button" onClick={onClose} className="h-9 px-3 rounded-xl text-xs font-bold text-[#475569] hover:bg-[#e2e8f0] cursor-pointer">Cancelar</button>
+          )}
+          {step < 3 ? (
+            <button type="button" onClick={next} className="inline-flex items-center gap-1 h-9 px-4 rounded-xl bg-[#501f92] hover:bg-[#3d1572] text-white text-xs font-bold cursor-pointer">
+              Siguiente <ChevronRight className="w-4 h-4" />
+            </button>
+          ) : (
+            <button type="button" onClick={handleCreate} className="h-9 px-4 rounded-xl bg-[#501f92] hover:bg-[#3d1572] text-white text-xs font-bold cursor-pointer">
+              Crear proyecto
+            </button>
+          )}
         </div>
       </div>
-
-      {/* Floating Immediate Assignee Picker Modal */}
-      {assigneeModalTarget && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl border border-[#e2e8f0] flex flex-col max-h-[85vh] overflow-hidden">
-            {/* Modal Header */}
-            <div className="px-5 py-4 border-b border-[#f1f5f9] flex items-center justify-between bg-[#f8fafc]/80">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#501f92] bg-[#501f92]/10 px-2 py-0.5 rounded-lg">
-                    Asignación Inmediata
-                  </span>
-                  <span className="text-xs font-bold text-[#64748b]">
-                    {assigneeModalTarget.quotedHours}h cotizadas
-                  </span>
-                </div>
-                <h3 className="text-sm font-bold text-[#0f172a] mt-1">
-                  {assigneeModalTarget.roleName}
-                </h3>
-                <p className="text-[11px] text-[#64748b]">
-                  Frente: <span className="font-semibold text-[#0f172a]">{assigneeModalTarget.delName}</span>
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setAssigneeModalTarget(null);
-                  setAssigneeSearchQuery('');
-                }}
-                className="p-1.5 rounded-lg text-[#94a3b8] hover:text-[#0f172a] hover:bg-[#f1f5f9] transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Search Input */}
-            <div className="px-5 py-3 border-b border-[#f1f5f9] bg-white">
-              <div className="relative">
-                <Search className="w-4 h-4 text-[#94a3b8] absolute left-3 top-2.5" />
-                <input
-                  type="text"
-                  value={assigneeSearchQuery}
-                  onChange={(e) => setAssigneeSearchQuery(e.target.value)}
-                  placeholder="Buscar colaborador por nombre o rol..."
-                  className="w-full text-xs pl-9 pr-3 py-2 rounded-xl border border-[#cbd5e1] focus:ring-2 focus:ring-[#501f92] focus:border-transparent outline-hidden"
-                />
-              </div>
-            </div>
-
-            {/* Collaborators List */}
-            <div className="p-5 overflow-y-auto space-y-4 flex-1">
-              {(() => {
-                const currentDel = deliverables.find((d) => d.id === assigneeModalTarget.delId);
-                const currentRb = currentDel?.roleBudgets.find((r) => r.id === assigneeModalTarget.roleBudgetId);
-                const targetAssignedIds = currentRb?.assignedMemberIds || [];
-
-                const query = assigneeSearchQuery.toLowerCase().trim();
-                const filteredMembers = AVAILABLE_TEAM_MEMBERS.filter(
-                  (m) =>
-                    !query ||
-                    m.name.toLowerCase().includes(query) ||
-                    m.role.toLowerCase().includes(query)
-                );
-
-                // Split into Suggested (matching role) and Others
-                const suggestedMembers = filteredMembers.filter(
-                  (m) => m.role.toLowerCase() === assigneeModalTarget.roleName.toLowerCase()
-                );
-                const otherMembers = filteredMembers.filter(
-                  (m) => m.role.toLowerCase() !== assigneeModalTarget.roleName.toLowerCase()
-                );
-
-                const renderMemberCard = (member: typeof AVAILABLE_TEAM_MEMBERS[0]) => {
-                  const isAssigned = targetAssignedIds.includes(member.id);
-                  const freeCapacity = member.configuredWeeklyHours - member.currentAllocatedWeeklyHours;
-                  const userAvail = checkAssigneeAvailability(member.name, initialUsers);
-                  const isOptimal = freeCapacity >= assigneeModalTarget.quotedHours;
-
-                  return (
-                    <div
-                      key={member.id}
-                      className={`p-3 rounded-xl border transition-all flex items-center justify-between gap-3 ${
-                        isAssigned
-                          ? 'border-[#501f92] bg-[#501f92]/5'
-                          : 'border-[#e2e8f0] bg-white hover:border-[#cbd5e1]'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <UserAvatar
-                          name={member.name}
-                          initials={member.initials}
-                          avatarBg={member.avatarBg}
-                          size="lg"
-                          className="w-9 h-9 rounded-full text-xs font-bold shrink-0 shadow-2xs"
-                        />
-                        <div>
-                          <div className="text-xs font-bold text-[#0f172a] flex items-center gap-1.5">
-                            <span>{member.name}</span>
-                            {userAvail.isOnVacation && (
-                              <span
-                                className="text-[10px] bg-[#fef3c7] text-[#92400e] px-1.5 py-0.5 rounded font-bold"
-                                title={userAvail.alertMessage}
-                              >
-                                🏖️ Vacaciones
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-[11px] text-[#64748b]">{member.role}</div>
-
-                          {/* Availability status line */}
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-[10px] font-semibold text-[#475569]">
-                              {freeCapacity}h libres (de {member.configuredWeeklyHours}h/sem)
-                            </span>
-                            {isOptimal ? (
-                              <span className="text-[10px] text-[#059669] bg-[#d1fae5] px-1.5 py-0.2 rounded font-bold">
-                                Capacidad óptima
-                              </span>
-                            ) : freeCapacity > 0 ? (
-                              <span className="text-[10px] text-[#d97706] bg-[#fef3c7] px-1.5 py-0.2 rounded font-bold">
-                                Parcial
-                              </span>
-                            ) : (
-                              <span className="text-[10px] text-[#dc2626] bg-[#fee2e2] px-1.5 py-0.2 rounded font-bold">
-                                Sin disponibilidad
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleToggleAssigneeToRole(
-                            assigneeModalTarget.delId,
-                            assigneeModalTarget.roleBudgetId,
-                            member.id
-                          )
-                        }
-                        className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
-                          isAssigned
-                            ? 'bg-[#501f92] text-white shadow-xs'
-                            : 'bg-[#f1f5f9] text-[#475569] hover:bg-[#e2e8f0]'
-                        }`}
-                      >
-                        {isAssigned ? (
-                          <>
-                            <Check className="w-3.5 h-3.5" />
-                            <span>Asignado</span>
-                          </>
-                        ) : (
-                          <>
-                            <Plus className="w-3.5 h-3.5" />
-                            <span>Asignar</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  );
-                };
-
-                return (
-                  <div className="space-y-4">
-                    {/* Suggested Group */}
-                    {suggestedMembers.length > 0 && (
-                      <div className="space-y-2">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-[#501f92] flex items-center gap-1">
-                          <Sparkles className="w-3 h-3" />
-                          <span>Sugeridos para {assigneeModalTarget.roleName} ({suggestedMembers.length})</span>
-                        </span>
-                        <div className="space-y-2">
-                          {suggestedMembers.map(renderMemberCard)}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Other Members Group */}
-                    {otherMembers.length > 0 && (
-                      <div className="space-y-2 pt-2">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748b]">
-                          Otros colaboradores de Uhura Group ({otherMembers.length})
-                        </span>
-                        <div className="space-y-2">
-                          {otherMembers.map(renderMemberCard)}
-                        </div>
-                      </div>
-                    )}
-
-                    {filteredMembers.length === 0 && (
-                      <div className="p-6 text-center text-xs text-[#64748b]">
-                        No se encontraron colaboradores que coincidan con "{assigneeSearchQuery}".
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="px-5 py-3 border-t border-[#f1f5f9] bg-[#f8fafc] flex items-center justify-between">
-              <span className="text-xs text-[#64748b]">
-                Los cambios se guardan automáticamente en el frente.
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  setAssigneeModalTarget(null);
-                  setAssigneeSearchQuery('');
-                }}
-                className="px-4 py-1.5 rounded-xl bg-[#501f92] hover:bg-[#3d1572] text-white text-xs font-bold transition-colors cursor-pointer"
-              >
-                Listo
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

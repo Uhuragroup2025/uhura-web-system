@@ -35,6 +35,8 @@ interface NewOpportunityModalProps {
   templates?: ProductBacklogTemplate[];
   initialMode?: 'hubspot' | 'manual';
   users?: UserItem[];
+  /** Quien crea la oportunidad: queda como comercial por defecto si trae negocios. */
+  currentUser?: UserItem | null;
 }
 
 export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
@@ -43,7 +45,8 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
   onSaveOpportunity,
   existingClients = [],
   initialMode = 'hubspot',
-  users = []
+  users = [],
+  currentUser = null
 }) => {
   // Mode toggle: 'hubspot' | 'manual'
   const [mode, setMode] = useState<'hubspot' | 'manual'>(initialMode);
@@ -138,9 +141,9 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
       setDeliveryError('');
       setLeadersOpen(false);
       setCommercialOpen(false);
-      if (commercialUsers.length > 0) {
-        setCommercialUserIds([commercialUsers[0].id]);
-      }
+      // Comercial por defecto = quien crea la oportunidad (si trae negocios); si no, se elige a mano (23 Nov 2026)
+      const meCommercial = currentUser ? commercialUsers.find((u) => u.id === currentUser.id || u.name === currentUser.name) : undefined;
+      setCommercialUserIds(meCommercial ? [meCommercial.id] : []);
       if (eligibleLeaders.length > 0) {
         setSelectedLeadUserIds([eligibleLeaders[0].id]);
       }
