@@ -91,7 +91,7 @@ export interface Zone {
 
 export const ZONES: Zone[] = [
   { id: 'arcade', name: 'Arcade', verb: 'Jugar', emoji: '🕹️', img: bldArcade, x: 742, y: 212, width: 300, height: 290, door: { x: 742, y: 240 } },
-  { id: 'cafe', name: 'Café', verb: 'Entrar al café', emoji: '☕', img: bldCafe, x: 222, y: 608, width: 330, height: 333, door: { x: 222, y: 636 } },
+  { id: 'cafe', name: 'Café de ideas', verb: 'Ver retos e ideas', emoji: '☕', img: bldCafe, x: 222, y: 608, width: 330, height: 333, door: { x: 222, y: 636 } },
   { id: 'stage', name: 'Escenario', verb: 'Poner música', emoji: '🎧', img: bldStage, x: 1242, y: 608, width: 320, height: 319, door: { x: 1242, y: 636 } },
   { id: 'estudio', name: 'El Estudio', verb: 'Entrar al Estudio', emoji: '💻', img: bldEstudio, x: 747, y: 884, width: 255, height: 254, door: { x: 747, y: 612 } },
   { id: 'wall', name: 'Muro', verb: 'Ver el muro', emoji: '🎉', img: bldWall, x: 300, y: 905, width: 196, height: 194, door: { x: 425, y: 676 } }
@@ -173,8 +173,11 @@ export const LIGHTS: { x: number; y: number; r: number }[] = [
 
 // ── Búsqueda de camino (A* sobre una grilla de 16 px) ───────────────────────
 const CELL = 16;
-const GW = Math.ceil(MAP_W / CELL);
-const GH = Math.ceil(MAP_H / CELL);
+type Pt = { x: number; y: number };
+/** Crea un buscador de camino para cualquier escena (ancho, alto y zonas caminables). */
+export const makePathfinder = (mapW: number, mapH: number, isWalkable: (x: number, y: number) => boolean) => {
+const GW = Math.ceil(mapW / CELL);
+const GH = Math.ceil(mapH / CELL);
 let grid: Uint8Array | null = null;
 const getGrid = () => {
   if (grid) return grid;
@@ -196,7 +199,7 @@ const lineClear = (ax: number, ay: number, bx: number, by: number) => {
 };
 
 /** Devuelve los puntos para ir de A a B rodeando obstáculos (sin incluir A). */
-export const findPath = (ax: number, ay: number, bx: number, by: number): { x: number; y: number }[] => {
+return (ax: number, ay: number, bx: number, by: number): Pt[] => {
   if (lineClear(ax, ay, bx, by)) return [{ x: bx, y: by }];
   const g = getGrid();
   const toCell = (x: number, y: number) => {
@@ -269,3 +272,6 @@ export const findPath = (ax: number, ay: number, bx: number, by: number): { x: n
   }
   return out;
 };
+};
+
+export const findPath = makePathfinder(MAP_W, MAP_H, isWalkable);

@@ -1,5 +1,7 @@
+import { DecisionsSection, useDecisionsVersion } from './decisions/DecisionsSection';
 import { makePersonMatcher } from './auth/taskVisibility';
-import { BlockerControl } from './BlockerControl';
+import { decisionsForTask } from './decisions/decisionStore';
+import { BlockerControl } from './decisions/BlockerControl';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { formatDate } from '../../utils/formatters';
 import { TimerControls } from './time/TimerControls';
@@ -207,13 +209,13 @@ interface TaskDetailModalProps {
     responsibleParty: string
   ) => void;
   onUpdateBlockerInfo?: (taskId: string, blockerInfo: TaskBlockerInfo | undefined) => void;
-  /** Usuarios activos (para elegir revisores). */
+  /** Usuarios activos (para elegir revisores de las decisiones). */
   users?: UserItem[];
-  /** Revisores de la tarea (término único «Revisor», §33.4). */
+  /** Revisores de la tarea (término único «Revisor», §32.7). */
   onUpdateReviewers?: (taskId: string, reviewers: NonNullable<TaskItem['reviewer']>[]) => void;
-  /** Abre la tarea directo en una sección (p. ej. desde Mi Día). */
-  focusSection?: 'entregables' | null;
-  /** Revisión (§33.4): «Sin revisión» y revisores elegidos a mano. */
+  /** Abre la tarea directo en una sección (p. ej. desde La Plaza o Mi Día). */
+  focusSection?: 'decisiones' | 'entregables' | null;
+  /** Revisión (§32.7.1): «Sin revisión» y revisores elegidos a mano. */
   onUpdateReviewSettings?: (taskId: string, patch: { requiresReview?: boolean; reviewersManual?: boolean }) => void;
   /** Aprobar o pedir ajustes: deja quién aprobó y marca los entregables. */
   onReviewDecision?: (taskId: string, decision: 'approved' | 'changes', by: string, note?: string) => void;
@@ -285,16 +287,18 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   );
   const meName = currentUser?.name || 'Equipo';
   const meInitials = currentUser?.initials || meName.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase();
-  // Tabs: 'mensajes' | 'entregables' | 'actividad' | 'info' (info used on mobile)
-  const [activeTab, setActiveTab] = useState<'mensajes' | 'entregables' | 'actividad' | 'info'>('mensajes');
-  // Revisión (§33.4): por defecto sí; «Sin revisión» solo lo ponen el líder del proyecto o Dirección
+  // Tabs: 'mensajes' | 'entregables' | 'decisiones' | 'actividad' | 'info' (info used on mobile)
+  const [activeTab, setActiveTab] = useState<'mensajes' | 'entregables' | 'decisiones' | 'actividad' | 'info'>('mensajes');
+  useDecisionsVersion();
+  // Revisión (§32.7.1): por defecto sí; «Sin revisión» solo lo ponen el líder del proyecto o Dirección
   const [requiresReviewState, setRequiresReviewState] = useState<boolean>(task?.requiresReview !== false);
-  // Entrega (§33.3): «¿Qué hiciste?» obligatorio; «Es un paso de otra tarea» opcional
+  // Entrega (§32.5): «¿Qué hiciste?» obligatorio; «Es un paso de otra tarea» opcional
   const [stepOfTaskId, setStepOfTaskId] = useState<string>('');
   const [isStepOf, setIsStepOf] = useState(false);
   const [changesOpen, setChangesOpen] = useState(false);
   const [changesNote, setChangesNote] = useState('');
   useEffect(() => {
+    if (isOpen && focusSection === 'decisiones') setActiveTab('decisiones');
     if (isOpen && focusSection === 'entregables') setActiveTab('entregables');
   }, [isOpen, focusSection, task?.id]);
   const [localActivities, setLocalActivities] = useState<TaskActivityLogEntry[]>([]);
@@ -1265,7 +1269,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   // Submit Deliverable
   const handleSubmitDeliverable = (e: React.FormEvent) => {
     e.preventDefault();
-    // §33.3 (decidido el 21 Nov 2026): se pide solo «¿Qué hiciste?» en una línea. Enlace y archivo
+    // §32.5 (decidido el 21 Nov 2026): se pide solo «¿Qué hiciste?» en una línea. Enlace y archivo
     // son opcionales porque no siempre existen. «Es un paso de otra tarea» enlaza la tarea a la que alimenta.
     const what = deliverableNotes.trim();
     if (what.length < 5) { showToast('Cuenta en una línea qué hiciste'); return; }
@@ -1401,7 +1405,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   };
   const isCurrentUserCollaborator =
     matchesCurrentUser(assignee) || collaborators.some((c) => matchesCurrentUser(c));
-  // Revisor, término único (§33.4): los revisores de la tarea; si no tiene, el líder del proyecto.
+  // Revisor, término único (§32.7.1): los revisores de la tarea; si no tiene, el líder del proyecto.
   // Basta uno para aprobar. Los seguidores y colaboradores no ven Aprobar ni Pedir ajustes.
   const effectiveReviewers = (reviewersList.length
     ? reviewersList
@@ -1974,7 +1978,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
           </div>
         </div>
 
-        {/* Revisor ausente hoy: ECO sugiere a otra persona (§33.4) */}
+        {/* Revisor ausente hoy: ECO sugiere a otra persona (§32.7.1) */}
         {reviewersAbsent && task.status !== 'Done' && (
           <div className="px-4 sm:px-6 py-2 border-b border-[#fde68a] bg-[#fffbeb] text-[11px] text-[#78350f] flex flex-wrap items-center justify-between gap-2">
             <span>
@@ -2032,6 +2036,28 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                 >
                   <span>Entregables</span>
                   {activeTab === 'entregables' && (
+                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#501f92] rounded-full" />
+                  )}
+                </button>
+
+                <button
+                  id="tab-decisiones-btn"
+                  onClick={() => setActiveTab('decisiones')}
+                  className={`pb-2.5 text-xs sm:text-sm font-bold transition-all cursor-pointer relative ${
+                    activeTab === 'decisiones'
+                      ? 'text-[#501f92] font-extrabold'
+                      : 'text-[#64748b] hover:text-[#0f172a]'
+                  }`}
+                >
+                  <span className="flex items-center gap-1.5">
+                    <span>Decisiones</span>
+                    {task && decisionsForTask(task.id).length > 0 && (
+                      <span className={`text-[10px] px-1.5 rounded-full font-mono ${decisionsForTask(task.id).some((d) => d.status === 'en_revision') ? 'bg-[#ede9fe] text-[#501f92]' : 'bg-[#f1f5f9] text-[#475569]'}`}>
+                        {decisionsForTask(task.id).length}
+                      </span>
+                    )}
+                  </span>
+                  {activeTab === 'decisiones' && (
                     <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#501f92] rounded-full" />
                   )}
                 </button>
@@ -2633,7 +2659,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                         </label>
                       </div>
 
-                      {/* Es un paso de otra tarea (§33.3) */}
+                      {/* Es un paso de otra tarea (§32.5) */}
                       <div className="p-3 rounded-xl bg-white border border-[#e2e8f0] space-y-2">
                         <label className="flex items-center gap-2 font-bold text-[#334155] cursor-pointer">
                           <input type="checkbox" checked={isStepOf} onChange={(e) => setIsStepOf(e.target.checked)} className="rounded accent-[#501f92]" />
@@ -2734,6 +2760,34 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                       </p>
                     )
                   )}
+                </div>
+              )}
+
+              {/* --------------------------------------------------- */}
+              {/* TAB: DECISIONES (§32.7): una línea por decisión; se abre sola la que te espera */}
+              {/* --------------------------------------------------- */}
+              {activeTab === 'decisiones' && (
+                <div id="tab-decisiones-content" className="space-y-3 text-xs animate-in fade-in duration-150">
+            {/* Decisiones escritas (§32.7) */}
+                  {task && (
+                    <DecisionsSection
+                      task={task}
+                      currentUser={currentUser}
+                      users={users}
+                      focus={false}
+                      defaultReviewers={(reviewersList.length ? reviewersList : projectLead ? [projectLead] : [])
+                        .map((p) => users.find((u) => u.name === p?.name) || users.find((u) => (p?.name || '').split(' ')[0] && u.name.startsWith((p?.name || '').split(' ')[0])))
+                        .filter(Boolean)
+                        .map((u) => ({ id: u!.id, name: u!.name }))}
+                      onBlockTask={(blocked, reasonText) =>
+                        onUpdateBlockerInfo?.(task.id, blocked
+                          ? { isBlocked: true, reason: 'dependency', reasonText, responsibleParty: 'Uhura / Interno', blockedAt: new Date().toISOString() }
+                          : { isBlocked: false, unblockedAt: new Date().toISOString() })
+                      }
+                    />
+                  )}
+
+                  <p className="text-[10.5px] text-[#94a3b8]">Mensajes es para conversar. Una decisión es para cuando necesitas un sí o un no de alguien, con fecha.</p>
                 </div>
               )}
 
@@ -3498,7 +3552,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               </div>
             )}
 
-            {/* Bloqueo de la tarea: motivo y aviso al líder (§15) */}
+            {/* Bloqueo con «¿Quién te ayudó?» (§32.9) */}
             {task && <BlockerControl task={task} currentUser={currentUser} users={users} onUpdateBlockerInfo={onUpdateBlockerInfo} />}
 
             {/* 4. Estructura de Responsabilidades & Roles */}
@@ -3508,7 +3562,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               </div>
 
               <div className="p-3 rounded-2xl bg-white border border-[#e2e8f0] shadow-2xs space-y-3">
-                {/* Revisa (§33.4): por defecto el líder del proyecto; cualquiera puede revisar.
+                {/* Revisa (§32.7.1): por defecto el líder del proyecto; cualquiera puede revisar.
                     Quien hace la tarea puede sumar revisores; quitarlos o poner «Sin revisión» solo
                     lo hacen el líder del proyecto o Dirección. */}
                 <div>

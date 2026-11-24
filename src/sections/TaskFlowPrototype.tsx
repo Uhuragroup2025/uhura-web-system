@@ -56,6 +56,9 @@ import { TaskDetailModal } from '../components/taskflow/TaskDetailModal';
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 import { CapacityView } from '../components/taskflow/CapacityView';
 import { MiDiaView } from '../components/taskflow/MiDiaView';
+import { DECISIONS_EVENT, loadDecisions, seedDecisionsIfEmpty } from '../components/taskflow/decisions/decisionStore';
+import { taskEarnings, syncTaskLedger, loadRewards, saveRewards } from '../components/taskflow/colonia/plaza/plazaRewards';
+import { creditUser } from '../components/taskflow/colonia/plaza/contributionsStore';
 import { LaColoniaView } from '../components/taskflow/colonia/LaColoniaView';
 import { TeamHumanProfileModal } from '../components/taskflow/copilot/TeamHumanProfileModal';
 import { FloatingBeaverWidget } from '../components/taskflow/FloatingBeaverWidget';
@@ -316,10 +319,23 @@ export const TaskFlowPrototype: React.FC = () => {
   const [currentView, setCurrentView] = useState<OrbitView>('mi-dia');
   const [saasFont, setSaasFont] = useState<'jakarta' | 'inter' | 'montserrat'>('jakarta');
   // Solo del prototipo: lo que cambia del flujo de cada tarea (estado, entregas, revisores…) se guarda
-  // en el navegador para que sobreviva a una recarga. En producción manda el backend.
+  // en el navegador para que sobreviva a una recarga, igual que ECOINS y decisiones. En producción manda el backend.
   const [tasks, setTasks] = useState<TaskItem[]>(() => applyTaskPatches(initialTasks));
   useEffect(() => { saveTaskPatches(initialTasks, tasks); }, [tasks]);
   const [users, setUsers] = useState<UserItem[]>(initialUsers);
+  // ECOINS al momento (§32.4): cuando una tarea se aprueba o se reabre, el libro de quien la hizo se
+  // actualiza enseguida, aunque nadie esté en La Plaza. En producción lo hace el servicio de eventos.
+  useEffect(() => {
+    let changed = false;
+    users.forEach((u) => {
+      const { owned } = taskEarnings(u, tasks, users);
+      if (!owned.length) return;
+      const before = loadRewards(u.id);
+      const after = syncTaskLedger(before, owned);
+      if (after !== before) { saveRewards(u.id, after); changed = true; }
+    });
+    if (changed) { try { window.dispatchEvent(new CustomEvent('eco:rewards-changed')); } catch { /* */ } }
+  }, [tasks, users]);
   // Default session user: Paola Monsalve (Product Lead / Leader)
   const [currentUser, setCurrentUser] = useState<UserItem>(
     () => initialUsers.find((u) => u.id === 'u-2') || initialUsers[0]
@@ -327,7 +343,7 @@ export const TaskFlowPrototype: React.FC = () => {
   const [clients, setClients] = useState<ClientProfile[]>(orbitClientsData);
   const [projectsList, setProjectsList] = useState<ProjectSummaryItem[]>(INITIAL_PROJECTS_LIST);
   // Tareas nacidas de New Business o de los ciclos del fee: toman el líder del proyecto como «Project Lead»
-  // (y por tanto quien revisa por defecto, §33.4). QA 22 Nov 2026: llegaban sin líder y el modal inventaba uno.
+  // (y por tanto quien revisa por defecto, §32.7.1). QA 22 Nov 2026: llegaban sin líder y el modal inventaba uno.
   useEffect(() => {
     const byKey = new Map<string, ProjectSummaryItem>();
     projectsList.forEach((p) => { byKey.set(p.id, p); byKey.set(p.name, p); });
@@ -832,7 +848,7 @@ export const TaskFlowPrototype: React.FC = () => {
             ...t,
             status: newStatus,
             completed: newStatus === 'Done',
-            // Fecha de cierre real de la tarea
+            // Fecha de cierre: la usan la misión del equipo y las celebraciones de La Plaza
             completedAt: newStatus === 'Done' ? (t.status === 'Done' && t.completedAt ? t.completedAt : timestamp) : undefined,
             approvedBy: newStatus === 'Done' ? t.approvedBy : undefined,
             approvedAt: newStatus === 'Done' ? t.approvedAt : undefined,
@@ -1528,8 +1544,8 @@ export const TaskFlowPrototype: React.FC = () => {
   };
 
   // Open Task Detail
-  const [taskDetailFocus, setTaskDetailFocus] = useState<'entregables' | null>(null);
-  const handleOpenTaskDetail = (taskOrId: TaskItem | string, focus: 'entregables' | null = null) => {
+  const [taskDetailFocus, setTaskDetailFocus] = useState<'decisiones' | 'entregables' | null>(null);
+  const handleOpenTaskDetail = (taskOrId: TaskItem | string, focus: 'decisiones' | 'entregables' | null = null) => {
     const target = typeof taskOrId === 'string' ? tasks.find((t) => t.id === taskOrId) : taskOrId;
     if (target) {
       setSelectedTaskForDetail(target);
@@ -1538,29 +1554,68 @@ export const TaskFlowPrototype: React.FC = () => {
     }
   };
 
-  // Abrir una tarea desde cualquier parte (Mi Día): evento «eco:open-task» { taskId, focus }
+  // Abrir una tarea desde cualquier parte (La Plaza, Mi Día): evento «eco:open-task» { taskId, focus }
   useEffect(() => {
     const onOpen = (e: Event) => {
-      const { taskId, focus } = (e as CustomEvent<{ taskId: string; focus?: 'entregables' }>).detail || ({} as { taskId: string });
+      const { taskId, focus } = (e as CustomEvent<{ taskId: string; focus?: 'decisiones' | 'entregables' }>).detail || ({} as { taskId: string });
       if (taskId) handleOpenTaskDetail(taskId, focus || null);
     };
     window.addEventListener('eco:open-task', onOpen);
     return () => window.removeEventListener('eco:open-task', onOpen);
   });
 
+  // Decisiones (§32.7): ejemplo del prototipo y desbloqueo automático al cerrarse
+  useEffect(() => { seedDecisionsIfEmpty(); }, []);
+  useEffect(() => {
+    const sync = () => {
+      const closed = loadDecisions().filter((d) => d.blocksTask && d.taskId && d.status !== 'en_revision');
+      if (!closed.length) return;
+      setTasks((prev) => prev.map((t) => {
+        const d = closed.find((x) => x.taskId === t.id);
+        if (!d || !t.blockerInfo?.isBlocked || !String(t.blockerInfo.reasonText || '').includes(d.title)) return t;
+        if (d.status === 'objeciones') return { ...t, blockerInfo: { ...t.blockerInfo, reasonText: `Decisión con objeciones: ${d.title}` } };
+        return { ...t, blockerInfo: { isBlocked: false, unblockedAt: new Date().toISOString() } };
+      }));
+    };
+    sync();
+    window.addEventListener(DECISIONS_EVENT, sync);
+    const id = window.setInterval(sync, 60_000);
+    return () => { window.removeEventListener(DECISIONS_EVENT, sync); window.clearInterval(id); };
+  }, []);
+
   const handleUpdateTaskReviewers = (taskId: string, reviewers: NonNullable<TaskItem['reviewer']>[]) => {
     setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, reviewers } : t)));
     setSelectedTaskForDetail((prev) => (prev && prev.id === taskId ? { ...prev, reviewers } : prev));
   };
 
-  /** §33.4: «Sin revisión» y revisores elegidos a mano (el cambio del proyecto no los toca). */
+  /** §32.7.1: «Sin revisión» y revisores elegidos a mano (el cambio del proyecto no los toca). */
   const handleUpdateReviewSettings = (taskId: string, patch: { requiresReview?: boolean; reviewersManual?: boolean }) => {
     setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, ...patch } : t)));
     setSelectedTaskForDetail((prev) => (prev && prev.id === taskId ? { ...prev, ...patch } : prev));
   };
 
-  /** Aprobar (queda quién aprobó y cuándo) o pedir ajustes. */
+  /** Aprobar (queda quién aprobó: cuenta para ECOINS y la misión) o pedir ajustes. */
   const handleReviewDecision = (taskId: string, decision: 'approved' | 'changes', by: string, note?: string) => {
+    // Revisión ágil (§32.4): +5 a quien revisa si aprueba o pide ajustes dentro de 1 día hábil desde la entrega. Máx. 20 al día.
+    {
+      const t = tasks.find((x) => x.id === taskId);
+      const last = [...(t?.deliverables || [])].reverse().find((d) => d.status === 'submitted');
+      const reviewerUser = users.find((u) => u.name === by) || users.find((u) => u.name.split(' ')[0] === by.split(' ')[0]);
+      const at = last?.submittedIso ? new Date(last.submittedIso) : null;
+      if (t && last && reviewerUser && at && !isNaN(at.getTime())) {
+        // Horas hábiles (lunes a viernes) desde la entrega; 1 día hábil = 24 horas hábiles
+        const d = new Date(at);
+        let bizHours = 0;
+        const now = new Date();
+        while (d < now && bizHours <= 24) { d.setHours(d.getHours() + 1); if (d.getDay() !== 0 && d.getDay() !== 6) bizHours++; }
+        const biz = bizHours <= 24 ? 1 : 2;
+        const todayKey = new Date().toISOString().slice(0, 10);
+        const already = loadRewards(reviewerUser.id).ledger.filter((e) => e.kind === 'review_fast' && e.at.slice(0, 10) === todayKey).length;
+        if (biz <= 1 && already < 4) {
+          creditUser(reviewerUser.id, { key: `review_fast:${taskId}:${last.id}`, amount: 5, kind: 'review_fast', label: `Revisión ágil · ${t.title}` });
+        }
+      }
+    }
     const apply = (t: TaskItem): TaskItem => {
       const dels = [...(t.deliverables || [])];
       const lastOpen = dels.map((d) => d.status).lastIndexOf('submitted');
@@ -1574,7 +1629,7 @@ export const TaskFlowPrototype: React.FC = () => {
   };
 
   /**
-   * Cambio por proyecto (§33.4): quien revisa por defecto en el proyecto. Se aplica a las tareas
+   * Cambio por proyecto (§32.7.1): quien revisa por defecto en el proyecto. Se aplica a las tareas
    * abiertas que siguen con el revisor por defecto; las que alguien cambió a mano no se tocan.
    */
   const handleChangeProjectReviewer = (projectName: string, person: NonNullable<TaskItem['reviewer']>) => {
@@ -3075,6 +3130,7 @@ export const TaskFlowPrototype: React.FC = () => {
                     absenceEvents={absenceEvents}
                     onNavigateToView={handleSelectView}
                     onUpdateUser={handleUpdateUser}
+                    timerRunning={!!activeTimer && !activeTimer.isPaused}
                   />
                 )}
 

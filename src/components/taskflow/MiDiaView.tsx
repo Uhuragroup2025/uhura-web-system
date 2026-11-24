@@ -1,5 +1,9 @@
 import { streakLabel } from './time/dayStreak';
 import { TeamStreakPanel } from './colonia/TeamStreakPanel';
+import { KnocksInbox } from './knocks/KnockUI';
+import { PassportCard } from './colonia/plaza/PassportCard';
+import { TodayFeed } from './today/TodayFeed';
+import { DecisionsWaiting } from './decisions/DecisionsWaiting';
 import React, { useState, useMemo } from 'react';
 import { formatDate, formatDateRange } from '../../utils/formatters';
 import { PageHeader } from './PageHeader';
@@ -1086,6 +1090,11 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
               </div>
             )}
 
+            {/* Decisiones que te esperan (§32.7): como revisor, sin urgencia de tarea ni carga */}
+            <DecisionsWaiting userId={currentUser?.id} />
+            {/* Toc toc (§32.18): preguntas que te dejaron (llegan al detener el cronómetro) y respuestas a las tuyas */}
+            <KnocksInbox me={currentUser} timerRunning={!!activeTimer && !activeTimer.isPaused} />
+
             {/* Siguiendo: tareas donde soy seguidor. Informativas, sin urgencia ni conteo. */}
             {followedTasks.length > 0 && (
               <div className="pt-3 border-t border-[#f1f5f9]">
@@ -1207,185 +1216,15 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
         </div>
 
         {/* ==================================================================== */}
-        {/* SIDEBAR DERECHO: RADAR DEL EQUIPO (PRÓXIMAS VACACIONES Y CULTURA) */}
+        {/* SIDEBAR DERECHO: PASAPORTE DEL MES Y «HOY EN UHURA» */}
         {/* ==================================================================== */}
         <aside className="w-full xl:w-84 shrink-0 space-y-4">
-          {/* Próximo festivo (antes en Capacidad): ayuda a planear la semana */}
-          {(() => {
-            const next = nextColombianHoliday(new Date().toISOString().slice(0, 10));
-            if (!next) return null;
-            const label = new Date(`${next}T12:00:00`).toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
-            return (
-              <div className="p-4 rounded-2xl bg-[#eff6ff] border border-[#bfdbfe] text-xs text-[#1e40af] space-y-1">
-                <p className="font-bold flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> Se viene semana corta</p>
-                <p className="text-[11px] text-[#1d4ed8]">El <strong>{label}</strong> es festivo. Planea tus entregas y avisa si algo no alcanza.</p>
-              </div>
-            );
-          })()}
-          {/* Tarjeta Principal del Radar de Ausencias */}
-          <div className="bg-white rounded-2xl p-5 border border-[#e2e8f0] shadow-xs space-y-4 transition-all">
-            {/* Header del Sidebar */}
-            <div className="flex items-center justify-between pb-3 border-b border-[#f1f5f9]">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-[#faf5ff] border border-[#ede9fe] flex items-center justify-center text-[#501f92]">
-                  <Users className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="text-xs font-bold text-[#0f172a] uppercase tracking-wider">
-                    Radar del Equipo
-                  </h3>
-                  <span className="text-[11px] text-[#64748b] block">
-                    Ausencias y fechas clave
-                  </span>
-                </div>
-              </div>
-
-              {upcomingVacations.length > 0 && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#fffbeb] text-[#b45309] border border-[#fde68a]">
-                  {upcomingVacations.length} {upcomingVacations.length === 1 ? 'ausencia próxima' : 'ausencias próximas'}
-                </span>
-              )}
-            </div>
-
-            {/* CASO ESPECIAL VACACIONES DE LUISA / ALERTAS PRÓXIMAS */}
-            {upcomingVacations.length > 0 ? (
-              <div className="space-y-3">
-                {upcomingVacations.map((vac) => {
-                  const isSoon = vac.daysRemaining <= 2; // resalta solo por cercanía, nunca por persona
-                  const daysBadgeText = vac.daysRemaining === 0
-                    ? 'Inicia hoy'
-                    : vac.daysRemaining === 1
-                    ? 'Mañana'
-                    : vac.daysRemaining === 2
-                    ? 'En 2 días'
-                    : `En ${vac.daysRemaining} días`;
-
-                  return (
-                    <div
-                      key={vac.id}
-                      className={`p-4 rounded-2xl border transition-all ${
-                        isSoon
-                          ? 'bg-[#fffbeb] border-[#fde68a]'
-                          : 'bg-[#f8fafc] border-[#e2e8f0]'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-2 mb-2">
-                        <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
-                          isSoon
-                            ? 'bg-[#fffbeb] text-[#b45309] border border-[#fde68a]'
-                            : 'bg-[#0284c7]/10 text-[#0284c7]'
-                        }`}>
-                          {daysBadgeText}
-                        </span>
-                        <span className="text-[10px] font-mono text-[#64748b]">
-                          {vac.daysDuration} días
-                        </span>
-                      </div>
-
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-[#0284c7] text-white font-bold flex items-center justify-center shrink-0 shadow-2xs">
-                          {vac.user?.initials || vac.userName.split(' ').map((n) => n[0]).join('').slice(0, 2)}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <h4 className="text-xs font-bold text-[#0f172a] truncate">
-                            {vac.userName}
-                          </h4>
-                          <p className="text-[11px] text-[#64748b] truncate mt-0.5">
-                            {vac.user?.jobTitle || ''}
-                          </p>
-                          <p className="text-[11px] font-medium text-[#334155] mt-1">
-                            <strong>{formatDate(vac.startDate)} al {formatDate(vac.endDate)}</strong>
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Prompt funcional y empático */}
-                      <div className="mt-3 text-[11px] text-[#475569] leading-relaxed">
-                        <strong className="text-[#0f172a]">Para tener en cuenta:</strong> {vac.userName.split(' ')[0]} estará ausente. Si compartes tareas o clientes, coordina entregas antes de esa fecha.
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] text-center text-xs text-[#64748b]">
-                <p className="font-semibold text-[#0f172a]">Toda la colonia disponible</p>
-                <p className="text-[11px] text-[#94a3b8] mt-0.5">
-                  Sin ausencias ni vacaciones programadas esta semana.
-                </p>
-              </div>
-            )}
-
-            {/* PRÓXIMOS ANIVERSARIOS EN UHURA (fecha de ingreso) */}
-            {upcomingAnniversaries.length > 0 && (
-              <div className="pt-2 border-t border-[#f1f5f9] space-y-2">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#501f92] block">
-                  🏅 Aniversarios en Uhura
-                </span>
-                {upcomingAnniversaries.map((item) => (
-                  <div key={item.user.id} className="p-3 rounded-2xl bg-[#faf5ff] border border-[#ede9fe] flex items-center justify-between gap-3 text-xs">
-                    <div className="min-w-0">
-                      <p className="font-bold text-[#0f172a] truncate">{item.user.name}</p>
-                      <p className="text-[10px] text-[#64748b] truncate">{item.dateFormatted} · {item.years} {item.years === 1 ? 'año' : 'años'}</p>
-                    </div>
-                    <span className="text-[10.5px] font-semibold text-[#501f92] whitespace-nowrap">
-                      {item.daysRemaining === 0 ? '¡Hoy!' : item.daysRemaining === 1 ? 'Mañana' : `En ${item.daysRemaining} días`}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* SECCIÓN DE PRÓXIMOS CUMPLEAÑOS */}
-            {upcomingBirthdays.length > 0 && (
-              <div className="pt-2 border-t border-[#f1f5f9] space-y-2">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#db2777] block">
-                  🎂 Próximos Cumpleaños
-                </span>
-                {upcomingBirthdays.map((item) => (
-                  <div
-                    key={item.user.id}
-                    className="p-3 rounded-2xl bg-[#fff1f2] border border-[#ffe4e6] flex items-center justify-between gap-3 text-xs"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-8 h-8 rounded-lg bg-[#db2777] text-white font-bold text-xs flex items-center justify-center shrink-0">
-                        {item.user.initials || 'CV'}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-bold text-[#0f172a] truncate">
-                          {item.user.name}
-                        </p>
-                        <p className="text-[10px] text-[#64748b] truncate">
-                          {item.dateFormatted}
-                        </p>
-                      </div>
-                    </div>
-
-                    <span className="text-[10.5px] font-semibold text-[#db2777] whitespace-nowrap">
-                      {item.daysRemaining === 0 ? '¡Hoy! 🎉' : item.daysRemaining === 1 ? 'Mañana' : `En ${item.daysRemaining} días`}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* ACCESO DIRECTO A LA COLONIA UHUREÑA */}
-            {onNavigateToView && (
-              <div className="pt-2 border-t border-[#f1f5f9]">
-                <button
-                  type="button"
-                  onClick={() => onNavigateToView('la-colonia')}
-                  className="w-full p-2.5 rounded-2xl bg-[#faf5ff] hover:bg-[#ede9fe] border border-[#ddd6fe] text-[#501f92] text-xs font-bold transition-all flex items-center justify-between cursor-pointer group"
-                >
-                  <div className="flex items-center gap-2">
-                    <span>Conoce La Colonia</span>
-                  </div>
-                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-                </button>
-              </div>
-            )}
-          </div>
-
+          {/* Pasaporte del mes (§32.21): 5 sellos por usar bien la plataforma */}
+          <PassportCard me={currentUser} users={users || []} tasks={tasks} timeLogs={timeLogs || []} absenceEvents={absenceEvents || []} targetDayHours={Number((((currentUser?.capacityHours || 42) / 5)).toFixed(1))} />
+          {/* «Hoy en Uhura» (§32.22): solo lo de hoy, cada aviso con una acción. Reemplaza el radar de la
+              semana (ausencias → Capacidad; cumpleaños y aniversarios próximos → Muro de La Plaza),
+              «Se viene semana corta» (ahora el festivo se avisa desde 7 días antes, con tus entregas) y «Conoce La Colonia». */}
+          <TodayFeed me={currentUser} users={effectiveUsers} tasks={tasks} absenceEvents={absenceEvents || []} />
           {/* En racha: aparece sola cuando alguien cumple la racha (o el equipo la tiene) */}
           <TeamStreakPanel variant="card" users={users || []} timeLogs={timeLogs} absenceEvents={absenceEvents || []} currentUser={currentUser} />
         </aside>

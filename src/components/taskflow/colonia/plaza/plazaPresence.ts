@@ -54,40 +54,79 @@ export interface WorkInfo {
   verb: string;
   task: string;
   project: string;
+  projectKey: string;
   client?: string;
+  /** Regla §32.3: el título de la tarea solo lo ve quien está en el proyecto. */
+  taskVisible?: boolean;
 }
+
+export const projectKeyOf = (t: TaskItem | null) => (t ? t.projectId || t.projectName || t.board || 'interno' : 'interno');
+
+/**
+ * Proyectos en los que está quien mira (§32.3): tiene tareas en él, lo lidera,
+ * o es `executive` / `system_admin` (ven todo).
+ */
+export const projectsVisibleTo = (viewer: UserItem | undefined, tasks: TaskItem[], users: UserItem[]): Set<string> | 'all' => {
+  if (!viewer) return new Set();
+  const level = String(viewer.accessLevel || '');
+  if (level === 'executive' || level === 'system_admin') return 'all';
+  const matches = makePersonMatcher(viewer, users);
+  const set = new Set<string>();
+  tasks.forEach((t) => {
+    const lead = !!t.projectLead && matches({ name: t.projectLead.name });
+    if (isTaskOwner(t, viewer, matches) || lead) set.add(projectKeyOf(t));
+  });
+  return set;
+};
 
 const isOpen = (t: TaskItem) => !['Done', 'completed', 'cancelled'].includes(String(t.status));
 
 /** La tarea en la que estaría trabajando (prototipo: una de sus tareas abiertas). */
 export const workFor = (u: UserItem, tasks: TaskItem[], users: UserItem[], pickIdx: number): WorkInfo => {
   const matches = makePersonMatcher(u, users);
+  // Solo tareas propias: la presencia simulada no le asigna a nadie una tarea ajena (QA 22 Nov 2026)
   const own = tasks.filter((t) => isOpen(t) && isTaskOwner(t, u, matches));
-  const pool = own.length ? own : tasks.filter(isOpen);
-  const t = pool.length ? pool[pickIdx % pool.length] : null;
+  const t = own.length ? own[pickIdx % own.length] : null;
   return {
     verb: verbOf(u),
     task: t?.title || 'Pendientes del día',
     project: t?.projectName || t?.board || 'Proyecto interno',
+    projectKey: projectKeyOf(t),
     client: t?.clientName
   };
 };
 
-const MEETING_ENDS = ['10:30 a. m.', '11:00 a. m.', '12:00 m.', '2:30 p. m.', '3:00 p. m.', '4:00 p. m.'];
-export const meetingUntil = (seed: number) => MEETING_ENDS[seed % MEETING_ENDS.length];
-
-/** DJ de la semana: rota por el equipo cada semana. */
-export const djOfWeek = (users: UserItem[]): UserItem | null => {
-  const active = users.filter((u) => u.status !== 'Inactive');
-  if (!active.length) return null;
-  const now = new Date();
-  const start = new Date(now.getFullYear(), 0, 1);
-  const week = Math.floor(((now.getTime() - start.getTime()) / 86400000 + start.getDay()) / 7);
-  return active[week % active.length];
+/** Fin de la reunión simulada: siempre en el futuro (entre 15 y 60 min desde ahora), en hora de Colombia. */
+export const meetingUntil = (seed: number) => {
+  const d = new Date(Date.now() + (15 + (seed % 4) * 15) * 60000);
+  d.setMinutes(Math.ceil(d.getMinutes() / 15) * 15, 0, 0);
+  return d.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' });
 };
 
-/** Convierte un enlace de Spotify en su versión para insertar. */
-export const spotifyEmbedUrl = (link: string): string | null => {
-  const m = link.trim().match(/open\.spotify\.com\/(?:intl-[a-z]+\/)?(playlist|album)\/([A-Za-z0-9]+)/);
-  return m ? `https://open.spotify.com/embed/${m[1]}/${m[2]}?utm_source=generator&theme=0` : null;
+export type MediaKind = 'spotify' | 'youtube';
+export interface SharedMedia {
+  kind: MediaKind;
+  /** Enlace original, para abrirlo en la app de cada persona. */
+  url: string;
+  /** Versión para insertar en ECO. */
+  embed: string;
+  /** Qué es: playlist, álbum, canción, video o lista de videos. */
+  label: string;
+}
+
+/** Reconoce enlaces de Spotify (playlist, álbum, canción) y YouTube (video, lista, short). */
+export const parseMedia = (raw: string): SharedMedia | null => {
+  const link = raw.trim();
+  const sp = link.match(/open\.spotify\.com\/(?:intl-[a-z]+\/)?(playlist|album|track)\/([A-Za-z0-9]+)/);
+  if (sp) {
+    const label = sp[1] === 'playlist' ? 'Playlist' : sp[1] === 'album' ? 'Álbum' : 'Canción';
+    return { kind: 'spotify', url: link, embed: `https://open.spotify.com/embed/${sp[1]}/${sp[2]}?utm_source=generator&theme=0`, label };
+  }
+  const list = link.match(/[?&]list=([A-Za-z0-9_-]+)/);
+  const vid = link.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/);
+  if (/youtu\.?be/.test(link) && (vid || list)) {
+    if (vid) return { kind: 'youtube', url: link, embed: `https://www.youtube-nocookie.com/embed/${vid[1]}?rel=0${list ? `&list=${list[1]}` : ''}`, label: list ? 'Lista de videos' : 'Video' };
+    return { kind: 'youtube', url: link, embed: `https://www.youtube-nocookie.com/embed/videoseries?list=${list![1]}`, label: 'Lista de videos' };
+  }
+  return null;
 };

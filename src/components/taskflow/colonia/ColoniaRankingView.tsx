@@ -10,6 +10,7 @@
 
 import React, { useState } from 'react';
 import { ColonyGameId, WeeklyLeaderboardEntry } from './types';
+import { COLONY_GAME_NAMES as COLONY_GAME_NAMES_LOCAL } from './coloniaEngine';
 import { Trophy, X, Play } from 'lucide-react';
 import { playTapSound } from './coloniaAudio';
 
@@ -99,6 +100,19 @@ export const ColoniaRankingView: React.FC<ColoniaRankingViewProps> = ({
             }`}
           >
             <span>🌿 Salto de Nenúfares</span>
+          </button>
+          <button
+            onClick={() => {
+              playTapSound();
+              setSelectedGame('quiz');
+            }}
+            className={`flex-1 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              selectedGame === 'quiz'
+                ? 'bg-[#501f92] text-[#f9a8d4] shadow-xs'
+                : 'text-white/60 hover:text-white'
+            }`}
+          >
+            <span>🧠 El Gran Quiz</span>
           </button>
         </div>
 
@@ -214,7 +228,7 @@ export const ColoniaRankingView: React.FC<ColoniaRankingViewProps> = ({
             className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-[#d4ff4a] to-[#4be5ff] text-[#120822] text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md hover:scale-[1.01]"
           >
             <Play className="w-3.5 h-3.5 fill-[#120822]" />
-            <span>Jugar para mejorar mi marca ({selectedGame === 'torre' ? 'Torre de Troncos' : 'Salto de Nenúfares'})</span>
+            <span>Jugar para mejorar mi marca ({COLONY_GAME_NAMES_LOCAL[selectedGame]})</span>
           </button>
         </div>
       </div>

@@ -245,7 +245,7 @@ export const TorreDeTroncos: React.FC<GameProps> = ({ onFinish }) => {
     let last = performance.now();
     const stars = Array.from({ length: 50 }, (_, i) => ({ x: (i * 73) % 360, y: (i * 41) % 260, r: 0.6 + (i % 3) * 0.5, p: i }));
     const loop = (now: number) => {
-      const dt = Math.min(0.05, (now - last) / 1000);
+      const dt = Math.max(0, Math.min(0.05, (now - last) / 1000));
       last = now;
       const canvas = canvasRef.current;
       const ctx = canvas?.getContext('2d');
@@ -563,7 +563,7 @@ export const SaltoDeNenufares: React.FC<GameProps> = ({ onFinish }) => {
     const reeds = Array.from({ length: 9 }, (_, i) => ({ x: i < 5 ? 6 + i * 9 : W - 6 - (i - 5) * 9, h: 50 + (i * 17) % 40, p: i }));
     const flies = Array.from({ length: 14 }, (_, i) => ({ x: (i * 97) % W, y: (i * 53) % H, p: i }));
     const loop = (now: number) => {
-      const dt = Math.min(0.05, (now - last) / 1000);
+      const dt = Math.max(0, Math.min(0.05, (now - last) / 1000));
       last = now;
       const canvas = canvasRef.current;
       const ctx = canvas?.getContext('2d');

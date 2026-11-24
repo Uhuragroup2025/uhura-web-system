@@ -23,6 +23,7 @@ import {
 } from './coloniaEngine';
 import { playScoreChime, playWinFanfare, playTapSound } from './coloniaAudio';
 import { TorreDeTroncos, SaltoDeNenufares } from './arcade/ArcadeGames';
+import { QuizGame } from './arcade/QuizGame';
 import {
   X,
   Trophy,
@@ -41,11 +42,15 @@ import {
 
 export type { TeammateOption };
 
+const GAME_EMOJI: Record<ColonyGameId, string> = { torre: '🪵', nenufar: '🌿', quiz: '🧠' };
+
 interface ColoniaMinigamesProps {
-  type: 'torre' | 'nenufar' | 'respiracion' | 'clasificador' | null;
+  type: 'torre' | 'nenufar' | 'quiz' | 'respiracion' | 'clasificador' | null;
   activeChallenge?: ColonyChallenge | null;
   teammates?: TeammateOption[];
   currentUser?: UserItem;
+  /** Fichas del equipo (para las preguntas de El Gran Quiz). */
+  teamUsers?: UserItem[];
   onClose: () => void;
   onComplete: (gameId: ColonyGameId, score: number) => void;
   onChallengeCreated?: (newChallenge: ColonyChallenge) => void;
@@ -56,6 +61,7 @@ export const ColoniaMinigames: React.FC<ColoniaMinigamesProps> = ({
   activeChallenge = null,
   teammates = [],
   currentUser,
+  teamUsers = [],
   onClose,
   onComplete,
   onChallengeCreated
@@ -64,7 +70,7 @@ export const ColoniaMinigames: React.FC<ColoniaMinigamesProps> = ({
 
   // Normalizar id del juego: 'respiracion' -> 'torre', 'clasificador' -> 'nenufar'
   const normalizedGameId: ColonyGameId =
-    type === 'torre' || type === 'respiracion' ? 'torre' : 'nenufar';
+    type === 'quiz' ? 'quiz' : type === 'torre' || type === 'respiracion' ? 'torre' : 'nenufar';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-150">
@@ -73,7 +79,7 @@ export const ColoniaMinigames: React.FC<ColoniaMinigamesProps> = ({
         <div className="flex items-center justify-between border-b border-white/10 pb-3">
           <div className="flex items-center gap-2.5">
             <span className="text-2xl">
-              {normalizedGameId === 'torre' ? '🪵' : '🌿'}
+              {GAME_EMOJI[normalizedGameId]}
             </span>
             <div>
               <div className="flex items-center gap-2">
@@ -81,12 +87,14 @@ export const ColoniaMinigames: React.FC<ColoniaMinigamesProps> = ({
                   {COLONY_GAME_NAMES[normalizedGameId]}
                 </h3>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#d4ff4a]/20 text-[#d4ff4a] border border-[#d4ff4a]/40">
-                  ⏱️ 15 SEGUNDOS
+                  {normalizedGameId === 'quiz' ? '🧠 10 PREGUNTAS' : '⏱️ 15 SEGUNDOS'}
                 </span>
               </div>
               <p className="text-[11px] text-[#c9b7ff]">
                 {activeChallenge
                   ? `⚔️ Desafío activo contra ${activeChallenge.challengerName}`
+                  : normalizedGameId === 'quiz'
+                  ? 'Preguntas sobre el equipo y el oficio'
                   : normalizedGameId === 'torre'
                   ? 'Timing y precisión · 15 segundos'
                   : 'Reflejos y velocidad · 15 segundos'}
@@ -102,7 +110,17 @@ export const ColoniaMinigames: React.FC<ColoniaMinigamesProps> = ({
         </div>
 
         {/* Cuerpo del juego */}
-        {normalizedGameId === 'torre' ? (
+        {normalizedGameId === 'quiz' ? (
+          <QuizMinigame
+            activeChallenge={activeChallenge}
+            teammates={teammates}
+            currentUser={currentUser}
+            teamUsers={teamUsers}
+            onComplete={(score) => onComplete('quiz', score)}
+            onChallengeCreated={onChallengeCreated}
+            onClose={onClose}
+          />
+        ) : normalizedGameId === 'torre' ? (
           <TorreCedroMinigame
             activeChallenge={activeChallenge}
             teammates={teammates}
@@ -169,7 +187,7 @@ const GameIntroScreen: React.FC<GameIntroScreenProps> = ({
       {/* Título & 1 sola regla estilo mobile limpio */}
       <div className="space-y-1.5 pt-1">
         <h2 className="text-xl sm:text-2xl font-black text-white tracking-wide flex items-center justify-center gap-2">
-          <span>{gameId === 'torre' ? '🪵' : '🌿'}</span>
+          <span>{GAME_EMOJI[gameId]}</span>
           <span className="uppercase">{COLONY_GAME_NAMES[gameId]}</span>
         </h2>
         <p className="text-xs sm:text-sm text-[#c9b7ff] max-w-xs mx-auto font-medium leading-relaxed">
@@ -180,7 +198,7 @@ const GameIntroScreen: React.FC<GameIntroScreenProps> = ({
       {/* 15 s grande & destacado */}
       <div className="py-1">
         <span className="inline-block font-mono text-3xl font-black text-[#d4ff4a] px-4 py-1 rounded-2xl bg-[#d4ff4a]/10 border border-[#d4ff4a]/30 shadow-inner">
-          15 s
+          {gameId === 'quiz' ? '10 preguntas' : '15 s'}
         </span>
       </div>
 
@@ -368,7 +386,7 @@ const GameOverScreen: React.FC<GameOverScreenProps> = ({
         /* Pantalla de resultado estándar cuidada */
         <div className="space-y-2.5">
           <div className="text-3xl animate-bounce">
-            {gameId === 'torre' ? '🪵' : '🌿'}
+            {GAME_EMOJI[gameId]}
           </div>
 
           <div className="text-5xl font-mono font-black text-[#d4ff4a] tracking-tight">
@@ -648,6 +666,73 @@ const ReflejosNenufarMinigame: React.FC<MinigameSubProps> = ({
   return (
     <SaltoDeNenufares
       key={round}
+      onFinish={(sc) => {
+        setScore(sc);
+        setGameState('gameover');
+      }}
+    />
+  );
+};
+
+
+// ============================================================================
+// 3. EL GRAN QUIZ (10 PREGUNTAS)
+// ============================================================================
+const QuizMinigame: React.FC<MinigameSubProps & { teamUsers: UserItem[] }> = ({
+  activeChallenge,
+  teammates = [],
+  currentUser,
+  teamUsers,
+  onComplete,
+  onChallengeCreated,
+  onClose
+}) => {
+  const [gameState, setGameState] = useState<'intro' | 'playing' | 'gameover'>('intro');
+  const [score, setScore] = useState(0);
+  const [round, setRound] = useState(0);
+  const start = () => {
+    setScore(0);
+    setRound((r) => r + 1);
+    setGameState('playing');
+  };
+
+  if (gameState === 'intro') {
+    return (
+      <GameIntroScreen
+        activeUserId={currentUser?.id}
+        title="El Gran Quiz"
+        oneRule="10 preguntas que suben de nivel, sobre el equipo y el oficio. Si fallas, te quedas con lo sumado. Tienes dos ayudas."
+        gameId="quiz"
+        activeChallenge={activeChallenge}
+        onStart={start}
+      />
+    );
+  }
+
+  if (gameState === 'gameover') {
+    return (
+      <GameOverScreen
+        score={score}
+        gameId="quiz"
+        gameName="El Gran Quiz"
+        activeChallenge={activeChallenge}
+        teammates={teammates}
+        currentUser={currentUser}
+        onPlayAgain={start}
+        onChallengeCreated={onChallengeCreated}
+        onClaimAndClose={() => {
+          onComplete(score);
+          onClose();
+        }}
+      />
+    );
+  }
+
+  return (
+    <QuizGame
+      key={round}
+      teamUsers={teamUsers}
+      currentUserId={currentUser?.id}
       onFinish={(sc) => {
         setScore(sc);
         setGameState('gameover');

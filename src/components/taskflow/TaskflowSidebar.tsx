@@ -1,3 +1,4 @@
+import { unseenCount, TODAY_EVENT } from './today/todayFeed';
 import React, { useState } from 'react';
 import { useMascotSkin } from './mascot/ecoMascot';
 import { OrbitView, UserItem } from './types';
@@ -44,6 +45,17 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
   onToggleCollapse,
   currentUser
 }) => {
+  // Punto de novedades en «Mi Día» (§32.22): retos, «Aprendí esto», podios y días libres de hoy
+  const [todayNews, setTodayNews] = React.useState(0);
+  React.useEffect(() => {
+    const uid = currentUser?.id;
+    if (!uid) return;
+    const update = () => setTodayNews(unseenCount(uid));
+    update();
+    const evs = [TODAY_EVENT, 'eco:ideas-changed', 'eco:contributions-changed', 'storage'];
+    evs.forEach((e) => window.addEventListener(e, update));
+    return () => evs.forEach((e) => window.removeEventListener(e, update));
+  }, [currentUser?.id, currentView]);
   const [openSections, setOpenSections] = useState<{ [key: string]: boolean }>({
     operacion: true,
     comercial: true,
@@ -200,9 +212,13 @@ export const TaskflowSidebar: React.FC<TaskflowSidebarProps> = ({
                     }`}
                     title="Mi Día"
                   >
-                    <div className="flex items-center gap-2.5">
+                    <div className="relative flex items-center gap-2.5">
                       <CalendarCheck className="w-3.5 h-3.5 text-[#8a4dff]" />
                       {!collapsed && <span>Mi Día</span>}
+                      {/* Novedades de «Hoy en Uhura» desde tu última visita (§32.22) */}
+                      {todayNews > 0 && currentView !== 'mi-dia' && (
+                        <span className={`${collapsed ? 'absolute -top-1 -right-1' : ''} w-2 h-2 rounded-full bg-[#a855f7] shadow-[0_0_6px_#a855f7]`} title={`${todayNews} ${todayNews === 1 ? 'novedad' : 'novedades'} de hoy`} />
+                      )}
                     </div>
                   </button>
                 )}

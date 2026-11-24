@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import { unseenCount, TODAY_EVENT } from './today/todayFeed';
+import React, { useState, useEffect } from 'react';
 import { OrbitView, UserItem } from './types';
 import { canAccessModule } from './auth/permissions';
 import { requestLogout } from './auth/SessionClosedOverlay';
@@ -94,6 +95,17 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   ].filter((g) => g.items.length > 0);
 
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  // Punto de novedades en «Mi Día» (§32.22)
+  const [todayNews, setTodayNews] = useState(0);
+  useEffect(() => {
+    const uid = currentUser?.id;
+    if (!uid) return;
+    const update = () => setTodayNews(unseenCount(uid));
+    update();
+    const evs = [TODAY_EVENT, 'eco:ideas-changed', 'eco:contributions-changed', 'storage'];
+    evs.forEach((e) => window.addEventListener(e, update));
+    return () => evs.forEach((e) => window.removeEventListener(e, update));
+  }, [currentUser?.id, currentView]);
 
   const handleNavClick = (view: OrbitView) => {
     onSelectView(view);
@@ -263,6 +275,9 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
               >
                 <item.icon className={`w-5 h-5 ${item.isActive ? 'text-[#d4ff4a]' : ''}`} />
                 <span className="text-[10px] mt-0.5">{item.label}</span>
+                {item.id === 'mi-dia' && !item.isActive && todayNews > 0 && (
+                  <span className="absolute top-1 right-3 w-2 h-2 rounded-full bg-[#a855f7] shadow-[0_0_6px_#a855f7]" aria-label="Novedades de hoy" />
+                )}
                 {item.isActive && (
                   <span className="w-1 h-1 rounded-full bg-[#d4ff4a] absolute bottom-0.5" />
                 )}

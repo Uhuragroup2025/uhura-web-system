@@ -561,7 +561,8 @@ export const INITIAL_COLONY_CHALLENGES: ColonyChallenge[] = [];
 
 export const COLONY_GAME_NAMES: Record<ColonyGameId, string> = {
   torre: 'Torre de Troncos',
-  nenufar: 'Salto de Nenúfares'
+  nenufar: 'Salto de Nenúfares',
+  quiz: 'El Gran Quiz'
 };
 
 export interface ColonyPlayer {
@@ -702,8 +703,8 @@ export function recordGameResult(gameId: ColonyGameId, score: number, player: Co
 export function loadWeeklyLeaderboards(now: Date = new Date()): Record<ColonyGameId, WeeklyLeaderboardEntry[]> {
   const since = weekStart(now).toISOString();
   const players = readJson<Record<string, ColonyPlayer>>('eco_colonia_players_v1', {});
-  const boards: Record<ColonyGameId, WeeklyLeaderboardEntry[]> = { torre: [], nenufar: [] };
-  (['torre', 'nenufar'] as ColonyGameId[]).forEach((gameId) => {
+  const boards: Record<ColonyGameId, WeeklyLeaderboardEntry[]> = { torre: [], nenufar: [], quiz: [] };
+  (['torre', 'nenufar', 'quiz'] as ColonyGameId[]).forEach((gameId) => {
     const best = new Map<string, GameResult>();
     loadGameResults()
       .filter((r) => r.gameId === gameId && r.createdAt >= since)

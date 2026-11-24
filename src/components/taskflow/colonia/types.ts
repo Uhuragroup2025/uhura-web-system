@@ -59,7 +59,7 @@ export interface ColonyHabitEvent {
   source: 'plan_completed' | 'early_risk_alert' | 'tasks_hygiene' | 'available_capacity_declared' | 'week_closed';
 }
 
-export type ColonyGameId = 'torre' | 'nenufar';
+export type ColonyGameId = 'torre' | 'nenufar' | 'quiz';
 
 /**
  * ============================================================================

@@ -457,7 +457,7 @@ Para no bloquear New Business cuando la app privada de HubSpot esté caída o si
 
 ### 12.9 Fee mensual: contrato y ciclos
 * En `projects` (fee): `contract_months`, `contract_start_date`, `contract_end_date`, `rollover_policy` (`none` | `carry_over` | `contractual_cap` = 25 % de la bolsa mensual).
-* `project_cycles` (un registro por mes de vigencia): `cycle_key` (`YYYY-MM` del mes en que empieza), `start_date` y `end_date` (actualizado 23 Nov 2026: el ciclo va del día del contrato al día anterior del mes siguiente; ver §34.1), `period_number`, `quoted_hours`, `rollover_hours_in`, `executed_hours` (rollup de `time_logs` de tareas del ciclo), `status` (`closed` | `active` | `upcoming`), `tasks_generated`.
+* `project_cycles` (un registro por mes de vigencia): `cycle_key` (`YYYY-MM` del mes en que empieza), `start_date` y `end_date` (actualizado 23 Nov 2026: el ciclo va del día del contrato al día anterior del mes siguiente; ver §32.17), `period_number`, `quoted_hours`, `rollover_hours_in`, `executed_hours` (rollup de `time_logs` de tareas del ciclo), `status` (`closed` | `active` | `upcoming`), `tasks_generated`.
 * `project_contract_renewals`: `renewed_at`, `renewed_by_user_id`, `added_months`, `monthly_hours`, `note`. Una renovación agrega ciclos sin modificar los cerrados.
 * `tasks.cycle_key` para fees. Job programado el primer día de cada ciclo (el día 1 si el contrato empieza el 1): abre el ciclo y clona las tareas plantilla del mes 1 (sin tiempo ni estado); idempotente por `(project_id, cycle_key)`.
 * Endpoints con filtro `?cycle=YYYY-MM` para KPIs, tareas y matriz de horas; por defecto el ciclo activo.
@@ -546,7 +546,7 @@ Para no bloquear New Business cuando la app privada de HubSpot esté caída o si
 | Relación con la tarea | Cómo se determina | Dónde aparece | Urgencia |
 |---|---|---|---|
 | **Responsable de ejecución** | `assignee_id`, `collaborators` o `assignee_allocations` | «Qué tengo que hacer hoy» (Mi Día) y «Mis tareas» | Normal: cuenta en pendientes, prioridad y capacidad |
-| **Revisor** | Tarea en `Review` y el usuario está en `task_reviewers` (§33.4); si la tarea no tiene, el revisor por defecto del proyecto; si no, `project.lead_user_id` | Mi Día y «Mis tareas» | Normal |
+| **Revisor** | Tarea en `Review` y `reviewer_id == user.id` (si no hay revisor, `project.lead_user_id == user.id`). ⚠ **Cambio aprobado el 21 Nov 2026 (rama experimental, §33):** el usuario está en `task_reviewers`; si la tarea no tiene, el revisor por defecto del proyecto; si no, `project.lead_user_id` | Mi Día y «Mis tareas» | Normal |
 | **Seguidor** | `followers` | «Siguiendo» (Mi Día plegado y pestaña en Tareas) | **Sin urgencia**: no suma a pendientes, contadores de atención, capacidad ni alertas |
 | Ninguna | — | No aparece | — |
 
@@ -575,7 +575,7 @@ Para no bloquear New Business cuando la app privada de HubSpot esté caída o si
 ### 15.3 Reglas de Transición de Estados por Rol en la Tarea
 * **Gobernanza de Cierre:** Las vistas de lista (`Mi Día` y `Mis Tareas`) no deben exponer checkbox circular de completado rápido; el cierre y aprobación de tareas se ejecuta desde el detalle de la tarea.
 * **Auto-transición a `In Progress` (`En proceso`):** Si una tarea está en `To Do` y un **Colaborador** ejecuta cualquier acción (iniciar timer, comentar, subir entregable o registrar tiempo), su estado debe pasar automáticamente a `In Progress`.
-* ⚠ **Cambio (24 Nov 2026):** la tarea simplificada de §33 reemplaza esta sección: un solo botón según el momento (Iniciar → Entregar o Terminar → Aprobar o Pedir ajustes), sin selector de estado salvo para Dirección.
+* ⚠ **Cambio aprobado el 21 Nov 2026 (rama experimental):** la tarea simplificada de §33 reemplaza esta sección: un solo botón según el momento (Iniciar → Entregar o Terminar → Aprobar o Pedir ajustes), sin selector de estado salvo para Dirección.
 * **Visibilidad de Acciones por Rol:**
   * **Colaborador:** puede ejecutar `Iniciar tarea` (`To Do → In Progress`) y `Solicitar revisión` (`In Progress → Review`).
   * **Project Lead / Seguidor / Revisor:** **no** debe ver `Solicitar revisión`; tiene habilitado `Completar y aprobar` (y al marcar manualmente la tarea como completada, se asume aprobada en `Done`). Cuando la tarea entra en `Review`, se le habilitan **`Devolver`** (`Review → In Progress`) y **`Aprobar y Completar`** (`Review → Done`).
@@ -945,7 +945,7 @@ Salen de la presentación de ECO a Dirección y RR. HH. y de la prueba con «PRU
 
 **Tareas:**
 * **Un solo colaborador por tarea.** Elegir otra persona la reasigna. Para trabajo en paralelo (p. ej. dos propuestas de logo) se usa **«Duplicar tarea»**: crea una copia sin colaborador ni horas cargadas y reparte las horas cotizadas a la mitad. Quien solo hace seguimiento va en Seguidores (0 h, notificado solo si lo mencionan).
-* **Aprobar y completar / Devolver:** solo el **Project Lead de la tarea** (o su revisor asignado). Los seguidores y colaboradores no ven esos botones. Si el Project Lead se ausenta, se cambia el Project Lead. Tareas legadas sin Project Lead: aprueba un líder o administrador. ⚠ *Cambio (24 Nov 2026, §33.4): «Aprobar» y «Pedir ajustes» los ven los revisores de la tarea; por defecto revisa el líder del proyecto; si el revisor está ausente, ECO sugiere otro.*
+* **Aprobar y completar / Devolver:** solo el **Project Lead de la tarea** (o su revisor asignado). Los seguidores y colaboradores no ven esos botones. Si el Project Lead se ausenta, se cambia el Project Lead. Tareas legadas sin Project Lead: aprueba un líder o administrador. ⚠ *Cambio aprobado el 21 Nov 2026 (rama experimental, §33.3): «Aprobar» y «Pedir ajustes» los ven los revisores de la tarea; por defecto revisa el líder del proyecto; si el revisor está ausente, ECO sugiere otro.*
 * **Retrabajos:** el formulario cambia con el origen. Cliente: causa «Feedback del cliente» (cuenta como ronda; si supera las incluidas se cobra) o «Cambio de alcance» (avisar a Comercial para cotizarlo); «Solicitado por (cliente)». QA/Interno: causa «Error interno detectado en QA» (no consume rondas ni se cobra); «Detectado por». Campo `rework.root_cause`: `client_feedback | scope_change | internal_error`.
 * Al guardar horas (cronómetro o manual) el usuario **se queda donde estaba** (tarea o proyecto); no se navega a Mi Día.
 
@@ -1402,9 +1402,441 @@ Verificado en el prototipo:
 * Datos limpios: carga del equipo con la sugerencia «Asignar a Juan Camilo» (y reasignación aplicada), matriz con asignado y ejecutado, fee con «Contrato vence en 11 días», renovación y «Generar tareas de Diciembre» (6 tareas).
 * **Falta ver el aviso en el Mi Día de un usuario Comercial.**
 
+---
 
-## 33. Tarea simplificada (aprobada por Paola el 21 Nov 2026; entrega del 24 Nov 2026)
-**Objetivo:** que la tarea tenga solo lo necesario para trabajar, sin reglas escondidas y sin acciones manuales que el sistema puede hacer solo. Lo automático ya existe: al ganar una oportunidad se crean cliente, proyectos por servicio y tareas con su colaborador (§12.3); «Iniciar proyecto» programa las fechas por capacidad y sugiere a otra persona del mismo rol si alguien pasa del 85 % de su jornada. Esta sección cubre lo que pasa dentro de la tarea.
+## 32. La Plaza: trabajo real, decisiones escritas y economía de reconocimiento (propuesta, 21 Nov 2026)
+
+> **Estado: propuesta en revisión de producto.** Vive en la rama experimental `claude/new-session-22mvgh`. **No es para Indunova todavía**: se pasa a `entrega-final-indunova` solo cuando Paola apruebe las decisiones de §32.16. Especificación funcional y estado del prototipo en `ORBIT_PRODUCT_STATUS.md`, Módulo 18 (bloque «La Plaza»).
+>
+> Si se aprueba, **precisa o reemplaza**: §22 (juegos de La Colonia), §24 (la racha de días cargados pasa a ser la única racha de ECO), §15.1 (excepción de visibilidad en La Plaza, §32.3) y el punto 3 de `ORBIT_PRODUCT_STATUS.md` §18.2 («sin estadísticas acumulativas»), que se reemplaza por el rango de §32.4.
+
+### 32.1 Principios (no negociables)
+1. **Se premian resultados, nunca tiempo.** Ningún cálculo usa tiempo conectado, tiempo en La Plaza, movimiento del personaje ni clics. Las horas (`time_logs`) siguen siendo solo para capacidad y costos (§10, §13). La única excepción ya existente es la racha de días cargados (§24), que premia **registrar** las horas, no trabajar más.
+2. **Sin vigilancia.** La presencia es efímera: no se guarda historial, no hay «última vez visto», ni reportes de actividad para líderes o Dirección. Nadie puede ver cuánto tiempo estuvo otra persona en La Plaza.
+3. **Solo suma.** No hay puntos negativos, castigos ni listas de quién no participó. Si una tarea vuelve a abrirse, se revierte lo que dio (§32.4); eso no es un castigo, es corregir el registro.
+4. **El servidor manda.** ECOINS, cofres, rarezas y rangos se calculan y sortean en el backend. El frontend solo muestra. Nada se otorga desde el navegador.
+5. **Una sola moneda (ECOINS) y una sola racha (§24).** Se retiran los recursos antiguos de La Colonia (`ColonyResources`: madera, energía, orbes) y los «orbes» del prototipo de La Plaza.
+6. **ECOINS no es una evaluación.** No se usan en evaluaciones de desempeño, ascensos ni compensación individual (⚠ confirmar con Dirección, §32.16).
+7. **Siempre se puede trabajar sin el juego** (§32.12).
+
+### 32.2 Equivalencias juego ↔ ECO
+El juego no crea trabajo nuevo: muestra el que ya existe. En la interfaz se usan las palabras de ECO; esta tabla es solo de referencia.
+
+| En el juego | En ECO (fuente de verdad) |
+|---|---|
+| Misión | Tarea (`tasks`) asignada a la persona |
+| Expedición | Proyecto (`projects`) y su equipo (personas con tareas en él) |
+| Jefe / hito | Presentación de **aprobación formal** del cronograma (`rounds[kind='approval']`, §31.7) y la entrega final |
+| Cofre del hito | Recompensa al aprobarse esa presentación (§32.6) |
+| Gremio | Todo Uhura (usuarios activos de Equipo & Accesos) |
+| Experiencia / rango | ECOINS acumulados (§32.4) |
+
+### 32.3 Presencia en La Plaza
+**Estado de cada persona (derivado, nunca declarado a mano):**
+
+| Estado | Regla | Dónde aparece |
+|---|---|---|
+| Trabajando | Tiene el cronómetro corriendo (§14) | El Estudio, en el grupo de escritorios de su área |
+| En reunión | Tiene un evento «ocupado» en su calendario ahora | Sala de reuniones, con la hora de fin |
+| Disponible | Tiene ECO abierto, sin cronómetro ni reunión | La plaza |
+| Fuera | Ausencia activa (§20) o sin sesión | No aparece; cuenta en «Fuera hoy» (sin decir por qué) |
+
+* **Área del escritorio:** del `department` / rol del usuario (Creative · Digital y Producto · Growth · Dirección y Comercial). Configurable por `system_admin`.
+* **Qué ven los demás (✅ decidido por Paola, 21 Nov 2026):** todos ven el verbo del rol y el **proyecto** («Diseñando · Tienda Online BattSaver»). El **título de la tarea** solo lo ven quienes están en ese proyecto (tienen tareas en él o lo lideran) y `executive` / `system_admin`. Las horas nunca se muestran. Aplica también a las celebraciones («Sara terminó una tarea de Tienda Online BattSaver»). Así se respeta §15.1.
+* **En reunión (✅ aprobado pedir el permiso, 21 Nov 2026; aún no solicitado):** hoy ECO solo lee el calendario corporativo de ausencias (§20), que administra Recursos Humanos. El permiso de los calendarios de cada persona es otro y hay que pedirlo. Para saber si alguien está en reunión, Indunova pide a Google Workspace el permiso de disponibilidad (*free/busy*) del calendario de cada persona (delegación de dominio, solo lectura). Se usa solo «ocupado» y la hora de fin, **nunca** título ni asistentes. Mientras el permiso no esté, el estado «En reunión» no se muestra. El botón «Unirse» abre el enlace de Meet solo si la persona que mira es invitada al evento.
+* **No molestar:** cada persona puede activarlo. Su personaje se ve, pero no recibe «Toc toc», invitaciones ni retos.
+* **Tiempo real (fase 2):** posiciones por WebSocket o SSE. Las posiciones viven en memoria, **no se guardan ni se registran en logs**. En fase 1, cada persona ve a los demás en lugares derivados de su estado (sin movimiento real).
+* `GET /api/plaza/presence` → `[{ user_id, state, area, verb, project_id, project_name, task_title|null, busy_until|null, dnd }]`, ya filtrado por la regla de visibilidad que se apruebe.
+
+### 32.4 ECOINS: libro mayor, valores y rango
+**Libro mayor `eco_ledger` (solo se agrega; nunca se edita ni se borra):** `id`, `user_id`, `amount` (entero; negativo solo en reversos), `kind`, `source_type`, `source_id`, `project_id` (opcional), `created_at`, `idempotency_key` **único** (`kind:source_id:user_id`). Reintentar un evento no duplica ECOINS.
+* **Acumulado** = suma de todos los movimientos, reversos incluidos; define el rango. Como no hay tienda (§32.6), acumulado y saldo son iguales. (Corregido el 21 Nov 2026 en el QA: si el reverso no restara, reabrir y volver a cerrar una tarea inflaría el rango.)
+
+**Qué da ECOINS (todo sale de eventos del core; nada se declara a mano):**
+
+| Evento | Quién recibe | ECOINS | Condición |
+|---|---|---|---|
+| Tarea que cuenta (§32.5) | Responsable(s) de ejecución | 10 / 20 / 40 según horas cotizadas de la tarea: ≤4 h · ≤16 h · >16 h (sin cotización: 10). Con varios responsables se reparte según `assignee_allocations`; si no hay, en partes iguales | Al pasar a `Done`. Si requiere revisión, al aprobarse |
+| Revisión ágil | Revisor | +5 | Aprueba o pide ajustes dentro de 1 día hábil desde que la tarea entró a `Review`. Máx. 20 al día |
+| Desbloqueo | Quien desbloqueó | +15 | La persona bloqueada lo confirma al quitar el bloqueo (§32.9). No a uno mismo |
+| Decisión escrita aprobada | Autor | +20 | §32.7 |
+| Respuesta a una decisión | Revisor que responde en la ventana | +3 | Una vez por decisión |
+| Video de avance | Autor | +5 | Adjunto a un entregable que se aprueba (§32.8) |
+| Mentoría | Mentor | +15 | Sesión confirmada por quien aprende. Máx. 2 por semana |
+| Reconocimiento recibido | Quien lo recibe | +5 | §32.9 |
+| Reto: podio | Quien queda 1º, 2º o 3º | +30 / +15 / +10 | §32.19. Quien lanza no puede ganar su propio reto |
+| Reto: aporte | Quien aporta y no queda en el podio | +5 | §32.19 |
+| Reto: lanzarlo | Quien lo lanzó | +10 | Si aportaron 2 o más personas. Máx. 4 retos con premio al mes |
+| «Aprendí esto» · tip o recurso | Quien lo escribió | +3 por cada persona a la que le sirvió | Máx. 30 por tip; 2 tips por semana dan ECOINS (§32.20) |
+| «Aprendí esto» · curso terminado | Quien lo terminó | +10 (≤ 4 h) · +25 (≤ 20 h) · +50 (> 20 h) | Al publicarlo con certificado. Máx. 2 cursos al mes dan ECOINS |
+| «Aprendí esto» · especialización o diplomado | Quien la terminó | +100 y desbloquea un almuerzo en familia | Cuando Dirección la valida (§32.20) |
+| Hito aprobado | Equipo del proyecto | Cofre del hito (§32.6) | El cliente aprueba una presentación formal |
+| Proyecto entregado | Equipo del proyecto | +50 y celebración (§32.10) | Cierre del proyecto (Módulo 11) |
+
+**Sin bono «Aprobada a la primera» (✅ decidido, 21 Nov 2026):** pedir ajustes es lo normal; un premio por no tenerlos empujaría a esconder trabajo o evitar la revisión. Una tarea con ajustes da lo mismo cuando se aprueba.
+
+**Desde cuándo:** solo tareas cerradas desde la activación de La Plaza; no hay ECOINS retroactivos (§32.16 #15).
+
+**Qué NO da ECOINS:** horas cargadas, tiempo conectado, entrar a La Plaza, caminar, aplausos, cafés, emojis, partidas del Arcade (tienen su propio ranking, §22) ni dar reconocimientos.
+
+**Reversos:**
+* Una tarea `Done` que vuelve a otro estado genera un movimiento negativo igual a lo que dio. Al volver a `Done`, se otorga de nuevo (la llave incluye el número de veces que se cerró).
+* Un retrabajo (`TaskRework`) **no** da ECOINS nuevos por la misma tarea. Las tareas de «Ajustes de cliente» sí cuentan: son tareas propias del cronograma (§31.11).
+* Si se cancela un proyecto, no se revierte lo ya ganado.
+
+**Rango (por acumulado; umbrales configurables):** Aprendiz 0 · Artesano 1.000 · Experto 4.000 · Maestro 10.000 · Leyenda 20.000. Con unas 3 tareas medianas al día (~1.200 al mes), Maestro llega en unos 8 meses y Leyenda en cerca de un año y medio. Se ajusta al ver datos reales.
+
+**Títulos (por logros, no por saldo):** «Desbloqueador» (10 desbloqueos), «Escriba» (5 decisiones aprobadas), «Mentor» (5 entre mentorías confirmadas y cápsulas «Aprendí esto» que le sirvieron a 3 o más personas), «Alma del equipo» (10 reconocimientos recibidos), «Coleccionista» (8 objetos), «Leyenda de La Plaza» (un objeto legendario). La persona elige cuál mostrar.
+
+**Ranking (✅ decidido, 21 Nov 2026):** **no** hay ranking individual de ECOINS. Se muestran logros, rangos y reconocimientos, y ranking solo en el Arcade (por juego, semanal, como hoy).
+
+### 32.5 Cuándo cuenta una tarea (✅ decidido, 21 Nov 2026)
+Reemplaza la regla anterior de «documentada» (enlace + nota de 20 caracteres), que el formulario no pedía y nadie conocía.
+* **Al entregar** se pide una sola cosa: **«¿Qué hiciste?»**, en una línea (obligatoria). El **enlace** y el **archivo** son opcionales porque no siempre existen. **«Es un paso de otra tarea»** (opcional) enlaza la tarea a la que alimenta; el resultado final vive allá.
+* **Con revisión (lo normal):** la tarea cuenta cuando **un revisor la aprueba**. La aprobación es la prueba de calidad, haya enlace o no. En ECO una tarea con revisión solo llega a `Done` por aprobación (o por corrección de Dirección, §33.2).
+* **Sin revisión:** cuenta cuando se termina con la línea «¿Qué hiciste?».
+* `task_deliverables` suma `step_of_task_id` (opcional) y `changes_note` (lo que pidió ajustar el revisor). `tasks` suma `approved_by`, `approved_at` y `requires_review` (por defecto `true`).
+* Prototipo: `taskCounts()` en `colonia/plaza/plazaRewards.ts`.
+
+### 32.6 Cofres
+**Sorteo siempre en el servidor.** Rareza por peso configurable: común 58 · rara 28 · épica 11 · legendaria 3. Dentro de la rareza, un objeto al azar del catálogo. Si ya lo tiene, se convierte en ECOINS: común 10 · rara 25 · épica 60 · legendaria 150. Cada cofre abierto da además 5 ECOINS.
+
+| Cofre | Cuándo se gana | Rareza mínima | Límite |
+|---|---|---|---|
+| Del día | Al primer evento del día hábil que dé ECOINS (§32.4). **Entrar a ECO o a La Plaza no lo da** | Común | 1 por día hábil; no se acumula |
+| Del hito | El cliente aprueba una presentación formal (§31.7). Lo recibe cada persona con al menos una tarea `Done` en esa fase | Rara | 1 por persona y presentación |
+| De cierre | Proyecto entregado (§32.10) | Épica | 1 por persona y proyecto |
+| De la misión | El equipo cumple la misión semanal (§32.11) | Rara | 1 por persona y semana |
+
+* **Progreso del cofre del hito:** la barra del proyecto en La Plaza es el porcentaje de tareas de la fase en curso que ya cuentan (§32.5). Llegar al 100 % no abre el cofre: lo abre la aprobación del cliente. Así el premio es la entrega, no el volumen de tareas.
+* **Sin tienda (✅ decidido, 21 Nov 2026):** los objetos del personaje solo salen de cofres. Los ECOINS no se gastan: miden lo acumulado (rango) y sirven de evidencia de contribución. Nunca se canjean por dinero, comida ni beneficios (§32.10).
+* Tablas: `chests` (`id`, `user_id`, `kind` = `daily` | `milestone` | `closure` | `team_mission`, `source_id`, `status` = `available` | `opened`, `item_id`, `duplicate`, `coins`, `created_at`, `opened_at`), único por (`kind`, `source_id`, `user_id`). `cosmetic_items` (`id`, `name`, `emoji_or_asset`, `rarity`, `slot` = `cabeza` | `cara` | `mano` | `aura`). `user_inventory` (`user_id`, `item_id`, `acquired_at`, `source`). `user_avatar` (`user_id`, `character_id`, `equipped_item_id`, `shown_title`).
+
+### 32.7 Decisiones escritas (antes de llamar a una reunión)
+**Propósito:** que las dudas y las propuestas se resuelvan por escrito, a tiempo de cada persona. La reunión queda solo para desacuerdos complejos.
+
+**Dónde vive (✅ decidido, 21 Nov 2026):** dentro de la **tarea**, en la sección «Decisiones» del detalle, antes de «Equipo & Responsabilidades». Ahí mismo se escriben las objeciones y los comentarios. También puede ir sin tarea, solo en el proyecto.
+
+**Contenido (plantilla fija):** título · problema y contexto · opciones evaluadas (2 a 4) · recomendación · preguntas concretas para el equipo · tarea o proyecto relacionado · revisores (personas; **por defecto, los revisores de la tarea**, §32.7.1) · ventana de revisión (24 h o 48 h hábiles, lunes a viernes; si se publica en fin de semana, la ventana arranca el lunes).
+
+**Estados:** `en_revision` → `aprobada` | `objeciones` | `descartada`. No hay borrador: se guarda al publicar.
+
+| Estado | Cómo se muestra |
+|---|---|
+| `en_revision` | «En revisión · cierra en N h» |
+| `aprobada` | «Aprobada» |
+| `objeciones` | «Hay objeciones: hablen 15 min» (solo el autor y quienes objetaron) |
+| `descartada` | «Descartada» |
+
+* Al publicar (`en_revision`), cada revisor recibe aviso en la campana y la decisión aparece en su Mi Día, en el bloque «Decisiones que te esperan» (sin urgencia de tarea). Tocarla abre la tarea directamente en la decisión.
+* **Respuesta de cada revisor:** «De acuerdo» · «Tengo una objeción» (con texto, obligatorio) · «Sin comentarios». Los comentarios pueden anclarse a una sección (problema, opción N, recomendación).
+* **Cierre automático al vencer la ventana:**
+  * Sin objeciones abiertas → `aprobada`. **El silencio cuenta como acuerdo**: no responder no bloquea (✅ decidido, 21 Nov 2026).
+  * Con alguna objeción abierta → `objeciones`. ECO sugiere una reunión de 15 minutos solo con el autor y quienes objetaron.
+* **Cierre anticipado:** si todos los revisores ya respondieron y no queda ninguna objeción abierta, se cierra como `aprobada` sin esperar la ventana.
+* **Bloquear la tarea mientras se decide (opcional):** al publicar, el autor puede marcar «Bloquear la tarea hasta que se decida». La tarea queda con `is_blocked = true` y `blocked_reason = 'Esperando decisión: {título}'`. Cuando la decisión se cierra (aprobada, con objeciones o descartada), el bloqueo se quita solo; este desbloqueo automático no da ECOINS de desbloqueo (§32.9).
+* El autor puede resolver una objeción (la marca «atendida» citando el cambio) antes del cierre. Puede descartar la decisión en cualquier momento.
+* Una decisión `aprobada` queda de solo lectura y enlazada al proyecto («Decisiones» en la ficha del proyecto). Se busca por texto.
+* Tablas: `decisions` (`id`, `author_id`, `project_id`, `task_id`, `title`, `problem`, `options` JSON, `recommendation`, `questions` JSON, `window_hours`, `status`, `published_at`, `closes_at`, `closed_at`), `decision_reviewers` (`decision_id`, `user_id`, `response` = `agree` | `objection` | `no_comment` | null, `responded_at`), `decision_comments` (`id`, `decision_id`, `author_id`, `anchor`, `text`, `is_objection`, `resolved_at`, `created_at`).
+* En La Plaza: tablero «Decisiones abiertas» en El Estudio y la lista en «ECO informa». Una decisión aprobada se anuncia como celebración (§32.10).
+
+### 32.7.1 Revisor: un solo término (✅ decidido, 21 Nov 2026)
+Hoy la regla dice que aprueba el **Project Lead** de la tarea «o su revisor asignado» (§15.1, §15.3 y las reglas de Tareas del #139). Se reemplaza por un solo término: **Revisor**.
+* Cada tarea tiene **uno o varios revisores** (`task_reviewers`: `task_id`, `user_id`). **Por defecto, el líder del proyecto.** El revisor puede ser **cualquier persona de Uhura**, del mismo equipo o de otra área (p. ej. Oscar revisa el SEO de Naye, o alguien de Comercial).
+* En la tarea el campo se llama **«Revisa»**. El Project Lead **sale de la tarea**: vive en el proyecto, donde responde por bloqueos, insumos y desvíos.
+* **Basta un revisor** para aprobar o pedir ajustes. No se espera a todos.
+* Los revisores ven **«Aprobar»** y **«Pedir ajustes»**; los seguidores y colaboradores no.
+* **Tres niveles, del más automático al más manual:**
+  1. **Automático:** al crearse la tarea (al convertir la oportunidad ganada o a mano), la revisa el revisor por defecto del proyecto (`projects.default_reviewer_id`; si es nulo, el líder del proyecto).
+  2. **Por proyecto:** el líder del proyecto o Dirección cambian «Revisa por defecto» en el proyecto. Se actualizan las tareas abiertas que siguen con el revisor por defecto; las que alguien cambió a mano (`task_reviewers.is_manual`) no se tocan.
+  3. **Por tarea:** solo para excepciones, en el campo «Revisa».
+* **Quién cambia qué:** quien hace la tarea puede **sumar** revisores, pero no quitarlos. Quitar revisores, volver al revisor por defecto o poner **«Sin revisión»** (`requires_review = false`) solo lo hacen el líder del proyecto o Dirección.
+* **Revisor ausente:** si todos los revisores tienen una ausencia activa hoy (§20), la tarea muestra «{Nombre} no está hasta el {fecha}» y ECO sugiere a otra persona: primero el líder del proyecto; si también falta, alguien del mismo rol que esté. El líder del proyecto o Dirección lo aplican con un clic («Que revise {Nombre}»); los demás ven «ECO le avisó al líder del proyecto». En producción ECO también avisa en la campana del líder cuando la tarea entra a revisión.
+* **§15.1:** la relación «Revisor» se calcula con `task_reviewers` (si la tarea no tiene, con el revisor por defecto del proyecto y, si no hay, con el líder del proyecto). Las tareas en `Review` aparecen en Mi Día de cada revisor.
+* **Decisiones:** los revisores de una decisión en una tarea son, por defecto, los revisores de esa tarea; quien escribe puede quitar o sumar personas.
+* **Migración:** `reviewer_id` actual pasa a una fila de `task_reviewers` (`is_manual = true`). Tareas sin `reviewer_id`: sin filas; revisa el revisor por defecto del proyecto.
+* `PUT /api/projects/{id}/default-reviewer` → `{ user_id }` (solo líder del proyecto o Dirección).
+* Prototipo: `TaskItem.reviewers[]`, `reviewersManual`, `requiresReview`; `taskReviewers()` en `src/components/taskflow/auth/taskVisibility.ts`; «Revisa por defecto» en la cabecera del proyecto (`ProjectsView`).
+
+### 32.8 Videos cortos de avance (en vez de reuniones de presentación)
+* **Grabados con Google Meet (✅ decidido, 21 Nov 2026).** Quien presenta abre una reunión de Meet solo, comparte pantalla y graba. **Duración: de 2 a 5 minutos.** La grabación queda en su Google Drive; se pega el enlace de Drive en ECO. ECO no almacena videos.
+* **Permisos del archivo:** «Cualquier persona de Uhura con el enlace». Si el revisor no tiene acceso, ECO muestra «No tienes acceso a este video» y el botón para pedirlo en Drive.
+* Se adjuntan a un **entregable** (§32.5) o a una **decisión** (§32.7).
+* **Reproductor dentro de ECO:** la vista previa de Google Drive (`/preview`). La velocidad 1,25× o 1,5× se elige en el mismo reproductor.
+* **Comentarios con el minuto:** el comentario guarda el minuto que escribe quien comenta (`mm:ss`, se sugiere el minuto en que va). El reproductor de Drive no deja leer ni saltar al segundo exacto desde ECO; el minuto se muestra como referencia y abre el video para buscarlo.
+* `media_videos`: `id`, `owner_id`, `drive_url`, `drive_file_id`, `deliverable_id` o `decision_id`, `created_at`. `video_comments`: `id`, `video_id`, `author_id`, `at_label` (`mm:ss`), `text`, `resolved_at`, `created_at`.
+* **En La Plaza:** la Sala de cine muestra los «Demos de la semana»: videos de entregables aprobados en la semana, solo de los proyectos que la persona puede ver (§32.3). La música o el video que alguien agrega a la lista del día (§32.8.1) es otra cosa: es social y no da ECOINS.
+
+### 32.8.1 Escenario: lista del día del equipo (Spotify y YouTube)
+* **Qué es:** una lista que el equipo arma durante el día. Cualquiera agrega un enlace de Spotify (canción, álbum o playlist) o de YouTube (video o lista). Se reinicia cada día; no da ECOINS.
+* **Cada fila:** portada y título, «{Canción} compartida por {nombre} · {hora}», ❤ (me gusta, uno por persona), ▶ «Escuchar aquí» (abre un reproductor pequeño solo al pedirlo; en YouTube, la sala de cine), «Abrir en Spotify / YouTube» y «Copiar enlace». Quien la agregó puede quitarla. No se repite un enlace el mismo día.
+* **Título y portada:** el backend los trae con el oEmbed público de Spotify (`open.spotify.com/oembed`) y de YouTube (`youtube.com/oembed`), sin cuenta, y los guarda con el enlace. Si no responde, se muestra «Canción de Spotify» o «Video de YouTube».
+* **Por qué no se reproduce para todos a la vez:** cada persona escucha con su propia cuenta. Sin sesión de Spotify, el reproductor incrustado solo da 30 segundos. Una **cuenta de Spotify de empresa no sirve para que suene a todos desde ECO**: las cuentas de Spotify son de uso personal, y reproducir música para un equipo o negocio requiere un servicio con licencia comercial.
+* **Opción a futuro (⚠ decisión):** una **playlist colaborativa** en una cuenta de Spotify de Uhura. ECO la mostraría con la API web de Spotify, y cada persona la escucha en su cuenta. Para que ECO agregue canciones a esa playlist se necesita que cada persona conecte su Spotify (OAuth). Recomendado: empezar con la lista del día de ECO (no requiere integración) y evaluar la playlist colaborativa si el equipo la usa.
+* `stage_items` (`id`, `day`, `added_by`, `kind` = `spotify` | `youtube`, `media_type`, `url`, `embed_url`, `title`, `thumbnail_url`, `created_at`), `stage_item_likes` (`item_id`, `user_id`), único por persona. `GET /api/plaza/stage?day=hoy` · `POST /api/plaza/stage` · `DELETE /api/plaza/stage/{id}` (solo quien lo agregó) · `POST`/`DELETE /api/plaza/stage/{id}/like`.
+
+### 32.9 Desbloqueos, mentorías y reconocimientos
+* **Desbloqueo:** la tarea ya tiene `is_blocked` y `blocked_reason`. Al quitar el bloqueo, quien lo tenía elige «¿Quién te ayudó?» (opcional, una persona). Se guarda en `task_unblocks` (`task_id`, `blocked_user_id`, `helper_user_id`, `confirmed_at`). Sin confirmación no hay ECOINS.
+* **Mentoría:** `mentorships` (`id`, `mentor_id`, `learner_id`, `topic`, `held_on`, `confirmed_by_learner_at`). Las personas con menos de 90 días en Uhura (fecha de ingreso) aparecen con «Nuevo» en La Plaza durante ese tiempo. Las mentorías con quien no es nuevo también cuentan.
+* **Reconocimientos:** tipos fijos: Gran trabajo · Me salvó el día · Pura creatividad · Buena onda (`kudos`: `id`, `giver_id`, `receiver_id`, `kind`, `message` opcional, `project_id` opcional, `created_at`).
+  * **Límites:** máximo 3 dados por persona por semana. No a uno mismo. No a la misma persona dos veces en la misma semana.
+  * Quien recibe ve quién lo reconoció. Se publican en el Muro de La Plaza.
+
+### 32.10 Celebraciones y recompensas reales
+* **Celebraciones en La Plaza** (todo el equipo las ve; se aplauden): tarea que cuenta (§32.5; solo para quienes pueden ver el proyecto, §32.3) · presentación aprobada por el cliente · decisión aprobada · proyecto entregado (celebración grande para todo Uhura: confeti, anuncio de ECO y cofre de cierre al equipo).
+* **Recompensas reales (✅ aprobado, 21 Nov 2026): medio día o día libre.** Las decide **Dirección**; **no se compran con ECOINS** ni salen de un cálculo automático del juego. Los ECOINS son evidencia para decidir, no moneda.
+
+| Momento | Recompensa sugerida | Quién la recibe |
+|---|---|---|
+| Proyecto entregado a tiempo y aprobado por el cliente | Medio día libre | Todo el equipo del proyecto, por igual |
+| Misión del mes cumplida (entre todos) | Viernes en la tarde libre | Todo Uhura |
+| Reconocimiento del mes | Día libre | 1 a 3 personas que elige Dirección con la evidencia de ECO (reconocimientos recibidos, desbloqueos, mentorías) |
+
+  * Para el proyecto entregado, Dirección mira también los resultados del negocio: entrega a tiempo, aprobación del cliente y margen real (§17).
+  * ECO solo las registra y las anuncia: `rewards` (`id`, `occasion` = `project_delivered` | `monthly_mission` | `monthly_recognition`, `project_id` opcional, `kind` = `medio_dia` | `dia_libre` | `tarde_libre`, `decided_by`, `decided_at`, `note`) y `reward_recipients` (`reward_id`, `user_id`, `status` = `pendiente` | `tomado`, `taken_on`).
+  * **Día libre ganado:** al tomarlo se registra como ausencia de tipo `earned_day_off` (§20), para que la capacidad lo descuente (§9) y no rompa la racha (§24).
+
+### 32.11 Misión del equipo (semanal, por resultados)
+* Reemplaza la misión diaria del prototipo (aplausos, cafés y reconocimientos), que premiaba actividad.
+* **Meta semanal de todo Uhura, configurable por `executive`:** por ejemplo, 40 tareas que cuentan (§32.5), 0 revisiones con más de 2 días hábiles de espera al viernes, y 3 decisiones escritas cerradas.
+* Se muestra solo el avance del equipo. **Nunca** quién aportó o quién no.
+* Si se cumple, cada persona activa recibe el lunes siguiente un cofre extra (`kind = team_mission`, rareza mínima rara), además de su cofre del día.
+* `GET /api/plaza/team-mission` → `{ week_start, goals:[{key, target, current}], done }`.
+
+### 32.12 Vista de juego y vista simple
+* **Un solo clic** en la barra de ECO cambia entre «Vista de juego» (La Plaza, El Estudio, personajes, animaciones y sonido) y «Vista simple»: una página de texto con quién está trabajando y en qué proyecto, quién en reunión hasta qué hora, decisiones que me esperan, entregas de la semana, celebraciones y mi saldo y cofre. Es la misma información y las mismas acciones (reconocer, «Toc toc», abrir cofre).
+* Preferencia por persona (`user_preferences.plaza_mode` = `juego` | `simple`). Con «reducir movimiento» del sistema se abre la vista simple.
+* **Mientras el cronómetro corre:** no salen celebraciones, avisos de cofre ni sonidos de La Plaza; se juntan y se muestran al detener el cronómetro. Las notificaciones de trabajo de §26 no cambian.
+
+### 32.12.1 ECO en La Plaza: anfitrión con puesto fijo (21 Nov 2026)
+* ECO **no sigue** a la persona. Tiene un puesto fijo junto a la fuente y pasea poco a su alrededor.
+* Habla solo si la persona pasa cerca (globo de texto). Los anuncios del equipo (celebraciones, misión cumplida) salen en el aviso superior, no en ECO.
+* Su etiqueta dice «ECO informa 💬» cuando hay algo para la persona (cofre listo o tareas por documentar).
+* Al tocarlo abre **«ECO informa»**: ECOINS, rango y cuánto falta para el siguiente, racha de días cargados, estado del cofre del día, tareas terminadas por documentar (máx. 3), misión de la semana y celebraciones de hoy. Usa los mismos datos de `GET /api/me/eco`, `GET /api/plaza/team-mission` y `GET /api/plaza/celebrations`; no requiere endpoints nuevos.
+* La mascota flotante del resto de ECO (Módulo 18) no cambia.
+
+### 32.13 Endpoints principales
+* `GET /api/me/eco` → `{ balance, lifetime, rank, next_rank_at, titles[], shown_title, chest_available }`.
+* `GET /api/me/ledger?cursor=` → movimientos propios (nadie ve el libro de otra persona).
+* `POST /api/me/chests/{id}/open` → `{ item, rarity, duplicate, coins }`. Idempotente: abrir dos veces devuelve el mismo resultado.
+* `PUT /api/me/avatar` → `{ character_id, equipped_item_id, shown_title }`.
+* `POST /api/kudos` · `GET /api/kudos?receiver=me|wall`.
+* `POST /api/tasks/{id}/unblock` con `helper_user_id` opcional.
+* `POST /api/mentorships` · `POST /api/mentorships/{id}/confirm`.
+* `POST /api/decisions` (crea y publica) · `POST /api/decisions/{id}/responses` · `POST /api/decisions/{id}/comments` · `POST /api/decisions/{id}/discard`. El cierre por ventana lo hace una tarea periódica del backend.
+* `POST /api/videos` (`drive_url` + `deliverable_id` o `decision_id`; ECO no sube archivos) · `POST /api/videos/{id}/comments`.
+* `PUT /api/tasks/{id}/reviewers` → `{ user_ids: [] }` (§32.7.1).
+* `GET /api/plaza/presence` · `GET /api/plaza/team-mission` · `GET /api/plaza/celebrations?since=`.
+* `POST /api/rewards` (solo `executive`) · `PATCH /api/rewards/{id}/recipients/{user_id}` (marcar como tomado; crea la ausencia `earned_day_off`).
+* **Eventos del core que alimentan el libro** (el juego no inventa lógica, como pide §18.2): `task.done`, `task.reopened`, `deliverable.approved`, `review.completed`, `task.unblocked`, `decision.closed`, `mentorship.confirmed`, `kudo.created`, `round.client_approved`, `project.delivered`. Un solo servicio escucha estos eventos y escribe en `eco_ledger` y `chests`.
+
+### 32.14 Permisos
+* Cada persona ve solo su saldo, su libro y su inventario. Rango, título mostrado y objeto equipado son públicos (se ven en La Plaza).
+* `executive` configura valores, umbrales, metas semanales y el catálogo, y registra recompensas reales. Todo cambio queda en bitácora. Cambiar un valor **no** recalcula el pasado.
+* `system_admin`: catálogo de áreas del Estudio y la integración de calendario.
+* **Nadie**, incluido `executive`, ve presencia histórica, tiempo en La Plaza ni ECOINS de otra persona en reportes.
+
+### 32.15 Cómo encaja con lo que ya existe
+| Regla existente | Qué cambia |
+|---|---|
+| §5 Estados de tarea | Sin cambios. ECOINS se otorga en la transición a `Done` |
+| §14 Cronómetro | Sin cambios. Es la fuente del estado «Trabajando» |
+| §15.1 Visibilidad | Excepción de solo lectura en La Plaza (§32.3), según la decisión #1. La relación «Revisor» usa `task_reviewers` (§32.7.1) |
+| §15.3 y reglas de Tareas (#139): aprueba el Project Lead «o su revisor asignado» | Aprueba **cualquiera de los revisores** de la tarea; por defecto, el líder del proyecto (§32.7.1). Botones «Aprobar» y «Pedir ajustes» (§33) |
+| §15.3: selector de estado en la tarea | Solo Dirección, para corregir (§33.2) |
+| §20 Ausencias | Se agrega el tipo `earned_day_off` (día libre ganado) |
+| §22 Juegos | `game_id` suma `quiz` (El Gran Quiz). Los juegos no dan ECOINS |
+| §24 Racha de días cargados | Es la **única** racha de ECO. Se muestra en La Plaza. Se retira la racha de visitas del prototipo |
+| §25 Racha de equipo y aplausos | Sin cambios |
+| §31.7 Presentaciones | La aprobación formal del cliente abre el cofre del hito |
+| `ORBIT_PRODUCT_STATUS.md` §18.2 punto 3 («sin estadísticas acumulativas») | Se reemplaza por el rango y los títulos de §32.4 |
+| La Colonia: `ColonyResources` (madera, energía, orbes) y estructuras del diorama | Se retiran. Una sola moneda: ECOINS |
+
+### 32.16 Decisiones (revisadas con Paola el 21 Nov 2026)
+1. ✅ **Visibilidad:** quien no está en el proyecto ve solo el proyecto (§32.3).
+2. ✅ **Recompensas reales:** medio día o día libre en tres momentos (proyecto entregado, misión del mes y reconocimiento del mes), decididas por Dirección y sin canje con ECOINS (§32.10).
+3. ✅ **Sin ranking individual de ECOINS** (§32.4).
+4. ✅ **Sin tienda:** los objetos solo salen de cofres; los ECOINS no se gastan (§32.6). Pluria (restaurantes y cowork) se sigue usando por fuera de ECO y no hace parte de este sistema.
+5. ✅ **Si nadie objeta en la ventana, la decisión queda aprobada** (§32.7).
+6. ✅ **Videos:** grabados con Google Meet, de 2 a 5 minutos, enlace de Drive (§32.8). Reemplaza la decisión anterior de usar YouTube.
+7. ✅ **Calendario:** pedir el permiso de disponibilidad para mostrar «En reunión» (§32.3).
+8. ✅ **Nombre de la moneda:** ECOINS.
+9. ⚠ **Playlist colaborativa de Spotify de Uhura** conectada a ECO, o solo la lista del día (§32.8.1). Pendiente.
+10. ✅ **Revisor:** un solo término («Revisa»); varios revisores por tarea, cualquiera de Uhura, por defecto el líder del proyecto, basta uno para aprobar (§32.7.1).
+11. ✅ **Las objeciones se escriben en la tarea** (sección «Decisiones»), no en otro lugar (§32.7).
+12. ✅ **Tarea simplificada (§33):** un solo botón, entrega con «¿Qué hiciste?» (enlace opcional), «Es un paso de otra tarea», Decisiones como pestaña, prioridad Urgente.
+13. ✅ **Sin bono «Aprobada a la primera»** (§32.4).
+14. ✅ **«Sin revisión»** solo lo ponen el líder del proyecto o Dirección (§32.7.1).
+15. ✅ **ECOINS no retroactivos:** todos empiezan en 0 el día que se active La Plaza (`plaza_settings.launched_on`). Solo dan ECOINS las tareas cerradas desde ese día; las anteriores no generan movimientos en `eco_ledger`. Así no se premian diferencias de cómo se cargó el sistema antes. La misión del equipo y la barra del proyecto sí usan todas las tareas (no son ECOINS).
+16. ✅ **Toc toc** con pregunta escrita y entrega al terminar el bloque (§32.18).
+17. ✅ **Se elimina «Saludar»** en La Plaza: no tenía un propósito real (22 Nov 2026).
+18. ✅ **El Café se vuelve «Café de ideas»** (22 Nov 2026): el tablero de retos y de «Aprendí esto». Se elimina la invitación a un café (era sincrónica y de adorno), también «Café al terminar» en El Estudio.
+19. ✅ **Retos asíncronos** (§32.19): ganan ECOINS quien lanza y quien gana.
+20. ✅ **Competencia solo dentro de cada reto**, con su podio. Se mantiene: sin ranking general de ECOINS (#3).
+21. ✅ **«Aprendí esto»** (§32.20).
+22. ✅ **Pasaporte del mes** (§32.21): lo tangible sale de 5 sellos de buen uso de la plataforma, no del saldo de ECOINS. 3 sellos = premio pequeño, alcanzable (desayuno o snack); 5 sellos = premio mayor, que pide constancia (almuerzo, libro o curso). Premios ✅ aprobados el 23 Nov 2026. Sin ranking ni cupo.
+23. ✅ **«Hoy en Uhura»** en la columna derecha de Mi Día (§32.22). El festivo se avisa **desde 7 días antes**: si cae lunes, avisarlo el día anterior no sirve porque nadie lo ve un sábado o un domingo.
+24. ✅ **Cursos y especializaciones dentro de «Aprendí esto»** (§32.20): tip = pocos ECOINS; curso con certificado = más ECOINS; especialización validada por Dirección = 100 ECOINS y un almuerzo en familia.
+
+### 32.17 Estado del prototipo frente a esta especificación (21 Nov 2026)
+**Ya alineado en el prototipo:**
+* Moneda única **ECOINS**, rango por acumulado y títulos por logros.
+* ECOINS por tareas propias que cuentan (§32.5: aprobadas, o terminadas con «¿Qué hiciste?» si no tienen revisión), tomadas de las tareas de ECO; y por reconocimientos recibidos. Aplausos, cafés, reconocimientos dados y entrar a La Plaza no dan ECOINS.
+* Cofre del día que se abre con la primera contribución del día. Si no hay, ECO dice qué tarea documentar.
+* Una sola racha: la de días cargados (§24), con las horas reales del prototipo.
+* Misión del equipo semanal y por resultados: tareas que cuentan, y revisiones con más de 2 días hábiles de espera. Si se cumple, cofre extra.
+* Reconocimientos con límite de 3 por semana y no a la misma persona dos veces.
+* Visibilidad (§32.3) en El Estudio y en las celebraciones.
+* Vista simple con un clic, y por defecto con «reducir movimiento».
+* Escenario como lista del día (§32.8.1).
+
+**Construido el 21 Nov 2026 (bloques 1 y 2):**
+* **Decisiones escritas (§32.7)** en el detalle de la tarea: plantilla, revisores (por defecto los de la tarea), ventana de 24 o 48 h hábiles, De acuerdo / Objeción anclada a una parte / Sin comentarios, atender objeción, comentar y descartar. Cierre por ventana o anticipado. Opción de bloquear la tarea, con desbloqueo automático al cerrar. Bloque «Decisiones que te esperan» en Mi Día. Tablero en El Estudio y lista en «ECO informa». ECOINS: +20 al autor si se aprueba, +3 por responder a tiempo.
+* **Revisores (§32.7.1):** campo «Revisores» en la tarea; cualquiera de ellos puede aprobar.
+* **Videos de Meet (§32.8):** se adjuntan a una decisión con el enlace de Drive, se ven con la vista previa de Drive y se comentan con el minuto (`mm:ss`). Falta adjuntarlos a un entregable.
+* **Desbloqueos (§32.9):** «Marcar la tarea como bloqueada» y «Ya se desbloqueó» con «¿Quién te ayudó?»; +15 ECOINS a quien ayudó.
+* **Mentorías (§32.9):** «Le enseñé algo a alguien» en «ECO informa»; quien aprende confirma; +15 ECOINS al mentor, máx. 2 por semana.
+* **Barra del proyecto y cofre del hito (§32.6):** en «ECO informa», con la fase en curso. **Aproximación del prototipo:** el cofre del hito se entrega cuando todas las tareas del entregable están listas, porque el prototipo no tiene la aprobación formal del cliente (§31.7). En producción lo abre esa aprobación.
+* **Recompensas reales y celebración (§32.10):** Dirección (`executive` o `system_admin`) las registra en el Muro. «Proyecto entregado» dispara la celebración grande, el cofre de cierre y +50 ECOINS al equipo. Cada persona marca «Tomar mi…». **Aproximación del prototipo:** el proyecto entregado sale de la recompensa que registra Dirección; en producción sale del evento `project.delivered`.
+
+* **Tarea simplificada (§33):** un solo botón, entrega con «¿Qué hiciste?», «Es un paso de otra tarea», «Pedir ajustes» con lo que hay que ajustar, historial de entregas, «Revisa» con los tres niveles y el aviso de ausencia, Decisiones como pestaña, Urgente.
+
+**Falta en el prototipo:** videos adjuntos a un entregable (§32.8), silenciar La Plaza con el cronómetro corriendo (§32.12) y crear la ausencia `earned_day_off` al tomar la recompensa (hoy solo se marca como tomada).
+
+**QA de usuario real (21 Nov 2026): qué se encontró y se corrigió en el prototipo.**
+* Al cambiar de persona con el Simulador QA, los ECOINS de una se mezclaban con los de otra. Ahora cada persona tiene su libro aparte.
+* Reabrir una tarea no restaba los ECOINS. Ahora se escribe un reverso y, si se vuelve a cerrar, se otorgan de nuevo; el rango usa el mismo saldo (§32.4).
+* La misión del equipo no subía al aprobar una tarea (faltaba la fecha de cierre). Ahora sí, y baja si se reabre.
+* La meta «revisiones con más de 2 días» nunca podía fallar (la fecha de entrega era texto). Ahora usa la fecha real de la entrega.
+* La presencia simulada anunciaba que alguien «terminó» una tarea real que no estaba terminada, y daba reconocimientos falsos con ECOINS. Ahora las celebraciones salen solo de cierres reales de hoy, con la regla de visibilidad (quien no está en el proyecto ve «una tarea de {proyecto}»), y la simulación no da ECOINS.
+* Al recargar la página, las tareas volvían a su estado inicial pero los ECOINS quedaban. Ahora el flujo de cada tarea (estado, entregas, revisores, aprobación) también se guarda en el navegador.
+* La tecla Esc no cerraba la tarea. Ahora sí.
+* **Segunda ronda (21 Nov 2026, prueba en celular):** la pantalla «Elige tu personaje» vibraba (la imagen tenía una transición CSS y además se movía cada cuadro) y en celular a veces se caía (el reloj de la animación podía arrancar en negativo). Los personajes alternaban frente/perfil cuadro a cuadro al rozar un borde: ahora giran con margen y pausa mínima, se detienen si se atascan y el paso es más suave.
+* En celular: arrastrar con el dedo mueve la vista de La Plaza y de El Estudio (un toque corto sigue siendo «caminar aquí»; al caminar, la cámara vuelve a seguir al personaje). Los indicadores van en una sola píldora (ECOINS · racha · misión) que abre «ECO informa», y los emojis detrás de un botón.
+* Videos de YouTube en celular: no se reproducen solos (el navegador lo bloquea y quedaban en negro); se cargan con `playsinline` y siempre está «Ábrelo en YouTube».
+* **QA de punta a punta de New Business → proyecto → tareas (22–23 Nov 2026; Comercial, líderes, colaboradores y Dirección).** Funcionó: crear y ganar una oportunidad de proyecto único y otra de fee, convertirlas (cliente, proyectos y tareas con colaborador), editar el cliente, «Iniciar proyecto» con festivos, sugerencias por ausencia y el flujo de la tarea simplificada (§33). Se corrigió:
+  * Las tareas creadas por la conversión (y por los ciclos del fee) usaban estados canónicos (`todo`…) que la tarea no reconocía: no había «Iniciar tarea», «Entregar» ni «Aprobar». **Backend:** un solo juego de estados (§5); la API puede aceptar ambos, pero devuelve siempre los de §5.
+  * Esas tareas llegaban sin líder del proyecto y la tarea inventaba «Paola (Lead PM)». Ahora toman el líder del proyecto (y «Revisa por defecto»). Los datos de ejemplo usan el nombre real.
+  * Los comentarios se guardaban siempre como «Catalina Tejada»; ahora con quien escribe (también reacciones y actividad).
+  * Los permisos de la tarea comparaban el primer nombre (Laura Viviana recibía los botones de Laura Isabel; igual Diego/Diego y Sara/Sara). Ahora usan la misma regla por persona de §15.1 (`makePersonMatcher`: id, o todos los nombres).
+  * La lista de personas de la tarea era fija y con nombres mal escritos; ahora son los usuarios activos reales.
+  * «Iniciar proyecto» no tenía en cuenta las ausencias: ubicaba tareas en plenas vacaciones. Ahora las ausencias ocupan esos días (un día completo queda sin espacio) y la sugerencia busca mismo rol y, si no hay, rol afín, como el resto de ECO.
+  * Capacidad (vista semanal) sumaba todas las tareas asignadas, de cualquier fecha, contra la capacidad de una semana; ahora suma solo lo que el cronograma pone en esa semana.
+  * **Corregido después (23 Nov 2026):**
+    * **Ciclos del fee por fechas del contrato.** Un ciclo va del día del contrato al día anterior del mes siguiente (23 Nov – 22 Dic, 23 Dic – 22 Ene, 23 Ene – 22 Feb): un contrato de 3 meses tiene 3 ciclos y ninguna tarea de «Noviembre» termina en diciembre. Si el contrato empieza el día 1, el ciclo es el mes calendario y se llama «Noviembre 2026»; si no, se nombra por sus fechas. Si el día no existe en un mes (31), se usa el último día. El estado del ciclo (cerrado / en curso / próximo) se calcula con esas fechas, no con el mes. **Backend:** `project_cycles` (§12.9) guarda `start_date` y `end_date`; `cycle_key` sigue siendo `YYYY-MM` del mes en que empieza el ciclo; una tarea sin `cycle_key` se ubica por su fecha dentro de esos rangos. ECO genera las tareas recurrentes el primer día de cada ciclo.
+    * **Rondas = presentaciones.** Cada presentación al cliente trae su ronda de ajustes, así que al «Iniciar proyecto» (y al editar el cronograma) `schedule_config.included_rework_rounds` = número de presentaciones. Antes el proyecto decía «Rondas de ajuste: 2» con 3 presentaciones.
+    * **Un solo nombre de estado** en la lista y en la ficha del proyecto: **Por iniciar** (no se ha pulsado «Iniciar proyecto») · **Programado** (iniciado con fecha futura) · **En ejecución** · **En pausa** · **Cerrado** · **Archivado**. «Activo» e «Iniciado» ya no se muestran. **Backend:** la API puede guardar `status` como hoy; la etiqueta se deriva de `status`, `is_kicked_off` y `start_date` con esta regla.
+    * **Responsable de cliente nunca vacío** tras convertir: el del cliente si ya tiene; si no, la persona con Access Level `client_relationship`; si no hay, el comercial de la oportunidad. Se guarda en el cliente nuevo (o en el existente que no tenía) y en los proyectos creados (§8.2).
+    * **«Creada el»** usa `created_at` de la tarea (nuevo campo, lo fija el servidor al crearla), no su fecha de trabajo, que cambia al programarla.
+    * **Comercial por defecto** en una oportunidad nueva = quien la crea, si trae negocios (`commercial`, `client_relationship` o `executive`); si no (p. ej. un líder), queda vacío y se elige.
+    * **«Pedir ajuste de alcance»** solo para Comercial (§31): el comercial de la oportunidad, su equipo comercial, `commercial`, `client_relationship`, `executive` y `system_admin`. Un líder no lo ve, salvo que sea el comercial de esa oportunidad. **Backend:** `POST /api/opportunities/{id}/scope-change-request` responde 403 a los demás.
+    * **Comercial no reasigna personas** (#145): en «Iniciar proyecto» y en «Carga del equipo», Comercial ve la sugerencia como texto («Sugerido: Laura · lo decide el líder») en vez de botones desactivados. Reasignan el líder del proyecto, Dirección y Admin.
+  * **Sigue pendiente (solo del prototipo):** el cronómetro es uno solo para todos los perfiles del simulador. En producción cada persona tiene el suyo.
+* **QA de punta a punta de La Colonia (22 Nov 2026, varios usuarios, escritorio y celular, 0 errores de consola).** Se corrigió:
+  * Los ECOINS de una tarea leían un campo vacío y siempre daban 10; ahora usan las **horas cotizadas** (una de 16 h da 20).
+  * **Revisión ágil** (+5 a quien revisa si aprueba o pide ajustes dentro de 1 día hábil desde la entrega, máx. 20 al día) no estaba en el prototipo; ya está.
+  * El anuncio de quién ganó un reto (y de las recompensas) solo lo veía quien lo cerraba; ahora La Plaza arma «Hoy en La Plaza» con los datos (tareas, retos y recompensas de hoy), igual para todos y aunque se recargue. Al entrar a La Plaza sale el anuncio de lo que la persona aún no ha visto hoy.
+  * A quien gana un reto le dice «¡Ganaste el reto…!» (no «Oscar ganó…» en su propio Mi Día).
+  * El Escenario identificaba a las personas por el primer nombre (dos «Sara» compartían los ❤ y una podía quitar la canción de la otra); ahora va por id de usuario.
+  * El Estudio no se movía con flechas ni WASD; ya se mueve.
+  * La vista simple no tenía «Toc toc» ni «Reconocer» (§32.12 pide las mismas acciones); ya los tiene.
+  * El toc toc desde La Plaza prometía «le llega ahora» sin saber si la persona estaba en un bloque; ahora dice que le llega cuando termine su bloque, o enseguida si está libre.
+  * La presencia simulada ponía a personas trabajando en tareas ajenas y reuniones con hora de fin ya pasada; ahora solo usa tareas propias y horas futuras. (El estado «En reunión» sigue siendo simulado: en producción no se muestra hasta tener el permiso de calendario, §32.3.)
+  * El Pasaporte de Dirección calculaba la jornada de todos con la de quien miraba; ahora usa la de cada persona.
+  * El Café que se abre desde Mi Día no cerraba con Esc; ya cierra.
+* **Reconocimientos:** al darlos en La Plaza, el aviso decía «le suma 5 ECOINS» pero a quien lo recibía no le llegaban. Ahora una sola función (`giveKudo`) aplica los límites de §32.9 y le suma los ECOINS a quien lo recibe; la usan La Plaza y «Hoy en Uhura».
+* **Tercera ronda (22 Nov 2026):** «Próximas entregas» en El Estudio mostraba títulos de tareas de todos los proyectos; ahora solo de los proyectos que la persona puede ver (§32.3), y cada entrega abre su tarea. El Estudio no tiene tarjeta de título: solo la flecha para volver a La Plaza y el zoom.
+* La tarjeta de un compañero muestra **«En curso»** (o «Entregó, en revisión») y **«Hoy terminó»**, con **«Ver cómo quedó»**, que abre la tarea en Entregables. Con la regla de visibilidad: quien no está en el proyecto ve «una tarea de {proyecto}» y no tiene el botón.
+* ECOINS al momento: se escriben en el libro de quien hizo la tarea cuando se aprueba (o se reabre), no al entrar a La Plaza. En producción, el servicio de eventos de §32.13.
+
+**Solo del prototipo:** la presencia, los estados y lo que hacen los demás están simulados; ECOINS, cofres, decisiones, desbloqueos, mentorías, recompensas, la lista del día y los cambios del flujo de las tareas (`eco_task_patches_v1`; las tareas creadas en la sesión no se guardan) viven en el navegador (localStorage), y los ECOINS de otra persona se escriben en su espacio del mismo navegador.
+
+---
+
+### 32.18 Toc toc: la pregunta que no interrumpe (✅ aprobado, 22 Nov 2026)
+**Para qué:** dejarle a alguien una pregunta corta que puede esperar, sin sacarlo de lo que está haciendo. Si es urgente, se usa Google Chat; el toc toc es para lo que puede esperar al final del bloque.
+* **Dónde se deja:** en la tarjeta de la persona en La Plaza o en El Estudio («Toc toc»). Se escribe la pregunta (obligatoria, 5 a 280 caracteres) y, si se quiere, se cita una tarea de esa persona que quien escribe puede ver (§32.3).
+* **Cuándo le llega:** si la persona tiene el cronómetro corriendo (§14) o un evento «ocupado» en el calendario (cuando exista el permiso, §32.3), **espera** a que lo detenga o termine la reunión. Si no está en un bloque, le llega enseguida. Mientras espera, la persona solo ve «🔕 1 pregunta espera a que detengas el cronómetro». Con «No molestar» activo, espera igual.
+* **Dónde lo ve:** en Mi Día (bloque «Toc toc») y en «ECO informa» de La Plaza. En producción, también en la campana al entregarse.
+* **Cómo responde:** con un toque («Voy 👍», «Te escribo por Chat», «En 30 min») o con texto. A quien preguntó le aparece la respuesta en su Mi Día y la archiva con «Listo».
+* **Límites:** máximo 5 toc tocs abiertos enviados por persona. Vence a los 2 días hábiles sin respuesta: a quien lo envió le aparece «{Nombre} no respondió. Escríbele por Google Chat». No da ECOINS.
+* **Privacidad:** solo lo ven quien envía y quien recibe. No aparece en La Plaza ni en reportes.
+* Tabla `knocks`: `id`, `from_user_id`, `to_user_id`, `text`, `task_id` (opcional), `created_at`, `delivered_at`, `reply_kind` (`voy` | `te_escribo` | `en_30` | `texto`), `reply_text`, `replied_at`, `closed_by_sender_at`, `expires_at`.
+* **Entrega:** el backend entrega los pendientes al detener el cronómetro (evento `timer.stopped`), al terminar el evento ocupado del calendario, o enseguida si la persona no está en un bloque. Una tarea periódica marca los vencidos.
+* Endpoints: `POST /api/knocks` · `GET /api/knocks?box=inbox|outcomes` · `POST /api/knocks/{id}/reply` → `{ kind, text? }` · `POST /api/knocks/{id}/close`.
+* Prototipo: `src/components/taskflow/knocks/` (`knockStore.ts`, `KnockUI.tsx`); localStorage `eco_knocks_v1`.
+
+### 32.19 Retos (✅ aprobado, 22 Nov 2026)
+**Para qué:** que cualquiera lance una idea o un desafío a cualquier hora y el equipo se sume cuando pueda. Todo asíncrono. Viven en el **Café de ideas** (el edificio del Café en La Plaza).
+* **Tipos:** de trabajo («¿Quién propone 3 nombres para la campaña de BattSaver?») y de aprendizaje («Comparte un atajo de Figma que nadie conozca»). Los del Arcade siguen en §22.
+* **Lanzar:** título (mín. 10 caracteres), «¿qué cuenta como hecho?» (mín. 10), fecha de cierre (hoy hasta un mes) y proyecto opcional (solo proyectos que la persona puede ver, §32.3).
+* **Sumarse y aportar:** «Me uno al reto» y luego un aporte (texto, mín. 5 caracteres, y enlace opcional: Figma, Drive, video de Meet). Un aporte por persona. Quien lanza no aporta a su propio reto.
+* **Votar:** cualquiera vota los aportes de los demás (uno por aporte, se puede quitar), nunca el propio. Los votos se ven.
+* **Cerrar:** quien lanzó lo cierra. En los de trabajo elige el podio (1º obligatorio si hay aportes, 2º y 3º opcionales); en los de aprendizaje el podio sale de los votos (empate: el aporte más antiguo). Si pasan 2 días hábiles de la fecha de cierre sin cerrarlo, se cierra solo por votos. Sin aportes se puede cancelar.
+* **ECOINS** (§32.4): 1º 30 · 2º 15 · 3º 10 · aporte fuera del podio 5 · quien lanzó 10 si aportaron 2 o más personas distintas. Máximo 4 retos **con premio** lanzados por persona al mes; los siguientes se lanzan sin premio. Llave idempotente por reto y persona.
+* **Competencia solo dentro del reto:** cada reto tiene su podio; no hay ranking general (§32.16 #20).
+* **Avisos:** al lanzarse aparece en el Café (el edificio muestra «🏁 N retos») y en «ECO informa». Al cerrarse, La Plaza anuncia «{Nombre} ganó el reto «…»». En producción, aviso en la campana a quienes se sumaron cuando el reto cierra y a quien lanzó cuando alguien aporta.
+* Tablas: `challenges` (`id`, `kind` = `trabajo` | `aprendizaje`, `title`, `done_when`, `project_id`, `creator_id`, `created_at`, `closes_on`, `status` = `abierto` | `cerrado` | `cancelado`, `prized`, `closed_at`), `challenge_participants` (`challenge_id`, `user_id`, `joined_at`), `challenge_entries` (`id`, `challenge_id`, `user_id`, `text`, `url`, `created_at`, `podium_place` 1-3 o nulo), `challenge_votes` (`entry_id`, `user_id`), único por par.
+* Endpoints: `GET /api/challenges?status=` · `POST /api/challenges` · `POST /api/challenges/{id}/join` · `POST /api/challenges/{id}/entries` · `POST`/`DELETE /api/challenges/{id}/entries/{entry_id}/vote` · `POST /api/challenges/{id}/close` → `{ podium: [entry_id] }` (solo quien lanzó) · `POST /api/challenges/{id}/cancel`. Una tarea periódica cierra los vencidos.
+* Prototipo: `colonia/plaza/ideasStore.ts` e `IdeasBoard.tsx`; localStorage `eco_ideas_v1`.
+
+### 32.20 «Aprendí esto»: tips, cursos y especializaciones (✅ aprobado, 22 Nov 2026)
+**Para qué:** que lo que alguien aprende le sirva a todo el equipo y que se note, sin reunión. Un solo módulo con tres tipos, de menos a más esfuerzo. Complementa las mentorías (§32.9): la mentoría es de uno a uno y se confirma; esto es de uno a todos y queda guardado.
+
+| Tipo | Qué se pide | Qué da |
+|---|---|---|
+| 💡 Tip o recurso | Título (mín. 5), qué aprendiste (mín. 30) y, opcional, un video de Meet de 2 a 5 min (Drive, §32.8) | +3 ECOINS a quien lo escribió por cada «Me sirvió» (una vez por persona, nunca en el propio), hasta 30 por tip. Solo los 2 primeros tips de la semana dan ECOINS |
+| 🎓 Curso terminado | Nombre, plataforma, horas, **enlace del certificado (obligatorio)** y qué te llevas | Al publicarlo: +10 (≤ 4 h) · +25 (≤ 20 h) · +50 (> 20 h). Máx. 2 cursos con ECOINS al mes. Los demás lo **felicitan** (👏, no da ECOINS) |
+| 🏅 Especialización o diplomado | Lo mismo, con la institución y el diploma | Queda «Por validar». Cuando **Dirección** (`executive` / `system_admin`) revisa el diploma y la valida: +100 ECOINS y **desbloquea un almuerzo en familia**, que se registra como recompensa real (§32.10, `occasion = specialization`, `kind = almuerzo_familia`) y se anuncia en La Plaza. Nadie valida la propia |
+
+* **Dónde se ve:** en el Café de ideas, pestaña «Aprendí esto» (filtros: Todo · Tips · Cursos y diplomas); en el **Muro de La Plaza**, «🎓 Diplomas del mes»; y en «Hoy en Uhura» (§32.22): a los demás les aparece «Laura terminó el curso «…»» con «👏 Felicitar», y a Dirección «… terminó la especialización. Revisa el diploma y valídala» con «Ver diploma» y «Validar».
+* **Pasaporte (§32.21):** cualquier tipo cuenta para el sello «💡 Compartí».
+* **Título «Mentor»:** un tip que le sirvió a 3 o más personas cuenta, junto con las mentorías confirmadas (5 en total).
+* Tablas: `capsules` (`id`, `author_id`, `kind` = `tip` | `curso` | `especializacion`, `title`, `body`, `video_url`, `platform`, `hours`, `certificate_url`, `validated_by`, `validated_at`, `created_at`), `capsule_helps` (`capsule_id`, `user_id`, `created_at`), `capsule_cheers` (`capsule_id`, `user_id`, `created_at`), únicos por par. En producción el certificado puede subirse como archivo (almacenamiento propio) además del enlace.
+* Endpoints: `GET /api/capsules?kind=` · `POST /api/capsules` · `POST /api/capsules/{id}/helped` (tips) · `POST /api/capsules/{id}/cheer` (cursos y especializaciones) · `POST /api/capsules/{id}/validate` (solo Dirección; crea la recompensa real).
+
+### 32.21 Pasaporte del mes (✅ aprobado, 22 Nov 2026)
+**Para qué:** que quienes son tímidos tengan una razón concreta para usar bien la plataforma (cargar sus tiempos, entregar con claridad, atreverse, compartir y ayudar), compitiendo solo consigo mismos. Lo tangible sale de los sellos; los ECOINS siguen sin canjearse (§32.6).
+
+| Sello | Cómo se gana en el mes |
+|---|---|
+| 🕐 Transparencia | Días cargados (≥ 80 % de la jornada, §24) en al menos el 80 % de los días hábiles del mes, sin contar festivos ni ausencias (redondeo hacia arriba). Noviembre 2026: 16 de 19 |
+| 📦 Entrega clara | 5 o más tareas propias entregadas con «¿Qué hiciste?» (§32.5) |
+| 🏁 Me atreví | Lanzar un reto (no cancelado) o aportar a uno (§32.19) |
+| 💡 Compartí | Publicar un «Aprendí esto» de cualquier tipo: tip, curso o especialización (§32.20), o tener una mentoría confirmada como mentor (§32.9) |
+| 🤝 Buen equipo | Dar 2 o más reconocimientos, sin toc tocs recibidos vencidos (§32.18) y sin revisiones propias esperando más de 2 días hábiles al momento del cálculo |
+
+* **Niveles (✅ aprobado 23 Nov 2026):** 3 sellos = premio pequeño (desayuno o snack); 5 sellos = premio mayor (almuerzo, libro o curso). `executive` define los premios de cada mes (`passport_prizes`: `month`, `level` 3 | 5, `description`). Todo el que llegue lo gana: no hay cupo ni ranking.
+* **Dónde se ve:** en Mi Día (arriba de la columna derecha) y en «ECO informa». Cada sello muestra su avance (ej.: «12/16 días») y un consejo para conseguirlo.
+* **Dirección** ve quién lleva 3 o 5 sellos (solo los que llegaron, no quién va atrás) para preparar los premios. Nadie más ve el pasaporte de otra persona.
+* **Cierre de mes:** una tarea programada el primer día hábil del mes siguiente congela el resultado en `passport_awards` (`user_id`, `month`, `stamps` JSON, `level`, `prize_description`, `status` = `pendiente` | `entregado`, `delivered_at`) y avisa a cada persona. Dirección marca «Entregado».
+* Endpoints: `GET /api/me/passport?month=` · `GET /api/passports?month=` (solo `executive` / `system_admin`) · `PUT /api/passport-prizes/{month}` · `PATCH /api/passport-awards/{id}` (entregado).
+* Prototipo: `colonia/plaza/passport.ts` (cálculo) y `PassportCard.tsx`; el premio de cada nivel es fijo en `PASSPORT_PRIZES`.
+
+### 32.22 «Hoy en Uhura»: la columna derecha de Mi Día (✅ aprobado, 22 Nov 2026)
+**Para qué:** que Mi Día sea accionable **del día**, no de la semana, y que ahí la gente se entere de lo que pasa en el equipo. Arriba va el Pasaporte del mes (§32.21) y debajo «Hoy en Uhura».
+
+**Qué aparece (solo de hoy, cada aviso con una acción), en este orden y máximo 6 a la vista («Ver todo» si hay más):**
+1. **Lo que te toca hoy** (fondo lila):
+   * Te sumaste a un reto que cierra hoy y no has aportado → «Enviar mi aporte».
+   * Tu reto recibió aportes → «Ver y votar» (vuelve a salir si llegan más).
+   * Tienes un día libre ganado sin tomar (§32.10) → «Tomarlo».
+   * Quien revisa una de tus tareas está ausente hoy (§20) → «Cambiar quién revisa» (abre la tarea, que ya sugiere a otra persona, §32.7.1).
+2. **Lo nuevo del equipo hoy:** un reto lanzado (→ «Me uno»), un «Aprendí esto» (→ «Ver» o «Me sirvió»), un reto ganado (→ «Ver el podio») y una tarea que se terminó (→ «👏 Aplaudir»; quien no está en el proyecto ve «una tarea de {proyecto}», §32.3).
+3. **Contexto que cambia tu día:** quién no está **hoy** y cuándo vuelve; cumpleaños y aniversarios **de hoy** (→ «Reconocer», que da el reconocimiento de §32.9); y el **próximo festivo desde 7 días antes** con cuántas entregas tienes esa semana (→ «Entendido»).
+
+**Reglas para que no se vuelva ruido:**
+* Cada aviso desaparece cuando la persona actúa o al terminar el día.
+* El menú muestra un punto en «Mi Día» cuando hay novedades del equipo (retos, «Aprendí esto», podios, días libres) desde la última visita. En celular, en la barra de abajo.
+* Ver un aviso no da ECOINS; solo cuenta la acción (aportar, «Me sirvió», reconocer).
+
+**Qué salió de la columna:** el radar de ausencias de la semana (vive en Capacidad), los próximos cumpleaños y aniversarios del mes (viven en el Muro de La Plaza), el aviso genérico «Se viene semana corta» (reemplazado por el del festivo con tus entregas) y la tarjeta «Conoce La Colonia».
+
+* **Backend:** `GET /api/me/today` devuelve la lista ya filtrada y ordenada: `[{ key, group: 1 | 2 | 3, kind, text, actions: [{ label, action }], created_at }]`, respetando la visibilidad de §32.3. `POST /api/me/today/{key}/done` marca un aviso como atendido hoy (`today_done`: `user_id`, `day`, `key`). `GET /api/me/today/unseen-count` alimenta el punto del menú (`today_seen`: `user_id`, `key`, `seen_at`).
+* Prototipo: `src/components/taskflow/today/` (`todayFeed.ts`, `TodayFeed.tsx`); el punto en `TaskflowSidebar.tsx` y `MobileBottomNav.tsx`.
+
+## 33. Tarea simplificada (aprobada por Paola el 21 Nov 2026; rama experimental)
+**Objetivo:** que la tarea tenga solo lo necesario para trabajar, sin reglas escondidas y sin acciones manuales que el sistema puede hacer solo. Lo automático ya existe: al ganar una oportunidad se crean cliente, proyectos por servicio y tareas con su colaborador (§12.3); «Iniciar proyecto» programa las fechas por capacidad y sugiere a otra persona del mismo rol o de uno afín si alguien pasa del 85 % de su jornada (`schedule/teamLoadAdvisor.ts`). Esta sección cubre lo que pasa dentro de la tarea.
 
 ### 33.1 Un solo botón según el momento
 | Estado | Quien hace la tarea | Quien revisa | Los demás |
@@ -1420,40 +1852,39 @@ Verificado en el prototipo:
 * Las listas (Proyecto → Tareas) no cambian el estado: el círculo abre la tarea.
 
 ### 33.2 Estado y prioridad
-* **El selector de estado sale de la tarea.** Solo `executive` y `system_admin` ven «Corregir estado», para errores. Queda en la Actividad. `PATCH /api/tasks/{id}/status` queda solo para ellos.
+* **El selector de estado sale de la tarea.** Solo `executive` y `system_admin` ven «Corregir estado», para errores. Queda en la Actividad.
 * **Prioridad:** Baja · Media · Alta · **Urgente** (`urgent`, la que usa el orden de Mi Día, §15.1). Disponible en la tarea, en Nueva tarea y en el formulario de tareas del proyecto.
 
 ### 33.3 Entregar
-* Formulario «Entregar» (o «Terminar» sin revisión): **«¿Qué hiciste?»** obligatorio (una línea, admite @menciones) · enlace (opcional) · archivo (opcional) · **«Es un paso de otra tarea»** (opcional; lista las tareas del mismo proyecto; el resultado final vive en esa tarea) · criterios de aceptación.
+* Formulario «Entregar» (o «Terminar» sin revisión): **«¿Qué hiciste?»** obligatorio (una línea, admite @menciones) · enlace (opcional) · archivo (opcional) · **«Es un paso de otra tarea»** (opcional; lista las tareas del mismo proyecto) · criterios de aceptación.
 * Con revisión → `Review` y aviso a los revisores. Sin revisión → `Done`.
 * La pestaña Entregables muestra el historial de entregas: quién, cuándo, la línea, el enlace, «Paso de: …», y el estado (Entregada · Con ajustes · Aprobada). El formulario solo lo ve quien hace la tarea mientras está por hacer o en proceso.
-* `task_deliverables` suma `step_of_task_id` (opcional) y `changes_note`. `tasks` suma `approved_by`, `approved_at` y `requires_review` (por defecto `true`).
+* Cuándo cuenta para ECOINS y la misión: §32.5.
 
-### 33.4 Quién revisa: un solo término, «Revisa»
-* Cada tarea tiene **uno o varios revisores** (`task_reviewers`: `task_id`, `user_id`, `is_manual`). **Por defecto, el líder del proyecto.** El revisor puede ser cualquier persona de Uhura, del mismo equipo o de otra área. **Basta un revisor** para aprobar o pedir ajustes.
-* En la tarea el campo se llama **«Revisa»**. El Project Lead **sale de la tarea**: vive en el proyecto, donde responde por bloqueos, insumos y desvíos.
-* **Tres niveles:** (1) automático: al crearse la tarea la revisa el revisor por defecto del proyecto (`projects.default_reviewer_id`; si es nulo, el líder); (2) por proyecto: el líder o Dirección cambian «Revisa por defecto» y se actualizan las tareas abiertas que no se cambiaron a mano; (3) por tarea, para excepciones.
-* **Quién cambia qué:** quien hace la tarea puede **sumar** revisores, no quitarlos. Quitar revisores o poner **«Sin revisión»** (`requires_review = false`) solo lo hacen el líder del proyecto o Dirección.
-* **Revisor ausente:** si todos los revisores tienen una ausencia activa hoy (§20), la tarea dice «{Nombre} no está hasta el {fecha}» y ECO sugiere a otra persona (primero el líder del proyecto; si también falta, alguien del mismo rol). El líder o Dirección lo aplican con un clic; los demás ven «ECO le avisó al líder del proyecto».
-* **Migración:** `reviewer_id` actual pasa a una fila de `task_reviewers` (`is_manual = true`).
-* `PUT /api/projects/{id}/default-reviewer` → `{ user_id }` (solo líder del proyecto o Dirección). `PUT /api/tasks/{id}/reviewers` → `{ user_ids[] }`.
+### 33.4 Quién revisa
+Regla completa en §32.7.1: «Revisa» por defecto el líder del proyecto; tres niveles (automático, por proyecto, por tarea); quien hace la tarea suma revisores pero no los quita; «Sin revisión» solo líder del proyecto o Dirección; aviso y sugerencia si el revisor está ausente.
 
 ### 33.5 Qué ve cada quien en la columna derecha
-* **Todos:** prioridad, horas, cronograma, bloqueo («Marcar la tarea como bloqueada» con su motivo, y «Ya se desbloqueó»), «Revisa», colaborador, seguidores (quedan enterados, sin urgencia ni carga; aviso solo si los mencionan).
+* **Todos:** prioridad, horas, cronograma, bloqueo («Marcar la tarea como bloqueada», un solo bloqueo; la decisión que bloquea usa el mismo), «Revisa», colaborador, seguidores (quedan enterados, sin urgencia ni carga; aviso solo si los mencionan).
 * **Solo líderes y Dirección:** rol cotizado y retrabajos.
 * **Ya no está:** Project Lead (vive en el proyecto) y el selector de estado (salvo Dirección).
 
 ### 33.6 Pestañas
-Mensajes · Entregables · Actividad.
+Mensajes · Entregables · **Decisiones (n)** · Actividad. Las decisiones se ven cerradas, una línea cada una; se abre sola la que espera tu respuesta. Desde Mi Día o La Plaza, la tarea abre directo en la pestaña Decisiones. Regla para el equipo: Mensajes es para conversar; una decisión es para cuando necesitas un sí o un no de alguien, con fecha.
 
-### 33.7 Endpoints
+### 33.7 Lo que la tarea no muestra
+ECOINS, cofres ni rangos. La tarea es para trabajar; La Plaza muestra el resto.
+
+### 33.8 Endpoints
 * `POST /api/tasks/{id}/deliver` → `{ what, url?, file_id?, step_of_task_id?, criteria_checked[] }`. Con revisión pasa a `Review`; sin revisión, a `Done`. `what` obligatorio.
 * `POST /api/tasks/{id}/approve` (solo revisores) · `POST /api/tasks/{id}/request-changes` → `{ note }` (solo revisores; `note` obligatorio).
-* Prototipo: `TaskDetailModal.tsx` (banner, formulario de entrega, «Revisa»), `BlockerControl.tsx`, `TaskFlowPrototype.tsx` (`handleReviewDecision`, `handleUpdateReviewSettings`, `handleChangeProjectReviewer`), `ProjectsView.tsx` («Revisa por defecto»).
+* `PUT /api/tasks/{id}/reviewers` → `{ user_ids[] }`: quien hace la tarea solo puede agregar; quitar, solo líder del proyecto o Dirección. `PATCH /api/tasks/{id}` con `requires_review` (solo líder del proyecto o Dirección).
+* `PATCH /api/tasks/{id}/status` queda solo para `executive` y `system_admin` (corrección).
+* Prototipo: `TaskDetailModal.tsx` (banner, formulario de entrega, pestaña Decisiones, «Revisa»), `TaskFlowPrototype.tsx` (`handleReviewDecision`, `handleUpdateReviewSettings`, `handleChangeProjectReviewer`), `ProjectsView.tsx` («Revisa por defecto»).
 
 
-## 34. Mejoras del 23 y 24 Nov 2026 (rama `claude/mejoras-2026-11-24`)
-Todo lo de esta sección es independiente de La Colonia. La propuesta de La Plaza sigue en otra rama, a la espera de aprobación.
+## 34. Mejoras del 23 y 24 Nov 2026 (también en la rama `claude/mejoras-2026-11-24`, sin La Colonia)
+Todo lo de esta sección es independiente de La Colonia y se entrega a Indunova en la rama `claude/mejoras-2026-11-24`. En esa rama la tarea simplificada (§33) va sin ECOINS ni la pestaña Decisiones.
 
 ### 34.1 Correcciones tras el QA de punta a punta
 * **Ciclos del fee por fechas del contrato.** Un ciclo va del día del contrato al día anterior del mes siguiente (23 Nov – 22 Dic, 23 Dic – 22 Ene…): un contrato de 3 meses tiene 3 ciclos. Si el contrato empieza el día 1, el ciclo es el mes calendario («Noviembre 2026»); si no, se nombra por sus fechas. Si el día no existe en un mes (31), se usa el último día. El estado (cerrado / en curso / próximo) sale de las fechas. El encabezado dice «Ciclo X de N». `project_cycles` suma `start_date` y `end_date` (§12.9).

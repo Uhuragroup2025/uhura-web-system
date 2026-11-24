@@ -76,6 +76,8 @@ interface LaColoniaViewProps {
   absenceEvents?: TeamAbsenceEvent[];
   onNavigateToView: (view: OrbitView) => void;
   onUpdateUser?: (updatedUser: UserItem) => void;
+  /** Cronómetro corriendo (los toc tocs esperan a que se detenga). */
+  timerRunning?: boolean;
 }
 
 type AmbientTime = 'night' | 'sunset' | 'day';
@@ -84,12 +86,14 @@ type FilterCategory = 'todos' | 'cumples' | 'aniversarios';
 
 export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
   tasks = [],
+  targetDayHours,
   currentUser,
   teamUsers = [],
   timeLogs = [],
   absenceEvents = [],
   onNavigateToView,
-  onUpdateUser
+  onUpdateUser,
+  timerRunning = false
 }) => {
   // Pestaña principal: 'fichas' (Grid canónico de Staging) o 'habitat' (Minijuegos y diorama 3D)
   const [activeTabMode, setActiveTabMode] = useState<ColoniaTabMode>('plaza');
@@ -246,12 +250,17 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
       {/* VISTA 0: LA PLAZA (experimental: el lugar del equipo) */}
       {activeTabMode === 'plaza' && (
         <LaPlazaView
+          // Una Plaza por persona: al cambiar de usuario se recarga su libro de ECOINS (no se mezcla con el anterior)
+          key={currentUser?.id || 'anon'}
           currentUser={currentUser}
           teamUsers={teamUsers}
           tasks={tasks}
+          timeLogs={timeLogs}
+          targetDayHours={targetDayHours}
           absenceEvents={absenceEvents}
           onOpenArcade={() => setActiveTabMode('habitat')}
           onOpenTeam={() => setActiveTabMode('fichas')}
+          timerRunning={timerRunning}
         />
       )}
 
@@ -485,7 +494,8 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
         // ── Datos reales para el universo de juegos ──
         const GAMES: { id: ColonyGameId; emoji: string; tagline: string; planet: string; ring: string; glow: string }[] = [
           { id: 'torre', emoji: '🪵', tagline: 'Suelta cada tronco alineado y apila lo más alto posible.', planet: 'radial-gradient(circle at 30% 30%, #fde68a, #f59e0b 45%, #92400e 100%)', ring: 'border-[#fbbf24]/60', glow: 'shadow-[0_0_60px_rgba(245,158,11,0.45)]' },
-          { id: 'nenufar', emoji: '🪷', tagline: 'Toca el nenúfar donde aparezca ECO lo más rápido que puedas.', planet: 'radial-gradient(circle at 30% 30%, #a7f3d0, #10b981 45%, #065f46 100%)', ring: 'border-[#34d399]/60', glow: 'shadow-[0_0_60px_rgba(16,185,129,0.45)]' }
+          { id: 'nenufar', emoji: '🪷', tagline: 'Toca el nenúfar donde aparezca ECO lo más rápido que puedas.', planet: 'radial-gradient(circle at 30% 30%, #a7f3d0, #10b981 45%, #065f46 100%)', ring: 'border-[#34d399]/60', glow: 'shadow-[0_0_60px_rgba(16,185,129,0.45)]' },
+          { id: 'quiz', emoji: '🧠', tagline: '10 preguntas sobre el equipo y el oficio. ¿Llegas a la cima?', planet: 'radial-gradient(circle at 30% 30%, #fbcfe8, #ec4899 45%, #831843 100%)', ring: 'border-[#f472b6]/60', glow: 'shadow-[0_0_60px_rgba(236,72,153,0.45)]' }
         ];
         const statsFor = (g: ColonyGameId) => {
           const board = weeklyBoards[g] || [];
@@ -504,7 +514,7 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
           ? `${rivalOf(latestResult)} te ganó esta vez. ¿Revancha?`
           : nobodyPlayed
           ? 'Nadie ha jugado esta semana. ¡Estrena el ranking!'
-          : '¿Jugamos una partida rápida? Son 15 segundos.';
+          : '¿Jugamos una partida? Hay tres juegos para retar al equipo.';
         const hostImg = mascotImage(pending ? 'surprised' : outcome === 'won' ? 'celebrating' : 'ok', mascotSkin);
         const sky =
           ambientTime === 'night'
@@ -637,7 +647,7 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
                             >
                               <span className="text-5xl drop-shadow">{g.emoji}</span>
                             </div>
-                            <span className="absolute -top-1 -right-1 px-2 py-0.5 rounded-full bg-[#d4ff4a] text-[#120822] text-[10px] font-black">15 s</span>
+                            <span className="absolute -top-1 -right-1 px-2 py-0.5 rounded-full bg-[#d4ff4a] text-[#120822] text-[10px] font-black">{g.id === 'quiz' ? '10 preg.' : '15 s'}</span>
                           </div>
                           <h3 className="mt-4 text-base font-black text-white group-hover:text-[#d4ff4a] transition-colors">{COLONY_GAME_NAMES[g.id]}</h3>
                           <p className="text-[11px] text-white/70 mt-1 px-2">{g.tagline}</p>
@@ -657,19 +667,6 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
                         </button>
                       );
                     })}
-                    {/* Próximamente */}
-                    <div className="text-center opacity-60" aria-label="Próximamente un juego nuevo">
-                      <div className="relative mx-auto w-24 h-24 sm:w-28 sm:h-28 eco-float" style={{ animationDelay: '2.4s' }}>
-                        <div
-                          className="absolute inset-0 rounded-full flex items-center justify-center"
-                          style={{ background: 'radial-gradient(circle at 30% 30%, #e2e8f0, #64748b 50%, #1e293b 100%)' }}
-                        >
-                          <span className="text-3xl">🔒</span>
-                        </div>
-                      </div>
-                      <h3 className="mt-4 text-sm font-black text-white">Próximamente</h3>
-                      <p className="text-[11px] text-white/60 mt-1">Un juego nuevo para retar al equipo.</p>
-                    </div>
                   </div>
 
                   {/* Retos recibidos (si hay más de uno) */}
@@ -692,13 +689,13 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
                     </div>
                     <span className="text-[10px] text-white/50">Se reinicia el lunes</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-white/5 text-[11px] font-bold">
+                  <div className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-white/5 text-[10.5px] font-bold leading-tight">
                     {GAMES.map((g) => (
                       <button
                         key={g.id}
                         type="button"
                         onClick={() => setRankingGame(g.id)}
-                        className={`py-1.5 rounded-lg cursor-pointer ${rankingGame === g.id ? 'bg-[#d4ff4a] text-[#120822]' : 'text-white/70 hover:text-white'}`}
+                        className={`py-1.5 px-1 rounded-lg cursor-pointer ${rankingGame === g.id ? 'bg-[#d4ff4a] text-[#120822]' : 'text-white/70 hover:text-white'}`}
                       >
                         {COLONY_GAME_NAMES[g.id]}
                       </button>
@@ -753,6 +750,7 @@ export const LaColoniaView: React.FC<LaColoniaViewProps> = ({
                 type={activeGame}
                 activeChallenge={activeChallenge}
                 teammates={teammates}
+                teamUsers={teamUsers}
                 currentUser={currentUser}
                 onChallengeCreated={(ch) => {
                   refreshColonyData();
