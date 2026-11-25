@@ -1126,7 +1126,7 @@ Mi Día puede mostrar de forma discreta y no invasiva:
   7. **Momento de Recompensa Cuidado:** Pantalla final de minijuego con Bucky celebrando, micro-confetti, audio chimes opcionales y narrativa de superación.
 - **Referencias de Código:**
   - **Vista Principal:** [`src/components/taskflow/colonia/LaColoniaView.tsx`](../components/taskflow/colonia/LaColoniaView.tsx)
-  - **Diorama Experiencial:** [`src/components/taskflow/colonia/ColoniaDiorama.tsx`](../components/taskflow/colonia/ColoniaDiorama.tsx)
+  - **Diorama Experiencial:** retirado del código el 25 Nov 2026 (no se usaba; queda en el historial de git).
   - **Microjuegos & Retos:** [`src/components/taskflow/colonia/ColoniaMinigames.tsx`](../components/taskflow/colonia/ColoniaMinigames.tsx)
   - **Motor de Retos & Rankings:** [`src/components/taskflow/colonia/coloniaEngine.ts`](../components/taskflow/colonia/coloniaEngine.ts)
   - **Tipos de Datos:** [`src/components/taskflow/colonia/types.ts`](../components/taskflow/colonia/types.ts)
