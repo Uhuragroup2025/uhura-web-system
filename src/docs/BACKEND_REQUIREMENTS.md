@@ -1505,5 +1505,6 @@ Antes «Nuevo proyecto» tenía su propio formulario («Frentes», equipo a mano
 * Una sola etiqueta en todos los lugares (encabezado de la oportunidad, tabla de New Business y Mi Día): **«Quedan ~12 h hábiles»**. Si ya pasó: **«Vencido hace ~3 h hábiles»** (en rojo). Con menos del 25 % del plazo: en ámbar. Si el alcance ya se entregó: «Alcance entregado». Sin fecha límite: «Plazo: ~36 h hábiles».
 * **Tooltip:** «Plazo del alcance: 28 h hábiles · vence mié 25 nov, 6:00 p. m. (lun–vie, 8–12 y 2–6, hora Colombia)».
 * Horas hábiles: lunes a viernes, 8:00–12:00 y 14:00–18:00 hora Colombia, sin festivos. Se calcula desde `handoff_deadline`.
+* El número es el real de cada momento (horas hábiles que quedan hasta `handoff_deadline`) y se actualiza solo cada 5 minutos, sin recargar.
 * Reemplaza «SLA ~36h handoff» (Mi Día) y «vence en ~24h» (fijo en la tabla).
 * Prototipo: `newbusiness/scopeDeadline.ts` (`scopeTimeLeft`, `businessHoursBetween`).
