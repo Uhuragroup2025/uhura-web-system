@@ -1,4 +1,4 @@
-import { scopeTimeLeft, SCOPE_TONE_CLASS } from './scopeDeadline';
+import { scopeTimeLeft, SCOPE_TONE_CLASS, useScopeClock } from './scopeDeadline';
 import { useMascotImage } from '../mascot/ecoMascot';
 import { formatDate } from '../../../utils/formatters';
 import { MoneyInput } from '../ui/MoneyInput';
@@ -178,6 +178,8 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
   onPauseResumeTimer,
   onOpenManualLog
 }) => {
+  // El plazo del alcance se recalcula solo cada 5 minutos («Quedan ~N h hábiles»)
+  const scopeNow = useScopeClock();
   const ecoCelebratingImg = useMascotImage('celebrating');
   const users = teamUsers.filter((user) => user.status === 'Active');
 
@@ -1660,7 +1662,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                             {isWon ? (
                               <span className="font-medium">Completado</span>
                             ) : (() => {
-                              const left = scopeTimeLeft(opp);
+                              const left = scopeTimeLeft(opp, scopeNow);
                               return <span className={`font-medium ${SCOPE_TONE_CLASS[left.tone]}`} title={left.title}>{left.label}</span>;
                             })()}
                           </div>

@@ -5,6 +5,7 @@
  * Horario hábil: lunes a viernes, 8:00–12:00 y 14:00–18:00 hora Colombia (UTC−5), sin festivos.
  * El detalle completo (plazo total y fecha en que vence) va en el tooltip.
  */
+import { useEffect, useState } from 'react';
 import { NewBusinessOpportunity } from '../types';
 import { isBusinessDay } from '../health/projectHealthEngine';
 
@@ -64,3 +65,16 @@ export const SCOPE_TONE_CLASS: Record<ScopeTimeLeft['tone'], string> = {
   late: 'text-[#dc2626]',
   done: 'text-[#059669]'
 };
+
+/**
+ * Reloj para la etiqueta del plazo: devuelve «ahora» y se actualiza solo cada `minutes` minutos,
+ * así «Quedan ~N h hábiles» baja sin recargar la pantalla.
+ */
+export function useScopeClock(minutes = 5): Date {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), minutes * 60_000);
+    return () => window.clearInterval(id);
+  }, [minutes]);
+  return now;
+}

@@ -1,4 +1,4 @@
-import { scopeTimeLeft, SCOPE_TONE_CLASS } from './newbusiness/scopeDeadline';
+import { scopeTimeLeft, SCOPE_TONE_CLASS, useScopeClock } from './newbusiness/scopeDeadline';
 import { streakLabel } from './time/dayStreak';
 import { TeamStreakPanel } from './colonia/TeamStreakPanel';
 import React, { useState, useMemo } from 'react';
@@ -121,6 +121,8 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
   clients = [],
   onUpdateUser
 }) => {
+  // El plazo del alcance se recalcula solo cada 5 minutos («Quedan ~N h hábiles»)
+  const scopeNow = useScopeClock();
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isLogsAccordionOpen, setIsLogsAccordionOpen] = useState(false);
   const [isHumanProfileModalOpen, setIsHumanProfileModalOpen] = useState(false);
@@ -810,7 +812,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                               </span>
                             )}
                             {(() => {
-                              const left = scopeTimeLeft(opp);
+                              const left = scopeTimeLeft(opp, scopeNow);
                               return (
                                 <span className={`text-[10px] font-semibold ${SCOPE_TONE_CLASS[left.tone]}`} title={left.title}>
                                   {left.label}
