@@ -1,3 +1,4 @@
+import { scopeTimeLeft, SCOPE_TONE_CLASS } from './newbusiness/scopeDeadline';
 import { streakLabel } from './time/dayStreak';
 import { TeamStreakPanel } from './colonia/TeamStreakPanel';
 import React, { useState, useMemo } from 'react';
@@ -777,7 +778,6 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                     (Array.isArray(opp.leadUserIds) && opp.leadUserIds.includes(currentUserId)) ||
                     (opp.leadUserName && opp.leadUserName.toLowerCase().includes(currentUserName.toLowerCase()));
                   const assignedLeadDisplay = opp.leadUserName?.split('·')[0]?.trim() || 'Líder Asignado';
-                  const oppHandoffSla = opp.handoffHours || 36;
 
                   return (
                     <div
@@ -809,9 +809,14 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                                       : '⏳ En alcance con el líder'}
                               </span>
                             )}
-                            <span className="text-[10px] text-[#0284c7] font-mono">
-                              SLA ~{oppHandoffSla}h handoff
-                            </span>
+                            {(() => {
+                              const left = scopeTimeLeft(opp);
+                              return (
+                                <span className={`text-[10px] font-semibold ${SCOPE_TONE_CLASS[left.tone]}`} title={left.title}>
+                                  {left.label}
+                                </span>
+                              );
+                            })()}
                           </div>
                           <span className="text-[11px] text-[#64748b] block mt-0.5">
                             {isAssignedToCurrentUser

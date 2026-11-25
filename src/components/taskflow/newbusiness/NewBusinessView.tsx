@@ -1,3 +1,4 @@
+import { scopeTimeLeft, SCOPE_TONE_CLASS } from './scopeDeadline';
 import { useMascotImage } from '../mascot/ecoMascot';
 import { formatDate } from '../../../utils/formatters';
 import { MoneyInput } from '../ui/MoneyInput';
@@ -1435,7 +1436,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
 
           <div className="flex items-center gap-1.5 text-[11px] text-[#64748b]">
             <Clock className="w-3.5 h-3.5 text-[#501f92]" />
-            <span>SLA: ~36h para dimensionamiento técnico</span>
+            <span>Plazo del alcance: ~36 h hábiles</span>
           </div>
         </div>
 
@@ -1656,9 +1657,12 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                         <td className="py-3.5 px-4">
                           <div className="flex items-center gap-1.5 text-xs text-[#64748b]">
                             <Clock className="w-3.5 h-3.5 text-[#94a3b8]" />
-                            <span className="font-medium">
-                              {isWon ? 'Completado' : 'vence en ~24h'}
-                            </span>
+                            {isWon ? (
+                              <span className="font-medium">Completado</span>
+                            ) : (() => {
+                              const left = scopeTimeLeft(opp);
+                              return <span className={`font-medium ${SCOPE_TONE_CLASS[left.tone]}`} title={left.title}>{left.label}</span>;
+                            })()}
                           </div>
                         </td>
 

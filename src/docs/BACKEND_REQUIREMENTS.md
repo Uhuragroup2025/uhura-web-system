@@ -1499,3 +1499,11 @@ Antes «Nuevo proyecto» tenía su propio formulario («Frentes», equipo a mano
 * **Detener el timer en el encabezado de una propuesta (New Business):** en producción se detiene sin abrir la ventana para confirmar el tiempo, y lleva a Mi Día. Debe abrir la misma ventana «Registrar tiempo» que el resto de ECO y, al guardar, dejar a la persona en la propuesta (§31: «se queda donde estaba»). En el prototipo funciona así.
 * **«Plazo del alcance» (Editar) en el encabezado de la oportunidad:** al elegir día y hora y hacer clic afuera, se cierra sin guardar; el calendario tapa «Guardar plazo». Debe guardarse al elegir la fecha y la hora (sin botón), con un aviso «Plazo guardado», y cerrar solo con Esc o ✕ sin perder lo elegido.
 * **Esfuerzo de preventa con costo en pesos ($32.986):** quitarlo; solo horas (§34.4).
+* **Plazo del alcance en el encabezado de la oportunidad:** hoy dice «Plazo del alcance: 28 h hábiles · quedan ~12 h hábiles (Editar)». Pasa a un texto corto: **«⏱ Quedan ~12 h hábiles»** (ver §34.8), con el detalle en el tooltip y «Editar» como ícono ✏️ al lado.
+
+### 34.8 Plazo del alcance en palabras simples (25 Nov 2026)
+* Una sola etiqueta en todos los lugares (encabezado de la oportunidad, tabla de New Business y Mi Día): **«Quedan ~12 h hábiles»**. Si ya pasó: **«Vencido hace ~3 h hábiles»** (en rojo). Con menos del 25 % del plazo: en ámbar. Si el alcance ya se entregó: «Alcance entregado». Sin fecha límite: «Plazo: ~36 h hábiles».
+* **Tooltip:** «Plazo del alcance: 28 h hábiles · vence mié 25 nov, 6:00 p. m. (lun–vie, 8–12 y 2–6, hora Colombia)».
+* Horas hábiles: lunes a viernes, 8:00–12:00 y 14:00–18:00 hora Colombia, sin festivos. Se calcula desde `handoff_deadline`.
+* Reemplaza «SLA ~36h handoff» (Mi Día) y «vence en ~24h» (fijo en la tabla).
+* Prototipo: `newbusiness/scopeDeadline.ts` (`scopeTimeLeft`, `businessHoursBetween`).
