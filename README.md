@@ -6,22 +6,24 @@ Repositorio del prototipo funcional de **ECO**, el sistema operativo interno de 
 
 ## Estado actual
 
-Corte: **04 de noviembre de 2026** (v3.4.0 — Rama `feat/hubspot-commercial-sync-flow`).
+ECO está en producción (lo construye y opera Indunova en su propio repositorio). **Este repositorio guarda el prototipo funcional y las reglas del producto** que Indunova implementa: lo que está en `main` es lo aprobado.
 
-El producto cuenta con una base funcional completa y alineada para:
+- Lo que ya está en producción y lo que falta implementar: [`src/docs/ORBIT_PRODUCT_STATUS.md`](./src/docs/ORBIT_PRODUCT_STATUS.md) §8.0.
+- Reglas para backend de cada entrega: [`src/docs/BACKEND_REQUIREMENTS.md`](./src/docs/BACKEND_REQUIREMENTS.md) (una sección por ronda; la más reciente al final).
 
-- Clientes y entidades fiscales separadas.
-- Proyectos independientes 1:1:1 por servicio ganado (Regla canónica Ticket #132).
-- Asignación de líderes operativos independientes por cada servicio.
-- Estados dinámicos de proyectos («Por empezar» vs «En ejecución» según fecha de arranque).
-- Cronograma recalculado de tareas en paralelo.
-- Estructura comercial granular en Cotización (1 calculadora con decimales y multidivisa por servicio).
-- Operación 100% desacoplada en Modo Manual (sin requerir token de HubSpot).
-- Equipo y asignaciones multirol con universo canónico de 18 colaboradores.
-- Tareas atómicas, revisión, bloqueos y retrabajos.
-- Time Tracking y capacidad.
-- Home contextual / Mi Día.
-- Bucky y La Colonia.
+## Cómo trabajamos (producto vivo)
+
+ECO no tiene una «entrega final»: se mejora con entregas periódicas.
+
+| Pieza | Regla |
+|---|---|
+| `main` | La única verdad: lo aprobado. No se trabaja directo sobre `main`. |
+| Una rama por ronda | Sale de `main` con su fecha o tema (ej. `claude/mejoras-2026-11-24`), llega con un pull request y se borra al unirse. |
+| Pull request | Resume qué trae la ronda y apunta a su sección de `BACKEND_REQUIREMENTS.md`. Indunova lo revisa e implementa. |
+| Versión | Cada ronda unida a `main` se marca con una versión (numeración por acordar con Indunova para que coincida con producción). |
+| Registro de cambios | `ORBIT_PRODUCT_STATUS.md` §8.0 y la sección de la ronda en `BACKEND_REQUIREMENTS.md`, en palabras simples. |
+| Pedidos a Indunova | Por tickets: **errores** (algo que debía funcionar y no funciona) y **mejoras** (algo nuevo), con entregas semanales. |
+| Propuestas en evaluación | Van en su propia rama y no tocan `main` hasta que se aprueben (ej. La Colonia en `claude/new-session-22mvgh`). |
 
 ## Documentación principal
 
@@ -37,6 +39,7 @@ El producto cuenta con una base funcional completa y alineada para:
 - [`ai-context.md`](./ai-context.md) — contexto base de marca y reglas para IA.
 - [`design-system/`](./design-system/) — tokens, estilos y documentación del sistema visual.
 - [`INDEX.md`](./INDEX.md) — índice histórico del Design System.
+- [`design-system/brand/`](./design-system/brand/) — logos y favicons de ECO (kit de marca; la app usa `public/brand/eco-icon-128.png`).
 
 ## Flujo objetivo de ECO
 
