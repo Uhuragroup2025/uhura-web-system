@@ -45,6 +45,8 @@ import { canExecuteTask, roleFit, makeUserResolver } from './projects/teamFromTa
 
 const resolveUserId = makeUserResolver(initialUsers);
 import { UserAvatar } from './UserAvatar';
+import { findBestCandidateForRole, matchesQuotedRole } from './newbusiness/teamCandidates';
+import { useSubmitOnce } from './ui/useSubmitOnce';
 
 export interface NewTaskModalProps {
   isOpen: boolean;
@@ -163,6 +165,11 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
       return projectsForSelectedClient[0];
     }
 
+    // Cliente sin proyectos: no se toma otro proyecto «de relleno» (sus entregables no aplican)
+    if (selectedClientName) {
+      return { id: '', name: '', clientName: selectedClientName, projectType: 'fixed_project' as ProjectType, serviceBase: '', leadName: '' };
+    }
+
     return (
       allProjects[0] || {
         id: 'default',
@@ -175,27 +182,15 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
     );
   }, [selectedProjectId, projectsForSelectedClient, allProjects]);
 
-  // Frentes disponibles para el proyecto activo
+  // Entregables del proyecto activo (25 Nov 2026): los del proyecto y los que ya usan sus tareas.
+  // Sin listas inventadas: si el proyecto no tiene, se escribe uno nuevo.
   const availableFrentes = useMemo(() => {
+    const fromProject = (projectsList.find((p) => p.id === activeProject.id)?.deliverables || []).map((d) => d.name);
     const fromTasks = existingTasks
       .filter((t) => (t.projectName || t.board)?.toLowerCase() === activeProject.name.toLowerCase() && t.frente)
       .map((t) => t.frente!);
-
-    const unique = Array.from(new Set(fromTasks));
-    if (unique.length > 0) return unique;
-
-    // Natural fallbacks based on project nature
-    if (activeProject.name.toLowerCase().includes('yamaha') || activeProject.name.toLowerCase().includes('navidad')) {
-      return ['Redes Sociales', 'Landing Page', 'Pauta'];
-    }
-    if (activeProject.name.toLowerCase().includes('battsaver')) {
-      return ['Discovery & Estrategia', 'UX/UI & Prototipo', 'Implementación Shopify', 'QA & Cierre'];
-    }
-    if (activeProject.projectType === 'fee_monthly') {
-      return ['Mantenimiento General', 'Banners & Assets', 'Soporte Continuo'];
-    }
-    return ['Estrategia & Concepto', 'Diseño & UI', 'Desarrollo Frontend', 'Pauta & Medios'];
-  }, [existingTasks, activeProject]);
+    return Array.from(new Set([...fromProject, ...fromTasks].map((n) => n.trim()).filter(Boolean)));
+  }, [existingTasks, activeProject, projectsList]);
 
   // Form Fields
   const [frente, setFrente] = useState<string>('');
@@ -203,9 +198,10 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
   const [customFrenteText, setCustomFrenteText] = useState('');
 
   const [title, setTitle] = useState('');
-  const [budgetedRole, setBudgetedRole] = useState<string>('Digital Designer');
+  const [budgetedRole, setBudgetedRole] = useState<string>('');
   const [projectLeadName, setProjectLeadName] = useState('Paola (Lead PM)');
-  const [collaborators, setCollaborators] = useState<string[]>(['Catalina Tejada']);
+  const [collaborators, setCollaborators] = useState<string[]>([]);
+  const [formError, setFormError] = useState('');
   const [followers, setFollowers] = useState<string[]>([]);
   const [description, setDescription] = useState('');
 
@@ -234,10 +230,13 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
 
   // Available project sibling tasks for dependencies
   const siblingTasks = useMemo(() => {
-    return existingTasks.filter(
-      (t) => (t.projectName || t.board)?.toLowerCase() === activeProject.name.toLowerCase()
-    );
-  }, [existingTasks, activeProject]);
+    const done = (t: TaskItem) => t.completed || ['Done', 'completed'].includes(String(t.status));
+    const currentFrente = (isCustomFrente ? customFrenteText : frente).trim().toLowerCase();
+    return existingTasks
+      .filter((t) => (t.projectName || t.board)?.toLowerCase() === activeProject.name.toLowerCase() && !done(t))
+      .sort((a, b) => Number((b.frente || '').toLowerCase() === currentFrente) - Number((a.frente || '').toLowerCase() === currentFrente)
+        || (a.frente || '').localeCompare(b.frente || '') || a.title.localeCompare(b.title));
+  }, [existingTasks, activeProject, frente, isCustomFrente, customFrenteText]);
 
   // Context lock check
   const isContextLocked = Boolean(preselectedProjectId || preselectedProjectName);
@@ -295,12 +294,35 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
     }
   };
 
-  // Set default frente on project change
+  // Al cambiar de cliente o proyecto, el entregable se reinicia: si el proyecto tiene uno solo se
+  // preselecciona; si no tiene, se escribe uno nuevo.
   useEffect(() => {
-    if (availableFrentes.length > 0) {
-      setFrente(availableFrentes[0]);
+    setFrente(availableFrentes.length === 1 ? availableFrentes[0] : '');
+    setIsCustomFrente(availableFrentes.length === 0);
+    setCustomFrenteText('');
+    setDependencyTaskId('');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeProject.id, availableFrentes.length]);
+
+  // Rol cotizado → persona del rol con más capacidad disponible
+  const handleRoleChange = (role: string) => {
+    setBudgetedRole(role);
+    const best = findBestCandidateForRole(role, initialUsers);
+    if (best) {
+      const m = TEAM_MEMBERS.find((tm) => resolveUserId(tm.name) === best.id);
+      setCollaborators([m ? m.name : best.name]);
     }
-  }, [availableFrentes]);
+  };
+
+  // Colaborador → su rol cotizado (si ya cumple el rol elegido, se respeta)
+  const handleCollaboratorChange = (name: string) => {
+    setCollaborators([name]);
+    const u = initialUsers.find((usr) => usr.id === resolveUserId(name));
+    if (u && budgetedRole && matchesQuotedRole(u, budgetedRole)) return;
+    const candidates = [u?.officialRole, ...(u?.officialRoles || []), u?.professionalRole, ...(u?.professionalRoles || []), TEAM_MEMBERS.find((m) => m.name === name)?.defaultRole];
+    const std = candidates.find((r) => r && STANDARD_UHURA_ROLES.some((x) => x.toLowerCase() === r.toLowerCase()));
+    if (std) setBudgetedRole(STANDARD_UHURA_ROLES.find((x) => x.toLowerCase() === std.toLowerCase()) || std);
+  };
 
   // Responsable selection does NOT overwrite budgetedRole
   const handleAssigneeChange = (newAssigneeName: string) => {
@@ -332,6 +354,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
     return alerts;
   }, [collaborators, projectLeadName]);
 
+  const { busy, claim } = useSubmitOnce(); // evita el doble guardado (§34.17)
   if (!isOpen) return null;
 
   // Available templates based on serviceBase
@@ -389,6 +412,15 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !activeProject) return;
+    const missing = [
+      !activeProject.id && 'el proyecto',
+      !(isCustomFrente ? customFrenteText.trim() : frente) && 'el entregable',
+      !budgetedRole && 'el rol cotizado',
+      collaborators.length === 0 && 'el colaborador'
+    ].filter(Boolean);
+    if (missing.length) { setFormError(`Falta ${missing.join(', ')}.`); return; }
+    setFormError('');
+    if (!claim()) return; // doble clic: no crear la tarea dos veces
 
     const leadUser = TEAM_MEMBERS.find((m) => m.name === projectLeadName) || {
       name: projectLeadName || 'Paola (Lead PM)',
@@ -627,82 +659,54 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
             )}
           </div>
 
-          {/* PASO 2: SERVICIO / ENTREGABLE */}
+          {/* PASO 2: ENTREGABLE — los del proyecto elegido; si no tiene, se escribe uno */}
           <div className="p-3.5 rounded-2xl bg-[#f5f3ff]/60 border border-[#e9d5ff] space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
                 <FolderKanban className="w-3.5 h-3.5 text-[#501f92]" />
-                <label className="font-bold text-[#0f172a] text-xs">
-                  Servicio / Entregable del Proyecto *
+                <label htmlFor="nt-entregable" className="font-bold text-[#0f172a] text-xs">
+                  {availableFrentes.length > 0 && !isCustomFrente ? 'Elige el entregable *' : 'Servicio / Entregable del Proyecto *'}
                 </label>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsCustomFrente(!isCustomFrente)}
-                className="text-[10px] font-bold text-[#501f92] hover:underline cursor-pointer"
-              >
-                {isCustomFrente ? 'Seleccionar existente' : 'Nuevo servicio personalizado'}
-              </button>
+              {availableFrentes.length > 0 && isCustomFrente && (
+                <button
+                  type="button"
+                  onClick={() => { setIsCustomFrente(false); setCustomFrenteText(''); }}
+                  className="text-[10px] font-bold text-[#501f92] hover:underline cursor-pointer"
+                >
+                  Elegir uno del proyecto
+                </button>
+              )}
             </div>
 
-            {isCustomFrente ? (
+            {availableFrentes.length > 0 && !isCustomFrente ? (
+              <div className="relative">
+                <select
+                  id="nt-entregable"
+                  value={frente}
+                  onChange={(e) => {
+                    if (e.target.value === '__new__') { setIsCustomFrente(true); setFrente(''); return; }
+                    setFrente(e.target.value);
+                  }}
+                  className={`w-full appearance-none bg-white border px-3 py-2 pr-8 rounded-xl text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#8a4dff] cursor-pointer ${frente ? 'border-[#8a4dff] text-[#501f92]' : 'border-[#cbd5e1] text-[#64748b]'}`}
+                >
+                  <option value="">Elige a qué entregable pertenece…</option>
+                  {availableFrentes.map((f) => <option key={f} value={f}>{f}</option>)}
+                  <option value="__new__">+ Nuevo entregable…</option>
+                </select>
+                <ChevronDown className="w-3.5 h-3.5 text-[#501f92] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+            ) : (
               <input
+                id="nt-entregable"
                 type="text"
-                required
                 placeholder="Ej: Redes Sociales, Landing Page, Pauta, E-commerce..."
                 value={customFrenteText}
                 onChange={(e) => setCustomFrenteText(e.target.value)}
                 className="w-full bg-white border border-[#8a4dff] px-3 py-2 rounded-xl text-xs text-[#0f172a] font-bold placeholder:text-[#7C8AA0] placeholder:font-normal focus:outline-none focus:ring-1 focus:ring-[#8a4dff]"
               />
-            ) : (
-              <div className="flex flex-wrap items-center gap-1.5">
-                {availableFrentes.map((f) => (
-                  <button
-                    key={f}
-                    type="button"
-                    onClick={() => setFrente(f)}
-                    className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
-                      frente === f
-                        ? 'bg-[#501f92] text-white border-[#501f92] shadow-xs'
-                        : 'bg-white text-[#475569] border-[#cbd5e1] hover:border-[#8a4dff]/40 hover:bg-[#f8fafc]'
-                    }`}
-                  >
-                    {f}
-                  </button>
-                ))}
-              </div>
             )}
           </div>
-
-          {/* PLANTILLAS RÁPIDAS (OPCIONAL) */}
-          {availableTemplates.length > 0 && (
-            <div className="p-3 rounded-2xl bg-white border border-[#e2e8f0] space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider flex items-center gap-1">
-                  <Sparkles className="w-3 h-3 text-[#501f92]" />
-                  <span>Sugerencias rápidas para {activeProject.serviceBase}</span>
-                </span>
-                <span className="text-[10px] text-[#94a3b8]">Opcional</span>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {availableTemplates.map((t) => (
-                  <button
-                    key={t.name}
-                    type="button"
-                    onClick={() => handleApplyTemplate(t.name)}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer border text-left ${
-                      selectedTemplateKey === t.name
-                        ? 'bg-[#f2ecfb] text-[#501f92] border-[#501f92] font-bold'
-                        : 'bg-[#f8fafc] text-[#475569] border-[#e2e8f0] hover:bg-[#f1f5f9]'
-                    }`}
-                  >
-                    <span>{t.name}</span>
-                    <span className="ml-1 text-[10px] opacity-70">({t.defaultHours}h)</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* PASO 3: TÍTULO Y DESCRIPCIÓN */}
           <div className="space-y-3">
@@ -784,28 +788,43 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
                 />
               </div>
 
-              {/* Rol Cotizado */}
+              {/* Seguidores (Multiselección) */}
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block font-bold text-[#0f172a] text-[11px] flex items-center gap-1.5">
-                    <Briefcase className="w-3.5 h-3.5 text-[#0284c7]" />
-                    <span>Rol cotizado *</span>
-                  </label>
-                  <span className="text-[10px] text-[#0284c7] font-medium bg-[#f0f9ff] px-1.5 py-0.5 rounded border border-[#bae6fd]">
-                    Tarifario
-                  </span>
-                </div>
+                <label className="block font-bold text-[#0f172a] text-[11px] mb-1 flex items-center gap-1.5">
+                  <Eye className="w-3.5 h-3.5 text-[#6366f1]" />
+                  <span>Seguidores (Acompañamiento)</span>
+                </label>
                 <DropdownMenu
-                  value={budgetedRole}
-                  onChange={(val) => setBudgetedRole(val)}
-                  options={STANDARD_UHURA_ROLES.map((role) => ({
-                    id: role,
-                    label: role
+                  multiple={true}
+                  value={followers}
+                  onChange={() => {}}
+                  onMultiChange={(vals) => setFollowers(vals)}
+                  options={TEAM_MEMBERS.map((m) => ({
+                    id: m.name,
+                    label: m.name,
+                    sublabel: m.defaultRole,
+                    icon: (
+                      <UserAvatar
+                        name={m.name}
+                        initials={m.initials}
+                        avatarBg={m.avatarBg}
+                        size="custom"
+                        className="w-5 h-5 rounded-full text-[9px]"
+                      />
+                    )
                   }))}
                   trigger={
-                    <div className="w-full bg-white border border-[#cbd5e1] px-3 py-2 rounded-xl text-xs font-semibold text-[#0369a1] flex items-center justify-between cursor-pointer">
-                      <span className="truncate">{budgetedRole}</span>
-                      <ChevronDown className="w-3.5 h-3.5 text-[#0284c7] shrink-0" />
+                    <div className="w-full bg-white border border-[#cbd5e1] px-3 py-2 rounded-xl text-xs font-semibold text-[#0f172a] flex items-center justify-between cursor-pointer">
+                      <div className="flex items-center gap-1.5 truncate">
+                        {followers.length === 0 ? (
+                          <span className="text-[#94a3b8] italic">Sin seguidores</span>
+                        ) : (
+                          <span className="font-bold text-[#6366f1]">
+                            {followers.map((f) => f.split(' ')[0]).join(', ')}
+                          </span>
+                        )}
+                      </div>
+                      <ChevronDown className="w-3.5 h-3.5 text-[#64748b] shrink-0" />
                     </div>
                   }
                   className="w-full"
@@ -824,7 +843,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
                 </label>
                 <DropdownMenu
                   value={collaborators[0] || ''}
-                  onChange={(val) => { if (val) setCollaborators([val]); }}
+                  onChange={(val) => { if (val) handleCollaboratorChange(val); }}
                   options={TEAM_MEMBERS.filter((m) => {
                     // Cualquier persona activa puede ser colaboradora (también Comercial y Dirección, p. ej. para QA)
                     const id = resolveUserId(m.name);
@@ -886,43 +905,28 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
                 />
               </div>
 
-              {/* Seguidores (Multiselección) */}
+              {/* Rol Cotizado */}
               <div>
-                <label className="block font-bold text-[#0f172a] text-[11px] mb-1 flex items-center gap-1.5">
-                  <Eye className="w-3.5 h-3.5 text-[#6366f1]" />
-                  <span>Seguidores (Acompañamiento)</span>
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-bold text-[#0f172a] text-[11px] flex items-center gap-1.5">
+                    <Briefcase className="w-3.5 h-3.5 text-[#0284c7]" />
+                    <span>Rol cotizado *</span>
+                  </label>
+                  <span className="text-[10px] text-[#0284c7] font-medium bg-[#f0f9ff] px-1.5 py-0.5 rounded border border-[#bae6fd]">
+                    Tarifario
+                  </span>
+                </div>
                 <DropdownMenu
-                  multiple={true}
-                  value={followers}
-                  onChange={() => {}}
-                  onMultiChange={(vals) => setFollowers(vals)}
-                  options={TEAM_MEMBERS.map((m) => ({
-                    id: m.name,
-                    label: m.name,
-                    sublabel: m.defaultRole,
-                    icon: (
-                      <UserAvatar
-                        name={m.name}
-                        initials={m.initials}
-                        avatarBg={m.avatarBg}
-                        size="custom"
-                        className="w-5 h-5 rounded-full text-[9px]"
-                      />
-                    )
+                  value={budgetedRole}
+                  onChange={(val) => handleRoleChange(val)}
+                  options={STANDARD_UHURA_ROLES.map((role) => ({
+                    id: role,
+                    label: role
                   }))}
                   trigger={
-                    <div className="w-full bg-white border border-[#cbd5e1] px-3 py-2 rounded-xl text-xs font-semibold text-[#0f172a] flex items-center justify-between cursor-pointer">
-                      <div className="flex items-center gap-1.5 truncate">
-                        {followers.length === 0 ? (
-                          <span className="text-[#94a3b8] italic">Sin seguidores</span>
-                        ) : (
-                          <span className="font-bold text-[#6366f1]">
-                            {followers.map((f) => f.split(' ')[0]).join(', ')}
-                          </span>
-                        )}
-                      </div>
-                      <ChevronDown className="w-3.5 h-3.5 text-[#64748b] shrink-0" />
+                    <div className="w-full bg-white border border-[#cbd5e1] px-3 py-2 rounded-xl text-xs font-semibold text-[#0369a1] flex items-center justify-between cursor-pointer">
+                      <span className={`truncate ${budgetedRole ? '' : 'text-[#94a3b8] font-normal'}`}>{budgetedRole || 'Elige el rol cotizado…'}</span>
+                      <ChevronDown className="w-3.5 h-3.5 text-[#0284c7] shrink-0" />
                     </div>
                   }
                   className="w-full"
@@ -1008,27 +1012,31 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
             </div>
           </div>
 
-          {/* PASO 6: DEPENDENCIAS (Tareas Hermanas del mismo Proyecto) */}
+          {/* PASO 6: DEPENDENCIA — solo tareas abiertas del mismo proyecto, primero las del mismo entregable */}
           {siblingTasks.length > 0 && (
             <div>
-              <label className="block font-semibold text-[#64748b] mb-1">
-                Dependencia / Bloqueada por (opcional)
+              <label htmlFor="nt-dependencia" className="block font-semibold text-[#64748b] mb-1">
+                Depende de otra tarea (opcional)
               </label>
               <div className="flex items-center gap-2">
                 <Link2 className="w-3.5 h-3.5 text-[#64748b] shrink-0" />
                 <select
+                  id="nt-dependencia"
                   value={dependencyTaskId}
                   onChange={(e) => setDependencyTaskId(e.target.value)}
                   className="flex-1 bg-[#f8fafc] border border-[#cbd5e1] px-3 py-2 rounded-xl text-xs text-[#0f172a] focus:outline-none focus:border-[#8a4dff] cursor-pointer"
                 >
-                  <option value="">Sin dependencias (inicia de inmediato)</option>
+                  <option value="">No depende de otra tarea</option>
                   {siblingTasks.map((t) => (
                     <option key={t.id} value={t.id}>
-                      {t.title} ({t.status})
+                      {t.frente ? `${t.frente} · ` : ''}{t.title}{t.assignee?.name ? ` · ${t.assignee.name.split(' ')[0]}` : ''}
                     </option>
                   ))}
                 </select>
               </div>
+              <p className="mt-1 text-[10.5px] text-[#94a3b8]">
+                Solo aparecen las tareas abiertas de este proyecto. Úsalo cuando esta tarea no pueda empezar hasta que la otra termine: en la tarea verás «Depende de…» y cuándo queda libre.
+              </p>
             </div>
           )}
 
@@ -1085,6 +1093,10 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
             )}
           </div>
 
+          {formError && (
+            <p role="alert" className="text-[11px] font-semibold text-[#dc2626]">{formError}</p>
+          )}
+
           {/* Action Buttons */}
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#e2e8f0]">
             <button
@@ -1096,10 +1108,12 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
             </button>
             <button
               type="submit"
-              className="px-5 py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
+              disabled={busy}
+              aria-busy={busy}
+              className="px-5 py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] disabled:opacity-60 disabled:cursor-wait text-white text-xs font-bold shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Crear tarea</span>
+              <span>{busy ? 'Guardando…' : 'Crear tarea'}</span>
             </button>
           </div>
         </form>

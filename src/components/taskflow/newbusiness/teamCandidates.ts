@@ -98,7 +98,7 @@ export const searchActiveTeam = (users: UserItem[], query: string): UserItem[] =
 // Exclusión solicitada para Scoping; conserva el perfil canónico y sus permisos.
 // Responsables del alcance = líderes de área (o dirección/administración). Comercial y Client
 // Relationship van en «Responsable comercial», no aquí: así «Solución & Scoping» y «Comercial
-// estrella» quedan alineados con lo que se asignó al crear la oportunidad.
+// estrella» quedan alineados con lo que se asignó al crear el negocio.
 export const isEligibleScopingLeader = (user: UserItem): boolean => user.id !== 'u-19' && isEligibleTeamMember(user) &&
   ['leader', 'executive', 'system_admin'].includes(user.accessLevel || 'pending');
 
@@ -114,8 +114,8 @@ export const isScopeReadyForReview = (
   services: { weeks: string; saved?: boolean }[]
 ): boolean => {
   const weeks = Number(quote.estimatedWeeks ?? quote.financialConfig?.projectDurationWeeks);
-  return Boolean(quote.commercialProposalUrl?.trim() && quote.commercialProposalUrl.trim().length > 5) &&
-    Number.isFinite(weeks) && weeks >= 1 && quote.totalHoursRollup > 0 &&
+  // La presentación es opcional (25 Nov 2026): un alcance de solo horas no necesita PPT.
+  return Number.isFinite(weeks) && weeks >= 1 && quote.totalHoursRollup > 0 &&
     quote.deliverables.some((deliverable) => deliverable.backlogItems.some((activity) => activity.estimatedHours > 0)) &&
     services.length > 0 &&
     services.every((service) => service.saved === true && serviceValidationMessages(service).length === 0);
@@ -216,7 +216,7 @@ export const resolveServiceArea = (params: {
   return top ? top[0] : null;
 };
 
-/** Líder del área: prefiere a los líderes asignados a la oportunidad; si no, cualquier activo con ese rol. */
+/** Líder del área: prefiere a los líderes asignados a el negocio; si no, cualquier activo con ese rol. */
 export const leadForArea = (area: ServiceArea | null, users: UserItem[], preferredIds: string[] = []): UserItem | null => {
   if (!area) return null;
   const role = AREA_LEAD_ROLE[area];

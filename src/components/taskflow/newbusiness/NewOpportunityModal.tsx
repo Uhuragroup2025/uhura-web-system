@@ -26,6 +26,8 @@ import {
   Folder,
   Mail
 } from 'lucide-react';
+import { useSubmitOnce } from '../ui/useSubmitOnce';
+import { businessHoursBetween } from './scopeDeadline';
 
 interface NewOpportunityModalProps {
   isOpen: boolean;
@@ -35,7 +37,7 @@ interface NewOpportunityModalProps {
   templates?: ProductBacklogTemplate[];
   initialMode?: 'hubspot' | 'manual';
   users?: UserItem[];
-  /** Quien crea la oportunidad: queda como comercial por defecto si trae negocios. */
+  /** Quien crea el negocio: queda como comercial por defecto si trae negocios. */
   currentUser?: UserItem | null;
 }
 
@@ -141,7 +143,7 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
       setDeliveryError('');
       setLeadersOpen(false);
       setCommercialOpen(false);
-      // Comercial por defecto = quien crea la oportunidad (si trae negocios); si no, se elige a mano (23 Nov 2026)
+      // Comercial por defecto = quien crea el negocio (si trae negocios); si no, se elige a mano (23 Nov 2026)
       const meCommercial = currentUser ? commercialUsers.find((u) => u.id === currentUser.id || u.name === currentUser.name) : undefined;
       setCommercialUserIds(meCommercial ? [meCommercial.id] : []);
       if (eligibleLeaders.length > 0) {
@@ -194,10 +196,12 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
     return selectedCompany.notes.find((n) => n.id === selectedNoteId);
   }, [selectedCompany, selectedNoteId]);
 
+  const { busy, claim } = useSubmitOnce(); // evita el doble guardado (§34.17)
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isFormValid || !claim()) return; // doble clic: no crear el negocio dos veces
 
     let clientMatch: ClientProfile | null = null;
     let prospectName = '';
@@ -244,11 +248,14 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
     const oppId = `opp-${Date.now()}`;
     const defaultQuoteId = `quote-${oppId}`;
 
-    const deliveryTime = new Date(`${deliveryDate}T18:00:00`).getTime();
+    // 6:00 p. m. hora Colombia del día elegido (fin de la jornada hábil)
+    const deliveryTime = new Date(`${deliveryDate}T18:00:00-05:00`).getTime();
     const deadlineTimestamp = Number.isFinite(deliveryTime)
       ? new Date(deliveryTime).toISOString()
       : new Date(Date.now() + 3 * 86400000).toISOString();
-    const safeHandoffHours = Math.max(24, Math.round((new Date(deadlineTimestamp).getTime() - Date.now()) / 3600000));
+    // Plazo total en horas HÁBILES (lun–vie, 8–12 y 2–6, sin festivos), igual que «quedan ~N h».
+    // Antes eran horas de reloj: «Plazo: 79 h · quedan ~16 h» no cuadraba.
+    const safeHandoffHours = Math.max(1, Math.round(businessHoursBetween(new Date(), new Date(deadlineTimestamp))));
 
     const selectedLeaders = eligibleLeaders.filter((user) => selectedLeadUserIds.includes(user.id));
     if (selectedLeaders.length === 0) return;
@@ -346,13 +353,13 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
               </span>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-base font-extrabold tracking-tight">Nueva oportunidad</h3>
+                  <h3 className="text-base font-extrabold tracking-tight">Nuevo negocio</h3>
                   <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-[#d4ff4a]/20 text-[#d4ff4a] border border-[#d4ff4a]/30">
                     Handoff Comercial
                   </span>
                 </div>
                 <p className="text-[11px] text-white/75 mt-0.5">
-                  Cuando una oportunidad calificada requiere scoping de un líder, ECO activa el SLA e inicia su tarea de preventa
+                  Cuando un negocio calificado requiere scoping de un líder, ECO activa el SLA e inicia su tarea de preventa
                 </p>
               </div>
             </div>
@@ -611,10 +618,10 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
             </>
           )}
 
-          {/* Nombre / Título de la oportunidad */}
+          {/* Nombre / Título del negocio */}
           <div className="space-y-1">
             <label className="font-bold text-[#475569] block">
-              {mode === 'manual' ? 'Nombre de la Oportunidad / Requerimiento:' : 'Título comercial de la oportunidad:'}{' '}
+              Nombre del negocio / requerimiento:{' '}
               <span className="text-red-500">*</span>
             </label>
             <input
@@ -630,7 +637,7 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
           {/* Brief (opcional) */}
           <div className="space-y-1">
             <label className="font-bold text-[#475569] block">
-              Brief {mode === 'manual' ? '(opcional)' : 'adicional / notas'}:
+              Brief (opcional):
             </label>
             <textarea
               rows={6}
@@ -674,7 +681,7 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
             <div className="space-y-1 relative" ref={leadersDropdownRef}>
               <div className="flex items-center justify-between">
                 <label className="font-bold text-[#475569] block text-xs">
-                  {mode === 'manual' ? 'Responsables del alcance:' : 'Líder asignado para scoping:'}{' '}
+                  Responsables del alcance:{' '}
                   <span className="text-red-500">*</span>
                 </label>
                 <span className="text-[10px] text-[#64748b] font-semibold">
@@ -759,7 +766,7 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
             <div className="space-y-1 relative" ref={commercialDropdownRef}>
               <div className="flex items-center justify-between">
                 <label className="font-bold text-[#475569] block text-xs">
-                  {mode === 'manual' ? 'Responsable comercial:' : 'Owner Comercial en Uhura:'}{' '}
+                  Responsable comercial:{' '}
                   <span className="text-red-500">*</span>
                 </label>
                 <span className="text-[10px] text-[#64748b] font-semibold">
@@ -898,11 +905,12 @@ export const NewOpportunityModal: React.FC<NewOpportunityModalProps> = ({
               </button>
               <button
                 type="submit"
-                disabled={!isFormValid}
+                disabled={!isFormValid || busy}
+                aria-busy={busy}
                 className="px-5 py-2.5 text-xs font-bold text-white bg-[#501f92] hover:bg-[#3d1572] disabled:bg-[#cbd5e1] disabled:cursor-not-allowed rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-2 hover:scale-[1.01]"
               >
                 <CheckCircle2 className="w-4 h-4 text-[#d4ff4a]" />
-                <span>Crear oportunidad</span>
+                <span>{busy ? 'Guardando…' : 'Crear negocio'}</span>
               </button>
             </div>
           </div>

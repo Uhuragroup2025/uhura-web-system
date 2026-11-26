@@ -46,7 +46,7 @@ import {
   Pencil
 } from 'lucide-react';
 
-// Metadatos visuales de la sesión; no forman parte del modelo ni del contrato de la oportunidad.
+// Metadatos visuales de la sesión; no forman parte del modelo ni del contrato del negocio.
 export type ScopeServiceDraft = {
   id: string; name: string; deliverableIds: string[]; weeks: string; saved?: boolean;
   /** Modalidad sugerida por la plantilla (el comercial la puede cambiar en Cotización). */

@@ -280,6 +280,8 @@ export interface ProjectDependency {
   nextFollowUpDate?: string | null;
   followUpNotes?: string | null;
   delayBusinessDays?: number;
+  /** Quién lo agregó (26 Nov 2026): puede eliminarlo mientras no esté recibido. */
+  createdByUserId?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -431,7 +433,7 @@ export interface ProjectSummaryItem {
   leadRole?: string;
   accountManagerId?: string;
   accountManagerName?: string;
-  /** Comercial responsable (owner de la oportunidad que originó el proyecto). */
+  /** Comercial responsable (owner del negocio que originó el proyecto). */
   commercialOwnerId?: string;
   commercialOwnerName?: string;
   /** Encargado de aprobaciones del lado del cliente y su suplente (si sale a vacaciones). */
@@ -866,6 +868,9 @@ export interface TaskItem {
   executedRoleSnapshot?: string; // snapshot of the role under which hours were executed
   categoryType?: TaskCategoryType;
   requestedBy?: string;
+  /** Quién creó la tarea (26 Nov 2026): puede eliminarla mientras no tenga horas ni esté entregada. */
+  createdByUserId?: string;
+  createdByName?: string;
   projectLead?: {
     name: string;
     initials: string;
@@ -1499,7 +1504,7 @@ export interface CommercialCalculatorContract {
 }
 
 /**
- * DECISIÓN 2 — Estados del ciclo de vida de la Oportunidad comercial/operativa
+ * DECISIÓN 2 — Estados del ciclo de vida del negocio comercial/operativa
  */
 export type OpportunityStatus =
   | 'discovery'        // Discovery / Briefing inicial
@@ -1676,7 +1681,7 @@ export interface HubSpotSyncAuditEntry {
 
 /**
  * Cotización (Quote Proposal)
- * Cada oportunidad puede tener 1..N cotizaciones simultáneas (Decisión 2)
+ * Cada negocio puede tener 1..N cotizaciones simultáneas (Decisión 2)
  */
 /**
  * Recurso externo / subcontratado (ej. backend, arquitectura de servidores).
@@ -1840,7 +1845,7 @@ export type FormalizationGateStatus =
   | 'activo';
 
 /**
- * Oportunidad de New Business (Comercial & Operativa)
+ * Negocio de New Business (Comercial & Operativa)
  */
 export interface NewBusinessOpportunity {
   id: string;
@@ -1856,7 +1861,7 @@ export interface NewBusinessOpportunity {
   scopeReadyHours?: number;
   /** Aviso a Comercial: el alcance cambió después de cotizar. Se limpia al guardar la cotización de nuevo. */
   scopeUpdateNotice?: { at: string; byName: string; added: string[]; removed: string[]; hoursBefore?: number; hoursAfter?: number } | null;
-  title: string;                  // Título comercial de la oportunidad
+  title: string;                  // Título comercial del negocio
   type: OpportunityType;          // 'new_client' | 'upsell' | 'cross_sell' | 'renewal'
   projectType?: ProjectType;      // 'fixed_project' (proyecto único) | 'fee_monthly' (fee mensual) | 'internal_non_billable'
   
@@ -1882,7 +1887,7 @@ export interface NewBusinessOpportunity {
   hubspotBriefNoteId?: string | null; // Referencia a la Nota de Brief / Reunión en HubSpot
   hubspotBriefNoteSnippet?: string;   // Fragmento de la nota de brief seleccionada
   hubspotDealStage?: string | null;   // Etapa del Deal en HubSpot (ej. 'closedwon', 'proposal_sent')
-  isHubspotConnected?: boolean;       // True si la oportunidad está sincronizada activamente con la API real de HubSpot
+  isHubspotConnected?: boolean;       // True si el negocio está sincronizada activamente con la API real de HubSpot
 
   // Discovery, Brief y Drive
   discoveryNotes?: string;
@@ -1930,7 +1935,7 @@ export interface NewBusinessOpportunity {
 }
 
 /**
- * Parámetros para la conversión transaccional de Oportunidad a Proyecto
+ * Parámetros para la conversión transaccional de Negocio a Proyecto
  */
 export interface OpportunityProjectConversionPayload {
   opportunityId: string;

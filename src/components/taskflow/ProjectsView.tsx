@@ -29,6 +29,7 @@ import { calculateBusinessDays } from './health/projectHealthEngine';
 import { can } from './auth/permissions';
 import { suggestedClientInputs, pickPhaseId, inputsToDependencies, type ClientInputTemplate } from './schedule/clientInputs';
 import { UserAvatar } from './UserAvatar';
+import { InfoTip } from './ui/InfoTip';
 import {
   Button,
   Badge,
@@ -746,12 +747,14 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
       setScheduleKickoffWaitDays(currentProject.scheduleConfig?.clientKickoffWaitDays ?? 3);
       setScheduleContractMonths(currentProject.contractMonths ?? 6);
       setScheduleRollover((currentProject.rolloverPolicy as 'none' | 'carry_over' | 'contractual_cap') || 'none');
+      // La sugerencia sale del servicio y de los entregables del proyecto, para cualquier área.
       const sugg = suggestedClientInputs(
-        [currentProject.name, ...(currentProject.deliverables || []).map((d) => d.name)].join(' ')
+        [currentProject.serviceBase, currentProject.name, ...(currentProject.deliverables || []).map((d) => d.name)].filter(Boolean).join(' ')
       );
       setScheduleInputsLabel(sugg.label);
       const phases = (currentProject.deliverables || []).map((d) => ({ id: d.id, name: d.name }));
-      setScheduleInputs(sugg.inputs.map((i) => ({ ...i, selected: true, deliverableId: pickPhaseId(i, phases) })));
+      // Sugerencias SIN marcar (26 Nov 2026): el líder marca los que necesita; nada se pide solo.
+      setScheduleInputs(sugg.inputs.map((i) => ({ ...i, selected: false, deliverableId: pickPhaseId(i, phases) })));
       setNewInputTitle('');
       // Semanas de producción: fuente de verdad = Alcance (productionWeeks heredado de la conversión)
       const scopeWeeks = currentProject.scheduleConfig?.productionWeeks;
@@ -2844,16 +2847,16 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                   };
                   return (
                     <div className="space-y-2">
-                      <span className="font-bold text-[#334155] block">Presentaciones al cliente</span>
+                      <span className="font-bold text-[#334155] block">Presentaciones al cliente<InfoTip label="Presentación al cliente">Cada vez que le mostramos al cliente un avance para que lo revise y apruebe: un concepto, un diseño, una estrategia, una parrilla… Cada una incluye una ronda: el cliente manda sus comentarios en un solo envío y nosotros ajustamos. Si vuelve a pedir cambios sobre lo mismo, es una ronda adicional.</InfoTip></span>
                       <div className="overflow-x-auto rounded-xl border border-[#e2e8f0]">
                         <table className="w-full text-xs">
                           <thead className="bg-[#f8fafc] text-[#64748b] text-left">
                             <tr>
-                              <th className="px-2 py-1.5 font-semibold">Presentación</th>
+                              <th className="px-2 py-1.5 font-semibold whitespace-nowrap">Presentación<InfoTip label="Presentación al cliente">Cada vez que le mostramos al cliente un avance para que lo revise y apruebe: un concepto, un diseño, una estrategia, una parrilla… Cada una incluye una ronda: el cliente manda sus comentarios en un solo envío y nosotros ajustamos. Si vuelve a pedir cambios sobre lo mismo, es una ronda adicional.</InfoTip></th>
                               <th className="px-2 py-1.5 font-semibold">Fase</th>
-                              <th className="px-2 py-1.5 font-semibold">Tipo</th>
-                              <th className="px-2 py-1.5 font-semibold text-center text-[#92400e]" title="Días que tiene el cliente para revisar">QA cliente</th>
-                              <th className="px-2 py-1.5 font-semibold text-center" title="Ventana de las tareas de ajustes después del QA del cliente. Son tareas: ya están dentro de la producción, no suman días.">Ajustes</th>
+                              <th className="px-2 py-1.5 font-semibold whitespace-nowrap">Tipo<InfoTip label="Tipo"><b>Avance:</b> el cliente ve cómo va y valida el rumbo, sin aprobación formal. <b>Aprobación:</b> el cliente aprueba formalmente y se pasa a lo siguiente.</InfoTip></th>
+                              <th className="px-2 py-1.5 font-semibold text-center text-[#92400e]">Revisión del cliente<InfoTip label="Revisión del cliente">Días hábiles que tiene el cliente para revisar la presentación y mandar todos sus comentarios en un solo envío. <b>Suman días a la entrega.</b> Si responde tarde, la entrega se corre.</InfoTip></th>
+                              <th className="px-2 py-1.5 font-semibold text-center">Nuestros ajustes<InfoTip label="Nuestros ajustes">Días hábiles que tiene el equipo para aplicar los comentarios del cliente, después de su revisión. Son tareas dentro de la producción: <b>no suman días a la entrega.</b> Incluye una ronda; una segunda se cotiza o mueve la entrega.</InfoTip></th>
                               <th className="px-1 py-1.5" />
                             </tr>
                           </thead>
@@ -2868,13 +2871,13 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                                   </select>
                                 </td>
                                 <td className="px-2 py-1">
-                                  <select value={r.kind || 'approval'} onChange={(e) => patchRound(i, k, { kind: e.target.value as 'checkpoint' | 'approval' })} className="h-8 px-1 rounded-lg border border-[#e2e8f0] bg-white" aria-label="Tipo" title="Checkpoint: revisión informal, se sigue sin aprobación por correo. Aprobación: el cliente aprueba formalmente.">
-                                    <option value="checkpoint">Checkpoint</option>
+                                  <select value={r.kind || 'approval'} onChange={(e) => patchRound(i, k, { kind: e.target.value as 'checkpoint' | 'approval' })} className="h-8 px-1 rounded-lg border border-[#e2e8f0] bg-white" aria-label="Tipo" title="Avance: el cliente valida el rumbo, sin aprobación formal. Aprobación: el cliente aprueba formalmente y se pasa a lo siguiente.">
+                                    <option value="checkpoint">Avance</option>
                                     <option value="approval">Aprobación</option>
                                   </select>
                                 </td>
-                                <td className="px-2 py-1 text-center bg-[#fffbeb]/60"><input type="number" min="1" max="20" value={r.reviewDays} onChange={(e) => patchRound(i, k, { reviewDays: Math.max(1, parseInt(e.target.value, 10) || 1) })} className="w-11 h-8 px-1 rounded-lg border border-[#cbd5e1] font-bold text-xs bg-white text-center" aria-label="Días de QA del cliente" /></td>
-                                <td className="px-2 py-1 text-center"><input type="number" min="0" max="20" value={r.adjustDays} onChange={(e) => patchRound(i, k, { adjustDays: Math.max(0, parseInt(e.target.value, 10) || 0) })} className="w-11 h-8 px-1 rounded-lg border border-[#cbd5e1] font-bold text-xs bg-white text-center" aria-label="Días de ajustes internos" /></td>
+                                <td className="px-2 py-1 text-center bg-[#fffbeb]/60"><span className="inline-flex items-center gap-1"><input type="number" min="1" max="20" value={r.reviewDays} onChange={(e) => patchRound(i, k, { reviewDays: Math.max(1, parseInt(e.target.value, 10) || 1) })} className="w-11 h-8 px-1 rounded-lg border border-[#cbd5e1] font-bold text-xs bg-white text-center" aria-label="Días de revisión del cliente" /><span className="text-[11px] text-[#64748b]">{r.reviewDays === 1 ? 'día' : 'días'}</span></span></td>
+                                <td className="px-2 py-1 text-center"><span className="inline-flex items-center gap-1"><input type="number" min="0" max="20" value={r.adjustDays} onChange={(e) => patchRound(i, k, { adjustDays: Math.max(0, parseInt(e.target.value, 10) || 0) })} className="w-11 h-8 px-1 rounded-lg border border-[#cbd5e1] font-bold text-xs bg-white text-center" aria-label="Días de nuestros ajustes" /><span className="text-[11px] text-[#64748b]">{r.adjustDays === 1 ? 'día' : 'días'}</span></span></td>
                                 <td className="px-1 py-1"><button type="button" onClick={() => setSteps(steps.map((x, j) => (j === i ? removeRound(x, k) : x)))} className="p-1 rounded-md text-[#94a3b8] hover:text-[#dc2626] hover:bg-[#fef2f2] cursor-pointer" aria-label="Quitar presentación"><Trash2 className="w-3.5 h-3.5" /></button></td>
                               </tr>
                             ))}
@@ -2884,7 +2887,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                       <button type="button" onClick={addRow} className="w-full inline-flex items-center justify-center gap-1 h-8 rounded-xl border border-dashed border-[#c4b5fd] text-[#501f92] font-semibold hover:bg-[#faf5ff] cursor-pointer">
                         <Plus className="w-3.5 h-3.5" /> Añadir presentación
                       </button>
-                      <p className="text-[11px] text-[#64748b]">Días hábiles (sin fines de semana ni festivos). El QA interno y los ajustes son tareas de la producción; solo el QA del cliente suma días. Cada presentación incluye una ronda de ajustes; una adicional agrega otra ventana y se cotiza.</p>
+                      <p className="text-[11px] text-[#64748b]">Días hábiles (sin fines de semana ni festivos). Cada presentación incluye una ronda: el cliente revisa y nosotros ajustamos. Solo la revisión del cliente suma días; el QA interno y nuestros ajustes ya están dentro de la producción. Una segunda ronda de comentarios, o una respuesta tarde del cliente, mueve la entrega o se cotiza.</p>
                     </div>
                   );
                 })()}
@@ -2902,7 +2905,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                           </span>
                         </span>
                       </span>
-                      <span className="text-[10px] text-[#64748b]">Sugeridos para {scheduleInputsLabel}</span>
+                      <span className="text-[10px] text-[#64748b]">Sugeridos para {scheduleInputsLabel} · marca los que necesites</span>
                     </div>
                     <ul className="rounded-xl border border-[#e2e8f0] divide-y divide-[#f1f5f9] max-h-48 overflow-y-auto">
                       {scheduleInputs.map((inp, idx) => (
@@ -3028,7 +3031,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                       return (
                         <div className="border-t border-[#e9d5ff] pt-2 space-y-1.5">
                           <p className="text-xs text-[#475569]">
-                            Producción <strong>{prod}</strong> de {target} ({scheduleDurationWeeks} semana{scheduleDurationWeeks === 1 ? '' : 's'}, incluye QA interno y ajustes) + QA del cliente <strong>{client}</strong> = <strong>{prod + client} días hábiles</strong>
+                            Producción <strong>{prod}</strong> de {target} ({scheduleDurationWeeks} semana{scheduleDurationWeeks === 1 ? '' : 's'}, incluye QA interno y nuestros ajustes) + revisión del cliente <strong>{client}</strong> = <strong>{prod + client} días hábiles</strong>
                           </p>
                           {prod > target && (
                             <p className="text-xs font-semibold text-[#b45309] bg-[#fffbeb] border border-[#fde68a] rounded-lg px-2.5 py-1.5">

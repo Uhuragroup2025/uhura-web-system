@@ -1,13 +1,18 @@
 /**
  * Nuevo proyecto desde Proyectos (24 Nov 2026): mismo flujo que un proyecto que nace en New Business.
  *
- * 1. Proyecto: cliente, nombre, líder, tipo (Proyecto único o Fee mensual) y la característica
- *    «Interno · no facturable». Fecha de inicio para ambos; el fee pide además los meses del contrato.
+ * Sirve para cualquier área: un proyecto único puede ser una web, un chatbot, una estrategia SEO o una
+ * campaña; un fee puede ser soporte web, administración de parrillas o SEO mensual.
+ *
+ * 1. Proyecto: cliente, nombre, líder, tipo (Proyecto único o Fee mensual, radios como en Cotización) y la
+ *    característica «Interno · no facturable».
  * 2. Alcance: el mismo editor de New Business («Importar alcance» / «Crear alcance»), con entregables,
  *    tareas, rol, horas y semanas por servicio.
- * 3. Fechas: en un proyecto único, la fecha de entrega se sugiere con el MISMO cálculo de «Iniciar proyecto»
- *    (semanas de producción + QA del cliente de cada presentación; cada presentación trae su ronda de
- *    ajustes; días hábiles sin festivos) y se puede editar. El fee no tiene fecha fin ni rondas.
+ * 3. Fechas y revisión (25 Nov 2026: todas las fechas viven aquí):
+ *    - Proyecto único: fecha de inicio, semanas de producción y entrega sugerida con el MISMO cálculo de
+ *      «Iniciar proyecto» (producción + revisión del cliente de cada presentación; días hábiles sin
+ *      festivos), editable. Muestra el nombre de cada presentación según el área del alcance.
+ *    - Fee mensual: fecha de inicio, meses del contrato y horas no usadas del mes. Sin fecha fin ni rondas.
  *
  * El proyecto nace «Por iniciar» con sus entregables y tareas. «Iniciar proyecto» programa las fechas
  * de cada tarea con el mismo motor que usa un proyecto convertido desde New Business.
@@ -32,7 +37,9 @@ import { CATALOG_2026 } from './templates/catalog2026';
 import { buildDefaultSteps, computePhaseSchedule, rebalanceToTarget } from './schedule/clientTimeline';
 import { businessDaysInRange } from './schedule/scheduleEngine';
 import { formatDate } from '../../utils/formatters';
-import { X, Briefcase, ChevronLeft, ChevronRight, CalendarDays, Layers, Info } from 'lucide-react';
+import { InfoTip } from './ui/InfoTip';
+import { X, Briefcase, ChevronLeft, ChevronRight, CalendarDays, Layers } from 'lucide-react';
+import { useSubmitOnce } from './ui/useSubmitOnce';
 
 export interface NewProjectPayload {
   name: string;
@@ -194,12 +201,14 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
     const steps = nonBillable ? rebalanceToTarget(built.map((st) => ({ ...st, rounds: [] })), productionWeeks * 5) : built;
     const { endDate: end } = computePhaseSchedule(startDate, steps);
     const presentations = steps.reduce((n, st) => n + st.rounds.length, 0);
+    const presentationLabels = steps.flatMap((st) => st.rounds.map((r) => r.label || st.name));
     const clientQaDays = steps.reduce((n, st) => n + st.rounds.reduce((a, r) => a + Math.max(1, Math.round(r.reviewDays)), 0), 0);
     return {
       endDate: end,
       totalBusinessDays: businessDaysInRange(startDate, end).length,
       productionDays: Math.round(productionWeeks * 5),
       presentations,
+      presentationLabels,
       clientQaDays
     };
   }, [isFee, startDate, productionWeeks, quote.deliverables, nonBillable, name]);
@@ -215,8 +224,6 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
     !clientId && 'el cliente',
     !name.trim() && 'el nombre del proyecto',
     !leadId && 'el líder del proyecto',
-    !startDate && 'la fecha de inicio',
-    isFee && (!contractMonths || contractMonths < 1) && 'los meses del contrato'
   ].filter(Boolean) as string[];
   const missingRole = quote.deliverables.some((d) => d.backlogItems.some((i) => !i.roleName));
   const step2Missing = [
@@ -226,6 +233,8 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
     !isFee && scopeWeeks <= 0 && 'las semanas de cada servicio'
   ].filter(Boolean) as string[];
   const step3Missing = [
+    !startDate && 'la fecha de inicio',
+    isFee && (!contractMonths || contractMonths < 1) && 'los meses del contrato',
     !isFee && productionWeeks <= 0 && 'las semanas de producción',
     !isFee && endDate && startDate && endDate < startDate && 'una entrega posterior al inicio'
   ].filter(Boolean) as string[];
@@ -238,9 +247,11 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
     setStep((s) => (s === 1 ? 2 : 3));
   };
 
+  const { busy, claim } = useSubmitOnce(); // evita el doble guardado (§34.17)
   const handleCreate = () => {
     setAttempted(true);
     if (step3Missing.length || step1Missing.length || step2Missing.length) return;
+    if (!claim()) return; // doble clic: no crear el proyecto dos veces
     const lead = people.find((u) => u.id === leadId);
     const manager = people.find((u) => u.id === accountManagerId);
     const ordered = [...quote.deliverables].sort((a, b) => a.order - b.order);
@@ -330,7 +341,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
   const steps = [
     { n: 1, t: 'Proyecto' },
     { n: 2, t: 'Alcance' },
-    { n: 3, t: isFee ? 'Revisión' : 'Fechas y revisión' }
+    { n: 3, t: 'Fechas y revisión' }
   ];
 
   return (
@@ -420,23 +431,29 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
 
               <div>
                 <span className={label}>¿Qué tipo de proyecto es? *</span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Mismo selector que en Cotización (New Business): radios, uno u otro */}
+                <div role="radiogroup" aria-label="Tipo de proyecto" className="flex items-center gap-5 text-sm text-[#334155]">
                   {([
-                    { type: 'fixed_project', title: 'Proyecto único', desc: 'Tiene inicio y entrega. Se planea con el alcance, las semanas de producción y las rondas de ajuste.' },
-                    { type: 'fee_monthly', title: 'Fee mensual', desc: 'Contrato por meses con una bolsa de horas cada mes. Sin fecha fin ni rondas de ajuste.' }
-                  ] as const).map((o) => (
-                    <button
-                      key={o.type}
-                      type="button"
-                      onClick={() => setProjectType(o.type)}
-                      aria-pressed={projectType === o.type}
-                      className={`text-left p-4 rounded-2xl border-2 transition-colors cursor-pointer ${projectType === o.type ? 'border-[#501f92] bg-[#faf7ff]' : 'border-[#e2e8f0] hover:border-[#cbd5e1]'}`}
-                    >
-                      <span className={`block text-sm font-extrabold ${projectType === o.type ? 'text-[#501f92]' : 'text-[#0f172a]'}`}>{o.title}</span>
-                      <span className="block text-[11px] text-[#64748b] mt-1">{o.desc}</span>
-                    </button>
+                    ['fixed_project', 'Proyecto único'],
+                    ['fee_monthly', 'Fee mensual']
+                  ] as const).map(([value, text]) => (
+                    <label key={value} className="inline-flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="new-project-type"
+                        checked={projectType === value}
+                        onChange={() => setProjectType(value)}
+                        className="w-4 h-4 accent-[#501f92] cursor-pointer"
+                      />
+                      <span className="font-medium">{text}</span>
+                    </label>
                   ))}
                 </div>
+                <p className="mt-1.5 text-[11px] text-[#64748b]">
+                  {isFee
+                    ? 'Servicio continuo por meses, con una bolsa de horas cada mes: soporte y mantenimiento web, administración de parrillas, SEO mensual… Sin fecha de entrega ni rondas de ajuste: los ajustes del día a día salen de la bolsa de horas.'
+                    : 'Tiene inicio y entrega, sea del área que sea: una web, un chatbot, una estrategia SEO, una campaña de Navidad… Se planea con el alcance, las semanas de producción y las presentaciones al cliente.'}
+                </p>
                 <label className="mt-3 flex items-start gap-2.5 p-3 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] cursor-pointer select-none">
                   <input type="checkbox" checked={nonBillable} onChange={(e) => setNonBillable(e.target.checked)} className="mt-0.5 w-4 h-4 accent-[#501f92]" />
                   <span>
@@ -444,34 +461,6 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                     <span className="block text-[11px] text-[#64748b]">Proyecto de UHURA Group que no se cobra (Gerencia, Administrativo, Rituales…). Sin rondas de ajuste ni insumos del cliente.</span>
                   </span>
                 </label>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                  <label className={label}>Fecha de inicio *</label>
-                  <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={field} />
-                </div>
-                {isFee ? (
-                  <>
-                    <div>
-                      <label className={label}>Meses del contrato *</label>
-                      <input type="number" min={1} max={36} value={contractMonths} onChange={(e) => setContractMonths(Number(e.target.value))} className={field} />
-                    </div>
-                    <div>
-                      <label className={label}>Horas no usadas del mes</label>
-                      <select value={rolloverPolicy} onChange={(e) => setRolloverPolicy(e.target.value as FeeRolloverPolicy)} className={field}>
-                        <option value="none">No pasan al mes siguiente (regla general)</option>
-                        <option value="carry_over">Pasan todas (pactado con el cliente)</option>
-                        <option value="contractual_cap">Pasan hasta el 25 % (pactado)</option>
-                      </select>
-                    </div>
-                  </>
-                ) : (
-                  <p className="sm:col-span-2 self-end text-[11px] text-[#64748b] flex items-start gap-1.5">
-                    <Info className="w-3.5 h-3.5 mt-0.5 shrink-0 text-[#501f92]" />
-                    La fecha de entrega se sugiere en el paso 3 con las semanas del alcance y las rondas de ajuste. La puedes cambiar.
-                  </p>
-                )}
               </div>
 
               <div>
@@ -506,21 +495,41 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
           {/* ── PASO 3 · FECHAS Y REVISIÓN ── */}
           {step === 3 && (
             <div className="space-y-5">
-              {!isFee && (
+              {isFee ? (
                 <div className="rounded-2xl border border-[#e2e8f0] p-4 space-y-4">
-                  <p className="font-extrabold text-sm text-[#0f172a] flex items-center gap-2"><CalendarDays className="w-4 h-4 text-[#501f92]" /> Fecha de entrega</p>
+                  <p className="font-extrabold text-sm text-[#0f172a] flex items-center gap-2"><CalendarDays className="w-4 h-4 text-[#501f92]" /> Contrato</p>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    <div>
+                      <label className={label}>Fecha de inicio *</label>
+                      <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={field} />
+                    </div>
+                    <div>
+                      <label className={label}>Meses del contrato *</label>
+                      <input type="number" min={1} max={36} value={contractMonths} onChange={(e) => setContractMonths(Number(e.target.value))} className={field} />
+                    </div>
+                    <div>
+                      <label className={label}>Horas no usadas del mes</label>
+                      <select value={rolloverPolicy} onChange={(e) => setRolloverPolicy(e.target.value as FeeRolloverPolicy)} className={field}>
+                        <option value="none">No pasan al mes siguiente (regla general)</option>
+                        <option value="carry_over">Pasan todas (pactado con el cliente)</option>
+                        <option value="contractual_cap">Pasan hasta el 25 % (pactado)</option>
+                      </select>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-[#64748b]">Cada mes abre su ciclo con las tareas del alcance y su bolsa de {totalHours} h. Los ajustes del día a día con el cliente salen de esa bolsa: no hay rondas.</p>
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-[#e2e8f0] p-4 space-y-4">
+                  <p className="font-extrabold text-sm text-[#0f172a] flex items-center gap-2"><CalendarDays className="w-4 h-4 text-[#501f92]" /> Fechas</p>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    <div>
+                      <label className={label}>Fecha de inicio *</label>
+                      <input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); setEndDateOverride(null); }} className={field} />
+                    </div>
                     <div>
                       <label className={label}>Semanas de producción</label>
                       <input type="number" min={1} max={104} value={productionWeeks || ''} onChange={(e) => { setWeeksOverride(Number(e.target.value)); setEndDateOverride(null); }} className={field} />
                       <span className="text-[10.5px] text-[#94a3b8]">Del alcance: {scopeWeeks || '—'}</span>
-                    </div>
-                    <div>
-                      <span className={label}>Presentaciones al cliente</span>
-                      <p className="h-9 flex items-center text-xs font-bold text-[#0f172a]">
-                        {nonBillable ? 'Ninguna (proyecto interno)' : `${suggested?.presentations ?? 0} · cada una con su ronda de ajustes`}
-                      </p>
-                      {!nonBillable && <span className="text-[10.5px] text-[#94a3b8]">Se ajustan al «Iniciar proyecto»</span>}
                     </div>
                     <div>
                       <label className={label}>Entrega</label>
@@ -537,10 +546,33 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                       )}
                     </div>
                   </div>
+
+                  {/* Presentaciones: aplican a cualquier área (producto, creativo, SEO, contenidos…) */}
+                  <div className="rounded-xl border border-[#f1f5f9] bg-[#f8fafc] px-3 py-2.5">
+                    <p className="text-xs font-bold text-[#0f172a]">
+                      Presentaciones al cliente<InfoTip label="Presentación al cliente">Cada vez que le mostramos al cliente un avance para que lo revise y apruebe: un concepto, un diseño, una estrategia, una parrilla… Cada una incluye una ronda: el cliente manda sus comentarios en un solo envío y nosotros ajustamos. Si vuelve a pedir cambios sobre lo mismo, es una ronda adicional.</InfoTip>:{' '}
+                      {nonBillable ? 'ninguna (proyecto interno)' : `${suggested?.presentations ?? 0}`}
+                    </p>
+                    {!nonBillable && (
+                      <>
+                        {suggested && suggested.presentationLabels.length > 0 && (
+                          <div className="mt-1.5 flex flex-wrap gap-1.5">
+                            {suggested.presentationLabels.map((l, i) => (
+                              <span key={`${l}-${i}`} className="px-2 py-0.5 rounded-full bg-white border border-[#e2e8f0] text-[11px] font-semibold text-[#334155]">{l}</span>
+                            ))}
+                          </div>
+                        )}
+                        <p className="mt-1.5 text-[11px] text-[#64748b]">
+                          Cada vez que el cliente revisa y aprueba un avance, sea del área que sea: un prototipo, una estrategia SEO, un flujo de chatbot, las piezas de una campaña… Cada una incluye una ronda: el cliente revisa y nosotros ajustamos. Se sugieren según el alcance y se ajustan al «Iniciar proyecto».
+                        </p>
+                      </>
+                    )}
+                  </div>
+
                   {suggested && (
                     <p className="text-[11px] text-[#475569] bg-[#faf7ff] border border-[#ede9fe] rounded-xl px-3 py-2">
                       <strong>Entrega sugerida: {formatDate(suggested.endDate)}</strong> · producción {suggested.productionDays} días
-                      {suggested.clientQaDays > 0 ? ` + QA del cliente ${suggested.clientQaDays} días (${suggested.presentations} presentación${suggested.presentations === 1 ? '' : 'es'})` : ''}
+                      {suggested.clientQaDays > 0 ? ` + revisión del cliente ${suggested.clientQaDays} días (${suggested.presentations} presentación${suggested.presentations === 1 ? '' : 'es'})` : ''}
                       {` = ${suggested.totalBusinessDays} días hábiles`} (sin fines de semana ni festivos). Es el mismo cálculo de «Iniciar proyecto», donde se programa cada tarea.
                     </p>
                   )}
@@ -579,8 +611,8 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
               Siguiente <ChevronRight className="w-4 h-4" />
             </button>
           ) : (
-            <button type="button" onClick={handleCreate} className="h-9 px-4 rounded-xl bg-[#501f92] hover:bg-[#3d1572] text-white text-xs font-bold cursor-pointer">
-              Crear proyecto
+            <button type="button" onClick={handleCreate} disabled={busy} aria-busy={busy} className="h-9 px-4 rounded-xl bg-[#501f92] hover:bg-[#3d1572] disabled:opacity-60 disabled:cursor-wait text-white text-xs font-bold cursor-pointer">
+              {busy ? 'Guardando…' : 'Crear proyecto'}
             </button>
           )}
         </div>

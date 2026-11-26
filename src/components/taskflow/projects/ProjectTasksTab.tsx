@@ -54,6 +54,8 @@ import {
 import { initialUsers } from '../mockData';
 import { ProjectDependenciesSection } from './ProjectDependenciesSection';
 import { TimerControls } from '../time/TimerControls';
+import { useSubmitOnce } from '../ui/useSubmitOnce';
+import { taskDeleteBlock } from '../deletePermissions';
 
 interface ProjectTasksTabProps {
   project: ProjectSummaryItem;
@@ -133,7 +135,10 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
   // Ronda 2: la fila de la tarea ya no tiene lápiz (se edita al abrirla); tiene eliminar con confirmación.
   // Solo líderes y administración eliminan; una tarea con horas registradas no se elimina (se archiva).
   const [taskPendingDelete, setTaskPendingDelete] = useState<TaskItem | null>(null);
-  const canDeleteTasks = !currentUser || ['leader', 'system_admin'].includes(currentUser.accessLevel || '');
+  // Comité operativo: líderes, Comercial, Dirección y admin (26 Nov 2026)
+  // Eliminar entregables: comité operativo (líderes, Comercial, Dirección) + system_admin. Tareas: además quien la
+  // creó, mientras no tenga horas ni esté entregada (`taskDeleteBlock`, 26 Nov 2026).
+  const canDeleteTasks = !currentUser || ['leader', 'commercial', 'executive', 'system_admin'].includes(currentUser.accessLevel || '');
   const [deliverablePendingDelete, setDeliverablePendingDelete] = useState<ProjectDeliverable | null>(null);
   const [replanNotice, setReplanNotice] = useState<string | null>(null);
 
@@ -437,9 +442,11 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
   ].filter(Boolean);
   const missingField = (empty: boolean) => taskFormAttempted && empty;
 
+  const { busy, claim } = useSubmitOnce(); // evita el doble guardado (§34.17)
   const handleSaveTask = () => {
     setTaskFormAttempted(true);
     if (taskFormMissing.length > 0) return;
+    if (!claim()) return; // doble clic: no guardar dos veces
 
     // Resolver asignaciones y horas estimadas
     let resolvedAllocations: TaskAssigneeAllocation[] = [];
@@ -507,6 +514,8 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
       budgetedHours: totalHours,
       estimatedHours: totalHours,
       consumedSeconds: isEdit ? editingTask!.consumedSeconds : 0,
+      createdByUserId: isEdit ? editingTask!.createdByUserId : currentUser?.id,
+      createdByName: isEdit ? editingTask!.createdByName : currentUser?.name,
       assigneeAllocations: resolvedAllocations,
       assigneeIds: resolvedAllocations.map((a) => a.userId),
       assignee: {
@@ -946,7 +955,12 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
                               <AlertTriangle className="w-3.5 h-3.5" />
                             </button>
 
-                            {canDeleteTasks && (
+                            {typeof taskDeleteBlock(task, currentUser) === 'string' && (
+                              <span className="p-1.5 text-[#cbd5e1] cursor-not-allowed" title={taskDeleteBlock(task, currentUser) as string} aria-label={taskDeleteBlock(task, currentUser) as string}>
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </span>
+                            )}
+                            {taskDeleteBlock(task, currentUser) === null && (
                               <button
                                 onClick={() => setTaskPendingDelete(task)}
                                 className="p-1.5 text-[#94a3b8] hover:text-[#dc2626] rounded-lg cursor-pointer"
@@ -1102,7 +1116,12 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
                         </span>
                       </td>
                       <td className="py-3.5 px-5 text-right pr-6" onClick={(e) => e.stopPropagation()}>
-                        {canDeleteTasks && (
+                        {typeof taskDeleteBlock(task, currentUser) === 'string' && (
+                          <span className="p-1 text-[#cbd5e1] cursor-not-allowed inline-flex" title={taskDeleteBlock(task, currentUser) as string} aria-label={taskDeleteBlock(task, currentUser) as string}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </span>
+                        )}
+                        {taskDeleteBlock(task, currentUser) === null && (
                           <button
                             onClick={() => setTaskPendingDelete(task)}
                             className="p-1 hover:bg-[#fef2f2] text-[#94a3b8] hover:text-[#dc2626] rounded cursor-pointer"
@@ -1493,9 +1512,11 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
               <button
                 type="button"
                 onClick={handleSaveTask}
-                className="px-4 py-2 text-xs font-bold text-white bg-[#501f92] hover:bg-[#3f1675] rounded-xl shadow-xs cursor-pointer"
+                disabled={busy}
+                aria-busy={busy}
+                className="px-4 py-2 text-xs font-bold text-white bg-[#501f92] hover:bg-[#3f1675] disabled:opacity-60 disabled:cursor-wait rounded-xl shadow-xs cursor-pointer"
               >
-                {editingTask ? 'Guardar cambios' : 'Crear tarea'}
+                {busy ? 'Guardando…' : editingTask ? 'Guardar cambios' : 'Crear tarea'}
               </button>
             </div>
           </div>

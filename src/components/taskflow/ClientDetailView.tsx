@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ClientProfile, ClientProjectHistoryItem, ClientTaxEntity, ClientContact, ProjectSummaryItem, UserItem } from './types';
+import { ClientProfile, ClientProjectHistoryItem, ClientTaxEntity, ClientContact, ProjectSummaryItem, UserItem, isInternalProject } from './types';
 import { GoogleChatIntegrationCard } from './integrations/GoogleChatIntegrationCard';
 import { canManageGoogleChat, canViewClientIntegrations, getProjectChatMode } from './integrations/googleChat';
 import { ClientRadarChart } from './ClientRadarChart';
@@ -567,7 +567,7 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
                   <th className="py-3 px-3">Proyecto</th>
                   <th className="py-3 px-3">Marca</th>
                   <th className="py-3 px-3">Estado</th>
-                  <th className="py-3 px-3 text-center">SOW</th>
+                  <th className="py-3 px-3 text-center" title="SOW: qué se hace y cuánto cuesta (se firma al ganar). Cronograma: cuándo y con qué reglas (se aprueba en el kickoff).">Documentos</th>
                   <th className="py-3 px-3 text-right">Valor cotizado</th>
                   <th className="py-3 px-3 text-right">Margen real</th>
                   <th className="py-3 px-3 text-center">Semáforo</th>
@@ -617,24 +617,48 @@ export const ClientDetailView: React.FC<ClientDetailViewProps> = ({
                       </span>
                     </td>
 
-                    {/* SOW Column */}
+                    {/* Documentos (25 Nov 2026): SOW + cronograma aprobado en el kickoff */}
                     <td className="py-3.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
-                      {onViewProjectSow && sowProjectIds.includes(prj.id) ? (
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            onViewProjectSow(prj.id);
-                          }}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#faf5ff] hover:bg-[#f3e8ff] border border-[#e9d5ff] text-[#501f92] text-[11px] font-bold transition-all shadow-2xs hover:scale-105 cursor-pointer"
-                          title="Ver documento formal de Statement of Work (SOW)"
-                        >
-                          <FileText className="w-3.5 h-3.5 text-[#501f92]" />
-                          <span>Ver SOW</span>
-                        </button>
-                      ) : (
-                        <span className="text-[11px] text-[#94a3b8] italic">—</span>
-                      )}
+                      {(() => {
+                        const full = projects.find((x) => x.id === prj.id);
+                        const internal = isInternalProject(full);
+                        const hasSow = Boolean(onViewProjectSow && sowProjectIds.includes(prj.id));
+                        const approval = full?.clientScheduleApproval;
+                        const kicked = Boolean(full?.isKickedOff);
+                        if (internal) return <span className="text-[11px] text-[#94a3b8] italic" title="Proyecto interno: sin SOW ni cronograma de cliente">—</span>;
+                        const chip = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold border whitespace-nowrap';
+                        return (
+                          <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                            {hasSow ? (
+                              <button
+                                type="button"
+                                onClick={(event) => { event.stopPropagation(); onViewProjectSow?.(prj.id); }}
+                                className={`${chip} bg-[#faf5ff] hover:bg-[#f3e8ff] border-[#e9d5ff] text-[#501f92] cursor-pointer`}
+                                title="Ver el SOW: qué se hace, cuánto cuesta y en qué condiciones"
+                              >
+                                <FileText className="w-3 h-3" /> SOW
+                              </button>
+                            ) : (
+                              <span className={`${chip} bg-[#f8fafc] border-[#e2e8f0] text-[#94a3b8]`} title="Este proyecto no tiene SOW en ECO (no nació en New Business o falta generarlo)">
+                                <FileText className="w-3 h-3" /> Sin SOW
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={(event) => { event.stopPropagation(); onNavigateToProject?.(prj.name); }}
+                              className={`${chip} cursor-pointer ${approval ? 'bg-[#f0fdf4] border-[#bbf7d0] text-[#166534]' : kicked ? 'bg-[#fffbeb] border-[#fde68a] text-[#92400e]' : 'bg-[#f8fafc] border-[#e2e8f0] text-[#64748b]'}`}
+                              title={approval
+                                ? `Cronograma aprobado por ${approval.name} el ${approval.date}. Clic para abrir el proyecto.`
+                                : kicked
+                                  ? 'El proyecto ya inició pero el cliente no ha aprobado el cronograma. Clic para abrir el proyecto y registrar la aprobación.'
+                                  : 'El cronograma se presenta y aprueba en el kickoff («Iniciar proyecto»).'}
+                            >
+                              {approval ? <CheckCircle2 className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
+                              {approval ? 'Cronograma' : kicked ? 'Cronograma pendiente' : 'Cronograma por iniciar'}
+                            </button>
+                          </div>
+                        );
+                      })()}
                     </td>
 
                     {/* Valor cotizado */}

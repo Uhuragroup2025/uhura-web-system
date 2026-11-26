@@ -2,7 +2,7 @@
  * SLA & Gobernanza Contractual Engine para New Business en ECO
  * 
  * Reglas de Dominio:
- * 1. SLA de propuesta: 36 horas hábiles desde la activación de la oportunidad para scoping/propuesta,
+ * 1. SLA de propuesta: 36 horas hábiles desde la activación del negocio para scoping/propuesta,
  *    calculadas sobre una jornada estándar de 8 horas por día hábil (lunes a viernes).
  * 2. Corresponde a un plazo máximo de 4,5 días hábiles para elaborar y entregar la propuesta.
  * 3. Puede entregarse antes sin penalización. El SLA mide tiempo disponible de entrega,
@@ -102,7 +102,7 @@ export function isNonWorkingDay(date: Date, holidays: string[] = STANDARD_HOLIDA
  * - Entrega anticipada: 100% permitida sin penalización.
  * - Registro de horas: el SLA NUNCA crea TimeLogs automáticos ni modifica la ejecución real.
  * 
- * @param startDate Fecha de activación de la oportunidad para scoping
+ * @param startDate Fecha de activación del negocio para scoping
  * @param businessHours Número de horas hábiles acordadas (default 36h = 4.5 días hábiles)
  * @param holidays Lista opcional de festivos (por defecto feriados Colombia)
  */

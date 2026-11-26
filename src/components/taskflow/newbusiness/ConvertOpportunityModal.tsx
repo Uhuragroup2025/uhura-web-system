@@ -20,6 +20,7 @@ import {
   FolderOpen,
   AlertCircle
 } from 'lucide-react';
+import { useSubmitOnce } from '../ui/useSubmitOnce';
 
 export interface ConvertedProjectPlan {
   serviceId: string;
@@ -249,6 +250,7 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
   );
 
 
+  const { busy, claim } = useSubmitOnce(); // evita el doble guardado (§34.17)
   if (!isOpen) return null;
 
   const currency = activeQuote.currency || 'COP';
@@ -258,6 +260,7 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
     e.preventDefault();
     if (wonServices.length === 0) return;
     if (opportunity.clientId && !matchedExistingClient) return;
+    if (!claim()) return; // doble clic: no crear los proyectos dos veces
 
     // Regla canónica 1:1:1:
     // 1 servicio en ECO = 1 negocio en HubSpot = 1 proyecto independiente en ECO
@@ -688,11 +691,12 @@ export const ConvertOpportunityModal: React.FC<ConvertOpportunityModalProps> = (
             </button>
             <button
               type="submit"
-              disabled={selectedLeadUsers.length === 0 || wonServices.length === 0 || Boolean(opportunity.clientId && !matchedExistingClient)}
+              disabled={busy || selectedLeadUsers.length === 0 || wonServices.length === 0 || Boolean(opportunity.clientId && !matchedExistingClient)}
+              aria-busy={busy}
               className="px-5 py-2.5 text-xs font-bold text-white bg-[#501f92] hover:bg-[#3d1572] rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-2 hover:scale-[1.01]"
             >
               <CheckCircle2 className="w-4 h-4 text-[#d4ff4a]" />
-              <span>{wonServices.length === 1 ? 'Crear proyecto' : 'Crear proyectos'} →</span>
+              <span>{busy ? 'Guardando…' : `${wonServices.length === 1 ? 'Crear proyecto' : 'Crear proyectos'} →`}</span>
             </button>
           </div>
         </form>

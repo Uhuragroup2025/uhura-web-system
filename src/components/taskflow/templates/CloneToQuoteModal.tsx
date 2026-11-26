@@ -81,7 +81,7 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
   );
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  // Selección de Oportunidad Contenedora (Regla arquitectónica: QuoteProposal siempre pertenece a NewBusinessOpportunity)
+  // Selección de Negocio Contenedora (Regla arquitectónica: QuoteProposal siempre pertenece a NewBusinessOpportunity)
   const [targetOpportunityMode, setTargetOpportunityMode] = useState<'existing' | 'new'>(
     preselectedOpportunityId || opportunities.length > 0 ? 'existing' : 'new'
   );
@@ -109,13 +109,13 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
     t.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Nombre de visualización de la oportunidad
+  // Nombre de visualización del negocio
   const displayOpportunityName =
     targetOpportunityMode === 'existing'
       ? targetExistingOpp
         ? `${targetExistingOpp.title} (${targetExistingOpp.prospectAccountName || 'Cliente'})`
-        : 'Oportunidad Seleccionada'
-      : newOpportunityTitle.trim() || 'Nueva Oportunidad Comercial';
+        : 'Negocio seleccionado'
+      : newOpportunityTitle.trim() || 'Nuevo negocio';
 
   // ACCIÓN: CLONAR HACIA COPIA INDEPENDIENTE CON OPPORTUNITY ID RESUELTO
   const handleGenerateClone = () => {
@@ -275,7 +275,7 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
     });
   };
 
-  // Guardar cotización en la oportunidad correspondiente
+  // Guardar cotización en el negocio correspondiente
   const handleFinalizeQuote = () => {
     if (!clonedQuote) return;
     if (targetOpportunityMode === 'new' && !users.some((user) => user.id === newLeadUserId && isEligibleScopingLeader(user))) {
@@ -291,12 +291,12 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
         onQuoteCreated(clonedQuote);
       }
     } else {
-      // Crear nueva oportunidad vinculada
+      // Crear nuevo negocio vinculada
       if (onCreateOpportunityWithQuote) {
         onCreateOpportunityWithQuote(
           {
             leadUserId: newLeadUserId,
-            title: newOpportunityTitle.trim() || 'Nueva oportunidad',
+            title: newOpportunityTitle.trim() || 'Nuevo negocio',
             prospectAccountName: newProspectAccountName.trim() || 'Nuevo Prospecto'
           },
           clonedQuote
@@ -396,7 +396,7 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                   <div className="flex items-center gap-2">
                     <Target className="w-4 h-4 text-[#8a4dff]" />
                     <span className="text-xs font-bold text-[#0f172a] uppercase tracking-wider">
-                      Asociación con Oportunidad de New Business
+                      Asociación con un negocio de New Business
                     </span>
                   </div>
                   <div className="flex items-center gap-1 text-[11px]">
@@ -412,7 +412,7 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                           : 'bg-white text-[#64748b] border border-[#cbd5e1] hover:bg-[#f1f5f9]'
                       }`}
                     >
-                      Oportunidad Existente ({opportunities.length})
+                      Negocio existente ({opportunities.length})
                     </button>
                     <button
                       type="button"
@@ -432,7 +432,7 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-semibold text-[#334155] mb-1">
-                        Seleccionar Oportunidad de New Business
+                        Seleccionar negocio de New Business
                       </label>
                       <select
                         value={selectedOpportunityId}
@@ -451,7 +451,7 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-semibold text-[#334155] mb-1">
-                        Título de la Nueva Oportunidad
+                        Título del nuevo negocio
                       </label>
                       <input
                         type="text"
@@ -628,16 +628,16 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                 </div>
               </div>
 
-              {/* Resumen de la Oportunidad */}
+              {/* Resumen del negocio */}
               <div className="flex items-center justify-between p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
                 <div>
-                  <span className="text-[11px] text-[#64748b] block">Oportunidad de New Business:</span>
+                  <span className="text-[11px] text-[#64748b] block">Negocio de New Business:</span>
                   <span className="text-xs font-bold text-[#0f172a]">{displayOpportunityName}</span>
                 </div>
                 <div className="text-right">
                   <span className="text-[11px] text-[#64748b] block">Destino:</span>
                   <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#8a4dff]/10 text-[#8a4dff]">
-                    Alcance de la oportunidad
+                    Alcance del negocio
                   </span>
                 </div>
               </div>

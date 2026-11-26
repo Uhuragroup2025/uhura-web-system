@@ -1793,7 +1793,7 @@ export const CATALOG_2026: CatalogService[] = [
             "title": "Co-creación e ideación",
             "role": "Pendiente de definir",
             "hours": 1.5,
-            "description": "Se presenta al equipo y se ven posibles oportunidades de mejora"
+            "description": "Se presenta al equipo y se ven posibles mejoras"
           }
         ]
       },

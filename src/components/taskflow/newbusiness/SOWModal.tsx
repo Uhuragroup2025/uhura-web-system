@@ -907,7 +907,7 @@ export const SOWModal: React.FC<SOWModalProps> = ({
                     />
                   </label>
                 </div>
-                <p className="text-[10px] text-[#94a3b8]">El NIT se precarga con la razón social elegida en la oportunidad (o la principal del cliente). Si cambia, corrígelo aquí; para dejarlo fijo en el cliente, edítalo en Razones sociales.</p>
+                <p className="text-[10px] text-[#94a3b8]">El NIT se precarga con la razón social elegida en el negocio (o la principal del cliente). Si cambia, corrígelo aquí; para dejarlo fijo en el cliente, edítalo en Razones sociales.</p>
               </div>
 
               <div className="space-y-1">

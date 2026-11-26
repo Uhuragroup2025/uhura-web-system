@@ -228,7 +228,7 @@ export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
       onQuoteCreated(quote);
     }
     triggerFeedback(
-      `Cotización de la oportunidad generada (${quote.totalHoursRollup}h). La plantilla maestra permanece intacta.`
+      `Cotización del negocio generada (${quote.totalHoursRollup}h). La plantilla maestra permanece intacta.`
     );
   };
 
@@ -317,7 +317,7 @@ export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
                       2
                     </span>
                     <p>
-                      <strong className="text-[#d4ff4a]">Usar en New Business:</strong> Crea un snapshot independiente asociado a una oportunidad.
+                      <strong className="text-[#d4ff4a]">Usar en New Business:</strong> Crea un snapshot independiente asociado a un negocio.
                     </p>
                   </div>
                   <div className="flex items-start gap-2">
@@ -826,7 +826,7 @@ export const TemplateLibraryView: React.FC<TemplateLibraryViewProps> = ({
               onQuoteCreated(quote);
             }
             triggerFeedback(
-              `Nueva oportunidad "${oppData.title}" creada con el alcance inicial (${quote.totalHoursRollup}h).`
+              `Nuevo negocio "${oppData.title}" creado con el alcance inicial (${quote.totalHoursRollup}h).`
             );
           }}
           onQuoteCreated={handleQuoteCreatedInternal}

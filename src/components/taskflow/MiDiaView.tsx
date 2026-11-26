@@ -1,3 +1,4 @@
+import { isOpportunityInMyDay } from './newbusiness/opportunityMyDay';
 import { scopeTimeLeft, SCOPE_TONE_CLASS, useScopeClock } from './newbusiness/scopeDeadline';
 import { streakLabel } from './time/dayStreak';
 import { TeamStreakPanel } from './colonia/TeamStreakPanel';
@@ -76,7 +77,7 @@ export interface MiDiaViewProps {
   configuredCapacityHours?: number;
   targetDayHours?: number;
   onNavigateToView?: (view: OrbitView) => void;
-  /** Abre una oportunidad de New Business en la pestaña indicada. */
+  /** Abre un negocio de New Business en la pestaña indicada. */
   onOpenOpportunity?: (opportunityId: string, tab: 'resumen' | 'scoping' | 'cotizacion') => void;
   /** Abre un proyecto concreto (Insumos por gestionar). */
   onOpenProject?: (projectId: string) => void;
@@ -283,34 +284,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
     if (!['leader', 'commercial', 'executive', 'system_admin'].includes(accessLevel)) {
       return [];
     }
-    return opportunities.filter((o) => {
-      const isActionableStatus =
-        o.status === 'discovery' || o.status === 'quoting' || o.status === 'internal_review';
-      // El líder actualizó el alcance después de cotizar: Comercial (y Dirección) lo ven hasta guardar la cotización
-      const hasScopeUpdate = Boolean(o.scopeUpdateNotice) && o.status !== 'won' && o.status !== 'lost' && accessLevel !== 'leader';
-      if (!isActionableStatus && !hasScopeUpdate) return false;
-
-      // Solo las que la persona lidera o le tocan (#147), también para Dirección
-      if (accessLevel === 'commercial' || accessLevel === 'system_admin' || accessLevel === 'executive') {
-        const owner = (o.commercialOwner || '').toLowerCase();
-        return (
-          o.createdByUserId === currentUserId ||
-          o.leadUserId === currentUserId ||
-          (Array.isArray(o.leadUserIds) && o.leadUserIds.includes(currentUserId)) ||
-          Boolean(owner && currentUserName && owner.includes(currentUserName.toLowerCase()))
-        );
-      }
-      if (accessLevel === 'leader') {
-        const matchesId =
-          o.leadUserId === currentUserId ||
-          (Array.isArray(o.leadUserIds) && o.leadUserIds.includes(currentUserId));
-        const matchesName =
-          o.leadUserName &&
-          o.leadUserName.toLowerCase().includes(currentUserName.toLowerCase());
-        return matchesId || matchesName;
-      }
-      return true;
-    });
+    return opportunities.filter((o) => isOpportunityInMyDay(o, { id: currentUserId, name: currentUserName, accessLevel }));
   }, [accessLevel, opportunities, currentUserId, currentUserName]);
 
   // Formalizaciones administrativas pendientes (proyectos ganados sin NIT o datos de facturación)
@@ -855,7 +829,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                               } else onNavigateToView?.('new-business');
                             }}
                             className="px-3.5 py-1.5 rounded-xl bg-[#f5f3ff] text-[#501f92] border border-[#ddd6fe] hover:bg-[#ede9fe] font-semibold text-xs transition-colors cursor-pointer"
-                            title="Abrir la oportunidad"
+                            title="Abrir el negocio"
                           >
                             Abrir →
                           </button>

@@ -221,6 +221,8 @@ interface TaskDetailModalProps {
   absenceEvents?: TeamAbsenceEvent[];
   onUpdatePhase?: (taskId: string, phase: ProjectPhase) => void;
   onDeleteTask?: (taskId: string) => void;
+  /** Si es quien la creó pero ya tiene horas o está entregada: el motivo (la opción se ve deshabilitada). */
+  deleteBlockedReason?: string | null;
   onArchiveTask?: (taskId: string) => void;
   /** Duplica la tarea y reparte las horas cotizadas a la mitad (trabajo en paralelo). */
   onDuplicateTask?: (taskId: string) => void;
@@ -258,6 +260,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   onUpdateComments,
   onSelectTask,
   onDeleteTask,
+  deleteBlockedReason,
   onArchiveTask,
   onDuplicateTask,
   onNavigateToClient,
@@ -301,6 +304,8 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
   // Menu and Toast
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  useEffect(() => { if (!isMenuOpen) setConfirmDelete(false); }, [isMenuOpen]);
   // Esc cierra la tarea (si no hay un menú o una ventanita abierta encima)
   useEffect(() => {
     if (!isOpen) return;
@@ -424,6 +429,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
   // Date inline edit
   const [isEditingDates, setIsEditingDates] = useState(false);
+  const [datesSaved, setDatesSaved] = useState(false);
   const [startDateInput, setStartDateInput] = useState('');
   const [dueDateInput, setDueDateInput] = useState('');
 
@@ -1325,13 +1331,12 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     showToast('Horas estimadas actualizadas');
   };
 
-  // Save dates
-  const handleSaveDates = () => {
-    if (onUpdateDates) {
-      onUpdateDates(task.id, startDateInput, dueDateInput, 'En cronograma');
-    }
-    setIsEditingDates(false);
-    showToast('Cronograma actualizado');
+  // Fechas (26 Nov 2026, regla general de ECO): se guardan al elegirlas, sin botón «Guardar» que el
+  // calendario del navegador pueda tapar. «Listo» solo cierra.
+  const saveDates = (start: string, due: string) => {
+    if (!onUpdateDates || !start || !due || start > due) { setDatesSaved(false); return; }
+    onUpdateDates(task.id, start, due, 'En cronograma');
+    setDatesSaved(true);
   };
 
   // Team update helpers
@@ -1774,18 +1779,26 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                     <span>Archivar tarea</span>
                   </button>
 
-                  {onDeleteTask && (
+                  {onDeleteTask && deleteBlockedReason && (
+                    <div className="w-full px-3.5 py-2 text-left text-[#94a3b8] flex items-start gap-2 border-t border-[#f1f5f9] cursor-not-allowed" aria-disabled="true">
+                      <Trash2 className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                      <span>Eliminar tarea<span className="block text-[10.5px] leading-snug">{deleteBlockedReason}</span></span>
+                    </div>
+                  )}
+                  {onDeleteTask && !deleteBlockedReason && (
                     <button
                       onClick={() => {
+                        // Pide confirmación: el primer clic pregunta, el segundo elimina
+                        if (!confirmDelete) { setConfirmDelete(true); return; }
                         onDeleteTask(task.id);
                         showToast('Tarea eliminada');
                         setIsMenuOpen(false);
                         onClose();
                       }}
-                      className="w-full px-3.5 py-2 text-left hover:bg-[#fee2e2] text-[#dc2626] flex items-center gap-2 cursor-pointer border-t border-[#f1f5f9]"
+                      className={`w-full px-3.5 py-2 text-left flex items-center gap-2 cursor-pointer border-t border-[#f1f5f9] ${confirmDelete ? 'bg-[#dc2626] text-white font-bold' : 'hover:bg-[#fee2e2] text-[#dc2626]'}`}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
-                      <span>Eliminar tarea</span>
+                      <span>{confirmDelete ? '¿Seguro? Clic para eliminar' : 'Eliminar tarea'}</span>
                     </button>
                   )}
                 </div>
@@ -3420,10 +3433,10 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                   <span>Cronograma</span>
                 </span>
                 <button
-                  onClick={() => setIsEditingDates(!isEditingDates)}
+                  onClick={() => { setDatesSaved(false); setIsEditingDates(!isEditingDates); }}
                   className="text-[11px] font-semibold text-[#501f92] hover:underline cursor-pointer"
                 >
-                  {isEditingDates ? 'Cancelar' : 'Cambiar'}
+                  {isEditingDates ? 'Listo' : 'Cambiar'}
                 </button>
               </div>
 
@@ -3435,7 +3448,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                       <input
                         type="date"
                         value={startDateInput}
-                        onChange={(e) => setStartDateInput(e.target.value)}
+                        onChange={(e) => { setStartDateInput(e.target.value); saveDates(e.target.value, dueDateInput); }}
                         className="w-full px-2 py-1 rounded-lg border border-[#e2e8f0] text-xs"
                       />
                     </div>
@@ -3444,15 +3457,22 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                       <input
                         type="date"
                         value={dueDateInput}
-                        onChange={(e) => setDueDateInput(e.target.value)}
+                        onChange={(e) => { setDueDateInput(e.target.value); saveDates(startDateInput, e.target.value); }}
                         className="w-full px-2 py-1 rounded-lg border border-[#e2e8f0] text-xs"
                       />
                     </div>
+                    {startDateInput && dueDateInput && startDateInput > dueDateInput ? (
+                      <p className="text-[10.5px] font-semibold text-[#dc2626]">La entrega no puede ser antes del inicio.</p>
+                    ) : datesSaved ? (
+                      <p className="text-[10.5px] font-semibold text-[#059669] flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Guardado</p>
+                    ) : (
+                      <p className="text-[10.5px] text-[#64748b]">Se guarda al elegir la fecha.</p>
+                    )}
                     <button
-                      onClick={handleSaveDates}
+                      onClick={() => { setIsEditingDates(false); setDatesSaved(false); }}
                       className="w-full py-1.5 rounded-lg bg-[#501f92] text-white font-bold text-xs cursor-pointer"
                     >
-                      Guardar
+                      Listo
                     </button>
                   </div>
                 ) : (

@@ -18,6 +18,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { calculateBusinessDays } from '../health/projectHealthEngine';
+import { dependencyDeleteBlock } from '../deletePermissions';
 
 interface ProjectDependenciesSectionProps {
   project: ProjectSummaryItem;
@@ -131,6 +132,7 @@ export const ProjectDependenciesSection: React.FC<ProjectDependenciesSectionProp
       expectedDate: newDepExpectedDate,
       status: 'pending',
       blocking: newDepBlocking,
+      createdByUserId: currentUser?.id,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -311,8 +313,13 @@ export const ProjectDependenciesSection: React.FC<ProjectDependenciesSectionProp
                       </span>
                     )}
 
-                    {canManageDependencies && onUpdateProject && (
-                      confirmDeleteId === dep.id ? (
+                    {/* Eliminar: comité operativo siempre; quien lo agregó, mientras no esté recibido (26 Nov 2026) */}
+                    {canManageDependencies && onUpdateProject && dependencyDeleteBlock(dep, currentUser) !== undefined && (
+                      typeof dependencyDeleteBlock(dep, currentUser) === 'string' ? (
+                        <span className="p-1.5 text-[#cbd5e1] cursor-not-allowed" title={dependencyDeleteBlock(dep, currentUser) as string} aria-label={dependencyDeleteBlock(dep, currentUser) as string}>
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </span>
+                      ) : confirmDeleteId === dep.id ? (
                         <span className="flex items-center gap-1.5 text-[11px]">
                           <span className="font-bold text-[#991b1b]">¿Eliminar este insumo?</span>
                           <button

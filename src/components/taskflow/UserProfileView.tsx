@@ -245,7 +245,7 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
     if (accessLevel === 'commercial') {
       switch (moduleKey) {
         case 'mi-dia':
-          return 'ver, editar · oportunidades y briefs';
+          return 'ver, editar · negocios y briefs';
         case 'proyectos':
           return 'ver · toda la cartera';
         case 'tareas':

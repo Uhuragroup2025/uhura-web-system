@@ -102,6 +102,7 @@ import {
   ArrowRight,
   FileSpreadsheet
 } from 'lucide-react';
+import { taskDeleteBlock } from '../components/taskflow/deletePermissions';
 
 // Datos de prueba limpios (19 Nov 2026): un proyecto único en curso y un fee mensual que vence el
 // 30 Nov (para ejercitar la renovación y el arranque de diciembre). Tareas en mockData.initialTasks.
@@ -420,7 +421,7 @@ export const TaskFlowPrototype: React.FC = () => {
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
 
   const [newBusinessResetSignal, setNewBusinessResetSignal] = useState(0);
-  // Abrir una oportunidad concreta desde Mi Día (p. ej. Comercial ve «Alcance actualizado» → va directo a Cotización)
+  // Abrir un negocio concreta desde Mi Día (p. ej. Comercial ve «Alcance actualizado» → va directo a Cotización)
   const [newBusinessFocus, setNewBusinessFocus] = useState<{ id: string; tab: 'resumen' | 'scoping' | 'cotizacion'; nonce: number } | null>(null);
 
   // Global view selection with automatic reset to section root (allows optional targetId)
@@ -2450,7 +2451,7 @@ export const TaskFlowPrototype: React.FC = () => {
       });
     }
 
-    // Ronda 2: el proyecto guarda quién es el Comercial responsable (owner de la oportunidad) y la
+    // Ronda 2: el proyecto guarda quién es el Comercial responsable (owner del negocio) y la
     // Relación con clientes de la cuenta, para que les lleguen las alertas (p. ej. tareas bloqueadas).
     {
       const commercialUser = users.find((u) => u.id === opp.commercialOwner || u.name === opp.commercialOwner);
@@ -2466,7 +2467,7 @@ export const TaskFlowPrototype: React.FC = () => {
     }
 
     // Responsable de cliente (23 Nov 2026): el del cliente si ya existe; si no, quien tenga Relación con
-    // clientes (Client Relationship); si no hay, el comercial de la oportunidad. Nunca queda vacío.
+    // clientes (Client Relationship); si no hay, el comercial del negocio. Nunca queda vacío.
     const relationshipUser = users.find((u) => u.status === 'Active' && u.accessLevel === 'client_relationship');
     const ownerFallback = users.find((u) => u.id === opp.commercialOwner || u.name === opp.commercialOwner);
     const defaultAccountManager = relationshipUser || ownerFallback;
@@ -2570,7 +2571,7 @@ export const TaskFlowPrototype: React.FC = () => {
       setTasks((prev) => [...newTasksToCreate, ...prev]);
     }
 
-    // Actualizar oportunidad a ganada y vincularla a los proyectos
+    // Actualizar negocio a ganada y vincularla a los proyectos
     const mainCreatedProjectId = projectsToCreate[0]?.id || `prj-${Date.now()}`;
 
     const updatedOpp: NewBusinessOpportunity = {
@@ -2601,7 +2602,7 @@ export const TaskFlowPrototype: React.FC = () => {
     setSelectedProjectIdForView(mainCreatedProjectId);
   };
 
-  // Guardar cotización en oportunidad existente de New Business
+  // Guardar cotización en negocio existente de New Business
   const handleSaveQuoteToOpportunity = (opportunityId: string, quote: QuoteProposal) => {
     const current = getOperationalQuote(opportunities.find((item) => item.id === opportunityId));
     const targetQuoteId = current?.id || quote.id;
@@ -2640,7 +2641,7 @@ export const TaskFlowPrototype: React.FC = () => {
     );
   };
 
-  // Crear nueva oportunidad a partir de Brief/Prospecto y adjuntar la cotización inmediatamente
+  // Crear nuevo negocio a partir de Brief/Prospecto y adjuntar la cotización inmediatamente
   const handleCreateOpportunityWithQuote = (
     opportunityData: {
       title: string;
@@ -2676,7 +2677,7 @@ export const TaskFlowPrototype: React.FC = () => {
       quotes: [finalizedQuote],
       createdAt: new Date().toISOString().split('T')[0],
       updatedAt: new Date().toISOString().split('T')[0],
-      briefSummary: 'Oportunidad generada desde plantilla.'
+      briefSummary: 'Negocio generado desde plantilla.'
     };
 
     setOpportunities((prev) => [newOpp, ...prev]);
@@ -2684,7 +2685,9 @@ export const TaskFlowPrototype: React.FC = () => {
 
   // Add task
   const handleAddTask = (newTask: TaskItem) => {
-    setTasks((prev) => [newTask, ...prev]);
+    // Queda quién la creó: puede eliminarla mientras no tenga horas ni esté entregada (26 Nov 2026)
+    const stamped: TaskItem = newTask.createdByUserId ? newTask : { ...newTask, createdByUserId: currentUser?.id, createdByName: currentUser?.name };
+    setTasks((prev) => [stamped, ...prev]);
   };
 
   // Add user
@@ -3316,6 +3319,18 @@ export const TaskFlowPrototype: React.FC = () => {
                     onPauseResumeTimer={handlePauseResumeTimer}
                     onOpenManualLog={handleOpenManualLogWithTask}
                     onUpdateOpportunity={(updatedOpp) => {
+                      // La tarea de preventa («Scoping · …») sigue al alcance (25 Nov 2026): se cierra cuando
+                      // cualquier responsable marca el alcance listo (o el negocio se cierra) y se reabre si
+                      // Comercial pide un ajuste de alcance. Así sale del Mi Día de todos los responsables.
+                      const scopeOpen = updatedOpp.status === 'discovery' || updatedOpp.status === 'quoting';
+                      const scopingTaskId = updatedOpp.preventaTimeLogTaskId || `task-scoping-${updatedOpp.id}`;
+                      setTasks((prev) => prev.map((t) => {
+                        if (t.id !== scopingTaskId) return t;
+                        const isDone = t.completed || t.status === 'completed' || t.status === 'Done';
+                        if (!scopeOpen && !isDone) return { ...t, status: 'completed', completed: true };
+                        if (scopeOpen && isDone) return { ...t, status: 'todo', completed: false };
+                        return t;
+                      }));
                       setOpportunities((prev) =>
                         prev.map((o) => (o.id === updatedOpp.id ? updatedOpp : o))
                       );
@@ -3365,7 +3380,7 @@ export const TaskFlowPrototype: React.FC = () => {
                         date: new Date().toISOString().slice(0, 10),
                         dueDate: deadlineDate,
                         dueStatus: 'normal',
-                        dueText: `SLA ~${slaHours}h handoff`,
+                        dueText: `Plazo del alcance: ~${slaHours} h hábiles`,
                         budgetedHours: 4,
                         consumedSeconds: 0,
                         completed: false,
@@ -3490,7 +3505,9 @@ export const TaskFlowPrototype: React.FC = () => {
             onRecalibrateDates={handleRecalibrateTaskDates}
             onUpdateBlockerInfo={handleUpdateBlockerInfo}
             onUpdatePhase={handleUpdateTaskPhase}
-            onDeleteTask={handleDeleteTask}
+            // Eliminar (26 Nov 2026): comité operativo siempre; quien la creó, mientras no tenga horas ni esté entregada.
+            onDeleteTask={taskDeleteBlock(selectedTaskForDetail, currentUser, timeLogs) !== undefined ? handleDeleteTask : undefined}
+            deleteBlockedReason={taskDeleteBlock(selectedTaskForDetail, currentUser, timeLogs) || null}
             onArchiveTask={handleArchiveTask}
             onDuplicateTask={handleDuplicateTask}
             onNavigateToClient={(clientName) => {
