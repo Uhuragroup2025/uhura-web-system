@@ -63,10 +63,17 @@ export function isTaskOwner(task: TaskItem, user: Pick<UserItem, 'id' | 'name'> 
 
 const isInReview = (t: TaskItem) => t.status === 'Review' || t.status === 'in_review';
 
+/** Revisores de la tarea: los asignados; si no hay, el revisor antiguo; si no, el Project Lead. */
+export function taskReviewers(t: TaskItem): PersonRef[] {
+  if (t.reviewers && t.reviewers.length) return t.reviewers;
+  if (t.reviewer) return [t.reviewer];
+  return t.projectLead ? [t.projectLead] : [];
+}
+
 export function getTaskRelation(task: TaskItem, user: Pick<UserItem, 'id' | 'name'> | null | undefined, matches: (p: PersonRef) => boolean): TaskRelation {
   if (!user) return null;
   if (isTaskOwner(task, user, matches)) return 'owner';
-  if (isInReview(task) && (task.reviewer ? matches(task.reviewer) : matches(task.projectLead))) return 'reviewer';
+  if (isInReview(task) && taskReviewers(task).some((r) => matches(r))) return 'reviewer';
   if ((task.followers || []).some((f) => matches(f))) return 'follower';
   return null;
 }

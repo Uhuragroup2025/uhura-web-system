@@ -1,3 +1,5 @@
+import { scopeTimeLeft, SCOPE_TONE_CLASS, useScopeClock } from './scopeDeadline';
+import { ScopeDeadlineChip } from './ScopeDeadlineChip';
 import { useMascotImage } from '../mascot/ecoMascot';
 import { formatDate } from '../../../utils/formatters';
 import { MoneyInput } from '../ui/MoneyInput';
@@ -95,7 +97,7 @@ import {
 
 interface NewBusinessViewProps {
   resetToOverviewSignal?: number;
-  /** Abre esta oportunidad en la pestaña indicada (desde Mi Día). */
+  /** Abre esta negocio en la pestaña indicada (desde Mi Día). */
   focusOpportunity?: { id: string; tab: 'resumen' | 'scoping' | 'cotizacion'; nonce: number } | null;
   scopeUi: Record<string, { saved: boolean; services: ScopeServiceDraft[] }>;
   onChangeScopeUi: (quoteId: string, state: { saved: boolean; services: ScopeServiceDraft[] }) => void;
@@ -177,6 +179,8 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
   onPauseResumeTimer,
   onOpenManualLog
 }) => {
+  // El plazo del alcance se recalcula solo cada 5 minutos («Quedan ~N h hábiles»)
+  const scopeNow = useScopeClock();
   const ecoCelebratingImg = useMascotImage('celebrating');
   const users = teamUsers.filter((user) => user.status === 'Active');
 
@@ -223,7 +227,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
     }
   }, [resetToOverviewSignal]);
 
-  // Va después del reinicio: así «Abrir oportunidad» en Mi Día cae en la oportunidad y no en la lista
+  // Va después del reinicio: así «Abrir negocio» en Mi Día cae en el negocio y no en la lista
   useEffect(() => {
     if (!focusOpportunity) return;
     setSelectedOppId(focusOpportunity.id);
@@ -263,7 +267,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
   };
 
   const handleMarkOpportunityWon = (opp: NewBusinessOpportunity) => {
-    // Se recibe la oportunidad YA actualizada (con los servicios ganados/perdidos): usar `activeOpp`
+    // Se recibe el negocio YA actualizada (con los servicios ganados/perdidos): usar `activeOpp`
     // aquí sobrescribiría esa selección con una copia anterior.
     if (opp.id !== activeOpp?.id || !isQuoteDiligenciada) return;
     const updated: NewBusinessOpportunity = {
@@ -275,7 +279,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
     onUpdateOpportunity(updated);
     setWonCelebrationOpp(updated);
     playWonFanfare();
-    setConversionSuccessMessage('🎉 ¡FIESTA TOTAL EN LA COLONIA! ¡Propuesta GANADA! Puedes convertir la oportunidad a Cliente y Proyecto. La formalización fiscal se gestiona en la ficha del Cliente y no bloquea la conversión.', {
+    setConversionSuccessMessage('🎉 ¡FIESTA TOTAL EN LA COLONIA! ¡Propuesta GANADA! Puedes convertir el negocio a Cliente y Proyecto. La formalización fiscal se gestiona en la ficha del Cliente y no bloquea la conversión.', {
       timeoutMs: 9000
     });
   };
@@ -632,7 +636,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
   };
   // ── Alcance (ronda 2): Guardar junto al enlace, sin lista de requisitos; los campos que faltan se
   // resaltan al intentar guardar o marcar listo. «Marcar alcance listo» pide confirmación porque
-  // varios líderes pueden aportar servicios a la misma oportunidad.
+  // varios líderes pueden aportar servicios a la misma negocio.
   const [scopeAttempted, setScopeAttempted] = useState(false);
   const [isConfirmScopeReadyOpen, setIsConfirmScopeReadyOpen] = useState(false);
   useEffect(() => {
@@ -640,7 +644,8 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
     setIsConfirmScopeReadyOpen(false);
   }, [activeOpp?.id]);
   const scopeHasLink = Boolean(activeQuote?.commercialProposalUrl?.trim() && activeQuote.commercialProposalUrl.trim().length > 5);
-  const scopeMissingLink = scopeAttempted && !scopeHasLink;
+  // La presentación es opcional (25 Nov 2026): no bloquea guardar ni marcar listo; la confirmación avisa si falta.
+  const scopeMissingLink = false;
   // Alcance editado después de marcarlo listo (p. ej. se sumó una landing tras cotizar): ECO compara la
   // huella del alcance (servicios + horas por entregable) con la de cuando se marcó listo. Si cambió y el
   // negocio no está ganado, vuelve a estar «por marcar listo» y, al marcarlo, Comercial recibe el aviso.
@@ -657,7 +662,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
     activeOpp && isScopeStatusReady && activeOpp.status !== 'won' && activeOpp.scopeReadySignature && activeOpp.scopeReadySignature !== scopeSignatureNow
   );
   const isScopeMarkedReady = isScopeStatusReady && !scopeChangedSinceReady;
-  // Oportunidades marcadas listas antes de este cambio: se toma la huella actual como punto de partida
+  // Negocios marcadas listas antes de este cambio: se toma la huella actual como punto de partida
   useEffect(() => {
     if (!activeOpp || !activeQuote || !isScopeStatusReady || activeOpp.scopeReadySignature || !scopeSignatureNow) return;
     onUpdateOpportunity({
@@ -669,17 +674,16 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeOpp?.id, activeOpp?.status, activeOpp?.scopeReadySignature, activeQuote?.id]);
   // Todo listo para marcar: enlace, servicios guardados y alcance completo
-  const scopeCanBeMarkedReady = Boolean(activeQuote && scopeHasLink && scopeState.services.length > 0
+  const scopeCanBeMarkedReady = Boolean(activeQuote && scopeState.services.length > 0
     && scopeState.services.every((service) => service.saved) && isScopeReadyForReview(activeQuote, scopeState.services));
 
   const handleSaveScope = () => {
     if (!activeQuote) return;
     setScopeAttempted(true);
     const invalidServices = scopeState.services.filter((service) => serviceValidationMessages(service).length > 0);
-    if (!scopeHasLink || scopeState.services.length === 0 || invalidServices.length) {
+    if (scopeState.services.length === 0 || invalidServices.length) {
       setConversionSuccessMessage(
         [
-          !scopeHasLink ? 'Falta el enlace de la presentación.' : '',
           scopeState.services.length === 0 ? 'Agrega al menos un servicio.' : '',
           ...invalidServices.map((service) => `${service.name}: ${serviceValidationMessages(service).join(' ')}`)
         ].filter(Boolean).join(' ')
@@ -704,8 +708,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
     const unsaved = scopeState.services.filter((sv) => !sv.saved);
     const invalid = scopeState.services.filter((sv) => serviceValidationMessages(sv).length > 0);
     const problems = [
-      !scopeHasLink ? 'Falta el enlace de la presentación.' : '',
-      scopeState.services.length === 0 || !hasHours ? 'Agrega al menos un servicio con actividades y horas.' : '',
+      scopeState.services.length === 0 || !hasHours ? 'Agrega al menos un servicio con tareas y horas.' : '',
       ...invalid.map((sv) => `${sv.name}: ${serviceValidationMessages(sv).join(' ')}`),
       unsaved.length ? `Guarda ${unsaved.length === 1 ? 'el servicio' : 'los servicios'}: ${unsaved.map((sv) => sv.name).join(', ')}.` : ''
     ].filter(Boolean);
@@ -836,9 +839,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
     }
     return Array.from(map.values()).sort((a, b) => b.hours - a.hours);
   }, [scopingTask, timeLogs, users]);
-  const canSeePreventaCost = Boolean(
-    currentUser && ['system_admin', 'commercial', 'executive', 'administrative'].includes(currentUser.accessLevel || '')
-  );
+  // Solo horas, sin costo en pesos (decisión 24 Nov 2026): el costo en la propuesta generaba ansiedad.
 
   // Context counts for pipeline overview
   const porDimensionarCount = opportunities.filter((o) => o.status === 'discovery').length;
@@ -864,7 +865,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
 
   // HubSpot connection & simulation controls:
   // - En producción (import.meta.env.PROD) la simulación está deshabilitada/oculta.
-  // - Si la oportunidad está conectada a HubSpot real (isHubspotConnected = true), la simulación está bloqueada.
+  // - Si el negocio está conectada a HubSpot real (isHubspotConnected = true), la simulación está bloqueada.
   // - En desarrollo/staging/demo desconectado, permite simular 'closedwon' como herramienta de prototipado.
   const isDevEnvironment = import.meta.env.DEV || !import.meta.env.PROD;
   const isHubspotRealConnected = !!activeOpp?.isHubspotConnected;
@@ -916,6 +917,17 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
 
   // Callback when a new opportunity is created
   const [commercialTeamUi, setCommercialTeamUi] = useState<Record<string, string[]>>({});
+  // «Pedir ajuste de alcance» es de Comercial (§31): quien trae el negocio, Client Relationship,
+  // Dirección y Admin. Un líder lo ve solo si es el comercial de esta negocio (23 Nov 2026).
+  const canRequestScopeChange = useMemo(() => {
+    if (qaOverrideCommercialPermissions !== null) return qaOverrideCommercialPermissions;
+    if (!currentUser) return true;
+    const ownerMatch = activeOpp?.commercialOwner && (currentUser.id === activeOpp.commercialOwner || currentUser.name === activeOpp.commercialOwner);
+    const team = (activeOpp && commercialTeamUi[activeOpp.id]) || [];
+    return Boolean(ownerMatch) || team.includes(currentUser.id) ||
+      ['commercial', 'client_relationship', 'executive', 'system_admin'].includes(currentUser.accessLevel || '');
+  }, [currentUser, activeOpp, commercialTeamUi, qaOverrideCommercialPermissions]);
+
   const handleCreatedOpportunity = (newOpp: NewBusinessOpportunity, commercialUserIds: string[] = []) => {
     setCommercialTeamUi((previous) => ({ ...previous, [newOpp.id]: commercialUserIds }));
     onCreateOpportunity(newOpp);
@@ -1189,7 +1201,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
       };
       setSyncAuditTrail((prev) => [auditEntry, ...prev]);
 
-      // Si el servicio pasó a Cierre ganado o Enviado para facturar, actualizar estado de la oportunidad a 'won'
+      // Si el servicio pasó a Cierre ganado o Enviado para facturar, actualizar estado del negocio a 'won'
       if (isApproved) {
         const updatedOpp: NewBusinessOpportunity = {
           ...activeOpp,
@@ -1339,7 +1351,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                     </button>
                   </div>
                   <p className="text-[11.5px] text-white/90 leading-relaxed bg-white/5 p-2.5 rounded-xl border border-white/10 mb-3">
-                    El espacio donde los líderes dimensionan técnicamente las oportunidades recibidas de Comercial (briefs), construyen entregables y actividades, generan cotizaciones y habilitan la transición a Proyectos. El SOW se gestiona desde el Cliente, dentro del proyecto correspondiente.
+                    El espacio donde los líderes dimensionan técnicamente los negocios recibidos de Comercial (briefs), construyen entregables y tareas, generan cotizaciones y habilitan la transición a Proyectos. El SOW se gestiona desde el Cliente, dentro del proyecto correspondiente.
                   </p>
                   <div className="space-y-2.5 text-[11px] text-white/85 leading-relaxed">
                     <div className="flex items-start gap-2">
@@ -1347,7 +1359,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                         1
                       </span>
                       <p>
-                        <strong className="text-white">Oportunidad & Brief:</strong> Se crea la oportunidad con cliente/prospecto, fecha estimada y objetivo comercial.
+                        <strong className="text-white">Negocio & Brief:</strong> Se crea el negocio con cliente/prospecto, fecha estimada y objetivo comercial.
                       </p>
                     </div>
                     <div className="flex items-start gap-2">
@@ -1389,7 +1401,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                       setIsNewOppModalOpen(true);
                     }}
                     className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#fff7ed] hover:bg-[#ffedd5] border border-[#fed7aa] text-[#c2410c] text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
-                    title="Pegar URL o ID de Deal de HubSpot para autocompletar la oportunidad"
+                    title="Pegar URL o ID de Deal de HubSpot para autocompletar el negocio"
                   >
                     <span className="w-2 h-2 rounded-full bg-[#ff5c35]" />
                     <span>Traer desde HubSpot</span>
@@ -1405,7 +1417,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                   className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#501f92] hover:bg-[#381566] text-xs font-bold text-white shadow-2xs transition-colors cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>Nueva oportunidad</span>
+                  <span>Nuevo negocio</span>
                 </button>
               </div>
             )}
@@ -1426,7 +1438,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
 
           <div className="flex items-center gap-1.5 text-[11px] text-[#64748b]">
             <Clock className="w-3.5 h-3.5 text-[#501f92]" />
-            <span>SLA: ~36h para dimensionamiento técnico</span>
+            <span>Plazo del alcance: ~36 h hábiles</span>
           </div>
         </div>
 
@@ -1504,10 +1516,10 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
               <Target className="w-6 h-6" />
             </div>
             <h3 className="text-sm font-bold text-[#0f172a]">
-              No hay oportunidades registradas con estos criterios
+              No hay negocios con estos criterios
             </h3>
             <p className="text-xs text-[#64748b] max-w-sm mx-auto">
-              Comercial puede traer una oportunidad desde HubSpot o crearla manualmente para iniciar el dimensionamiento técnico.
+              Comercial puede traerlo desde HubSpot o crearlo con «Nuevo negocio» para iniciar el dimensionamiento técnico.
             </p>
             <div className="flex items-center justify-center gap-2 pt-2">
               {hubspotConnected && (
@@ -1523,17 +1535,6 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                   <span>Traer desde HubSpot</span>
                 </button>
               )}
-              <button
-                type="button"
-                onClick={() => {
-                  setOppModalMode('manual');
-                  setIsNewOppModalOpen(true);
-                }}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#501f92] hover:bg-[#3d1572] text-xs font-bold text-white shadow-xs transition-colors cursor-pointer"
-              >
-                <Plus className="w-4 h-4 text-[#d4ff4a]" />
-                <span>Crear manualmente</span>
-              </button>
             </div>
           </div>
         ) : viewMode === 'table' ? (
@@ -1543,7 +1544,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="bg-[#f8fafc] border-b border-[#e2e8f0] text-[#64748b] font-bold text-[11px] uppercase tracking-wider">
-                    <th className="py-3 px-4">Cuenta / Oportunidad</th>
+                    <th className="py-3 px-4">Cuenta / Negocio</th>
                     <th className="py-3 px-4">Responsable de alcance</th>
                     <th className="py-3 px-4">Estado</th>
                     <th className="py-3 px-4">Tiempo / SLA</th>
@@ -1647,9 +1648,12 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                         <td className="py-3.5 px-4">
                           <div className="flex items-center gap-1.5 text-xs text-[#64748b]">
                             <Clock className="w-3.5 h-3.5 text-[#94a3b8]" />
-                            <span className="font-medium">
-                              {isWon ? 'Completado' : 'vence en ~24h'}
-                            </span>
+                            {isWon ? (
+                              <span className="font-medium">Completado</span>
+                            ) : (() => {
+                              const left = scopeTimeLeft(opp, scopeNow);
+                              return <span className={`font-medium ${SCOPE_TONE_CLASS[left.tone]}`} title={left.title}>{left.label}</span>;
+                            })()}
                           </div>
                         </td>
 
@@ -1801,6 +1805,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
           existingClients={clients}
           templates={templates}
           users={users}
+          currentUser={currentUser}
           onClose={() => setIsNewOppModalOpen(false)}
           onSaveOpportunity={handleCreatedOpportunity}
         />
@@ -1982,6 +1987,14 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
               )}
             </div>
 
+            {/* Plazo del alcance (26 Nov 2026): «Plazo: 28 h · quedan ~12 h», editable sin «Guardar plazo» */}
+            <ScopeDeadlineChip
+              opp={activeOpp}
+              now={scopeNow}
+              canEdit={canEditOpp}
+              onChange={(patch) => onUpdateOpportunity({ ...activeOpp, ...patch, updatedAt: new Date().toISOString() })}
+            />
+
             {activeOpp.contactName && (
               <span className="flex items-center gap-1.5">
                 <Building2 className="w-3.5 h-3.5 text-[#94a3b8]" />
@@ -2105,7 +2118,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
       {/* ========================================================================= */}
       {activeTab === 'resumen' && activeQuote && (
         <div className="space-y-5 animate-in fade-in duration-150">
-          {/* Fila 1: Resumen Ejecutivo 360° de la Oportunidad */}
+          {/* Fila 1: Resumen Ejecutivo 360° del negocio */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
             {/* Columna Izquierda: Información del Prospecto & Brief Discovery (7 cols) */}
             <div className="lg:col-span-7 space-y-4">
@@ -2375,7 +2388,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                       <div className="min-w-0">
                         <span className="font-bold text-[#0f172a] block truncate text-xs">Presentación / Propuesta PPT</span>
                         <span className="text-[10px] text-[#64748b] block truncate">
-                          {activeQuote.commercialProposalUrl ? 'Presentación de Drive vinculada' : 'Sin registrar por líder'}
+                          {activeQuote.commercialProposalUrl ? 'Presentación de Drive vinculada' : 'Sin presentación (opcional)'}
                         </span>
                       </div>
                     </div>
@@ -2408,7 +2421,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                     <strong className="text-[#501f92] font-bold">{currentLeadDisplayName}</strong>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-[#64748b]">Owner Comercial:</span>
+                    <span className="text-[#64748b]">Responsable comercial:</span>
                     <strong className="text-[#0f172a] font-bold">{getCommercialOwnerName(activeOpp, users)}</strong>
                   </div>
                   {/* Esfuerzo de preventa por persona (ronda 2) */}
@@ -2434,11 +2447,6 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                           </li>
                         ))}
                       </ul>
-                    )}
-                    {canSeePreventaCost && preventaByPerson.length > 0 && (
-                      <p className="text-[10.5px] text-[#64748b] leading-snug">
-                        Costo de preventa: disponible cuando ECO tenga el costo hora de cada persona (Costos de operación).
-                      </p>
                     )}
                   </div>
                 </div>
@@ -2487,6 +2495,12 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                     );
                   })}
                 </ul>
+                {!scopeHasLink && (
+                  <div role="alert" className="rounded-xl border border-[#fde68a] bg-[#fffbeb] px-3 py-2 text-[#92400e]">
+                    <strong className="block">No adjuntaste presentación ni propuesta.</strong>
+                    Está bien si este alcance es solo de horas. Si el cliente espera una propuesta o una solución técnica, pulsa «Falta algo» y agrega el enlace antes de enviarlo a Comercial.
+                  </div>
+                )}
                 <p className="text-[#475569]">Al confirmar, Comercial recibe el aviso para cotizar y el alcance queda listo.</p>
                 <div className="flex items-center justify-end gap-2 pt-1">
                   <button
@@ -2553,7 +2567,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                   <CheckCircle2 className={`w-3.5 h-3.5 ${isScopeMarkedReady ? 'text-[#d4ff4a]' : scopeCanBeMarkedReady ? 'text-white' : 'text-[#501f92]'}`} />
                   <span>{isScopeMarkedReady ? 'Listo para cotizar' : 'Marcar alcance listo'}</span>
                 </button>}
-                {isScopeMarkedReady && activeOpp?.status !== 'won' && canEditOpp && (
+                {isScopeMarkedReady && activeOpp?.status !== 'won' && canEditOpp && canRequestScopeChange && (
                   <button
                     type="button"
                     onClick={() => setIsScopeChangeOpen((v) => !v)}
@@ -2595,7 +2609,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
             )}
             {isScopeReadOnly ? (
               <div className="space-y-2 text-xs text-[#334155]" aria-label="Datos generales del alcance guardado">
-                <p>Presentación / propuesta técnica general: {activeQuote.commercialProposalUrl ? <a className="underline text-[#501f92]" href={activeQuote.commercialProposalUrl} target="_blank" rel="noreferrer">Abrir presentación</a> : 'Pendiente'}</p>
+                <p>Presentación / propuesta técnica general: {activeQuote.commercialProposalUrl ? <a className="underline text-[#501f92]" href={activeQuote.commercialProposalUrl} target="_blank" rel="noreferrer">Abrir presentación</a> : 'Sin presentación (opcional)'}</p>
 
 
               </div>
@@ -2605,7 +2619,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
               {/* 1. Propuesta / Presentación (Google Drive / Slides) */}
               <div className="md:col-span-12 space-y-1">
                 <label className="font-semibold text-[#475569] flex items-center justify-between">
-                  <span>Presentación / Propuesta (Drive)</span>
+                  <span>Presentación / Propuesta (Drive) <span className="font-normal text-[#94a3b8]">(opcional)</span></span>
                 </label>
                 <div className="flex items-center gap-2">
                   <div className="relative flex-1 flex items-center">
@@ -2643,8 +2657,8 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                     Guardar
                   </button>
                 </div>
-                {scopeMissingLink && <p role="alert" className="text-[11px] font-semibold text-[#dc2626]">Falta el enlace de la presentación o propuesta en Drive.</p>}
-                {scopeAttempted && scopeState.services.length === 0 && <p role="alert" className="text-[11px] font-semibold text-[#dc2626]">Agrega al menos un servicio con actividades y horas.</p>}
+                <p className="text-[10.5px] text-[#94a3b8]">Súbela cuando el alcance la necesite (propuesta, solución técnica). Si solo son horas, puedes dejarla vacía.</p>
+                {scopeAttempted && scopeState.services.length === 0 && <p role="alert" className="text-[11px] font-semibold text-[#dc2626]">Agrega al menos un servicio con tareas y horas.</p>}
               </div>
 
             </div>
@@ -3404,7 +3418,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                       </button>
                     )}
 
-                    {/* Botón 3: Aprobación Comercial Manual (cuando HubSpot no responde o es oportunidad manual) */}
+                    {/* Botón 3: Aprobación Comercial Manual (cuando HubSpot no responde o es negocio manual) */}
                     {/* Con HubSpot: primero se crean los negocios y después se marca ganada. Sin HubSpot: aprobación manual (§12.4) */}
                     {!hasAnyWonServices && activeOpp.status !== 'won' && (!hubspotConnected || hasAnyHubSpotDeals) && (
                       <button
@@ -3456,13 +3470,14 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
       )}
 
       {/* ========================================================================= */}
-      {/* Modal de Creación de Nueva Oportunidad */}
+      {/* Modal de Creación de Nuevo negocio */}
       <NewOpportunityModal
         isOpen={isNewOppModalOpen}
         initialMode={oppModalMode}
         existingClients={clients}
         templates={templates}
         users={users}
+        currentUser={currentUser}
         onClose={() => setIsNewOppModalOpen(false)}
         onSaveOpportunity={handleCreatedOpportunity}
       />
@@ -3473,7 +3488,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
           <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-[#e2e8f0] p-6 space-y-4">
             <div className="space-y-1">
               <h3 className="text-base font-extrabold text-[#dc2626]">
-                Marcar Oportunidad como Perdida
+                Marcar negocio como perdido
               </h3>
               <p className="text-xs text-[#64748b]">
                 Registra el motivo para estadísticas de cierre comercial en ECO.
@@ -3510,7 +3525,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                   };
                   onUpdateOpportunity(updated);
                   setLossModalOpen(false);
-                  setConversionSuccessMessage('Oportunidad registrada como perdida.');
+                  setConversionSuccessMessage('Negocio registrado como perdido.');
                   setTimeout(() => setConversionSuccessMessage(null), 3500);
                 }}
                 className="px-4 py-2 rounded-xl bg-[#dc2626] hover:bg-[#b91c1c] text-white text-xs font-bold"
@@ -4037,7 +4052,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
         </div>
       )}
 
-      {/* Modal: Marcar Oportunidad como No Ganada (Closed-Lost) */}
+      {/* Modal: Marcar Negocio como No Ganada (Closed-Lost) */}
       {isLostModalOpen && (
         <div
           className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150"
@@ -4064,7 +4079,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
             </div>
 
             <p className="text-xs text-[#64748b] leading-relaxed">
-              Registra el motivo por el cual el cliente no aprobó la propuesta. La oportunidad quedará archivada en New Business y se podrá reactivar en el futuro si el cliente retoma el proyecto.
+              Registra el motivo por el cual el cliente no aprobó la propuesta. El negocio quedará archivado en New Business y se podrá reactivar en el futuro si el cliente retoma el proyecto.
             </p>
 
             <div className="space-y-3 text-xs">
@@ -4121,7 +4136,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                   onUpdateOpportunity(updated);
                   setIsLostModalOpen(false);
                   setBannerNotification({
-                    message: `ℹ️ Oportunidad "${activeOpp.title}" marcada como no ganada. Queda archivada para reactivación futura.`,
+                    message: `ℹ️ Negocio "${activeOpp.title}" marcado como no ganado. Queda archivado para reactivación futura.`,
                     showProjectLink: false
                   });
                   setTimeout(() => setBannerNotification(null), 6000);
@@ -4299,7 +4314,7 @@ export const NewBusinessView: React.FC<NewBusinessViewProps> = ({
                             </span>
                           </div>
                           <div className="bg-[#f8fafc] p-2 rounded-lg">
-                            <span className="text-[#64748b] block font-medium">Owner Comercial:</span>
+                            <span className="text-[#64748b] block font-medium">Responsable comercial:</span>
                             <span className="font-bold text-[#0f172a] truncate block">
                               {entry.syncedFields.commercialOwner}
                             </span>

@@ -66,7 +66,7 @@ export const FeeContractSection: React.FC<FeeContractSectionProps> = ({ project,
             <h3 className="font-extrabold text-sm text-[#0f172a]">Contrato y ciclos mensuales</h3>
           </div>
           <p className="text-xs text-[#64748b] mt-0.5">
-            {formatDateRange(project.contractStartDate, project.contractEndDate)} · Mes {Math.min(monthNumber, cycles.length)} de {cycles.length} · Horas no usadas: {ROLLOVER_LABEL[project.rolloverPolicy || 'none']}
+            {formatDateRange(project.contractStartDate, project.contractEndDate)} · Ciclo {Math.max(1, Math.min(monthNumber, cycles.length))} de {cycles.length} · Horas no usadas: {ROLLOVER_LABEL[project.rolloverPolicy || 'none']}
             {(project.contractRenewals || []).length > 0 && ` · ${project.contractRenewals!.length} renovación(es)`}
           </p>
         </div>
@@ -89,7 +89,7 @@ export const FeeContractSection: React.FC<FeeContractSectionProps> = ({ project,
         <table className="w-full text-xs min-w-[520px]">
           <thead>
             <tr className="text-[10px] uppercase text-[#64748b] border-b border-[#f1f5f9]">
-              <th className="text-left py-2 font-bold">Mes</th>
+              <th className="text-left py-2 font-bold">Ciclo</th>
               <th className="text-right py-2 font-bold">Bolsa</th>
               <th className="text-right py-2 font-bold">Ejecutadas</th>
               <th className="text-right py-2 font-bold">Desvío</th>
@@ -128,7 +128,7 @@ export const FeeContractSection: React.FC<FeeContractSectionProps> = ({ project,
       </div>
       {cycles.length > near.length && (
         <button type="button" onClick={() => setShowAll(!showAll)} className="text-xs font-bold text-[#501f92] hover:underline cursor-pointer">
-          {showAll ? 'Ver solo meses cercanos' : `Ver los ${cycles.length} meses del contrato`}
+          {showAll ? 'Ver solo ciclos cercanos' : `Ver los ${cycles.length} ciclos del contrato`}
         </button>
       )}
 

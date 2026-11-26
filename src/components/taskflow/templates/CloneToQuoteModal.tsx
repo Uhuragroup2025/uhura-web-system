@@ -81,7 +81,7 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
   );
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  // Selección de Oportunidad Contenedora (Regla arquitectónica: QuoteProposal siempre pertenece a NewBusinessOpportunity)
+  // Selección de Negocio Contenedora (Regla arquitectónica: QuoteProposal siempre pertenece a NewBusinessOpportunity)
   const [targetOpportunityMode, setTargetOpportunityMode] = useState<'existing' | 'new'>(
     preselectedOpportunityId || opportunities.length > 0 ? 'existing' : 'new'
   );
@@ -109,13 +109,13 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
     t.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Nombre de visualización de la oportunidad
+  // Nombre de visualización del negocio
   const displayOpportunityName =
     targetOpportunityMode === 'existing'
       ? targetExistingOpp
         ? `${targetExistingOpp.title} (${targetExistingOpp.prospectAccountName || 'Cliente'})`
-        : 'Oportunidad Seleccionada'
-      : newOpportunityTitle.trim() || 'Nueva Oportunidad Comercial';
+        : 'Negocio seleccionado'
+      : newOpportunityTitle.trim() || 'Nuevo negocio';
 
   // ACCIÓN: CLONAR HACIA COPIA INDEPENDIENTE CON OPPORTUNITY ID RESUELTO
   const handleGenerateClone = () => {
@@ -206,7 +206,7 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
     const newAct: QuoteBacklogItem = {
       id: `qbi-${Date.now()}-${targetDel.backlogItems.length + 1}`,
       quoteDeliverableId: delId,
-      title: 'Nueva actividad ajustada para el cliente',
+      title: 'Nueva tarea ajustada para el cliente',
       description: '',
       roleId: 'Front-End Dev',
       roleName: 'Front-End Dev',
@@ -275,7 +275,7 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
     });
   };
 
-  // Guardar cotización en la oportunidad correspondiente
+  // Guardar cotización en el negocio correspondiente
   const handleFinalizeQuote = () => {
     if (!clonedQuote) return;
     if (targetOpportunityMode === 'new' && !users.some((user) => user.id === newLeadUserId && isEligibleScopingLeader(user))) {
@@ -291,12 +291,12 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
         onQuoteCreated(clonedQuote);
       }
     } else {
-      // Crear nueva oportunidad vinculada
+      // Crear nuevo negocio vinculada
       if (onCreateOpportunityWithQuote) {
         onCreateOpportunityWithQuote(
           {
             leadUserId: newLeadUserId,
-            title: newOpportunityTitle.trim() || 'Nueva oportunidad',
+            title: newOpportunityTitle.trim() || 'Nuevo negocio',
             prospectAccountName: newProspectAccountName.trim() || 'Nuevo Prospecto'
           },
           clonedQuote
@@ -365,7 +365,7 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                     </span>
                   </div>
                   <p className="text-[11px] text-[#64748b] leading-relaxed">
-                    Clona entregables, actividades y horas desde la biblioteca gobernada por Producto.
+                    Clona entregables, tareas y horas desde la biblioteca gobernada por Producto.
                   </p>
                 </button>
 
@@ -396,7 +396,7 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                   <div className="flex items-center gap-2">
                     <Target className="w-4 h-4 text-[#8a4dff]" />
                     <span className="text-xs font-bold text-[#0f172a] uppercase tracking-wider">
-                      Asociación con Oportunidad de New Business
+                      Asociación con un negocio de New Business
                     </span>
                   </div>
                   <div className="flex items-center gap-1 text-[11px]">
@@ -412,7 +412,7 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                           : 'bg-white text-[#64748b] border border-[#cbd5e1] hover:bg-[#f1f5f9]'
                       }`}
                     >
-                      Oportunidad Existente ({opportunities.length})
+                      Negocio existente ({opportunities.length})
                     </button>
                     <button
                       type="button"
@@ -432,7 +432,7 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-semibold text-[#334155] mb-1">
-                        Seleccionar Oportunidad de New Business
+                        Seleccionar negocio de New Business
                       </label>
                       <select
                         value={selectedOpportunityId}
@@ -451,7 +451,7 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-semibold text-[#334155] mb-1">
-                        Título de la Nueva Oportunidad
+                        Título del nuevo negocio
                       </label>
                       <input
                         type="text"
@@ -533,7 +533,7 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                           <div className="text-[10px] text-[#64748b] flex items-center gap-2 border-t border-[#f1f5f9] pt-1.5">
                             <span>{t.deliverables.length} entregables</span>
                             <span>·</span>
-                            <span>{t.deliverables.flatMap((d) => d.activities).length} actividades</span>
+                            <span>{t.deliverables.flatMap((d) => d.activities).length} tareas</span>
                           </div>
                         </div>
                       );
@@ -622,27 +622,27 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                     Copia editable independiente generada con éxito (ID: {clonedQuote.id})
                   </p>
                   <p className="text-[11px] text-[#047857] leading-relaxed">
-                    Cualquier cambio de actividades, horas o roles que realices aquí afectará únicamente a esta cotización. 
+                    Cualquier cambio de tareas, horas o roles que realices aquí afectará únicamente a esta cotización. 
                     La plantilla maestra original en la biblioteca permanece 100% inalterada.
                   </p>
                 </div>
               </div>
 
-              {/* Resumen de la Oportunidad */}
+              {/* Resumen del negocio */}
               <div className="flex items-center justify-between p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
                 <div>
-                  <span className="text-[11px] text-[#64748b] block">Oportunidad de New Business:</span>
+                  <span className="text-[11px] text-[#64748b] block">Negocio de New Business:</span>
                   <span className="text-xs font-bold text-[#0f172a]">{displayOpportunityName}</span>
                 </div>
                 <div className="text-right">
                   <span className="text-[11px] text-[#64748b] block">Destino:</span>
                   <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#8a4dff]/10 text-[#8a4dff]">
-                    Alcance de la oportunidad
+                    Alcance del negocio
                   </span>
                 </div>
               </div>
 
-              {/* Entregables y Actividades de la Cotización */}
+              {/* Entregables y Tareas de la Cotización */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-[#334155] uppercase tracking-wider">
@@ -670,7 +670,7 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                           </span>
                           <span className="text-xs font-bold text-[#0f172a]">{del.name}</span>
                           <span className="text-[11px] text-[#64748b]">
-                            ({del.backlogItems.length} actividades)
+                            ({del.backlogItems.length} tareas)
                           </span>
                         </div>
                         <span className="text-xs font-bold text-[#8a4dff] px-2 py-0.5 rounded-lg bg-[#8a4dff]/10">
@@ -689,7 +689,7 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                                 {dIdx + 1}.{aIdx + 1}
                               </span>
 
-                              {/* Título de la actividad */}
+                              {/* Título de la tarea */}
                               <div className="flex-1 min-w-[200px]">
                                 <input
                                   type="text"
@@ -750,7 +750,7 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                                 <span className="text-[11px] text-[#64748b]">hrs</span>
                               </div>
 
-                              {/* Eliminar actividad */}
+                              {/* Eliminar tarea */}
                               <button
                                 type="button"
                                 onClick={() => handleRemoveActivityFromCloned(del.id, act.id)}
@@ -767,7 +767,7 @@ export const CloneToQuoteModal: React.FC<CloneToQuoteModalProps> = ({
                             className="w-full py-1.5 border border-dashed border-[#cbd5e1] hover:border-[#8a4dff] text-[#8a4dff] text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 bg-[#fcfaff]/50 transition-colors cursor-pointer"
                           >
                             <Plus className="w-3.5 h-3.5" />
-                            <span>Agregar actividad personalizada</span>
+                            <span>Agregar tarea personalizada</span>
                           </button>
                         </div>
                       )}

@@ -2,7 +2,7 @@
  * Motor de Cronograma (línea base) — ECO
  *
  * Regla de negocio:
- *  - La conversión de una oportunidad NO define fechas. El proyecto nace «Por iniciar».
+ *  - La conversión de un negocio NO define fechas. El proyecto nace «Por iniciar».
  *  - Al pulsar «Iniciar proyecto 🚀» se calcula la línea base en DÍAS HÁBILES:
  *
  *      total = entrega_insumos_cliente          (tras el kickoff)

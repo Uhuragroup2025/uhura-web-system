@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, Menu, X, LogOut, ShieldAlert, Sparkles, Check, ChevronDown, ExternalLink, Clock, Play, Pause, Square, Building2, Search, ArrowRight, PanelLeftClose, PanelLeftOpen, User, Edit3, Plus } from 'lucide-react';
+import { Bell, Menu, X, LogOut, ShieldAlert, Sparkles, Check, ChevronDown, ExternalLink, Clock, Play, Pause, Square, Building2, Search, ArrowRight, PanelLeftClose, PanelLeftOpen, User, Edit3, Plus, Volume2, VolumeX } from 'lucide-react';
+import { isNotificationSoundOn, playNotificationSound, setNotificationSoundOn } from './notificationSound';
 import { SessionClosedOverlay, requestLogout } from './auth/SessionClosedOverlay';
 import { orbitOperationalAlerts } from './mockData';
 import { ActiveTimerState, TaskItem, TimeLog, UserItem } from './types';
@@ -79,6 +80,15 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
   const profileMenuRef = useRef<HTMLDivElement>(null);
 
   const unreadCount = activeAlerts.filter((a) => !a.read).length;
+
+  // Sonido leve cuando llega una notificación nueva (no suena con las que ya estaban al abrir ECO)
+  const [soundOn, setSoundOn] = useState(isNotificationSoundOn);
+  const seenAlertIds = useRef<Set<string>>(new Set(activeAlerts.map((a) => a.id)));
+  useEffect(() => {
+    const fresh = activeAlerts.filter((a) => !seenAlertIds.current.has(a.id));
+    fresh.forEach((a) => seenAlertIds.current.add(a.id));
+    if (fresh.some((a) => !a.read)) playNotificationSound();
+  }, [activeAlerts]);
 
   // Keyboard shortcut: Cmd+K or Ctrl+K to focus search
   useEffect(() => {
@@ -487,6 +497,22 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
                     {unreadCount}
                   </span>
                 </div>
+                <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !soundOn;
+                    setSoundOn(next);
+                    setNotificationSoundOn(next);
+                    if (next) playNotificationSound(true);
+                  }}
+                  className="text-[11px] text-[#64748b] hover:text-[#501f92] font-semibold flex items-center gap-1 cursor-pointer"
+                  aria-pressed={soundOn}
+                  title={soundOn ? 'Suena un tono leve cuando llega una notificación. Clic para silenciar.' : 'Sin sonido. Clic para activarlo.'}
+                >
+                  {soundOn ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+                  <span>{soundOn ? 'Sonido' : 'Silencio'}</span>
+                </button>
                 {unreadCount > 0 && (
                   <button
                     onClick={markAllAsRead}
@@ -496,6 +522,7 @@ export const TaskflowHeader: React.FC<TaskflowHeaderProps> = ({
                     <span>Leídas</span>
                   </button>
                 )}
+                </div>
               </div>
 
               <div className="max-h-72 overflow-y-auto divide-y divide-[#f3f4f6]">

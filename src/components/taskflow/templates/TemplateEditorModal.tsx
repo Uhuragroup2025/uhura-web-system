@@ -55,7 +55,7 @@ export const TemplateEditorModal: React.FC<TemplateEditorModalProps> = ({
     template?.estimatedDurationWeeks || 4
   );
 
-  // Estado de entregables y actividades
+  // Estado de entregables y tareas
   const [deliverables, setDeliverables] = useState<TemplateDeliverable[]>(() => {
     if (template) {
       return JSON.parse(JSON.stringify(template.deliverables));
@@ -74,7 +74,7 @@ export const TemplateEditorModal: React.FC<TemplateEditorModalProps> = ({
           {
             id: `act-${Date.now()}-1`,
             templateDeliverableId: initialDelId,
-            title: 'Actividad inicial de levantamiento',
+            title: 'Tarea inicial de levantamiento',
             description: 'Definición de requerimientos y alcance',
             roleId: 'Product Lead',
             roleName: 'Product Lead',
@@ -100,8 +100,8 @@ export const TemplateEditorModal: React.FC<TemplateEditorModalProps> = ({
   };
 
   // CÁLCULO EN TIEMPO REAL DE LOS TRES NIVELES
-  // Nivel 1: Cada actividad tiene su estimatedHours
-  // Nivel 2: Rollup por rol de todas las actividades
+  // Nivel 1: Cada tarea tiene su estimatedHours
+  // Nivel 2: Rollup por rol de todas las tareas
   const allActivities = deliverables.flatMap((d) => d.activities);
   const liveRoleBudgets = computeRoleBudgetsFromActivities(allActivities);
   // Nivel 3: Total de horas de la plantilla
@@ -214,7 +214,7 @@ export const TemplateEditorModal: React.FC<TemplateEditorModalProps> = ({
       d.activities.some((a) => !a.title.trim())
     );
     if (hasEmptyActivity) {
-      setValidationError('Todas las actividades deben tener un título definido.');
+      setValidationError('Todas las tareas deben tener un título definido.');
       return;
     }
 
@@ -257,7 +257,7 @@ export const TemplateEditorModal: React.FC<TemplateEditorModalProps> = ({
                 {isEditing ? 'Editar Plantilla Maestra de Producto' : 'Nueva Plantilla Maestra de Producto'}
               </h2>
               <p className="text-xs text-[#64748b]">
-                Gobernado por Producto · Define la estructura de entregables, actividades y horas maestras
+                Gobernado por Producto · Define la estructura de entregables, tareas y horas maestras
               </p>
             </div>
           </div>
@@ -366,15 +366,15 @@ export const TemplateEditorModal: React.FC<TemplateEditorModalProps> = ({
             </div>
           </div>
 
-          {/* 2. Entregables y Actividades (Nivel 1 de Horas) */}
+          {/* 2. Entregables y Tareas (Nivel 1 de Horas) */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-xs font-bold text-[#334155] uppercase tracking-wider">
-                  2. Estructura de Entregables y Actividades
+                  2. Estructura de Entregables y Tareas
                 </h3>
                 <p className="text-[11px] text-[#64748b]">
-                  Nivel 1: Cada actividad suma sus horas estimadas al entregable
+                  Nivel 1: Cada tarea suma sus horas estimadas al entregable
                 </p>
               </div>
               <button
@@ -441,12 +441,12 @@ export const TemplateEditorModal: React.FC<TemplateEditorModalProps> = ({
                       </div>
                     </div>
 
-                    {/* Actividades del Entregable */}
+                    {/* Tareas del Entregable */}
                     {isExpanded && (
                       <div className="p-3.5 space-y-2.5">
                         {del.activities.length === 0 ? (
                           <div className="text-center py-4 text-xs text-[#94a3b8] bg-[#f8fafc] rounded-lg border border-dashed border-[#e2e8f0]">
-                            No hay actividades en este entregable. Agrega la primera actividad abajo.
+                            No hay tareas en este entregable. Agrega la primera tarea abajo.
                           </div>
                         ) : (
                           del.activities.map((act, aIdx) => (
@@ -458,11 +458,11 @@ export const TemplateEditorModal: React.FC<TemplateEditorModalProps> = ({
                                 {dIdx + 1}.{aIdx + 1}
                               </span>
 
-                              {/* Título de la actividad */}
+                              {/* Título de la tarea */}
                               <div className="flex-1 min-w-[180px]">
                                 <input
                                   type="text"
-                                  placeholder="Título de la actividad técnica..."
+                                  placeholder="Título de la tarea..."
                                   value={act.title}
                                   onChange={(e) =>
                                     handleUpdateActivity(del.id, act.id, 'title', e.target.value)
@@ -533,12 +533,12 @@ export const TemplateEditorModal: React.FC<TemplateEditorModalProps> = ({
                                 <span>Opcional</span>
                               </label>
 
-                              {/* Eliminar Actividad */}
+                              {/* Eliminar Tarea */}
                               <button
                                 type="button"
                                 onClick={() => handleRemoveActivity(del.id, act.id)}
                                 className="p-1 text-[#94a3b8] hover:text-[#ef4444] transition-colors shrink-0"
-                                title="Eliminar actividad"
+                                title="Eliminar tarea"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
@@ -552,7 +552,7 @@ export const TemplateEditorModal: React.FC<TemplateEditorModalProps> = ({
                           className="w-full py-1.5 border border-dashed border-[#cbd5e1] hover:border-[#8a4dff] text-[#8a4dff] text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 bg-[#fcfaff]/50 transition-colors cursor-pointer mt-2"
                         >
                           <Plus className="w-3.5 h-3.5" />
-                          <span>Agregar actividad técnica</span>
+                          <span>Agregar tarea</span>
                         </button>
                       </div>
                     )}
@@ -582,12 +582,12 @@ export const TemplateEditorModal: React.FC<TemplateEditorModalProps> = ({
             {/* Nivel 2: Rollup por Rol */}
             <div>
               <span className="text-[11px] font-semibold text-[#c9b7ff]/80 block mb-2">
-                Nivel 2 — Horas Cotizadas por Rol (Rollup de todas las actividades):
+                Nivel 2 — Horas Cotizadas por Rol (Rollup de todas las tareas):
               </span>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {liveRoleBudgets.length === 0 ? (
                   <div className="col-span-full text-xs text-[#c9b7ff]/50 py-2">
-                    Agrega actividades con horas para ver el desglose por roles.
+                    Agrega tareas con horas para ver el desglose por roles.
                   </div>
                 ) : (
                   liveRoleBudgets.map((rb) => (

@@ -1,3 +1,5 @@
+import { isOpportunityInMyDay } from './newbusiness/opportunityMyDay';
+import { scopeTimeLeft, SCOPE_TONE_CLASS, useScopeClock } from './newbusiness/scopeDeadline';
 import { streakLabel } from './time/dayStreak';
 import { TeamStreakPanel } from './colonia/TeamStreakPanel';
 import React, { useState, useMemo } from 'react';
@@ -75,7 +77,7 @@ export interface MiDiaViewProps {
   configuredCapacityHours?: number;
   targetDayHours?: number;
   onNavigateToView?: (view: OrbitView) => void;
-  /** Abre una oportunidad de New Business en la pestaña indicada. */
+  /** Abre un negocio de New Business en la pestaña indicada. */
   onOpenOpportunity?: (opportunityId: string, tab: 'resumen' | 'scoping' | 'cotizacion') => void;
   /** Abre un proyecto concreto (Insumos por gestionar). */
   onOpenProject?: (projectId: string) => void;
@@ -120,6 +122,8 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
   clients = [],
   onUpdateUser
 }) => {
+  // El plazo del alcance se recalcula solo cada 5 minutos («Quedan ~N h hábiles»)
+  const scopeNow = useScopeClock();
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isLogsAccordionOpen, setIsLogsAccordionOpen] = useState(false);
   const [isHumanProfileModalOpen, setIsHumanProfileModalOpen] = useState(false);
@@ -280,34 +284,7 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
     if (!['leader', 'commercial', 'executive', 'system_admin'].includes(accessLevel)) {
       return [];
     }
-    return opportunities.filter((o) => {
-      const isActionableStatus =
-        o.status === 'discovery' || o.status === 'quoting' || o.status === 'internal_review';
-      // El líder actualizó el alcance después de cotizar: Comercial (y Dirección) lo ven hasta guardar la cotización
-      const hasScopeUpdate = Boolean(o.scopeUpdateNotice) && o.status !== 'won' && o.status !== 'lost' && accessLevel !== 'leader';
-      if (!isActionableStatus && !hasScopeUpdate) return false;
-
-      // Solo las que la persona lidera o le tocan (#147), también para Dirección
-      if (accessLevel === 'commercial' || accessLevel === 'system_admin' || accessLevel === 'executive') {
-        const owner = (o.commercialOwner || '').toLowerCase();
-        return (
-          o.createdByUserId === currentUserId ||
-          o.leadUserId === currentUserId ||
-          (Array.isArray(o.leadUserIds) && o.leadUserIds.includes(currentUserId)) ||
-          Boolean(owner && currentUserName && owner.includes(currentUserName.toLowerCase()))
-        );
-      }
-      if (accessLevel === 'leader') {
-        const matchesId =
-          o.leadUserId === currentUserId ||
-          (Array.isArray(o.leadUserIds) && o.leadUserIds.includes(currentUserId));
-        const matchesName =
-          o.leadUserName &&
-          o.leadUserName.toLowerCase().includes(currentUserName.toLowerCase());
-        return matchesId || matchesName;
-      }
-      return true;
-    });
+    return opportunities.filter((o) => isOpportunityInMyDay(o, { id: currentUserId, name: currentUserName, accessLevel }));
   }, [accessLevel, opportunities, currentUserId, currentUserName]);
 
   // Formalizaciones administrativas pendientes (proyectos ganados sin NIT o datos de facturación)
@@ -777,7 +754,6 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                     (Array.isArray(opp.leadUserIds) && opp.leadUserIds.includes(currentUserId)) ||
                     (opp.leadUserName && opp.leadUserName.toLowerCase().includes(currentUserName.toLowerCase()));
                   const assignedLeadDisplay = opp.leadUserName?.split('·')[0]?.trim() || 'Líder Asignado';
-                  const oppHandoffSla = opp.handoffHours || 36;
 
                   return (
                     <div
@@ -809,9 +785,14 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                                       : '⏳ En alcance con el líder'}
                               </span>
                             )}
-                            <span className="text-[10px] text-[#0284c7] font-mono">
-                              SLA ~{oppHandoffSla}h handoff
-                            </span>
+                            {(() => {
+                              const left = scopeTimeLeft(opp, scopeNow);
+                              return (
+                                <span className={`text-[10px] font-semibold ${SCOPE_TONE_CLASS[left.tone]}`} title={left.title}>
+                                  {left.label}
+                                </span>
+                              );
+                            })()}
                           </div>
                           <span className="text-[11px] text-[#64748b] block mt-0.5">
                             {isAssignedToCurrentUser
@@ -827,15 +808,15 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                           <button
                             type="button"
                             onClick={() => onStartTimer(scopingTask)}
-                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                            className={`w-8 h-8 rounded-xl transition-colors cursor-pointer flex items-center justify-center ${
                               isTimerRunningOnScoping
                                 ? 'bg-[#ef4444] text-white animate-pulse'
-                                : 'bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[#0f172a]'
+                                : 'bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[#501f92]'
                             }`}
-                            title="Iniciar timer para imputar horas de preventa a UHURA Group / New Business"
+                            title={isTimerRunningOnScoping ? 'Timer de preventa corriendo' : 'Iniciar timer de preventa (horas a UHURA Group · New Business)'}
+                            aria-label={isTimerRunningOnScoping ? 'Timer de preventa corriendo' : 'Iniciar timer de preventa'}
                           >
-                            <Play className="w-3.5 h-3.5 text-[#501f92]" />
-                            <span>{isTimerRunningOnScoping ? 'Grabando...' : 'Timer Preventa'}</span>
+                            <Play className="w-3.5 h-3.5" />
                           </button>
                         )}
                         {(onOpenOpportunity || onNavigateToView) && (
@@ -848,8 +829,9 @@ export const MiDiaView: React.FC<MiDiaViewProps> = ({
                               } else onNavigateToView?.('new-business');
                             }}
                             className="px-3.5 py-1.5 rounded-xl bg-[#f5f3ff] text-[#501f92] border border-[#ddd6fe] hover:bg-[#ede9fe] font-semibold text-xs transition-colors cursor-pointer"
+                            title="Abrir el negocio"
                           >
-                            Abrir oportunidad →
+                            Abrir →
                           </button>
                         )}
                       </div>

@@ -310,7 +310,7 @@ export function canUseCatalogTemplates(user: UserItem | null | undefined): boole
 /**
  * Reglas de New Business:
  * 1. Scoping Técnico (Alcance & Backlog, horas y roles):
- *    - Líderes (cuando son líderes técnicos de la oportunidad o no hay líder asignado).
+ *    - Líderes (cuando son líderes técnicos del negocio o no hay líder asignado).
  *    - Directora Comercial.
  *    - Otros perfiles no pueden modificar el backlog técnico.
  */

@@ -1,3 +1,5 @@
+import { makePersonMatcher } from './auth/taskVisibility';
+import { BlockerControl } from './BlockerControl';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { formatDate } from '../../utils/formatters';
 import { TimerControls } from './time/TimerControls';
@@ -80,6 +82,7 @@ import {
   TaskActivityLogEntry,
   TaskActivityType,
   TaskAssigneeAllocation,
+  TeamAbsenceEvent,
   UserItem
 } from './types';
 import { DropdownMenu, DropdownOption } from '../ui/DropdownMenu';
@@ -99,7 +102,10 @@ export interface TeamMemberProfile {
   avatarUrl?: string | null;
 }
 
-const TEAM_MEMBERS_POOL: TeamMemberProfile[] = [
+const STATUS_CANON: Record<string, TaskStatus> = { todo: 'To Do', in_progress: 'In Progress', in_review: 'Review', completed: 'Done' };
+
+/** Solo si no llegan usuarios (pruebas aisladas). En la app se usan los usuarios reales (`users`). */
+const FALLBACK_MEMBERS_POOL: TeamMemberProfile[] = [
   { name: 'Luisa Fernanda Urazán', initials: 'LU', avatarBg: 'bg-[#0284c7]', role: 'Client relationship' },
   { name: 'Diego Cadavid', initials: 'DC', avatarBg: 'bg-[#dc2626]', role: 'Creative lead' },
   { name: 'Esmeralda Duque Ramírez', initials: 'ED', avatarBg: 'bg-[#8b5cf6]', role: 'Content Creator' },
@@ -201,8 +207,22 @@ interface TaskDetailModalProps {
     responsibleParty: string
   ) => void;
   onUpdateBlockerInfo?: (taskId: string, blockerInfo: TaskBlockerInfo | undefined) => void;
+  /** Usuarios activos (para elegir revisores). */
+  users?: UserItem[];
+  /** Revisores de la tarea (término único «Revisor», §33.4). */
+  onUpdateReviewers?: (taskId: string, reviewers: NonNullable<TaskItem['reviewer']>[]) => void;
+  /** Abre la tarea directo en una sección (p. ej. desde Mi Día). */
+  focusSection?: 'entregables' | null;
+  /** Revisión (§33.4): «Sin revisión» y revisores elegidos a mano. */
+  onUpdateReviewSettings?: (taskId: string, patch: { requiresReview?: boolean; reviewersManual?: boolean }) => void;
+  /** Aprobar o pedir ajustes: deja quién aprobó y marca los entregables. */
+  onReviewDecision?: (taskId: string, decision: 'approved' | 'changes', by: string, note?: string) => void;
+  /** Ausencias del equipo (para avisar si el revisor no está). */
+  absenceEvents?: TeamAbsenceEvent[];
   onUpdatePhase?: (taskId: string, phase: ProjectPhase) => void;
   onDeleteTask?: (taskId: string) => void;
+  /** Si es quien la creó pero ya tiene horas o está entregada: el motivo (la opción se ve deshabilitada). */
+  deleteBlockedReason?: string | null;
   onArchiveTask?: (taskId: string) => void;
   /** Duplica la tarea y reparte las horas cotizadas a la mitad (trabajo en paralelo). */
   onDuplicateTask?: (taskId: string) => void;
@@ -220,7 +240,7 @@ interface TaskDetailModalProps {
 export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   isOpen,
   onClose,
-  task,
+  task: rawTask,
   currentUser,
   tasksList = [],
   activeTimer,
@@ -240,18 +260,63 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   onUpdateComments,
   onSelectTask,
   onDeleteTask,
+  deleteBlockedReason,
   onArchiveTask,
   onDuplicateTask,
   onNavigateToClient,
   onNavigateToProject,
-  onOpenManualLog
+  onOpenManualLog,
+  onUpdateBlockerInfo,
+  users = [],
+  onUpdateReviewers,
+  focusSection = null,
+  onUpdateReviewSettings,
+  onReviewDecision,
+  absenceEvents = initialAbsenceEvents
 }) => {
+  // Estados canónicos (`todo`, `in_progress`, `in_review`, `completed`) que usan la conversión de New Business
+  // y los ciclos del fee: la tarea trabaja con los de §5 (QA 22 Nov 2026: sin esto, una tarea recién
+  // convertida no mostraba «Iniciar tarea», «Entregar» ni «Aprobar»).
+  // Memorizada: un objeto nuevo en cada render dispararía los efectos que dependen de `task` sin fin
+  const task: TaskItem | null = useMemo(() => (rawTask ? (STATUS_CANON[String(rawTask.status)] ? { ...rawTask, status: STATUS_CANON[String(rawTask.status)] } : rawTask) : null), [rawTask]);
+  // Personas: los usuarios activos reales (nombres y roles correctos); el listado fijo solo es respaldo
+  const TEAM_MEMBERS_POOL: TeamMemberProfile[] = useMemo(
+    () => (users.length
+      ? users.filter((u) => u.status !== 'Inactive').map((u) => ({ name: u.name, initials: u.initials, avatarBg: u.avatarBg?.startsWith('bg-') ? u.avatarBg : 'bg-[#501f92]', role: u.jobTitle || String(u.officialRole || u.role || ''), avatarUrl: (u as UserItem & { avatarUrl?: string | null }).avatarUrl }))
+      : FALLBACK_MEMBERS_POOL),
+    [users]
+  );
+  const meName = currentUser?.name || 'Equipo';
+  const meInitials = currentUser?.initials || meName.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase();
   // Tabs: 'mensajes' | 'entregables' | 'actividad' | 'info' (info used on mobile)
   const [activeTab, setActiveTab] = useState<'mensajes' | 'entregables' | 'actividad' | 'info'>('mensajes');
+  // Revisión (§33.4): por defecto sí; «Sin revisión» solo lo ponen el líder del proyecto o Dirección
+  const [requiresReviewState, setRequiresReviewState] = useState<boolean>(task?.requiresReview !== false);
+  // Entrega (§33.3): «¿Qué hiciste?» obligatorio; «Es un paso de otra tarea» opcional
+  const [stepOfTaskId, setStepOfTaskId] = useState<string>('');
+  const [isStepOf, setIsStepOf] = useState(false);
+  const [changesOpen, setChangesOpen] = useState(false);
+  const [changesNote, setChangesNote] = useState('');
+  useEffect(() => {
+    if (isOpen && focusSection === 'entregables') setActiveTab('entregables');
+  }, [isOpen, focusSection, task?.id]);
   const [localActivities, setLocalActivities] = useState<TaskActivityLogEntry[]>([]);
 
   // Menu and Toast
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  useEffect(() => { if (!isMenuOpen) setConfirmDelete(false); }, [isMenuOpen]);
+  // Esc cierra la tarea (si no hay un menú o una ventanita abierta encima)
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented || isMenuOpen) return;
+      if (changesOpen) { setChangesOpen(false); return; }
+      onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, isMenuOpen, changesOpen, onClose]);
   // El menú ··· se cierra al hacer clic afuera o con Esc (ronda 2).
   const menuRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -291,7 +356,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
   // Local team & responsibility tracking
   const [projectLead, setProjectLead] = useState<TaskItem['projectLead']>(
-    task?.projectLead || { name: 'Paola (Lead PM)', initials: 'PL', avatarBg: 'bg-[#501f92]', role: 'Product Lead' }
+    task?.projectLead
   );
   const [assignee, setAssignee] = useState<TaskItem['assignee']>(
     task?.assignee || { name: 'Catalina Tejada', initials: 'CT', avatarBg: 'bg-[#501f92]', role: 'Creative Designer' }
@@ -303,6 +368,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     task?.followers || []
   );
   const [reviewer, setReviewer] = useState<TaskItem['reviewer']>(task?.reviewer);
+  const [reviewersList, setReviewersList] = useState<NonNullable<TaskItem['reviewer']>[]>(task?.reviewers || []);
   const [requestedBy, setRequestedBy] = useState<string>(task?.requestedBy || 'Paola Monsalve');
   const [budgetedRole, setBudgetedRole] = useState<string>(task?.budgetedRole || 'Creative Designer');
   const [requiresValidation, setRequiresValidation] = useState<boolean>(task?.requiresValidation ?? false);
@@ -363,6 +429,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
   // Date inline edit
   const [isEditingDates, setIsEditingDates] = useState(false);
+  const [datesSaved, setDatesSaved] = useState(false);
   const [startDateInput, setStartDateInput] = useState('');
   const [dueDateInput, setDueDateInput] = useState('');
 
@@ -413,13 +480,19 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   useEffect(() => {
     if (task) {
       setProjectLead(
-        task.projectLead || { name: 'Paola (Lead PM)', initials: 'PL', avatarBg: 'bg-[#501f92]', role: 'Product Lead' }
+        task.projectLead
       );
       setAssignee(
         task.assignee || { name: 'Catalina Tejada', initials: 'CT', avatarBg: 'bg-[#501f92]', role: 'Creative Designer' }
       );
       setCollaborators(task.collaborators || []);
       setFollowers(task.followers || []);
+      setReviewersList(task.reviewers || []);
+      setRequiresReviewState(task.requiresReview !== false);
+      setIsStepOf(false);
+      setStepOfTaskId('');
+      setChangesOpen(false);
+      setChangesNote('');
       setReviewer(task.reviewer);
       setRequestedBy(task.requestedBy || 'Paola Monsalve');
       setBudgetedRole(task.budgetedRole || 'Creative Designer');
@@ -492,7 +565,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     const entry: TaskActivityLogEntry = {
       id: `act-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       type,
-      actorName: 'Paola (Lead PM)',
+      actorName: meName,
       actorInitials: 'PL',
       actorAvatarBg: '#501f92',
       timestamp: new Date().toISOString(),
@@ -918,9 +991,9 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
     const newMessage: ChatMessage = {
       id: `msg-${Date.now()}`,
-      authorName: 'Catalina Tejada',
-      authorRoleLabel: 'Ejecutor',
-      authorInitials: 'CT',
+      authorName: meName,
+      authorRoleLabel: isCurrentUserCollaborator ? 'Ejecutor' : effectiveReviewers.some((r) => matchesCurrentUser(r)) ? 'Revisor' : 'Comentario',
+      authorInitials: meInitials,
       authorAvatarBg: 'bg-[#501f92]',
       timestamp: 'Ahora mismo',
       content: content,
@@ -946,7 +1019,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
   // Toggle Reaction on a comment
   const handleToggleReaction = (messageId: string, emoji: string) => {
-    const currentUserName = 'Catalina Tejada';
+    const currentUserName = meName;
     const updated = chatMessages.map((msg) => {
       if (msg.id !== messageId) return msg;
       const currentReactions: TaskCommentReaction[] = msg.reactions ? [...msg.reactions] : [];
@@ -1198,32 +1271,33 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   // Submit Deliverable
   const handleSubmitDeliverable = (e: React.FormEvent) => {
     e.preventDefault();
-    // Ronda 3: solicitar revisión no exige enlace, archivo ni comentario. A veces la revisión es
-    // solo confirmar que se hicieron cambios en una plataforma externa.
-
-    // Ronda 2: entregar NUNCA completa la tarea. Pasa a «En revisión», queda un mensaje de quien
-    // entregó con el enlace y se avisa al líder y al revisor; ellos aprueban o devuelven.
-    const nextStatus: TaskStatus = 'Review';
+    // §33.3 (decidido el 21 Nov 2026): se pide solo «¿Qué hiciste?» en una línea. Enlace y archivo
+    // son opcionales porque no siempre existen. «Es un paso de otra tarea» enlaza la tarea a la que alimenta.
+    const what = deliverableNotes.trim();
+    if (what.length < 5) { showToast('Cuenta en una línea qué hiciste'); return; }
     const submitterName = currentUser?.name || task.assignee?.name || assignee?.name || 'El responsable';
     const link = deliverableUrl.trim();
-    const reviewerName = reviewer?.name || task.reviewer?.name || task.projectLead?.name;
+    const step = isStepOf ? tasksList.find((t) => t.id === stepOfTaskId) : undefined;
+    if (isStepOf && !step) { showToast('Elige la tarea a la que alimenta este paso'); return; }
 
-    if (onAddDeliverable && (link || uploadedFileName)) {
-      onAddDeliverable(task.id, {
-        url: link || uploadedFileName || 'Entrega de producción',
-        title: deliverableNotes.trim() || 'Entregable de producción',
-        submittedBy: submitterName,
-        notes: deliverableNotes.trim(),
-        status: 'submitted',
-        taggedReviewer: reviewerName || 'Líder del proyecto'
-      });
-    }
+    onAddDeliverable?.(task.id, {
+      url: link || uploadedFileName || undefined,
+      title: what,
+      submittedBy: submitterName,
+      notes: what,
+      status: 'submitted',
+      taggedReviewer: reviewOn ? (effectiveReviewers[0]?.name || 'Líder del proyecto') : undefined,
+      taggedReviewers: reviewOn ? effectiveReviewers.map((r) => r.name) : undefined,
+      criteriaChecked: criteria.filter((c) => c.completed).map((c) => c.id),
+      stepOfTaskId: step?.id,
+      stepOfTaskTitle: step?.title
+    });
 
-    if (onUpdateTaskStatus) {
-      onUpdateTaskStatus(task.id, nextStatus);
-    }
+    const nextStatus: TaskStatus = reviewOn ? 'Review' : 'Done';
+    logActivity('status_change', reviewOn ? `Entregada a revisión de ${reviewerNames}` : 'Terminada (sin revisión)', task.status, nextStatus);
+    onUpdateTaskStatus?.(task.id, nextStatus);
 
-    // Mensaje en «Mensajes» firmado por quien entregó, con el enlace
+    const extra = `${link ? `\n${link}` : uploadedFileName ? `\nArchivo: ${uploadedFileName}` : ''}${step ? `\nPaso de: #${step.title}` : ''}`;
     const deliveryMessage: ChatMessage = {
       id: `deliv-${Date.now()}`,
       authorName: submitterName,
@@ -1231,7 +1305,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
       authorInitials: submitterName.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase(),
       authorAvatarBg: 'bg-[#501f92]',
       timestamp: 'Ahora mismo',
-      content: `📦 Solicitó revisión${reviewerName ? ` a @${reviewerName}` : ''}.${link ? `\n${link}` : uploadedFileName ? `\nArchivo: ${uploadedFileName}` : ''}${deliverableNotes.trim() ? `\n${deliverableNotes.trim()}` : ''}`,
+      content: `${reviewOn ? `📦 Entregó a ${effectiveReviewers.map((r) => `@${r.name}`).join(', ') || 'revisión'}.` : '✅ Terminó la tarea.'}\n${what}${extra}`,
       reactions: []
     };
     const updatedMessages = [...chatMessages, deliveryMessage];
@@ -1241,7 +1315,9 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     setDeliverableUrl('');
     setDeliverableNotes('');
     setUploadedFileName(null);
-    showToast(`Revisión solicitada${reviewerName ? ` · se avisó a ${reviewerName}` : ''}`);
+    setIsStepOf(false);
+    setStepOfTaskId('');
+    showToast(reviewOn ? `Entregada · se avisó a ${reviewerNames || 'el revisor'}` : 'Tarea terminada');
     setActiveTab('mensajes');
   };
 
@@ -1255,13 +1331,12 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     showToast('Horas estimadas actualizadas');
   };
 
-  // Save dates
-  const handleSaveDates = () => {
-    if (onUpdateDates) {
-      onUpdateDates(task.id, startDateInput, dueDateInput, 'En cronograma');
-    }
-    setIsEditingDates(false);
-    showToast('Cronograma actualizado');
+  // Fechas (26 Nov 2026, regla general de ECO): se guardan al elegirlas, sin botón «Guardar» que el
+  // calendario del navegador pueda tapar. «Listo» solo cierra.
+  const saveDates = (start: string, due: string) => {
+    if (!onUpdateDates || !start || !due || start > due) { setDatesSaved(false); return; }
+    onUpdateDates(task.id, start, due, 'En cronograma');
+    setDatesSaved(true);
   };
 
   // Team update helpers
@@ -1321,26 +1396,79 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
   const currentNameLower = (currentUser?.name || 'Paola Monsalve').toLowerCase();
   const currentFirstLower = currentNameLower.split(' ')[0];
-  const matchesCurrentUser = (p?: { name?: string } | null) => {
-    if (!p?.name) return false;
-    const pLow = p.name.toLowerCase();
-    return pLow.includes(currentFirstLower) || currentNameLower.includes(pLow);
+  // Por persona, no por primer nombre (QA 22 Nov 2026: Laura Viviana recibía los permisos de Laura Isabel).
+  // Prioriza id; sin id, todos los nombres de la referencia deben estar en el del usuario; un solo nombre
+  // cuenta solo si nadie más lo comparte (`makePersonMatcher`, la misma regla de §15.1).
+  const personMatcher = makePersonMatcher(currentUser || null, users.length ? users : initialUsers);
+  const matchesCurrentUser = (p?: { id?: string; name?: string } | null) => {
+    if (!p?.name && !p?.id) return false;
+    return personMatcher(p as { id?: string; name: string });
   };
   const isCurrentUserCollaborator =
     matchesCurrentUser(assignee) || collaborators.some((c) => matchesCurrentUser(c));
-  // Solo el Project Lead de la tarea (o su revisor asignado) aprueba, completa o devuelve.
-  // Los seguidores siguen la tarea pero no ven esos botones. Si la tarea no tiene Project Lead
-  // (datos legados), aprueba un líder o administrador. Si el líder se ausenta, se cambia el Project Lead.
+  // Revisor, término único (§33.4): los revisores de la tarea; si no tiene, el líder del proyecto.
+  // Basta uno para aprobar. Los seguidores y colaboradores no ven Aprobar ni Pedir ajustes.
+  const effectiveReviewers = (reviewersList.length
+    ? reviewersList
+    : reviewer?.name
+    ? [reviewer]
+    : projectLead?.name
+    ? [projectLead]
+    : []) as NonNullable<TaskItem['reviewer']>[];
+  const reviewerNames = effectiveReviewers.map((r) => (r?.name || '').split(' ')[0]).filter(Boolean).join(', ');
+  const isDireccion = ['executive', 'system_admin'].includes(currentUser?.accessLevel || '');
+  /** El líder del proyecto o Dirección: cambian quién revisa y pueden poner «Sin revisión». */
+  const canManageReview = matchesCurrentUser(projectLead) || isDireccion;
+  /** Rol cotizado y retrabajos: solo líderes y Dirección. */
+  const canSeeManagement = canManageReview || ['leader', 'executive', 'system_admin'].includes(currentUser?.accessLevel || '');
   const isCurrentUserLeadOrFollower =
-    matchesCurrentUser(projectLead) ||
-    matchesCurrentUser(reviewer) ||
-    (!projectLead?.name && !isCurrentUserCollaborator &&
+    effectiveReviewers.some((r) => matchesCurrentUser(r)) ||
+    (effectiveReviewers.length === 0 && !isCurrentUserCollaborator &&
       Boolean(
         currentUser?.accessLevel &&
           ['leader', 'system_admin', 'client_relationship', 'executive'].includes(
             currentUser.accessLevel
           )
       ));
+  const reviewOn = requiresReviewState;
+  /** El revisor ya pidió ajustes y la persona aún no vuelve a entregar. */
+  const waitingForChanges = (task?.deliverables || []).slice(-1)[0]?.status === 'changes_requested';
+
+  // Revisor ausente hoy (vacaciones, incapacidad o permiso): ECO sugiere a otra persona con un clic
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const absenceOf = (name?: string) => {
+    if (!name) return null;
+    const first = name.split(' ')[0].toLowerCase();
+    const u = (users.length ? users : initialUsers).find((x) => x.name.toLowerCase() === name.toLowerCase()) ||
+      (users.length ? users : initialUsers).find((x) => x.name.toLowerCase().startsWith(first));
+    if (!u) return null;
+    return absenceEvents.find((a) => a.userId === u.id && a.status !== 'cancelled' && a.startDate <= todayIso && a.endDate >= todayIso) || null;
+  };
+  const reviewersAbsent =
+    reviewOn && effectiveReviewers.length > 0 && effectiveReviewers.every((r) => absenceOf(r?.name));
+  const reviewerSubstitute = (() => {
+    if (!reviewersAbsent) return null;
+    if (projectLead?.name && !effectiveReviewers.some((r) => r?.name === projectLead.name) && !absenceOf(projectLead.name)) return projectLead;
+    const role = effectiveReviewers[0]?.role;
+    const m = TEAM_MEMBERS_POOL.find((x) => x.role === role && !effectiveReviewers.some((r) => r?.name === x.name) && !absenceOf(x.name));
+    return m ? { name: m.name, initials: m.initials, avatarBg: m.avatarBg, role: m.role } : null;
+  })();
+  const firstAbsence = reviewersAbsent ? absenceOf(effectiveReviewers[0]?.name) : null;
+
+  const setReviewers = (next: NonNullable<TaskItem['reviewer']>[], manual = true) => {
+    setReviewersList(next);
+    logActivity('reviewer_change', `Revisa: ${next.length ? next.map((r) => r.name).join(', ') : `${projectLead?.name || 'líder del proyecto'} (por defecto)`}`);
+    if (task) {
+      onUpdateReviewers?.(task.id, next);
+      onUpdateReviewSettings?.(task.id, { reviewersManual: manual && next.length > 0 });
+    }
+  };
+  const setReviewRequired = (on: boolean) => {
+    setRequiresReviewState(on);
+    logActivity('reviewer_change', on ? 'La tarea vuelve a tener revisión' : 'Sin revisión: quien la hace la termina directamente');
+    if (task) onUpdateReviewSettings?.(task.id, { requiresReview: on });
+    showToast(on ? 'La tarea vuelve a tener revisión' : 'Sin revisión: quien la hace la termina');
+  };
 
   const ensureInProgressOnCollaboratorAction = () => {
     if (task && task.status === 'To Do' && isCurrentUserCollaborator && onUpdateTaskStatus) {
@@ -1354,49 +1482,63 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     }
   };
 
-  // Progress task status: To Do -> In Progress -> Review -> Done (or back to In Progress)
-  const handleProgressTaskStatus = () => {
-    if (!onUpdateTaskStatus || !task) return;
-
-    if (task.status === 'To Do') {
-      if (isCurrentUserLeadOrFollower && !isCurrentUserCollaborator) {
-        logActivity('status_change', 'Tarea aprobada y completada directamente por el Project Lead', 'To Do', 'Done');
-        onUpdateTaskStatus(task.id, 'Done');
-        showToast('Tarea aprobada y marcada como Completada');
-      } else {
-        logActivity('status_change', 'Estado cambiado de "To Do" a "In Progress"', 'To Do', 'In Progress');
-        onUpdateTaskStatus(task.id, 'In Progress');
-        showToast('Tarea iniciada (En proceso)');
-      }
-    } else if (task.status === 'In Progress') {
-      if (isCurrentUserLeadOrFollower && !isCurrentUserCollaborator) {
-        logActivity('status_change', 'Tarea aprobada y completada por el Project Lead', 'In Progress', 'Done');
-        onUpdateTaskStatus(task.id, 'Done');
-        showToast('Tarea aprobada y marcada como Completada');
-      } else {
-        // Ronda 3: «Solicitar revisión» abre el panel de solicitud (enlace, archivo, mensaje y @menciones,
-        // todo opcional); el estado cambia a Revisión al enviarla, aunque vaya vacía.
-        setActiveTab('entregables');
-        setTimeout(() => document.getElementById('tab-entregables-content')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
-        showToast('Agrega un mensaje o enlace si quieres y envía la solicitud');
-      }
-    } else if (task.status === 'Review') {
-      logActivity('status_change', 'Estado cambiado de "Review" a "Done" (Completada)', 'Review', 'Done');
-      onUpdateTaskStatus(task.id, 'Done');
-      showToast('Tarea aprobada y marcada como Completada');
-    } else if (task.status === 'Done') {
-      logActivity('status_change', 'Tarea reabierta de "Done" a "In Progress"', 'Done', 'In Progress');
-      onUpdateTaskStatus(task.id, 'In Progress');
-      showToast('Tarea reabierta (En proceso)');
-    }
+  const postMessage = (content: string, roleLabel: string) => {
+    if (!task) return;
+    const by = currentUser?.name || 'Equipo';
+    const msg: ChatMessage = {
+      id: `sys-${Date.now()}`,
+      authorName: by,
+      authorRoleLabel: roleLabel,
+      authorInitials: by.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase(),
+      authorAvatarBg: 'bg-[#501f92]',
+      timestamp: 'Ahora mismo',
+      content,
+      reactions: []
+    };
+    const updated = [...chatMessages, msg];
+    setChatMessages(updated);
+    onUpdateComments?.(task.id, updated);
   };
 
-  // Reject / return from Review to In Progress for adjustments
-  const handleRejectToInProgress = () => {
+  // Un solo botón según el momento (§15.3): Iniciar → Entregar (o Terminar) → Aprobar / Pedir ajustes
+  const handleStartTask = () => {
     if (!onUpdateTaskStatus || !task) return;
-    logActivity('status_change', 'Tarea devuelta de "Review" a "In Progress" para ajustes', 'Review', 'In Progress');
+    logActivity('status_change', 'Tarea iniciada', 'To Do', 'In Progress');
     onUpdateTaskStatus(task.id, 'In Progress');
-    showToast('Tarea devuelta a En proceso para ajustes');
+    showToast('Tarea iniciada (En proceso)');
+  };
+  const handleOpenDelivery = () => {
+    setActiveTab('entregables');
+    setTimeout(() => document.getElementById('tab-entregables-content')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+    showToast(reviewOn ? 'Cuenta en una línea qué hiciste y entrégala' : 'Cuenta en una línea qué hiciste para terminarla');
+  };
+  const handleApprove = () => {
+    if (!onUpdateTaskStatus || !task) return;
+    const by = currentUser?.name || 'Revisor';
+    logActivity('status_change', `Aprobada por ${by}`, task.status, 'Done');
+    onReviewDecision?.(task.id, 'approved', by);
+    onUpdateTaskStatus(task.id, 'Done');
+    postMessage('✅ Aprobó la tarea.', 'Revisó');
+    showToast(`Aprobada. Cuenta para la misión del equipo y para ${assignee.name.split(' ')[0]}`);
+  };
+  const handleRequestChanges = () => {
+    if (!onUpdateTaskStatus || !task) return;
+    const note = changesNote.trim();
+    if (note.length < 5) { showToast('Escribe qué hay que ajustar'); return; }
+    const by = currentUser?.name || 'Revisor';
+    logActivity('status_change', `Ajustes pedidos por ${by}: ${note}`, 'Review', 'In Progress');
+    onReviewDecision?.(task.id, 'changes', by, note);
+    onUpdateTaskStatus(task.id, 'In Progress');
+    postMessage(`🔁 Pidió ajustes a @${assignee.name}:\n${note}`, 'Revisó');
+    setChangesOpen(false);
+    setChangesNote('');
+    showToast(`Ajustes enviados a ${assignee.name.split(' ')[0]}`);
+  };
+  const handleReopen = () => {
+    if (!onUpdateTaskStatus || !task) return;
+    logActivity('status_change', 'Tarea reabierta', 'Done', 'In Progress');
+    onUpdateTaskStatus(task.id, 'In Progress');
+    showToast('Tarea reabierta (En proceso)');
   };
 
   return (
@@ -1637,18 +1779,26 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                     <span>Archivar tarea</span>
                   </button>
 
-                  {onDeleteTask && (
+                  {onDeleteTask && deleteBlockedReason && (
+                    <div className="w-full px-3.5 py-2 text-left text-[#94a3b8] flex items-start gap-2 border-t border-[#f1f5f9] cursor-not-allowed" aria-disabled="true">
+                      <Trash2 className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                      <span>Eliminar tarea<span className="block text-[10.5px] leading-snug">{deleteBlockedReason}</span></span>
+                    </div>
+                  )}
+                  {onDeleteTask && !deleteBlockedReason && (
                     <button
                       onClick={() => {
+                        // Pide confirmación: el primer clic pregunta, el segundo elimina
+                        if (!confirmDelete) { setConfirmDelete(true); return; }
                         onDeleteTask(task.id);
                         showToast('Tarea eliminada');
                         setIsMenuOpen(false);
                         onClose();
                       }}
-                      className="w-full px-3.5 py-2 text-left hover:bg-[#fee2e2] text-[#dc2626] flex items-center gap-2 cursor-pointer border-t border-[#f1f5f9]"
+                      className={`w-full px-3.5 py-2 text-left flex items-center gap-2 cursor-pointer border-t border-[#f1f5f9] ${confirmDelete ? 'bg-[#dc2626] text-white font-bold' : 'hover:bg-[#fee2e2] text-[#dc2626]'}`}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
-                      <span>Eliminar tarea</span>
+                      <span>{confirmDelete ? '¿Seguro? Clic para eliminar' : 'Eliminar tarea'}</span>
                     </button>
                   )}
                 </div>
@@ -1694,26 +1844,32 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                   🟡 EN PROCESO
                 </span>
                 <span className="text-[11px] text-amber-900/90 font-medium truncate sm:whitespace-normal">
-                  Ejecución activa por <strong className="font-semibold text-amber-950">{assignee.name}</strong>. Al terminar entregables, solicita revisión para validación.
+                  La hace <strong className="font-semibold text-amber-950">{assignee.name}</strong>
+                  {reviewOn ? <> · revisa <strong className="font-semibold text-amber-950">{reviewerNames || 'el líder del proyecto'}</strong></> : ' · sin revisión'}
                 </span>
               </>
             )}
 
             {task.status === 'Review' && (
-              <span className="font-bold px-2 py-0.5 rounded-lg bg-[#ede9fe] text-[#501f92] border border-[#c4b5fd] text-[11px] flex items-center gap-1 shrink-0">
-                <Eye className="w-3 h-3 text-[#501f92]" />
-                <span>🔍 EN REVISIÓN</span>
-              </span>
+              <>
+                <span className="font-bold px-2 py-0.5 rounded-lg bg-[#ede9fe] text-[#501f92] border border-[#c4b5fd] text-[11px] flex items-center gap-1 shrink-0">
+                  <Eye className="w-3 h-3 text-[#501f92]" />
+                  <span>🔍 EN REVISIÓN</span>
+                </span>
+                <span className="text-[11px] text-[#381566] font-medium truncate sm:whitespace-normal">
+                  {assignee.name.split(' ')[0]} la entregó · revisa <strong className="font-semibold">{reviewerNames || 'el líder del proyecto'}</strong>
+                </span>
+              </>
             )}
 
             {task.status === 'Done' && (
               <>
                 <span className="font-bold px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-900 border border-emerald-300 text-[11px] flex items-center gap-1 shrink-0">
                   <CheckCircle2 className="w-3 h-3 text-emerald-700" />
-                  <span>🟢 COMPLETADA</span>
+                  <span>🟢 TERMINADA</span>
                 </span>
                 <span className="text-[11px] text-emerald-900/90 font-medium truncate sm:whitespace-normal">
-                  Tarea finalizada y validada. Todos los entregables y criterios han sido aprobados con éxito.
+                  {task.approvedBy ? <>Aprobada por <strong className="font-semibold">{task.approvedBy.split(' ')[0]}</strong>.</> : 'Terminada.'}
                 </span>
               </>
             )}
@@ -1724,18 +1880,18 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                   ⚪ POR HACER
                 </span>
                 <span className="text-[11px] text-slate-600 font-medium truncate sm:whitespace-normal">
-                  Pendiente de inicio · Asignada a <strong className="font-semibold text-slate-800">{assignee.name}</strong>.
+                  La hace <strong className="font-semibold text-slate-800">{assignee.name}</strong>. Se inicia sola al arrancar el cronómetro.
                 </span>
               </>
             )}
           </div>
 
-          {/* Quick status transition button in the banner */}
+          {/* Un solo botón según el momento (§15.3) */}
           <div className="flex items-center gap-2 shrink-0">
             {task.status === 'To Do' && isCurrentUserCollaborator && (
               <button
                 type="button"
-                onClick={handleProgressTaskStatus}
+                onClick={handleStartTask}
                 className="px-2.5 py-1 rounded-lg bg-[#501f92] hover:bg-[#381566] text-white font-bold text-[11px] flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
               >
                 <Play className="w-3 h-3 fill-current" />
@@ -1743,72 +1899,85 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               </button>
             )}
 
-            {task.status === 'To Do' && !isCurrentUserCollaborator && isCurrentUserLeadOrFollower && (
-              <button
-                type="button"
-                onClick={handleProgressTaskStatus}
-                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
-              >
-                <CheckCircle2 className="w-3 h-3" />
-                <span>Completar y aprobar</span>
-              </button>
-            )}
-
             {task.status === 'In Progress' && isCurrentUserCollaborator && (
               <button
                 type="button"
-                onClick={handleProgressTaskStatus}
-                className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
-                title="Pasar a revisión para que el Project Lead valide la tarea"
+                onClick={handleOpenDelivery}
+                className={`px-2.5 py-1 rounded-lg ${reviewOn ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'} text-white font-bold text-[11px] flex items-center gap-1 transition-all cursor-pointer shadow-2xs`}
+                title={reviewOn ? `Entregar para que ${reviewerNames || 'el revisor'} la revise` : 'Terminar la tarea (sin revisión)'}
               >
-                <Eye className="w-3 h-3" />
-                <span>Solicitar revisión →</span>
+                {reviewOn ? <Send className="w-3 h-3" /> : <CheckCircle2 className="w-3 h-3" />}
+                <span>{reviewOn ? 'Entregar →' : 'Terminar'}</span>
               </button>
             )}
 
-            {task.status === 'In Progress' && !isCurrentUserCollaborator && isCurrentUserLeadOrFollower && (
+            {(task.status === 'To Do' || task.status === 'In Progress') && !isCurrentUserCollaborator && isCurrentUserLeadOrFollower && reviewOn && waitingForChanges && (
+              <span className="text-[11px] font-semibold text-amber-900 bg-amber-100/80 px-2.5 py-1 rounded-lg border border-amber-200">
+                Esperando ajustes de {assignee.name.split(' ')[0]}
+              </span>
+            )}
+
+            {(task.status === 'To Do' || task.status === 'In Progress') && !isCurrentUserCollaborator && isCurrentUserLeadOrFollower && reviewOn && !waitingForChanges && (
               <button
                 type="button"
-                onClick={handleProgressTaskStatus}
-                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                onClick={handleApprove}
+                className="px-2.5 py-1 rounded-lg bg-white hover:bg-emerald-50 text-emerald-800 border border-emerald-300 font-bold text-[11px] flex items-center gap-1 transition-all cursor-pointer"
+                title="Aprobarla sin esperar la entrega"
               >
                 <CheckCircle2 className="w-3 h-3" />
-                <span>Completar y aprobar</span>
+                <span>Aprobar</span>
               </button>
             )}
 
             {task.status === 'Review' && (
               isCurrentUserLeadOrFollower ? (
-                <div className="flex items-center gap-1.5">
+                <div className="relative flex items-center gap-1.5">
                   <button
                     type="button"
-                    onClick={handleRejectToInProgress}
+                    onClick={() => setChangesOpen((v) => !v)}
                     className="px-2 py-1 rounded-lg bg-white hover:bg-amber-50 text-amber-900 border border-amber-300 font-semibold text-[11px] flex items-center gap-1 transition-all cursor-pointer"
-                    title="Devolver la tarea al colaborador para corregir o ajustar entregables"
+                    title="Devolverla a quien la hizo con lo que hay que ajustar"
                   >
                     <RotateCcw className="w-2.5 h-2.5" />
-                    <span>Devolver</span>
+                    <span>Pedir ajustes</span>
                   </button>
                   <button
                     type="button"
-                    onClick={handleProgressTaskStatus}
+                    onClick={handleApprove}
                     className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
                   >
                     <CheckCircle2 className="w-3 h-3" />
-                    <span>Aprobar y completar</span>
+                    <span>Aprobar</span>
                   </button>
+                  {changesOpen && (
+                    <div className="absolute right-0 top-full mt-2 z-40 w-72 rounded-2xl border border-[#e2e8f0] bg-white p-3 shadow-xl space-y-2">
+                      <p className="text-[11px] font-bold text-[#0f172a]">¿Qué hay que ajustar?</p>
+                      <textarea
+                        autoFocus
+                        rows={3}
+                        value={changesNote}
+                        onChange={(e) => setChangesNote(e.target.value)}
+                        placeholder="Ej.: El botón de compra debe ir arriba en celular."
+                        className="w-full rounded-xl border border-[#e2e8f0] p-2 text-xs text-[#0f172a] outline-none focus:border-[#501f92] resize-none"
+                      />
+                      <div className="flex justify-end gap-1.5">
+                        <button type="button" onClick={() => setChangesOpen(false)} className="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-[#64748b] hover:bg-[#f1f5f9] cursor-pointer">Cancelar</button>
+                        <button type="button" onClick={handleRequestChanges} className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold cursor-pointer">Enviar ajustes</button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
-                <span className="text-[11px] font-semibold text-amber-800 bg-amber-100/80 px-2.5 py-1 rounded-lg border border-amber-200">
-                  En espera de aprobación
+                <span className="text-[11px] font-semibold text-[#501f92] bg-[#ede9fe] px-2.5 py-1 rounded-lg border border-[#ddd6fe]">
+                  Esperando a {reviewerNames || 'el revisor'}
                 </span>
               )
             )}
 
-            {task.status === 'Done' && (
+            {task.status === 'Done' && (isCurrentUserCollaborator || isCurrentUserLeadOrFollower || canManageReview) && (
               <button
                 type="button"
-                onClick={handleProgressTaskStatus}
+                onClick={handleReopen}
                 className="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold text-[11px] flex items-center gap-1 transition-all cursor-pointer"
               >
                 <RefreshCw className="w-3 h-3" />
@@ -1817,6 +1986,27 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
             )}
           </div>
         </div>
+
+        {/* Revisor ausente hoy: ECO sugiere a otra persona (§33.4) */}
+        {reviewersAbsent && task.status !== 'Done' && (
+          <div className="px-4 sm:px-6 py-2 border-b border-[#fde68a] bg-[#fffbeb] text-[11px] text-[#78350f] flex flex-wrap items-center justify-between gap-2">
+            <span>
+              🌴 <strong>{reviewerNames}</strong> no está{firstAbsence ? ` hasta el ${formatDate(firstAbsence.endDate)}` : ' hoy'}.
+              {reviewerSubstitute ? ` ECO sugiere que revise ${reviewerSubstitute.name.split(' ')[0]}.` : ' Elige a otra persona en «Revisa».'}
+            </span>
+            {reviewerSubstitute && canManageReview ? (
+              <button
+                type="button"
+                onClick={() => { setReviewers([reviewerSubstitute as NonNullable<TaskItem['reviewer']>]); showToast(`Ahora revisa ${reviewerSubstitute.name}`); }}
+                className="px-2.5 py-1 rounded-lg bg-[#78350f] text-white font-bold cursor-pointer"
+              >
+                Que revise {reviewerSubstitute.name.split(' ')[0]}
+              </button>
+            ) : (
+              !canManageReview && <span className="font-semibold">ECO le avisó al líder del proyecto.</span>
+            )}
+          </div>
+        )}
 
         {/* ========================================================= */}
         {/* MAIN BODY: 2 Columns on Desktop & Tablet Landscape, Single Responsive View on Mobile & Tablet Portrait */}
@@ -1827,8 +2017,8 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
           {/* --------------------------------------------------------- */}
           <div className={`${activeTab === 'info' ? 'hidden md:flex' : 'flex'} md:col-span-7 lg:col-span-8 p-4 sm:p-6 flex-col justify-between space-y-6 overflow-y-auto max-h-full`}>
             <div className="space-y-5">
-              {/* Tabs Navigation Header */}
-              <div className="flex items-center gap-4 sm:gap-6 border-b border-[#e2e8f0]">
+              {/* Tabs Navigation Header (en celular se desplaza de lado) */}
+              <div className="flex items-center gap-4 sm:gap-6 border-b border-[#e2e8f0] overflow-x-auto whitespace-nowrap [scrollbar-width:none] -mx-1 px-1">
                 <button
                   id="tab-mensajes-btn"
                   onClick={() => setActiveTab('mensajes')}
@@ -1891,7 +2081,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                       : 'text-[#64748b] hover:text-[#0f172a]'
                   }`}
                 >
-                  <span>Info & Tiempos</span>
+                  <span>Info</span>
                   {activeTab === 'info' && (
                     <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#501f92] rounded-full" />
                   )}
@@ -2233,7 +2423,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                               <div className="flex flex-wrap items-center gap-1.5 pt-1">
                                 {msg.reactions &&
                                   msg.reactions.map((react) => {
-                                    const hasReacted = react.users.includes('Catalina Tejada');
+                                    const hasReacted = react.users.includes(meName);
                                     return (
                                       <button
                                         key={react.emoji}
@@ -2340,18 +2530,87 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               {/* --------------------------------------------------- */}
               {activeTab === 'entregables' && (
                 <div id="tab-entregables-content" className="space-y-5">
+                  {(task.deliverables || []).length > 0 && (
+                    <div className="space-y-2 text-xs">
+                      <h3 className="font-extrabold text-sm text-[#0f172a]">Entregas</h3>
+                      {[...(task.deliverables || [])].reverse().map((d) => (
+                        <div key={d.id} className="p-3 rounded-xl border border-[#e2e8f0] bg-white space-y-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-bold text-[#0f172a] truncate">{d.submittedBy} · {d.submittedAt}</span>
+                            <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${d.status === 'approved' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : d.status === 'changes_requested' ? 'bg-amber-50 text-amber-900 border border-amber-200' : 'bg-[#f5f3ff] text-[#501f92] border border-[#ddd6fe]'}`}>
+                              {d.status === 'approved' ? 'Aprobada' : d.status === 'changes_requested' ? 'Con ajustes' : 'Entregada'}
+                            </span>
+                          </div>
+                          {d.notes && <p className="text-[#334155]">{d.notes}</p>}
+                          {d.url && (/^https?:/.test(d.url) ? <a href={d.url} target="_blank" rel="noreferrer" className="text-[#501f92] font-semibold hover:underline break-all">{d.url}</a> : <p className="text-[#64748b]">📎 {d.url}</p>)}
+                          {d.stepOfTaskTitle && <p className="text-[#64748b]">Paso de: <strong>{d.stepOfTaskTitle}</strong></p>}
+                          {d.changesNote && <p className="text-amber-900">🔁 Ajustes: {d.changesNote}</p>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {(isCurrentUserCollaborator || !assignee?.name) && (task.status === 'To Do' || task.status === 'In Progress') ? (
                   <div className="p-4 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] space-y-4 text-xs">
                     <div>
-                      <h3 className="font-extrabold text-sm text-[#0f172a]">Solicitar revisión</h3>
+                      <h3 className="font-extrabold text-sm text-[#0f172a]">{reviewOn ? 'Entregar' : 'Terminar'}</h3>
                       <p className="text-[11px] text-[#64748b] mt-0.5">
-                        Todo es opcional: agrega un enlace, un archivo o un mensaje si ayuda al revisor (por ejemplo, «ya hice los cambios en Shopify»).
+                        {reviewOn
+                          ? `Cuenta en una línea qué hiciste. Se avisa a ${reviewerNames || 'quien revisa'}, que aprueba o pide ajustes. El enlace y el archivo son opcionales.`
+                          : 'Esta tarea no tiene revisión: al enviar, queda terminada. Cuenta en una línea qué hiciste.'}
                       </p>
                     </div>
 
                     <form onSubmit={handleSubmitDeliverable} className="space-y-3.5">
+                      {/* Comentario de entrega opcional */}
+                      <div>
+                        <label className="block font-bold text-[#334155] mb-1">
+                          ¿Qué hiciste? <span className="text-[#dc2626]">*</span>
+                        </label>
+                        <div className="relative">
+                          <textarea
+                            ref={deliveryNotesRef}
+                            rows={2}
+                            placeholder="Una línea basta. Ej.: Ajusté el home y dejé las vistas en Figma. Usa @ para mencionar a alguien…"
+                            value={deliverableNotes}
+                            onChange={handleDeliveryNotesChange}
+                            onKeyDown={(e) => e.key === 'Escape' && deliveryMention && (e.stopPropagation(), setDeliveryMention(null))}
+                            onBlur={() => setTimeout(() => setDeliveryMention(null), 150)}
+                            className="w-full p-2.5 rounded-xl border border-[#e2e8f0] bg-white text-xs text-[#0f172a] focus:outline-none focus:border-[#501f92] resize-none"
+                          />
+                          {deliveryMention && (() => {
+                            const q = deliveryMention.query.toLowerCase();
+                            const matches = TEAM_MEMBERS_POOL.filter((m) => m.name.toLowerCase().includes(q) || m.role.toLowerCase().includes(q)).slice(0, 8);
+                            return (
+                              <div className="absolute top-full left-0 mt-1 w-72 max-h-56 overflow-y-auto rounded-2xl bg-white border border-[#e2e8f0] shadow-xl py-1.5 z-40 text-xs">
+                                <div className="px-3 py-1 text-[10px] font-extrabold text-[#501f92] uppercase tracking-wider flex items-center gap-1.5 border-b border-[#f1f5f9] pb-1.5 mb-1">
+                                  <AtSign className="w-3 h-3" /> Mencionar miembro del equipo
+                                </div>
+                                {matches.length === 0 ? (
+                                  <div className="px-3 py-2 text-[#94a3b8] text-[11px]">No se encontraron miembros</div>
+                                ) : (
+                                  matches.map((m) => (
+                                    <button
+                                      key={m.name}
+                                      type="button"
+                                      onMouseDown={(e) => e.preventDefault()}
+                                      onClick={() => insertDeliveryMention(m.name)}
+                                      className="w-full px-3 py-1.5 text-left hover:bg-[#f8fafc] flex items-center justify-between gap-2 cursor-pointer"
+                                    >
+                                      <span className="font-bold text-[#0f172a] truncate">{m.name}</span>
+                                      <span className="text-[10px] text-[#64748b] shrink-0">{m.role}</span>
+                                    </button>
+                                  ))
+                                )}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                        <p className="text-[10px] text-[#64748b] mt-1">Es lo único obligatorio. Las personas mencionadas reciben un aviso{reviewOn ? ' junto con quien revisa' : ''}.</p>
+                      </div>
+
                       {/* URL / Enlace */}
                       <div>
-                        <label className="block font-bold text-[#334155] mb-1">Enlace del entregable (opcional)</label>
+                        <label className="block font-bold text-[#334155] mb-1">Enlace (opcional)</label>
                         <div className="relative">
                           <input
                             type="url"
@@ -2366,7 +2625,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
                       {/* Opción de subir archivo */}
                       <div>
-                        <label className="block font-bold text-[#334155] mb-1">Subir Archivo o Comprobante (Opcional)</label>
+                        <label className="block font-bold text-[#334155] mb-1">Archivo (opcional)</label>
                         <label className="border-2 border-dashed border-[#cbd5e1] hover:border-[#501f92] bg-white rounded-xl p-3.5 flex items-center justify-center gap-2.5 cursor-pointer transition-colors text-center">
                           <UploadCloud className="w-5 h-5 text-[#501f92]" />
                           <div className="text-left">
@@ -2385,6 +2644,29 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                             }}
                           />
                         </label>
+                      </div>
+
+                      {/* Es un paso de otra tarea (§33.3) */}
+                      <div className="p-3 rounded-xl bg-white border border-[#e2e8f0] space-y-2">
+                        <label className="flex items-center gap-2 font-bold text-[#334155] cursor-pointer">
+                          <input type="checkbox" checked={isStepOf} onChange={(e) => setIsStepOf(e.target.checked)} className="rounded accent-[#501f92]" />
+                          Es un paso de otra tarea
+                        </label>
+                        {isStepOf && (
+                          <select
+                            value={stepOfTaskId}
+                            onChange={(e) => setStepOfTaskId(e.target.value)}
+                            className="w-full px-3 py-2 rounded-xl border border-[#e2e8f0] bg-white text-xs text-[#0f172a] focus:outline-none focus:border-[#501f92]"
+                          >
+                            <option value="">Elige la tarea a la que alimenta…</option>
+                            {tasksList
+                              .filter((t) => t.id !== task.id && t.projectName === task.projectName && !t.isArchived)
+                              .map((t) => (
+                                <option key={t.id} value={t.id}>{t.title}</option>
+                              ))}
+                          </select>
+                        )}
+                        {isStepOf && <p className="text-[10px] text-[#64748b]">El resultado final vive en esa tarea; aquí basta con contar qué hiciste.</p>}
                       </div>
 
                       {/* Criterios de Aceptación */}
@@ -2446,65 +2728,25 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                         )}
                       </div>
 
-                      {/* Comentario de entrega opcional */}
-                      <div>
-                        <label className="block font-bold text-[#334155] mb-1">
-                          Comentario de entrega (Opcional)
-                        </label>
-                        <div className="relative">
-                          <textarea
-                            ref={deliveryNotesRef}
-                            rows={2}
-                            placeholder="Describe qué contiene la entrega o qué revisar. Usa @ para mencionar a alguien…"
-                            value={deliverableNotes}
-                            onChange={handleDeliveryNotesChange}
-                            onKeyDown={(e) => e.key === 'Escape' && deliveryMention && (e.stopPropagation(), setDeliveryMention(null))}
-                            onBlur={() => setTimeout(() => setDeliveryMention(null), 150)}
-                            className="w-full p-2.5 rounded-xl border border-[#e2e8f0] bg-white text-xs text-[#0f172a] focus:outline-none focus:border-[#501f92] resize-none"
-                          />
-                          {deliveryMention && (() => {
-                            const q = deliveryMention.query.toLowerCase();
-                            const matches = TEAM_MEMBERS_POOL.filter((m) => m.name.toLowerCase().includes(q) || m.role.toLowerCase().includes(q)).slice(0, 8);
-                            return (
-                              <div className="absolute top-full left-0 mt-1 w-72 max-h-56 overflow-y-auto rounded-2xl bg-white border border-[#e2e8f0] shadow-xl py-1.5 z-40 text-xs">
-                                <div className="px-3 py-1 text-[10px] font-extrabold text-[#501f92] uppercase tracking-wider flex items-center gap-1.5 border-b border-[#f1f5f9] pb-1.5 mb-1">
-                                  <AtSign className="w-3 h-3" /> Mencionar miembro del equipo
-                                </div>
-                                {matches.length === 0 ? (
-                                  <div className="px-3 py-2 text-[#94a3b8] text-[11px]">No se encontraron miembros</div>
-                                ) : (
-                                  matches.map((m) => (
-                                    <button
-                                      key={m.name}
-                                      type="button"
-                                      onMouseDown={(e) => e.preventDefault()}
-                                      onClick={() => insertDeliveryMention(m.name)}
-                                      className="w-full px-3 py-1.5 text-left hover:bg-[#f8fafc] flex items-center justify-between gap-2 cursor-pointer"
-                                    >
-                                      <span className="font-bold text-[#0f172a] truncate">{m.name}</span>
-                                      <span className="text-[10px] text-[#64748b] shrink-0">{m.role}</span>
-                                    </button>
-                                  ))
-                                )}
-                              </div>
-                            );
-                          })()}
-                        </div>
-                        <p className="text-[10px] text-[#64748b] mt-1">Las personas mencionadas reciben un aviso junto con el líder y el revisor.</p>
-                      </div>
-
                       {/* CTA Enviar a revisión */}
                       <div className="pt-2 flex justify-end">
                         <button
                           type="submit"
                           className="px-5 py-2.5 rounded-xl bg-[#501f92] hover:bg-[#381566] text-white text-xs font-bold shadow-xs transition-all cursor-pointer flex items-center gap-2"
                         >
-                          <Send className="w-3.5 h-3.5" />
-                          <span>Enviar a revisión</span>
+                          {reviewOn ? <Send className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                          <span>{reviewOn ? 'Entregar a revisión' : 'Terminar tarea'}</span>
                         </button>
                       </div>
                     </form>
                   </div>
+                  ) : (
+                    (task.deliverables || []).length === 0 && (
+                      <p className="rounded-xl border border-dashed border-[#e2e8f0] px-3 py-3 text-[11px] text-[#64748b]">
+                        {task.status === 'Done' ? 'Terminada sin entrega registrada.' : task.status === 'Review' ? 'Entregada; esperando revisión.' : `Aún no hay entregas. ${assignee.name.split(' ')[0]} la entrega desde aquí.`}
+                      </p>
+                    )
+                  )}
                 </div>
               )}
 
@@ -2771,7 +3013,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                   <div className="p-2.5 flex items-start gap-2.5">
                     {/* User Avatar */}
                     <div className="w-7 h-7 rounded-full bg-[#501f92] text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5 shadow-2xs">
-                      CT
+                      {meInitials}
                     </div>
 
                     <textarea
@@ -3025,9 +3267,10 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
             {/* 1. Estado & Prioridad */}
             <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
+              <div className={`grid ${isDireccion ? 'grid-cols-2' : 'grid-cols-1'} gap-3`}>
+                {isDireccion && (
                 <div>
-                  <label className="block text-xs font-semibold text-[#64748b] mb-1.5">Estado</label>
+                  <label className="block text-xs font-semibold text-[#64748b] mb-1.5" title="Solo Dirección y administración: para corregir errores. El estado normal lo mueve el botón de arriba.">Corregir estado</label>
                   <div className="relative">
                     <select
                       id="task-status-select"
@@ -3043,10 +3286,11 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                       <option value="To Do">⚪ Por hacer</option>
                       <option value="In Progress">🟡 En proceso</option>
                       <option value="Review">🔍 En revisión</option>
-                      <option value="Done">🟢 Completada</option>
+                      <option value="Done">🟢 Terminada</option>
                     </select>
                   </div>
                 </div>
+                )}
 
                 <div>
                   <label className="block text-xs font-semibold text-[#64748b] mb-1.5">Prioridad</label>
@@ -3064,6 +3308,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                       <option value="Low">🟢 Baja</option>
                       <option value="Medium">🚩 Media</option>
                       <option value="High">🔴 Alta</option>
+                      <option value="urgent">⚡ Urgente</option>
                     </select>
                   </div>
                 </div>
@@ -3188,10 +3433,10 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                   <span>Cronograma</span>
                 </span>
                 <button
-                  onClick={() => setIsEditingDates(!isEditingDates)}
+                  onClick={() => { setDatesSaved(false); setIsEditingDates(!isEditingDates); }}
                   className="text-[11px] font-semibold text-[#501f92] hover:underline cursor-pointer"
                 >
-                  {isEditingDates ? 'Cancelar' : 'Cambiar'}
+                  {isEditingDates ? 'Listo' : 'Cambiar'}
                 </button>
               </div>
 
@@ -3203,7 +3448,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                       <input
                         type="date"
                         value={startDateInput}
-                        onChange={(e) => setStartDateInput(e.target.value)}
+                        onChange={(e) => { setStartDateInput(e.target.value); saveDates(e.target.value, dueDateInput); }}
                         className="w-full px-2 py-1 rounded-lg border border-[#e2e8f0] text-xs"
                       />
                     </div>
@@ -3212,15 +3457,22 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                       <input
                         type="date"
                         value={dueDateInput}
-                        onChange={(e) => setDueDateInput(e.target.value)}
+                        onChange={(e) => { setDueDateInput(e.target.value); saveDates(startDateInput, e.target.value); }}
                         className="w-full px-2 py-1 rounded-lg border border-[#e2e8f0] text-xs"
                       />
                     </div>
+                    {startDateInput && dueDateInput && startDateInput > dueDateInput ? (
+                      <p className="text-[10.5px] font-semibold text-[#dc2626]">La entrega no puede ser antes del inicio.</p>
+                    ) : datesSaved ? (
+                      <p className="text-[10.5px] font-semibold text-[#059669] flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Guardado</p>
+                    ) : (
+                      <p className="text-[10.5px] text-[#64748b]">Se guarda al elegir la fecha.</p>
+                    )}
                     <button
-                      onClick={handleSaveDates}
+                      onClick={() => { setIsEditingDates(false); setDatesSaved(false); }}
                       className="w-full py-1.5 rounded-lg bg-[#501f92] text-white font-bold text-xs cursor-pointer"
                     >
-                      Guardar
+                      Listo
                     </button>
                   </div>
                 ) : (
@@ -3266,6 +3518,9 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               </div>
             )}
 
+            {/* Bloqueo de la tarea: motivo y aviso al líder (§15) */}
+            {task && <BlockerControl task={task} currentUser={currentUser} users={users} onUpdateBlockerInfo={onUpdateBlockerInfo} />}
+
             {/* 4. Estructura de Responsabilidades & Roles */}
             <div className="space-y-3 pt-1">
               <div className="flex items-center justify-between">
@@ -3273,71 +3528,98 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               </div>
 
               <div className="p-3 rounded-2xl bg-white border border-[#e2e8f0] shadow-2xs space-y-3">
-                {/* 1. Project Lead (Líder de proyecto / gestión general) */}
+                {/* Revisa (§33.4): por defecto el líder del proyecto; cualquiera puede revisar.
+                    Quien hace la tarea puede sumar revisores; quitarlos o poner «Sin revisión» solo
+                    lo hacen el líder del proyecto o Dirección. */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="text-[11px] font-bold text-[#0f172a] flex items-center gap-1.5">
-                      <Crown className="w-3.5 h-3.5 text-[#501f92]" />
-                      <span>Project Lead</span>
+                      <CheckCircle2 className="w-3.5 h-3.5 text-[#16a34a]" />
+                      <span>Revisa</span>
                     </span>
+                    {canManageReview && (
+                      <button
+                        type="button"
+                        onClick={() => setReviewRequired(!reviewOn)}
+                        className="text-[10.5px] font-semibold text-[#501f92] hover:underline cursor-pointer"
+                      >
+                        {reviewOn ? 'Sin revisión' : 'Pedir revisión'}
+                      </button>
+                    )}
                   </div>
-
-                  <DropdownMenu
-                    value={projectLead?.name || 'Paola (Lead PM)'}
-                    onChange={(val) => {
-                      const member = TEAM_MEMBERS_POOL.find((m) => m.name === val);
-                      if (member) {
-                        const newLead = {
-                          name: member.name,
-                          initials: member.initials,
-                          avatarBg: member.avatarBg,
-                          role: member.role
-                        };
-                        applyTeamUpdate(assignee, collaborators, reviewer, requestedBy, budgetedRole, requiresValidation, newLead, followers);
-                        showToast(`Project Lead asignado: ${member.name}`);
-                      }
-                    }}
-                    options={TEAM_MEMBERS_POOL.map((m) => ({
-                      id: m.name,
-                      label: m.name,
-                      sublabel: m.role,
-                      icon: (
-                        <UserAvatar
-                          name={m.name}
-                          initials={m.initials}
-                          avatarBg={m.avatarBg}
-                          avatarUrl={m.avatarUrl}
-                          size="custom"
-                          className="w-5 h-5 rounded-full text-[9px]"
-                        />
-                      )
-                    }))}
-                    trigger={
-                      <div className="w-full flex items-center justify-between p-2 rounded-xl bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] transition-colors text-left cursor-pointer group">
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <UserAvatar
-                            name={projectLead?.name}
-                            initials={projectLead?.initials || 'PL'}
-                            avatarBg={projectLead?.avatarBg || 'bg-[#501f92]'}
-                            avatarUrl={projectLead?.avatarUrl}
-                            size="sm"
-                            className="w-7 h-7 rounded-full text-xs shadow-2xs"
-                          />
-                          <div className="min-w-0">
-                            <span className="text-xs font-bold text-[#0f172a] truncate block">
-                              {projectLead?.name || 'Sin Project Lead'}
-                            </span>
-                            <span className="text-[10px] text-[#64748b] truncate block">
-                              {projectLead?.role || 'Líder del proyecto'}
-                            </span>
+                  {reviewOn ? (
+                    <>
+                      <DropdownMenu
+                        multiple={true}
+                        value={effectiveReviewers.map((r) => r?.name).filter(Boolean) as string[]}
+                        onChange={() => {}}
+                        onMultiChange={(selectedNames) => {
+                          const current = effectiveReviewers.map((r) => r.name);
+                          const removed = current.filter((n) => !selectedNames.includes(n));
+                          if (removed.length && !canManageReview) {
+                            showToast('Solo el líder del proyecto o Dirección pueden quitar a quien revisa');
+                            selectedNames = Array.from(new Set([...current, ...selectedNames]));
+                          }
+                          if (selectedNames.length === 0) {
+                            setReviewers([], false);
+                            return;
+                          }
+                          const next = selectedNames
+                            .map((name) => {
+                              const m = TEAM_MEMBERS_POOL.find((x) => x.name === name);
+                              return m ? { name: m.name, initials: m.initials, avatarBg: m.avatarBg, role: m.role } : effectiveReviewers.find((r) => r.name === name);
+                            })
+                            .filter(Boolean) as NonNullable<TaskItem['reviewer']>[];
+                          setReviewers(next);
+                        }}
+                        options={[
+                          ...effectiveReviewers
+                            .filter((r) => !TEAM_MEMBERS_POOL.some((m) => m.name === r.name))
+                            .map((r) => ({
+                              id: r.name,
+                              label: r.name,
+                              sublabel: r.role || 'Líder del proyecto',
+                              icon: <UserAvatar name={r.name} initials={r.initials} avatarBg={r.avatarBg} avatarUrl={r.avatarUrl} size="custom" className="w-5 h-5 rounded-full text-[9px]" />
+                            })),
+                          ...TEAM_MEMBERS_POOL.map((m) => ({
+                          id: m.name,
+                          label: m.name,
+                          sublabel: m.role,
+                          icon: (
+                            <UserAvatar name={m.name} initials={m.initials} avatarBg={m.avatarBg} avatarUrl={m.avatarUrl} size="custom" className="w-5 h-5 rounded-full text-[9px]" />
+                          )
+                        }))]}
+                        trigger={
+                          <div className="w-full flex items-center justify-between p-2 rounded-xl bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e2e8f0] transition-colors text-left cursor-pointer group">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className="flex -space-x-1.5 shrink-0">
+                                {effectiveReviewers.slice(0, 3).map((r) => (
+                                  <UserAvatar key={r.name} name={r.name} initials={r.initials} avatarBg={r.avatarBg} avatarUrl={r.avatarUrl} size="custom" className="w-6 h-6 rounded-full text-[9px] ring-2 ring-white" />
+                                ))}
+                              </div>
+                              <span className="text-xs font-semibold text-[#0f172a] truncate">
+                                {effectiveReviewers.length ? effectiveReviewers.map((r) => (r?.name || '').split(' ')[0]).join(', ') : 'Elige quién revisa'}
+                                {!reviewersList.length && projectLead?.name && <span className="font-normal text-[#64748b]"> · líder del proyecto</span>}
+                              </span>
+                            </div>
+                            <ChevronDown className="w-3.5 h-3.5 text-[#94a3b8] group-hover:text-[#501f92] transition-colors shrink-0" />
                           </div>
-                        </div>
-                        <ChevronDown className="w-3.5 h-3.5 text-[#94a3b8] group-hover:text-[#501f92] transition-colors shrink-0" />
-                      </div>
-                    }
-                    className="w-full"
-                    menuClassName="w-full z-40 max-h-56"
-                  />
+                        }
+                        className="w-full"
+                        menuClassName="w-full z-40 max-h-56"
+                      />
+                      <p className="mt-1 text-[10px] text-[#64748b]">
+                        Aprueba o pide ajustes. Puede ser cualquier persona de Uhura; basta con que uno apruebe.
+                        {reviewersList.length > 0 && canManageReview && projectLead?.name && (
+                          <> <button type="button" onClick={() => setReviewers([], false)} className="font-semibold text-[#501f92] hover:underline cursor-pointer">Volver al líder del proyecto</button></>
+                        )}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="p-2 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] text-[11px] text-[#475569]">
+                      Sin revisión: quien la hace la termina directamente.
+                    </p>
+                  )}
                 </div>
 
                 {/* 2. Colaboradores (Responsables de la ejecución - multiselección) */}
@@ -3742,7 +4024,8 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                   />
                 </div>
 
-                {/* 4. Rol Cotizado (Informativo / Tarifa presupuestada) */}
+                {/* 4. Rol Cotizado: solo líderes y Dirección */}
+                {canSeeManagement && (
                 <div className="pt-2 border-t border-[#f1f5f9]">
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="text-[11px] font-bold text-[#0f172a] flex items-center gap-1.5">
@@ -3765,9 +4048,11 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                     </div>
                   </div>
                 </div>
+                )}
               </div>
             </div>
 
+            {canSeeManagement && (<>
             {/* 5. Retrabajos (Medición de Calidad: Cliente vs Interno) */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -3992,6 +4277,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                 )}
               </div>
             </div>
+            </>)}
           </div>
         </div>
 
@@ -4004,7 +4290,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
         >
           <span>
             ID: <strong className="font-mono text-[#0f172a]">{task.id.toUpperCase()}</strong> · Creada el{' '}
-            {formatDate(task.date, 'Sin fecha')}
+            {formatDate(task.createdAt || task.date, 'Sin fecha')}
           </span>
         </div>
       </div>

@@ -11,6 +11,7 @@ import {
   TaskAssigneeAllocation,
   ActiveTimerState,
   STANDARD_UHURA_ROLES,
+  isInternalProject
 } from '../types';
 import {
   normalizeTaskStatus,
@@ -53,6 +54,8 @@ import {
 import { initialUsers } from '../mockData';
 import { ProjectDependenciesSection } from './ProjectDependenciesSection';
 import { TimerControls } from '../time/TimerControls';
+import { useSubmitOnce } from '../ui/useSubmitOnce';
+import { taskDeleteBlock } from '../deletePermissions';
 
 interface ProjectTasksTabProps {
   project: ProjectSummaryItem;
@@ -132,7 +135,10 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
   // Ronda 2: la fila de la tarea ya no tiene lápiz (se edita al abrirla); tiene eliminar con confirmación.
   // Solo líderes y administración eliminan; una tarea con horas registradas no se elimina (se archiva).
   const [taskPendingDelete, setTaskPendingDelete] = useState<TaskItem | null>(null);
-  const canDeleteTasks = !currentUser || ['leader', 'system_admin'].includes(currentUser.accessLevel || '');
+  // Comité operativo: líderes, Comercial, Dirección y admin (26 Nov 2026)
+  // Eliminar entregables: comité operativo (líderes, Comercial, Dirección) + system_admin. Tareas: además quien la
+  // creó, mientras no tenga horas ni esté entregada (`taskDeleteBlock`, 26 Nov 2026).
+  const canDeleteTasks = !currentUser || ['leader', 'commercial', 'executive', 'system_admin'].includes(currentUser.accessLevel || '');
   const [deliverablePendingDelete, setDeliverablePendingDelete] = useState<ProjectDeliverable | null>(null);
   const [replanNotice, setReplanNotice] = useState<string | null>(null);
 
@@ -219,7 +225,7 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
         id: 'del-general',
         projectId: project.id,
         name: 'Ejecución General',
-        description: 'Frente principal de trabajo',
+        description: 'Entregable principal',
         order: 1,
         status: 'in_progress' as const,
         roleBudgets: [
@@ -436,9 +442,11 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
   ].filter(Boolean);
   const missingField = (empty: boolean) => taskFormAttempted && empty;
 
+  const { busy, claim } = useSubmitOnce(); // evita el doble guardado (§34.17)
   const handleSaveTask = () => {
     setTaskFormAttempted(true);
     if (taskFormMissing.length > 0) return;
+    if (!claim()) return; // doble clic: no guardar dos veces
 
     // Resolver asignaciones y horas estimadas
     let resolvedAllocations: TaskAssigneeAllocation[] = [];
@@ -506,6 +514,8 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
       budgetedHours: totalHours,
       estimatedHours: totalHours,
       consumedSeconds: isEdit ? editingTask!.consumedSeconds : 0,
+      createdByUserId: isEdit ? editingTask!.createdByUserId : currentUser?.id,
+      createdByName: isEdit ? editingTask!.createdByName : currentUser?.name,
       assigneeAllocations: resolvedAllocations,
       assigneeIds: resolvedAllocations.map((a) => a.userId),
       assignee: {
@@ -618,15 +628,6 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
         </div>
       )}
 
-      {/* 2. GESTIÓN DE DEPENDENCIAS, INSUMOS & GATES DE CLIENTE */}
-      <ProjectDependenciesSection
-        project={project}
-        currentUser={currentUser}
-        allUsers={users}
-        onUpdateProject={onUpdateProject}
-        onDependencyReceived={onDependencyReceived}
-      />
-
       {/* 3. BARRA DE CONTROL, VISTAS Y BÚSQUEDA */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-[#e2e8f0] shadow-2xs">
         <div className="flex items-center gap-2 w-full md:w-auto flex-1 max-w-md">
@@ -655,7 +656,7 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
         </div>
 
         <div className="flex items-center gap-2 w-full md:w-auto justify-end flex-wrap">
-          {/* Toggle Expandir/Colapsar todo en modo Frentes */}
+          {/* Toggle Expandir/Colapsar todo en modo Entregables */}
 
           {/* Switch de Vistas */}
           <div className="bg-[#f1f5f9] p-1 rounded-xl flex items-center gap-1 text-xs">
@@ -665,7 +666,7 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
                 viewMode === 'deliverables' ? 'bg-white text-[#501f92] shadow-2xs' : 'text-[#64748b]'
               }`}
             >
-              Frentes
+              Entregables
             </button>
             <button
               onClick={() => setViewMode('kanban')}
@@ -689,7 +690,7 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
             onClick={() => setIsDeliverableModalOpen(true)}
             disabled={!onUpdateProject}
             className="inline-flex items-center gap-1.5 h-8 px-3.5 rounded-full border border-[#cbd5e1] bg-white hover:bg-[#faf5ff] hover:border-[#501f92] text-[#501f92] text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer disabled:opacity-50"
-            title="Agregar un entregable o frente de trabajo. Las tareas se crean desde «+ Tarea» en cada entregable."
+            title="Agregar un entregable. Las tareas se crean desde «+ Tarea» en cada entregable."
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Nuevo entregable</span>
@@ -799,14 +800,9 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
                           <div className="flex items-start gap-3 min-w-[280px] flex-1">
                             <button
                               onClick={(e) => {
+                                // §15.3: el estado solo se mueve con el botón de la tarea (Entregar, Aprobar, Pedir ajustes)
                                 e.stopPropagation();
-                                const nextStatus =
-                                  canonicalStatus === 'completed'
-                                    ? 'todo'
-                                    : task.requiresReview
-                                    ? 'in_review'
-                                    : 'completed';
-                                handleQuickStatusChange(task, nextStatus);
+                                onOpenTaskDetail?.(task);
                               }}
                               className={`w-5 h-5 rounded-lg border mt-0.5 flex items-center justify-center transition-colors ${
                                 canonicalStatus === 'completed'
@@ -815,10 +811,8 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
                               }`}
                               title={
                                 canonicalStatus === 'completed'
-                                  ? 'Reabrir tarea'
-                                  : task.requiresReview
-                                  ? 'Enviar a revisión (requiresReview activo)'
-                                  : 'Completar directamente'
+                                  ? 'Terminada · abrir la tarea'
+                                  : 'Abrir la tarea para entregarla'
                               }
                             >
                               <CheckCircle2 className="w-3.5 h-3.5" />
@@ -961,7 +955,12 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
                               <AlertTriangle className="w-3.5 h-3.5" />
                             </button>
 
-                            {canDeleteTasks && (
+                            {typeof taskDeleteBlock(task, currentUser) === 'string' && (
+                              <span className="p-1.5 text-[#cbd5e1] cursor-not-allowed" title={taskDeleteBlock(task, currentUser) as string} aria-label={taskDeleteBlock(task, currentUser) as string}>
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </span>
+                            )}
+                            {taskDeleteBlock(task, currentUser) === null && (
                               <button
                                 onClick={() => setTaskPendingDelete(task)}
                                 className="p-1.5 text-[#94a3b8] hover:text-[#dc2626] rounded-lg cursor-pointer"
@@ -1117,7 +1116,12 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
                         </span>
                       </td>
                       <td className="py-3.5 px-5 text-right pr-6" onClick={(e) => e.stopPropagation()}>
-                        {canDeleteTasks && (
+                        {typeof taskDeleteBlock(task, currentUser) === 'string' && (
+                          <span className="p-1 text-[#cbd5e1] cursor-not-allowed inline-flex" title={taskDeleteBlock(task, currentUser) as string} aria-label={taskDeleteBlock(task, currentUser) as string}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </span>
+                        )}
+                        {taskDeleteBlock(task, currentUser) === null && (
                           <button
                             onClick={() => setTaskPendingDelete(task)}
                             className="p-1 hover:bg-[#fef2f2] text-[#94a3b8] hover:text-[#dc2626] rounded cursor-pointer"
@@ -1137,13 +1141,25 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
         </div>
       )}
 
+      {/* 5b. INSUMOS DEL CLIENTE: después de las tareas, para que no se confundan con ellas.
+          Un proyecto interno no tiene cliente que entregue insumos: la sección no aparece (salvo que ya tenga). */}
+      {(!isInternalProject(project) || (project.dependencies || []).length > 0) && (
+        <ProjectDependenciesSection
+          project={project}
+          currentUser={currentUser}
+          allUsers={users}
+          onUpdateProject={onUpdateProject}
+          onDependencyReceived={onDependencyReceived}
+        />
+      )}
+
       {/* 6. MODAL: CREAR O EDITAR TAREA CON VALIDACIÓN DE ROL Y MÚLTIPLES COLABORADORES */}
       {isDeliverableModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4" onClick={(e) => { if (e.target === e.currentTarget) setIsDeliverableModalOpen(false); }}>
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-[#e2e8f0] space-y-4">
             <div>
               <h3 className="font-extrabold text-base text-[#0f172a]">Nuevo entregable</h3>
-              <p className="text-xs text-[#64748b] mt-0.5">Frente de trabajo que agrupa tareas. Las horas se cotizan en el alcance; aquí nace sin horas.</p>
+              <p className="text-xs text-[#64748b] mt-0.5">Entregable que agrupa tareas. Las horas se cotizan en el alcance; aquí nace sin horas.</p>
             </div>
             <label className="block space-y-1 text-xs">
               <span className="font-bold text-[#334155]">Nombre <span className="text-[#ef4444]">*</span></span>
@@ -1217,7 +1233,7 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-bold text-[#334155] mb-1">
-                    Entregable / Frente <span className="text-[#ef4444]">*</span>
+                    Entregable <span className="text-[#ef4444]">*</span>
                   </label>
                   <select
                     value={formDeliverableId}
@@ -1420,6 +1436,7 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
                     <option value="Low">Baja</option>
                     <option value="Medium">Media</option>
                     <option value="High">Alta</option>
+                    <option value="urgent">Urgente</option>
                   </select>
                 </div>
               </div>
@@ -1495,9 +1512,11 @@ export const ProjectTasksTab: React.FC<ProjectTasksTabProps> = ({
               <button
                 type="button"
                 onClick={handleSaveTask}
-                className="px-4 py-2 text-xs font-bold text-white bg-[#501f92] hover:bg-[#3f1675] rounded-xl shadow-xs cursor-pointer"
+                disabled={busy}
+                aria-busy={busy}
+                className="px-4 py-2 text-xs font-bold text-white bg-[#501f92] hover:bg-[#3f1675] disabled:opacity-60 disabled:cursor-wait rounded-xl shadow-xs cursor-pointer"
               >
-                {editingTask ? 'Guardar cambios' : 'Crear tarea'}
+                {busy ? 'Guardando…' : editingTask ? 'Guardar cambios' : 'Crear tarea'}
               </button>
             </div>
           </div>

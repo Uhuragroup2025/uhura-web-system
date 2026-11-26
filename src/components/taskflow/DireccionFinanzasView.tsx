@@ -87,7 +87,7 @@ export const DireccionFinanzasView: React.FC<DireccionFinanzasViewProps> = ({
   // Filtro semafórico para el bloque de proyectos
   const [trafficFilter, setTrafficFilter] = useState<'todos' | 'verde' | 'amarillo' | 'rojo'>('todos');
 
-  // CÁLCULO: VENDIDO / CERRADO EN EL MES SELECCIONADO (Oportunidades ganadas en New Business)
+  // CÁLCULO: VENDIDO / CERRADO EN EL MES SELECCIONADO (Negocios ganadas en New Business)
   const wonOpps = useMemo(() => {
     return opportunities.filter((o) => {
       if (o.status !== 'won') return false;

@@ -102,6 +102,7 @@ import {
   ArrowRight,
   FileSpreadsheet
 } from 'lucide-react';
+import { taskDeleteBlock } from '../components/taskflow/deletePermissions';
 
 // Datos de prueba limpios (19 Nov 2026): un proyecto único en curso y un fee mensual que vence el
 // 30 Nov (para ejercitar la renovación y el arranque de diciembre). Tareas en mockData.initialTasks.
@@ -285,11 +286,40 @@ const INITIAL_PROJECTS_LIST: ProjectSummaryItem[] = [
   }
 ];
 
+// ── Persistencia del prototipo: cambios del flujo de las tareas ──────────
+const TASK_PATCH_KEY = 'eco_task_patches_v1';
+const TASK_PATCH_FIELDS = ['status', 'completed', 'completedAt', 'deliverables', 'approvedBy', 'approvedAt', 'reviewers', 'reviewersManual', 'requiresReview', 'priority', 'isBlocked', 'blockedReason', 'blockedAt', 'blockerInfo', 'messages', 'acceptanceCriteria'] as const;
+const pickPatch = (t: TaskItem) => Object.fromEntries(TASK_PATCH_FIELDS.map((f) => [f, (t as unknown as Record<string, unknown>)[f]]));
+function applyTaskPatches(seed: TaskItem[]): TaskItem[] {
+  try {
+    const raw = localStorage.getItem(TASK_PATCH_KEY);
+    if (!raw) return seed;
+    const patches = JSON.parse(raw) as Record<string, Partial<TaskItem>>;
+    return seed.map((t) => (patches[t.id] ? { ...t, ...patches[t.id] } : t));
+  } catch {
+    return seed;
+  }
+}
+function saveTaskPatches(seed: TaskItem[], tasks: TaskItem[]) {
+  try {
+    const seedById = new Map(seed.map((t) => [t.id, JSON.stringify(pickPatch(t))]));
+    const out: Record<string, unknown> = {};
+    tasks.forEach((t) => {
+      const cur = JSON.stringify(pickPatch(t));
+      if (seedById.has(t.id) && seedById.get(t.id) !== cur) out[t.id] = pickPatch(t);
+    });
+    localStorage.setItem(TASK_PATCH_KEY, JSON.stringify(out));
+  } catch { /* solo prototipo */ }
+}
+
 export const TaskFlowPrototype: React.FC = () => {
   const [ecoAppMode] = useState(isEcoAppMode);
   const [currentView, setCurrentView] = useState<OrbitView>('mi-dia');
   const [saasFont, setSaasFont] = useState<'jakarta' | 'inter' | 'montserrat'>('jakarta');
-  const [tasks, setTasks] = useState<TaskItem[]>(initialTasks);
+  // Solo del prototipo: lo que cambia del flujo de cada tarea (estado, entregas, revisores…) se guarda
+  // en el navegador para que sobreviva a una recarga. En producción manda el backend.
+  const [tasks, setTasks] = useState<TaskItem[]>(() => applyTaskPatches(initialTasks));
+  useEffect(() => { saveTaskPatches(initialTasks, tasks); }, [tasks]);
   const [users, setUsers] = useState<UserItem[]>(initialUsers);
   // Default session user: Paola Monsalve (Product Lead / Leader)
   const [currentUser, setCurrentUser] = useState<UserItem>(
@@ -297,6 +327,20 @@ export const TaskFlowPrototype: React.FC = () => {
   );
   const [clients, setClients] = useState<ClientProfile[]>(orbitClientsData);
   const [projectsList, setProjectsList] = useState<ProjectSummaryItem[]>(INITIAL_PROJECTS_LIST);
+  // Tareas nacidas de New Business o de los ciclos del fee: toman el líder del proyecto como «Project Lead»
+  // (y por tanto quien revisa por defecto, §33.4). QA 22 Nov 2026: llegaban sin líder y el modal inventaba uno.
+  useEffect(() => {
+    const byKey = new Map<string, ProjectSummaryItem>();
+    projectsList.forEach((p) => { byKey.set(p.id, p); byKey.set(p.name, p); });
+    if (!tasks.some((t) => !t.projectLead && (byKey.get(t.projectId || '') || byKey.get(t.projectName || ''))?.leadName)) return;
+    setTasks((prev) => prev.map((t) => {
+      if (t.projectLead) return t;
+      const p = byKey.get(t.projectId || '') || byKey.get(t.projectName || '');
+      if (!p?.leadName) return t;
+      const initials = p.leadName.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
+      return { ...t, projectLead: { name: p.leadName, initials, avatarBg: p.leadAvatarBg?.startsWith('bg-') ? p.leadAvatarBg : 'bg-[#501f92]', role: p.leadRole }, reviewers: t.reviewers && t.reviewers.length ? t.reviewers : p.defaultReviewer ? [p.defaultReviewer] : t.reviewers };
+    }));
+  }, [tasks, projectsList]);
   const [activities, setActivities] = useState(initialActivities);
   const [timeLogs, setTimeLogs] = useState<TimeLog[]>(initialTimeLogs);
   const [productTemplates, setProductTemplates] = useState<ProductBacklogTemplate[]>(INITIAL_PRODUCT_BACKLOG_TEMPLATES);
@@ -377,7 +421,7 @@ export const TaskFlowPrototype: React.FC = () => {
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
 
   const [newBusinessResetSignal, setNewBusinessResetSignal] = useState(0);
-  // Abrir una oportunidad concreta desde Mi Día (p. ej. Comercial ve «Alcance actualizado» → va directo a Cotización)
+  // Abrir un negocio concreta desde Mi Día (p. ej. Comercial ve «Alcance actualizado» → va directo a Cotización)
   const [newBusinessFocus, setNewBusinessFocus] = useState<{ id: string; tab: 'resumen' | 'scoping' | 'cotizacion'; nonce: number } | null>(null);
 
   // Global view selection with automatic reset to section root (allows optional targetId)
@@ -685,7 +729,8 @@ export const TaskFlowPrototype: React.FC = () => {
       ...del,
       id: `del-${Date.now()}`,
       taskId,
-      submittedAt: 'Hoy, ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      submittedAt: 'Hoy, ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      submittedIso: new Date().toISOString()
     };
 
     setTasks((prev) =>
@@ -788,6 +833,10 @@ export const TaskFlowPrototype: React.FC = () => {
             ...t,
             status: newStatus,
             completed: newStatus === 'Done',
+            // Fecha de cierre real de la tarea
+            completedAt: newStatus === 'Done' ? (t.status === 'Done' && t.completedAt ? t.completedAt : timestamp) : undefined,
+            approvedBy: newStatus === 'Done' ? t.approvedBy : undefined,
+            approvedAt: newStatus === 'Done' ? t.approvedAt : undefined,
             activityLog: [newEntry, ...(t.activityLog || [])]
           };
         }
@@ -812,6 +861,9 @@ export const TaskFlowPrototype: React.FC = () => {
           ...prev,
           status: newStatus,
           completed: newStatus === 'Done',
+          completedAt: newStatus === 'Done' ? (prev.status === 'Done' && prev.completedAt ? prev.completedAt : timestamp) : undefined,
+          approvedBy: newStatus === 'Done' ? prev.approvedBy : undefined,
+          approvedAt: newStatus === 'Done' ? prev.approvedAt : undefined,
           activityLog: [newEntry, ...(prev.activityLog || [])]
         };
       });
@@ -1477,12 +1529,64 @@ export const TaskFlowPrototype: React.FC = () => {
   };
 
   // Open Task Detail
-  const handleOpenTaskDetail = (taskOrId: TaskItem | string) => {
+  const [taskDetailFocus, setTaskDetailFocus] = useState<'entregables' | null>(null);
+  const handleOpenTaskDetail = (taskOrId: TaskItem | string, focus: 'entregables' | null = null) => {
     const target = typeof taskOrId === 'string' ? tasks.find((t) => t.id === taskOrId) : taskOrId;
     if (target) {
       setSelectedTaskForDetail(target);
+      setTaskDetailFocus(focus);
       setIsTaskDetailModalOpen(true);
     }
+  };
+
+  // Abrir una tarea desde cualquier parte (Mi Día): evento «eco:open-task» { taskId, focus }
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      const { taskId, focus } = (e as CustomEvent<{ taskId: string; focus?: 'entregables' }>).detail || ({} as { taskId: string });
+      if (taskId) handleOpenTaskDetail(taskId, focus || null);
+    };
+    window.addEventListener('eco:open-task', onOpen);
+    return () => window.removeEventListener('eco:open-task', onOpen);
+  });
+
+  const handleUpdateTaskReviewers = (taskId: string, reviewers: NonNullable<TaskItem['reviewer']>[]) => {
+    setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, reviewers } : t)));
+    setSelectedTaskForDetail((prev) => (prev && prev.id === taskId ? { ...prev, reviewers } : prev));
+  };
+
+  /** §33.4: «Sin revisión» y revisores elegidos a mano (el cambio del proyecto no los toca). */
+  const handleUpdateReviewSettings = (taskId: string, patch: { requiresReview?: boolean; reviewersManual?: boolean }) => {
+    setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, ...patch } : t)));
+    setSelectedTaskForDetail((prev) => (prev && prev.id === taskId ? { ...prev, ...patch } : prev));
+  };
+
+  /** Aprobar (queda quién aprobó y cuándo) o pedir ajustes. */
+  const handleReviewDecision = (taskId: string, decision: 'approved' | 'changes', by: string, note?: string) => {
+    const apply = (t: TaskItem): TaskItem => {
+      const dels = [...(t.deliverables || [])];
+      const lastOpen = dels.map((d) => d.status).lastIndexOf('submitted');
+      if (lastOpen >= 0) dels[lastOpen] = { ...dels[lastOpen], status: decision === 'approved' ? 'approved' : 'changes_requested', changesNote: decision === 'changes' ? note : undefined };
+      return decision === 'approved'
+        ? { ...t, deliverables: dels, approvedBy: by, approvedAt: new Date().toISOString() }
+        : { ...t, deliverables: dels, approvedBy: undefined, approvedAt: undefined };
+    };
+    setTasks((prev) => prev.map((t) => (t.id === taskId ? apply(t) : t)));
+    setSelectedTaskForDetail((prev) => (prev && prev.id === taskId ? apply(prev) : prev));
+  };
+
+  /**
+   * Cambio por proyecto (§33.4): quien revisa por defecto en el proyecto. Se aplica a las tareas
+   * abiertas que siguen con el revisor por defecto; las que alguien cambió a mano no se tocan.
+   */
+  const handleChangeProjectReviewer = (projectName: string, person: NonNullable<TaskItem['reviewer']>) => {
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.projectName === projectName && !t.completed && t.status !== 'Done' && !t.reviewersManual
+          ? { ...t, reviewers: [person] }
+          : t
+      )
+    );
+    setProjectsList((prev) => prev.map((p) => (p.name === projectName ? { ...p, defaultReviewer: person } : p)));
   };
 
   // Toggle task completed state
@@ -1520,6 +1624,7 @@ export const TaskFlowPrototype: React.FC = () => {
       accountManagerId: projectData.accountManagerId,
       accountManagerName: projectData.accountManagerName,
       projectType: projectData.projectType,
+      nonBillable: projectData.nonBillable || undefined,
       serviceBase: projectData.serviceBase,
       budgetedHours: projectData.budgetedHours,
       soldHours: projectData.soldHours,
@@ -1530,10 +1635,16 @@ export const TaskFlowPrototype: React.FC = () => {
       brief: projectData.brief,
       deliverables: (projectData.deliverables || []).map((d) => ({
         ...d,
+        id: d.id.startsWith('del-new-') ? `del-${newProjectId}-${d.id.slice('del-new-'.length)}` : d.id,
         projectId: newProjectId
       })),
       coreTeam: projectData.coreTeam || [],
       rolloverPolicy: projectData.rolloverPolicy,
+      contractMonths: projectData.contractMonths,
+      // Mismo punto de partida que un proyecto convertido: «Por iniciar» hasta «Iniciar proyecto»,
+      // que programa las tareas con estas semanas y rondas.
+      scheduleConfig: projectData.scheduleConfig,
+      isKickedOff: projectData.scheduleConfig ? false : undefined,
       currentMonthCycle: projectData.projectType === 'fee_monthly' ? new Date().toISOString().slice(0, 7) : undefined,
       monthlyCycles: projectData.projectType === 'fee_monthly'
         ? [
@@ -1559,7 +1670,11 @@ export const TaskFlowPrototype: React.FC = () => {
       const generatedTasks: TaskItem[] = projectData.tasksToCreate.map((t, idx) => ({
         ...t,
         id: `task-${Date.now()}-${idx}`,
-        projectId: newProjectId
+        createdAt: new Date().toISOString(),
+        projectId: newProjectId,
+        deliverableId: t.deliverableId && t.deliverableId.startsWith('del-new-')
+          ? `del-${newProjectId}-${t.deliverableId.slice('del-new-'.length)}`
+          : t.deliverableId
       } as TaskItem));
       setTasks((prev) => [...generatedTasks, ...prev]);
     }
@@ -1901,6 +2016,7 @@ export const TaskFlowPrototype: React.FC = () => {
             const activityUser = activeTeam.find((user) => user.id === bItem.suggestedUserId);
             newTasksToCreate.push({
               id: `task-${prjId}-${dIdx + 1}-${bIdx + 1}`,
+              createdAt: new Date().toISOString(),
               title: bItem.title,
               status: 'todo',
               priority: 'Medium',
@@ -2083,7 +2199,7 @@ export const TaskFlowPrototype: React.FC = () => {
         healthStatus: 'verde',
         scheduleConfig: {
           clientKickoffWaitDays: (payload as any).scheduleConfig?.clientKickoffWaitDays ?? 3,
-          includedReworkRounds: (payload as any).scheduleConfig?.includedReworkRounds ?? (payload as any).includedReworkRounds ?? 2,
+          includedReworkRounds: (payload as any).scheduleConfig?.includedReworkRounds ?? 0, // Fee mensual: sin rondas de ajuste
           reworkRoundDays: (payload as any).scheduleConfig?.reworkRoundDays ?? 5,
           productionWeeks: (payload as any).scheduleConfig?.productionWeeks
         },
@@ -2121,6 +2237,7 @@ export const TaskFlowPrototype: React.FC = () => {
           const activityUser = activeTeam.find((user) => user.id === bItem.suggestedUserId);
           newTasksToCreate.push({
             id: `task-${fixedProjectId}-${dIdx + 1}-${bIdx + 1}`,
+            createdAt: new Date().toISOString(),
             title: bItem.title,
             status: 'todo',
             priority: 'Medium',
@@ -2164,6 +2281,7 @@ export const TaskFlowPrototype: React.FC = () => {
           const activityUser = activeTeam.find((user) => user.id === bItem.suggestedUserId);
           newTasksToCreate.push({
             id: `task-${feeProjectId}-${dIdx + 1}-${bIdx + 1}`,
+            createdAt: new Date().toISOString(),
             title: bItem.title,
             status: 'todo',
             priority: 'Medium',
@@ -2294,6 +2412,7 @@ export const TaskFlowPrototype: React.FC = () => {
           const activityUser = activeTeam.find((user) => user.id === bItem.suggestedUserId);
           newTasksToCreate.push({
             id: `task-${newProjectId}-${dIdx + 1}-${bIdx + 1}`,
+            createdAt: new Date().toISOString(),
             title: bItem.title,
             status: 'todo',
             priority: 'Medium',
@@ -2332,7 +2451,7 @@ export const TaskFlowPrototype: React.FC = () => {
       });
     }
 
-    // Ronda 2: el proyecto guarda quién es el Comercial responsable (owner de la oportunidad) y la
+    // Ronda 2: el proyecto guarda quién es el Comercial responsable (owner del negocio) y la
     // Relación con clientes de la cuenta, para que les lleguen las alertas (p. ej. tareas bloqueadas).
     {
       const commercialUser = users.find((u) => u.id === opp.commercialOwner || u.name === opp.commercialOwner);
@@ -2347,6 +2466,18 @@ export const TaskFlowPrototype: React.FC = () => {
       });
     }
 
+    // Responsable de cliente (23 Nov 2026): el del cliente si ya existe; si no, quien tenga Relación con
+    // clientes (Client Relationship); si no hay, el comercial del negocio. Nunca queda vacío.
+    const relationshipUser = users.find((u) => u.status === 'Active' && u.accessLevel === 'client_relationship');
+    const ownerFallback = users.find((u) => u.id === opp.commercialOwner || u.name === opp.commercialOwner);
+    const defaultAccountManager = relationshipUser || ownerFallback;
+    projectsToCreate.forEach((p) => {
+      if (!p.accountManagerName && defaultAccountManager) {
+        p.accountManagerId = defaultAccountManager.id;
+        p.accountManagerName = defaultAccountManager.name;
+      }
+    });
+
     // Actualizar Cliente en ECO
     if (!resolvedClientId) {
       resolvedClientId = `cli-${Date.now()}`;
@@ -2358,6 +2489,8 @@ export const TaskFlowPrototype: React.FC = () => {
         status: 'active',
         type: isMixed ? 'Proyecto único' : (payload.projectType === 'fee_monthly' ? 'Fee mensual' : 'Proyecto único'),
         hubspotCompanyId: opp.hubspotCompanyId || undefined,
+        accountManagerId: defaultAccountManager?.id,
+        accountManagerName: defaultAccountManager?.name,
         projectsCount: projectsToCreate.length,
         activeProjectsCount: projectsToCreate.length,
         projectsHistory: historyItemsToCreate,
@@ -2416,6 +2549,8 @@ export const TaskFlowPrototype: React.FC = () => {
               return {
                 ...c,
                 hubspotCompanyId: c.hubspotCompanyId || opp.hubspotCompanyId || undefined,
+                accountManagerId: c.accountManagerName ? c.accountManagerId : defaultAccountManager?.id,
+                accountManagerName: c.accountManagerName || defaultAccountManager?.name,
                 taxEntities: updatedTaxEntities,
                 projectsCount: (c.projectsCount || 0) + projectsToCreate.length,
                 activeProjectsCount: (c.activeProjectsCount || 0) + projectsToCreate.length,
@@ -2436,7 +2571,7 @@ export const TaskFlowPrototype: React.FC = () => {
       setTasks((prev) => [...newTasksToCreate, ...prev]);
     }
 
-    // Actualizar oportunidad a ganada y vincularla a los proyectos
+    // Actualizar negocio a ganada y vincularla a los proyectos
     const mainCreatedProjectId = projectsToCreate[0]?.id || `prj-${Date.now()}`;
 
     const updatedOpp: NewBusinessOpportunity = {
@@ -2467,7 +2602,7 @@ export const TaskFlowPrototype: React.FC = () => {
     setSelectedProjectIdForView(mainCreatedProjectId);
   };
 
-  // Guardar cotización en oportunidad existente de New Business
+  // Guardar cotización en negocio existente de New Business
   const handleSaveQuoteToOpportunity = (opportunityId: string, quote: QuoteProposal) => {
     const current = getOperationalQuote(opportunities.find((item) => item.id === opportunityId));
     const targetQuoteId = current?.id || quote.id;
@@ -2506,7 +2641,7 @@ export const TaskFlowPrototype: React.FC = () => {
     );
   };
 
-  // Crear nueva oportunidad a partir de Brief/Prospecto y adjuntar la cotización inmediatamente
+  // Crear nuevo negocio a partir de Brief/Prospecto y adjuntar la cotización inmediatamente
   const handleCreateOpportunityWithQuote = (
     opportunityData: {
       title: string;
@@ -2542,7 +2677,7 @@ export const TaskFlowPrototype: React.FC = () => {
       quotes: [finalizedQuote],
       createdAt: new Date().toISOString().split('T')[0],
       updatedAt: new Date().toISOString().split('T')[0],
-      briefSummary: 'Oportunidad generada desde plantilla.'
+      briefSummary: 'Negocio generado desde plantilla.'
     };
 
     setOpportunities((prev) => [newOpp, ...prev]);
@@ -2550,7 +2685,9 @@ export const TaskFlowPrototype: React.FC = () => {
 
   // Add task
   const handleAddTask = (newTask: TaskItem) => {
-    setTasks((prev) => [newTask, ...prev]);
+    // Queda quién la creó: puede eliminarla mientras no tenga horas ni esté entregada (26 Nov 2026)
+    const stamped: TaskItem = newTask.createdByUserId ? newTask : { ...newTask, createdByUserId: currentUser?.id, createdByName: currentUser?.name };
+    setTasks((prev) => [stamped, ...prev]);
   };
 
   // Add user
@@ -3033,6 +3170,7 @@ export const TaskFlowPrototype: React.FC = () => {
                       setCurrentView('clientes');
                     }}
                     onUpdateProject={handleUpdateProject}
+                    onChangeProjectReviewer={handleChangeProjectReviewer}
                     onArchiveProject={handleArchiveProject}
                     onDeleteProject={handleDeleteProject}
                   />
@@ -3181,6 +3319,18 @@ export const TaskFlowPrototype: React.FC = () => {
                     onPauseResumeTimer={handlePauseResumeTimer}
                     onOpenManualLog={handleOpenManualLogWithTask}
                     onUpdateOpportunity={(updatedOpp) => {
+                      // La tarea de preventa («Scoping · …») sigue al alcance (25 Nov 2026): se cierra cuando
+                      // cualquier responsable marca el alcance listo (o el negocio se cierra) y se reabre si
+                      // Comercial pide un ajuste de alcance. Así sale del Mi Día de todos los responsables.
+                      const scopeOpen = updatedOpp.status === 'discovery' || updatedOpp.status === 'quoting';
+                      const scopingTaskId = updatedOpp.preventaTimeLogTaskId || `task-scoping-${updatedOpp.id}`;
+                      setTasks((prev) => prev.map((t) => {
+                        if (t.id !== scopingTaskId) return t;
+                        const isDone = t.completed || t.status === 'completed' || t.status === 'Done';
+                        if (!scopeOpen && !isDone) return { ...t, status: 'completed', completed: true };
+                        if (scopeOpen && isDone) return { ...t, status: 'todo', completed: false };
+                        return t;
+                      }));
                       setOpportunities((prev) =>
                         prev.map((o) => (o.id === updatedOpp.id ? updatedOpp : o))
                       );
@@ -3230,7 +3380,7 @@ export const TaskFlowPrototype: React.FC = () => {
                         date: new Date().toISOString().slice(0, 10),
                         dueDate: deadlineDate,
                         dueStatus: 'normal',
-                        dueText: `SLA ~${slaHours}h handoff`,
+                        dueText: `Plazo del alcance: ~${slaHours} h hábiles`,
                         budgetedHours: 4,
                         consumedSeconds: 0,
                         completed: false,
@@ -3326,8 +3476,14 @@ export const TaskFlowPrototype: React.FC = () => {
         >
           <TaskDetailModal
             isOpen={isTaskDetailModalOpen}
-            onClose={() => setIsTaskDetailModalOpen(false)}
+            onClose={() => { setIsTaskDetailModalOpen(false); setTaskDetailFocus(null); }}
             task={selectedTaskForDetail}
+            users={users}
+            onUpdateReviewers={handleUpdateTaskReviewers}
+            onUpdateReviewSettings={handleUpdateReviewSettings}
+            onReviewDecision={handleReviewDecision}
+            absenceEvents={absenceEvents}
+            focusSection={taskDetailFocus}
             currentUser={currentUser}
             tasksList={tasks}
             onSelectTask={(t) => setSelectedTaskForDetail(t)}
@@ -3349,7 +3505,9 @@ export const TaskFlowPrototype: React.FC = () => {
             onRecalibrateDates={handleRecalibrateTaskDates}
             onUpdateBlockerInfo={handleUpdateBlockerInfo}
             onUpdatePhase={handleUpdateTaskPhase}
-            onDeleteTask={handleDeleteTask}
+            // Eliminar (26 Nov 2026): comité operativo siempre; quien la creó, mientras no tenga horas ni esté entregada.
+            onDeleteTask={taskDeleteBlock(selectedTaskForDetail, currentUser, timeLogs) !== undefined ? handleDeleteTask : undefined}
+            deleteBlockedReason={taskDeleteBlock(selectedTaskForDetail, currentUser, timeLogs) || null}
             onArchiveTask={handleArchiveTask}
             onDuplicateTask={handleDuplicateTask}
             onNavigateToClient={(clientName) => {
@@ -3425,6 +3583,7 @@ export const TaskFlowPrototype: React.FC = () => {
         onAddProject={handleAddProject}
         clients={clients}
         users={users}
+        templates={productTemplates}
         preselectedClientId={newProjectPreselectedClientId || undefined}
       />
 

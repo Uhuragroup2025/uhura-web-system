@@ -46,7 +46,7 @@ import {
   Pencil
 } from 'lucide-react';
 
-// Metadatos visuales de la sesión; no forman parte del modelo ni del contrato de la oportunidad.
+// Metadatos visuales de la sesión; no forman parte del modelo ni del contrato del negocio.
 export type ScopeServiceDraft = {
   id: string; name: string; deliverableIds: string[]; weeks: string; saved?: boolean;
   /** Modalidad sugerida por la plantilla (el comercial la puede cambiar en Cotización). */
@@ -221,7 +221,7 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
     onUpdateQuote(recomputeQuoteRollups(ordered.map((item, index) => ({ ...item, order: index + 1 }))));
     onChangeServices(service
       ? services.map((item) => item.id === service.id ? { ...item, deliverableIds: [...item.deliverableIds, newDelId], saved: false } : item)
-      : [...services, { id: `service-${newDelId}`, name: 'Servicio a medida', deliverableIds: [newDelId], weeks: '', saved: false }]);
+      : [...services, { id: `service-${newDelId}`, name: 'Alcance a medida', deliverableIds: [newDelId], weeks: '', saved: false }]);
   };
 
   const handleUpdateDeliverableName = (delId: string, name: string) => {
@@ -629,7 +629,7 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
 
   const readingDeliverable = (deliverable: QuoteDeliverable) => <article className="bg-white border border-[#e2e8f0] rounded-xl overflow-hidden">
     <div className="px-4 py-3 flex justify-between gap-3"><h4 className="font-bold text-sm">{deliverable.name}</h4><strong className="text-xs text-[#501f92] whitespace-nowrap">Subtotal: {deliverable.backlogItems.reduce((sum, item) => sum + item.estimatedHours, 0).toLocaleString('es-CO')} h</strong></div>
-    <div className="overflow-x-auto"><table className="w-full text-xs text-left"><thead className="bg-[#f8fafc] text-[#64748b]"><tr><th className="px-4 py-2 font-medium">Actividad</th><th className="px-3 py-2 font-medium">Rol</th><th className="px-3 py-2 font-medium">Colaborador</th><th className="px-3 py-2 font-medium">Horas</th></tr></thead>
+    <div className="overflow-x-auto"><table className="w-full text-xs text-left"><thead className="bg-[#f8fafc] text-[#64748b]"><tr><th className="px-4 py-2 font-medium">Tarea</th><th className="px-3 py-2 font-medium">Rol</th><th className="px-3 py-2 font-medium">Colaborador</th><th className="px-3 py-2 font-medium">Horas</th></tr></thead>
     <tbody className="divide-y divide-[#f1f5f9]">{[...deliverable.backlogItems].sort((a,b) => a.order-b.order).map((activity) => <tr key={activity.id}><td className="px-4 py-2">{activity.title || 'Actividad sin título'}</td><td className="px-3 py-2">{activity.roleName}</td><td className="px-3 py-2"><span className="inline-block rounded bg-[#f1f5f9] px-2 py-1 whitespace-nowrap">{users.find((user) => user.id === activity.suggestedUserId)?.name || 'Sin asignar'}</span></td><td className="px-3 py-2 whitespace-nowrap">{activity.estimatedHours.toLocaleString('es-CO')} h</td></tr>)}</tbody></table></div>
   </article>;
 
@@ -661,7 +661,7 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
                   ¿Cómo quieres iniciar el alcance?
                 </h3>
                 <p className="text-xs text-[#64748b] max-w-md mx-auto">
-                  Como líder técnico, puedes partir de una plantilla oficial del catálogo o estructurar un alcance a medida desde cero.
+                  Importa un alcance del catálogo de servicios o crea uno desde cero.
                 </p>
               </div>
 
@@ -673,7 +673,7 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
                     className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 text-xs font-bold text-[#501f92] bg-[#501f92]/10 hover:bg-[#501f92]/20 border border-[#501f92]/30 rounded-2xl transition-colors cursor-pointer shadow-2xs"
                   >
                     <BookOpen className="w-4 h-4 text-[#501f92]" />
-                    <span>Agregar alcance</span>
+                    <span>Importar alcance</span>
                   </button>
                 )}
                 <button
@@ -682,7 +682,7 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 text-xs font-bold text-white bg-[#501f92] hover:bg-[#3d1572] rounded-2xl transition-colors cursor-pointer shadow-xs"
                 >
                   <Plus className="w-4 h-4 text-[#d4ff4a]" />
-                  <span>Crear alcance a medida</span>
+                  <span>Crear alcance</span>
                 </button>
               </div>
             </div>
@@ -783,7 +783,7 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
                       <div className="pt-1">
                         {del.backlogItems.length === 0 ? (
                           <div className="p-4 rounded-xl bg-[#f8fafc] border border-dashed border-[#cbd5e1] text-center text-xs text-[#64748b]">
-                            No hay actividades en este servicio. Haz clic en <strong>"Agregar actividad"</strong> abajo.
+                            No hay tareas en este servicio. Haz clic en <strong>«Agregar tarea»</strong> abajo.
                           </div>
                         ) : (
                           <div className="rounded-xl border border-[#e2e8f0] bg-white divide-y divide-[#f1f5f9] overflow-hidden">
@@ -826,7 +826,7 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
                                       onChange={(e) =>
                                         handleUpdateActivity(del.id, act.id, 'title', e.target.value)
                                       }
-                                      placeholder="Nombre de la actividad..."
+                                      placeholder="Nombre de la tarea..."
                                       className="text-xs font-medium text-[#0f172a] placeholder:text-[#94a3b8] bg-transparent outline-hidden w-full transition-colors"
                                     />
                                   </div>
@@ -900,7 +900,7 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
                                         type="button"
                                         onClick={() => handleDuplicateActivity(del.id, act.id)}
                                         className="p-1 text-[#94a3b8] hover:text-[#501f92] rounded hover:bg-white transition-colors cursor-pointer"
-                                        title="Duplicar actividad"
+                                        title="Duplicar tarea"
                                       >
                                         <Copy className="w-3.5 h-3.5" />
                                       </button>
@@ -908,7 +908,7 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
                                         type="button"
                                         onClick={() => handleRemoveActivity(del.id, act.id)}
                                         className="p-1 text-[#94a3b8] hover:text-[#ef4444] rounded hover:bg-white transition-colors cursor-pointer"
-                                        title="Eliminar actividad"
+                                        title="Eliminar tarea"
                                       >
                                         <Trash2 className="w-3.5 h-3.5" />
                                       </button>
@@ -929,14 +929,14 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-[#501f92] hover:bg-[#501f92]/5 rounded-lg transition-colors cursor-pointer"
                       >
                         <Plus className="w-3.5 h-3.5" />
-                        <span>Agregar actividad</span>
+                        <span>Agregar tarea</span>
                       </button>
                       {service && <button type="button" aria-label={`Agregar entregable a ${service.name}`} onClick={() => handleAddDeliverable(service)} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-[#cbd5e1] text-[#475569] hover:border-[#a78bfa] hover:text-[#501f92]">
                         <Plus className="w-3.5 h-3.5" />Agregar entregable
                       </button>}
 
                       <div className="text-[11px] text-[#64748b]">
-                        {del.backlogItems.length} actividad(es) · Subtotal: <strong className="text-[#0f172a]">{delTotalHours}h</strong>
+                        {del.backlogItems.length} tarea(s) · Subtotal: <strong className="text-[#0f172a]">{delTotalHours}h</strong>
                       </div>
                     </div>
                   </div>
@@ -946,15 +946,28 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
             );
           }))}
 
-          {quote.deliverables.length > 0 && templates.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setIsImportModalOpen(true)}
-              className="w-full py-3.5 rounded-2xl border-2 border-dashed border-[#a78bfa] bg-white hover:bg-[#f5f3ff] text-xs font-bold text-[#501f92] flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <BookOpen className="w-4 h-4" />
-              Agregar alcance
-            </button>
+          {/* Mismos botones y nombres que al empezar: «Importar alcance» y «Crear alcance» */}
+          {quote.deliverables.length > 0 && (
+            <div className={`grid gap-3 ${templates.length > 0 ? 'sm:grid-cols-2' : ''}`}>
+              {templates.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setIsImportModalOpen(true)}
+                  className="w-full py-3.5 rounded-2xl border-2 border-dashed border-[#a78bfa] bg-white hover:bg-[#f5f3ff] text-xs font-bold text-[#501f92] flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <BookOpen className="w-4 h-4" />
+                  Importar alcance
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => handleAddDeliverable()}
+                className="w-full py-3.5 rounded-2xl border-2 border-dashed border-[#cbd5e1] bg-white hover:bg-[#f8fafc] text-xs font-bold text-[#334155] flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                Crear alcance
+              </button>
+            </div>
           )}
 
         </div>
@@ -979,7 +992,7 @@ export const BacklogScoper: React.FC<BacklogScoperProps> = ({
                 </span>
                 <div>
                   <h3 className="text-sm font-bold text-[#0f172a]">
-                    Importar desde plantillas de servicios
+                    Importar alcance del catálogo de servicios
                   </h3>
                 </div>
               </div>

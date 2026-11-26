@@ -11,8 +11,10 @@ import type { ProjectDependency, ProjectDependencyType } from '../types';
  * Ejemplo (landing): el brochure o la web actual se necesitan para UX / wireframe; el manual de
  * marca para el prototipo visual; los accesos a hosting y WordPress para la implementación.
  *
- * - Cada servicio trae su plantilla. Al «Iniciar proyecto» se muestran precargados con la fase
- *   sugerida; el responsable marca los que aplican, cambia la fase o si bloquea, y agrega otros.
+ * - Cada servicio trae su plantilla. Al «Iniciar proyecto» se muestran como SUGERENCIAS SIN MARCAR
+ *   (26 Nov 2026, acuerdo con Indunova: opcionales, no automáticos), con la fase sugerida; el líder marca
+ *   los que necesita, cambia la fase o si bloquea, y agrega otros. La plantilla sale del servicio y de los
+ *   entregables del proyecto (tienda, web, pauta, SEO, campaña, video, email/CRM, analítica, redes…).
  * - Los confirmados se crean como Dependencias del proyecto (dueño: cliente).
  * - Producción: estas plantillas viven en el catálogo de servicios (las define cada área).
  */
@@ -93,6 +95,53 @@ const SERVICE_INPUTS: ServiceInputs[] = [
     ]
   },
   {
+    match: /\bseo\b|posicionamiento|search console|org[aá]nico/i,
+    label: 'SEO',
+    inputs: [
+      { title: 'Acceso a Google Search Console', type: 'access', blocking: true, phaseHint: FIRST },
+      { title: 'Permiso de lectura en GA4', type: 'access', blocking: true, phaseHint: FIRST },
+      { title: 'Acceso al CMS de la web (para aplicar los cambios)', type: 'access', blocking: false, phaseHint: BUILD },
+      { title: 'Palabras clave, productos o servicios prioritarios del negocio', type: 'client_input', blocking: false, phaseHint: FIRST }
+    ]
+  },
+  {
+    match: /campa[ñn]a|key ?visual|concepto|creativ|branding|identidad|navidad|lanzamiento de marca/i,
+    label: 'Campaña / creatividad',
+    inputs: [
+      { title: 'Brief de la campaña: objetivo, público, mensaje y fechas clave', type: 'client_input', blocking: true, phaseHint: FIRST },
+      { title: 'Manual de marca y piezas anteriores', type: 'client_input', blocking: true, phaseHint: DESIGN },
+      { title: 'Fotos de producto o banco de imágenes aprobado', type: 'client_input', blocking: false, phaseHint: DESIGN },
+      { title: 'Textos legales o condiciones de la promoción', type: 'client_input', blocking: false, phaseHint: LAUNCH }
+    ]
+  },
+  {
+    match: /video|audiovisual|reel|fotograf|rodaje|producci[oó]n de contenido/i,
+    label: 'Video / foto',
+    inputs: [
+      { title: 'Guion o mensaje aprobado', type: 'client_input', blocking: true, phaseHint: FIRST },
+      { title: 'Locación, producto y personas disponibles para la grabación', type: 'client_input', blocking: true, phaseHint: BUILD },
+      { title: 'Manual de marca (logos, música o tipografías permitidas)', type: 'client_input', blocking: false, phaseHint: DESIGN }
+    ]
+  },
+  {
+    match: /email|mailing|newsletter|crm|hubspot|mailchimp|automatizaci/i,
+    label: 'Email / CRM',
+    inputs: [
+      { title: 'Acceso a la plataforma de email o CRM', type: 'access', blocking: true, phaseHint: FIRST },
+      { title: 'Base de contactos con permiso de envío', type: 'client_input', blocking: true, phaseHint: BUILD },
+      { title: 'Manual de marca', type: 'client_input', blocking: false, phaseHint: DESIGN }
+    ]
+  },
+  {
+    match: /anal[ií]tica|dashboard|looker|tablero|medici[oó]n|\bga4\b|tag manager/i,
+    label: 'Analítica',
+    inputs: [
+      { title: 'Permiso de administrador en GA4 y Google Tag Manager', type: 'access', blocking: true, phaseHint: FIRST },
+      { title: 'Indicadores y metas que el cliente quiere ver', type: 'client_input', blocking: true, phaseHint: FIRST },
+      { title: 'Acceso a las fuentes de datos (ads, CRM, tienda)', type: 'access', blocking: false, phaseHint: BUILD }
+    ]
+  },
+  {
     match: /redes|social|contenido|community|parrilla/i,
     label: 'Redes y contenido',
     inputs: [
@@ -102,10 +151,11 @@ const SERVICE_INPUTS: ServiceInputs[] = [
   }
 ];
 
+// Sin un servicio reconocido: lo que sirve a cualquier área (no solo web).
 const GENERIC_INPUTS: ClientInputTemplate[] = [
-  { title: 'Brochure o presentación del negocio', type: 'client_input', blocking: true, phaseHint: FIRST },
+  { title: 'Información del negocio (brochure, presentación o web actual)', type: 'client_input', blocking: false, phaseHint: FIRST },
   { title: 'Manual de marca / branding', type: 'client_input', blocking: false, phaseHint: DESIGN },
-  { title: 'Accesos a las plataformas del proyecto', type: 'access', blocking: false, phaseHint: BUILD }
+  { title: 'Accesos o materiales que el equipo necesite', type: 'access', blocking: false, phaseHint: BUILD }
 ];
 
 /** Plantilla de insumos según el nombre del servicio/proyecto y sus entregables. */

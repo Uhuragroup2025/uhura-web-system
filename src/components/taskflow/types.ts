@@ -88,6 +88,12 @@ export type LegacyProjectType = ProjectType | 'fixed_milestones' | 'internal';
  * NUNCA asume 'fixed_project' silenciosamente para evitar activar
  * reglas de baseline/cronograma erróneas.
  */
+/** Proyecto interno / no facturable: el tipo antiguo `internal_non_billable` o la característica `nonBillable`. */
+export function isInternalProject(p?: { projectType?: string | null; nonBillable?: boolean } | null): boolean {
+  if (!p) return false;
+  return Boolean(p.nonBillable) || normalizeProjectType(p.projectType) === 'internal_non_billable';
+}
+
 export function normalizeProjectType(type?: string | null): ProjectType | undefined {
   if (!type) return undefined;
   const clean = type.trim().toLowerCase();
@@ -131,7 +137,9 @@ export interface ProjectDeliverable {
 
 export interface ProjectMonthlyCycle {
   monthKey: string;          // ej. "2026-08", "2026-09"
-  monthLabel: string;        // ej. "Agosto 2026", "Septiembre 2026"
+  monthLabel: string;        // ej. "Agosto 2026" (contrato desde el día 1) o "23 Nov – 22 Dic" (desde otro día)
+  startDate?: string;        // Primer día del ciclo (YYYY-MM-DD): mismo día del mes que el inicio del contrato
+  endDate?: string;          // Último día del ciclo (día anterior al inicio del siguiente)
   quotedHours: number;       // Horas cotizadas contratadas para este ciclo
   rolloverHoursIn?: number;  // Horas traspasadas del ciclo anterior si aplica
   executedHours: number;     // Horas ejecutadas reales en este ciclo (rollup)
@@ -272,6 +280,8 @@ export interface ProjectDependency {
   nextFollowUpDate?: string | null;
   followUpNotes?: string | null;
   delayBusinessDays?: number;
+  /** Quién lo agregó (26 Nov 2026): puede eliminarlo mientras no esté recibido. */
+  createdByUserId?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -418,10 +428,12 @@ export interface ProjectSummaryItem {
   brand?: string;
   leadName: string;
   leadAvatarBg: string;
+  /** Quien revisa por defecto las tareas del proyecto (§33.4). Si no hay, el líder del proyecto. */
+  defaultReviewer?: { name: string; initials: string; avatarBg: string; role?: string; avatarUrl?: string | null };
   leadRole?: string;
   accountManagerId?: string;
   accountManagerName?: string;
-  /** Comercial responsable (owner de la oportunidad que originó el proyecto). */
+  /** Comercial responsable (owner del negocio que originó el proyecto). */
   commercialOwnerId?: string;
   commercialOwnerName?: string;
   /** Encargado de aprobaciones del lado del cliente y su suplente (si sale a vacaciones). */
@@ -434,6 +446,12 @@ export interface ProjectSummaryItem {
   /** Pasos editables de cada fase (días hábiles): producción, QA interno y rondas de presentación/aprobación/ajustes. */
   phaseSteps?: { id: string; name: string; productionDays: number; qaDays: number; rounds: { reviewDays: number; adjustDays: number; label?: string; kind?: 'checkpoint' | 'approval'; workDays?: number; qaDays?: number }[] }[];
   projectType: ProjectType;
+  /**
+   * Interno / no facturable (24 Nov 2026): es una característica, no un tipo. Un proyecto único o un fee
+   * de UHURA Group (Gerencia, Administrativo, Rituales…) no se cobra: sin rondas de ajuste ni insumos del cliente.
+   * Los datos antiguos con `projectType = 'internal_non_billable'` se leen igual (`isInternalProject`).
+   */
+  nonBillable?: boolean;
   serviceBase: string;
   areas?: string[];
   budgetedHours: number;      // Rollup derivado de deliverables o ciclo activo
@@ -576,12 +594,19 @@ export interface TaskDeliverable {
   urls?: string[];
   title?: string;
   submittedAt: string;
+  /** Fecha y hora real de la entrega (ISO). `submittedAt` es el texto que se muestra. */
+  submittedIso?: string;
   submittedBy: string;
   status?: 'submitted' | 'approved' | 'changes_requested';
   notes?: string;
   taggedReviewer?: string;
   taggedReviewers?: string[];
   criteriaChecked?: string[];
+  /** «Es un paso de otra tarea»: el resultado final vive en esa tarea (§33.3). */
+  stepOfTaskId?: string;
+  stepOfTaskTitle?: string;
+  /** Qué pidió ajustar el revisor («Pedir ajustes»). */
+  changesNote?: string;
 }
 
 export type TimeLogSource = 'timer' | 'manual';
@@ -843,6 +868,9 @@ export interface TaskItem {
   executedRoleSnapshot?: string; // snapshot of the role under which hours were executed
   categoryType?: TaskCategoryType;
   requestedBy?: string;
+  /** Quién creó la tarea (26 Nov 2026): puede eliminarla mientras no tenga horas ni esté entregada. */
+  createdByUserId?: string;
+  createdByName?: string;
   projectLead?: {
     name: string;
     initials: string;
@@ -850,7 +878,16 @@ export interface TaskItem {
     role?: string;
     avatarUrl?: string | null;
   };
-  requiresReview?: boolean; // Decisión 1: Si es true requiere QA/Lead; si es false el ejecutor la completa directamente
+  /**
+   * Revisión (§33.4): por defecto la tarea la revisa alguien (`undefined` = sí). `false` = «Sin revisión»:
+   * quien la hace la termina directamente. Solo el líder del proyecto o Dirección pueden quitarla.
+   */
+  requiresReview?: boolean;
+  /** Quién la aprobó y cuándo (queda en la Actividad de la tarea). */
+  approvedBy?: string;
+  approvedAt?: string;
+  /** true si alguien eligió los revisores a mano en la tarea: el cambio del proyecto no la toca. */
+  reviewersManual?: boolean;
   requiresValidation?: boolean; // Deprecated - replaced by requiresReview
   reviewer?: {
     name: string;
@@ -891,6 +928,8 @@ export interface TaskItem {
     avatarUrl?: string | null;
   }[];
   date: string;
+  /** Cuándo se creó la tarea (ISO). `date` es la fecha de trabajo y puede cambiar al programarla. */
+  createdAt?: string;
   startDate?: string;
   dueDate: string;
   targetDate?: string | null; // Fecha objetivo (opcional según contexto de proyecto)
@@ -940,6 +979,12 @@ export interface TaskItem {
   feeCategory?: FeeActivityCategory;
   // Control de Bloqueos, Deuda y Trazabilidad de Causa Raíz / Baseline
   blockerInfo?: TaskBlockerInfo;
+  /**
+   * Revisores de la tarea (término único «Revisor»): aprueban o piden ajustes al entregable.
+   * Si está vacío, revisa el Project Lead.
+   * `reviewer` (uno solo) se conserva por compatibilidad.
+   */
+  reviewers?: NonNullable<TaskItem['reviewer']>[];
   isRecalibrated?: boolean;
   recalibrationDays?: number;
   recalibrationReason?: string;
@@ -1459,7 +1504,7 @@ export interface CommercialCalculatorContract {
 }
 
 /**
- * DECISIÓN 2 — Estados del ciclo de vida de la Oportunidad comercial/operativa
+ * DECISIÓN 2 — Estados del ciclo de vida del negocio comercial/operativa
  */
 export type OpportunityStatus =
   | 'discovery'        // Discovery / Briefing inicial
@@ -1636,7 +1681,7 @@ export interface HubSpotSyncAuditEntry {
 
 /**
  * Cotización (Quote Proposal)
- * Cada oportunidad puede tener 1..N cotizaciones simultáneas (Decisión 2)
+ * Cada negocio puede tener 1..N cotizaciones simultáneas (Decisión 2)
  */
 /**
  * Recurso externo / subcontratado (ej. backend, arquitectura de servidores).
@@ -1800,7 +1845,7 @@ export type FormalizationGateStatus =
   | 'activo';
 
 /**
- * Oportunidad de New Business (Comercial & Operativa)
+ * Negocio de New Business (Comercial & Operativa)
  */
 export interface NewBusinessOpportunity {
   id: string;
@@ -1816,7 +1861,7 @@ export interface NewBusinessOpportunity {
   scopeReadyHours?: number;
   /** Aviso a Comercial: el alcance cambió después de cotizar. Se limpia al guardar la cotización de nuevo. */
   scopeUpdateNotice?: { at: string; byName: string; added: string[]; removed: string[]; hoursBefore?: number; hoursAfter?: number } | null;
-  title: string;                  // Título comercial de la oportunidad
+  title: string;                  // Título comercial del negocio
   type: OpportunityType;          // 'new_client' | 'upsell' | 'cross_sell' | 'renewal'
   projectType?: ProjectType;      // 'fixed_project' (proyecto único) | 'fee_monthly' (fee mensual) | 'internal_non_billable'
   
@@ -1842,7 +1887,7 @@ export interface NewBusinessOpportunity {
   hubspotBriefNoteId?: string | null; // Referencia a la Nota de Brief / Reunión en HubSpot
   hubspotBriefNoteSnippet?: string;   // Fragmento de la nota de brief seleccionada
   hubspotDealStage?: string | null;   // Etapa del Deal en HubSpot (ej. 'closedwon', 'proposal_sent')
-  isHubspotConnected?: boolean;       // True si la oportunidad está sincronizada activamente con la API real de HubSpot
+  isHubspotConnected?: boolean;       // True si el negocio está sincronizada activamente con la API real de HubSpot
 
   // Discovery, Brief y Drive
   discoveryNotes?: string;
@@ -1890,7 +1935,7 @@ export interface NewBusinessOpportunity {
 }
 
 /**
- * Parámetros para la conversión transaccional de Oportunidad a Proyecto
+ * Parámetros para la conversión transaccional de Negocio a Proyecto
  */
 export interface OpportunityProjectConversionPayload {
   opportunityId: string;

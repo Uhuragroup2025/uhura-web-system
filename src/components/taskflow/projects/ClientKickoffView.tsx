@@ -55,15 +55,16 @@ export interface ClientKickoffViewProps {
 export function defaultClientAgreements(isFee: boolean, includedRounds: number, approvalDays: number, rolloverLabel?: string): string[] {
   return isFee
     ? [
-        'La parrilla del mes se aprueba en los primeros 3 días hábiles; sin aprobación, el mes arranca más tarde y lo no producido no se repone.',
-        'Las piezas fuera del plan del mes se cotizan aparte o reemplazan otras del plan, de común acuerdo.',
+        'El plan del mes se aprueba en los primeros 3 días hábiles; sin aprobación, el mes arranca más tarde y lo no producido no se repone.',
+        'Los ajustes del día a día salen de la bolsa de horas del mes.',
+        'Lo que esté fuera del plan del mes se cotiza aparte o reemplaza otra cosa del plan, de común acuerdo.',
         `Horas no usadas: ${rolloverLabel || 'según el contrato'}.`,
         'Un solo interlocutor del cliente consolida los comentarios de cada entrega.',
         'Si el encargado del cliente no está, aprueba su suplente.',
         'Cada mes cierra con un reporte de resultados y la propuesta de ajustes.'
       ]
     : [
-        'Cada presentación incluye una ronda de ajustes; las adicionales se cotizan aparte antes de ejecutarlas.',
+        'Cada presentación incluye una ronda: el cliente revisa y nosotros ajustamos. Las rondas adicionales se cotizan aparte antes de ejecutarlas.',
         `El cliente tiene ${approvalDays} días hábiles para aprobar cada presentación; sin respuesta, la entrega se da por aprobada.`,
         'Los comentarios llegan consolidados, de un solo interlocutor del cliente.',
         'Si el encargado del cliente no está, aprueba su suplente; si ninguno responde a tiempo, aplica la aprobación del punto anterior.',
@@ -227,13 +228,14 @@ export const ClientKickoffView: React.FC<ClientKickoffViewProps> = (props) => {
         <header className="bg-white rounded-2xl border border-[#e7e3ef] shadow-sm overflow-hidden">
           <div className="h-1.5 bg-gradient-to-r from-[#501f92] via-[#8a4dff] to-[#d4ff4a]" />
           <div className="px-6 sm:px-7 pt-5 pb-5">
-            <div className="flex items-start justify-between gap-4 flex-wrap">
-              <div className="min-w-0 flex-1">
+            {/* En celular y tablet las acciones van arriba y el título ocupa todo el ancho (sin espacio en blanco al lado); desde escritorio, lado a lado. */}
+            <div className="flex flex-col-reverse gap-3 lg:flex-row lg:items-start lg:justify-between lg:gap-4">
+              <div className="min-w-0 lg:flex-1">
                 <p className="text-[12px] font-medium text-[#64748b]">{props.clientName || 'Cliente'} · Uhura Group</p>
                 <h2 className="text-[22px] font-extrabold text-[#0f172a] leading-tight [text-wrap:balance] mt-0.5">{props.projectName}</h2>
                 <p className="text-[13px] text-[#64748b] mt-1">Cronograma y acuerdos del proyecto</p>
               </div>
-              <div className="no-print flex items-center gap-1.5 shrink-0 flex-wrap">
+              <div className="no-print flex items-center justify-end gap-1.5 flex-wrap lg:shrink-0">
                 {canEdit && props.onApply && props.applyPending && (
                   <button type="button" onClick={props.onApply} className="inline-flex items-center h-8 px-3 rounded-lg bg-[#501f92] hover:bg-[#3d1572] text-white text-[13px] font-semibold cursor-pointer" title="Reprograma las fases y las tareas del proyecto con estos cambios">
                     Aplicar al cronograma
@@ -382,7 +384,7 @@ export const ClientKickoffView: React.FC<ClientKickoffViewProps> = (props) => {
                                 <Step
                                   kind={isCheck ? 'checkpoint' : 'presentation'}
                                   whenStrong
-                                  label={<>{isCheck ? 'Checkpoint' : 'Presentación'} · {r.label}{isCheck && <span className="font-normal text-[#64748b]"> (revisión sin aprobación formal)</span>}</>}
+                                  label={<>{isCheck ? 'Avance' : 'Presentación'} · {r.label}{isCheck && <span className="font-normal text-[#64748b]"> (valida el rumbo, sin aprobación formal)</span>}</>}
                                   when={editing
                                     ? <span className="inline-flex items-center gap-1">
                                         <input type="date" value={r.presentation} onChange={(e) => setPresentationDate(idx, k, e.target.value)} className={inputCls} aria-label={`Presentación ${r.n} de ${ph.name}`} />
@@ -392,14 +394,14 @@ export const ClientKickoffView: React.FC<ClientKickoffViewProps> = (props) => {
                                 />
                                 <Step
                                   kind="client"
-                                  label={<>{isCheck ? 'Revisión del cliente' : 'QA del cliente'} · {r.approvalDays} {r.approvalDays === 1 ? 'día hábil' : 'días hábiles'}</>}
+                                  label={<>Revisión del cliente · {r.approvalDays} {r.approvalDays === 1 ? 'día hábil' : 'días hábiles'}</>}
                                   when={editing
-                                    ? <input type="date" value={r.approvalEnd} min={r.presentation} onChange={(e) => setApprovalEnd(idx, k, e.target.value)} className={inputCls} aria-label={`Fin del QA del cliente ${r.n} de ${ph.name}`} />
+                                    ? <input type="date" value={r.approvalEnd} min={r.presentation} onChange={(e) => setApprovalEnd(idx, k, e.target.value)} className={inputCls} aria-label={`Fin de la revisión del cliente ${r.n} de ${ph.name}`} />
                                     : `hasta ${short(r.approvalEnd)}`}
                                 />
                                 {(r.adjustDays > 0 || editing) && (
-                                  <Step kind="adjust" label="Ajustes" when={editing
-                                    ? <span className="inline-flex items-center gap-1"><DayInput value={steps[idx].rounds[k].adjustDays} onChange={(n) => updateRound(idx, k, { adjustDays: n })} label={`Días de ajustes ${r.n} de ${ph.name}`} /> días</span>
+                                  <Step kind="adjust" label="Nuestros ajustes" when={editing
+                                    ? <span className="inline-flex items-center gap-1"><DayInput value={steps[idx].rounds[k].adjustDays} onChange={(n) => updateRound(idx, k, { adjustDays: n })} label={`Días de nuestros ajustes ${r.n} de ${ph.name}`} /> días</span>
                                     : span(r.adjustStart, r.adjustEnd)} />
                                 )}
                               </React.Fragment>
@@ -418,7 +420,7 @@ export const ClientKickoffView: React.FC<ClientKickoffViewProps> = (props) => {
               })}
             </ol>
             <p className="mt-3 text-[12px] text-[#64748b] leading-relaxed">
-              En el <span className="font-semibold text-[#92400e]">QA del cliente</span> revisas y apruebas: si se extiende, lo que sigue se corre los mismos días. A las presentaciones asisten {props.leaderName.replace(/\s*\(.*?\)/, '')}{props.commercialName ? ` y ${props.commercialName}` : ''}.
+              Una <span className="font-semibold">presentación</span> es cada vez que te mostramos un avance para que lo revises y apruebes. Cada una incluye una ronda: en la <span className="font-semibold text-[#92400e]">revisión del cliente</span> revisas y nos mandas tus comentarios en un solo envío, y luego nosotros ajustamos. Si la revisión se extiende, lo que sigue se corre los mismos días. A las presentaciones asisten {props.leaderName.replace(/\s*\(.*?\)/, '')}{props.commercialName ? ` y ${props.commercialName}` : ''}.
             </p>
           </section>
         ) : (
@@ -515,7 +517,14 @@ export const ClientKickoffView: React.FC<ClientKickoffViewProps> = (props) => {
           ) : (
             <>
               <SectionHeader title="Aprobación del cliente" icon={<CircleCheck className="w-4 h-4" />} />
-              <p className="text-[#64748b]">Si alguna fecha no te funciona, la movemos ahora{canEdit ? ' («Editar»)' : ''}. Cuando todo esté bien, registra quién aprueba.</p>
+              {canEdit ? (
+                <>
+                  <p className="no-print text-[#64748b]">¿El cliente está de acuerdo? Si alguna fecha no le sirve, muévela con «Editar». Cuando apruebe, escribe su nombre y pulsa «Registrar aprobación».</p>
+                  <p className="hidden print:block text-[#64748b]">Si alguna fecha no te funciona, avísanos y la ajustamos.</p>
+                </>
+              ) : (
+                <p className="text-[#64748b]">Si alguna fecha no te funciona, avísanos y la ajustamos.</p>
+              )}
               {canEdit && (
                 <div className="no-print flex items-center gap-2 flex-wrap mt-3">
                   <input value={approverName} onChange={(e) => setApproverName(e.target.value)} placeholder={props.clientApprover || 'Nombre de quien aprueba'} className={`flex-1 min-w-[220px] ${inputCls}`} aria-label="Quien aprueba por el cliente" />
